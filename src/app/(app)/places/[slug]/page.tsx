@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Phone, Globe, MapPin, Navigation, Share2 } from "lucide-react";
+import { Phone, Globe, MapPin, Navigation, Share2, Apple, AlertCircle, Utensils, ShoppingBag, Car, Instagram, ExternalLink } from "lucide-react";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
 import { formatDistance } from "@/lib/geo";
+import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
 import OpenClosedDot from "@/components/place/OpenClosedDot";
 import HoursBlock from "@/components/place/HoursBlock";
 import PlaceCard from "@/components/place/PlaceCard";
@@ -45,7 +46,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   if (!place) notFound();
 
   const cat = CATEGORY_BY_SLUG[place.category];
-  const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${place.geom.lat},${place.geom.lng}`;
+  const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng, place.name);
+  const appleUrl = appleMapsDirections(place.geom.lat, place.geom.lng, place.name);
+  const actions = actionsForPlace(place);
+  const reserveActions = actions.filter((a) => a.category === "reserve");
+  const orderActions = actions.filter((a) => a.category === "order");
+  const parkActions = actions.filter((a) => a.category === "park");
+  const socialActions = actions.filter((a) => a.category === "social");
   const eventsAtThisVenue = place.upcoming_events.map((e) => ({
     ...e,
     distance_m: undefined,
@@ -148,15 +155,65 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </div>
       </header>
 
+      {place.is_operational === "closed_permanently" && (
+        <ClosureBanner
+          severity="permanent"
+          title="This place is permanently closed."
+          body="We're keeping this page up so old links resolve, but you can't visit. If this is wrong, please let us know."
+          placeName={place.name}
+        />
+      )}
+      {place.is_operational === "closed_temporarily" && (
+        <ClosureBanner
+          severity="temporary"
+          title="Currently closed."
+          body="The owner has flagged this place as temporarily closed. Check their website or call before going."
+          placeName={place.name}
+        />
+      )}
+
       <div className="flex">
         <BeenHereToggle placeSlug={place.slug} label={place.name} />
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        <ActionButton href={directionsUrl} icon={Navigation} label="Directions" external />
+      <div className="grid grid-cols-2 gap-2">
+        <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
+        <ActionButton href={googleUrl} icon={Navigation} label="Google Maps" external />
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
         {place.website && <ActionButton href={place.website} icon={Globe} label="Website" external />}
       </div>
+
+      {reserveActions.length > 0 && (
+        <IntegrationRow
+          icon={Utensils}
+          title="Reserve a table"
+          actions={reserveActions}
+        />
+      )}
+
+      {orderActions.length > 0 && (
+        <IntegrationRow
+          icon={ShoppingBag}
+          title="Order online"
+          actions={orderActions}
+        />
+      )}
+
+      {parkActions.length > 0 && (
+        <IntegrationRow
+          icon={Car}
+          title="Pay for parking"
+          actions={parkActions}
+        />
+      )}
+
+      {socialActions.length > 0 && (
+        <IntegrationRow
+          icon={Instagram}
+          title="Follow"
+          actions={socialActions}
+        />
+      )}
 
       <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} />
 
@@ -266,6 +323,63 @@ function ActionButton({
       <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-brand)" }} />
       {label}
     </Comp>
+  );
+}
+
+function ClosureBanner({
+  severity, title, body, placeName,
+}: { severity: "permanent" | "temporary"; title: string; body: string; placeName: string }) {
+  const bg = severity === "permanent" ? "var(--app-danger)" : "var(--app-warning)";
+  return (
+    <div
+      role="alert"
+      className="flex items-start gap-3 rounded-[var(--app-radius-lg)] p-4 text-white shadow-[var(--app-shadow-1)]"
+      style={{ background: bg }}
+    >
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="font-serif text-lg font-semibold leading-tight">{title}</p>
+        <p className="mt-1 text-[13px] leading-relaxed opacity-95">{body}</p>
+        <a
+          href={`mailto:hello@frederickradius.app?subject=Closure status for ${placeName}`}
+          className="mt-2 inline-block text-[12px] font-semibold underline underline-offset-2"
+        >
+          Send a correction
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function IntegrationRow({
+  icon: Icon, title, actions,
+}: {
+  icon: typeof Phone;
+  title: string;
+  actions: Array<{ key: string; label: string; href: string }>;
+}) {
+  return (
+    <section className="space-y-2">
+      <h2 className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool)" }} />
+        {title}
+      </h2>
+      <div className="flex flex-wrap gap-1.5">
+        {actions.map((a) => (
+          <a
+            key={a.key}
+            href={a.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1.5 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+          >
+            {a.label}
+            <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }
 

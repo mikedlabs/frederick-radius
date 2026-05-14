@@ -71,9 +71,15 @@ function openScore(status: OpenStatus): number {
   return 0;
 }
 
+function isOperational(p: Place): boolean {
+  return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
+}
+
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   const now = ctx.now ?? new Date();
-  let results = PLACES.map((p) => decoratePlace(p, ctx.origin, now));
+  let results = PLACES
+    .filter(isOperational)
+    .map((p) => decoratePlace(p, ctx.origin, now));
 
   if (ctx.category) {
     results = results.filter(
@@ -101,6 +107,7 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
 
 export function placesWithinRadius(origin: LngLat, meters: number, now: Date = new Date()): PlaceCardData[] {
   return PLACES
+    .filter(isOperational)
     .map((p) => decoratePlace(p, origin, now))
     .filter((p) => (p.distance_m ?? Infinity) <= meters)
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));

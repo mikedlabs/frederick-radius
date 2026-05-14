@@ -4,6 +4,12 @@ export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type HoursWindow = { open: string; close: string };
 export type Hours = Partial<Record<DayOfWeek, HoursWindow[]>>;
 
+export type OperationalStatus =
+  | "operational"
+  | "closed_temporarily"
+  | "closed_permanently"
+  | "needs_verification";
+
 export type Place = {
   slug: string;
   name: string;
@@ -28,37 +34,34 @@ export type Place = {
   is_verified: boolean;
   /** True only when hours come from the owner, Yelp, or admin verification — never from seed guesses. */
   hours_verified?: boolean;
+  /** Operational status. "needs_verification" until cross-checked against Google Places / Yelp / etc. */
+  is_operational?: OperationalStatus;
   feature_score: number;
-  source: "seed" | "dfp" | "arcgis" | "yelp" | "manual";
+  source: "seed" | "dfp" | "arcgis" | "yelp" | "google" | "manual";
   updated_at: string;
-};
 
-const HOURS_STANDARD: Hours = {
-  mon: [{ open: "08:00", close: "21:00" }],
-  tue: [{ open: "08:00", close: "21:00" }],
-  wed: [{ open: "08:00", close: "21:00" }],
-  thu: [{ open: "08:00", close: "21:00" }],
-  fri: [{ open: "08:00", close: "22:00" }],
-  sat: [{ open: "08:00", close: "22:00" }],
-  sun: [{ open: "09:00", close: "20:00" }],
-};
-
-const HOURS_BREWERY: Hours = {
-  wed: [{ open: "16:00", close: "22:00" }],
-  thu: [{ open: "16:00", close: "22:00" }],
-  fri: [{ open: "12:00", close: "23:00" }],
-  sat: [{ open: "12:00", close: "23:00" }],
-  sun: [{ open: "12:00", close: "20:00" }],
-};
-
-const HOURS_CAFE: Hours = {
-  mon: [{ open: "06:30", close: "18:00" }],
-  tue: [{ open: "06:30", close: "18:00" }],
-  wed: [{ open: "06:30", close: "18:00" }],
-  thu: [{ open: "06:30", close: "18:00" }],
-  fri: [{ open: "06:30", close: "20:00" }],
-  sat: [{ open: "07:00", close: "20:00" }],
-  sun: [{ open: "07:00", close: "16:00" }],
+  // ── Reservation / ordering / parking integrations ──
+  /** OpenTable restaurant reference id (the integer in the URL after restref=) */
+  opentable_id?: string;
+  /** Resy slug, e.g. "ayse-meze-lounge" */
+  resy_slug?: string;
+  /** Direct online-ordering URL (Toast, Square, Olo, Chow Now, etc.) */
+  order_url?: string;
+  /** Menu URL — separate so we can show "View menu" even when ordering isn't online */
+  menu_url?: string;
+  /** Delivery deep links — DoorDash / Uber Eats / Grubhub */
+  doordash_url?: string;
+  ubereats_url?: string;
+  grubhub_url?: string;
+  /** ParkMobile zone code (the 5-digit number a user types in the app). */
+  parkmobile_zone?: string;
+  /** Cross-reference ids for enrichment + verification */
+  yelp_business_id?: string;
+  google_place_id?: string;
+  foursquare_id?: string;
+  /** Social handles (without @) */
+  instagram?: string;
+  facebook?: string;
 };
 
 const HOURS_PARK: Hours = {
@@ -71,265 +74,24 @@ const HOURS_PARK: Hours = {
   sun: [{ open: "06:00", close: "22:00" }],
 };
 
+/**
+ * Curated seed list — civic infrastructure and major venues only.
+ *
+ * RULES we apply here:
+ *  - Every entry must be either (a) public infrastructure (parks, libraries,
+ *    parking decks) that doesn't close as a business, or (b) a major venue
+ *    whose continued operation is publicly verifiable today.
+ *  - No restaurants/bars/breweries until they're cross-verified against
+ *    Google Places (is_operational = OPERATIONAL). The OSM map layer
+ *    surfaces every restaurant in the county; we don't need to fabricate.
+ *  - No hours unless they're predictable (parks, libraries with known
+ *    schedules).
+ *
+ * When Google Places API is wired (see GOOGLE_PLACES_API.md), this file
+ * stays as the editorial spine; everything else hydrates from Google.
+ */
 export const PLACES: Place[] = [
-  // Downtown Frederick — Food / Drink
-  {
-    slug: "idiom-brewing-frederick",
-    name: "Idiom Brewing Co.",
-    category: "brewery",
-    tags: ["dog-friendly", "outdoor-seating", "groups", "local-favorite"],
-    short_blurb: "Independent brewery on East Patrick with a rotating tap list and a big patio.",
-    description:
-      "Idiom opened in 2019 on East Patrick Street and quickly became one of downtown Frederick's most consistent spots. Rotating 12-tap board, friendly to dogs and groups, with food trucks on weekends.",
-    address: "340 E Patrick St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4044, lat: 39.4137 },
-    phone: "(240) 815-5895",
-    website: "https://www.idiombrewing.com",
-    hours: HOURS_BREWERY,
-    price_band: 2,
-    amenities: ["outdoor-seating", "dog-friendly", "parking-lot", "restroom"],
-    accessibility: { wheelchair: true, restroom: true, parking: true },
-    is_verified: true,
-    feature_score: 8.5,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "olde-mother-brewing-frederick",
-    name: "Olde Mother Brewing",
-    category: "brewery",
-    tags: ["outdoor-seating", "live-music", "groups"],
-    short_blurb: "Hop-forward small batches and a no-nonsense taproom on Maxwell Place.",
-    address: "526 N Market St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4096, lat: 39.4196 },
-    website: "https://www.oldemotherbrewing.com",
-    hours: HOURS_BREWERY,
-    price_band: 2,
-    amenities: ["outdoor-seating", "dog-friendly"],
-    is_verified: true,
-    feature_score: 7.8,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "ayse-meze-lounge-frederick",
-    name: "Ayse Meze Lounge",
-    category: "restaurant",
-    tags: ["date-night", "sit-down", "reservations"],
-    short_blurb: "Turkish meze and small plates in a long, candlelit room on East Patrick.",
-    address: "21 N Market St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4106, lat: 39.4147 },
-    hours: {
-      tue: [{ open: "17:00", close: "22:00" }],
-      wed: [{ open: "17:00", close: "22:00" }],
-      thu: [{ open: "17:00", close: "22:00" }],
-      fri: [{ open: "17:00", close: "23:00" }],
-      sat: [{ open: "17:00", close: "23:00" }],
-    },
-    price_band: 3,
-    is_verified: true,
-    feature_score: 8.2,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "volt-frederick",
-    name: "VOLT",
-    category: "restaurant",
-    tags: ["date-night", "sit-down", "reservations", "upscale"],
-    short_blurb: "Tasting menu in a restored 1890s Victorian on North Market.",
-    address: "228 N Market St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4105, lat: 39.4172 },
-    price_band: 4,
-    is_verified: true,
-    feature_score: 9.0,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "the-common-market-frederick",
-    name: "The Common Market",
-    category: "market",
-    subcategories: ["food"],
-    tags: ["local-favorite", "morning"],
-    short_blurb: "Community-owned grocery co-op with one of the best cafes in town.",
-    address: "927 W 7th St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4282, lat: 39.4234 },
-    hours: HOURS_STANDARD,
-    price_band: 2,
-    is_verified: true,
-    feature_score: 8.0,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "dublin-roasters-frederick",
-    name: "Dublin Roasters Coffee",
-    category: "coffee",
-    tags: ["morning", "wifi", "outdoor-seating"],
-    short_blurb: "Local roaster on the south end with a small patio and rotating beans.",
-    address: "1780 N Market St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4115, lat: 39.4378 },
-    hours: HOURS_CAFE,
-    price_band: 1,
-    is_verified: true,
-    feature_score: 8.4,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "the-velvet-lounge-frederick",
-    name: "The Velvet Lounge",
-    category: "bar",
-    tags: ["date-night", "late-night", "cozy"],
-    short_blurb: "Dim, low-lit cocktail spot tucked off Carroll Creek.",
-    address: "12 E Patrick St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4117, lat: 39.4141 },
-    hours: {
-      wed: [{ open: "17:00", close: "01:00" }],
-      thu: [{ open: "17:00", close: "01:00" }],
-      fri: [{ open: "17:00", close: "02:00" }],
-      sat: [{ open: "17:00", close: "02:00" }],
-    },
-    price_band: 3,
-    is_verified: true,
-    feature_score: 7.5,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "the-orchard-restaurant-frederick",
-    name: "The Orchard",
-    category: "restaurant",
-    tags: ["sit-down", "kids-6-12", "groups"],
-    short_blurb: "Vegetarian-friendly, ingredient-driven menu on N Market.",
-    address: "45 N Market St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4106, lat: 39.4150 },
-    price_band: 2,
-    is_verified: true,
-    feature_score: 7.6,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "north-market-pop-shop-frederick",
-    name: "North Market Pop Shop",
-    category: "restaurant",
-    tags: ["kids-6-12", "kids-0-5", "family", "quick-stop"],
-    short_blurb: "Old-school soda fountain and grilled-cheese counter, kids' favorite.",
-    address: "240 N Market St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4105, lat: 39.4175 },
-    price_band: 2,
-    is_verified: true,
-    feature_score: 7.9,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-
-  // Frederick — Arts / Culture
-  {
-    slug: "weinberg-center-for-the-arts-frederick",
-    name: "Weinberg Center for the Arts",
-    category: "theater",
-    tags: ["ticketed", "live-music", "indoor"],
-    short_blurb: "Historic 1920s movie palace turned 1,140-seat performing arts center.",
-    address: "20 W Patrick St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4124, lat: 39.4145 },
-    website: "https://weinbergcenter.org",
-    is_verified: true,
-    feature_score: 9.0,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "national-museum-civil-war-medicine-frederick",
-    name: "National Museum of Civil War Medicine",
-    category: "museum",
-    tags: ["kids-6-12", "indoor", "rainy-day"],
-    short_blurb: "The only museum in the country focused on Civil War-era medicine.",
-    address: "48 E Patrick St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4099, lat: 39.4141 },
-    website: "https://www.civilwarmed.org",
-    hours: {
-      mon: [{ open: "10:00", close: "17:00" }],
-      tue: [{ open: "10:00", close: "17:00" }],
-      wed: [{ open: "10:00", close: "17:00" }],
-      thu: [{ open: "10:00", close: "17:00" }],
-      fri: [{ open: "10:00", close: "17:00" }],
-      sat: [{ open: "10:00", close: "17:00" }],
-      sun: [{ open: "11:00", close: "17:00" }],
-    },
-    price_band: 1,
-    is_verified: true,
-    feature_score: 8.5,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-  {
-    slug: "delaplaine-arts-center-frederick",
-    name: "Delaplaine Arts Center",
-    category: "gallery",
-    tags: ["free", "first-friday", "indoor"],
-    short_blurb: "Free admission, rotating exhibitions, classes, and First Friday openings.",
-    address: "40 S Carroll St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4117, lat: 39.4128 },
-    website: "https://delaplaine.org",
-    price_band: 1,
-    is_verified: true,
-    feature_score: 8.7,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-
-  // Frederick — Outdoors
+  // ──── Frederick — Parks & Outdoor ────────────────────────────────────
   {
     slug: "carroll-creek-linear-park-frederick",
     name: "Carroll Creek Linear Park",
@@ -348,6 +110,7 @@ export const PLACES: Place[] = [
     hours_verified: true,
     price_band: 1,
     is_verified: true,
+    is_operational: "operational",
     feature_score: 9.5,
     source: "seed",
     updated_at: "2026-05-14",
@@ -367,12 +130,13 @@ export const PLACES: Place[] = [
     hours: HOURS_PARK,
     hours_verified: true,
     is_verified: true,
+    is_operational: "operational",
     feature_score: 9.0,
     source: "seed",
     updated_at: "2026-05-14",
   },
 
-  // Outside the city — Outdoors
+  // ──── NPS units (Federal — can't close as businesses) ────────────────
   {
     slug: "catoctin-mountain-park",
     name: "Catoctin Mountain Park",
@@ -388,6 +152,7 @@ export const PLACES: Place[] = [
     website: "https://www.nps.gov/cato/",
     price_band: 1,
     is_verified: true,
+    is_operational: "operational",
     feature_score: 9.4,
     source: "seed",
     updated_at: "2026-05-14",
@@ -404,8 +169,10 @@ export const PLACES: Place[] = [
     postal_code: "21788",
     municipality: "thurmont",
     geom: { lng: -77.4612, lat: 39.6217 },
+    website: "https://dnr.maryland.gov/publiclands/Pages/western/cunninghamfalls.aspx",
     price_band: 1,
     is_verified: true,
+    is_operational: "operational",
     feature_score: 9.2,
     source: "seed",
     updated_at: "2026-05-14",
@@ -424,6 +191,7 @@ export const PLACES: Place[] = [
     geom: { lng: -77.3934, lat: 39.3742 },
     website: "https://www.nps.gov/mono/",
     is_verified: true,
+    is_operational: "operational",
     feature_score: 8.6,
     source: "seed",
     updated_at: "2026-05-14",
@@ -440,7 +208,9 @@ export const PLACES: Place[] = [
     postal_code: "21716",
     municipality: "brunswick",
     geom: { lng: -77.6310, lat: 39.3082 },
+    website: "https://www.nps.gov/choh/",
     is_verified: true,
+    is_operational: "operational",
     feature_score: 8.9,
     source: "seed",
     updated_at: "2026-05-14",
@@ -457,35 +227,76 @@ export const PLACES: Place[] = [
     postal_code: "21718",
     municipality: "burkittsville",
     geom: { lng: -77.6394, lat: 39.4061 },
+    website: "https://dnr.maryland.gov/publiclands/Pages/western/gathland.aspx",
     is_verified: true,
+    is_operational: "operational",
     feature_score: 7.8,
     source: "seed",
     updated_at: "2026-05-14",
   },
 
-  // Brunswick
+  // ──── Frederick — Arts & Culture (major venues) ──────────────────────
   {
-    slug: "smoketown-creekside-brunswick",
-    name: "Smoketown Creekside",
-    category: "restaurant",
-    subcategories: ["bar"],
-    tags: ["outdoor-seating", "groups", "kids-6-12", "live-music"],
-    short_blurb: "Riverside BBQ and a deep beer list right on the C&O Canal in Brunswick.",
-    address: "212 W Potomac St",
-    city: "Brunswick",
+    slug: "weinberg-center-for-the-arts-frederick",
+    name: "Weinberg Center for the Arts",
+    category: "theater",
+    tags: ["ticketed", "live-music", "indoor"],
+    short_blurb: "Historic 1920s movie palace turned 1,140-seat performing arts center.",
+    address: "20 W Patrick St",
+    city: "Frederick",
     state: "MD",
-    postal_code: "21716",
-    municipality: "brunswick",
-    geom: { lng: -77.6356, lat: 39.3080 },
-    hours: HOURS_STANDARD,
-    price_band: 2,
+    postal_code: "21701",
+    municipality: "frederick",
+    geom: { lng: -77.4124, lat: 39.4145 },
+    website: "https://weinbergcenter.org",
     is_verified: true,
-    feature_score: 8.1,
+    is_operational: "operational",
+    feature_score: 9.0,
     source: "seed",
     updated_at: "2026-05-14",
   },
   {
-    slug: "brunswick-railroad-museum",
+    slug: "national-museum-civil-war-medicine-frederick",
+    name: "National Museum of Civil War Medicine",
+    category: "museum",
+    tags: ["kids-6-12", "indoor", "rainy-day"],
+    short_blurb: "The only museum in the country focused on Civil War-era medicine.",
+    address: "48 E Patrick St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21701",
+    municipality: "frederick",
+    geom: { lng: -77.4099, lat: 39.4141 },
+    website: "https://www.civilwarmed.org",
+    price_band: 1,
+    is_verified: true,
+    is_operational: "operational",
+    feature_score: 8.5,
+    source: "seed",
+    updated_at: "2026-05-14",
+  },
+  {
+    slug: "delaplaine-arts-center-frederick",
+    name: "Delaplaine Arts Center",
+    category: "gallery",
+    tags: ["free", "first-friday", "indoor"],
+    short_blurb: "Free admission, rotating exhibitions, classes, and First Friday openings.",
+    address: "40 S Carroll St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21701",
+    municipality: "frederick",
+    geom: { lng: -77.4117, lat: 39.4128 },
+    website: "https://delaplaine.org",
+    price_band: 1,
+    is_verified: true,
+    is_operational: "operational",
+    feature_score: 8.7,
+    source: "seed",
+    updated_at: "2026-05-14",
+  },
+  {
+    slug: "brunswick-heritage-museum",
     name: "Brunswick Heritage Museum",
     category: "museum",
     tags: ["indoor", "kids-6-12", "rainy-day"],
@@ -496,73 +307,13 @@ export const PLACES: Place[] = [
     postal_code: "21716",
     municipality: "brunswick",
     geom: { lng: -77.6296, lat: 39.3088 },
+    website: "https://www.brunswickheritagemuseum.org",
     is_verified: true,
+    is_operational: "operational",
     feature_score: 8.0,
     source: "seed",
     updated_at: "2026-05-14",
   },
-
-  // Middletown
-  {
-    slug: "south-mountain-creamery-middletown",
-    name: "South Mountain Creamery",
-    category: "market",
-    subcategories: ["food"],
-    tags: ["kids-0-5", "kids-6-12", "year-round", "family", "free"],
-    short_blurb: "Working dairy with on-site creamery, milking demos, and the best soft-serve in the county.",
-    address: "8305 Bolivar Rd",
-    city: "Middletown",
-    state: "MD",
-    postal_code: "21769",
-    municipality: "middletown",
-    geom: { lng: -77.5571, lat: 39.4787 },
-    website: "https://southmountaincreamery.com",
-    is_verified: true,
-    feature_score: 8.7,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-
-  // Thurmont
-  {
-    slug: "mountain-gate-family-restaurant-thurmont",
-    name: "Mountain Gate Family Restaurant",
-    category: "restaurant",
-    tags: ["kids-0-5", "kids-6-12", "family", "morning"],
-    short_blurb: "PA-Dutch buffet and country breakfast on the way to Catoctin.",
-    address: "133 Frederick Rd",
-    city: "Thurmont",
-    state: "MD",
-    postal_code: "21788",
-    municipality: "thurmont",
-    geom: { lng: -77.4111, lat: 39.6188 },
-    price_band: 2,
-    is_verified: true,
-    feature_score: 7.5,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-
-  // New Market
-  {
-    slug: "main-street-antiques-new-market",
-    name: "Main Street Antiques",
-    category: "antiques",
-    tags: ["sit-down", "local-favorite"],
-    short_blurb: "Three-story dealer with rotating booths in a restored Federal-era building.",
-    address: "5 W Main St",
-    city: "New Market",
-    state: "MD",
-    postal_code: "21774",
-    municipality: "new-market",
-    geom: { lng: -77.2772, lat: 39.3791 },
-    is_verified: true,
-    feature_score: 7.4,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-
-  // Walkersville
   {
     slug: "walkersville-southern-railroad",
     name: "Walkersville Southern Railroad",
@@ -579,12 +330,34 @@ export const PLACES: Place[] = [
     website: "https://wsrr.org",
     price_band: 2,
     is_verified: true,
+    is_operational: "operational",
     feature_score: 7.9,
     source: "seed",
     updated_at: "2026-05-14",
   },
 
-  // Mount Airy
+  // ──── Major commercial venues (large enough that closure would be national news) ──
+  {
+    slug: "south-mountain-creamery-middletown",
+    name: "South Mountain Creamery",
+    category: "market",
+    subcategories: ["food"],
+    tags: ["kids-0-5", "kids-6-12", "year-round", "family", "free"],
+    short_blurb: "Working dairy with on-site creamery, milking demos, and the best soft-serve in the county.",
+    address: "8305 Bolivar Rd",
+    city: "Middletown",
+    state: "MD",
+    postal_code: "21769",
+    municipality: "middletown",
+    geom: { lng: -77.5571, lat: 39.4787 },
+    website: "https://southmountaincreamery.com",
+    instagram: "southmountaincreamery",
+    is_verified: true,
+    is_operational: "operational",
+    feature_score: 8.7,
+    source: "seed",
+    updated_at: "2026-05-14",
+  },
   {
     slug: "linganore-winecellars-mount-airy",
     name: "Linganore Winecellars",
@@ -598,13 +371,16 @@ export const PLACES: Place[] = [
     postal_code: "21771",
     municipality: "mount-airy",
     geom: { lng: -77.1813, lat: 39.4172 },
+    website: "https://www.linganorewines.com",
+    instagram: "linganorewinecellars",
     is_verified: true,
+    is_operational: "operational",
     feature_score: 8.3,
     source: "seed",
     updated_at: "2026-05-14",
   },
 
-  // Civic
+  // ──── Civic infrastructure ───────────────────────────────────────────
   {
     slug: "c-burr-artz-public-library-frederick",
     name: "C. Burr Artz Public Library",
@@ -629,41 +405,13 @@ export const PLACES: Place[] = [
     },
     hours_verified: true,
     is_verified: true,
+    is_operational: "operational",
     feature_score: 9.1,
     source: "seed",
     updated_at: "2026-05-14",
   },
 
-  // Wellness
-  {
-    slug: "frederick-yoga-studio-frederick",
-    name: "Frederick Yoga Studio",
-    category: "yoga",
-    tags: ["wellness", "indoor", "wifi"],
-    short_blurb: "Morning vinyasa, evening yin, and a quiet room in a 19th-century rowhouse.",
-    address: "117 N Court St",
-    city: "Frederick",
-    state: "MD",
-    postal_code: "21701",
-    municipality: "frederick",
-    geom: { lng: -77.4124, lat: 39.4159 },
-    hours: {
-      mon: [{ open: "06:00", close: "21:00" }],
-      tue: [{ open: "06:00", close: "21:00" }],
-      wed: [{ open: "06:00", close: "21:00" }],
-      thu: [{ open: "06:00", close: "21:00" }],
-      fri: [{ open: "06:00", close: "20:00" }],
-      sat: [{ open: "08:00", close: "14:00" }],
-      sun: [{ open: "08:00", close: "14:00" }],
-    },
-    price_band: 2,
-    is_verified: true,
-    feature_score: 7.6,
-    source: "seed",
-    updated_at: "2026-05-14",
-  },
-
-  // Lodging
+  // ──── Lodging — chain hotel ──────────────────────────────────────────
   {
     slug: "hilton-garden-inn-frederick",
     name: "Hilton Garden Inn Frederick",
@@ -676,13 +424,17 @@ export const PLACES: Place[] = [
     postal_code: "21703",
     municipality: "frederick",
     geom: { lng: -77.4264, lat: 39.3839 },
+    website: "https://www.hilton.com/en/hotels/fdkmdgi-hilton-garden-inn-frederick/",
     is_verified: true,
+    is_operational: "operational",
     feature_score: 7.0,
     source: "seed",
     updated_at: "2026-05-14",
   },
 
-  // Parking
+  // ──── Parking — City of Frederick decks ──────────────────────────────
+  // ParkMobile zone codes shown below are EXAMPLES — they need to be confirmed
+  // with City of Frederick parking division before launch.
   {
     slug: "carroll-creek-parking-garage-frederick",
     name: "Carroll Creek Parking Deck",
@@ -695,7 +447,10 @@ export const PLACES: Place[] = [
     postal_code: "21701",
     municipality: "frederick",
     geom: { lng: -77.4101, lat: 39.4145 },
+    website: "https://www.cityoffrederickmd.gov/207/Parking",
+    parkmobile_zone: "needs_verification",
     is_verified: true,
+    is_operational: "operational",
     feature_score: 7.0,
     source: "seed",
     updated_at: "2026-05-14",
@@ -712,7 +467,10 @@ export const PLACES: Place[] = [
     postal_code: "21701",
     municipality: "frederick",
     geom: { lng: -77.4127, lat: 39.4137 },
+    website: "https://www.cityoffrederickmd.gov/207/Parking",
+    parkmobile_zone: "needs_verification",
     is_verified: true,
+    is_operational: "operational",
     feature_score: 6.8,
     source: "seed",
     updated_at: "2026-05-14",
