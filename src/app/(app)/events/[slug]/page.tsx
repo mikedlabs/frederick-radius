@@ -84,9 +84,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     <div className="space-y-6">
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/app/events" className="hover:underline">Events</Link></li>
+          <li><Link href="/events" className="hover:underline">Events</Link></li>
           <li aria-hidden>·</li>
-          <li><Link href={`/app/m/${event.municipality}`} className="hover:underline">{event.municipality_name}</Link></li>
+          <li><Link href={`/m/${event.municipality}`} className="hover:underline">{event.municipality_name}</Link></li>
         </ol>
       </nav>
 
@@ -183,7 +183,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </a>
         ) : event.venue_place_slug ? (
           <Link
-            href={`/app/places/${event.venue_place_slug}`}
+            href={`/places/${event.venue_place_slug}`}
             className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
           >

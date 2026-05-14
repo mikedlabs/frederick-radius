@@ -9,7 +9,6 @@ import { eventsLive, eventsNext24h, eventsWeekend } from "@/lib/loaders/events";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
 export const metadata: Metadata = {
-  title: "Today",
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
 };
 
@@ -57,7 +56,7 @@ export default function TodayPage() {
       <WeatherStrip />
 
       {liveEvents.length > 0 && (
-        <Module title="Happening right now" href="/app/events" meta={`${liveEvents.length} event${liveEvents.length === 1 ? "" : "s"} live`}>
+        <Module title="Happening right now" href="/events" meta={`${liveEvents.length} event${liveEvents.length === 1 ? "" : "s"} live`}>
           <ul className="space-y-2">
             {liveEvents.map((e) => (
               <li key={e.slug}><EventCard event={e} /></li>
@@ -66,7 +65,7 @@ export default function TodayPage() {
         </Module>
       )}
 
-      <Module title="Open now near you" href="/app/map" meta="Ranked by walkability + editorial weight">
+      <Module title="Open now near you" href="/map" meta="Ranked by walkability + editorial weight">
         <ul className="space-y-2">
           {openNow.map((p) => (
             <li key={p.slug}><PlaceCard place={p} /></li>
@@ -74,7 +73,7 @@ export default function TodayPage() {
         </ul>
       </Module>
 
-      <Module title="Happening today" href="/app/events" meta={`Next 24 hours · ${todayEvents.length} event${todayEvents.length === 1 ? "" : "s"}`}>
+      <Module title="Happening today" href="/events" meta={`Next 24 hours · ${todayEvents.length} event${todayEvents.length === 1 ? "" : "s"}`}>
         {todayEvents.length === 0 ? (
           <EmptyHint text="Nothing on the calendar for the next 24 hours. Check the weekend module below." />
         ) : (
@@ -86,7 +85,7 @@ export default function TodayPage() {
         )}
       </Module>
 
-      <Module title="This weekend" href="/app/events" meta="Friday evening through Sunday">
+      <Module title="This weekend" href="/events" meta="Friday evening through Sunday">
         {weekendEvents.length === 0 ? (
           <EmptyHint text="No events seeded for this weekend yet." />
         ) : (
@@ -98,7 +97,7 @@ export default function TodayPage() {
         )}
       </Module>
 
-      <Module title="Walkable from downtown" href="/app/radius" meta="Inside a 15-minute walk · open now">
+      <Module title="Walkable from downtown" href="/radius" meta="Inside a 15-minute walk · open now">
         <ul className="space-y-2">
           {walkable.map((p) => (
             <li key={p.slug}><PlaceCard place={p} /></li>
@@ -106,7 +105,7 @@ export default function TodayPage() {
         </ul>
       </Module>
 
-      <Module title="Browse by town" href="/app/m/frederick" cta="All 12">
+      <Module title="Browse by town" href="/m/frederick" cta="All 12">
         <MunicipalityStrip />
       </Module>
     </div>

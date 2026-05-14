@@ -62,7 +62,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
             {subs.map((s) => (
               <li key={s.slug}>
                 <Link
-                  href={`/app/category/${s.slug}`}
+                  href={`/category/${s.slug}`}
                   className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
                 >

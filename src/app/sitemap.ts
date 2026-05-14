@@ -10,32 +10,32 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   const top: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${BASE}/app/today`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
-    { url: `${BASE}/app/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
-    { url: `${BASE}/app/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
-    { url: `${BASE}/app/radius`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/app/saved`, lastModified: now, changeFrequency: "weekly", priority: 0.4 },
+    { url: `${BASE}/`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/radius`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/saved`, lastModified: now, changeFrequency: "weekly", priority: 0.4 },
   ];
   const places = PLACES.map((p) => ({
-    url: `${BASE}/app/places/${p.slug}`,
+    url: `${BASE}/places/${p.slug}`,
     lastModified: new Date(p.updated_at),
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
   const events = EVENTS.map((e) => ({
-    url: `${BASE}/app/events/${e.slug}`,
+    url: `${BASE}/events/${e.slug}`,
     lastModified: now,
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));
   const munis = MUNICIPALITIES.map((m) => ({
-    url: `${BASE}/app/m/${m.slug}`,
+    url: `${BASE}/m/${m.slug}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.85,
   }));
   const cats = CATEGORIES.map((c) => ({
-    url: `${BASE}/app/category/${c.slug}`,
+    url: `${BASE}/category/${c.slug}`,
     lastModified: now,
     changeFrequency: "weekly" as const,
     priority: 0.6,

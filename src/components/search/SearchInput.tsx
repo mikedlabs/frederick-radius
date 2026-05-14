@@ -19,7 +19,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
       onSubmit={(e) => {
         e.preventDefault();
         const next = q.trim();
-        router.push(next ? `/app/search?q=${encodeURIComponent(next)}` : "/app/search");
+        router.push(next ? `/search?q=${encodeURIComponent(next)}` : "/search");
       }}
       className="flex items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3"
       style={{ borderColor: "var(--app-border)" }}
@@ -44,7 +44,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
           type="button"
           onClick={() => {
             setQ("");
-            router.push("/app/search");
+            router.push("/search");
           }}
           className="rounded px-1 text-xs"
           style={{ color: "var(--app-ink-3)" }}

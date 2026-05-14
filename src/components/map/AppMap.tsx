@@ -77,7 +77,7 @@ function PlaceMarker({ place }: { place: Place }) {
           </span>
           <p style={{ fontSize: 13, margin: "8px 0", color: "#1A1A1A" }}>{place.short_blurb}</p>
           <Link
-            href={`/app/places/${place.slug}`}
+            href={`/places/${place.slug}`}
             style={{ fontSize: 13, fontWeight: 600, color }}
           >
             View →

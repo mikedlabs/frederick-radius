@@ -29,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
   if (!event) return new NextResponse("Not found", { status: 404 });
 
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
-  const url = `${baseUrl}/app/events/${event.slug}`;
+  const url = `${baseUrl}/events/${event.slug}`;
 
   const ics = [
     "BEGIN:VCALENDAR",

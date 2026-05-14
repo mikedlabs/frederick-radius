@@ -41,7 +41,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             {["coffee", "live music", "park", "brewery", "antiques", "kid friendly", "rainy day"].map((q) => (
               <li key={q}>
                 <Link
-                  href={`/app/search?q=${encodeURIComponent(q)}`}
+                  href={`/search?q=${encodeURIComponent(q)}`}
                   className="inline-block rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
                 >
@@ -69,7 +69,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             {munis.map((h) => h.type === "municipality" && (
               <li key={h.municipality.slug}>
                 <Link
-                  href={`/app/m/${h.municipality.slug}`}
+                  href={`/m/${h.municipality.slug}`}
                   className="block rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
                   style={{ borderColor: "var(--app-border)" }}
                 >
@@ -91,7 +91,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             {cats.map((h) => h.type === "category" && (
               <li key={h.category.slug}>
                 <Link
-                  href={`/app/category/${h.category.slug}`}
+                  href={`/category/${h.category.slug}`}
                   className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
                 >

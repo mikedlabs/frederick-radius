@@ -34,10 +34,10 @@ export default function SavedList() {
           Tap the bookmark on any place or event to pin it here.
         </p>
         <div className="flex justify-center gap-3 pt-2">
-          <Link href="/app/today" className="text-xs font-medium" style={{ color: "var(--app-brand)" }}>
+          <Link href="/" className="text-xs font-medium" style={{ color: "var(--app-brand)" }}>
             Start with Today →
           </Link>
-          <Link href="/app/map" className="text-xs font-medium" style={{ color: "var(--app-brand)" }}>
+          <Link href="/map" className="text-xs font-medium" style={{ color: "var(--app-brand)" }}>
             Browse the map →
           </Link>
         </div>

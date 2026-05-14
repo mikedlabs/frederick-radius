@@ -28,7 +28,7 @@ export default function PlaceCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <Link
-            href={`/app/places/${place.slug}`}
+            href={`/places/${place.slug}`}
             className="truncate text-[15px] font-semibold tracking-tight outline-none focus-visible:underline"
             style={{ color: "var(--app-ink)" }}
           >

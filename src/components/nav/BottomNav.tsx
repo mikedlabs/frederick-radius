@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { Sun, Map, Calendar, Disc, Bookmark } from "lucide-react";
 
 const TABS = [
-  { href: "/app/today", label: "Today", icon: Sun },
-  { href: "/app/map", label: "Map", icon: Map },
-  { href: "/app/events", label: "Events", icon: Calendar },
-  { href: "/app/radius", label: "Radius", icon: Disc },
-  { href: "/app/saved", label: "Saved", icon: Bookmark },
+  { href: "/", label: "Today", icon: Sun },
+  { href: "/map", label: "Map", icon: Map },
+  { href: "/events", label: "Events", icon: Calendar },
+  { href: "/radius", label: "Radius", icon: Disc },
+  { href: "/saved", label: "Saved", icon: Bookmark },
 ] as const;
 
 export default function BottomNav() {

@@ -88,7 +88,7 @@ export default async function MunicipalityPage(
             {categoryCounts.map(({ c, n }) => (
               <li key={c.slug}>
                 <Link
-                  href={`/app/category/${c.slug}`}
+                  href={`/category/${c.slug}`}
                   className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
                   style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
                 >

@@ -10,7 +10,7 @@ export default function TopBar() {
     >
       <div className="mx-auto flex h-14 max-w-screen-md items-center gap-3 px-4">
         <Link
-          href="/app/today"
+          href="/"
           className="flex items-center gap-2 font-serif text-[17px] font-semibold tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
@@ -31,7 +31,7 @@ export default function TopBar() {
           Frederick, MD
         </div>
         <Link
-          href="/app/search"
+          href="/search"
           aria-label="Search"
           className="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
           style={{ color: "var(--app-ink-2)" }}

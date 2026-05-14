@@ -77,13 +77,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
     <div className="space-y-6">
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/app/today" className="hover:underline">Today</Link></li>
+          <li><Link href="/" className="hover:underline">Today</Link></li>
           <li aria-hidden>·</li>
-          <li><Link href={`/app/m/${place.municipality}`} className="hover:underline">{place.municipality_name}</Link></li>
+          <li><Link href={`/m/${place.municipality}`} className="hover:underline">{place.municipality_name}</Link></li>
           {cat && (
             <>
               <li aria-hidden>·</li>
-              <li><Link href={`/app/category/${place.category}`} className="hover:underline">{cat.name}</Link></li>
+              <li><Link href={`/category/${place.category}`} className="hover:underline">{cat.name}</Link></li>
             </>
           )}
         </ol>
@@ -206,7 +206,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           Updated {place.updated_at} · Source: {place.source}
         </p>
         <div className="flex gap-3 text-xs">
-          <Link href={`/app/category/${place.category}`} style={{ color: "var(--app-brand)" }}>
+          <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand)" }}>
             More {cat?.name?.toLowerCase() ?? "places"} →
           </Link>
           <button

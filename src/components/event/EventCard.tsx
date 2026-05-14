@@ -31,7 +31,7 @@ export default function EventCard({ event }: { event: EventWithMeta }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">
           <Link
-            href={`/app/events/${event.slug}`}
+            href={`/events/${event.slug}`}
             className="text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2"
             style={{ color: "var(--app-ink)" }}
           >

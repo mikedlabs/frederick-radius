@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Frederick Radius",
     short_name: "Radius",
     description: "A smarter way to experience Frederick County.",
-    start_url: "/app/today",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",
@@ -19,10 +19,10 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
     shortcuts: [
-      { name: "Today", url: "/app/today", short_name: "Today" },
-      { name: "Map", url: "/app/map", short_name: "Map" },
-      { name: "Events", url: "/app/events", short_name: "Events" },
-      { name: "Radius", url: "/app/radius", short_name: "Radius" },
+      { name: "Today", url: "/", short_name: "Today" },
+      { name: "Map", url: "/map", short_name: "Map" },
+      { name: "Events", url: "/events", short_name: "Events" },
+      { name: "Radius", url: "/radius", short_name: "Radius" },
     ],
   };
 }
