@@ -4,7 +4,9 @@ import Module from "@/components/today/Module";
 import WeatherStrip from "@/components/today/WeatherStrip";
 import AirQualityBadge from "@/components/today/AirQualityBadge";
 import CivicAlerts from "@/components/today/CivicAlerts";
+import LivePulse from "@/components/today/LivePulse";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
+import ModeToggle from "@/components/today/ModeToggle";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
@@ -48,9 +50,12 @@ export default function HomePage() {
       </Suspense>
 
       <section>
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {weekday} · {time}
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+            {weekday} · {time}
+          </p>
+          <ModeToggle />
+        </div>
         <h1 className="mt-1 font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           Good to see you in Frederick.
         </h1>
@@ -62,6 +67,10 @@ export default function HomePage() {
           ✨ Plan my evening
         </a>
       </section>
+
+      <Suspense fallback={null}>
+        <LivePulse />
+      </Suspense>
 
       <Suspense fallback={<WeatherStripFallback />}>
         <div className="space-y-2">
