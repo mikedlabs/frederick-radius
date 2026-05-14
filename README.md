@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frederick Radius
 
-## Getting Started
+> A smarter way to experience Frederick County.
 
-First, run the development server:
+Frederick Radius is a PWA-first civic discovery platform for Frederick County, Maryland — a single web app that turns 12 fragmented municipalities, 4,500+ businesses, 78 parks, and dozens of civic feeds into one calm, location-aware experience.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Live:** [frederickradius.app](https://frederickradius.app)
+**Strategy:** see `FREDERICK_RADIUS_STRATEGY.md` (kept outside the code repo in the team's working folder).
+
+---
+
+## What ships today
+
+| URL | What it is |
+|---|---|
+| `/` | The cinematic 10-scene marketing landing (investor + press) |
+| `/app/today` | Daily-use dashboard — open now, weather, today, this weekend, walkable, towns |
+| `/app/map` | Map view of all places, category-colored pins, Leaflet + CARTO tiles |
+| `/app/events` | Event index grouped: live now → today → weekend → later |
+| `/app/events/[slug]` | Event detail — full description, ICS download, before/after recommendations, parking nearby |
+| `/app/places/[slug]` | Place detail — hours (open-now aware), directions, structured data, nearby + upcoming |
+| `/app/m/[municipality]` | One page per town: hero blurb, stats, browse-by-category, upcoming events, top places |
+| `/app/category/[slug]` | All places in a category, county-wide |
+| `/app/radius` | Set a point + a distance, see what's inside, bucketed by Eat/Do/Practical |
+| `/app/saved` | localStorage-backed saved places + events (anonymous-first) |
+| `/app/search` | Ranked full-text search across places / events / towns / categories |
+
+Plus: dynamic OG images, Event/LocalBusiness JSON-LD, full sitemap, robots, manifest, install icons.
+
+## Stack
+
+- **Next.js 16** App Router · **React 19** · **TypeScript 5** · **Tailwind 4**
+- **Framer Motion** for cinematic scenes
+- **Leaflet + react-leaflet** for the map (will swap to Mapbox GL JS in Phase 3)
+- **Drizzle ORM** schema committed (Postgres + PostGIS) — DB connection in Phase 1
+- **next/og** for runtime OG image generation
+- **Vercel** hosting, edge runtime where useful, ISR everywhere else
+
+## Architecture
+
+```
+src/
+├── app/
+│   ├── (marketing)/        # / — cinematic 10-scene demo
+│   ├── app/                # /app/* — the PWA
+│   │   ├── today/ map/ events/ places/ radius/ saved/ search/
+│   │   └── m/[municipality] · category/[slug]
+│   ├── api/
+│   │   ├── og/             # dynamic OG image generator
+│   │   └── events/[slug]/ics  # downloadable .ics calendar files
+│   ├── icon.tsx · apple-icon.tsx · manifest.ts · sitemap.ts · robots.ts
+│   ├── layout.tsx          # root: fonts, viewport, theme, skip-link
+│   └── globals.css         # tokens for marketing + app palettes
+├── components/
+│   ├── event/ · place/ · today/ · radius/ · saved/ · search/ · nav/ · map/
+│   ├── marketing/          # the 10 cinematic scenes
+│   └── ui/
+├── data/                   # seed data — municipalities, categories, tags, places, events
+├── lib/
+│   ├── geo.ts              # Haversine, walk/bike/drive minutes ↔ meters, bbox
+│   ├── hours.ts            # open-now logic, formatting
+│   ├── search.ts           # in-memory ranked search
+│   ├── db/schema.ts        # Drizzle schema (Postgres + PostGIS) — committed shape
+│   └── loaders/            # places.ts, events.ts — pure server-side data accessors
+└── hooks/                  # useSaved (localStorage + useSyncExternalStore)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Local dev
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev      # http://localhost:3000
+npm run build    # production build; verifies all routes generate
+npm run lint
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+No environment variables required for the current scope.
 
-## Learn More
+## Roadmap
 
-To learn more about Next.js, take a look at the following resources:
+The 15-deliverable strategy lives in `FREDERICK_RADIUS_STRATEGY.md`. Near-term:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- [ ] Wire Neon Postgres + PostGIS — promote seed data to real DB
+- [ ] iCal ingest (DFP, Celebrate Frederick, County) — Vercel Cron
+- [ ] Mapbox Studio custom style + swap from Leaflet
+- [ ] Business claim flow + dashboard
+- [ ] Push notifications (civic emergencies opt-out, saved-event reminders opt-in)
+- [ ] AI itinerary builder (grounded in seed data, not hallucinated)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## License
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Proprietary — © MAD Productions. All rights reserved.

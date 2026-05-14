@@ -1,57 +1,125 @@
 import type { Metadata } from "next";
+import Module from "@/components/today/Module";
+import WeatherStrip from "@/components/today/WeatherStrip";
+import MunicipalityStrip from "@/components/today/MunicipalityStrip";
+import PlaceCard from "@/components/place/PlaceCard";
+import EventCard from "@/components/event/EventCard";
+import { rankPlaces, placesWithinRadius } from "@/lib/loaders/places";
+import { eventsLive, eventsNext24h, eventsWeekend } from "@/lib/loaders/events";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
-export const metadata: Metadata = { title: "Today" };
+export const metadata: Metadata = {
+  title: "Today",
+  description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
+};
 
-const PLACEHOLDER_MODULES = [
-  { id: "weather", title: "Weather", body: "Hourly forecast and air quality from NWS / AirNow." },
-  { id: "open-now", title: "Open now nearby", body: "Six cards ranked by distance and editorial weight." },
-  { id: "today-events", title: "Happening today", body: "Up to four events live now or starting in the next 3 hours." },
-  { id: "weekend", title: "This weekend", body: "Curated picks across all 12 municipalities." },
-  { id: "walkable", title: "Walkable from here", body: "Places inside a 15-minute walking radius." },
-  { id: "saved", title: "Saved", body: "Your pinned places, events, and radii." },
-];
+export const revalidate = 60;
 
 export default function TodayPage() {
   const now = new Date();
-  const time = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const weekday = now.toLocaleDateString("en-US", { weekday: "long" });
+  const origin = FREDERICK_CENTER;
+
+  const openNow = rankPlaces({
+    origin,
+    now,
+    preferOpen: true,
+    limit: 6,
+  });
+
+  const liveEvents = eventsLive(now);
+  const todayEvents = eventsNext24h(now).slice(0, 4);
+  const weekendEvents = eventsWeekend(now).slice(0, 4);
+  const walkable = placesWithinRadius(origin, 1200, now)
+    .filter((p) => p.open_status.state !== "closed")
+    .slice(0, 4);
+
+  const time = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(now);
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+  }).format(now);
+
   return (
-    <div className="space-y-6">
-      <section className="pt-2">
-        <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+    <div className="space-y-7 pt-1">
+      <section>
+        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
           {weekday} · {time}
         </p>
-        <h1 className="mt-1 font-serif text-3xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h1 className="mt-1 font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           Good to see you in Frederick.
         </h1>
-        <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          The Today screen is the daily-use dashboard. Modules below are scaffolding — wired up in the next sprint with live data.
-        </p>
       </section>
-      <ul className="space-y-3">
-        {PLACEHOLDER_MODULES.map((m) => (
-          <li
-            key={m.id}
-            className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                {m.title}
-              </h2>
-              <span
-                className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider"
-                style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
-              >
-                Soon
-              </span>
-            </div>
-            <p className="mt-1.5 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              {m.body}
-            </p>
-          </li>
-        ))}
-      </ul>
+
+      <WeatherStrip />
+
+      {liveEvents.length > 0 && (
+        <Module title="Happening right now" href="/app/events" meta={`${liveEvents.length} event${liveEvents.length === 1 ? "" : "s"} live`}>
+          <ul className="space-y-2">
+            {liveEvents.map((e) => (
+              <li key={e.slug}><EventCard event={e} /></li>
+            ))}
+          </ul>
+        </Module>
+      )}
+
+      <Module title="Open now near you" href="/app/map" meta="Ranked by walkability + editorial weight">
+        <ul className="space-y-2">
+          {openNow.map((p) => (
+            <li key={p.slug}><PlaceCard place={p} /></li>
+          ))}
+        </ul>
+      </Module>
+
+      <Module title="Happening today" href="/app/events" meta={`Next 24 hours · ${todayEvents.length} event${todayEvents.length === 1 ? "" : "s"}`}>
+        {todayEvents.length === 0 ? (
+          <EmptyHint text="Nothing on the calendar for the next 24 hours. Check the weekend module below." />
+        ) : (
+          <ul className="space-y-2">
+            {todayEvents.map((e) => (
+              <li key={e.slug}><EventCard event={e} /></li>
+            ))}
+          </ul>
+        )}
+      </Module>
+
+      <Module title="This weekend" href="/app/events" meta="Friday evening through Sunday">
+        {weekendEvents.length === 0 ? (
+          <EmptyHint text="No events seeded for this weekend yet." />
+        ) : (
+          <ul className="space-y-2">
+            {weekendEvents.map((e) => (
+              <li key={e.slug}><EventCard event={e} /></li>
+            ))}
+          </ul>
+        )}
+      </Module>
+
+      <Module title="Walkable from downtown" href="/app/radius" meta="Inside a 15-minute walk · open now">
+        <ul className="space-y-2">
+          {walkable.map((p) => (
+            <li key={p.slug}><PlaceCard place={p} /></li>
+          ))}
+        </ul>
+      </Module>
+
+      <Module title="Browse by town" href="/app/m/frederick" cta="All 12">
+        <MunicipalityStrip />
+      </Module>
     </div>
+  );
+}
+
+function EmptyHint({ text }: { text: string }) {
+  return (
+    <p
+      className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
+      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+    >
+      {text}
+    </p>
   );
 }

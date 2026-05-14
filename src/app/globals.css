@@ -101,15 +101,61 @@
   --color-glass-bg: var(--glass-bg);
   --color-glass-highlight: var(--glass-highlight);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter, ui-sans-serif, system-ui, sans-serif);
+  --font-serif: var(--font-plex-serif, ui-serif, Georgia, serif);
+  --font-mono: var(--font-plex-mono, ui-monospace, monospace);
+}
+
+html, body {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 body {
+  background: var(--app-bg);
+  color: var(--app-ink);
+}
+
+/* Skip-link visibility */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.focus\:not-sr-only:focus { position: fixed; width: auto; height: auto; clip: auto; white-space: normal; }
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--app-brand);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Scrollbar — minimal */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(20, 20, 18, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(20, 20, 18, 0.25); }
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+.font-serif { font-family: var(--font-plex-serif), ui-serif, Georgia, serif; }
+.font-mono { font-family: var(--font-plex-mono), ui-monospace, monospace; }
+
+/* Marketing route group keeps its night-sky aesthetic. */
+.marketing-shell {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
-  overflow-x: hidden;
   background-image:
     radial-gradient(circle at 50% 0%, rgba(112, 0, 255, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 0% 50%, rgba(0, 198, 255, 0.1) 0%, transparent 40%),
@@ -117,35 +163,12 @@ body {
   background-attachment: fixed;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Hide Scrollbar Utility */
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-/* Font Families */
-.font-serif {
-  font-family: var(--font-serif);
+/* Honor reduced motion globally */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
