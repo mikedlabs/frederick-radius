@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { PLACES } from "@/data/places";
 import { TOP_CATEGORIES } from "@/data/categories";
 import { decoratePlace } from "@/lib/loaders/places";
-import { fetchOsmFrederick } from "@/lib/integrations/overpass";
 import PlaceCard from "@/components/place/PlaceCard";
 import AppMapClient from "@/components/map/AppMapClient";
 import Link from "next/link";
@@ -13,17 +11,14 @@ export const metadata: Metadata = {
   description: "Every business, park, trail, library, and civic service in Frederick County on one map.",
 };
 
-export const revalidate = 86400;
-
-export default async function MapPage() {
+export default function MapPage() {
   const decorated = PLACES.map((p) => decoratePlace(p));
-  const osmPlaces = await fetchOsmFrederick();
 
   return (
     <div className="space-y-4">
       <header className="space-y-1">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {PLACES.length} curated + {osmPlaces.length.toLocaleString()} OSM businesses · all 12 municipalities
+          {PLACES.length} curated · plus every OSM business in the county
         </p>
         <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           Map
@@ -47,9 +42,7 @@ export default async function MapPage() {
         </ul>
       </div>
 
-      <Suspense fallback={<MapFallback />}>
-        <AppMapClient places={PLACES} osmPlaces={osmPlaces} />
-      </Suspense>
+      <AppMapClient places={PLACES} />
 
       <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
         Business data from{" "}
@@ -73,13 +66,3 @@ export default async function MapPage() {
   );
 }
 
-function MapFallback() {
-  return (
-    <div
-      className="grid h-[65vh] place-items-center rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)]"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>Loading every business in Frederick County…</p>
-    </div>
-  );
-}

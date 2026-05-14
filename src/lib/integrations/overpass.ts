@@ -111,17 +111,34 @@ const SKIP_NAMES = new Set([
   "Taco Bell", "Dunkin'", "Dunkin' Donuts", "Chipotle", "Sheetz",
 ]);
 
+// Try multiple Overpass endpoints — they're load-balanced volunteer infra.
+const OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+
 export async function fetchOsmFrederick(): Promise<OsmPlace[]> {
   const body = `data=${encodeURIComponent(QUERY(FREDERICK_COUNTY_BBOX))}`;
+
+  let data: OverpassResponse | null = null;
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
+        body,
+      });
+      if (!res.ok) continue;
+      data = (await res.json()) as OverpassResponse;
+      break;
+    } catch {
+      continue;
+    }
+  }
+  if (!data) return [];
+
   try {
-    const res = await fetch(OVERPASS, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json" },
-      body,
-      next: { revalidate: 86400 },
-    });
-    if (!res.ok) return [];
-    const data = (await res.json()) as OverpassResponse;
     const out: OsmPlace[] = [];
     const seen = new Set<string>();
 

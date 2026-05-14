@@ -26,6 +26,31 @@ type Props = {
   initialZoom?: number;
 };
 
+const OSM_CACHE_KEY = "fr:osm-frederick:v1";
+const OSM_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+function loadCachedOsm(): OsmPlace[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(OSM_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { at: number; data: OsmPlace[] };
+    if (Date.now() - parsed.at > OSM_CACHE_TTL_MS) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function saveCachedOsm(data: OsmPlace[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(OSM_CACHE_KEY, JSON.stringify({ at: Date.now(), data }));
+  } catch {
+    // sessionStorage might be full; ignore
+  }
+}
+
 const FREDERICK: [number, number] = [-77.4105, 39.4143];
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
@@ -35,7 +60,7 @@ type Selected = SelectedOsm | SelectedPlace | null;
 
 export default function AppMap({
   places,
-  osmPlaces = [],
+  osmPlaces: osmFromProps,
   height = "70vh",
   initialCenter = FREDERICK,
   initialZoom = 11.5,
@@ -43,6 +68,40 @@ export default function AppMap({
   const mapRef = useRef<MapRef>(null);
   const [selected, setSelected] = useState<Selected>(null);
   const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
+  const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
+  const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
+  const [osmError, setOsmError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (osmFromProps) {
+      setOsmPlaces(osmFromProps);
+      saveCachedOsm(osmFromProps);
+      setOsmLoading(false);
+      return;
+    }
+    if (osmPlaces.length > 0) {
+      setOsmLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setOsmLoading(true);
+    setOsmError(null);
+    (async () => {
+      try {
+        const { fetchOsmFrederick } = await import("@/lib/integrations/overpass");
+        const data = await fetchOsmFrederick();
+        if (cancelled) return;
+        setOsmPlaces(data);
+        saveCachedOsm(data);
+      } catch (err) {
+        if (cancelled) return;
+        setOsmError(err instanceof Error ? err.message : "Failed to load OSM data");
+      } finally {
+        if (!cancelled) setOsmLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [osmFromProps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredPlaces = useMemo(() => {
     if (activeCats.size === 0) return places;
@@ -202,9 +261,33 @@ export default function AppMap({
       </div>
 
       <div
-        className="overflow-hidden rounded-[var(--app-radius-lg)] border"
+        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{ borderColor: "var(--app-border)", height }}
       >
+        {(osmLoading || osmError || osmPlaces.length > 0) && (
+          <div
+            className="absolute left-3 top-3 z-10 inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
+            style={{ color: "var(--app-ink-2)" }}
+            aria-live="polite"
+          >
+            {osmLoading ? (
+              <>
+                <span className="inline-block h-2 w-2 animate-pulse rounded-full" style={{ background: "var(--app-cool)" }} />
+                Loading every business in the county…
+              </>
+            ) : osmError ? (
+              <>
+                <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-warning)" }} />
+                Couldn&apos;t reach OSM; showing curated only
+              </>
+            ) : (
+              <>
+                <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
+                {osmPlaces.length.toLocaleString()} businesses on map
+              </>
+            )}
+          </div>
+        )}
         <Map
           ref={mapRef}
           initialViewState={{
