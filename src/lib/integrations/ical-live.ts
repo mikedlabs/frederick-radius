@@ -39,20 +39,16 @@ type Feed = {
   default_category: string;
 };
 
-const FEEDS: Feed[] = [
-  {
-    source: "dfp",
-    source_label: "Downtown Frederick Partnership",
-    url: "https://downtownfrederick.org/upcoming-events?ical=1",
-    default_venue: "Downtown Frederick",
-    default_geom: { lng: -77.4109, lat: 39.4143 },
-    default_municipality: "frederick",
-    default_category: "arts",
-  },
+type FeedFormat = "ical" | "rss";
+
+type FeedSpec = Feed & { format: FeedFormat };
+
+const FEEDS: FeedSpec[] = [
   {
     source: "celebrate",
     source_label: "Celebrate Frederick",
-    url: "https://celebratefrederick.com/calendar-of-events?ical=1",
+    url: "https://www.celebratefrederick.com/events/?ical=1",
+    format: "ical",
     default_venue: "City of Frederick",
     default_geom: { lng: -77.4109, lat: 39.4137 },
     default_municipality: "frederick",
@@ -62,6 +58,7 @@ const FEEDS: Feed[] = [
     source: "county",
     source_label: "Frederick County Government",
     url: "https://www.frederickcountymd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml",
+    format: "rss",
     default_venue: "Frederick County",
     default_geom: { lng: -77.4109, lat: 39.4143 },
     default_municipality: "frederick",
@@ -134,21 +131,124 @@ function dedupeKey(title: string, starts: Date, venue: string): string {
   return `${normTitle}-${normVenue}-${day}-${time}`;
 }
 
-async function fetchFeed(feed: Feed, windowDays: number): Promise<LiveEvent[]> {
+// ────────────────────────────────────────────────────────────────────────
+// Minimal hand-rolled iCal VEVENT parser. node-ical errors under
+// Next/Turbopack runtime ("e.BigInt is not a function"). node-ical stays
+// in place for the cron-based ingest at src/lib/ingest/ical.ts.
+// ────────────────────────────────────────────────────────────────────────
+
+function unfoldIcalLines(text: string): string[] {
+  const raw = text.split(/\r?\n/);
+  const out: string[] = [];
+  for (const line of raw) {
+    if (out.length && (line.startsWith(" ") || line.startsWith("\t"))) {
+      out[out.length - 1] += line.slice(1);
+    } else {
+      out.push(line);
+    }
+  }
+  return out;
+}
+
+function parseICalDate(value: string, params: Record<string, string>): Date | null {
+  if (!value) return null;
+  if (params.VALUE === "DATE" || /^\d{8}$/.test(value)) {
+    const m = /^(\d{4})(\d{2})(\d{2})$/.exec(value);
+    if (!m) return null;
+    return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  }
+  const m = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/.exec(value);
+  if (!m) {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const [, Y, Mo, D, H, Mi, S, Z] = m;
+  if (Z === "Z") return new Date(Date.UTC(+Y, +Mo - 1, +D, +H, +Mi, +S));
+  // For TZID values we treat as local; close enough for display.
+  return new Date(+Y, +Mo - 1, +D, +H, +Mi, +S);
+}
+
+function unescapeIcalText(s: string): string {
+  return s
+    .replace(/\\n/gi, "\n")
+    .replace(/\\,/g, ",")
+    .replace(/\\;/g, ";")
+    .replace(/\\\\/g, "\\");
+}
+
+type ParsedVEvent = {
+  uid?: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  url?: string;
+  start?: Date;
+  end?: Date;
+};
+
+function parseICalEvents(text: string): ParsedVEvent[] {
+  const lines = unfoldIcalLines(text);
+  const out: ParsedVEvent[] = [];
+  let cur: ParsedVEvent | null = null;
+  for (const line of lines) {
+    if (line === "BEGIN:VEVENT") cur = {};
+    else if (line === "END:VEVENT") {
+      if (cur) out.push(cur);
+      cur = null;
+    } else if (cur) {
+      const colonIdx = line.indexOf(":");
+      if (colonIdx === -1) continue;
+      const head = line.slice(0, colonIdx);
+      const value = line.slice(colonIdx + 1);
+      const [key, ...rest] = head.split(";");
+      const params: Record<string, string> = {};
+      for (const p of rest) {
+        const eq = p.indexOf("=");
+        if (eq > -1) params[p.slice(0, eq)] = p.slice(eq + 1);
+      }
+      switch (key) {
+        case "UID": cur.uid = value; break;
+        case "SUMMARY": cur.summary = unescapeIcalText(value); break;
+        case "DESCRIPTION": cur.description = unescapeIcalText(value); break;
+        case "LOCATION": cur.location = unescapeIcalText(value); break;
+        case "URL": cur.url = value; break;
+        case "DTSTART": cur.start = parseICalDate(value, params) ?? undefined; break;
+        case "DTEND": cur.end = parseICalDate(value, params) ?? undefined; break;
+      }
+    }
+  }
+  return out;
+}
+
+async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
   try {
-    const ical = await import("node-ical");
-    const parsed = await ical.async.fromURL(feed.url);
+    const res = await fetch(feed.url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
+        Accept: "text/calendar, text/plain",
+      },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
+      return [];
+    }
+    const text = await res.text();
+    if (!text.includes("BEGIN:VCALENDAR")) {
+      // eslint-disable-next-line no-console
+      console.error(`[ical-live] ${feed.source}: not iCal`);
+      return [];
+    }
     const now = new Date();
     const horizon = new Date(now);
     horizon.setDate(horizon.getDate() + windowDays);
 
     const events: LiveEvent[] = [];
-    for (const value of Object.values(parsed)) {
-      const item = value as ICalEvent;
-      if (item.type !== "VEVENT") continue;
-      const start = toDate(item.start);
+    for (const item of parseICalEvents(text)) {
+      const start = item.start;
       if (!start || start < now || start > horizon) continue;
-      const end = toDate(item.end) ?? new Date(start.getTime() + 2 * 60 * 60 * 1000);
+      const end = item.end ?? new Date(start.getTime() + 2 * 60 * 60 * 1000);
       const title = (item.summary ?? "").trim();
       if (!title) continue;
       const description = (item.description ?? "").trim();
@@ -177,10 +277,110 @@ async function fetchFeed(feed: Feed, windowDays: number): Promise<LiveEvent[]> {
         is_free: !/\$|\bticket\b|\bpaid\b|\bcover\b/i.test(`${title} ${description}`),
       });
     }
+    // eslint-disable-next-line no-console
+    console.log(`[ical-live] ${feed.source}: parsed ${events.length} events in window`);
     return events;
-  } catch {
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[ical-live] ${feed.source} failed:`, err instanceof Error ? err.message : err);
     return [];
   }
+}
+
+async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+  try {
+    const res = await fetch(feed.url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) {
+      // eslint-disable-next-line no-console
+      console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
+      return [];
+    }
+    const xml = await res.text();
+    const now = new Date();
+    const horizon = new Date(now);
+    horizon.setDate(horizon.getDate() + windowDays);
+
+    const events: LiveEvent[] = [];
+    const itemRe = /<item>([\s\S]*?)<\/item>/g;
+    let m: RegExpExecArray | null;
+    while ((m = itemRe.exec(xml)) !== null) {
+      const block = m[1];
+      const pick = (tag: string) => {
+        const r = block.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
+        if (!r) return "";
+        return r[1].replace(/<!\[CDATA\[/g, "").replace(/\]\]>/g, "").trim();
+      };
+      const title = pick("title").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+      const link = pick("link");
+      const description = pick("description").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+      if (!title) continue;
+
+      // Frederick County CivicEngage uses:
+      //   <calendarEvent:EventDates> May 14, 2026 </calendarEvent:EventDates>
+      //   <calendarEvent:EventTimes>10:30 AM - 02:00 PM</calendarEvent:EventTimes>
+      //   <calendarEvent:Location>...</calendarEvent:Location>
+      const eventDate = pick("calendarEvent:EventDates");
+      const eventTimes = pick("calendarEvent:EventTimes");
+      let start: Date | null = null;
+      let end: Date | null = null;
+      if (eventDate && eventTimes) {
+        const timeMatch = eventTimes.match(/^(\d{1,2}:\d{2}\s*[APap][Mm])\s*-\s*(\d{1,2}:\d{2}\s*[APap][Mm])/);
+        if (timeMatch) {
+          start = new Date(`${eventDate} ${timeMatch[1]}`);
+          end = new Date(`${eventDate} ${timeMatch[2]}`);
+        } else {
+          start = new Date(eventDate);
+        }
+      }
+      if (!start || isNaN(start.getTime())) continue;
+      if (start < now || start > horizon) continue;
+      if (!end || isNaN(end.getTime())) end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+
+      const venue = pick("calendarEvent:Location")
+        .replace(/<br\s*\/?>/gi, ", ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim() || feed.default_venue;
+      const address = venue;
+      const inferredCategory = categoryExists(
+        inferCategory(title, description, feed.default_category),
+        feed.default_category,
+      );
+
+      events.push({
+        id: `${feed.source}:${dedupeKey(title, start, venue)}`,
+        title,
+        description: description.slice(0, 300),
+        starts_at: start.toISOString(),
+        ends_at: end.toISOString(),
+        venue_name: venue,
+        address,
+        geom: feed.default_geom,
+        municipality: inferMunicipality(address, feed.default_municipality),
+        category: inferredCategory,
+        organizer: feed.source_label,
+        source: feed.source,
+        source_label: feed.source_label,
+        url: link || feed.url,
+        is_free: !/\$|\bticket\b|\bpaid\b/i.test(`${title} ${description}`),
+      });
+    }
+    // eslint-disable-next-line no-console
+    console.log(`[ical-live] ${feed.source}: parsed ${events.length} RSS events in window`);
+    return events;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(`[ical-live] ${feed.source} RSS failed:`, err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
+async function fetchFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+  if (feed.format === "rss") return fetchRssFeed(feed, windowDays);
+  return fetchIcalFeed(feed, windowDays);
 }
 
 export async function getLiveEvents(windowDays = 60): Promise<{
