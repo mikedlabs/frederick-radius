@@ -27,7 +27,7 @@ export default function TrailPage() {
     <div className="space-y-7">
       <header className="space-y-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {BEVERAGE_TRAIL.length} stops · all 12 municipalities · curated
+          {BEVERAGE_TRAIL.length} stops · curated · awaiting Google-Places verification
         </p>
         <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           The Frederick Beverage Trail
@@ -37,6 +37,18 @@ export default function TrailPage() {
           ridge, breweries downtown, distilleries on Carroll Creek, ciders made from heirloom apples,
           honey wines from local hives. Pick a kind, plot a route.
         </p>
+        <div
+          className="inline-flex items-start gap-2 rounded-[var(--app-radius-md)] border px-3 py-2 text-[12px] leading-snug"
+          style={{ borderColor: "var(--app-warning)", background: `${"#B26B00"}10`, color: "var(--app-warning)" }}
+          role="status"
+        >
+          <span aria-hidden>⚠</span>
+          <span>
+            Operational status not yet verified. Always call ahead or check the venue&apos;s website
+            before driving out. These entries flip to verified the moment{" "}
+            <code className="rounded bg-white/40 px-1">GOOGLE_PLACES_API_KEY</code> is configured.
+          </span>
+        </div>
       </header>
 
       <section className="space-y-2">

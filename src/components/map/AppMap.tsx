@@ -29,6 +29,27 @@ type Props = {
 const OSM_CACHE_KEY = "fr:osm-frederick:v1";
 const OSM_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Categories we trust OSM for — these tend not to disappear or change.
+ * Restaurants, bars, shops are NOT in this set because OSM data for
+ * commercial businesses is notoriously stale (places stay tagged years
+ * after they close). We only surface those when the user explicitly opts in.
+ */
+const OSM_TRUSTED_CATEGORIES = new Set<string>([
+  "park", "trail", "playground",
+  "library",
+  "public-safety", // fire stations, police
+  "government",
+  "civic",
+  "transit",
+  "museum",
+  "parking",
+]);
+
+function isTrustedOsm(p: OsmPlace): boolean {
+  return OSM_TRUSTED_CATEGORIES.has(p.category_slug);
+}
+
 function loadCachedOsm(): OsmPlace[] | null {
   if (typeof window === "undefined") return null;
   try {
@@ -71,6 +92,7 @@ export default function AppMap({
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
   const [osmError, setOsmError] = useState<string | null>(null);
+  const [showUnverified, setShowUnverified] = useState(false);
 
   useEffect(() => {
     if (osmFromProps) {
@@ -112,9 +134,14 @@ export default function AppMap({
   }, [places, activeCats]);
 
   const filteredOsmGeoJson = useMemo(() => {
-    const filtered = activeCats.size === 0
+    // Default: only show OSM data we trust (parks/libraries/fire/transit/civic).
+    // Commercial businesses (restaurants/shops/bars) only show when user opts in.
+    const trustFiltered = showUnverified
       ? osmPlaces
-      : osmPlaces.filter((p) => {
+      : osmPlaces.filter(isTrustedOsm);
+    const filtered = activeCats.size === 0
+      ? trustFiltered
+      : trustFiltered.filter((p) => {
           const cat = CATEGORY_BY_SLUG[p.category_slug];
           return activeCats.has(p.category_slug) || (cat?.parent && activeCats.has(cat.parent));
         });
@@ -212,6 +239,9 @@ export default function AppMap({
     }
   };
 
+  const trustedOsmCount = osmPlaces.filter(isTrustedOsm).length;
+  const unverifiedOsmCount = osmPlaces.length - trustedOsmCount;
+
   return (
     <div className="space-y-2">
       <div className="-mx-4 overflow-x-auto px-4 scrollbar-hide">
@@ -227,7 +257,7 @@ export default function AppMap({
                 color: activeCats.size === 0 ? "white" : "var(--app-ink-2)",
               }}
             >
-              All · {(places.length + osmPlaces.length).toLocaleString()}
+              All · {(places.length + (showUnverified ? osmPlaces.length : trustedOsmCount)).toLocaleString()}
             </button>
           </li>
           {TOP_CATEGORIES.map((c) => {
@@ -273,7 +303,7 @@ export default function AppMap({
             {osmLoading ? (
               <>
                 <span className="inline-block h-2 w-2 animate-pulse rounded-full" style={{ background: "var(--app-cool)" }} />
-                Loading every business in the county…
+                Loading public places from OpenStreetMap…
               </>
             ) : osmError ? (
               <>
@@ -283,10 +313,25 @@ export default function AppMap({
             ) : (
               <>
                 <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
-                {osmPlaces.length.toLocaleString()} businesses on map
+                {showUnverified
+                  ? `${osmPlaces.length.toLocaleString()} OSM places (incl. unverified)`
+                  : `${trustedOsmCount.toLocaleString()} verified OSM places`}
               </>
             )}
           </div>
+        )}
+        {unverifiedOsmCount > 0 && !osmLoading && !osmError && (
+          <button
+            type="button"
+            onClick={() => setShowUnverified((v) => !v)}
+            className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
+            style={{ color: showUnverified ? "var(--app-warning)" : "var(--app-ink-2)" }}
+            aria-pressed={showUnverified}
+            aria-label={showUnverified ? "Hide unverified businesses" : "Show all OSM businesses"}
+          >
+            <span className="inline-block h-2 w-2 rounded-full" style={{ background: showUnverified ? "var(--app-warning)" : "var(--app-ink-3)" }} />
+            {showUnverified ? "Hide unverified" : `+${unverifiedOsmCount.toLocaleString()} unverified`}
+          </button>
         )}
         <Map
           ref={mapRef}
@@ -499,8 +544,15 @@ function OsmPopup({ p }: { p: SelectedOsm }) {
       <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
         {p.name}
       </strong>
+      <p style={{
+        marginTop: 4, fontSize: 10, fontWeight: 600,
+        textTransform: "uppercase", letterSpacing: "0.06em",
+        color: "var(--app-warning)",
+      }}>
+        ⚠ Unverified · from OpenStreetMap · may be closed or stale
+      </p>
       {p.cuisine && (
-        <p style={{ fontSize: 11, marginTop: 2, color: "#7A7975", textTransform: "capitalize" }}>
+        <p style={{ fontSize: 11, marginTop: 4, color: "#7A7975", textTransform: "capitalize" }}>
           {p.cuisine.replace(/_/g, " ").replace(/;/g, ", ")}
         </p>
       )}
