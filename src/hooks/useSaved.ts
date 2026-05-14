@@ -9,32 +9,57 @@ export type SavedRef = { type: "place" | "event" | "radius"; id: string; saved_a
 type Listener = () => void;
 const listeners = new Set<Listener>();
 
+// Cache the snapshot so useSyncExternalStore's Object.is comparison
+// returns true between renders that haven't actually changed.
+let cachedRaw: string | null = null;
+let cachedSnapshot: SavedRef[] = [];
+
 function read(): SavedRef[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return cachedSnapshot;
+  let raw: string | null = null;
   try {
-    const raw = window.localStorage.getItem(KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    raw = window.localStorage.getItem(KEY);
   } catch {
-    return [];
+    return cachedSnapshot;
   }
+  if (raw === cachedRaw) return cachedSnapshot;
+  cachedRaw = raw;
+  if (!raw) {
+    cachedSnapshot = [];
+    return cachedSnapshot;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    cachedSnapshot = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    cachedSnapshot = [];
+  }
+  return cachedSnapshot;
+}
+
+const SERVER_SNAPSHOT: SavedRef[] = [];
+function readServer(): SavedRef[] {
+  return SERVER_SNAPSHOT;
 }
 
 function write(items: SavedRef[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(items));
+  const next = JSON.stringify(items);
+  window.localStorage.setItem(KEY, next);
+  cachedRaw = next;
+  cachedSnapshot = items;
   listeners.forEach((l) => l());
 }
 
+const subscribe: (cb: Listener) => () => void = (cb) => {
+  listeners.add(cb);
+  return () => {
+    listeners.delete(cb);
+  };
+};
+
 export function useSavedList(): SavedRef[] {
-  const subscribe = useCallback((cb: Listener) => {
-    listeners.add(cb);
-    return () => {
-      listeners.delete(cb);
-    };
-  }, []);
-  return useSyncExternalStore(subscribe, read, () => []);
+  return useSyncExternalStore(subscribe, read, readServer);
 }
 
 export function useIsSaved(type: SavedRef["type"], id: string): boolean {
@@ -43,7 +68,6 @@ export function useIsSaved(type: SavedRef["type"], id: string): boolean {
 }
 
 export function useToggleSave(type: SavedRef["type"], id: string) {
-  const saved = useIsSaved(type, id);
   return useCallback(() => {
     const items = read();
     const exists = items.some((s) => s.type === type && s.id === id);
@@ -51,11 +75,11 @@ export function useToggleSave(type: SavedRef["type"], id: string) {
       ? items.filter((s) => !(s.type === type && s.id === id))
       : [...items, { type, id, saved_at: new Date().toISOString() }];
     write(next);
-    if (typeof navigator !== "undefined" && "vibrate" in navigator && !exists) {
-      try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch { /* ignore */ }
+    if (!exists && typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
     }
     return !exists;
-  }, [type, id, saved]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [type, id]);
 }
 
 export function useMounted(): boolean {
