@@ -28,6 +28,7 @@ export default function AdminHome() {
   const hasNps = Boolean(process.env.NPS_API_KEY);
   const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
   const hasResend = Boolean(process.env.RESEND_API_KEY);
+  const hasReddit = Boolean(process.env.REDDIT_CLIENT_ID && process.env.REDDIT_CLIENT_SECRET);
   const hasDb = Boolean(process.env.DATABASE_URL || process.env.POSTGRES_URL);
 
   return (
@@ -57,13 +58,14 @@ export default function AdminHome() {
           Data sources
         </h2>
         <ul className="space-y-1.5">
-          <SourceRow label="Neon Postgres" wired={hasDb} setupDoc="SETUP_KEYS.md" purpose="Persistence for places, events, submissions, ingest history." />
+          <SourceRow label="Supabase Postgres (recommended)" wired={hasDb} setupDoc="TOOLS.md" purpose="DB + auth + storage + realtime + pgvector. Switch from Neon — see TOOLS.md." />
           <SourceRow label="Google Places API" wired={hasGooglePlaces} setupDoc="GOOGLE_PLACES_API.md" purpose="Authoritative operational status, hours, ratings, photos." />
           <SourceRow label="Yelp Fusion" wired={hasYelp} setupDoc="SETUP_KEYS.md" purpose="Backup hours + reviews enrichment." />
           <SourceRow label="AirNow AQI" wired={hasAirnow} setupDoc="SETUP_KEYS.md" purpose="Real-time air-quality badge on Today." />
           <SourceRow label="NPS API" wired={hasNps} setupDoc="SETUP_KEYS.md" purpose="Catoctin / Monocacy / C&O alerts + events." />
           <SourceRow label="Anthropic Claude" wired={hasAnthropic} setupDoc="VERCEL_MARKETPLACE.md" purpose="Plan-my-evening narrative + future grounded recommendations." />
           <SourceRow label="Resend" wired={hasResend} setupDoc="SETUP_KEYS.md" purpose="Admin notifications for submissions; transactional email later." />
+          <SourceRow label="Reddit OAuth2" wired={hasReddit} setupDoc="TOOLS.md" purpose="r/Frederick community pulse on Today (Reddit locked down anon access in 2024)." />
         </ul>
       </section>
 

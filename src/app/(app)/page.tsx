@@ -6,6 +6,7 @@ import AirQualityBadge from "@/components/today/AirQualityBadge";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import LivePulse from "@/components/today/LivePulse";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
+import RedditPulse from "@/components/today/RedditPulse";
 import ModeToggle from "@/components/today/ModeToggle";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import PlaceCard from "@/components/place/PlaceCard";
@@ -117,6 +118,10 @@ export default function HomePage() {
 
       <Suspense fallback={null}>
         <LocalNewsStrip />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <RedditPulse />
       </Suspense>
 
       <Module title="Walkable from downtown" href="/radius" meta="Inside a 15-minute walk · open now">
