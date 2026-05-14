@@ -6,6 +6,7 @@ export default function OpenClosedDot({ status, withLabel = true }: { status: Op
     status.state === "open" ? "var(--app-positive)" :
     status.state === "closing-soon" ? "var(--app-warning)" :
     status.state === "closed" ? "var(--app-ink-3)" :
+    status.state === "unverified" ? "var(--app-cool)" :
     "var(--app-ink-3)";
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color }}>

@@ -42,7 +42,7 @@ export default function SaveButton({
       aria-label={isSaved ? `Unsave ${label}` : `Save ${label}`}
       title={isSaved ? "Saved" : "Save"}
       className="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
-      style={{ color: isSaved ? "var(--app-brand)" : "var(--app-ink-3)" }}
+      style={{ color: isSaved ? "var(--app-cool)" : "var(--app-ink-3)" }}
     >
       <Bookmark
         className="h-4 w-4 transition-transform"

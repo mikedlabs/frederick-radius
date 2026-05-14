@@ -44,9 +44,11 @@
   --app-ink-3: #7A7975;
   --app-ink-inverse: #FAFAF7;
 
-  --app-brand: #C4451C;          /* Frederick brick */
+  --app-brand: #C4451C;          /* Frederick brick — used sparingly: brand chrome, primary CTA */
   --app-brand-2: #1E3A2F;        /* Catoctin green */
   --app-accent: #D9A441;         /* Harvest gold */
+  --app-cool: #2A5D8F;           /* Cool civic blue — used for: civic, transit, info, verified, save */
+  --app-cool-2: #4A7CA8;         /* Lighter cool, for hovers */
 
   --app-positive: #1E6B3A;
   --app-warning: #B26B00;

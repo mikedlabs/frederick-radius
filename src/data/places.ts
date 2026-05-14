@@ -26,6 +26,8 @@ export type Place = {
   accessibility?: { wheelchair?: boolean; restroom?: boolean; parking?: boolean };
   hero_image?: string;
   is_verified: boolean;
+  /** True only when hours come from the owner, Yelp, or admin verification — never from seed guesses. */
+  hours_verified?: boolean;
   feature_score: number;
   source: "seed" | "dfp" | "arcgis" | "yelp" | "manual";
   updated_at: string;
@@ -343,6 +345,7 @@ export const PLACES: Place[] = [
     municipality: "frederick",
     geom: { lng: -77.4109, lat: 39.4137 },
     hours: HOURS_PARK,
+    hours_verified: true,
     price_band: 1,
     is_verified: true,
     feature_score: 9.5,
@@ -362,6 +365,7 @@ export const PLACES: Place[] = [
     municipality: "frederick",
     geom: { lng: -77.4198, lat: 39.4170 },
     hours: HOURS_PARK,
+    hours_verified: true,
     is_verified: true,
     feature_score: 9.0,
     source: "seed",
@@ -623,6 +627,7 @@ export const PLACES: Place[] = [
       sat: [{ open: "09:00", close: "17:00" }],
       sun: [{ open: "13:00", close: "17:00" }],
     },
+    hours_verified: true,
     is_verified: true,
     feature_score: 9.1,
     source: "seed",

@@ -20,7 +20,7 @@ export type PlaceDetail = PlaceCardData & {
 export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
   return {
     ...p,
-    open_status: getOpenStatus(p.hours, now),
+    open_status: getOpenStatus(p.hours, { verified: p.hours_verified ?? false }, now),
     distance_m: origin ? haversineMeters(origin, p.geom) : undefined,
   };
 }

@@ -7,6 +7,7 @@ import CivicAlerts from "@/components/today/CivicAlerts";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
+import TodayFilters from "@/components/today/TodayFilters";
 import { rankPlaces, placesWithinRadius } from "@/lib/loaders/places";
 import { eventsLive, eventsNext24h, eventsWeekend } from "@/lib/loaders/events";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -21,7 +22,7 @@ export default function HomePage() {
   const now = new Date();
   const origin = FREDERICK_CENTER;
 
-  const openNow = rankPlaces({ origin, now, preferOpen: true, limit: 6 });
+  const candidatePool = rankPlaces({ origin, now, limit: 40 });
   const liveEvents = eventsLive(now);
   const todayEvents = eventsNext24h(now).slice(0, 4);
   const weekendEvents = eventsWeekend(now).slice(0, 4);
@@ -73,10 +74,8 @@ export default function HomePage() {
         </Module>
       )}
 
-      <Module title="Open now near you" href="/map" meta="Ranked by walkability + editorial weight">
-        <ul className="space-y-2">
-          {openNow.map((p) => <li key={p.slug}><PlaceCard place={p} /></li>)}
-        </ul>
+      <Module title="What's good right now" href="/map" meta="Filter by time of day, vibe, or just press Surprise me">
+        <TodayFilters candidates={candidatePool} />
       </Module>
 
       <Module title="Happening today" href="/events" meta={`Next 24 hours · ${todayEvents.length} event${todayEvents.length === 1 ? "" : "s"}`}>

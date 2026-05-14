@@ -1,0 +1,134 @@
+import Image from "next/image";
+import { photoForCategory, unsplashUrl } from "@/lib/photos";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
+
+type Props = {
+  slug: string;
+  name: string;
+  category: string;
+  blurb?: string;
+  aspectRatio?: "16/10" | "16/9" | "4/3" | "1/1";
+  size?: "card" | "hero";
+  priority?: boolean;
+};
+
+const GLYPH: Record<string, string> = {
+  coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
+  pizza: "🍕", park: "🌳", trail: "⛰", museum: "🏛", gallery: "🎨",
+  theater: "🎭", music: "🎵", library: "📚", market: "🛒", antiques: "🪑",
+  yoga: "🧘", lodging: "🏨", parking: "🅿️", "book-store": "📖",
+  "public-safety": "🚒", government: "🏛", playground: "🛝",
+};
+
+export default function PlaceHero({
+  slug, name, category, blurb,
+  aspectRatio = "16/10", size = "hero", priority = false,
+}: Props) {
+  const photo = photoForCategory(category, slug);
+  const cat = CATEGORY_BY_SLUG[category];
+  const color = cat?.color ?? "#C4451C";
+  const width = size === "hero" ? 1200 : 600;
+  const height = size === "hero" ? 700 : 400;
+  const glyph = GLYPH[category] ?? "📍";
+
+  return (
+    <div
+      className="relative w-full overflow-hidden"
+      style={{ aspectRatio }}
+    >
+      {/* Gradient fallback — always rendered behind the photo so 404s look intentional */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", inset: 0,
+          background: `linear-gradient(135deg, ${color}26 0%, ${color}12 40%, var(--app-bg-sunken) 100%)`,
+        }}
+      />
+      {/* Topographic-feel overlay (very subtle) */}
+      <svg
+        aria-hidden
+        viewBox="0 0 600 400"
+        preserveAspectRatio="xMidYMid slice"
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.07 }}
+      >
+        <defs>
+          <radialGradient id={`r-${slug}`} cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.0" />
+            <stop offset="100%" stopColor={color} stopOpacity="1" />
+          </radialGradient>
+        </defs>
+        {[40, 90, 140, 200, 260, 320].map((r) => (
+          <circle key={r} cx="320" cy="200" r={r} fill="none" stroke={color} strokeWidth="0.6" />
+        ))}
+        <rect width="600" height="400" fill={`url(#r-${slug})`} />
+      </svg>
+
+      <Image
+        src={unsplashUrl(photo, width, height)}
+        alt={photo.alt}
+        width={width}
+        height={height}
+        priority={priority}
+        sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ mixBlendMode: "normal" }}
+        unoptimized
+      />
+
+      {/* Soft gradient darkening at bottom for text legibility */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.55) 100%)",
+        }}
+      />
+
+      {/* Category pill + glyph */}
+      <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
+           style={{ color }}>
+        <span aria-hidden>{glyph}</span> {cat?.name ?? category}
+      </div>
+
+      {/* Name overlay */}
+      {size === "hero" && (
+        <div className="absolute inset-x-3 bottom-3 text-white">
+          <h2 className="font-serif text-2xl font-semibold leading-tight tracking-tight drop-shadow">
+            {name}
+          </h2>
+          {blurb && (
+            <p className="mt-1 line-clamp-2 text-[13px] leading-snug opacity-95 drop-shadow">
+              {blurb}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PhotoCredit({ category, slug }: { category: string; slug: string }) {
+  const photo = photoForCategory(category, slug);
+  return (
+    <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+      Hero photo:{" "}
+      <a
+        href={photo.photographer_url + "?utm_source=frederick_radius&utm_medium=referral"}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        {photo.photographer}
+      </a>{" "}
+      on{" "}
+      <a
+        href="https://unsplash.com?utm_source=frederick_radius&utm_medium=referral"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        Unsplash
+      </a>
+    </p>
+  );
+}

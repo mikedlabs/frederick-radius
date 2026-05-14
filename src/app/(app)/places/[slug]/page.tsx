@@ -10,6 +10,9 @@ import HoursBlock from "@/components/place/HoursBlock";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import SaveButton from "@/components/saved/SaveButton";
+import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
+import PlaceMiniMap from "@/components/place/PlaceMiniMap";
+import BeenHereToggle from "@/components/place/BeenHereToggle";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 export const revalidate = 300;
@@ -93,30 +96,31 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         className="overflow-hidden rounded-[var(--app-radius-xl)] border"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <div
-          className="flex items-center justify-center px-6 py-12"
-          style={{ background: `linear-gradient(135deg, ${cat?.color ?? "#C4451C"}26, ${cat?.color ?? "#C4451C"}10)` }}
-        >
-          <span className="text-7xl">
-            <CategoryEmoji slug={place.category} />
-          </span>
-        </div>
+        <PlaceHero
+          slug={place.slug}
+          name={place.name}
+          category={place.category}
+          blurb={place.short_blurb}
+          aspectRatio="16/10"
+          size="hero"
+          priority
+        />
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: cat?.color ?? "var(--app-brand)" }}>
-                {cat?.name ?? place.category}
-              </p>
-              <h1 className="mt-0.5 font-serif text-[26px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <h1 className="font-serif text-[26px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
               </h1>
+              <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
+                {place.address} · {place.municipality_name}
+              </p>
             </div>
             <SaveButton refType="place" refId={place.slug} label={place.name} />
           </div>
           <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             {place.description ?? place.short_blurb}
           </p>
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
             <OpenClosedDot status={place.open_status} />
             {place.price_band && (
               <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
@@ -126,14 +130,27 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             {place.is_verified && (
               <span
                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-                style={{ background: `${"#1E6B3A"}14`, color: "var(--app-positive)" }}
+                style={{ background: "#2A5D8F14", color: "var(--app-cool)" }}
               >
-                Verified
+                ✓ Verified place
               </span>
+            )}
+            {!place.hours_verified && (
+              <a
+                href={`mailto:hello@frederickradius.app?subject=Hours update for ${place.name}`}
+                className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Report info
+              </a>
             )}
           </div>
         </div>
       </header>
+
+      <div className="flex">
+        <BeenHereToggle placeSlug={place.slug} label={place.name} />
+      </div>
 
       <div className="grid grid-cols-3 gap-2">
         <ActionButton href={directionsUrl} icon={Navigation} label="Directions" external />
@@ -141,12 +158,13 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         {place.website && <ActionButton href={place.website} icon={Globe} label="Website" external />}
       </div>
 
-      <HoursBlock hours={place.hours} />
+      <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} />
 
       <section className="space-y-2">
         <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          Address
+          Location
         </h2>
+        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "#C4451C"} />
         <div className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-sm"
              style={{ borderColor: "var(--app-border)" }}>
           <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -202,13 +220,20 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       </section>
 
       <footer className="space-y-2 pt-4">
+        <PhotoCredit category={place.category} slug={place.slug} />
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           Updated {place.updated_at} · Source: {place.source}
         </p>
-        <div className="flex gap-3 text-xs">
+        <div className="flex flex-wrap gap-3 text-xs">
           <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand)" }}>
             More {cat?.name?.toLowerCase() ?? "places"} →
           </Link>
+          <a
+            href={`mailto:hello@frederickradius.app?subject=Correction for ${place.name}`}
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Report incorrect info
+          </a>
           <button
             className="inline-flex items-center gap-1"
             style={{ color: "var(--app-ink-3)" }}
@@ -242,16 +267,6 @@ function ActionButton({
       {label}
     </Comp>
   );
-}
-
-function CategoryEmoji({ slug }: { slug: string }) {
-  const map: Record<string, string> = {
-    coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
-    pizza: "🍕", park: "🌳", trail: "⛰", museum: "🏛", gallery: "🎨",
-    theater: "🎭", music: "🎵", library: "📚", market: "🛒", antiques: "🪑",
-    yoga: "🧘", lodging: "🏨", parking: "🅿️",
-  };
-  return <>{map[slug] ?? "📍"}</>;
 }
 
 function prettyAmenity(slug: string): string {

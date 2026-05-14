@@ -32,10 +32,16 @@ export type OpenStatus =
   | { state: "open"; closesAt: string; closingSoon: boolean }
   | { state: "closing-soon"; closesAt: string }
   | { state: "closed"; opensAt?: string; opensDay?: DayOfWeek }
+  | { state: "unverified" }
   | { state: "unknown" };
 
-export function getOpenStatus(hours: Hours | undefined, now: Date = new Date()): OpenStatus {
+export function getOpenStatus(
+  hours: Hours | undefined,
+  options: { verified?: boolean } = {},
+  now: Date = new Date(),
+): OpenStatus {
   if (!hours) return { state: "unknown" };
+  if (!options.verified) return { state: "unverified" };
   const { day, minutes } = nowInFrederick(now);
 
   const todayWindows = hours[day] ?? [];
@@ -83,7 +89,8 @@ export function formatHoursLine(status: OpenStatus): string {
     return `Closed · Opens ${DAY_LABEL[status.opensDay]} ${formatTime(status.opensAt)}`;
   }
   if (status.state === "closed") return "Closed";
-  return "Hours unknown";
+  if (status.state === "unverified") return "Hours not confirmed · call to check";
+  return "Hours not posted · call to check";
 }
 
 export function formatFullHours(hours: Hours | undefined): { day: DayOfWeek; label: string; windows: HoursWindow[] }[] {
