@@ -1,0 +1,147 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Check } from "lucide-react";
+import { submitEventAction, type SubmitEventInput } from "./actions";
+import { MUNICIPALITIES } from "@/data/municipalities";
+import { TOP_CATEGORIES } from "@/data/categories";
+
+export default function SubmitEventForm() {
+  const [submitted, setSubmitted] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    const input: SubmitEventInput = {
+      title: String(data.get("title") ?? ""),
+      description: String(data.get("description") ?? ""),
+      starts_at: String(data.get("starts_at") ?? ""),
+      ends_at: String(data.get("ends_at") ?? ""),
+      venue_name: String(data.get("venue_name") ?? ""),
+      address: String(data.get("address") ?? ""),
+      municipality: String(data.get("municipality") ?? ""),
+      category: String(data.get("category") ?? ""),
+      is_free: data.get("is_free") === "on",
+      price_text: String(data.get("price_text") ?? ""),
+      ticket_url: String(data.get("ticket_url") ?? ""),
+      organizer: String(data.get("organizer") ?? ""),
+      submitter_email: String(data.get("submitter_email") ?? ""),
+      submitter_name: String(data.get("submitter_name") ?? ""),
+    };
+    if (!input.title || !input.starts_at || !input.submitter_email) {
+      setError("Title, start time, and your email are required.");
+      return;
+    }
+    startTransition(async () => {
+      try {
+        await submitEventAction(input);
+        setSubmitted(true);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      }
+    });
+  };
+
+  if (submitted) {
+    return (
+      <div className="mt-8 space-y-4 rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-6 text-center shadow-[var(--app-shadow-1)]"
+           style={{ borderColor: "var(--app-border)" }}>
+        <div className="mx-auto grid h-12 w-12 place-items-center rounded-full" style={{ background: "var(--app-positive)" }}>
+          <Check className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
+        </div>
+        <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks — submitted</h2>
+        <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>We&apos;ll review and reach out within 3 business days.</p>
+        <a href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius →</a>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <Field name="title" label="Event title" required placeholder="Punch Brothers at the Weinberg" />
+      <Field name="organizer" label="Organizer" placeholder="Weinberg Center for the Arts" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field name="starts_at" label="Starts" required type="datetime-local" />
+        <Field name="ends_at" label="Ends" type="datetime-local" />
+      </div>
+      <Field name="venue_name" label="Venue name" placeholder="Weinberg Center for the Arts" />
+      <Field name="address" label="Address" placeholder="20 W Patrick St, Frederick, MD 21701" />
+      <Select name="municipality" label="Town" options={MUNICIPALITIES.map((m) => ({ value: m.slug, label: m.name }))} />
+      <Select name="category" label="Category" options={TOP_CATEGORIES.map((c) => ({ value: c.slug, label: c.name }))} />
+      <Textarea name="description" label="Description" rows={4} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field name="price_text" label="Price" placeholder="$45–$85, or leave blank if free" />
+        <Field name="ticket_url" label="Ticket / RSVP URL" placeholder="https://…" />
+      </div>
+      <label className="inline-flex items-center gap-2 text-sm" style={{ color: "var(--app-ink-2)" }}>
+        <input type="checkbox" name="is_free" className="h-4 w-4" />
+        Free admission
+      </label>
+      <div className="space-y-1.5 border-t pt-4" style={{ borderColor: "var(--app-border)" }}>
+        <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>About you</p>
+        <Field name="submitter_name" label="Your name" />
+        <Field name="submitter_email" label="Your email" required type="email" />
+      </div>
+      {error && (
+        <p className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: `${"#A02929"}1A`, color: "var(--app-danger)" }}>
+          {error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={pending}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
+        style={{ background: "var(--app-brand)" }}
+      >
+        {pending ? "Submitting…" : "Submit event"}
+      </button>
+    </form>
+  );
+}
+
+function Field({ name, label, required, type = "text", placeholder }: { name: string; label: string; required?: boolean; type?: string; placeholder?: string }) {
+  return (
+    <label className="block space-y-1">
+      <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>
+        {label}{required && <span style={{ color: "var(--app-brand)" }}>*</span>}
+      </span>
+      <input
+        name={name} type={type} required={required} placeholder={placeholder}
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+      />
+    </label>
+  );
+}
+
+function Textarea({ name, label, rows = 3 }: { name: string; label: string; rows?: number }) {
+  return (
+    <label className="block space-y-1">
+      <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>{label}</span>
+      <textarea
+        name={name} rows={rows}
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+      />
+    </label>
+  );
+}
+
+function Select({ name, label, options }: { name: string; label: string; options: { value: string; label: string }[] }) {
+  return (
+    <label className="block space-y-1">
+      <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>{label}</span>
+      <select
+        name={name} defaultValue=""
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+      >
+        <option value="">Pick one…</option>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
+  );
+}

@@ -1,6 +1,7 @@
 import BottomNav from "@/components/nav/BottomNav";
 import TopBar from "@/components/nav/TopBar";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
       <BottomNav />
+      <InstallPrompt />
     </div>
   );
 }

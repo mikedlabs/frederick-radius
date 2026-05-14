@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { photoForCategory, unsplashUrl } from "@/lib/photos";
+import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 type Props = {
@@ -20,16 +21,25 @@ const GLYPH: Record<string, string> = {
   "public-safety": "🚒", government: "🏛", playground: "🛝",
 };
 
+function resolvePhotoSrc(slug: string, category: string, width: number) {
+  const wm = getLandmarkPhoto(slug);
+  if (wm) {
+    return { src: wikimediaUrl(wm.file, width), alt: wm.alt, kind: "wikimedia" as const };
+  }
+  const u = photoForCategory(category, slug);
+  return { src: unsplashUrl(u, width), alt: u.alt, kind: "unsplash" as const };
+}
+
 export default function PlaceHero({
   slug, name, category, blurb,
   aspectRatio = "16/10", size = "hero", priority = false,
 }: Props) {
-  const photo = photoForCategory(category, slug);
   const cat = CATEGORY_BY_SLUG[category];
   const color = cat?.color ?? "#C4451C";
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
   const glyph = GLYPH[category] ?? "📍";
+  const { src, alt } = resolvePhotoSrc(slug, category, width);
 
   return (
     <div
@@ -64,14 +74,13 @@ export default function PlaceHero({
       </svg>
 
       <Image
-        src={unsplashUrl(photo, width, height)}
-        alt={photo.alt}
+        src={src}
+        alt={alt}
         width={width}
         height={height}
         priority={priority}
         sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
         className="absolute inset-0 h-full w-full object-cover"
-        style={{ mixBlendMode: "normal" }}
         unoptimized
       />
 
@@ -108,6 +117,31 @@ export default function PlaceHero({
 }
 
 export function PhotoCredit({ category, slug }: { category: string; slug: string }) {
+  const wm = getLandmarkPhoto(slug);
+  if (wm) {
+    return (
+      <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+        Photo:{" "}
+        <a
+          href={wm.source_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {wm.author}
+        </a>{" "}
+        · {wm.license} · via{" "}
+        <a
+          href="https://commons.wikimedia.org"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          Wikimedia Commons
+        </a>
+      </p>
+    );
+  }
   const photo = photoForCategory(category, slug);
   return (
     <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>

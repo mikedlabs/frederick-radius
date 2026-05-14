@@ -54,6 +54,13 @@ export default function HomePage() {
         <h1 className="mt-1 font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           Good to see you in Frederick.
         </h1>
+        <a
+          href="/plan"
+          className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-[var(--app-shadow-1)]"
+          style={{ background: "var(--app-brand)" }}
+        >
+          ✨ Plan my evening
+        </a>
       </section>
 
       <Suspense fallback={<WeatherStripFallback />}>
