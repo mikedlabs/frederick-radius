@@ -1,39 +1,122 @@
 import type { Metadata } from "next";
-import { ExternalLink, GraduationCap } from "lucide-react";
-import { allUpcoming, eventsLive, eventsNext24h, eventsWeekend } from "@/lib/loaders/events";
+import { ExternalLink, GraduationCap, Rss } from "lucide-react";
+import { allUpcoming, eventsLive, eventsNext24h, eventsWeekend, type EventWithMeta } from "@/lib/loaders/events";
 import { getHoodEvents } from "@/lib/integrations/hood";
+import { getLiveEvents, type LiveEvent } from "@/lib/integrations/ical-live";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import EventCard from "@/components/event/EventCard";
 
 export const metadata: Metadata = {
   title: "Events",
-  description: "What's happening across Frederick County — today, this weekend, and beyond. Plus events on the Hood College campus.",
+  description: "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, and Hood College.",
 };
 
-export const revalidate = 60;
+export const revalidate = 3600;
+
+function liveToCardEvent(e: LiveEvent): EventWithMeta {
+  return {
+    slug: e.id,
+    title: e.title,
+    description: e.description,
+    starts_at: e.starts_at,
+    ends_at: e.ends_at,
+    timezone: "America/New_York",
+    is_all_day: false,
+    is_recurring: false,
+    venue_name: e.venue_name,
+    address: e.address,
+    geom: e.geom,
+    municipality: e.municipality,
+    category: e.category,
+    audience: [],
+    is_free: e.is_free,
+    organizer: e.organizer,
+    source: "manual",
+    is_verified: false,
+    category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
+    municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
+    distance_m: undefined,
+  };
+}
 
 export default async function EventsIndexPage() {
   const now = new Date();
-  const live = eventsLive(now);
-  const today = eventsNext24h(now);
-  const weekend = eventsWeekend(now);
-  const later = allUpcoming(now).filter(
-    (e) => !today.some((x) => x.slug === e.slug) && !weekend.some((x) => x.slug === e.slug)
+  const seedLive = eventsLive(now);
+  const seedToday = eventsNext24h(now);
+  const seedWeekend = eventsWeekend(now);
+  const seedLater = allUpcoming(now).filter(
+    (e) => !seedToday.some((x) => x.slug === e.slug) && !seedWeekend.some((x) => x.slug === e.slug)
   );
-  const hood = await getHoodEvents();
+
+  const [{ events: liveEventsRaw, sources_succeeded, sources_failed }, hood] = await Promise.all([
+    getLiveEvents(60),
+    getHoodEvents(),
+  ]);
+
+  // Bucket the live events into the same windows the seed uses
+  const liveCards = liveEventsRaw.map(liveToCardEvent);
+
+  const inWindow = (e: EventWithMeta, from: Date, to: Date) => {
+    const s = new Date(e.starts_at);
+    return s >= from && s < to;
+  };
+
+  const start0 = new Date(now);
+  start0.setHours(0, 0, 0, 0);
+  const start24 = new Date(now);
+  start24.setHours(now.getHours() + 24);
+
+  const dow = now.getDay();
+  const friday = new Date(now);
+  friday.setDate(friday.getDate() + ((5 - dow + 7) % 7));
+  friday.setHours(17, 0, 0, 0);
+  const monday = new Date(friday);
+  monday.setDate(monday.getDate() + 3);
+  monday.setHours(0, 0, 0, 0);
+
+  const today = [
+    ...seedToday,
+    ...liveCards.filter((e) => inWindow(e, now, start24)),
+  ].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
+
+  const weekend = [
+    ...seedWeekend,
+    ...liveCards.filter((e) => inWindow(e, friday, monday)),
+  ].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
+
+  const later = [
+    ...seedLater,
+    ...liveCards.filter((e) => new Date(e.starts_at) >= monday),
+  ].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
+
+  const totalUpcoming = today.length + weekend.length + later.length;
 
   return (
     <div className="space-y-7">
       <header className="space-y-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {allUpcoming(now).length} upcoming · {hood.length} from Hood College
+          {totalUpcoming} upcoming · {hood.length} from Hood · live feeds refreshed hourly
         </p>
         <h1 className="font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           Events
         </h1>
+        <div
+          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium"
+          style={{
+            borderColor: "var(--app-border)",
+            color: sources_failed.length > 0 ? "var(--app-warning)" : "var(--app-positive)",
+          }}
+          role="status"
+        >
+          <Rss className="h-3 w-3" aria-hidden />
+          {sources_succeeded.length}/{sources_succeeded.length + sources_failed.length} live feeds connected
+          {sources_failed.length > 0 && ` · ${sources_failed.join(", ")} unavailable`}
+        </div>
       </header>
 
-      {live.length > 0 && (
-        <EventGroup title="Happening right now" events={live} meta={`${live.length} live`} />
+      {seedLive.length > 0 && (
+        <EventGroup title="Happening right now" events={seedLive} meta={`${seedLive.length} live`} />
       )}
       <EventGroup title="Today" events={today} meta="Next 24 hours" />
       <EventGroup title="This weekend" events={weekend} meta="Friday evening through Sunday" />
@@ -85,6 +168,17 @@ export default async function EventsIndexPage() {
           </ul>
         </section>
       )}
+
+      <footer className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+        <p>
+          Live event data pulled from Downtown Frederick Partnership, Celebrate Frederick,
+          the Frederick County calendar, and the Hood College Trumba feed. Cached for one hour.
+        </p>
+        <p>
+          Missing an event? <a href="/submit/event" className="underline" style={{ color: "var(--app-cool)" }}>Submit it →</a>
+        </p>
+      </footer>
     </div>
   );
 }
@@ -95,7 +189,7 @@ function EventGroup({
   meta,
 }: {
   title: string;
-  events: ReturnType<typeof allUpcoming>;
+  events: EventWithMeta[];
   meta: string;
 }) {
   return (

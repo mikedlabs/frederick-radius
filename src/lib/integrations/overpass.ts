@@ -12,6 +12,8 @@
  * Returns a normalized OsmPlace[] keyed by OSM id.
  */
 
+import { isKnownClosed } from "./closures";
+
 const OVERPASS = "https://overpass-api.de/api/interpreter";
 
 // Frederick County bbox (south, west, north, east)
@@ -196,6 +198,7 @@ export async function fetchOsmFrederick(): Promise<OsmPlace[]> {
         name = UNNAMED_LABELS[mapped.category_slug] ?? mapped.category_slug;
       }
       if (SKIP_NAMES.has(name)) continue;
+      if (isKnownClosed(name)) continue;
 
       const lat = el.type === "node" ? el.lat : el.center?.lat;
       const lng = el.type === "node" ? el.lon : el.center?.lon;

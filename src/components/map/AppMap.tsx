@@ -17,6 +17,7 @@ import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { Place } from "@/data/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
+import { isKnownClosed } from "@/lib/integrations/closures";
 
 type Props = {
   places: Place[];
@@ -154,7 +155,10 @@ export default function AppMap({
     // Commercial businesses (restaurants/shops/bars) only show when user opts in.
     // Amenities (restrooms, water, trash, dog stations) only show when user opts in
     // (these are useful but dense — would clutter the map otherwise).
-    let pool = showUnverified ? osmPlaces : osmPlaces.filter(isTrustedOsm);
+    // Always filter known-closed places (VOLT, Idiom, etc.) — even from the
+    // unverified opt-in view. We never want to show a closed business as open.
+    let pool = osmPlaces.filter((p) => !isKnownClosed(p.name));
+    pool = showUnverified ? pool : pool.filter(isTrustedOsm);
     if (!showAmenities) pool = pool.filter((p) => !isAmenity(p));
     const filtered = activeCats.size === 0
       ? pool
