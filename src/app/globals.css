@@ -1,39 +1,91 @@
 @import "tailwindcss";
 
 :root {
-  /* CINEMATIC UTILITY DESIGN SYSTEM */
-
-  /* Obsidian Backgrounds */
+  /* ─────────────────────────────────────────────────────
+   * MARKETING (cinematic) — obsidian, violet, cyan, amber.
+   * Used by the / landing scenes. Don't change without thinking.
+   * ───────────────────────────────────────────────────── */
   --background: #030014;
   --background-layer-1: #0a0118;
   --background-layer-2: #0f0520;
   --foreground: #f5f5f5;
 
-  /* Electric Amber (Accent/Interaction) */
-  --primary: #8b5cf6;
-  /* Violet */
+  --primary: #8b5cf6;            /* Violet */
   --primary-foreground: #ffffff;
 
-  --secondary: #06b6d4;
-  /* Cyan */
+  --secondary: #06b6d4;          /* Cyan */
   --secondary-foreground: #000000;
 
-  --accent: #fbbf24;
-  /* Electric Amber */
+  --accent: #fbbf24;             /* Electric Amber */
   --accent-foreground: #1f2937;
 
-  /* Glassmorphism Tokens */
   --glass-border: rgba(255, 255, 255, 0.1);
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-highlight: rgba(255, 255, 255, 0.15);
 
-  /* Additional Palette */
   --obsidian: #030014;
   --off-white: #f5f5f5;
   --electric-amber: #fbbf24;
 
-  /* Editorial Serif Font Variable */
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+  /* ─────────────────────────────────────────────────────
+   * APP (warm civic) — Frederick brick + Catoctin green.
+   * Used by /app/* routes. Daily-utility palette: paper, ink, stone.
+   * ───────────────────────────────────────────────────── */
+  --app-bg: #FAFAF7;
+  --app-bg-elevated: #FFFFFF;
+  --app-bg-sunken: #F2F1EC;
+  --app-border: #E5E3DD;
+  --app-border-strong: rgba(26, 26, 26, 0.07);
+
+  --app-ink: #1A1A1A;
+  --app-ink-2: #4A4A48;
+  --app-ink-3: #7A7975;
+  --app-ink-inverse: #FAFAF7;
+
+  --app-brand: #C4451C;          /* Frederick brick */
+  --app-brand-2: #1E3A2F;        /* Catoctin green */
+  --app-accent: #D9A441;         /* Harvest gold */
+
+  --app-positive: #1E6B3A;
+  --app-warning: #B26B00;
+  --app-danger: #A02929;
+  --app-info: #2A5D8F;
+
+  --app-radius-sm: 6px;
+  --app-radius-md: 12px;
+  --app-radius-lg: 20px;
+  --app-radius-xl: 28px;
+
+  --app-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --app-dur-fast: 160ms;
+  --app-dur-med: 240ms;
+  --app-dur-slow: 420ms;
+
+  --app-shadow-1: 0 1px 2px rgba(20, 20, 18, 0.06);
+  --app-shadow-2: 0 4px 12px rgba(20, 20, 18, 0.08);
+  --app-shadow-3: 0 12px 32px rgba(20, 20, 18, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #141413;
+    --app-bg-elevated: #1C1B1A;
+    --app-bg-sunken: #0D0D0C;
+    --app-border: #2A2A28;
+    --app-ink: #F4F2EE;
+    --app-ink-2: #BFBDB7;
+    --app-ink-3: #8A8884;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --app-dur-fast: 0ms;
+    --app-dur-med: 0ms;
+    --app-dur-slow: 0ms;
+  }
 }
 
 @theme inline {

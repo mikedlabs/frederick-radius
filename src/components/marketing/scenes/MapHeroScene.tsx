@@ -3,10 +3,10 @@
 import { useState } from "react";
 import InteractiveMap from "@/components/map";
 import { motion } from "framer-motion";
-import { CityLensControl } from "@/components/demo/CityLensControl";
-import { PulseOverlay } from "@/components/demo/PulseOverlay";
+import { CityLensControl } from "@/components/marketing/CityLensControl";
+import { PulseOverlay } from "@/components/marketing/PulseOverlay";
 import { LensMode } from "@/data/frederick-data";
-import { CitySimulator, SimulationState } from "@/components/demo/CitySimulator";
+import { CitySimulator, SimulationState } from "@/components/marketing/CitySimulator";
 
 export default function MapHeroScene() {
     const [lensMode, setLensMode] = useState<LensMode>("visitor");

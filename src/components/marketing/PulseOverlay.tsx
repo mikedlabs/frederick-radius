@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MARKET_STATS } from "@/data/frederick-data";
 import { Activity } from "lucide-react";
 
-import { SimulationState } from "@/components/demo/CitySimulator";
+import { SimulationState } from "@/components/marketing/CitySimulator";
 
 interface PulseOverlayProps {
     simulationState?: SimulationState;

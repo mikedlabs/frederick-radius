@@ -16,7 +16,7 @@ const MapComponent = dynamic(() => import("./map-component"), {
     ),
 });
 
-import { SimulationState } from "@/components/demo/CitySimulator";
+import { SimulationState } from "@/components/marketing/CitySimulator";
 
 interface InteractiveMapProps {
     lensMode?: LensMode;

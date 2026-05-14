@@ -37,7 +37,7 @@ function MapController({ center }: { center: [number, number] }) {
     return null;
 }
 
-import { SimulationState } from "@/components/demo/CitySimulator";
+import { SimulationState } from "@/components/marketing/CitySimulator";
 
 interface MapComponentProps {
     lensMode?: LensMode;

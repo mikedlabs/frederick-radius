@@ -1,4 +1,4 @@
-import MasterSceneManager from "@/components/demo/MasterSceneManager";
+import MasterSceneManager from "@/components/marketing/MasterSceneManager";
 
 /**
  * FREDERICK RADIUS // FLAGSHIP EXPERIENCE
