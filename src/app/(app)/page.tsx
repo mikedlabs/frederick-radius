@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Module from "@/components/today/Module";
 import WeatherStrip from "@/components/today/WeatherStrip";
+import AirQualityBadge from "@/components/today/AirQualityBadge";
+import CivicAlerts from "@/components/today/CivicAlerts";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
@@ -14,17 +17,11 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
-export default function TodayPage() {
+export default function HomePage() {
   const now = new Date();
   const origin = FREDERICK_CENTER;
 
-  const openNow = rankPlaces({
-    origin,
-    now,
-    preferOpen: true,
-    limit: 6,
-  });
-
+  const openNow = rankPlaces({ origin, now, preferOpen: true, limit: 6 });
   const liveEvents = eventsLive(now);
   const todayEvents = eventsNext24h(now).slice(0, 4);
   const weekendEvents = eventsWeekend(now).slice(0, 4);
@@ -44,6 +41,10 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-7 pt-1">
+      <Suspense fallback={null}>
+        <CivicAlerts />
+      </Suspense>
+
       <section>
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
           {weekday} · {time}
@@ -53,55 +54,54 @@ export default function TodayPage() {
         </h1>
       </section>
 
-      <WeatherStrip />
+      <Suspense fallback={<WeatherStripFallback />}>
+        <div className="space-y-2">
+          <WeatherStrip />
+          <div className="flex">
+            <Suspense fallback={null}>
+              <AirQualityBadge />
+            </Suspense>
+          </div>
+        </div>
+      </Suspense>
 
       {liveEvents.length > 0 && (
         <Module title="Happening right now" href="/events" meta={`${liveEvents.length} event${liveEvents.length === 1 ? "" : "s"} live`}>
           <ul className="space-y-2">
-            {liveEvents.map((e) => (
-              <li key={e.slug}><EventCard event={e} /></li>
-            ))}
+            {liveEvents.map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
           </ul>
         </Module>
       )}
 
       <Module title="Open now near you" href="/map" meta="Ranked by walkability + editorial weight">
         <ul className="space-y-2">
-          {openNow.map((p) => (
-            <li key={p.slug}><PlaceCard place={p} /></li>
-          ))}
+          {openNow.map((p) => <li key={p.slug}><PlaceCard place={p} /></li>)}
         </ul>
       </Module>
 
       <Module title="Happening today" href="/events" meta={`Next 24 hours · ${todayEvents.length} event${todayEvents.length === 1 ? "" : "s"}`}>
         {todayEvents.length === 0 ? (
-          <EmptyHint text="Nothing on the calendar for the next 24 hours. Check the weekend module below." />
+          <EmptyHint text="Nothing on the calendar for the next 24 hours." />
         ) : (
           <ul className="space-y-2">
-            {todayEvents.map((e) => (
-              <li key={e.slug}><EventCard event={e} /></li>
-            ))}
+            {todayEvents.map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
           </ul>
         )}
       </Module>
 
       <Module title="This weekend" href="/events" meta="Friday evening through Sunday">
         {weekendEvents.length === 0 ? (
-          <EmptyHint text="No events seeded for this weekend yet." />
+          <EmptyHint text="No events for this weekend yet." />
         ) : (
           <ul className="space-y-2">
-            {weekendEvents.map((e) => (
-              <li key={e.slug}><EventCard event={e} /></li>
-            ))}
+            {weekendEvents.map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
           </ul>
         )}
       </Module>
 
       <Module title="Walkable from downtown" href="/radius" meta="Inside a 15-minute walk · open now">
         <ul className="space-y-2">
-          {walkable.map((p) => (
-            <li key={p.slug}><PlaceCard place={p} /></li>
-          ))}
+          {walkable.map((p) => <li key={p.slug}><PlaceCard place={p} /></li>)}
         </ul>
       </Module>
 
@@ -120,5 +120,14 @@ function EmptyHint({ text }: { text: string }) {
     >
       {text}
     </p>
+  );
+}
+
+function WeatherStripFallback() {
+  return (
+    <div
+      className="h-24 animate-pulse rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)]"
+      style={{ borderColor: "var(--app-border)" }}
+    />
   );
 }

@@ -152,6 +152,30 @@ body {
 .font-serif { font-family: var(--font-plex-serif), ui-serif, Georgia, serif; }
 .font-mono { font-family: var(--font-plex-mono), ui-monospace, monospace; }
 
+/* MapLibre popup polish */
+.maplibregl-popup-content {
+  border-radius: var(--app-radius-md) !important;
+  padding: 12px 14px !important;
+  box-shadow: var(--app-shadow-2) !important;
+  background: var(--app-bg-elevated) !important;
+  border: 1px solid var(--app-border) !important;
+}
+.maplibregl-popup-tip { border-top-color: var(--app-bg-elevated) !important; }
+.maplibregl-popup-close-button {
+  color: var(--app-ink-3);
+  font-size: 18px;
+  padding: 4px 8px;
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(255,255,255,0.85) !important;
+  font-size: 10px !important;
+}
+.maplibregl-ctrl-group {
+  border-radius: var(--app-radius-md) !important;
+  overflow: hidden;
+  box-shadow: var(--app-shadow-2) !important;
+}
+
 /* Marketing route group keeps its night-sky aesthetic. */
 .marketing-shell {
   background: var(--background);

@@ -1,99 +1,273 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup, useMap, ZoomControl } from "react-leaflet";
-import { divIcon, type LatLngBoundsExpression } from "leaflet";
-import "leaflet/dist/leaflet.css";
-import { useEffect, useMemo } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
+import Map, {
+  Marker,
+  Popup,
+  NavigationControl,
+  GeolocateControl,
+  Source,
+  Layer,
+  type MapRef,
+} from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { Place } from "@/data/places";
+import { MUNICIPALITIES } from "@/data/municipalities";
 
 type Props = {
   places: Place[];
   height?: string;
   initialCenter?: [number, number];
   initialZoom?: number;
-  fitBounds?: boolean;
 };
 
-const FREDERICK: [number, number] = [39.4143, -77.4105];
+const FREDERICK: [number, number] = [-77.4105, 39.4143];
+
+// Premium-feeling free vector tiles. Protomaps + OSM data.
+// Falls back gracefully if their CDN is down.
+const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 
 export default function AppMap({
   places,
-  height = "60vh",
+  height = "65vh",
   initialCenter = FREDERICK,
-  initialZoom = 12,
-  fitBounds = true,
+  initialZoom = 11.5,
 }: Props) {
+  const mapRef = useRef<MapRef>(null);
+  const [selected, setSelected] = useState<Place | null>(null);
+  const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
+
+  const filtered = useMemo(() => {
+    if (activeCats.size === 0) return places;
+    return places.filter((p) => {
+      const cat = CATEGORY_BY_SLUG[p.category];
+      return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
+    });
+  }, [places, activeCats]);
+
+  const municipalityGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: MUNICIPALITIES.map((m) => ({
+      type: "Feature" as const,
+      properties: { name: m.name, slug: m.slug },
+      geometry: {
+        type: "Polygon" as const,
+        coordinates: [[
+          [m.bbox[0], m.bbox[1]],
+          [m.bbox[2], m.bbox[1]],
+          [m.bbox[2], m.bbox[3]],
+          [m.bbox[0], m.bbox[3]],
+          [m.bbox[0], m.bbox[1]],
+        ]],
+      },
+    })),
+  }), []);
+
+  useEffect(() => {
+    if (filtered.length === 0 || !mapRef.current) return;
+    const bounds = filtered.reduce(
+      (b, p) => {
+        b.min[0] = Math.min(b.min[0], p.geom.lng);
+        b.min[1] = Math.min(b.min[1], p.geom.lat);
+        b.max[0] = Math.max(b.max[0], p.geom.lng);
+        b.max[1] = Math.max(b.max[1], p.geom.lat);
+        return b;
+      },
+      { min: [180, 90], max: [-180, -90] },
+    );
+    mapRef.current.fitBounds(
+      [[bounds.min[0], bounds.min[1]], [bounds.max[0], bounds.max[1]]],
+      { padding: 56, maxZoom: 14, duration: 600 },
+    );
+  }, [filtered]);
+
   return (
-    <div
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{ borderColor: "var(--app-border)", height }}
-    >
-      <MapContainer
-        center={initialCenter}
-        zoom={initialZoom}
-        scrollWheelZoom
-        style={{ width: "100%", height: "100%" }}
-        zoomControl={false}
+    <div className="space-y-2">
+      <div className="-mx-4 overflow-x-auto px-4 scrollbar-hide">
+        <ul className="flex min-w-max gap-1.5">
+          <li>
+            <button
+              type="button"
+              onClick={() => setActiveCats(new Set())}
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+              style={{
+                borderColor: activeCats.size === 0 ? "var(--app-brand)" : "var(--app-border)",
+                background: activeCats.size === 0 ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                color: activeCats.size === 0 ? "white" : "var(--app-ink-2)",
+              }}
+            >
+              All · {places.length}
+            </button>
+          </li>
+          {TOP_CATEGORIES.map((c) => {
+            const active = activeCats.has(c.slug);
+            return (
+              <li key={c.slug}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCats((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(c.slug)) next.delete(c.slug);
+                      else next.add(c.slug);
+                      return next;
+                    });
+                  }}
+                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                  style={{
+                    borderColor: active ? c.color : "var(--app-border)",
+                    background: active ? c.color : "var(--app-bg-elevated)",
+                    color: active ? "white" : "var(--app-ink-2)",
+                  }}
+                >
+                  <span style={{ color: active ? "rgba(255,255,255,0.85)" : c.color }}>●</span>
+                  {c.name}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div
+        className="overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{ borderColor: "var(--app-border)", height }}
       >
-        <ZoomControl position="bottomright" />
-        <TileLayer
-          attribution='Tiles &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · &copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-        />
-        <FitBoundsToPlaces places={places} enabled={fitBounds} />
-        {places.map((p) => (
-          <PlaceMarker key={p.slug} place={p} />
-        ))}
-      </MapContainer>
+        <Map
+          ref={mapRef}
+          initialViewState={{
+            longitude: initialCenter[0],
+            latitude: initialCenter[1],
+            zoom: initialZoom,
+          }}
+          mapStyle={STYLE_URL}
+          style={{ width: "100%", height: "100%" }}
+          attributionControl={{ compact: true }}
+        >
+          <Source id="municipalities" type="geojson" data={municipalityGeoJson}>
+            <Layer
+              id="muni-fill"
+              type="fill"
+              paint={{
+                "fill-color": "#C4451C",
+                "fill-opacity": 0.04,
+              }}
+            />
+            <Layer
+              id="muni-line"
+              type="line"
+              paint={{
+                "line-color": "#C4451C",
+                "line-opacity": 0.35,
+                "line-width": 1,
+                "line-dasharray": [2, 2],
+              }}
+            />
+            <Layer
+              id="muni-label"
+              type="symbol"
+              minzoom={9}
+              layout={{
+                "text-field": ["get", "name"],
+                "text-size": 11,
+                "text-letter-spacing": 0.08,
+                "text-transform": "uppercase",
+                "text-anchor": "center",
+              }}
+              paint={{
+                "text-color": "#7A7975",
+                "text-halo-color": "#FAFAF7",
+                "text-halo-width": 1.5,
+              }}
+            />
+          </Source>
+
+          {filtered.map((p) => {
+            const color = CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C";
+            return (
+              <Marker
+                key={p.slug}
+                longitude={p.geom.lng}
+                latitude={p.geom.lat}
+                anchor="center"
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation();
+                  setSelected(p);
+                }}
+              >
+                <button
+                  type="button"
+                  aria-label={p.name}
+                  className="relative grid place-items-center"
+                  style={{ width: 22, height: 22 }}
+                >
+                  <span
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: "9999px",
+                      background: color,
+                      opacity: 0.16,
+                      transform: "scale(1.7)",
+                    }}
+                  />
+                  <span
+                    style={{
+                      position: "absolute",
+                      inset: 4,
+                      borderRadius: "9999px",
+                      background: color,
+                      border: "2px solid #fff",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                    }}
+                  />
+                </button>
+              </Marker>
+            );
+          })}
+
+          {selected && (
+            <Popup
+              longitude={selected.geom.lng}
+              latitude={selected.geom.lat}
+              anchor="bottom"
+              offset={14}
+              closeOnClick={false}
+              onClose={() => setSelected(null)}
+              maxWidth="280px"
+              className="fr-popup"
+            >
+              <div style={{ minWidth: 200, padding: 4 }}>
+                <p style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: CATEGORY_BY_SLUG[selected.category]?.color ?? "#C4451C",
+                  marginBottom: 4,
+                }}>
+                  {CATEGORY_BY_SLUG[selected.category]?.name ?? selected.category}
+                </p>
+                <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
+                  {selected.name}
+                </strong>
+                <p style={{ fontSize: 12, margin: "6px 0", color: "#4A4A48", lineHeight: 1.45 }}>
+                  {selected.short_blurb}
+                </p>
+                <Link
+                  href={`/places/${selected.slug}`}
+                  style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand)" }}
+                >
+                  Open page →
+                </Link>
+              </div>
+            </Popup>
+          )}
+
+          <NavigationControl position="bottom-right" showCompass={false} />
+          <GeolocateControl position="bottom-right" trackUserLocation />
+        </Map>
+      </div>
     </div>
   );
-}
-
-function PlaceMarker({ place }: { place: Place }) {
-  const color = CATEGORY_BY_SLUG[place.category]?.color ?? "#C4451C";
-  const icon = useMemo(
-    () =>
-      divIcon({
-        className: "fr-pin",
-        html: `
-<span style="position:relative;display:inline-block;width:26px;height:26px;">
-  <span style="position:absolute;inset:0;border-radius:50%;background:${color};opacity:0.18;transform:scale(1.6);"></span>
-  <span style="position:absolute;inset:5px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.25);"></span>
-</span>`,
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
-      }),
-    [color],
-  );
-  return (
-    <Marker position={[place.geom.lat, place.geom.lng]} icon={icon}>
-      <Popup>
-        <div style={{ minWidth: 200 }}>
-          <strong style={{ display: "block", marginBottom: 4 }}>{place.name}</strong>
-          <span style={{ fontSize: 12, color: "#7A7975" }}>
-            {CATEGORY_BY_SLUG[place.category]?.name ?? place.category}
-          </span>
-          <p style={{ fontSize: 13, margin: "8px 0", color: "#1A1A1A" }}>{place.short_blurb}</p>
-          <Link
-            href={`/places/${place.slug}`}
-            style={{ fontSize: 13, fontWeight: 600, color }}
-          >
-            View →
-          </Link>
-        </div>
-      </Popup>
-    </Marker>
-  );
-}
-
-function FitBoundsToPlaces({ places, enabled }: { places: Place[]; enabled: boolean }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!enabled || places.length === 0) return;
-    const bounds: LatLngBoundsExpression = places.map((p) => [p.geom.lat, p.geom.lng]);
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-  }, [places, enabled, map]);
-  return null;
 }
