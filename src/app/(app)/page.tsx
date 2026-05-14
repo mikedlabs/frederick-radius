@@ -4,6 +4,7 @@ import Module from "@/components/today/Module";
 import WeatherStrip from "@/components/today/WeatherStrip";
 import AirQualityBadge from "@/components/today/AirQualityBadge";
 import CivicAlerts from "@/components/today/CivicAlerts";
+import LocalNewsStrip from "@/components/today/LocalNewsStrip";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
@@ -97,6 +98,10 @@ export default function HomePage() {
           </ul>
         )}
       </Module>
+
+      <Suspense fallback={null}>
+        <LocalNewsStrip />
+      </Suspense>
 
       <Module title="Walkable from downtown" href="/radius" meta="Inside a 15-minute walk · open now">
         <ul className="space-y-2">

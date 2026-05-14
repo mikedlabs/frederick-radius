@@ -9,43 +9,77 @@ import Map, {
   Source,
   Layer,
   type MapRef,
+  type MapLayerMouseEvent,
 } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import Link from "next/link";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { Place } from "@/data/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import type { OsmPlace } from "@/lib/integrations/overpass";
 
 type Props = {
   places: Place[];
+  osmPlaces?: OsmPlace[];
   height?: string;
   initialCenter?: [number, number];
   initialZoom?: number;
 };
 
 const FREDERICK: [number, number] = [-77.4105, 39.4143];
-
-// Premium-feeling free vector tiles. Protomaps + OSM data.
-// Falls back gracefully if their CDN is down.
 const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+
+type SelectedOsm = OsmPlace & { _kind: "osm" };
+type SelectedPlace = Place & { _kind: "place" };
+type Selected = SelectedOsm | SelectedPlace | null;
 
 export default function AppMap({
   places,
-  height = "65vh",
+  osmPlaces = [],
+  height = "70vh",
   initialCenter = FREDERICK,
   initialZoom = 11.5,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
-  const [selected, setSelected] = useState<Place | null>(null);
+  const [selected, setSelected] = useState<Selected>(null);
   const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
 
-  const filtered = useMemo(() => {
+  const filteredPlaces = useMemo(() => {
     if (activeCats.size === 0) return places;
     return places.filter((p) => {
       const cat = CATEGORY_BY_SLUG[p.category];
       return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
     });
   }, [places, activeCats]);
+
+  const filteredOsmGeoJson = useMemo(() => {
+    const filtered = activeCats.size === 0
+      ? osmPlaces
+      : osmPlaces.filter((p) => {
+          const cat = CATEGORY_BY_SLUG[p.category_slug];
+          return activeCats.has(p.category_slug) || (cat?.parent && activeCats.has(cat.parent));
+        });
+    return {
+      type: "FeatureCollection" as const,
+      features: filtered.map((p) => ({
+        type: "Feature" as const,
+        properties: {
+          osm_id: p.osm_id,
+          name: p.name,
+          category: p.category_slug,
+          osm_tag: p.osm_tag,
+          color: CATEGORY_BY_SLUG[p.category_slug]?.color ?? "#7A7975",
+          address: p.address ?? "",
+          city: p.city ?? "",
+          phone: p.phone ?? "",
+          website: p.website ?? "",
+          opening_hours: p.opening_hours ?? "",
+          cuisine: p.cuisine ?? "",
+        },
+        geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
+      })),
+    };
+  }, [osmPlaces, activeCats]);
 
   const municipalityGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
@@ -66,8 +100,8 @@ export default function AppMap({
   }), []);
 
   useEffect(() => {
-    if (filtered.length === 0 || !mapRef.current) return;
-    const bounds = filtered.reduce(
+    if (filteredPlaces.length === 0 || !mapRef.current) return;
+    const bounds = filteredPlaces.reduce(
       (b, p) => {
         b.min[0] = Math.min(b.min[0], p.geom.lng);
         b.min[1] = Math.min(b.min[1], p.geom.lat);
@@ -79,9 +113,45 @@ export default function AppMap({
     );
     mapRef.current.fitBounds(
       [[bounds.min[0], bounds.min[1]], [bounds.max[0], bounds.max[1]]],
-      { padding: 56, maxZoom: 14, duration: 600 },
+      { padding: 56, maxZoom: 13, duration: 600 },
     );
-  }, [filtered]);
+  }, [filteredPlaces]);
+
+  const onClick = (e: MapLayerMouseEvent) => {
+    const feature = e.features?.[0];
+    if (!feature) return;
+    if (feature.layer.id === "clusters") {
+      const map = mapRef.current?.getMap();
+      if (!map) return;
+      const clusterId = feature.properties?.cluster_id as number | undefined;
+      const source = map.getSource("osm-businesses") as maplibregl.GeoJSONSource | undefined;
+      if (clusterId !== undefined && source && "getClusterExpansionZoom" in source) {
+        (source as unknown as { getClusterExpansionZoom: (id: number, cb: (err: Error | null, zoom: number) => void) => void })
+          .getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err) return;
+            const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
+            map.easeTo({ center: coords, zoom });
+          });
+      }
+    } else if (feature.layer.id === "osm-unclustered") {
+      const props = feature.properties as Record<string, string>;
+      setSelected({
+        _kind: "osm",
+        osm_id: props.osm_id,
+        name: props.name,
+        category_slug: props.category,
+        osm_tag: props.osm_tag,
+        address: props.address,
+        city: props.city,
+        phone: props.phone,
+        website: props.website,
+        opening_hours: props.opening_hours,
+        cuisine: props.cuisine,
+        lng: (feature.geometry as GeoJSON.Point).coordinates[0] as number,
+        lat: (feature.geometry as GeoJSON.Point).coordinates[1] as number,
+      });
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -98,7 +168,7 @@ export default function AppMap({
                 color: activeCats.size === 0 ? "white" : "var(--app-ink-2)",
               }}
             >
-              All · {places.length}
+              All · {(places.length + osmPlaces.length).toLocaleString()}
             </button>
           </li>
           {TOP_CATEGORIES.map((c) => {
@@ -145,15 +215,16 @@ export default function AppMap({
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={{ compact: true }}
+          interactiveLayerIds={["clusters", "osm-unclustered"]}
+          onClick={onClick}
+          onMouseEnter={() => { /* cursor change handled by interactiveLayerIds */ }}
         >
+          {/* Municipality boundaries */}
           <Source id="municipalities" type="geojson" data={municipalityGeoJson}>
             <Layer
               id="muni-fill"
               type="fill"
-              paint={{
-                "fill-color": "#C4451C",
-                "fill-opacity": 0.04,
-              }}
+              paint={{ "fill-color": "#C4451C", "fill-opacity": 0.04 }}
             />
             <Layer
               id="muni-line"
@@ -184,7 +255,66 @@ export default function AppMap({
             />
           </Source>
 
-          {filtered.map((p) => {
+          {/* OSM businesses — clustered */}
+          <Source
+            id="osm-businesses"
+            type="geojson"
+            data={filteredOsmGeoJson}
+            cluster
+            clusterRadius={50}
+            clusterMaxZoom={14}
+          >
+            {/* Cluster circles */}
+            <Layer
+              id="clusters"
+              type="circle"
+              filter={["has", "point_count"]}
+              paint={{
+                "circle-color": [
+                  "step", ["get", "point_count"],
+                  "#2A5D8F", 25,
+                  "#C4451C", 100,
+                  "#7E1F1F",
+                ],
+                "circle-opacity": 0.85,
+                "circle-radius": [
+                  "step", ["get", "point_count"],
+                  16, 25,
+                  22, 100,
+                  28,
+                ],
+                "circle-stroke-color": "#FAFAF7",
+                "circle-stroke-width": 2,
+              }}
+            />
+            <Layer
+              id="cluster-count"
+              type="symbol"
+              filter={["has", "point_count"]}
+              layout={{
+                "text-field": "{point_count_abbreviated}",
+                "text-size": 12,
+                "text-font": ["Noto Sans Regular"],
+              }}
+              paint={{ "text-color": "#fff" }}
+            />
+            {/* Individual unclustered points */}
+            <Layer
+              id="osm-unclustered"
+              type="circle"
+              filter={["!", ["has", "point_count"]]}
+              paint={{
+                "circle-color": ["get", "color"],
+                "circle-radius": 5,
+                "circle-stroke-color": "#fff",
+                "circle-stroke-width": 1.5,
+                "circle-opacity": 0.9,
+              }}
+            />
+          </Source>
+
+          {/* Curated places (editorial picks) — always render on top as big markers */}
+          {filteredPlaces.map((p) => {
             const color = CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C";
             return (
               <Marker
@@ -194,33 +324,26 @@ export default function AppMap({
                 anchor="center"
                 onClick={(e) => {
                   e.originalEvent.stopPropagation();
-                  setSelected(p);
+                  setSelected({ _kind: "place", ...p });
                 }}
               >
                 <button
                   type="button"
                   aria-label={p.name}
                   className="relative grid place-items-center"
-                  style={{ width: 22, height: 22 }}
+                  style={{ width: 24, height: 24 }}
                 >
                   <span
                     style={{
-                      position: "absolute",
-                      inset: 0,
-                      borderRadius: "9999px",
-                      background: color,
-                      opacity: 0.16,
-                      transform: "scale(1.7)",
+                      position: "absolute", inset: 0, borderRadius: "9999px",
+                      background: color, opacity: 0.20, transform: "scale(1.7)",
                     }}
                   />
                   <span
                     style={{
-                      position: "absolute",
-                      inset: 4,
-                      borderRadius: "9999px",
-                      background: color,
-                      border: "2px solid #fff",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                      position: "absolute", inset: 4, borderRadius: "9999px",
+                      background: color, border: "2.5px solid #fff",
+                      boxShadow: "0 1.5px 4px rgba(0,0,0,0.3)",
                     }}
                   />
                 </button>
@@ -230,43 +353,108 @@ export default function AppMap({
 
           {selected && (
             <Popup
-              longitude={selected.geom.lng}
-              latitude={selected.geom.lat}
+              longitude={selected._kind === "place" ? selected.geom.lng : selected.lng}
+              latitude={selected._kind === "place" ? selected.geom.lat : selected.lat}
               anchor="bottom"
               offset={14}
               closeOnClick={false}
               onClose={() => setSelected(null)}
-              maxWidth="280px"
-              className="fr-popup"
+              maxWidth="300px"
             >
-              <div style={{ minWidth: 200, padding: 4 }}>
-                <p style={{
-                  fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: CATEGORY_BY_SLUG[selected.category]?.color ?? "#C4451C",
-                  marginBottom: 4,
-                }}>
-                  {CATEGORY_BY_SLUG[selected.category]?.name ?? selected.category}
-                </p>
-                <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
-                  {selected.name}
-                </strong>
-                <p style={{ fontSize: 12, margin: "6px 0", color: "#4A4A48", lineHeight: 1.45 }}>
-                  {selected.short_blurb}
-                </p>
-                <Link
-                  href={`/places/${selected.slug}`}
-                  style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand)" }}
-                >
-                  Open page →
-                </Link>
-              </div>
+              {selected._kind === "place" ? (
+                <PlacePopup p={selected} />
+              ) : (
+                <OsmPopup p={selected} />
+              )}
             </Popup>
           )}
 
           <NavigationControl position="bottom-right" showCompass={false} />
           <GeolocateControl position="bottom-right" trackUserLocation />
         </Map>
+      </div>
+    </div>
+  );
+}
+
+function PlacePopup({ p }: { p: SelectedPlace }) {
+  const cat = CATEGORY_BY_SLUG[p.category];
+  return (
+    <div style={{ minWidth: 200, padding: 4 }}>
+      <p style={{
+        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+        textTransform: "uppercase", color: cat?.color ?? "#C4451C", marginBottom: 4,
+      }}>
+        {cat?.name ?? p.category}
+      </p>
+      <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
+        {p.name}
+      </strong>
+      <p style={{ fontSize: 12, margin: "6px 0", color: "#4A4A48", lineHeight: 1.45 }}>
+        {p.short_blurb}
+      </p>
+      <Link
+        href={`/places/${p.slug}`}
+        style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand)" }}
+      >
+        Open page →
+      </Link>
+    </div>
+  );
+}
+
+function OsmPopup({ p }: { p: SelectedOsm }) {
+  const cat = CATEGORY_BY_SLUG[p.category_slug];
+  return (
+    <div style={{ minWidth: 200, padding: 4 }}>
+      <p style={{
+        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+        textTransform: "uppercase", color: cat?.color ?? "#7A7975", marginBottom: 4,
+      }}>
+        {cat?.name ?? p.category_slug}
+      </p>
+      <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
+        {p.name}
+      </strong>
+      {p.cuisine && (
+        <p style={{ fontSize: 11, marginTop: 2, color: "#7A7975", textTransform: "capitalize" }}>
+          {p.cuisine.replace(/_/g, " ").replace(/;/g, ", ")}
+        </p>
+      )}
+      {(p.address || p.city) && (
+        <p style={{ fontSize: 12, margin: "6px 0 4px", color: "#4A4A48", lineHeight: 1.4 }}>
+          {[p.address, p.city].filter(Boolean).join(", ")}
+        </p>
+      )}
+      {p.opening_hours && (
+        <p style={{ fontSize: 11, color: "#7A7975", marginBottom: 4 }}>
+          {p.opening_hours}
+        </p>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+        {p.phone && (
+          <a href={`tel:${p.phone}`} style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 600 }}>
+            Call
+          </a>
+        )}
+        {p.website && (
+          <a
+            href={p.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 600 }}
+          >
+            Website ↗
+          </a>
+        )}
+        <a
+          href={`https://www.openstreetmap.org/${p.osm_id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ fontSize: 10, color: "#7A7975", marginLeft: "auto" }}
+        >
+          OSM
+        </a>
       </div>
     </div>
   );
