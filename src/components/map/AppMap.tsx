@@ -36,6 +36,7 @@ const OSM_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
  * after they close). We only surface those when the user explicitly opts in.
  */
 const OSM_TRUSTED_CATEGORIES = new Set<string>([
+  // Public spaces / civic infra
   "park", "trail", "playground",
   "library",
   "public-safety", // fire stations, police
@@ -44,10 +45,24 @@ const OSM_TRUSTED_CATEGORIES = new Set<string>([
   "transit",
   "museum",
   "parking",
+  // Public amenities (don't go stale — trash cans, benches, restrooms don't "close")
+  "restroom", "water", "trash", "recycling", "dog-waste",
+  "bench", "picnic", "bike-parking", "bike-repair",
+  "defibrillator", "shelter",
+]);
+
+const AMENITY_CATEGORIES = new Set<string>([
+  "restroom", "water", "trash", "recycling", "dog-waste",
+  "bench", "picnic", "bike-parking", "bike-repair",
+  "defibrillator", "shelter",
 ]);
 
 function isTrustedOsm(p: OsmPlace): boolean {
   return OSM_TRUSTED_CATEGORIES.has(p.category_slug);
+}
+
+function isAmenity(p: OsmPlace): boolean {
+  return AMENITY_CATEGORIES.has(p.category_slug);
 }
 
 function loadCachedOsm(): OsmPlace[] | null {
@@ -93,6 +108,7 @@ export default function AppMap({
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
   const [osmError, setOsmError] = useState<string | null>(null);
   const [showUnverified, setShowUnverified] = useState(false);
+  const [showAmenities, setShowAmenities] = useState(false);
 
   useEffect(() => {
     if (osmFromProps) {
@@ -136,12 +152,13 @@ export default function AppMap({
   const filteredOsmGeoJson = useMemo(() => {
     // Default: only show OSM data we trust (parks/libraries/fire/transit/civic).
     // Commercial businesses (restaurants/shops/bars) only show when user opts in.
-    const trustFiltered = showUnverified
-      ? osmPlaces
-      : osmPlaces.filter(isTrustedOsm);
+    // Amenities (restrooms, water, trash, dog stations) only show when user opts in
+    // (these are useful but dense — would clutter the map otherwise).
+    let pool = showUnverified ? osmPlaces : osmPlaces.filter(isTrustedOsm);
+    if (!showAmenities) pool = pool.filter((p) => !isAmenity(p));
     const filtered = activeCats.size === 0
-      ? trustFiltered
-      : trustFiltered.filter((p) => {
+      ? pool
+      : pool.filter((p) => {
           const cat = CATEGORY_BY_SLUG[p.category_slug];
           return activeCats.has(p.category_slug) || (cat?.parent && activeCats.has(cat.parent));
         });
@@ -241,6 +258,7 @@ export default function AppMap({
 
   const trustedOsmCount = osmPlaces.filter(isTrustedOsm).length;
   const unverifiedOsmCount = osmPlaces.length - trustedOsmCount;
+  const amenityCount = osmPlaces.filter(isAmenity).length;
 
   return (
     <div className="space-y-2">
@@ -260,6 +278,24 @@ export default function AppMap({
               All · {(places.length + (showUnverified ? osmPlaces.length : trustedOsmCount)).toLocaleString()}
             </button>
           </li>
+          {amenityCount > 0 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowAmenities((v) => !v)}
+                aria-pressed={showAmenities}
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  borderColor: showAmenities ? "var(--app-cool)" : "var(--app-border)",
+                  background: showAmenities ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                  color: showAmenities ? "white" : "var(--app-ink-2)",
+                }}
+                title="Public restrooms, water, dog stations, benches, picnic, bike parking"
+              >
+                🚻 Amenities · {amenityCount}
+              </button>
+            </li>
+          )}
           {TOP_CATEGORIES.map((c) => {
             const active = activeCats.has(c.slug);
             return (

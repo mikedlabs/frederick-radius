@@ -52,6 +52,20 @@ export const CATEGORIES: Category[] = [
 
   { slug: "transit", name: "Transit", icon: "Train", color: "#2A5D8F", display_order: 95, blurb: "TransIT bus, MARC rail, and stations." },
   { slug: "parking", name: "Parking", icon: "ParkingCircle", color: "#4A4A48", display_order: 96, blurb: "Garages, lots, and street parking guidance." },
+
+  // Public-infrastructure amenities (mapped from OpenStreetMap tags; stable)
+  { slug: "amenities", name: "Amenities", icon: "PinCircle", color: "#2A5D8F", display_order: 100, blurb: "Restrooms, water, dog stations, benches, picnic, bike parking — out in public." },
+  { slug: "restroom", name: "Public restrooms", parent: "amenities", icon: "DoorOpen", color: "#2A5D8F", display_order: 101, blurb: "Public restrooms in parks, libraries, and downtown." },
+  { slug: "water", name: "Drinking water", parent: "amenities", icon: "Droplets", color: "#2A5D8F", display_order: 102, blurb: "Public drinking fountains and water bottle refill points." },
+  { slug: "trash", name: "Trash receptacles", parent: "amenities", icon: "Trash2", color: "#4A4A48", display_order: 103, blurb: "Public trash cans (we map them where OSM has them tagged)." },
+  { slug: "recycling", name: "Recycling drop-offs", parent: "amenities", icon: "Recycle", color: "#1E6B3A", display_order: 104, blurb: "Glass, plastic, paper, and yard-waste drop-offs." },
+  { slug: "dog-waste", name: "Dog waste stations", parent: "amenities", icon: "PawPrint", color: "#1E6B3A", display_order: 105, blurb: "Dog-bag dispensers and waste bins." },
+  { slug: "bench", name: "Benches", parent: "amenities", icon: "Armchair", color: "#7A7975", display_order: 106, blurb: "Public seating along trails and in parks." },
+  { slug: "picnic", name: "Picnic areas", parent: "amenities", icon: "Utensils", color: "#1E6B3A", display_order: 107, blurb: "Picnic tables, shelters, and grilling spots." },
+  { slug: "bike-parking", name: "Bike parking", parent: "amenities", icon: "Bike", color: "#2A5D8F", display_order: 108, blurb: "Bike racks and corrals." },
+  { slug: "bike-repair", name: "Bike repair stations", parent: "amenities", icon: "Wrench", color: "#2A5D8F", display_order: 109, blurb: "Public fix-it stations with tools and air pumps." },
+  { slug: "defibrillator", name: "Defibrillators (AED)", parent: "amenities", icon: "HeartPulse", color: "#A02929", display_order: 110, blurb: "Publicly accessible automated external defibrillators." },
+  { slug: "shelter", name: "Shelters", parent: "amenities", icon: "Tent", color: "#4A4A48", display_order: 111, blurb: "Trail shelters, bus stops, and rain refuge." },
 ];
 
 export const CATEGORY_BY_SLUG = Object.fromEntries(

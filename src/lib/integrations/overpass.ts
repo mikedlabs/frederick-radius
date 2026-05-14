@@ -50,18 +50,23 @@ type OverpassElement = {
 type OverpassResponse = { elements: OverpassElement[] };
 
 const QUERY = (bbox: [number, number, number, number]) => `
-[out:json][timeout:60];
+[out:json][timeout:90];
 (
-  node["amenity"~"^(restaurant|cafe|bar|pub|fast_food|food_court|biergarten|nightclub|ice_cream|bakery|cinema|theatre|library|community_centre|fire_station|police|townhall|courthouse|post_office|pharmacy|hospital|clinic|dentist|veterinary|fuel|bank|atm|car_wash|car_rental|bicycle_rental|charging_station|parking|parking_entrance|place_of_worship|school|university|college|kindergarten|childcare|bbq|fountain|drinking_water|toilets|bench|shelter)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  // Businesses (commercial — these may close; user opts in to see them on map)
+  node["amenity"~"^(restaurant|cafe|bar|pub|fast_food|food_court|biergarten|nightclub|ice_cream|bakery|cinema|theatre|library|community_centre|fire_station|police|townhall|courthouse|post_office|pharmacy|hospital|clinic|dentist|veterinary|fuel|bank|atm|car_wash|car_rental|bicycle_rental|charging_station|parking|parking_entrance|place_of_worship|school|university|college|kindergarten|childcare)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
   node["shop"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
   node["tourism"~"^(museum|gallery|attraction|viewpoint|artwork|hotel|motel|guest_house|hostel|information|picnic_site|theme_park|zoo)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
   node["leisure"~"^(park|playground|sports_centre|fitness_centre|pitch|swimming_pool|garden|dog_park|nature_reserve|stadium|track|marina)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
   node["office"~"^(government|nonprofit|company|coworking|estate_agent|insurance|lawyer|accountant)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
 
-  way["amenity"~"^(restaurant|cafe|bar|pub|cinema|theatre|library|community_centre|fire_station|police|townhall|courthouse|post_office|pharmacy|hospital|university|college|school|place_of_worship|parking)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  // Public-infrastructure amenities (these don't "close" — stable infrastructure)
+  node["amenity"~"^(toilets|drinking_water|waste_basket|dog_waste_bin|recycling|water_point|shower|bench|picnic_table|bicycle_parking|bicycle_repair_station|defibrillator|shelter|bbq|fountain|public_bookcase|telephone|atm)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+
+  // Way geometries (buildings/areas)
+  way["amenity"~"^(restaurant|cafe|bar|pub|cinema|theatre|library|community_centre|fire_station|police|townhall|courthouse|post_office|pharmacy|hospital|university|college|school|place_of_worship|parking|toilets)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
   way["shop"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  way["tourism"~"^(museum|gallery|attraction|viewpoint|hotel|motel|guest_house|theme_park|zoo)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
-  way["leisure"~"^(park|playground|sports_centre|swimming_pool|garden|nature_reserve|stadium)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  way["tourism"~"^(museum|gallery|attraction|viewpoint|hotel|motel|guest_house|theme_park|zoo|picnic_site)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  way["leisure"~"^(park|playground|sports_centre|swimming_pool|garden|nature_reserve|stadium|dog_park)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
 );
 out center tags;
 `.replace(/\n\s*/g, " ");
@@ -92,6 +97,22 @@ function mapTagToCategory(tags: Record<string, string>): { category_slug: string
   if (l === "playground") return { category_slug: "playground", osm_tag: "leisure=playground" };
   if (l === "sports_centre" || l === "fitness_centre" || l === "pitch" || l === "swimming_pool" || l === "stadium" || l === "track") return { category_slug: "wellness", osm_tag: "leisure=" + l };
 
+  // Public-infrastructure amenities (stable — don't go stale)
+  if (a === "toilets") return { category_slug: "restroom", osm_tag: "amenity=toilets" };
+  if (a === "drinking_water" || a === "water_point" || a === "fountain") return { category_slug: "water", osm_tag: "amenity=" + a };
+  if (a === "waste_basket") return { category_slug: "trash", osm_tag: "amenity=waste_basket" };
+  if (a === "recycling") return { category_slug: "recycling", osm_tag: "amenity=recycling" };
+  if (a === "dog_waste_bin") return { category_slug: "dog-waste", osm_tag: "amenity=dog_waste_bin" };
+  if (a === "bench") return { category_slug: "bench", osm_tag: "amenity=bench" };
+  if (a === "picnic_table" || t === "picnic_site") return { category_slug: "picnic", osm_tag: (a ? "amenity=picnic_table" : "tourism=picnic_site") };
+  if (a === "bicycle_parking") return { category_slug: "bike-parking", osm_tag: "amenity=bicycle_parking" };
+  if (a === "bicycle_repair_station") return { category_slug: "bike-repair", osm_tag: "amenity=bicycle_repair_station" };
+  if (a === "defibrillator") return { category_slug: "defibrillator", osm_tag: "amenity=defibrillator" };
+  if (a === "shelter") return { category_slug: "shelter", osm_tag: "amenity=shelter" };
+  if (a === "bbq") return { category_slug: "picnic", osm_tag: "amenity=bbq" };
+  if (a === "telephone") return { category_slug: "services", osm_tag: "amenity=telephone" };
+  if (a === "public_bookcase") return { category_slug: "library", osm_tag: "amenity=public_bookcase" };
+
   if (s) return { category_slug: "shopping", osm_tag: "shop=" + s };
   if (o) return { category_slug: "services", osm_tag: "office=" + o };
   return null;
@@ -104,6 +125,27 @@ function joinAddress(tags: Record<string, string>): string | undefined {
   if (parts.length === 0) return undefined;
   return parts.join(" ");
 }
+
+// Categories where the data is small public-infra and is allowed to be
+// unnamed — we'll generate a label like "Public restroom" from the category.
+const UNNAMED_OK = new Set([
+  "restroom", "water", "trash", "recycling", "dog-waste", "bench",
+  "picnic", "bike-parking", "bike-repair", "defibrillator", "shelter",
+]);
+
+const UNNAMED_LABELS: Record<string, string> = {
+  "restroom": "Public restroom",
+  "water": "Drinking water",
+  "trash": "Trash receptacle",
+  "recycling": "Recycling drop-off",
+  "dog-waste": "Dog waste station",
+  "bench": "Bench",
+  "picnic": "Picnic area",
+  "bike-parking": "Bike parking",
+  "bike-repair": "Bike repair station",
+  "defibrillator": "Defibrillator (AED)",
+  "shelter": "Shelter",
+};
 
 const SKIP_NAMES = new Set([
   // Massive chains we don't want to dominate the map
@@ -143,13 +185,17 @@ export async function fetchOsmFrederick(): Promise<OsmPlace[]> {
     const seen = new Set<string>();
 
     for (const el of data.elements) {
-      const name = el.tags?.name?.trim();
-      if (!name) continue;
-      if (SKIP_NAMES.has(name)) continue;
-
       const tags = el.tags ?? {};
       const mapped = mapTagToCategory(tags);
       if (!mapped) continue;
+
+      const rawName = tags.name?.trim();
+      let name = rawName;
+      if (!name) {
+        if (!UNNAMED_OK.has(mapped.category_slug)) continue;
+        name = UNNAMED_LABELS[mapped.category_slug] ?? mapped.category_slug;
+      }
+      if (SKIP_NAMES.has(name)) continue;
 
       const lat = el.type === "node" ? el.lat : el.center?.lat;
       const lng = el.type === "node" ? el.lon : el.center?.lon;
