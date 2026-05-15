@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
-import { ExternalLink, Phone, Globe, Navigation, X, MapPin, Instagram, Footprints, Car } from "lucide-react";
+import { ExternalLink, Phone, Globe, Navigation, X, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
+import { placeActions, type PlaceAction } from "@/lib/place-actions";
 import Link from "next/link";
 import { haptic } from "@/lib/haptics";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -214,12 +215,11 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
           {place.short_blurb}
         </p>
 
-        {/* Action grid */}
-        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <ActionPill href={mapsUrl} icon={Navigation} label="Directions" external />
-          {place.phone && <ActionPill href={`tel:${place.phone.replace(/[^0-9+]/g, "")}`} icon={Phone} label="Call" />}
-          {place.website && <ActionPill href={place.website} icon={Globe} label="Website" external />}
-          {place.instagram && <ActionPill href={`https://instagram.com/${place.instagram}`} icon={Instagram} label="Instagram" external />}
+        {/* In-app actions — reserve / order / park / directions without leaving */}
+        <div className="-mx-1 mt-5 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+          {placeActions(place).map((a) => (
+            <ActionChip key={a.key} action={a} />
+          ))}
         </div>
 
         {/* Footer — link to full page + share */}
@@ -243,20 +243,34 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
   );
 }
 
-function ActionPill({
-  href, icon: Icon, label, external,
-}: { href: string; icon: typeof Phone; label: string; external?: boolean }) {
-  const Comp = external ? "a" : Link;
+const ACTION_ICON = {
+  directions: Navigation,
+  call: Phone,
+  website: Globe,
+  reserve: UtensilsCrossed,
+  order: ShoppingBag,
+  parking: ParkingCircle,
+  instagram: Instagram,
+  menu: BookOpen,
+} as const;
+
+function ActionChip({ action }: { action: PlaceAction }) {
+  const Icon = ACTION_ICON[action.icon];
   return (
-    <Comp
-      href={href}
+    <a
+      href={action.href}
       onClick={() => haptic("light")}
-      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="flex items-center justify-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] py-2.5 text-xs font-semibold transition active:scale-[0.97]"
-      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+      style={{
+        borderColor: action.accent,
+        color: "white",
+        background: action.accent,
+      }}
     >
-      <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-      {label}
-    </Comp>
+      <Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+      {action.label}
+    </a>
   );
 }
