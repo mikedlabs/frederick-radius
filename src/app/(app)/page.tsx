@@ -16,13 +16,15 @@ import PullToRefresh from "@/components/today/PullToRefresh";
 import ModeAwareCta from "@/components/today/ModeAwareCta";
 import LiveActivityPill from "@/components/today/LiveActivityPill";
 import FeaturedTonight from "@/components/today/FeaturedTonight";
+import FeaturedEvents, { type EventSlide } from "@/components/today/FeaturedEvents";
 import { buildActivities } from "@/lib/live-activity";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import FadeUp from "@/components/ui/FadeUp";
 import { ShimmerWeatherStrip, ShimmerCard } from "@/components/ui/Shimmer";
 import { rankPlaces, placesWithinRadius, decoratePlace } from "@/lib/loaders/places";
-import { eventsLive, eventsNext24h, eventsWeekend } from "@/lib/loaders/events";
-import { PLACES } from "@/data/places";
+import { eventsLive, eventsNext24h, eventsWeekend, allUpcoming, seriesKey, formatEventWhen } from "@/lib/loaders/events";
+import { PLACES, PLACE_BY_SLUG } from "@/data/places";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
 export const metadata: Metadata = {
@@ -82,6 +84,55 @@ export default async function HomePage() {
     Math.floor(now.getTime() / 86_400_000) % Math.max(1, featuredPool.length);
   const featured = featuredPool[dayIndex] ?? featuredPool[0] ?? null;
 
+  // Featured city events — the rotating "what's going on" hero. Dedupe by
+  // series (so a weekly series isn't 6 identical slides), city of Frederick
+  // first, soonest first. Each slide borrows its venue's real photo.
+  const liveSet = new Set(liveEvents.map((e) => e.slug));
+  const next24 = eventsNext24h(now);
+  const next24Set = new Set(next24.map((e) => e.slug));
+  const weekendSet = new Set(eventsWeekend(now).map((e) => e.slug));
+  const eventBySeries = new Map<string, ReturnType<typeof allUpcoming>[number]>();
+  for (const e of [...liveEvents, ...next24, ...eventsWeekend(now), ...allUpcoming(now)]) {
+    const k = seriesKey(e);
+    const cur = eventBySeries.get(k);
+    if (!cur || +new Date(e.starts_at) < +new Date(cur.starts_at)) eventBySeries.set(k, e);
+  }
+  // Resolve each event's venue photo once, then rank: city of Frederick
+  // first, then slides that have a real photo, then soonest.
+  const withPhoto = [...eventBySeries.values()].map((e) => {
+    const vp = e.venue_place_slug ? PLACE_BY_SLUG[e.venue_place_slug] : null;
+    const photo =
+      (vp ? decoratePlace(vp, origin, now).google_photo_url : undefined) ||
+      e.hero_image ||
+      null;
+    return { e, photo };
+  });
+  withPhoto.sort(
+    ({ e: a, photo: pa }, { e: b, photo: pb }) =>
+      (a.municipality === "frederick" ? 0 : 1) - (b.municipality === "frederick" ? 0 : 1) ||
+      (pa ? 0 : 1) - (pb ? 0 : 1) ||
+      +new Date(a.starts_at) - +new Date(b.starts_at)
+  );
+  const featuredEvents: EventSlide[] = withPhoto.slice(0, 6).map(({ e, photo }) => {
+    const cat = CATEGORY_BY_SLUG[e.category];
+    return {
+      slug: e.slug,
+      title: e.title,
+      when: formatEventWhen(e),
+      venue: e.venue_name,
+      eyebrow: liveSet.has(e.slug)
+        ? "Happening now"
+        : next24Set.has(e.slug)
+          ? "Next 24 hours"
+          : weekendSet.has(e.slug)
+            ? "This weekend"
+            : "Coming up",
+      photo,
+      categoryName: cat?.name ?? e.category_name ?? e.category,
+      color: cat?.color ?? "#C4451C",
+    };
+  });
+
   return (
     <>
       <PullToRefresh />
@@ -111,12 +162,17 @@ export default async function HomePage() {
           <LiveActivityPill activities={liveActivities} />
         )}
 
-        {/* Photo-forward featured hero — the visual anchor */}
-        {featured && (
+        {/* Photo-forward featured hero — rotating city events, with the
+            top place as a graceful fallback if there's nothing on. */}
+        {featuredEvents.length > 0 ? (
+          <FadeUp>
+            <FeaturedEvents events={featuredEvents} />
+          </FadeUp>
+        ) : featured ? (
           <FadeUp>
             <FeaturedTonight place={featured} />
           </FadeUp>
-        )}
+        ) : null}
 
         {/* Compact pulse + weather row */}
         <FadeUp>
