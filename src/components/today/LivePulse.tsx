@@ -1,16 +1,18 @@
-import { Activity, AlertTriangle, Zap, Bus, Construction, School, ChevronRight } from "lucide-react";
+import { Activity, AlertTriangle, Zap, Bus, Construction, School, ChevronRight, Siren } from "lucide-react";
 import Link from "next/link";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
 import { getFcpsAlerts } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
+import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 
 export default async function LivePulse() {
-  const [incidents, outages, fcps, fixit] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety] = await Promise.all([
     getChartIncidentsFrederick(),
     getFrederickOutages(),
     getFcpsAlerts(),
     getFixItIssues(5),
+    getPulsePointIncidents(),
   ]);
 
   const items: Array<{
@@ -21,6 +23,19 @@ export default async function LivePulse() {
     href?: string;
     detail?: string;
   }> = [];
+
+  // Active fire / rescue (PulsePoint scanner) — most immediately relevant
+  if (safety.length > 0) {
+    const top = safety[0];
+    items.push({
+      icon: Siren,
+      color: "var(--app-danger)",
+      label: `${safety.length} active fire/rescue call${safety.length === 1 ? "" : "s"}`,
+      value: `${top.type} · ${top.address}`,
+      detail: "PulsePoint · live dispatch",
+      href: "/pulse#safety",
+    });
+  }
 
   // Schools — most urgent if there's a closure/delay
   const closure = fcps.find((a) => a.status === "closed" || a.status === "delayed" || a.status === "early_dismissal");

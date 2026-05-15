@@ -9,13 +9,14 @@
  */
 import type { Metadata } from "next";
 import {
-  Activity, Construction, Zap, School, AlertTriangle,
+  Activity, Construction, Zap, School, AlertTriangle, Siren,
   CheckCircle2, ExternalLink, MapPin, Clock,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
 import { getFcpsAlerts } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
+import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 
 export const metadata: Metadata = {
   title: "Live Pulse",
@@ -36,11 +37,12 @@ function timeAgo(iso: string): string {
 }
 
 export default async function PulsePage() {
-  const [incidents, outages, fcps, fixit] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety] = await Promise.all([
     getChartIncidentsFrederick(),
     getFrederickOutages(),
     getFcpsAlerts(),
     getFixItIssues(15),
+    getPulsePointIncidents(),
   ]);
 
   const sevRank = { High: 0, Medium: 1, Low: 2 } as const;
@@ -49,6 +51,7 @@ export default async function PulsePage() {
   );
   const schoolAlerts = fcps.filter((a) => a.status !== "unknown");
   const allClear =
+    safety.length === 0 &&
     traffic.length === 0 &&
     outages.total_out < 25 &&
     schoolAlerts.length === 0 &&
@@ -88,6 +91,28 @@ export default async function PulsePage() {
             </p>
           </div>
         </div>
+      )}
+
+      {/* ── Public safety (PulsePoint scanner) ── */}
+      {safety.length > 0 && (
+        <DashSection
+          id="safety"
+          icon={Siren}
+          title="Active fire & rescue"
+          count={safety.length}
+          accent="var(--app-danger)"
+          source={{ label: "PulsePoint", href: "https://web.pulsepoint.org/" }}
+          empty="No active fire or rescue calls."
+        >
+          {safety.map((s) => (
+            <Row
+              key={s.id}
+              tone="danger"
+              title={s.type}
+              meta={[s.address, timeAgo(s.received_at)]}
+            />
+          ))}
+        </DashSection>
       )}
 
       {/* ── Traffic ── */}
