@@ -34,6 +34,13 @@ const NAMES: string[] = [
   "Idiom Brewing Company",
   "Idiom",
 
+  // Restaurants (cont.)
+  "Ayse Meze Lounge",
+  "Ayse Meze",
+  "Ayşe Meze Lounge",
+  "Firestone's Culinary Tavern",
+  "Firestone's",
+
   // Add more as we learn about closures — see comment above.
 ];
 

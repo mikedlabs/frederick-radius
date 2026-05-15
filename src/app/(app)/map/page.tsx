@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { PLACES } from "@/data/places";
+import { isKnownClosed } from "@/lib/integrations/closures";
 import AppMapClient from "@/components/map/AppMapClient";
+
+const OPEN_PLACES = PLACES.filter(
+  (p) => !isKnownClosed(p.name) && p.is_operational !== "closed_permanently"
+);
 
 export const metadata: Metadata = {
   title: "Map",
@@ -12,7 +17,7 @@ export default function MapPage() {
     <div className="space-y-3">
       <header className="space-y-1">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {PLACES.length.toLocaleString()} curated · plus every OSM business in the county
+          {OPEN_PLACES.length.toLocaleString()} curated · plus every OSM business in the county
         </p>
         <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           Explore the map
@@ -22,7 +27,7 @@ export default function MapPage() {
         </p>
       </header>
 
-      <AppMapClient places={PLACES} />
+      <AppMapClient places={OPEN_PLACES} />
 
       <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
         Business data from{" "}

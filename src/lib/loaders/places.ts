@@ -4,6 +4,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
+import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 
 type Enrichment = {
@@ -122,6 +123,7 @@ function openScore(status: OpenStatus): number {
 }
 
 function isOperational(p: Place): boolean {
+  if (isKnownClosed(p.name)) return false; // manual override of last resort
   return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
 }
 

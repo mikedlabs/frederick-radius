@@ -16,6 +16,9 @@ import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { Place } from "@/data/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
+import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
+import { decoratePlace } from "@/lib/loaders/places";
+import { FREDERICK_CENTER } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 
@@ -107,6 +110,7 @@ export default function AppMap({
   onPlacesInView,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
+  const { openSheet } = usePlaceSheet();
   const [selected, setSelected] = useState<Selected>(null);
   const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
@@ -298,7 +302,9 @@ export default function AppMap({
     if (layer === "curated-points") {
       const props = feature.properties as Record<string, string>;
       const place = places.find((p) => p.slug === props.slug);
-      if (place) setSelected({ _kind: "place", ...place });
+      // Google-Maps-style: tap a pin → full card slides up from the bottom
+      // (photo, rating, hours, directions, save) instead of a cramped popup.
+      if (place) openSheet(decoratePlace(place, FREDERICK_CENTER));
       return;
     }
 
