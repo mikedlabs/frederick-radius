@@ -122,13 +122,13 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceEnrichment 
       next: { revalidate: 86400 },
     });
     if (!res.ok) {
-      // eslint-disable-next-line no-console
+       
       console.error(`[google-places] details HTTP ${res.status} for ${id}`);
       return null;
     }
     return normalize((await res.json()) as GApiPlace);
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error("[google-places] details failed:", err);
     return null;
   }
@@ -168,7 +168,7 @@ export async function resolveAndEnrich(opts: {
       next: { revalidate: 86400 },
     });
     if (!res.ok) {
-      // eslint-disable-next-line no-console
+       
       console.error(`[google-places] searchText HTTP ${res.status} for "${textQuery}"`);
       return null;
     }
@@ -176,7 +176,7 @@ export async function resolveAndEnrich(opts: {
     const first = data.places?.[0];
     return first ? normalize(first) : null;
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error("[google-places] searchText failed:", err);
     return null;
   }

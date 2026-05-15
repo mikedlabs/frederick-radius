@@ -44,7 +44,7 @@ export default function ShareButton({
       setTimeout(() => setCopied(false), 1600);
     } catch {
       // Last resort: prompt user to copy
-      // eslint-disable-next-line no-alert
+       
       window.prompt("Copy this link:", fullUrl);
     }
   };

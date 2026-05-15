@@ -230,13 +230,13 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       next: { revalidate: 3600 },
     });
     if (!res.ok) {
-      // eslint-disable-next-line no-console
+       
       console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
       return [];
     }
     const text = await res.text();
     if (!text.includes("BEGIN:VCALENDAR")) {
-      // eslint-disable-next-line no-console
+       
       console.error(`[ical-live] ${feed.source}: not iCal`);
       return [];
     }
@@ -277,11 +277,11 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
         is_free: !/\$|\bticket\b|\bpaid\b|\bcover\b/i.test(`${title} ${description}`),
       });
     }
-    // eslint-disable-next-line no-console
+     
     console.log(`[ical-live] ${feed.source}: parsed ${events.length} events in window`);
     return events;
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error(`[ical-live] ${feed.source} failed:`, err instanceof Error ? err.message : err);
     return [];
   }
@@ -294,7 +294,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
       next: { revalidate: 3600 },
     });
     if (!res.ok) {
-      // eslint-disable-next-line no-console
+       
       console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
       return [];
     }
@@ -368,11 +368,11 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
         is_free: !/\$|\bticket\b|\bpaid\b/i.test(`${title} ${description}`),
       });
     }
-    // eslint-disable-next-line no-console
+     
     console.log(`[ical-live] ${feed.source}: parsed ${events.length} RSS events in window`);
     return events;
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error(`[ical-live] ${feed.source} RSS failed:`, err instanceof Error ? err.message : err);
     return [];
   }

@@ -68,7 +68,7 @@ function buildIndex(): SearchResult[] {
       id: `category:${c.slug}`,
       title: c.name,
       subtitle: c.blurb ?? "Browse this category",
-      href: `/c/${c.slug}`,
+      href: `/category/${c.slug}`,
       _haystack: `${c.name} ${c.slug} ${c.blurb ?? ""}`.toLowerCase(),
     });
   }

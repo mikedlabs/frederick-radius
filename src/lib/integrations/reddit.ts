@@ -112,7 +112,7 @@ export async function getFrederickRedditPulse(opts: {
       next: { revalidate: 900 }, // 15 min cache
     });
     if (!res.ok) {
-      // eslint-disable-next-line no-console
+       
       console.error(`[reddit/rss] HTTP ${res.status}`);
       return [];
     }
@@ -169,7 +169,7 @@ export async function getFrederickRedditPulse(opts: {
 
     return posts;
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error("[reddit/rss] fetch failed:", err);
     return [];
   }

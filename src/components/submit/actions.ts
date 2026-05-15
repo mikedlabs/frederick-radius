@@ -38,7 +38,7 @@ export type SubmitEventInput = {
  */
 async function persistSubmission(type: "place" | "event", payload: object): Promise<string> {
   const token = crypto.randomUUID();
-  // eslint-disable-next-line no-console
+   
   console.log("[submission]", type, token, JSON.stringify(payload));
   // Fire-and-forget admin notification when Resend is configured.
   await maybeSendAdminEmail(type, payload);

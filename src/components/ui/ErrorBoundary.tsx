@@ -15,7 +15,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     if (typeof window !== "undefined") {
-      // eslint-disable-next-line no-console
+       
       console.error("Frederick Radius caught:", error);
     }
   }

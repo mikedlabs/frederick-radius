@@ -68,7 +68,7 @@ export async function computeMatrix(
       next: { revalidate: 3600 },
     });
     if (!res.ok) {
-      // eslint-disable-next-line no-console
+       
       console.error(`[routes] HTTP ${res.status}`);
       return [];
     }
@@ -87,7 +87,7 @@ export async function computeMatrix(
       }))
       .sort((a, b) => a.destinationIndex - b.destinationIndex);
   } catch (err) {
-    // eslint-disable-next-line no-console
+     
     console.error("[routes] failed:", err);
     return [];
   }

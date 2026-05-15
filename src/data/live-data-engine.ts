@@ -295,7 +295,7 @@ export async function fetchTrafficIncidents(): Promise<TrafficIncident[]> {
     if (!res.ok) throw new Error(`CHART API ${res.status}`);
 
     const data = await res.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const incidents: TrafficIncident[] = (Array.isArray(data) ? data : [])
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .filter((inc: any) => {
