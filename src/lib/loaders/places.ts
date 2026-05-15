@@ -4,11 +4,60 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
+import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 
-export type PlaceCardData = Place & {
+type Enrichment = {
+  business_status?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "UNKNOWN";
+  weekday_hours?: string[];
+  has_hours?: boolean;
+  rating?: number;
+  user_rating_count?: number;
+  photo_names?: string[];
+  phone?: string;
+  website?: string;
+};
+const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
+
+/** Google-verified data merged onto a place, when available. */
+export type PlaceEnriched = {
+  /** Proxied photo URL (server route, key-safe) */
+  google_photo_url?: string;
+  google_rating?: number;
+  google_rating_count?: number;
+  /** Human-readable weekly hours from Google */
+  google_hours?: string[];
+  /** True once Google has verified this place */
+  google_verified?: boolean;
+};
+
+export type PlaceCardData = Place & PlaceEnriched & {
   open_status: OpenStatus;
   distance_m?: number;
 };
+
+function applyEnrichment(p: Place): Place & PlaceEnriched {
+  const e = ENRICHMENT[p.slug];
+  if (!e) return p;
+  // Google business_status overrides our seed guess — it's authoritative.
+  const is_operational =
+    e.business_status === "CLOSED_PERMANENTLY" ? "closed_permanently" :
+    e.business_status === "CLOSED_TEMPORARILY" ? "closed_temporarily" :
+    e.business_status === "OPERATIONAL" ? "operational" :
+    p.is_operational;
+  const firstPhoto = e.photo_names?.[0];
+  return {
+    ...p,
+    is_operational,
+    // If Google gave us hours, we consider hours verified.
+    hours_verified: e.has_hours ? true : p.hours_verified,
+    is_verified: e.business_status === "OPERATIONAL" ? true : p.is_verified,
+    google_photo_url: firstPhoto ? `/api/place-photo?name=${encodeURIComponent(firstPhoto)}&w=800` : undefined,
+    google_rating: e.rating,
+    google_rating_count: e.user_rating_count,
+    google_hours: e.weekday_hours,
+    google_verified: Boolean(e.business_status && e.business_status !== "UNKNOWN"),
+  };
+}
 
 export type PlaceDetail = PlaceCardData & {
   category_name: string;
@@ -18,10 +67,11 @@ export type PlaceDetail = PlaceCardData & {
 };
 
 export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
+  const enriched = applyEnrichment(p);
   return {
-    ...p,
-    open_status: getOpenStatus(p.hours, { verified: p.hours_verified ?? false }, now),
-    distance_m: origin ? haversineMeters(origin, p.geom) : undefined,
+    ...enriched,
+    open_status: getOpenStatus(enriched.hours, { verified: enriched.hours_verified ?? false }, now),
+    distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
   };
 }
 

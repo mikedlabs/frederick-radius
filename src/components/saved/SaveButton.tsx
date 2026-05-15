@@ -2,6 +2,7 @@
 
 import { useIsSaved, useToggleSave, useMounted } from "@/hooks/useSaved";
 import { Bookmark } from "lucide-react";
+import { haptic } from "@/lib/haptics";
 
 export default function SaveButton({
   refType,
@@ -36,6 +37,7 @@ export default function SaveButton({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        haptic(isSaved ? "light" : "medium");
         toggle();
       }}
       aria-pressed={isSaved}

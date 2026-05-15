@@ -1,8 +1,17 @@
-import { EVENTS, EVENT_BY_SLUG, type Event } from "@/data/events";
+import { EVENTS as RAW_EVENTS, EVENT_BY_SLUG, type Event } from "@/data/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { isKnownClosed } from "@/lib/integrations/closures";
+
+/**
+ * Systemic guard: never surface an event whose venue is a known-closed
+ * business (VOLT, Idiom, etc.). Seed events go stale when a venue shuts;
+ * filtering at the source means every loader function is protected without
+ * having to remember the filter in each one.
+ */
+const EVENTS = RAW_EVENTS.filter((e) => !isKnownClosed(e.venue_name));
 
 export type EventWithMeta = Event & {
   distance_m?: number;
@@ -27,6 +36,58 @@ export function getEventBySlug(slug: string): (EventWithMeta & { venue_place_nam
     ...decorate(e),
     venue_place_name: venue?.name,
   };
+}
+
+/**
+ * Stable identity for a recurring series. We derive it from the part of
+ * the title before the first " · " / " — " separator (so "Alive @ Five ·
+ * The National Bohemians" and "Alive @ Five — Opening Night · 24K Event
+ * Band" both collapse to "alive @ five") plus the venue. Non-recurring
+ * one-offs get a unique key (their own slug) so they never group.
+ */
+export function seriesKey(e: Event): string {
+  if (!e.is_recurring) return `__one_off__${e.slug}`;
+  const base = e.title.split(/\s+[·—–-]\s+/)[0].trim().toLowerCase();
+  return `${base}@@${(e.venue_name || "").toLowerCase()}`;
+}
+
+/** The distinguishing tail of a series title, e.g. "The National Bohemians". */
+export function seriesOccurrenceLabel(e: Event): string | null {
+  const parts = e.title.split(/\s+[·—–-]\s+/);
+  return parts.length > 1 ? parts[parts.length - 1].trim() : null;
+}
+
+/**
+ * All OTHER upcoming dates in the same recurring series as `slug`,
+ * chronologically. Empty for one-off events.
+ */
+export function getEventSeries(slug: string, now: Date = new Date()): EventWithMeta[] {
+  const e = EVENT_BY_SLUG[slug];
+  if (!e || !e.is_recurring) return [];
+  const key = seriesKey(e);
+  return EVENTS
+    .filter(
+      (x) =>
+        x.slug !== slug &&
+        seriesKey(x) === key &&
+        new Date(x.ends_at) >= now
+    )
+    .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
+    .map((x) => decorate(x));
+}
+
+/** All events on a given calendar day (local America/New_York). */
+export function eventsOnDay(day: Date): EventWithMeta[] {
+  const y = day.getFullYear();
+  const m = day.getMonth();
+  const d = day.getDate();
+  return EVENTS
+    .filter((e) => {
+      const s = new Date(e.starts_at);
+      return s.getFullYear() === y && s.getMonth() === m && s.getDate() === d;
+    })
+    .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
+    .map((e) => decorate(e));
 }
 
 export function eventsLive(now: Date = new Date()): EventWithMeta[] {

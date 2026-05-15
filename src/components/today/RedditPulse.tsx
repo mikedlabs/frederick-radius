@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MessageSquare, ArrowUpRight, Flame } from "lucide-react";
+import { ArrowUpRight, Flame } from "lucide-react";
 import { getFrederickRedditPulse, type RedditPost } from "@/lib/integrations/reddit";
 
 const CATEGORY_STYLE: Record<RedditPost["category"], { label: string; color: string }> = {
@@ -29,7 +29,7 @@ export default async function RedditPulse() {
     <section
       className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
       style={{ borderColor: "var(--app-border)" }}
-      aria-label="What Frederick is talking about on Reddit"
+      aria-label="What Frederick is talking about on Reddit (r/FrederickMD)"
     >
       <header className="flex items-center justify-between gap-2 border-b px-4 py-2.5"
               style={{ borderColor: "var(--app-border)" }}>
@@ -40,13 +40,13 @@ export default async function RedditPulse() {
           </p>
         </div>
         <Link
-          href="https://www.reddit.com/r/Frederick/top/?t=week"
+          href="https://www.reddit.com/r/FrederickMD/top/?t=week"
           target="_blank"
           rel="noopener noreferrer"
           className="text-[11px] font-medium"
           style={{ color: "var(--app-ink-3)" }}
         >
-          r/Frederick →
+          r/FrederickMD →
         </Link>
       </header>
       <ul>
@@ -77,11 +77,7 @@ export default async function RedditPulse() {
                     </p>
                   )}
                   <p className="mt-1 flex items-center gap-2 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-                    <span>↑ {p.score}</span>
-                    <span className="inline-flex items-center gap-0.5">
-                      <MessageSquare className="h-2.5 w-2.5" aria-hidden /> {p.num_comments}
-                    </span>
-                    <span>· {ageString(p.created_at)} ago</span>
+                    <span>{ageString(p.created_at)} ago</span>
                     <span>· u/{p.author}</span>
                     {p.flair && <span>· {p.flair}</span>}
                   </p>
@@ -96,7 +92,7 @@ export default async function RedditPulse() {
         className="border-t px-4 py-2 text-[10px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
-        Surfaced from r/Frederick · top posts this week, filtered for noise · refreshed every 15 min · not moderated by us
+        Surfaced from r/FrederickMD · top posts this week, filtered for noise · refreshed every 15 min · not moderated by us
       </footer>
     </section>
   );

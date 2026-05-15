@@ -1,0 +1,87 @@
+[
+  {
+    "municipality": "Frederick",
+    "domain": "www.cityoffrederickmd.gov",
+    "enabled": true,
+    "catids": [14, 23, 27],
+    "category_map": {
+      "14": "City Calendar",
+      "23": "Parks & Recreation",
+      "27": "Events Around the City"
+    }
+  },
+  {
+    "municipality": "Frederick County",
+    "domain": "www.frederickcountymd.gov",
+    "enabled": true,
+    "catids": [25, 50, 64, 71, 73, 74, 77, 80, 81, 82, 83, 87, 88, 90, 94],
+    "category_map": {
+      "25": "County Calendar",
+      "50": "Parks & Recreation",
+      "64": "Senior Services",
+      "71": "Library & Programs",
+      "73": "Health & Human Services",
+      "74": "Workforce Services",
+      "77": "Public Meetings",
+      "80": "Sustainability",
+      "81": "Recreation Programs",
+      "82": "Animal Control",
+      "83": "Aging Services",
+      "87": "Veterans",
+      "88": "Emergency Management",
+      "90": "Economic Development",
+      "94": "Tourism"
+    }
+  },
+  {
+    "municipality": "Thurmont",
+    "domain": "www.thurmont.com",
+    "enabled": true,
+    "catids": [14, 39],
+    "category_map": {
+      "14": "Town Calendar",
+      "39": "Town Events"
+    }
+  },
+  {
+    "municipality": "Mount Airy",
+    "domain": "www.mountairymd.gov",
+    "enabled": true,
+    "catids": [22, 24, 25, 26, 28, 30, 32, 33, 34, 35, 37, 41],
+    "category_map": {
+      "22": "Town Calendar",
+      "24": "Parks & Recreation",
+      "25": "Council & Meetings",
+      "26": "Community Events",
+      "28": "Main Street",
+      "30": "Public Works",
+      "32": "Recreation Programs",
+      "33": "Special Events",
+      "34": "Farmers Market",
+      "35": "Senior Programs",
+      "37": "Holiday Events",
+      "41": "Other"
+    }
+  },
+  {
+    "municipality": "Walkersville",
+    "domain": "www.walkersvillemd.gov",
+    "enabled": true,
+    "catids": [22, 23, 24, 25, 26],
+    "category_map": {
+      "22": "Town Calendar",
+      "23": "Burgess & Commissioners",
+      "24": "Parks & Recreation",
+      "25": "Community Events",
+      "26": "Town Meetings"
+    }
+  },
+  { "municipality": "Brunswick", "domain": "www.brunswickmd.gov", "enabled": false, "catids": [], "category_map": {}, "note": "Off CivicEngage (302s to a different CMS) — needs custom scraper, future worker repo" },
+  { "municipality": "Middletown", "domain": "www.middletown.md.us", "enabled": false, "catids": [], "category_map": {}, "note": "No CivicEngage feed found at discovery" },
+  { "municipality": "Myersville", "domain": "www.myersvillemd.gov", "enabled": false, "catids": [], "category_map": {}, "note": "Unreachable at discovery — needs retry/circuit-breaker in worker repo" },
+  { "municipality": "Emmitsburg", "domain": "www.emmitsburgmd.gov", "enabled": false, "catids": [], "category_map": {}, "note": "No CivicEngage feed found at discovery" },
+  { "municipality": "New Market", "domain": "www.newmarketmd.gov", "enabled": false, "catids": [], "category_map": {}, "note": "No CivicEngage feed found at discovery" },
+  { "municipality": "Burkittsville", "domain": "www.burkittsville-md.gov", "enabled": false, "catids": [], "category_map": {}, "note": "No CivicEngage feed found at discovery" },
+  { "municipality": "Woodsboro", "domain": "www.woodsboro.org", "enabled": false, "catids": [], "category_map": {}, "note": "No CivicEngage feed found at discovery" },
+  { "municipality": "Rosemont", "domain": "www.rosemontmd.org", "enabled": false, "catids": [], "category_map": {}, "note": "No CivicEngage feed found at discovery" }
+]

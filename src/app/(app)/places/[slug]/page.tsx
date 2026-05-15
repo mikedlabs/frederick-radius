@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Phone, Globe, MapPin, Navigation, Share2, Apple, AlertCircle, Utensils, ShoppingBag, Car, Instagram, ExternalLink } from "lucide-react";
+import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Utensils, ShoppingBag, Car, Instagram, ExternalLink } from "lucide-react";
+import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
 import { formatDistance } from "@/lib/geo";
@@ -291,13 +292,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           >
             Report incorrect info
           </a>
-          <button
-            className="inline-flex items-center gap-1"
-            style={{ color: "var(--app-ink-3)" }}
-            type="button"
-          >
-            <Share2 className="h-3.5 w-3.5" aria-hidden /> Share
-          </button>
+          <ShareButton
+            title={place.name}
+            text={place.short_blurb}
+            url={`/places/${place.slug}`}
+          />
         </div>
       </footer>
 

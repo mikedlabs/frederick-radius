@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import { PLACES } from "@/data/places";
-import { TOP_CATEGORIES } from "@/data/categories";
-import { decoratePlace } from "@/lib/loaders/places";
-import PlaceCard from "@/components/place/PlaceCard";
 import AppMapClient from "@/components/map/AppMapClient";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Map",
@@ -12,35 +8,19 @@ export const metadata: Metadata = {
 };
 
 export default function MapPage() {
-  const decorated = PLACES.map((p) => decoratePlace(p));
-
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <header className="space-y-1">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {PLACES.length} curated · plus every OSM business in the county
+          {PLACES.length.toLocaleString()} curated · plus every OSM business in the county
         </p>
         <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Map
+          Explore the map
         </h1>
+        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+          Pan and zoom to anywhere in the county — everything in view lists below. Filter by category up top.
+        </p>
       </header>
-
-      <div className="-mx-4 overflow-x-auto px-4 scrollbar-hide">
-        <ul className="flex min-w-max gap-1.5">
-          {TOP_CATEGORIES.map((c) => (
-            <li key={c.slug}>
-              <Link
-                href={`/category/${c.slug}`}
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-              >
-                <span style={{ color: c.color }}>●</span>
-                {c.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </div>
 
       <AppMapClient places={PLACES} />
 
@@ -51,18 +31,6 @@ export default function MapPage() {
         </a>{" "}
         · refreshed daily.
       </p>
-
-      <section className="space-y-2 pt-2">
-        <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          Editorial picks
-        </h2>
-        <ul className="space-y-2">
-          {decorated.slice(0, 15).map((p) => (
-            <li key={p.slug}><PlaceCard place={p} /></li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }
-

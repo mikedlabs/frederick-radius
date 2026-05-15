@@ -5,12 +5,28 @@ import { CATEGORIES } from "@/data/categories";
 import { TAGS } from "@/data/tags";
 import { PLACES } from "@/data/places";
 import { EVENTS } from "@/data/events";
+import PLACES_DFP from "@/data/places-dfp.json" with { type: "json" };
+
+// Curated places get priority for slug conflicts; DFP fills the long tail.
+// We dedupe by checking whether a DFP slug starts with the same name token
+// as any curated slug (rough heuristic — better is fine-grained on commit).
+const CURATED_SLUGS = new Set(PLACES.map((p) => p.slug));
+const DFP_PLACES = (PLACES_DFP as Array<{
+  slug: string; name: string; category: string; subcategories?: string[];
+  short_blurb: string; address: string; city: string; state: string; postal_code: string;
+  municipality: string; geom: { lng: number; lat: number };
+  website?: string; phone?: string; instagram?: string;
+  price_band?: number; google_place_id?: string;
+  is_verified: boolean; hours_verified: boolean; is_operational: string;
+  feature_score: number; source: string; updated_at: string;
+}>).filter((p) => !CURATED_SLUGS.has(p.slug));
 
 export type SeedSummary = {
   municipalities: number;
   categories: number;
   tags: number;
   places: number;
+  places_dfp: number;
   events: number;
   sources: number;
   duration_ms: number;
@@ -125,6 +141,38 @@ export async function runSeed(): Promise<SeedSummary> {
     });
   }
 
+  // Bulk-insert DFP scraped places — much larger volume, simpler payload.
+  // Insert in chunks of 100 to keep query size manageable for the pooler.
+  const DFP_CHUNK = 100;
+  for (let i = 0; i < DFP_PLACES.length; i += DFP_CHUNK) {
+    const chunk = DFP_PLACES.slice(i, i + DFP_CHUNK);
+    const rows = chunk.map((p) => ({
+      slug: p.slug,
+      name: p.name,
+      category_slug: p.category,
+      subcategory_slugs: p.subcategories && p.subcategories.length > 0 ? p.subcategories : null,
+      short_blurb: p.short_blurb,
+      address: p.address,
+      city: p.city,
+      state: "MD",
+      postal_code: p.postal_code,
+      municipality_slug: p.municipality,
+      lng: p.geom.lng,
+      lat: p.geom.lat,
+      phone: p.phone ?? null,
+      website: p.website ?? null,
+      price_band: p.price_band ?? null,
+      is_verified: false,
+      feature_score: p.feature_score,
+      source: "manual" as const,
+      status: "active" as const,
+      updated_at: new Date(p.updated_at),
+    }));
+    await db.insert(schema.places).values(rows).onConflictDoNothing({
+      target: schema.places.slug,
+    });
+  }
+
   for (const e of EVENTS) {
     await db.insert(schema.events).values({
       slug: e.slug,
@@ -181,6 +229,7 @@ export async function runSeed(): Promise<SeedSummary> {
     categories: CATEGORIES.length,
     tags: TAGS.length,
     places: PLACES.length,
+    places_dfp: DFP_PLACES.length,
     events: EVENTS.length,
     sources: DATA_SOURCES.length,
     duration_ms: Date.now() - t0,

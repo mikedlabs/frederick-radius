@@ -36,6 +36,77 @@ const at = (offsetDays: number, hour: number, minute = 0) => {
   return d;
 };
 
+/**
+ * Alive @ Five 2026 full lineup — May 7 through Sept 24, 21 Thursdays.
+ * Hosted by Downtown Frederick Partnership at the Carroll Creek Amphitheater.
+ * $5 cash admission, 21+ only, $7 drink tokens.
+ *
+ * Lineup verified via maximumcountry.com (Maximum Country 93.5 FM, the series'
+ * media partner). Cross-referenced with downtownfrederick.org/aliveatfive.
+ */
+function aliveAtFiveSeason(): Event[] {
+  const LINEUP: Array<{ date: string; offset: number; band: string }> = [
+    { date: "2026-05-07", offset: -7,  band: "24K Event Band" },
+    { date: "2026-05-14", offset: 0,   band: "The National Bohemians" },
+    { date: "2026-05-21", offset: 7,   band: "Glamour Kitty" },
+    { date: "2026-05-28", offset: 14,  band: "The Learned Doctors" },
+    { date: "2026-06-04", offset: 21,  band: "Marshal Fuzz" },
+    { date: "2026-06-11", offset: 28,  band: "Mack Berry Band" },
+    { date: "2026-06-18", offset: 35,  band: "Ahzay & The Squad" },
+    { date: "2026-06-25", offset: 42,  band: "Captain Electric" },
+    { date: "2026-07-02", offset: 49,  band: "Freddie Long Band" },
+    { date: "2026-07-09", offset: 56,  band: "Ben Flournoy" },
+    { date: "2026-07-16", offset: 63,  band: "La Unica" },
+    { date: "2026-07-23", offset: 70,  band: "Stitch Early" },
+    { date: "2026-07-30", offset: 77,  band: "Reverend Smackmaster" },
+    { date: "2026-08-06", offset: 84,  band: "Ballistic Berry" },
+    { date: "2026-08-13", offset: 91,  band: "Conor & the Wild Hunt" },
+    { date: "2026-08-20", offset: 98,  band: "My Chemical Bromance" },
+    { date: "2026-08-27", offset: 105, band: "Kate Cosentino" },
+    { date: "2026-09-03", offset: 112, band: "Pebble to Pearl" },
+    { date: "2026-09-10", offset: 119, band: "Andy Shaw Band" },
+    { date: "2026-09-17", offset: 126, band: "Costas Colectivo" },
+    { date: "2026-09-24", offset: 133, band: "Special Delivery Band" },
+  ];
+
+  return LINEUP.map(({ date, offset, band }, idx) => {
+    const isOpener = idx === 0;
+    const isFinale = idx === LINEUP.length - 1;
+    const title = isOpener
+      ? `Alive @ Five — Opening Night · ${band}`
+      : isFinale
+      ? `Alive @ Five — Season Finale · ${band}`
+      : `Alive @ Five · ${band}`;
+    return {
+      slug: `alive-at-five-${date}`,
+      title,
+      description:
+        `${band} headlines Alive @ Five at the Carroll Creek Amphitheater. ` +
+        `Downtown Frederick's outdoor happy hour every Thursday, May–September, 5–8pm. ` +
+        `$5 cash admission (21+); $7 drink tokens get you craft beer or wine from local breweries and distilleries. ` +
+        `Food vendors on site. Hosted by Downtown Frederick Partnership.`,
+      starts_at: iso(at(offset, 17, 0)),
+      ends_at: iso(at(offset, 20, 0)),
+      timezone: "America/New_York",
+      is_recurring: true,
+      recurrence_text: "Every Thursday, May 7 – September 24, 2026",
+      venue_place_slug: "carroll-creek-linear-park-frederick",
+      venue_name: "Carroll Creek Amphitheater",
+      address: "Carroll Creek Park, Frederick, MD 21701",
+      geom: { lng: -77.4109, lat: 39.4137 },
+      municipality: "frederick",
+      category: "music",
+      audience: ["adults", "groups"],
+      is_free: false,
+      price_text: "$5 admission · $7 drink tokens · 21+",
+      ticket_url: "https://downtownfrederick.org/aliveatfive/",
+      organizer: "Downtown Frederick Partnership",
+      source: "dfp",
+      is_verified: true,
+    };
+  });
+}
+
 export const EVENTS: Event[] = [
   {
     slug: "first-friday-may-2026-frederick",
@@ -272,27 +343,6 @@ export const EVENTS: Event[] = [
     is_verified: true,
   },
   {
-    slug: "idiom-trivia-night-2026-05-14",
-    title: "Trivia Night at Idiom Brewing",
-    description:
-      "Free pub trivia, six rounds, food truck out back, gift-card prizes for the top three teams.",
-    starts_at: iso(at(0, 19, 0)),
-    ends_at: iso(at(0, 22, 0)),
-    timezone: "America/New_York",
-    is_recurring: true,
-    recurrence_text: "Every Thursday",
-    venue_place_slug: "idiom-brewing-frederick",
-    venue_name: "Idiom Brewing Co.",
-    address: "340 E Patrick St, Frederick, MD 21701",
-    geom: { lng: -77.4044, lat: 39.4137 },
-    municipality: "frederick",
-    category: "bar",
-    audience: ["adults", "groups"],
-    is_free: true,
-    source: "manual",
-    is_verified: true,
-  },
-  {
     slug: "rose-hill-storytime-2026-05-15",
     title: "Story Time at C. Burr Artz",
     description:
@@ -310,6 +360,199 @@ export const EVENTS: Event[] = [
     category: "family",
     audience: ["kids-0-5"],
     is_free: true,
+    source: "manual",
+    is_verified: true,
+  },
+
+  // ─── Tentpole recurring & annual Frederick events ──────────────────────────
+
+  // Alive @ Five 2026 full lineup — May 7 through Sept 24, 21 weeks.
+  // $5 cash admission, 21+ only, $7 drink tokens. Carroll Creek Amphitheater.
+  // Hosted by Downtown Frederick Partnership.
+  // Lineup verified May 2026 via maximumcountry.com.
+  ...aliveAtFiveSeason(),
+  {
+    slug: "fourth-friday-may-2026-frederick",
+    title: "4th Friday Art Walk — Downtown",
+    description:
+      "Late-month gallery + studio walk through Downtown Frederick. Open studios at the Delaplaine, Sky Stage performances, shops open late on N Market and East Patrick.",
+    starts_at: iso(at(8, 17, 0)),
+    ends_at: iso(at(8, 21, 0)),
+    timezone: "America/New_York",
+    is_recurring: true,
+    recurrence_text: "Last Friday of every month",
+    venue_name: "Downtown Frederick",
+    address: "N Market St, Frederick, MD 21701",
+    geom: { lng: -77.4109, lat: 39.4165 },
+    municipality: "frederick",
+    category: "arts",
+    audience: ["adults", "groups", "kids-6-12"],
+    is_free: true,
+    organizer: "Downtown Frederick Partnership",
+    source: "dfp",
+    is_verified: true,
+  },
+  {
+    slug: "frederick-festival-of-the-arts-2026",
+    title: "Frederick Festival of the Arts",
+    description:
+      "Annual juried fine art festival along Carroll Creek. 100+ artists from across the country, live music, food, hands-on demos. Saturday and Sunday, 10am–6pm.",
+    starts_at: iso(at(23, 10, 0)),
+    ends_at: iso(at(24, 18, 0)),
+    timezone: "America/New_York",
+    venue_place_slug: "carroll-creek-linear-park-frederick",
+    venue_name: "Carroll Creek Linear Park",
+    address: "Carroll Creek Linear Park, Frederick, MD 21701",
+    geom: { lng: -77.4109, lat: 39.4137 },
+    municipality: "frederick",
+    category: "arts",
+    audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
+    is_free: true,
+    organizer: "Frederick Arts Council",
+    source: "manual",
+    is_verified: true,
+  },
+  {
+    slug: "baker-park-summer-concert-2026-06-07",
+    title: "Sunday at the Bandshell — Summer Concert Series",
+    description:
+      "Free Sunday-evening concerts at the Joseph D. Baker Park bandshell. Curated by the Frederick Concert Band. Bring a blanket, picnic dinner.",
+    starts_at: iso(at(24, 19, 0)),
+    ends_at: iso(at(24, 21, 0)),
+    timezone: "America/New_York",
+    is_recurring: true,
+    recurrence_text: "Sunday evenings, June through August",
+    venue_place_slug: "baker-park-frederick",
+    venue_name: "Joseph D. Baker Park Bandshell",
+    address: "121 N Bentz St, Frederick, MD 21701",
+    geom: { lng: -77.4194, lat: 39.4188 },
+    municipality: "frederick",
+    category: "music",
+    audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
+    is_free: true,
+    organizer: "City of Frederick",
+    source: "celebrate",
+    is_verified: true,
+  },
+  {
+    slug: "maryland-wine-festival-linganore-2026",
+    title: "Maryland Wine Festival",
+    description:
+      "Maryland's largest wine festival, 40+ wineries pouring over a weekend in Mount Airy. Live music, food vendors, artisan market. 21+; tasting cup with admission.",
+    starts_at: iso(at(110, 11, 0)),
+    ends_at: iso(at(111, 18, 0)),
+    timezone: "America/New_York",
+    venue_place_slug: "linganore-winecellars-mount-airy",
+    venue_name: "Linganore Winecellars",
+    address: "13601 Glissans Mill Rd, Mount Airy, MD 21771",
+    geom: { lng: -77.1697, lat: 39.4061 },
+    municipality: "mount-airy",
+    category: "food",
+    audience: ["adults", "groups"],
+    is_free: false,
+    price_text: "$45 advance / $55 at the gate",
+    organizer: "Maryland Wineries Association",
+    source: "manual",
+    is_verified: true,
+  },
+  {
+    slug: "catoctin-colorfest-thurmont-2026",
+    title: "Catoctin Colorfest",
+    description:
+      "Massive juried craft and art show in Thurmont, drawing 100,000+ visitors over the second weekend in October. 350+ vendors at Community Park, plus the Town Crafts Show, food and live music.",
+    starts_at: iso(at(146, 9, 0)),
+    ends_at: iso(at(147, 17, 0)),
+    timezone: "America/New_York",
+    venue_name: "Thurmont Community Park",
+    address: "615 E Main St, Thurmont, MD 21788",
+    geom: { lng: -77.4081, lat: 39.6244 },
+    municipality: "thurmont",
+    category: "arts",
+    audience: ["adults", "groups", "kids-6-12"],
+    is_free: true,
+    organizer: "Catoctin Colorfest, Inc.",
+    source: "manual",
+    is_verified: true,
+  },
+  {
+    slug: "brunswick-railroad-days-fall-2026",
+    title: "Brunswick Heritage Days",
+    description:
+      "Annual heritage festival celebrating Brunswick's railroad and canal history. Live music, model trains, C&O Canal walks, kids' rides, food vendors.",
+    starts_at: iso(at(106, 10, 0)),
+    ends_at: iso(at(107, 18, 0)),
+    timezone: "America/New_York",
+    venue_name: "Brunswick Square Park",
+    address: "100 W Potomac St, Brunswick, MD 21716",
+    geom: { lng: -77.6253, lat: 39.3148 },
+    municipality: "brunswick",
+    category: "family",
+    audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
+    is_free: true,
+    organizer: "Brunswick Main Street",
+    source: "manual",
+    is_verified: true,
+  },
+  {
+    slug: "fireworks-baker-park-2026-07-04",
+    title: "Independence Day Fireworks at Baker Park",
+    description:
+      "Frederick's annual 4th of July fireworks display launched over Culler Lake. Pre-show entertainment and food trucks start at 6pm; fireworks at dusk.",
+    starts_at: iso(at(51, 18, 0)),
+    ends_at: iso(at(51, 22, 0)),
+    timezone: "America/New_York",
+    venue_place_slug: "baker-park-frederick",
+    venue_name: "Joseph D. Baker Park",
+    address: "121 N Bentz St, Frederick, MD 21701",
+    geom: { lng: -77.4194, lat: 39.4188 },
+    municipality: "frederick",
+    category: "family",
+    audience: ["adults", "groups", "kids-6-12", "kids-0-5"],
+    is_free: true,
+    organizer: "Celebrate Frederick",
+    source: "celebrate",
+    is_verified: true,
+  },
+  {
+    slug: "weinberg-cinema-series-2026-summer",
+    title: "Classic Cinema at the Weinberg",
+    description:
+      "The Weinberg's classic-movie series at $5/seat — big-screen, big-band orchestra, Vaudeville-era venue. June lineup includes North by Northwest, Casablanca, and Rear Window.",
+    starts_at: iso(at(30, 19, 30)),
+    ends_at: iso(at(30, 22, 0)),
+    timezone: "America/New_York",
+    is_recurring: true,
+    recurrence_text: "Selected Saturday evenings",
+    venue_place_slug: "weinberg-center-for-the-arts-frederick",
+    venue_name: "Weinberg Center for the Arts",
+    address: "20 W Patrick St, Frederick, MD 21701",
+    geom: { lng: -77.4128, lat: 39.4147 },
+    municipality: "frederick",
+    category: "theater",
+    audience: ["adults", "groups"],
+    is_free: false,
+    price_text: "$5 per seat",
+    source: "manual",
+    is_verified: true,
+  },
+  {
+    slug: "sky-stage-summer-residency-2026",
+    title: "Sky Stage — Open Mic Night",
+    description:
+      "Open mic in the ruins-turned-art-installation at Sky Stage downtown. Sign up at 6:30, performances start at 7. Bring an instrument or read original work.",
+    starts_at: iso(at(7, 18, 30)),
+    ends_at: iso(at(7, 21, 30)),
+    timezone: "America/New_York",
+    is_recurring: true,
+    recurrence_text: "Weekly through October",
+    venue_name: "Sky Stage",
+    address: "59 S Carroll St, Frederick, MD 21701",
+    geom: { lng: -77.4118, lat: 39.4143 },
+    municipality: "frederick",
+    category: "music",
+    audience: ["adults", "groups"],
+    is_free: true,
+    organizer: "Frederick Arts Council",
     source: "manual",
     is_verified: true,
   },

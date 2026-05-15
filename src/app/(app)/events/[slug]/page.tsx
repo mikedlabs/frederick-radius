@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Calendar, MapPin, Navigation, Ticket, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Repeat } from "lucide-react";
 import { EVENTS } from "@/data/events";
-import { getEventBySlug, formatEventWhen } from "@/lib/loaders/events";
+import { getEventBySlug, formatEventWhen, getEventSeries, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
 import { decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
 import { PLACES } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -79,6 +79,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   };
 
   const when = formatEventWhen(event);
+  const series = getEventSeries(slug);
 
   return (
     <div className="space-y-6">
@@ -194,6 +195,58 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <div />
         )}
       </div>
+
+      {series.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <Repeat className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+              More dates in this series
+            </h2>
+            <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>{series.length} more</span>
+          </div>
+          {event.recurrence_text && (
+            <p className="-mt-1 text-xs" style={{ color: "var(--app-ink-3)" }}>{event.recurrence_text}</p>
+          )}
+          <ul className="space-y-1.5">
+            {series.slice(0, 12).map((s) => {
+              const db = eventDateBlock(s);
+              const label = seriesOccurrenceLabel(s);
+              return (
+                <li key={s.slug}>
+                  <Link
+                    href={`/events/${s.slug}`}
+                    className="flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition hover:bg-[var(--app-bg-sunken)]"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <div
+                      className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
+                      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+                      aria-hidden
+                    >
+                      <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--app-brand)" }}>{db.month}</span>
+                      <span className="font-serif text-base font-semibold leading-none" style={{ color: "var(--app-ink)" }}>{db.day}</span>
+                      <span className="text-[9px]" style={{ color: "var(--app-ink-3)" }}>{db.weekday}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold" style={{ color: "var(--app-ink)" }}>
+                        {label ?? s.title}
+                      </p>
+                      <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>{db.time} · {s.venue_name}</p>
+                    </div>
+                    <ExternalLink className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {series.length > 12 && (
+            <Link href="/events" className="inline-block text-xs font-medium" style={{ color: "var(--app-brand)" }}>
+              See all {series.length + 1} dates in Events →
+            </Link>
+          )}
+        </section>
+      )}
 
       {nearbyFood.length > 0 && (
         <section className="space-y-3">

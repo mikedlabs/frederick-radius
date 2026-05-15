@@ -198,3 +198,151 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────
+ * Sky hero — animated time-of-day gradient.
+ * Driven by --sky-top / --sky-mid / --sky-bottom set inline by SkyHero.
+ * Slow noise drift creates an atmospheric, alive feel without distraction.
+ * ───────────────────────────────────────────────────── */
+.sky-hero {
+  position: relative;
+  background:
+    linear-gradient(
+      180deg,
+      var(--sky-top, #FFD8A8) 0%,
+      var(--sky-mid, #F5A6A0) 55%,
+      var(--sky-bottom, #C97B8A) 100%
+    );
+  overflow: hidden;
+  isolation: isolate;
+}
+.sky-hero::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10%;
+  background:
+    radial-gradient(ellipse 60% 40% at 30% 20%, rgba(255,255,255,0.32), transparent 60%),
+    radial-gradient(ellipse 50% 30% at 80% 30%, rgba(255,255,255,0.22), transparent 60%);
+  filter: blur(20px);
+  opacity: 0.7;
+  animation: sky-drift 60s ease-in-out infinite alternate;
+  z-index: 0;
+}
+.sky-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, var(--app-bg) 100%);
+  z-index: 1;
+}
+.sky-hero > * { position: relative; z-index: 2; }
+@keyframes sky-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(-3%, 1%, 0) scale(1.05); }
+}
+
+/* ─────────────────────────────────────────────────────
+ * Shimmer skeleton — used by loading states.
+ * ───────────────────────────────────────────────────── */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--app-bg-sunken);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.55) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  animation: shimmer-sweep 1.6s ease-in-out infinite;
+}
+@keyframes shimmer-sweep {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-color-scheme: dark) {
+  .shimmer::after {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 50%, transparent);
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+ * Live dot — standardized "happening now" pulse.
+ * ───────────────────────────────────────────────────── */
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.live-dot::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.35;
+  animation: live-pulse 1.8s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@keyframes live-pulse {
+  0%   { transform: scale(0.6); opacity: 0.55; }
+  70%  { transform: scale(2.2); opacity: 0;    }
+  100% { transform: scale(2.2); opacity: 0;    }
+}
+
+/* ─────────────────────────────────────────────────────
+ * Entry fade-up — uses @starting-style for graceful entry.
+ * Content is ALWAYS visible by default; only the *transition into*
+ * being rendered for the first time is animated. Falls back cleanly
+ * in browsers that don't support @starting-style (Safari < 17.5).
+ * ───────────────────────────────────────────────────── */
+.fade-up {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 600ms var(--app-ease-out), transform 600ms var(--app-ease-out);
+}
+@starting-style {
+  .fade-up {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ─────────────────────────────────────────────────────
+ * Floating action button — bottom-right, mobile only.
+ * Subtle scale-breath so it draws the eye without being noisy.
+ * ───────────────────────────────────────────────────── */
+.fab-breath {
+  animation: fab-breath 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@keyframes fab-breath {
+  0%, 100% { box-shadow: 0 8px 24px rgba(196, 69, 28, 0.35), 0 0 0 0 rgba(196, 69, 28, 0.4); }
+  50%      { box-shadow: 0 8px 24px rgba(196, 69, 28, 0.35), 0 0 0 14px rgba(196, 69, 28, 0); }
+}
+
+/* ─────────────────────────────────────────────────────
+ * View Transitions API — smooth cross-page navigation.
+ * Supported in Chrome/Edge/Safari. No-op elsewhere.
+ * ───────────────────────────────────────────────────── */
+@view-transition { navigation: auto; }
+::view-transition-old(root) {
+  animation: vt-fade-out 200ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+::view-transition-new(root) {
+  animation: vt-fade-in 300ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes vt-fade-out { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes vt-fade-in  { from { opacity: 0; transform: translateY(6px); } }
+
+/* Image card hover lift */
+.hover-lift {
+  transition: transform 220ms var(--app-ease-out), box-shadow 220ms var(--app-ease-out);
+}
+.hover-lift:hover { transform: translateY(-2px); box-shadow: var(--app-shadow-3); }

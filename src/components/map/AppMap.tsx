@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState, useEffect } from "react";
 import Map, {
-  Marker,
   Popup,
   NavigationControl,
   GeolocateControl,
@@ -18,6 +17,7 @@ import type { Place } from "@/data/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import { applyFrederickPalette } from "./applyFrederickPalette";
 
 type Props = {
   places: Place[];
@@ -25,6 +25,9 @@ type Props = {
   height?: string;
   initialCenter?: [number, number];
   initialZoom?: number;
+  /** Fires on map idle with curated places currently in the viewport,
+   *  nearest-to-center first — powers the synced results list. */
+  onPlacesInView?: (slugs: string[]) => void;
 };
 
 const OSM_CACHE_KEY = "fr:osm-frederick:v1";
@@ -98,9 +101,10 @@ type Selected = SelectedOsm | SelectedPlace | null;
 export default function AppMap({
   places,
   osmPlaces: osmFromProps,
-  height = "70vh",
+  height = "78vh",
   initialCenter = FREDERICK,
-  initialZoom = 11.5,
+  initialZoom = 14,
+  onPlacesInView,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const [selected, setSelected] = useState<Selected>(null);
@@ -150,6 +154,31 @@ export default function AppMap({
     });
   }, [places, activeCats]);
 
+  // Emit the curated places inside the current viewport (nearest-center
+  // first) whenever the map settles — drives the synced results list.
+  const emitInView = () => {
+    if (!onPlacesInView || !mapRef.current) return;
+    const map = mapRef.current.getMap();
+    const b = map.getBounds();
+    const c = map.getCenter();
+    const inside = filteredPlaces
+      .filter(
+        (p) =>
+          p.geom.lng >= b.getWest() &&
+          p.geom.lng <= b.getEast() &&
+          p.geom.lat >= b.getSouth() &&
+          p.geom.lat <= b.getNorth()
+      )
+      .map((p) => ({
+        slug: p.slug,
+        d: (p.geom.lng - c.lng) ** 2 + (p.geom.lat - c.lat) ** 2,
+      }))
+      .sort((a, z) => a.d - z.d)
+      .slice(0, 60)
+      .map((x) => x.slug);
+    onPlacesInView(inside);
+  };
+
   const filteredOsmGeoJson = useMemo(() => {
     // Default: only show OSM data we trust (parks/libraries/fire/transit/civic).
     // Commercial businesses (restaurants/shops/bars) only show when user opts in.
@@ -188,25 +217,45 @@ export default function AppMap({
     };
   }, [osmPlaces, activeCats]);
 
-  const municipalityGeoJson = useMemo(() => ({
+  /**
+   * Curated places as a clustered GeoJSON source.
+   * 1,300+ markers rendered individually was the noise — clustering folds
+   * them into circles at low zoom and reveals individual pins at high zoom.
+   */
+  const curatedGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: filteredPlaces.map((p) => ({
+      type: "Feature" as const,
+      properties: {
+        slug: p.slug,
+        name: p.name,
+        category: p.category,
+        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C",
+      },
+      geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
+    })),
+  }), [filteredPlaces]);
+
+  /**
+   * Municipality centroids as label points (no more ugly bbox rectangles).
+   * Just a soft label so users can orient. Real polygons would come from
+   * the County GIS open data layer when we wire it.
+   */
+  const muniLabelsGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
     features: MUNICIPALITIES.map((m) => ({
       type: "Feature" as const,
       properties: { name: m.name, slug: m.slug },
-      geometry: {
-        type: "Polygon" as const,
-        coordinates: [[
-          [m.bbox[0], m.bbox[1]],
-          [m.bbox[2], m.bbox[1]],
-          [m.bbox[2], m.bbox[3]],
-          [m.bbox[0], m.bbox[3]],
-          [m.bbox[0], m.bbox[1]],
-        ]],
-      },
+      geometry: { type: "Point" as const, coordinates: [m.centroid.lng, m.centroid.lat] },
     })),
   }), []);
 
+  // Only auto-fit when the user has actively narrowed to a category.
+  // On initial load (all 1,331 places, county-wide) fitting to everything
+  // zooms way out into one meaningless mega-cluster — instead we open
+  // focused on downtown (the density) and let the user explore.
   useEffect(() => {
+    if (activeCats.size === 0) return; // keep the downtown default view
     if (filteredPlaces.length === 0 || !mapRef.current) return;
     const bounds = filteredPlaces.reduce(
       (b, p) => {
@@ -220,18 +269,21 @@ export default function AppMap({
     );
     mapRef.current.fitBounds(
       [[bounds.min[0], bounds.min[1]], [bounds.max[0], bounds.max[1]]],
-      { padding: 56, maxZoom: 13, duration: 600 },
+      { padding: 56, maxZoom: 15, duration: 600 },
     );
-  }, [filteredPlaces]);
+  }, [filteredPlaces, activeCats]);
 
   const onClick = (e: MapLayerMouseEvent) => {
     const feature = e.features?.[0];
     if (!feature) return;
-    if (feature.layer.id === "clusters") {
-      const map = mapRef.current?.getMap();
-      if (!map) return;
+    const layer = feature.layer.id;
+    const map = mapRef.current?.getMap();
+
+    // Cluster expansion — works for both OSM and curated clusters
+    if ((layer === "clusters" || layer === "curated-clusters") && map) {
       const clusterId = feature.properties?.cluster_id as number | undefined;
-      const source = map.getSource("osm-businesses") as maplibregl.GeoJSONSource | undefined;
+      const sourceId = layer === "clusters" ? "osm-businesses" : "curated-places";
+      const source = map.getSource(sourceId) as maplibregl.GeoJSONSource | undefined;
       if (clusterId !== undefined && source && "getClusterExpansionZoom" in source) {
         (source as unknown as { getClusterExpansionZoom: (id: number, cb: (err: Error | null, zoom: number) => void) => void })
           .getClusterExpansionZoom(clusterId, (err, zoom) => {
@@ -240,7 +292,17 @@ export default function AppMap({
             map.easeTo({ center: coords, zoom });
           });
       }
-    } else if (feature.layer.id === "osm-unclustered") {
+      return;
+    }
+
+    if (layer === "curated-points") {
+      const props = feature.properties as Record<string, string>;
+      const place = places.find((p) => p.slug === props.slug);
+      if (place) setSelected({ _kind: "place", ...place });
+      return;
+    }
+
+    if (layer === "osm-unclustered") {
       const props = feature.properties as Record<string, string>;
       setSelected({
         _kind: "osm",
@@ -383,42 +445,31 @@ export default function AppMap({
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={{ compact: true }}
-          interactiveLayerIds={["clusters", "osm-unclustered"]}
+          interactiveLayerIds={["clusters", "osm-unclustered", "curated-clusters", "curated-points"]}
           onClick={onClick}
+          onLoad={(e) => { applyFrederickPalette(e.target); emitInView(); }}
+          onMoveEnd={emitInView}
           onMouseEnter={() => { /* cursor change handled by interactiveLayerIds */ }}
         >
-          {/* Municipality boundaries */}
-          <Source id="municipalities" type="geojson" data={municipalityGeoJson}>
-            <Layer
-              id="muni-fill"
-              type="fill"
-              paint={{ "fill-color": "#C4451C", "fill-opacity": 0.04 }}
-            />
-            <Layer
-              id="muni-line"
-              type="line"
-              paint={{
-                "line-color": "#C4451C",
-                "line-opacity": 0.35,
-                "line-width": 1,
-                "line-dasharray": [2, 2],
-              }}
-            />
+          {/* Municipality labels — no fake bbox rectangles, just point labels */}
+          <Source id="muni-labels" type="geojson" data={muniLabelsGeoJson}>
             <Layer
               id="muni-label"
               type="symbol"
               minzoom={9}
+              maxzoom={13.5}
               layout={{
                 "text-field": ["get", "name"],
                 "text-size": 11,
-                "text-letter-spacing": 0.08,
+                "text-letter-spacing": 0.1,
                 "text-transform": "uppercase",
                 "text-anchor": "center",
+                "text-allow-overlap": false,
               }}
               paint={{
                 "text-color": "#7A7975",
                 "text-halo-color": "#FAFAF7",
-                "text-halo-width": 1.5,
+                "text-halo-width": 1.8,
               }}
             />
           </Source>
@@ -429,8 +480,8 @@ export default function AppMap({
             type="geojson"
             data={filteredOsmGeoJson}
             cluster
-            clusterRadius={50}
-            clusterMaxZoom={14}
+            clusterRadius={38}
+            clusterMaxZoom={13}
           >
             {/* Cluster circles */}
             <Layer
@@ -481,43 +532,64 @@ export default function AppMap({
             />
           </Source>
 
-          {/* Curated places (editorial picks) — always render on top as big markers */}
-          {filteredPlaces.map((p) => {
-            const color = CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C";
-            return (
-              <Marker
-                key={p.slug}
-                longitude={p.geom.lng}
-                latitude={p.geom.lat}
-                anchor="center"
-                onClick={(e) => {
-                  e.originalEvent.stopPropagation();
-                  setSelected({ _kind: "place", ...p });
-                }}
-              >
-                <button
-                  type="button"
-                  aria-label={p.name}
-                  className="relative grid place-items-center"
-                  style={{ width: 24, height: 24 }}
-                >
-                  <span
-                    style={{
-                      position: "absolute", inset: 0, borderRadius: "9999px",
-                      background: color, opacity: 0.20, transform: "scale(1.7)",
-                    }}
-                  />
-                  <span
-                    style={{
-                      position: "absolute", inset: 4, borderRadius: "9999px",
-                      background: color, border: "2.5px solid #fff",
-                      boxShadow: "0 1.5px 4px rgba(0,0,0,0.3)",
-                    }}
-                  />
-                </button>
-              </Marker>
-            );
-          })}
+          {/*
+           * Curated places — clustered. With 1,300+ entries, individual markers
+           * created visual chaos; clusters keep low-zoom views legible.
+           */}
+          <Source
+            id="curated-places"
+            type="geojson"
+            data={curatedGeoJson}
+            cluster
+            clusterRadius={38}
+            clusterMaxZoom={13}
+          >
+            <Layer
+              id="curated-clusters"
+              type="circle"
+              filter={["has", "point_count"]}
+              paint={{
+                "circle-color": [
+                  "step", ["get", "point_count"],
+                  "#C4451C", 25,
+                  "#A02929", 100,
+                  "#7E1F1F",
+                ],
+                "circle-opacity": 0.92,
+                "circle-radius": [
+                  "step", ["get", "point_count"],
+                  18, 25,
+                  24, 100,
+                  30,
+                ],
+                "circle-stroke-color": "#FAFAF7",
+                "circle-stroke-width": 2.5,
+              }}
+            />
+            <Layer
+              id="curated-cluster-count"
+              type="symbol"
+              filter={["has", "point_count"]}
+              layout={{
+                "text-field": "{point_count_abbreviated}",
+                "text-size": 13,
+                "text-font": ["Noto Sans Regular"],
+              }}
+              paint={{ "text-color": "#fff" }}
+            />
+            <Layer
+              id="curated-points"
+              type="circle"
+              filter={["!", ["has", "point_count"]]}
+              paint={{
+                "circle-color": ["get", "color"],
+                "circle-radius": 7,
+                "circle-stroke-color": "#fff",
+                "circle-stroke-width": 2,
+                "circle-opacity": 0.95,
+              }}
+            />
+          </Source>
 
           {selected && (
             <Popup
