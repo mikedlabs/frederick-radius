@@ -174,13 +174,6 @@ export default async function HomePage() {
           </FadeUp>
         ) : null}
 
-        {/* Compact pulse + weather row */}
-        <FadeUp>
-          <Suspense fallback={null}>
-            <LivePulse />
-          </Suspense>
-        </FadeUp>
-
         <FadeUp>
           <Suspense fallback={<ShimmerWeatherStrip />}>
             <div className="space-y-2">
@@ -224,6 +217,13 @@ export default async function HomePage() {
             <MunicipalityStrip />
           </section>
         </ExploreFooter>
+
+        {/* Live civic pulse — anchored at the bottom; full board at /pulse */}
+        <FadeUp>
+          <Suspense fallback={null}>
+            <LivePulse />
+          </Suspense>
+        </FadeUp>
       </div>
     </>
   );
