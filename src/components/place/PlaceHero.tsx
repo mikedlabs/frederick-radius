@@ -11,6 +11,8 @@ type Props = {
   aspectRatio?: "16/10" | "16/9" | "4/3" | "1/1";
   size?: "card" | "hero";
   priority?: boolean;
+  /** Real Google photo (proxied, key-safe). Wins over generic stock. */
+  photoSrc?: string;
 };
 
 const GLYPH: Record<string, string> = {
@@ -32,14 +34,17 @@ function resolvePhotoSrc(slug: string, category: string, width: number) {
 
 export default function PlaceHero({
   slug, name, category, blurb,
-  aspectRatio = "16/10", size = "hero", priority = false,
+  aspectRatio = "16/10", size = "hero", priority = false, photoSrc,
 }: Props) {
   const cat = CATEGORY_BY_SLUG[category];
   const color = cat?.color ?? "#C4451C";
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
   const glyph = GLYPH[category] ?? "📍";
-  const { src, alt } = resolvePhotoSrc(slug, category, width);
+  const resolved = resolvePhotoSrc(slug, category, width);
+  // Real Google photo of the actual business beats generic category stock.
+  const src = photoSrc ?? resolved.src;
+  const alt = photoSrc ? name : resolved.alt;
 
   return (
     <div
@@ -116,7 +121,16 @@ export default function PlaceHero({
   );
 }
 
-export function PhotoCredit({ category, slug }: { category: string; slug: string }) {
+export function PhotoCredit({
+  category, slug, hasGooglePhoto,
+}: { category: string; slug: string; hasGooglePhoto?: boolean }) {
+  if (hasGooglePhoto) {
+    return (
+      <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+        Photos via Google
+      </p>
+    );
+  }
   const wm = getLandmarkPhoto(slug);
   if (wm) {
     return (

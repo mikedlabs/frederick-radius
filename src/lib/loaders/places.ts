@@ -21,8 +21,10 @@ const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
 
 /** Google-verified data merged onto a place, when available. */
 export type PlaceEnriched = {
-  /** Proxied photo URL (server route, key-safe) */
+  /** Proxied photo URL (server route, key-safe) — first photo, for heroes */
   google_photo_url?: string;
+  /** All proxied photo URLs (key-safe), for galleries */
+  google_photos?: string[];
   google_rating?: number;
   google_rating_count?: number;
   /** Human-readable weekly hours from Google */
@@ -30,6 +32,9 @@ export type PlaceEnriched = {
   /** True once Google has verified this place */
   google_verified?: boolean;
 };
+
+const photoProxy = (name: string, w = 800) =>
+  `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}`;
 
 export type PlaceCardData = Place & PlaceEnriched & {
   open_status: OpenStatus;
@@ -45,14 +50,19 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     e.business_status === "CLOSED_TEMPORARILY" ? "closed_temporarily" :
     e.business_status === "OPERATIONAL" ? "operational" :
     p.is_operational;
-  const firstPhoto = e.photo_names?.[0];
+  const photos = (e.photo_names ?? []).slice(0, 8);
   return {
     ...p,
     is_operational,
+    // Curated data wins; Google fills the gaps. This is why ~96% of places
+    // (DFP scrapes with no phone/site) stay blank until enriched.
+    phone: p.phone ?? e.phone,
+    website: p.website ?? e.website,
     // If Google gave us hours, we consider hours verified.
     hours_verified: e.has_hours ? true : p.hours_verified,
     is_verified: e.business_status === "OPERATIONAL" ? true : p.is_verified,
-    google_photo_url: firstPhoto ? `/api/place-photo?name=${encodeURIComponent(firstPhoto)}&w=800` : undefined,
+    google_photo_url: photos[0] ? photoProxy(photos[0], 800) : undefined,
+    google_photos: photos.map((n) => photoProxy(n, 800)),
     google_rating: e.rating,
     google_rating_count: e.user_rating_count,
     google_hours: e.weekday_hours,

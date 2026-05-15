@@ -9,6 +9,7 @@ import { haptic } from "@/lib/haptics";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import OpenClosedDot from "./OpenClosedDot";
+import GoogleHours from "./GoogleHours";
 import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -112,6 +113,35 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
     return () => { cancelled = true; };
   }, [place.geom.lat, place.geom.lng]);
 
+  // On-demand Google enrichment for the long-tail (DFP) places that have no
+  // build-time enrichment. Curated places already carry google_photo_url.
+  const [extra, setExtra] = useState<{
+    photos: string[]; hours: string[]; phone?: string; website?: string;
+  } | null>(null);
+  useEffect(() => {
+    if (place.google_photo_url) return; // already statically enriched
+    let cancelled = false;
+    fetch(`/api/place/${place.slug}/enrich`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setExtra(d); })
+      .catch(() => {});
+    return () => { cancelled = true; setExtra(null); };
+  }, [place.slug, place.google_photo_url]);
+
+  // Static enrichment wins; on-demand fills the gap.
+  const photos = place.google_photos?.length
+    ? place.google_photos
+    : (extra?.photos ?? []);
+  const heroUrl = place.google_photo_url ?? photos[0];
+  const hoursLines = place.google_hours?.length
+    ? place.google_hours
+    : (extra?.hours ?? []);
+  const effectivePlace = {
+    ...place,
+    phone: place.phone ?? extra?.phone,
+    website: place.website ?? extra?.website,
+  };
+
   return (
     <>
       {/* Drag handle */}
@@ -124,6 +154,22 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
 
       {/* Scrollable content */}
       <div className="overflow-y-auto px-5 pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)] pt-2">
+        {/* Hero photo — the real place, not a category gradient */}
+        {heroUrl && (
+          <div
+            className="-mt-1 mb-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={heroUrl}
+              alt={place.name}
+              className="aspect-[16/9] w-full object-cover"
+              loading="eager"
+            />
+          </div>
+        )}
+
         {/* Top — category pill, name, blurb */}
         <header className="flex items-start gap-3">
           <span
@@ -215,9 +261,33 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
           {place.short_blurb}
         </p>
 
+        {/* Photo strip — more of what the place actually looks like */}
+        {photos.length > 1 && (
+          <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+            {photos.slice(1, 8).map((u, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={u}
+                alt={`${place.name} photo ${i + 2}`}
+                loading="lazy"
+                className="h-24 w-32 shrink-0 rounded-[var(--app-radius-md)] border object-cover"
+                style={{ borderColor: "var(--app-border)" }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Hours from Google */}
+        {hoursLines.length > 0 && (
+          <div className="mt-4">
+            <GoogleHours lines={hoursLines} />
+          </div>
+        )}
+
         {/* In-app actions — reserve / order / park / directions without leaving */}
         <div className="-mx-1 mt-5 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
-          {placeActions(place).map((a) => (
+          {placeActions(effectivePlace).map((a) => (
             <ActionChip key={a.key} action={a} />
           ))}
         </div>

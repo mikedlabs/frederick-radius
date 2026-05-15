@@ -9,6 +9,7 @@ import { formatDistance } from "@/lib/geo";
 import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
 import OpenClosedDot from "@/components/place/OpenClosedDot";
 import HoursBlock from "@/components/place/HoursBlock";
+import GoogleHours from "@/components/place/GoogleHours";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import SaveButton from "@/components/saved/SaveButton";
@@ -112,6 +113,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           aspectRatio="16/10"
           size="hero"
           priority
+          photoSrc={place.google_photo_url}
         />
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
           <div className="flex items-start justify-between gap-3">
@@ -216,7 +218,32 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         />
       )}
 
-      <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} />
+      {place.hours ? (
+        <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} />
+      ) : place.google_hours && place.google_hours.length > 0 ? (
+        <GoogleHours lines={place.google_hours} />
+      ) : null}
+
+      {place.google_photos && place.google_photos.length > 1 && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            Photos
+          </h2>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+            {place.google_photos.slice(1, 8).map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={url}
+                alt={`${place.name} photo ${i + 2}`}
+                loading="lazy"
+                className="h-28 w-40 shrink-0 rounded-[var(--app-radius-md)] border object-cover"
+                style={{ borderColor: "var(--app-border)" }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="space-y-2">
         <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
@@ -278,7 +305,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       </section>
 
       <footer className="space-y-2 pt-4">
-        <PhotoCredit category={place.category} slug={place.slug} />
+        <PhotoCredit category={place.category} slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           Updated {place.updated_at} · Source: {place.source}
         </p>
