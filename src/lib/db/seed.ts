@@ -161,11 +161,18 @@ export async function runSeed(): Promise<SeedSummary> {
       lat: p.geom.lat,
       phone: p.phone ?? null,
       website: p.website ?? null,
+      socials: p.instagram ? { instagram: p.instagram } : null,
       price_band: p.price_band ?? null,
       is_verified: false,
       feature_score: p.feature_score,
-      source: "manual" as const,
-      status: "active" as const,
+      source: "dfp" as const,
+      source_record_id: p.google_place_id ?? null,
+      status:
+        p.is_operational === "closed_permanently"
+          ? "closed"
+          : p.is_operational === "closed_temporarily"
+            ? "paused"
+            : "active",
       updated_at: new Date(p.updated_at),
     }));
     await db.insert(schema.places).values(rows).onConflictDoNothing({

@@ -1,18 +1,25 @@
 /**
- * Enrich curated places with Google Places data → src/data/places-enrichment.json
+ * Enrich places with Google Places data.
  *
- * Cost control: by default enriches ONLY the curated editorial places
- * (source !== "dfp"), ~51 places, ~$2 one-time. DFP's 1,280 long-tail are
- * enriched on-demand elsewhere (when a user opens the sheet).
+ *   Curated (default)  → src/data/places-enrichment.json   (~51 places, ~$2)
+ *   DFP long-tail       → src/data/dfp-enrichment.json       (~1,280 places, $$)
  *
- *   npm run enrich                 # curated only
- *   npm run enrich -- --limit 5    # smoke test
- *   npm run enrich -- --all        # everything ($$)
+ * Cost control: curated mode enriches ONLY the editorial places
+ * (source !== "dfp"). DFP mode is opt-in via --dfp and is resume-safe so a
+ * partial / interrupted run can be continued without re-billing places that
+ * already succeeded.
  *
- * Resolution: google_place_id when present (cheap), else Text Search by
- * "name, address" biased to the place's coordinates.
+ *   npm run enrich                  # curated only
+ *   npm run enrich -- --limit 5     # curated smoke test
+ *   npm run enrich -- --all         # curated + DFP into places-enrichment.json
+ *   npm run enrich:dfp              # DFP long-tail → dfp-enrichment.json (resumes)
+ *   npm run enrich:dfp -- --limit 25  # DFP smoke test
+ *   npm run enrich:dfp -- --force   # ignore existing cache, re-fetch all
+ *
+ * Resolution: google_place_id when present (cheap Place Details), else Text
+ * Search by "name, address" biased to the place's coordinates.
  */
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { PLACES } from "@/data/places";
 import {
   getPlaceDetails,
@@ -20,7 +27,77 @@ import {
   type PlaceEnrichment,
 } from "@/lib/integrations/google-places";
 
-const OUT = new URL("../src/data/places-enrichment.json", import.meta.url).pathname;
+type DfpRecord = {
+  slug: string;
+  name: string;
+  address?: string;
+  city?: string;
+  geom?: { lat?: number; lng?: number };
+  google_place_id?: string;
+};
+
+type Target = {
+  slug: string;
+  name: string;
+  address?: string;
+  city?: string;
+  lat?: number;
+  lng?: number;
+  google_place_id?: string;
+};
+
+type EnrichedRow = PlaceEnrichment & { enriched_at: string };
+
+const CURATED_OUT = new URL("../src/data/places-enrichment.json", import.meta.url).pathname;
+const DFP_OUT = new URL("../src/data/dfp-enrichment.json", import.meta.url).pathname;
+const DFP_SRC = new URL("../src/data/places-dfp.json", import.meta.url).pathname;
+
+function loadExisting(path: string): Record<string, EnrichedRow> {
+  if (!existsSync(path)) return {};
+  try {
+    const raw = readFileSync(path, "utf8").trim();
+    return raw ? (JSON.parse(raw) as Record<string, EnrichedRow>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function curatedTargets(includeDfp: boolean): Target[] {
+  return PLACES.filter((p) => includeDfp || p.source !== "dfp").map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    address: `${p.address}, ${p.city}, MD`,
+    lat: p.geom?.lat,
+    lng: p.geom?.lng,
+    google_place_id: p.google_place_id,
+  }));
+}
+
+function dfpTargets(): Target[] {
+  const rows = JSON.parse(readFileSync(DFP_SRC, "utf8")) as DfpRecord[];
+  return rows.map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    address: [p.address, p.city, "MD"].filter(Boolean).join(", "),
+    lat: p.geom?.lat,
+    lng: p.geom?.lng,
+    google_place_id: p.google_place_id,
+  }));
+}
+
+async function enrichOne(t: Target): Promise<PlaceEnrichment | null> {
+  if (t.google_place_id && /^ChIJ/.test(t.google_place_id)) {
+    const byId = await getPlaceDetails(t.google_place_id);
+    if (byId) return byId;
+    // Stale/invalid id → fall back to text search rather than losing the row.
+  }
+  return resolveAndEnrich({
+    name: t.name,
+    address: t.address,
+    lat: t.lat,
+    lng: t.lng,
+  });
+}
 
 async function main() {
   if (!process.env.GOOGLE_PLACES_API_KEY) {
@@ -29,57 +106,86 @@ async function main() {
   }
 
   const args = process.argv.slice(2);
+  const dfp = args.includes("--dfp");
   const all = args.includes("--all");
+  const force = args.includes("--force");
   const li = args.indexOf("--limit");
   const limit = li >= 0 ? parseInt(args[li + 1], 10) : Infinity;
 
-  let targets = PLACES.filter((p) => all || p.source !== "dfp");
+  const out = dfp ? DFP_OUT : CURATED_OUT;
+  const existing = loadExisting(out);
+
+  let targets = dfp ? dfpTargets() : curatedTargets(all);
+
+  // Resume-safe: skip slugs already enriched OK unless --force. (Curated runs
+  // historically rewrite the whole file; preserve that unless resuming DFP.)
+  const skipped = new Set<string>();
+  if (!force && dfp) {
+    targets = targets.filter((t) => {
+      if (existing[t.slug]) {
+        skipped.add(t.slug);
+        return false;
+      }
+      return true;
+    });
+  }
   if (Number.isFinite(limit)) targets = targets.slice(0, limit);
 
-  console.log(`Enriching ${targets.length} places (${all ? "ALL incl. DFP $$" : "curated only"})…`);
+  const mode = dfp ? "DFP long-tail" : all ? "curated + DFP $$" : "curated only";
+  console.log(
+    `Enriching ${targets.length} places (${mode})` +
+      (skipped.size ? ` · resuming, ${skipped.size} already cached` : "") +
+      "…",
+  );
 
-  const out: Record<string, PlaceEnrichment & { enriched_at: string }> = {};
-  let ok = 0, closed = 0, miss = 0;
+  // Start from cache when resuming DFP so a partial write keeps prior rows.
+  const result: Record<string, EnrichedRow> = dfp && !force ? { ...existing } : {};
+  let ok = 0,
+    closed = 0,
+    miss = 0;
   const t0 = Date.now();
 
   for (let i = 0; i < targets.length; i++) {
-    const p = targets[i];
+    const t = targets[i];
     let data: PlaceEnrichment | null = null;
-    if (p.google_place_id && /^ChIJ/.test(p.google_place_id)) {
-      data = await getPlaceDetails(p.google_place_id);
-    } else {
-      data = await resolveAndEnrich({
-        name: p.name,
-        address: `${p.address}, ${p.city}, MD`,
-        lat: p.geom?.lat,
-        lng: p.geom?.lng,
-      });
+    try {
+      data = await enrichOne(t);
+    } catch (err) {
+      console.error(`  ! ${t.slug}: ${(err as Error).message}`);
     }
     if (!data) {
       miss++;
     } else {
-      out[p.slug] = { ...data, enriched_at: new Date().toISOString() };
+      result[t.slug] = { ...data, enriched_at: new Date().toISOString() };
       ok++;
       if (data.business_status === "CLOSED_PERMANENTLY") closed++;
     }
-    if ((i + 1) % 10 === 0 || i === targets.length - 1) {
-      console.log(`  ${i + 1}/${targets.length} · ok:${ok} closed:${closed} miss:${miss}`);
+    const n = i + 1;
+    if (n % 25 === 0 || n === targets.length) {
+      console.log(`  ${n}/${targets.length} · ok:${ok} closed:${closed} miss:${miss}`);
+      // Checkpoint to disk so an interrupted DFP run loses nothing.
+      if (dfp) writeFileSync(out, JSON.stringify(result, null, 0));
     }
     await new Promise((r) => setTimeout(r, 60));
   }
 
-  writeFileSync(OUT, JSON.stringify(out, null, 0));
-  console.log(`\nWrote ${OUT}`);
+  writeFileSync(out, JSON.stringify(result, null, 0));
+  console.log(`\nWrote ${out}`);
   console.log(`Enriched ${ok} · permanently-closed ${closed} · no-match ${miss}`);
   console.log(`Took ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
-  const closedSlugs = Object.entries(out)
+  const closedSlugs = Object.entries(result)
     .filter(([, v]) => v.business_status === "CLOSED_PERMANENTLY")
     .map(([k]) => k);
   if (closedSlugs.length) {
-    console.log(`\n⚠ Permanently closed (review for removal):\n  ${closedSlugs.join("\n  ")}`);
+    console.log(
+      `\n⚠ Permanently closed (review for removal):\n  ${closedSlugs.join("\n  ")}`,
+    );
   }
   process.exit(0);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

@@ -5,7 +5,8 @@ import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { isKnownClosed } from "@/lib/integrations/closures";
-import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
+import CURATED_ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
+import DFP_ENRICHMENT_RAW from "@/data/dfp-enrichment.json" with { type: "json" };
 
 type Enrichment = {
   business_status?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "UNKNOWN";
@@ -17,7 +18,11 @@ type Enrichment = {
   phone?: string;
   website?: string;
 };
-const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
+// DFP long-tail first, curated editorial layer wins on any slug collision.
+const ENRICHMENT: Record<string, Enrichment> = {
+  ...(DFP_ENRICHMENT_RAW as Record<string, Enrichment>),
+  ...(CURATED_ENRICHMENT_RAW as Record<string, Enrichment>),
+};
 
 /** Google-verified data merged onto a place, when available. */
 export type PlaceEnriched = {
@@ -49,6 +54,9 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
   return {
     ...p,
     is_operational,
+    // Backfill contact info Google has but our scrape/seed lacked.
+    website: p.website ?? e.website,
+    phone: p.phone ?? e.phone,
     // If Google gave us hours, we consider hours verified.
     hours_verified: e.has_hours ? true : p.hours_verified,
     is_verified: e.business_status === "OPERATIONAL" ? true : p.is_verified,
