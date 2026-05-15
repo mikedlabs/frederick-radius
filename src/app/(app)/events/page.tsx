@@ -6,7 +6,7 @@ import { getLiveEvents, type LiveEvent } from "@/lib/integrations/ical-live";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import EventCard from "@/components/event/EventCard";
-import SeriesCard from "@/components/event/SeriesCard";
+import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 
 export const metadata: Metadata = {
@@ -127,30 +127,7 @@ export default async function EventsIndexPage() {
       <EventGroup title="Later" events={later} meta="Coming up" />
 
       {ingestedSeries.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              Municipal calendars
-            </h2>
-            <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-              {ingestedSummary.total.toLocaleString()} events · {ingestedSummary.recurring.toLocaleString()} recurring
-            </span>
-          </div>
-          <p className="-mt-1 text-xs" style={{ color: "var(--app-ink-3)" }}>
-            Pulled daily from City of Frederick, Frederick County, Thurmont, Mount Airy & Walkersville.
-            Recurring programs (story times, markets, meetings) are grouped — tap “more dates” to see the full schedule.
-          </p>
-          <ul className="space-y-2">
-            {ingestedSeries.slice(0, 60).map((s) => (
-              <li key={s.key}><SeriesCard series={s} /></li>
-            ))}
-          </ul>
-          {ingestedSeries.length > 60 && (
-            <p className="text-center text-xs" style={{ color: "var(--app-ink-3)" }}>
-              Showing the next 60 of {ingestedSeries.length.toLocaleString()} programs. Filtering &amp; search coming.
-            </p>
-          )}
-        </section>
+        <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
       )}
 
       {hood.length > 0 && (
