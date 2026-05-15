@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { ExternalLink, GraduationCap, Rss } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, GraduationCap, Rss, CalendarDays } from "lucide-react";
 import { allUpcoming, eventsLive, eventsNext24h, eventsWeekend, type EventWithMeta } from "@/lib/loaders/events";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents, type LiveEvent } from "@/lib/integrations/ical-live";
@@ -102,9 +103,18 @@ export default async function EventsIndexPage() {
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
           {totalUpcoming} upcoming · {hood.length} from Hood · live feeds refreshed hourly
         </p>
-        <h1 className="font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Events
-        </h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Events
+          </h1>
+          <Link
+            href="/events/calendar"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
+            style={{ background: "var(--app-brand)" }}
+          >
+            <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Calendar
+          </Link>
+        </div>
         <div
           className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium"
           style={{
