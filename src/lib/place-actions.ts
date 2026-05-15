@@ -29,7 +29,7 @@ export type PlaceAction = {
   accent: string;
 };
 
-const FOOD_CATS = new Set(["restaurant", "bar", "brewery", "pizza", "bakery", "coffee", "food"]);
+const FOOD_CATS = new Set(["restaurant", "bar", "brewery", "pizza", "bakery", "coffee", "food", "food-truck"]);
 const RESERVE_CATS = new Set(["restaurant", "bar", "brewery"]);
 
 function q(s: string): string {

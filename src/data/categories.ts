@@ -16,6 +16,7 @@ export const CATEGORIES: Category[] = [
   { slug: "brewery", name: "Breweries", parent: "food", icon: "Beer", color: "#D9A441", display_order: 14, blurb: "Independent local brewers, tap rooms, and beer gardens." },
   { slug: "bakery", name: "Bakeries", parent: "food", icon: "Cookie", color: "#B26B00", display_order: 15, blurb: "Pastry, bread, and the morning rituals worth the line." },
   { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#C4451C", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
+  { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#C4451C", display_order: 17, blurb: "Frederick's food trucks rotate weekly — here's where they reliably park, plus the festivals built around them." },
 
   { slug: "outdoors", name: "Outdoors", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, water, and views." },
   { slug: "park", name: "Parks", parent: "outdoors", icon: "Trees", color: "#1E6B3A", display_order: 21, blurb: "Public parks across all 12 municipalities and the county." },

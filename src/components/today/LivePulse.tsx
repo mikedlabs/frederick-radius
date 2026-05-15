@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Zap, Bus, Construction, School } from "lucide-react";
+import { Activity, AlertTriangle, Zap, Bus, Construction, School, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
@@ -31,7 +31,7 @@ export default async function LivePulse() {
       label: closure.status === "closed" ? "FCPS closed" : closure.status === "delayed" ? "FCPS delayed" : "FCPS early dismissal",
       value: closure.title.slice(0, 60),
       detail: "Frederick County Public Schools · via FCPS RSS",
-      href: closure.url,
+      href: "/pulse#schools",
     });
   }
 
@@ -44,7 +44,7 @@ export default async function LivePulse() {
       label: `${outages.total_out.toLocaleString()} without power`,
       value: muni ? `${muni.area} hardest hit (${muni.customers_out.toLocaleString()})` : "Across the county",
       detail: "FirstEnergy / Potomac Edison · updated every 15 min",
-      href: "https://outages-mdwv.firstenergycorp.com/",
+      href: "/pulse#power",
     });
   }
 
@@ -58,7 +58,7 @@ export default async function LivePulse() {
       label: i.type === "Construction" ? "Major roadwork" : "Severe traffic",
       value: `${i.road}: ${i.description.slice(0, 60)}`,
       detail: "MDOT CHART · live",
-      href: "https://chart.maryland.gov/",
+      href: "/pulse#traffic",
     });
   } else if (incidents.length > 5) {
     items.push({
@@ -79,7 +79,7 @@ export default async function LivePulse() {
       label: `${fixit.length} recent 311 reports`,
       value: fixit[0].summary.slice(0, 60),
       detail: "FCG FixIT · SeeClickFix",
-      href: "https://www.frederickcountymd.gov/8235/FCG-FixIT",
+      href: "/pulse#311",
     });
   }
 
@@ -91,12 +91,21 @@ export default async function LivePulse() {
       style={{ borderColor: "var(--app-border)" }}
       aria-label="Live county pulse"
     >
-      <div className="mb-2 flex items-center gap-2 px-1">
-        <Activity className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Live pulse · Frederick County
-        </p>
-      </div>
+      <Link
+        href="/pulse"
+        className="mb-2 flex items-center justify-between gap-2 px-1"
+      >
+        <span className="inline-flex items-center gap-2">
+          <Activity className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+          <span className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+            Live pulse · Frederick County
+          </span>
+        </span>
+        <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold" style={{ color: "var(--app-cool)" }}>
+          All dashboards
+          <ChevronRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+        </span>
+      </Link>
       <ul className="divide-y" style={{ borderColor: "var(--app-border)" }}>
         {items.map((it, i) => {
           const Icon = it.icon;
@@ -121,7 +130,7 @@ export default async function LivePulse() {
           return (
             <li key={i} className={i === 0 ? "" : "pt-0"}>
               {it.href ? (
-                <Link href={it.href} target={it.href.startsWith("http") ? "_blank" : undefined} rel="noopener noreferrer">
+                <Link href={it.href} className="block transition active:opacity-70">
                   {inner}
                 </Link>
               ) : inner}
