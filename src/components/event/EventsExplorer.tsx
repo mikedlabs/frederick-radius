@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, List as ListIcon, CalendarDays, X } from "lucide-react";
+import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import MonthGrid from "@/components/event/MonthGrid";
+import EventsMap from "@/components/event/EventsMap";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { CalEvent } from "@/lib/loaders/calendar";
 
@@ -63,7 +64,7 @@ export default function EventsExplorer({
   const [time, setTime] = useState<TimeKey>("all");
   const [town, setTown] = useState<string | null>(null);
   const [q, setQ] = useState("");
-  const [view, setView] = useState<"list" | "calendar">("list");
+  const [view, setView] = useState<"list" | "calendar" | "map">("list");
   const [month, setMonth] = useState(() => nyMonth(nowISO));
 
   const live = useMemo(() => new Set(liveSlugs), [liveSlugs]);
@@ -110,6 +111,18 @@ export default function EventsExplorer({
     }
     return m;
   }, [filtered]);
+
+  const mapPins = useMemo(
+    () =>
+      filtered.map((e) => ({
+        slug: e.slug,
+        title: e.title,
+        geom: e.geom,
+        category: e.category,
+        venue_name: e.venue_name,
+      })),
+    [filtered],
+  );
 
   const anyFilter = cat !== null || town !== null || time !== "all" || q.trim() !== "";
   const clear = () => {
@@ -159,6 +172,7 @@ export default function EventsExplorer({
             [
               ["list", ListIcon, "List"],
               ["calendar", CalendarDays, "Calendar"],
+              ["map", MapIcon, "Map"],
             ] as const
           ).map(([key, Icon, label]) => (
             <button
@@ -283,6 +297,8 @@ export default function EventsExplorer({
           </div>
           <MonthGrid month={month} byDay={byDay} total={filtered.length} />
         </div>
+      ) : view === "map" ? (
+        <EventsMap events={mapPins} />
       ) : filtered.length === 0 ? (
         <p
           className="rounded-[var(--app-radius-lg)] border px-4 py-8 text-center text-sm"
