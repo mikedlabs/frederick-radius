@@ -23,6 +23,8 @@ export type Event = {
   rsvp_url?: string;
   organizer?: string;
   hero_image?: string;
+  /** Know-before-you-go: admission, what to drink, what to eat on site. */
+  info?: { admission?: string; drinks?: string; food?: string };
   source: "dfp" | "celebrate" | "county" | "manual" | "seed";
   is_verified: boolean;
 };
@@ -99,6 +101,11 @@ function aliveAtFiveSeason(): Event[] {
       audience: ["adults", "groups"],
       is_free: false,
       price_text: "$5 admission · $7 drink tokens · 21+",
+      info: {
+        admission: "$5 cash at the gate. 21 and over only, ID required.",
+        drinks: "$7 tokens for craft beer and wine from local breweries and distilleries.",
+        food: "Rotating food vendors on site each week.",
+      },
       ticket_url: "https://downtownfrederick.org/aliveatfive/",
       organizer: "Downtown Frederick Partnership",
       source: "dfp",
