@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placesByMunicipality } from "@/data/places";
-import { eventsInMunicipality } from "@/lib/loaders/events";
+import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
@@ -44,6 +44,7 @@ export default async function MunicipalityPage(
     .sort((a, b) => b.feature_score - a.feature_score);
 
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 6);
+  const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
 
   const categoryCounts = TOP_CATEGORIES
     .map((c) => ({
@@ -102,7 +103,7 @@ export default async function MunicipalityPage(
         </section>
       )}
 
-      {upcomingEvents.length > 0 && (
+      {!BY_TOWN_ENABLED && upcomingEvents.length > 0 && (
         <section className="space-y-3">
           <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             Upcoming in {m.name}
@@ -112,6 +113,64 @@ export default async function MunicipalityPage(
               <li key={e.slug}><EventCard event={e} /></li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {BY_TOWN_ENABLED && (
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              Upcoming in {m.name}
+            </h2>
+            <Link
+              href={`/events?view=town&m=${m.slug}`}
+              className="shrink-0 text-xs font-medium tracking-tight"
+              style={{ color: "var(--app-cool)" }}
+            >
+              All county events
+            </Link>
+          </div>
+          {upcomingEvents.length > 0 ? (
+            <ul className="space-y-2">
+              {upcomingEvents.map((e) => (
+                <li key={e.slug}><EventCard event={e} /></li>
+              ))}
+            </ul>
+          ) : (
+            <div
+              className="space-y-4 rounded-[var(--app-radius-lg)] border border-dashed p-4"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <div className="space-y-1">
+                <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
+                  No events are on the calendar for {m.name} yet.
+                </p>
+                <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+                  {m.name} runs on local word of mouth. If you know something
+                  happening here, it belongs on this page.
+                </p>
+              </div>
+              <Link
+                href={`/submit/event?m=${m.slug}`}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
+                style={{ background: "var(--app-brand)" }}
+              >
+                Submit an event for {m.name}
+              </Link>
+              {nearbyEvents.length > 0 && (
+                <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+                  <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+                    Happening near {m.name}
+                  </p>
+                  <ul className="space-y-2">
+                    {nearbyEvents.map((e) => (
+                      <li key={e.slug}><EventCard event={e} /></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
