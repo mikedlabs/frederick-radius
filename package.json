@@ -20,6 +20,7 @@
     "ingest": "tsx --tsconfig tsconfig.json scripts/run-ingest.ts",
     "dedup": "tsx --tsconfig tsconfig.json scripts/dedup.ts",
     "closures:report": "tsx --tsconfig tsconfig.json scripts/closures-report.ts",
+    "coord:audit": "tsx --tsconfig tsconfig.json scripts/coord-audit.ts",
     "refresh:business-status": "tsx --tsconfig tsconfig.json scripts/refresh-business-status.ts",
     "copy:scores": "tsx --tsconfig tsconfig.json scripts/copy-scores.ts"
   },
