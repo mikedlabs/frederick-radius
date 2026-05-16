@@ -26,6 +26,13 @@ export type Event = {
   hero_image?: string;
   /** Know-before-you-go: admission, what to drink, what to eat on site. */
   info?: { admission?: string; drinks?: string; food?: string };
+  /**
+   * Canonical source page for a live/aggregated event (the feed item's
+   * own URL). Seed events leave this unset and link to the in-app detail
+   * instead; the detail route surfaces it as an "Official page" link so
+   * a feed event still has provenance and a path back to its organizer.
+   */
+  source_url?: string;
   source: "dfp" | "celebrate" | "county" | "manual" | "seed";
   is_verified: boolean;
 };

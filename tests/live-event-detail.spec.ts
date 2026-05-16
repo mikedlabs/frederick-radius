@@ -1,0 +1,112 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+/**
+ * Live/aggregated events used to 404 on /events/[slug]: the explorer
+ * cards and Share link to /events/<slug> but the detail route resolved
+ * only the static seed. The fix gives each live event a deterministic,
+ * URL-safe slug and resolves it back from the feed at request time.
+ *
+ * Feeds are unreachable from CI/sandbox, so getLiveEvents is stubbed
+ * while the real liveEventSlug runs: this verifies the slug the card and
+ * Share emit is exactly what the detail route resolves, without a
+ * network round trip.
+ */
+vi.mock("@/lib/integrations/ical-live", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/integrations/ical-live")>();
+  return { ...actual, getLiveEvents: vi.fn() };
+});
+
+import { getLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
+import { liveToCardEvent, getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
+
+const mockGetLiveEvents = vi.mocked(getLiveEvents);
+
+const sample = (over: Partial<LiveEvent> = {}): LiveEvent => ({
+  id: "raw-uid:040000008200E00074C5B7101A82E008",
+  title: "First Saturday: Art Walk",
+  description: "Galleries open late downtown.",
+  starts_at: "2026-05-21T22:00:00Z",
+  ends_at: "2026-05-22T01:00:00Z",
+  venue_name: "Carroll Creek Amphitheater",
+  address: "Carroll Creek, Frederick, MD",
+  geom: { lng: -77.4109, lat: 39.4137 },
+  municipality: "frederick",
+  category: "gallery",
+  organizer: "Celebrate Frederick",
+  source: "celebrate",
+  source_label: "Celebrate Frederick",
+  url: "https://www.celebratefrederick.com/event/123",
+  is_free: true,
+  ...over,
+});
+
+beforeEach(() => {
+  mockGetLiveEvents.mockReset();
+});
+
+describe("liveEventSlug", () => {
+  it("is URL-safe and prefixed, never the raw feed UID", () => {
+    const slug = liveEventSlug(sample());
+    expect(slug).toMatch(/^live-[a-z0-9-]+$/);
+    expect(slug).not.toContain(":");
+    expect(slug).not.toContain("@");
+    expect(slug.startsWith("live-")).toBe(true);
+  });
+
+  it("is deterministic for the same event and distinct across start times", () => {
+    expect(liveEventSlug(sample())).toBe(liveEventSlug(sample()));
+    expect(liveEventSlug(sample())).not.toBe(
+      liveEventSlug(sample({ starts_at: "2026-05-28T22:00:00Z" })),
+    );
+  });
+});
+
+describe("liveToCardEvent", () => {
+  it("uses the derived slug and carries the feed URL as source_url", () => {
+    const e = sample();
+    const card = liveToCardEvent(e);
+    expect(card.slug).toBe(liveEventSlug(e));
+    expect(card.slug).not.toBe(e.id);
+    expect(card.source_url).toBe(e.url);
+    expect(card.source).toBe("manual");
+    expect(card.is_recurring).toBe(false);
+    expect(card.category_name).toBe("Galleries"); // resolved via CATEGORY_BY_SLUG, fallback-safe
+  });
+});
+
+describe("getLiveCardEventBySlug", () => {
+  it("rejects a non-live slug with no network call (seed is resolved first, elsewhere)", async () => {
+    const result = await getLiveCardEventBySlug("alive-at-five-glamour-kitty");
+    expect(result).toBeNull();
+    expect(mockGetLiveEvents).not.toHaveBeenCalled();
+  });
+
+  it("resolves the exact slug the card and Share emit (the 404 the fix removes)", async () => {
+    const e = sample();
+    mockGetLiveEvents.mockResolvedValue({
+      events: [e],
+      sources_succeeded: ["celebrate"],
+      sources_failed: [],
+    });
+
+    // What EventCard's <Link> and EventActions' Share both build from.
+    const sharedSlug = liveToCardEvent(e).slug;
+    const resolved = await getLiveCardEventBySlug(sharedSlug);
+
+    expect(mockGetLiveEvents).toHaveBeenCalled();
+    expect(resolved).not.toBeNull();
+    expect(resolved?.title).toBe(e.title);
+    expect(resolved?.slug).toBe(sharedSlug);
+    expect(resolved?.source_url).toBe(e.url);
+  });
+
+  it("returns null for a live-shaped slug no longer in the feed window", async () => {
+    mockGetLiveEvents.mockResolvedValue({
+      events: [sample({ starts_at: "2026-09-01T22:00:00Z" })],
+      sources_succeeded: ["celebrate"],
+      sources_failed: [],
+    });
+    const stale = liveToCardEvent(sample()).slug; // different start than the feed event
+    expect(await getLiveCardEventBySlug(stale)).toBeNull();
+  });
+});

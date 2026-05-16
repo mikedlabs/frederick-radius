@@ -4,7 +4,8 @@ import { ExternalLink, GraduationCap, Rss, CalendarDays } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import { getHoodEvents } from "@/lib/integrations/hood";
-import { getLiveEvents, type LiveEvent } from "@/lib/integrations/ical-live";
+import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
@@ -17,32 +18,6 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 3600;
-
-function liveToCardEvent(e: LiveEvent): EventWithMeta {
-  return {
-    slug: e.id,
-    title: e.title,
-    description: e.description,
-    starts_at: e.starts_at,
-    ends_at: e.ends_at,
-    timezone: "America/New_York",
-    is_all_day: false,
-    is_recurring: false,
-    venue_name: e.venue_name,
-    address: e.address,
-    geom: e.geom,
-    municipality: e.municipality,
-    category: e.category,
-    audience: [],
-    is_free: e.is_free,
-    organizer: e.organizer,
-    source: "manual",
-    is_verified: false,
-    category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
-    municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
-    distance_m: undefined,
-  };
-}
 
 export default async function EventsIndexPage() {
   const now = new Date();

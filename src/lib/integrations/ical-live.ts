@@ -147,6 +147,26 @@ function dedupeKey(title: string, starts: Date, venue: string): string {
   return `${normTitle}-${normVenue}-${day}-${time}`;
 }
 
+/**
+ * Stable, URL-safe slug for a live-feed event. Built from the same
+ * title/venue/start signature as the cross-feed dedupe key, so it is
+ * deterministic across refetches: the event detail route resolves a
+ * shared /events/<slug> link by recomputing this over the current feed
+ * window and matching. The dedupe key carries an HH:MM colon, so the
+ * result is reduced to [a-z0-9-] (no percent-encoding ever needed). The
+ * `live-` prefix keeps it disjoint from hand-authored seed slugs, which
+ * the detail route always resolves first regardless.
+ */
+export function liveEventSlug(
+  e: Pick<LiveEvent, "title" | "starts_at" | "venue_name">,
+): string {
+  const key = dedupeKey(e.title, new Date(e.starts_at), e.venue_name)
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `live-${key}`;
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Minimal hand-rolled iCal VEVENT parser. node-ical errors under
 // Next/Turbopack runtime ("e.BigInt is not a function"). node-ical stays
