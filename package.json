@@ -13,7 +13,9 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed.ts",
     "enrich": "tsx --tsconfig tsconfig.json scripts/enrich-places.ts",
-    "ingest": "tsx --tsconfig tsconfig.json scripts/run-ingest.ts"
+    "ingest": "tsx --tsconfig tsconfig.json scripts/run-ingest.ts",
+    "dedup": "tsx --tsconfig tsconfig.json scripts/dedup.ts",
+    "copy:scores": "tsx --tsconfig tsconfig.json scripts/copy-scores.ts"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",

@@ -2,6 +2,21 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-16 — Admin review decisions persist as committed JSON, not runtime writes
+
+Vercel serverless storage is read-only at request time. An /admin route
+cannot write a decisions file that survives. Rather than ship a writer
+that fails silently in production, the admin tooling is a review surface.
+Dedup overrides live in `src/data/dedup-decisions.json` and copy
+rewrites in `src/data/copy-overrides.json`. They are committed and
+applied by `npm run dedup` and `npm run copy:scores`. The nightly cron
+recomputes and reports the numbers; it does not persist artifacts.
+
+Reasoning: this matches how every place, enrichment, and dedup record
+is already persisted in this codebase. A future phase may add a Supabase
+table for live editorial workflow, which is an additive change recorded
+here when made.
+
 ## 2026-05-16 — Map stack stays MapLibre and OpenFreeMap until a Phase 3 ruling
 
 The brief's canonical stack names Mapbox GL JS, a custom Mapbox Studio style, and deck.gl. The repository runs MapLibre GL 5.24, react-map-gl 8.1, and OpenFreeMap Positron tiles, with a runtime palette override. Mapbox and deck.gl are absent.
