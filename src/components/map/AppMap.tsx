@@ -1145,8 +1145,8 @@ export default function AppMap({
             type="geojson"
             data={filteredOsmGeoJson}
             cluster
-            clusterRadius={38}
-            clusterMaxZoom={13}
+            clusterRadius={50}
+            clusterMaxZoom={15}
           >
             {/* Cluster circles */}
             <Layer
@@ -1268,8 +1268,8 @@ export default function AppMap({
             type="geojson"
             data={curatedGeoJson}
             cluster
-            clusterRadius={38}
-            clusterMaxZoom={13}
+            clusterRadius={50}
+            clusterMaxZoom={15}
             clusterProperties={{
               food: ["+", ["case", ["==", ["get", "bucket"], "food"], 1, 0]],
               outdoors: ["+", ["case", ["==", ["get", "bucket"], "outdoors"], 1, 0]],
@@ -1339,11 +1339,15 @@ export default function AppMap({
                   16, 1,
                   18, 1.18,
                 ],
-                // Tier 1: curated places are the primary layer — always
-                // drawn (post-cluster), never suppressed by OSM/amenity
-                // clutter. Within the tier, gems then verified place
-                // first so the best pins win when they overlap.
+                // Decluttering is done by CLUSTERING, not icon collision:
+                // with the label-heavy interim base style, collision makes
+                // our pins lose to base labels and the map goes empty. So
+                // pins always draw (over base labels), and clusterMaxZoom
+                // keeps dense areas as count bubbles until you zoom into a
+                // small area where only a few pins are unclustered. sort-key
+                // still orders gem/verified first.
                 "icon-allow-overlap": true,
+                "icon-ignore-placement": true,
                 "symbol-sort-key": ["get", "pri"],
                 "icon-anchor": "center",
               }}
