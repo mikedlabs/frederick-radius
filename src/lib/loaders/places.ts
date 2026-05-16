@@ -6,6 +6,48 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
+import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
+
+type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
+const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
+// Default off, so flags-off behavior is exactly today's production.
+const DEDUPE_ON = process.env.RADIUS_DEDUPE === "1";
+
+/**
+ * Collapse fuzzy duplicates to one canonical record (curated wins) and
+ * overlay unique website/phone the canonical was missing. Pure, so it
+ * is unit tested. Identity when there is no dedup entry for a slug.
+ */
+export function applyDedup(list: Place[]): Place[] {
+  return list
+    .filter((p) => {
+      const e = DEDUP[p.slug];
+      return !e || e.canonical === p.slug; // drop folded duplicates
+    })
+    .map((p) => {
+      const e = DEDUP[p.slug];
+      if (!e?.merged) return p;
+      return {
+        ...p,
+        website: p.website ?? e.merged.website,
+        phone: p.phone ?? e.merged.phone,
+      };
+    });
+}
+
+const BASE_PLACES: Place[] = DEDUPE_ON ? applyDedup(PLACES) : PLACES;
+const BASE_BY_SLUG: Record<string, Place> = DEDUPE_ON
+  ? (() => {
+      const byCanon: Record<string, Place> = {};
+      for (const p of BASE_PLACES) byCanon[p.slug] = p;
+      const idx: Record<string, Place> = { ...byCanon };
+      // A folded slug resolves to its canonical so old links still work.
+      for (const [slug, e] of Object.entries(DEDUP)) {
+        if (byCanon[e.canonical]) idx[slug] = byCanon[e.canonical];
+      }
+      return idx;
+    })()
+  : PLACE_BY_SLUG;
 
 type Enrichment = {
   business_status?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "UNKNOWN";
@@ -87,11 +129,11 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
 }
 
 export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Date()): PlaceDetail | null {
-  const p = PLACE_BY_SLUG[slug];
+  const p = BASE_BY_SLUG[slug];
   if (!p) return null;
   const decorated = decoratePlace(p, origin, now);
 
-  const nearby_places = PLACES
+  const nearby_places = BASE_PLACES
     .filter((x) => x.slug !== p.slug)
     .map((x) => decoratePlace(x, p.geom, now))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
@@ -139,7 +181,7 @@ function isOperational(p: Place): boolean {
 
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   const now = ctx.now ?? new Date();
-  let results = PLACES
+  let results = BASE_PLACES
     .filter(isOperational)
     .map((p) => decoratePlace(p, ctx.origin, now));
 
@@ -168,7 +210,7 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
 }
 
 export function placesWithinRadius(origin: LngLat, meters: number, now: Date = new Date()): PlaceCardData[] {
-  return PLACES
+  return BASE_PLACES
     .filter(isOperational)
     .map((p) => decoratePlace(p, origin, now))
     .filter((p) => (p.distance_m ?? Infinity) <= meters)
