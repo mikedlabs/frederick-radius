@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-05-16T20:27:27.979Z",
+  "count": 4,
+  "closures": [
+    {
+      "name": "Ayse Meze Lounge",
+      "place_id": null,
+      "date_marked": null,
+      "source": "manual_denylist"
+    },
+    {
+      "name": "Firestone's Culinary Tavern",
+      "place_id": null,
+      "date_marked": null,
+      "source": "manual_denylist"
+    },
+    {
+      "name": "Idiom Brewing Co.",
+      "place_id": null,
+      "date_marked": null,
+      "source": "manual_denylist"
+    },
+    {
+      "name": "VOLT",
+      "place_id": null,
+      "date_marked": "2020",
+      "source": "manual_denylist"
+    }
+  ]
+}

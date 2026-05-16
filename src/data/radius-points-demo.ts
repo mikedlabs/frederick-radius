@@ -58,11 +58,11 @@ export const DEMO_POINTS_PARTNERS: readonly DemoPointsPartner[] = [
     earnLine: "Earns +10 points per check-in",
   },
   {
-    id: "idiom-brewing",
-    name: "Idiom Brewing Co.",
-    kind: "Brewery",
-    lng: -77.4072,
-    lat: 39.4148,
+    id: "tenth-ward-distilling",
+    name: "Tenth Ward Distilling Company",
+    kind: "Distillery",
+    lng: -77.409,
+    lat: 39.4146,
     earnLine: "Earns +10 points per check-in",
   },
 ];

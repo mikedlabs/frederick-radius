@@ -41,7 +41,7 @@ const NAMES: string[] = [
   "Firestone's Culinary Tavern",
   "Firestone's",
 
-  // Add more as we learn about closures — see comment above.
+  // Add more as we learn about closures (see comment above).
 ];
 
 const NORMALIZED = new Set(NAMES.map((n) => normalize(n)));
@@ -61,3 +61,22 @@ export function isKnownClosed(name: string | undefined | null): boolean {
 }
 
 export const KNOWN_CLOSED_COUNT = NAMES.length;
+
+/**
+ * The de-duplicated canonical denylist, with provenance, used to
+ * generate the closures audit log (src/data/closures.json). NAMES above
+ * keeps the spelling variants for matching; this is one row per real
+ * business. place_id is null because the denylist is name-based; the
+ * Google business_status refresh fills place_id for catalogued places.
+ */
+export const KNOWN_CLOSED_CANONICAL: ReadonlyArray<{
+  name: string;
+  place_id: string | null;
+  closed_since: string | null;
+  source: "manual_denylist";
+}> = [
+  { name: "VOLT", place_id: null, closed_since: "2020", source: "manual_denylist" },
+  { name: "Idiom Brewing Co.", place_id: null, closed_since: null, source: "manual_denylist" },
+  { name: "Ayse Meze Lounge", place_id: null, closed_since: null, source: "manual_denylist" },
+  { name: "Firestone's Culinary Tavern", place_id: null, closed_since: null, source: "manual_denylist" },
+];

@@ -210,7 +210,12 @@ function openScore(status: OpenStatus): number {
   return 0;
 }
 
-function isOperational(p: Place): boolean {
+/**
+ * The single closed-place predicate. Any surface that renders places
+ * must filter through this so closed businesses never display. The
+ * Radius page regressed by consuming the raw PLACES array directly.
+ */
+export function isOperational(p: Place): boolean {
   if (isKnownClosed(p.name)) return false; // manual override of last resort
   return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
 }
