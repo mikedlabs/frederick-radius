@@ -94,9 +94,10 @@ function aliveAtFiveSeason(): Event[] {
       title,
       description:
         `${band} headlines Alive @ Five at the Carroll Creek Amphitheater. ` +
-        `Downtown Frederick's outdoor happy hour every Thursday, May–September, 5–8pm. ` +
-        `$5 cash admission (21+); $7 drink tokens get you craft beer or wine from local breweries and distilleries. ` +
-        `Food vendors on site. Hosted by Downtown Frederick Partnership.`,
+        `It is Downtown Frederick's outdoor happy hour, held every Thursday from May through September, 5 to 8pm. ` +
+        `Admission is $5 cash for ages 21 and up. ` +
+        `Drink tokens are $7 and cover beer or wine from local breweries and distilleries. ` +
+        `Food vendors are on site each week. The series is hosted by the Downtown Frederick Partnership.`,
       starts_at: iso(at(offset, 17, 0)),
       ends_at: iso(at(offset, 20, 0)),
       timezone: "America/New_York",
@@ -113,7 +114,7 @@ function aliveAtFiveSeason(): Event[] {
       price_text: "$5 admission · $7 drink tokens · 21+",
       info: {
         admission: "$5 cash at the gate. 21 and over only, ID required.",
-        drinks: "$7 tokens for craft beer and wine from local breweries and distilleries.",
+        drinks: "$7 tokens for beer and wine from local breweries and distilleries.",
         food: "Rotating food vendors on site each week.",
       },
       ticket_url: "https://downtownfrederick.org/aliveatfive/",

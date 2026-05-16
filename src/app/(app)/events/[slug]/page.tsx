@@ -4,6 +4,22 @@ import Link from "next/link";
 import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music } from "lucide-react";
 import { EVENTS } from "@/data/events";
 import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
+/**
+ * Event detail resolves only the hand-authored static seed: getEventBySlug
+ * reads EVENT_BY_SLUG, never a live feed, so every description on this
+ * route is trusted editorial copy and renders as written. The scraped-copy
+ * detector belongs on the feed-ingest path, not here, where it would
+ * false-flag legitimate authored copy. The fallback is a category and
+ * venue line, used only if a description is ever empty.
+ */
+function eventBlurb(e: {
+  description?: string;
+  category_name: string;
+  venue_name: string;
+}): string {
+  const d = (e.description ?? "").trim();
+  return d.length > 0 ? d : `${e.category_name} at ${e.venue_name}.`;
+}
 import { decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
 import { PLACES } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -22,12 +38,13 @@ export async function generateMetadata(
   const { slug } = await params;
   const event = getEventBySlug(slug);
   if (!event) return { title: "Event not found" };
+  const blurb = eventBlurb(event).slice(0, 160);
   return {
     title: event.title,
-    description: event.description.slice(0, 160),
+    description: blurb,
     openGraph: {
       title: event.title,
-      description: event.description.slice(0, 160),
+      description: blurb,
       type: "article",
       images: [{ url: `/api/og?type=event&slug=${slug}`, width: 1200, height: 630 }],
     },
@@ -40,6 +57,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   if (!event) notFound();
 
   const cat = CATEGORY_BY_SLUG[event.category];
+  const desc = (event.description ?? "").trim();
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${event.geom.lat},${event.geom.lng}`;
   const icsUrl = `/api/events/${event.slug}/ics`;
 
@@ -60,7 +78,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     "@context": "https://schema.org",
     "@type": "Event",
     name: event.title,
-    description: event.description,
+    description: eventBlurb(event),
     startDate: event.starts_at,
     endDate: event.ends_at,
     eventStatus: "https://schema.org/EventScheduled",
@@ -123,9 +141,11 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             </div>
             <SaveButton refType="event" refId={event.slug} label={event.title} />
           </div>
-          <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            {event.description}
-          </p>
+          {desc && (
+            <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              {desc}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
             <span className="inline-flex items-center gap-1">
               <MapPin className="h-3.5 w-3.5" aria-hidden /> {event.venue_name}
