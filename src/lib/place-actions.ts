@@ -9,6 +9,7 @@
  * prefilled search is the graceful, always-correct fallback.
  */
 import type { Place } from "@/data/places";
+import { parkMobileWebUrl, parkMobileFindUrl } from "@/lib/integrations/deeplinks";
 
 export type PlaceAction = {
   key: string;
@@ -116,13 +117,22 @@ export function placeActions(p: Place): PlaceAction[] {
     }
   }
 
-  // Parking — direct zone if known, else ParkMobile zone-finder near here
+  // Parking. Verified zone → that ParkMobile session. A parking place
+  // without a verified zone → ParkMobile to enter the zone off the sign
+  // (never a fabricated zone). Any other destination → find parking
+  // near it on the map. Shared helpers keep this in sync with deeplinks.
+  const hasZone = Boolean(p.parkmobile_zone && p.parkmobile_zone !== "needs_verification");
   actions.push({
     key: "parking",
-    label: p.parkmobile_zone && p.parkmobile_zone !== "needs_verification" ? `Park · Zone ${p.parkmobile_zone}` : "Park nearby",
-    href:
-      p.parkmobile_zone && p.parkmobile_zone !== "needs_verification"
-        ? `https://app.parkmobile.io/zone/${p.parkmobile_zone}`
+    label: hasZone
+      ? `Park · Zone ${p.parkmobile_zone}`
+      : p.category === "parking"
+        ? "Park · ParkMobile"
+        : "Park nearby",
+    href: hasZone
+      ? parkMobileWebUrl(p.parkmobile_zone as string)
+      : p.category === "parking"
+        ? parkMobileFindUrl()
         : `https://www.google.com/maps/search/parking/@${p.geom.lat},${p.geom.lng},16z`,
     external: true,
     icon: "parking",

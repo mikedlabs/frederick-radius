@@ -41,10 +41,20 @@ export function resyUrl(resy_slug: string): string {
 
 // ─── Parking ────────────────────────────────────────────────────────────
 
+// ParkMobile zone universal link: opens the native app if installed,
+// otherwise the mobile web flow, for that zone. This is the documented
+// format and is now consistent with place-actions.ts (the bare
+// parkmobile.io/{zone} used before was not a valid start-session URL).
 export function parkMobileWebUrl(zone: string): string {
-  // ParkMobile web start-session URL — works on iOS Safari and Android
-  // and falls back to App Store if app isn't installed.
-  return `https://parkmobile.io/${zone}`;
+  return `https://app.parkmobile.io/zone/${encodeURIComponent(zone)}`;
+}
+
+// Generic ParkMobile entry for a parking place whose exact zone is not
+// verified yet: the user reads the zone off the on-site sign. Always a
+// working ParkMobile link, never a fabricated zone (a wrong zone would
+// charge the user for the wrong location).
+export function parkMobileFindUrl(): string {
+  return "https://app.parkmobile.io/";
 }
 
 export function parkMobileAppUrl(zone: string): string {
@@ -170,12 +180,24 @@ export function actionsForPlace(place: Place): IntegrationAction[] {
     });
   }
 
-  // Parking
+  // Parking. A verified zone deep-links straight to that ParkMobile
+  // session. For a parking place without a verified zone we still show
+  // a working ParkMobile action (read the zone off the sign) rather
+  // than hiding it entirely, which is why parking pages had no link.
   if (place.parkmobile_zone && place.parkmobile_zone !== "needs_verification") {
     out.push({
       key: "parkmobile",
       label: `Pay with ParkMobile · zone ${place.parkmobile_zone}`,
       href: parkMobileWebUrl(place.parkmobile_zone),
+      external: true,
+      category: "park",
+      priority: 10,
+    });
+  } else if (place.category === "parking") {
+    out.push({
+      key: "parkmobile",
+      label: "Find parking · ParkMobile",
+      href: parkMobileFindUrl(),
       external: true,
       category: "park",
       priority: 10,
