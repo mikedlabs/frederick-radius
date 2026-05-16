@@ -9,9 +9,11 @@
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { PLACES } from "@/data/places";
+import PLACES_DFP_RAW from "@/data/places-dfp.json" with { type: "json" };
 import { buildDedup } from "@/lib/dedup";
 import { classifyDescription, type CopyQuality } from "@/lib/copy-quality";
 import { rankPlaces, hoursCoverage } from "@/lib/loaders/places";
+import { auditCoordDivergence, type CoordAuditPlace } from "@/lib/coord-audit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,12 +33,42 @@ export async function GET(request: Request) {
   const ranked = rankPlaces({});
   const coverage = Number((hoursCoverage(ranked) * 100).toFixed(1));
 
+  // Coordinate-divergence regression gate: a curated place whose
+  // coordinates disagree with the geocoded DFP record for the same
+  // business by >200m is almost always a hand-entry error that renders
+  // in the wrong place. This must stay at zero.
+  const dfpRows = PLACES_DFP_RAW as Array<{
+    name?: string;
+    title?: string;
+    address?: string;
+    geom?: { lat: number; lng: number };
+  }>;
+  const coordFlags = auditCoordDivergence(
+    PLACES.filter((p) => p.source !== "dfp").map(
+      (p): CoordAuditPlace => ({ name: p.name, address: p.address, geom: p.geom }),
+    ),
+    dfpRows.map(
+      (r): CoordAuditPlace => ({
+        name: r.name ?? r.title ?? "",
+        address: r.address,
+        geom: r.geom,
+      }),
+    ),
+    200,
+  );
+
   return NextResponse.json({
     computed_at: new Date().toISOString(),
     places: PLACES.length,
     dedup: { clusters, folded },
     hours: { coverage_pct: coverage, target_pct: 60, below_gate: coverage < 60 },
     copy,
+    coord_divergence: {
+      threshold_m: 200,
+      count: coordFlags.length,
+      below_gate: coordFlags.length > 0,
+      flagged: coordFlags.slice(0, 25),
+    },
     note: "Recompute only. Commit-time scripts persist the artifacts.",
   });
 }
