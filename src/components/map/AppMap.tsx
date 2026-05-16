@@ -26,7 +26,7 @@ import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
 import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
-import { DEMO_COIN_PARTNERS, type DemoCoinPartner } from "@/data/radius-coin-demo";
+import { DEMO_POINTS_PARTNERS, type DemoPointsPartner } from "@/data/radius-points-demo";
 import { RADIUS_COIN } from "@/data/city-data-engine";
 
 type Props = {
@@ -186,7 +186,7 @@ export default function AppMap({
   const [onlyGems, setOnlyGems] = useState(false);
   const [demo, setDemo] = useState<null | "food-truck" | "transit" | "rewards">(null);
   const [truck, setTruck] = useState<DemoFoodTruck | null>(null);
-  const [coinPlace, setCoinPlace] = useState<DemoCoinPartner | null>(null);
+  const [pointsPlace, setPointsPlace] = useState<DemoPointsPartner | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
@@ -244,7 +244,7 @@ export default function AppMap({
   // the demo clears any open card so it never lingers on another layer.
   useEffect(() => {
     if (demo !== "food-truck") setTruck(null);
-    if (demo !== "rewards") setCoinPlace(null);
+    if (demo !== "rewards") setPointsPlace(null);
   }, [demo]);
 
   const filteredPlaces = useMemo(() => {
@@ -738,7 +738,7 @@ export default function AppMap({
             <li aria-hidden className="mx-1 h-5 w-px shrink-0 self-center" style={{ background: "var(--app-border)" }} />
             {[
               { key: "food-truck" as const, glyph: "\u{1F69A}", label: "Food Trucks" },
-              { key: "rewards" as const, glyph: "\u{1FA99}", label: "Radius Coin" },
+              { key: "rewards" as const, glyph: "\u{2B50}", label: "Radius Points" },
               { key: "transit" as const, glyph: "\u{1F68C}", label: "Live Transit" },
             ].map((d) => (
               <li key={d.key}>
@@ -997,7 +997,7 @@ export default function AppMap({
             <style>{"@keyframes fr-ft-pulse{0%{transform:scale(.55);opacity:.5}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}"}</style>
           )}
           {demo === "rewards" && (
-            <style>{"@keyframes fr-rc-pulse{0%{transform:scale(.55);opacity:.5}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}"}</style>
+            <style>{"@keyframes fr-rp-pulse{0%{transform:scale(.55);opacity:.5}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}"}</style>
           )}
           <div
             className="absolute inset-x-3 bottom-3 z-20 rounded-[var(--app-radius-md)] border p-3.5 shadow-[var(--app-shadow-3)] backdrop-blur"
@@ -1006,11 +1006,11 @@ export default function AppMap({
           >
             <div className="flex items-start gap-3">
               <span aria-hidden className="text-2xl leading-none">
-                {demo === "food-truck" ? "\u{1F69A}" : demo === "rewards" ? "\u{1FA99}" : "\u{1F68C}"}
+                {demo === "food-truck" ? "\u{1F69A}" : demo === "rewards" ? "\u{2B50}" : "\u{1F68C}"}
               </span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--app-ink)" }}>
-                  {demo === "food-truck" ? "Food truck map" : demo === "rewards" ? "Radius Coin" : "Live transit"}
+                  {demo === "food-truck" ? "Food truck map" : demo === "rewards" ? "Radius Points" : "Live transit"}
                   <span
                     className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
                     style={{ background: "var(--app-accent)", color: "white" }}
@@ -1021,14 +1021,14 @@ export default function AppMap({
                 {demo === "rewards" ? (
                   <div className="mt-1 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                     <p>
-                      Radius Coin is a preview of a local rewards idea. This preview has no account, no signup, and no payment.
+                      Radius Points is a preview of a local rewards idea. This preview has no account, no signup, and no payment.
                     </p>
                     <div className="mt-1.5">
                       <span
                         className="rounded-full px-2 py-0.5 text-[10px] font-bold"
                         style={{ background: "#F2E3C0", color: "#7A5A12" }}
                       >
-                        Sample balance 0 coins
+                        Sample balance 0 points
                       </span>
                     </div>
                     <p className="mt-2 font-semibold" style={{ color: "var(--app-ink)" }}>Earn</p>
@@ -1041,7 +1041,7 @@ export default function AppMap({
                       ))}
                     </ul>
                     <p className="mt-2">
-                      Coins redeem at {RADIUS_COIN.redeemPartners} partner businesses across the county. Tap a coin pin for a sample partner.
+                      Points redeem at {RADIUS_COIN.redeemPartners} partner businesses across the county. Tap a points pin for a sample partner.
                     </p>
                   </div>
                 ) : (
@@ -1535,21 +1535,22 @@ export default function AppMap({
             </Popup>
           )}
 
-          {/* Radius Coin partner beacons — a labeled rewards-concept demo
-              layer, on only while the Radius Coin demo is selected. Each
-              is a gold coin pin; tapping one opens a sample partner card
-              with a non-functional join placeholder. No money or accounts. */}
+          {/* Radius Points partner beacons — a labeled rewards-concept
+              demo layer, on only while the Radius Points demo is selected.
+              Each is a gold star pin; tapping one opens a sample partner
+              card with a non-functional join placeholder. No money or
+              accounts. */}
           {demo === "rewards" &&
-            DEMO_COIN_PARTNERS.map((p) => (
+            DEMO_POINTS_PARTNERS.map((p) => (
               <Marker key={p.id} longitude={p.lng} latitude={p.lat} anchor="center">
                 <button
                   type="button"
                   onClick={(ev) => {
                     ev.stopPropagation();
                     haptic("light");
-                    setCoinPlace(p);
+                    setPointsPlace(p);
                   }}
-                  aria-label={`${p.name}, Radius Coin partner, preview`}
+                  aria-label={`${p.name}, Radius Points partner, preview`}
                   style={{
                     position: "relative",
                     display: "grid",
@@ -1570,7 +1571,7 @@ export default function AppMap({
                       borderRadius: 9999,
                       background: "#D9A441",
                       opacity: 0.5,
-                      animation: "fr-rc-pulse 2.2s ease-out infinite",
+                      animation: "fr-rp-pulse 2.2s ease-out infinite",
                     }}
                   />
                   <span
@@ -1589,23 +1590,23 @@ export default function AppMap({
                       lineHeight: 1,
                     }}
                   >
-                    {"\u{1FA99}"}
+                    {"\u{2B50}"}
                   </span>
                 </button>
               </Marker>
             ))}
 
-          {coinPlace && (
+          {pointsPlace && (
             <Popup
-              longitude={coinPlace.lng}
-              latitude={coinPlace.lat}
+              longitude={pointsPlace.lng}
+              latitude={pointsPlace.lat}
               anchor="bottom"
               offset={22}
               closeOnClick={false}
-              onClose={() => setCoinPlace(null)}
+              onClose={() => setPointsPlace(null)}
               maxWidth="280px"
             >
-              <CoinPartnerPopup p={coinPlace} />
+              <PointsPartnerPopup p={pointsPlace} />
             </Popup>
           )}
 
@@ -1635,14 +1636,14 @@ export default function AppMap({
   );
 }
 
-function CoinPartnerPopup({ p }: { p: DemoCoinPartner }) {
+function PointsPartnerPopup({ p }: { p: DemoPointsPartner }) {
   return (
     <div style={{ minWidth: 220, padding: 4 }}>
       <p style={{
         fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
         textTransform: "uppercase", color: "#B8860B", marginBottom: 4,
       }}>
-        Radius Coin · Preview
+        Radius Points · Preview
       </p>
       <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
         {p.name}
@@ -1653,7 +1654,7 @@ function CoinPartnerPopup({ p }: { p: DemoCoinPartner }) {
         color: "#7A5A12", background: "#F7EACB", borderRadius: 8,
         padding: "6px 8px", marginBottom: 10,
       }}>
-        <span aria-hidden>{"\u{1FA99}"}</span>
+        <span aria-hidden>{"\u{2B50}"}</span>
         {p.earnLine}
       </div>
       <button
@@ -1665,10 +1666,10 @@ function CoinPartnerPopup({ p }: { p: DemoCoinPartner }) {
           color: "var(--app-ink-3)", fontSize: 12, fontWeight: 600, cursor: "not-allowed",
         }}
       >
-        Join Radius Coin (coming soon)
+        Join Radius Points (coming soon)
       </button>
       <p style={{ fontSize: 10, color: "#9A9892", margin: "6px 0 0", lineHeight: 1.4 }}>
-        Radius Coin is a preview. There is no account, signup, or payment yet. These partners are sample data.
+        Radius Points is a preview. There is no account, signup, or payment yet. These partners are sample data.
       </p>
     </div>
   );
