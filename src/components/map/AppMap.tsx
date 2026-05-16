@@ -20,8 +20,9 @@ import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import { decoratePlace } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
-import { installCategoryMarkers } from "./categoryMarkers";
+import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 
 type Props = {
   places: Place[];
@@ -32,6 +33,9 @@ type Props = {
   /** Fires on map idle with curated places currently in the viewport,
    *  nearest-to-center first — powers the synced results list. */
   onPlacesInView?: (slugs: string[]) => void;
+  /** Tap a result in the synced list → fly the map there and glow it.
+   *  `n` is a nonce so re-tapping the same place re-triggers. */
+  focus?: { slug: string; n: number } | null;
 };
 
 const OSM_CACHE_KEY = "fr:osm-frederick:v1";
@@ -117,10 +121,12 @@ export default function AppMap({
   initialCenter = FREDERICK,
   initialZoom = 14,
   onPlacesInView,
+  focus,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const { openSheet } = usePlaceSheet();
   const [selected, setSelected] = useState<Selected>(null);
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
@@ -160,6 +166,22 @@ export default function AppMap({
     })();
     return () => { cancelled = true; };
   }, [osmFromProps]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Tap a result in the synced list → fly there, glow it, light haptic.
+  useEffect(() => {
+    if (!focus) return;
+    const p = places.find((x) => x.slug === focus.slug);
+    const map = mapRef.current?.getMap();
+    if (!p || !map) return;
+    setSelectedSlug(p.slug);
+    haptic("light");
+    map.flyTo({
+      center: [p.geom.lng, p.geom.lat],
+      zoom: Math.max(map.getZoom(), 15.5),
+      duration: 900,
+      essential: true,
+    });
+  }, [focus, places]);
 
   const filteredPlaces = useMemo(() => {
     if (activeCats.size === 0) return places;
@@ -246,10 +268,26 @@ export default function AppMap({
         name: p.name,
         category: p.category,
         color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C",
+        bucket: bucketOf(p.category),
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
   }), [filteredPlaces]);
+
+  // The single selected place — drives a soft glow ring under its icon.
+  const selectedGeoJson = useMemo(() => {
+    const p = selectedSlug ? places.find((x) => x.slug === selectedSlug) : null;
+    return {
+      type: "FeatureCollection" as const,
+      features: p
+        ? [{
+            type: "Feature" as const,
+            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C" },
+            geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
+          }]
+        : [],
+    };
+  }, [selectedSlug, places]);
 
   /**
    * Municipality centroids as label points (no more ugly bbox rectangles).
@@ -290,12 +328,13 @@ export default function AppMap({
 
   const onClick = (e: MapLayerMouseEvent) => {
     const feature = e.features?.[0];
-    if (!feature) return;
+    if (!feature) { setSelectedSlug(null); return; }
     const layer = feature.layer.id;
     const map = mapRef.current?.getMap();
 
     // Cluster expansion — works for both OSM and curated clusters
     if ((layer === "clusters" || layer === "curated-clusters") && map) {
+      setSelectedSlug(null);
       const clusterId = feature.properties?.cluster_id as number | undefined;
       const sourceId = layer === "clusters" ? "osm-businesses" : "curated-places";
       const source = map.getSource(sourceId) as maplibregl.GeoJSONSource | undefined;
@@ -313,6 +352,8 @@ export default function AppMap({
     if (layer === "curated-icons") {
       const props = feature.properties as Record<string, string>;
       const place = places.find((p) => p.slug === props.slug);
+      setSelectedSlug(props.slug);
+      haptic("light");
       // Google-Maps-style: tap a pin → full card slides up from the bottom
       // (photo, rating, hours, directions, save) instead of a cramped popup.
       if (place) openSheet(decoratePlace(place, FREDERICK_CENTER));
@@ -321,6 +362,8 @@ export default function AppMap({
 
     if (layer === "osm-icons") {
       const props = feature.properties as Record<string, string>;
+      setSelectedSlug(null);
+      haptic("light");
       setSelected({
         _kind: "osm",
         osm_id: props.osm_id,
@@ -693,17 +736,35 @@ export default function AppMap({
             cluster
             clusterRadius={38}
             clusterMaxZoom={13}
+            clusterProperties={{
+              food: ["+", ["case", ["==", ["get", "bucket"], "food"], 1, 0]],
+              outdoors: ["+", ["case", ["==", ["get", "bucket"], "outdoors"], 1, 0]],
+              arts: ["+", ["case", ["==", ["get", "bucket"], "arts"], 1, 0]],
+              shopping: ["+", ["case", ["==", ["get", "bucket"], "shopping"], 1, 0]],
+              civic: ["+", ["case", ["==", ["get", "bucket"], "civic"], 1, 0]],
+            }}
           >
             <Layer
               id="curated-clusters"
               type="circle"
               filter={["has", "point_count"]}
               paint={{
+                // Tint by the cluster's dominant category so a glance reads
+                // "this dense area is mostly food / arts / civic".
                 "circle-color": [
-                  "step", ["get", "point_count"],
-                  "#C4451C", 25,
-                  "#A02929", 100,
-                  "#7E1F1F",
+                  "let",
+                  "mx",
+                  ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
+                  [
+                    "case",
+                    ["==", ["var", "mx"], 0], "#C4451C",
+                    ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
+                    ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
+                    ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
+                    ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
+                    ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
+                    "#C4451C",
+                  ],
                 ],
                 "circle-opacity": 0.92,
                 "circle-radius": [
@@ -773,6 +834,28 @@ export default function AppMap({
                   15.5, 0,
                   16.5, 1,
                 ],
+              }}
+            />
+          </Source>
+
+          {/* Selected place glow — declared last (no sibling shift) but
+              ordered beneath the icons via beforeId. */}
+          <Source id="curated-selected" type="geojson" data={selectedGeoJson}>
+            <Layer
+              id="selected-glow"
+              type="circle"
+              beforeId="curated-icons"
+              paint={{
+                "circle-color": ["get", "color"],
+                "circle-opacity": 0.16,
+                "circle-radius": [
+                  "interpolate", ["linear"], ["zoom"],
+                  11, 16, 16, 30, 18, 42,
+                ],
+                "circle-stroke-color": ["get", "color"],
+                "circle-stroke-opacity": 0.6,
+                "circle-stroke-width": 2,
+                "circle-blur": 0.3,
               }}
             />
           </Source>

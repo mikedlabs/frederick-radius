@@ -1,51 +1,162 @@
 /**
  * Category marker images for the map.
  *
- * MapLibre renders icons from registered images. We draw one clean "puck"
- * per category on demand: a category-colored disc with a white center and
- * the category glyph, plus a soft shadow.
+ * A category-colored disc with a white center and a crisp white vector
+ * icon (one strong icon per macro category, drawn with canvas paths so
+ * it stays sharp at small marker size, where thin line icons would muddy
+ * and emoji render inconsistently per device).
  *
- * Robustness: instead of racing an eager addImage against layer render
- * (which loses to style reloads and mount ordering), we answer the
- * `styleimagemissing` event. MapLibre fires it with the exact id the
- * symbol layer wants (`cat-<slug>`), we draw it once, and it sticks.
- * Drawn at 2x for retina crispness.
+ * Served via the `styleimagemissing` event so it survives style reloads
+ * and mount ordering. Drawn at 2x for retina crispness.
  */
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
-const GLYPH: Record<string, string> = {
-  food: "\u{1F374}", restaurant: "\u{1F37D}", coffee: "☕",
-  bar: "\u{1F378}", brewery: "\u{1F37A}", bakery: "\u{1F950}", pizza: "\u{1F355}",
-  "food-truck": "\u{1F69A}",
-  outdoors: "\u{1F332}", park: "\u{1F333}", trail: "⛰", playground: "\u{1F6DD}",
-  arts: "\u{1F3A8}", museum: "\u{1F3DB}", gallery: "\u{1F5BC}",
-  theater: "\u{1F3AD}", music: "\u{1F3B5}",
-  family: "\u{1F46A}", library: "\u{1F4DA}",
-  shopping: "\u{1F6CD}", antiques: "\u{1FA91}", "book-store": "\u{1F4D6}", market: "\u{1F9FA}",
-  wellness: "\u{1F49A}", yoga: "\u{1F9D8}",
-  civic: "\u{1F3DB}", government: "\u{1F3DB}", "public-safety": "\u{1F692}", voting: "\u{1F5F3}",
-  services: "\u{1F527}", pharmacy: "\u{1F48A}", hardware: "\u{1F528}",
-  lodging: "\u{1F3E8}", transit: "\u{1F68C}", parking: "\u{1F17F}",
-  restroom: "\u{1F6BB}", water: "\u{1F6B0}", trash: "\u{1F5D1}", recycling: "♻",
-  "dog-waste": "\u{1F436}", bench: "\u{1FA91}", picnic: "\u{1F9FA}",
-  "bike-parking": "\u{1F6B2}", "bike-repair": "\u{1F6B2}",
-  defibrillator: "\u{1F49B}", shelter: "⛱", amenities: "\u{1F6BB}",
-};
-const DEFAULT_GLYPH = "\u{1F4CD}";
 const DEFAULT_COLOR = "#C4451C";
 
-function resolve(slug: string): { color: string; glyph: string } {
-  if (slug === "_default") return { color: DEFAULT_COLOR, glyph: DEFAULT_GLYPH };
-  const cat = CATEGORY_BY_SLUG[slug];
-  const glyph =
-    GLYPH[slug] ?? (cat?.parent ? GLYPH[cat.parent] : undefined) ?? DEFAULT_GLYPH;
-  const color = cat?.color ?? (cat?.parent ? CATEGORY_BY_SLUG[cat.parent]?.color : undefined) ?? DEFAULT_COLOR;
-  return { color, glyph };
+type Bucket =
+  | "food" | "outdoors" | "arts" | "family" | "library" | "shopping"
+  | "wellness" | "civic" | "services" | "lodging" | "transit" | "parking" | "pin";
+
+const BUCKET: Record<string, Bucket> = {
+  food: "food", restaurant: "food", pizza: "food", bakery: "food",
+  bar: "food", brewery: "food", coffee: "food", "food-truck": "food",
+  outdoors: "outdoors", park: "outdoors", trail: "outdoors", playground: "outdoors",
+  arts: "arts", museum: "arts", gallery: "arts", theater: "arts", music: "arts",
+  family: "family",
+  library: "library", "book-store": "library",
+  shopping: "shopping", antiques: "shopping", market: "shopping",
+  wellness: "wellness", yoga: "wellness", pharmacy: "wellness",
+  civic: "civic", government: "civic", voting: "civic", "public-safety": "civic",
+  services: "services", hardware: "services",
+  lodging: "lodging",
+  transit: "transit",
+  parking: "parking",
+};
+
+export function bucketOf(slug: string): Bucket {
+  if (BUCKET[slug]) return BUCKET[slug];
+  const parent = CATEGORY_BY_SLUG[slug]?.parent;
+  return (parent && BUCKET[parent]) || "pin";
 }
 
-function drawPuck(color: string, glyph: string): ImageData {
-  const R = 2; // pixel ratio
+/** Cluster tint per macro bucket — a glance tells you what an area is. */
+export const BUCKET_COLOR: Record<Bucket, string> = {
+  food: "#C4451C", outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#B26B00",
+  library: "#2A5D8F", shopping: "#B26B00", wellness: "#A02929",
+  civic: "#2A5D8F", services: "#4A4A48", lodging: "#5B3A8F",
+  transit: "#2A5D8F", parking: "#4A4A48", pin: "#7A7975",
+};
+
+function colorOf(slug: string): string {
+  if (slug === "_default") return DEFAULT_COLOR;
+  const c = CATEGORY_BY_SLUG[slug];
+  return c?.color ?? (c?.parent ? CATEGORY_BY_SLUG[c.parent]?.color : undefined) ?? DEFAULT_COLOR;
+}
+
+/** Draw a bold white icon centered at (x,y). Designed to read at ~18px. */
+function drawIcon(ctx: CanvasRenderingContext2D, b: Bucket, x: number, y: number): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.strokeStyle = "#FFFFFF";
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+  const rr = (rx: number, ry: number, w: number, h: number, r: number) => {
+    ctx.beginPath();
+    ctx.moveTo(rx + r, ry);
+    ctx.arcTo(rx + w, ry, rx + w, ry + h, r);
+    ctx.arcTo(rx + w, ry + h, rx, ry + h, r);
+    ctx.arcTo(rx, ry + h, rx, ry, r);
+    ctx.arcTo(rx, ry, rx + w, ry, r);
+    ctx.closePath();
+  };
+  switch (b) {
+    case "food": // fork + knife
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(-5, -8); ctx.lineTo(-5, 8); ctx.moveTo(-8, -8); ctx.lineTo(-8, -3); ctx.moveTo(-2, -8); ctx.lineTo(-2, -3);
+      ctx.moveTo(-8, -3); ctx.lineTo(-2, -3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6, -8); ctx.lineTo(6, 8); ctx.lineTo(3, 8); ctx.quadraticCurveTo(2, -2, 6, -8); ctx.fill();
+      break;
+    case "outdoors": { // pine tree
+      ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(6, 0); ctx.lineTo(-6, 0); ctx.closePath();
+      ctx.moveTo(0, -3); ctx.lineTo(7, 6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
+      ctx.fillRect(-1.5, 5, 3, 4);
+      break;
+    }
+    case "arts": // framed image: square + sun + hill
+      rr(-8, -7, 16, 14, 2.5); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-3, -2, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-7, 6); ctx.lineTo(0, -1); ctx.lineTo(7, 6); ctx.closePath(); ctx.fill();
+      break;
+    case "family": // two people
+      ctx.beginPath(); ctx.arc(-4, -4, 2.6, 0, Math.PI * 2); ctx.arc(4, -4, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-8, 8); ctx.quadraticCurveTo(-4, 0, 0, 8); ctx.quadraticCurveTo(4, 0, 8, 8); ctx.lineTo(-8, 8); ctx.fill();
+      break;
+    case "library": // book
+      ctx.beginPath(); ctx.moveTo(0, -7); ctx.quadraticCurveTo(-7, -9, -8, -6); ctx.lineTo(-8, 7); ctx.quadraticCurveTo(-7, 5, 0, 7);
+      ctx.quadraticCurveTo(7, 5, 8, 7); ctx.lineTo(8, -6); ctx.quadraticCurveTo(7, -9, 0, -7); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0)"; ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 7); ctx.lineWidth = 1.4; ctx.strokeStyle = "rgba(255,255,255,0)"; ctx.stroke();
+      break;
+    case "shopping": // bag
+      ctx.beginPath(); ctx.arc(0, -5, 3.4, Math.PI, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-7, -3); ctx.lineTo(-5.5, 9); ctx.lineTo(5.5, 9); ctx.lineTo(7, -3); ctx.closePath(); ctx.fill();
+      break;
+    case "wellness": // heart
+      ctx.beginPath(); ctx.moveTo(0, 8);
+      ctx.bezierCurveTo(-10, -1, -5, -9, 0, -3);
+      ctx.bezierCurveTo(5, -9, 10, -1, 0, 8);
+      ctx.closePath(); ctx.fill();
+      break;
+    case "civic": // columned building
+      ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(9, -3); ctx.lineTo(-9, -3); ctx.closePath(); ctx.fill();
+      ctx.fillRect(-7, -1, 2.4, 9); ctx.fillRect(-1.2, -1, 2.4, 9); ctx.fillRect(4.6, -1, 2.4, 9);
+      ctx.fillRect(-9, 8, 18, 2.4);
+      break;
+    case "services": { // gear
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.lineTo(Math.cos(a) * 9, Math.sin(a) * 9);
+        const a2 = a + Math.PI / 8;
+        ctx.lineTo(Math.cos(a2) * 6.5, Math.sin(a2) * 6.5);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.arc(0, 0, 3.2, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      break;
+    }
+    case "lodging": // bed
+      ctx.beginPath(); ctx.moveTo(-9, 2); ctx.lineTo(-9, -3); ctx.lineTo(0, -3);
+      ctx.quadraticCurveTo(2, -3, 2, -1); ctx.lineTo(9, -1); ctx.lineTo(9, 2); ctx.stroke();
+      ctx.fillRect(-9, 2, 18, 2.6);
+      ctx.beginPath(); ctx.arc(-5.5, -1, 2.4, Math.PI, 0); ctx.fill();
+      break;
+    case "transit": // bus
+      rr(-8, -8, 16, 13, 3); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.fillRect(-6, -5.5, 5, 4); ctx.fillRect(1, -5.5, 5, 4); ctx.restore();
+      ctx.beginPath(); ctx.arc(-4.5, 7, 2, 0, Math.PI * 2); ctx.arc(4.5, 7, 2, 0, Math.PI * 2); ctx.fill();
+      break;
+    case "parking": // bold P
+      ctx.font = "bold 19px ui-sans-serif, system-ui, -apple-system, Arial";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("P", 0, 1);
+      break;
+    default: // location pin
+      ctx.beginPath();
+      ctx.arc(0, -3, 6, Math.PI * 0.85, Math.PI * 0.15);
+      ctx.lineTo(0, 9); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.arc(0, -3, 2.4, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      break;
+  }
+  ctx.restore();
+}
+
+function drawPuck(color: string, b: Bucket): ImageData {
+  const R = 2;
   const W = 46;
   const H = 46;
   const cv = document.createElement("canvas");
@@ -58,7 +169,6 @@ function drawPuck(color: string, glyph: string): ImageData {
   const cy = H / 2 - 1;
   const outer = 18;
 
-  // Soft drop shadow
   ctx.save();
   ctx.globalAlpha = 0.2;
   ctx.beginPath();
@@ -67,7 +177,6 @@ function drawPuck(color: string, glyph: string): ImageData {
   ctx.fill();
   ctx.restore();
 
-  // Colored disc with white ring
   ctx.beginPath();
   ctx.arc(cx, cy, outer, 0, Math.PI * 2);
   ctx.fillStyle = color;
@@ -76,17 +185,7 @@ function drawPuck(color: string, glyph: string): ImageData {
   ctx.strokeStyle = "rgba(255,255,255,0.95)";
   ctx.stroke();
 
-  // White center the glyph sits on
-  ctx.beginPath();
-  ctx.arc(cx, cy, outer - 6.5, 0, Math.PI * 2);
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fill();
-
-  // Glyph
-  ctx.font = '15px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(glyph, cx, cy + 0.5);
+  drawIcon(ctx, b, cx, cy);
 
   return ctx.getImageData(0, 0, W * R, H * R);
 }
@@ -94,9 +193,8 @@ function drawPuck(color: string, glyph: string): ImageData {
 function addOne(map: MapLibreMap, id: string): void {
   if (map.hasImage(id)) return;
   const slug = id.startsWith("cat-") ? id.slice(4) : "_default";
-  const { color, glyph } = resolve(slug);
   try {
-    map.addImage(id, drawPuck(color, glyph), { pixelRatio: 2 });
+    map.addImage(id, drawPuck(colorOf(slug), bucketOf(slug)), { pixelRatio: 2 });
   } catch {
     /* already added by a concurrent styleimagemissing */
   }

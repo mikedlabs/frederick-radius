@@ -28,6 +28,7 @@ const AppMap = dynamic(() => import("./AppMap"), {
  */
 export default function AppMapClient({ places }: { places: Place[] }) {
   const [inView, setInView] = useState<string[]>([]);
+  const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
 
   const bySlug = useMemo(() => {
     const m = new Map<string, Place>();
@@ -46,7 +47,7 @@ export default function AppMapClient({ places }: { places: Place[] }) {
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} onPlacesInView={setInView} />
+      <AppMap places={places} onPlacesInView={setInView} focus={focus} />
 
       <section className="space-y-2">
         <div className="flex items-baseline justify-between">
@@ -69,7 +70,12 @@ export default function AppMapClient({ places }: { places: Place[] }) {
         ) : (
           <ul className="space-y-2">
             {results.map((p) => (
-              <li key={p.slug}><PlaceCard place={p} /></li>
+              <li
+                key={p.slug}
+                onClickCapture={() => setFocus((f) => ({ slug: p.slug, n: (f?.n ?? 0) + 1 }))}
+              >
+                <PlaceCard place={p} />
+              </li>
             ))}
           </ul>
         )}
