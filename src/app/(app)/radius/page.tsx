@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
-import { PLACES } from "@/data/places";
-import { isOperational } from "@/lib/loaders/places";
+import { radiusPlaces } from "@/lib/loaders/places";
 
-// Closed businesses never display. The Radius page consumes the raw
-// PLACES array, so it must apply the same closed-place filter every
-// other surface uses. Volt (closed since 2020) appeared here because
-// this filter was missing.
-const OPEN_PLACES = PLACES.filter(isOperational);
+// The Radius page must start from the same place set as every other
+// surface: deduplicated (gated by RADIUS_DEDUPE) and with closed
+// businesses removed. Consuming the raw PLACES array is why Volt
+// (closed 2020) and triple-listed businesses appeared here.
+const OPEN_PLACES = radiusPlaces();
 
 export const metadata: Metadata = {
   title: "Radius",

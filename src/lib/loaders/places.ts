@@ -220,6 +220,16 @@ export function isOperational(p: Place): boolean {
   return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
 }
 
+/**
+ * The place set every surface should start from: deduplicated (gated by
+ * RADIUS_DEDUPE, so enabling it in production stays an env decision) and
+ * with closed businesses removed. The Radius page must use this instead
+ * of the raw PLACES array, which is why it showed Volt and duplicates.
+ */
+export function radiusPlaces(): Place[] {
+  return BASE_PLACES.filter(isOperational);
+}
+
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   const now = ctx.now ?? new Date();
   let results = BASE_PLACES
