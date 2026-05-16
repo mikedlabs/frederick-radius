@@ -16,7 +16,9 @@ const DEFAULT_COLOR = "#C4451C";
 
 type Bucket =
   | "food" | "outdoors" | "arts" | "family" | "library" | "shopping"
-  | "wellness" | "civic" | "services" | "lodging" | "transit" | "parking" | "pin";
+  | "wellness" | "civic" | "services" | "lodging" | "transit" | "parking"
+  | "restroom" | "water" | "trash" | "recycle" | "dogwaste" | "bench"
+  | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "pin";
 
 const BUCKET: Record<string, Bucket> = {
   food: "food", restaurant: "food", pizza: "food", bakery: "food",
@@ -32,6 +34,19 @@ const BUCKET: Record<string, Bucket> = {
   lodging: "lodging",
   transit: "transit",
   parking: "parking",
+  // Public micro-amenities — the things people actually need on the ground.
+  restroom: "restroom",
+  water: "water",
+  trash: "trash",
+  recycling: "recycle",
+  "dog-waste": "dogwaste",
+  bench: "bench",
+  picnic: "picnic",
+  "bike-parking": "bike",
+  "bike-repair": "bike",
+  defibrillator: "aed",
+  shelter: "shelter",
+  wifi: "wifi",
 };
 
 export function bucketOf(slug: string): Bucket {
@@ -45,7 +60,11 @@ export const BUCKET_COLOR: Record<Bucket, string> = {
   food: "#C4451C", outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#B26B00",
   library: "#2A5D8F", shopping: "#B26B00", wellness: "#A02929",
   civic: "#2A5D8F", services: "#4A4A48", lodging: "#5B3A8F",
-  transit: "#2A5D8F", parking: "#4A4A48", pin: "#7A7975",
+  transit: "#2A5D8F", parking: "#4A4A48",
+  restroom: "#2A5D8F", water: "#2A5D8F", trash: "#4A4A48", recycle: "#1E6B3A",
+  dogwaste: "#1E6B3A", bench: "#4A4A48", bike: "#1E6B3A", aed: "#A02929",
+  shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#2A5D8F",
+  pin: "#7A7975",
 };
 
 function colorOf(slug: string): string {
@@ -143,6 +162,96 @@ function drawIcon(ctx: CanvasRenderingContext2D, b: Bucket, x: number, y: number
       ctx.font = "bold 19px ui-sans-serif, system-ui, -apple-system, Arial";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
       ctx.fillText("P", 0, 1);
+      break;
+    case "restroom": // WC
+      ctx.font = "bold 13px ui-sans-serif, system-ui, -apple-system, Arial";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("WC", 0, 1);
+      break;
+    case "water": // droplet
+      ctx.beginPath();
+      ctx.moveTo(0, -9);
+      ctx.bezierCurveTo(7, -1, 7, 3, 0, 8);
+      ctx.bezierCurveTo(-7, 3, -7, -1, 0, -9);
+      ctx.closePath(); ctx.fill();
+      break;
+    case "trash": // can with lid
+      ctx.fillRect(-6.5, -3, 13, 2.4);
+      ctx.fillRect(-1.8, -6, 3.6, 2);
+      ctx.beginPath();
+      ctx.moveTo(-5.4, 0); ctx.lineTo(5.4, 0); ctx.lineTo(4.2, 9.5); ctx.lineTo(-4.2, 9.5);
+      ctx.closePath(); ctx.fill();
+      break;
+    case "recycle": { // loop arrow
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, Math.PI * 0.2, Math.PI * 1.65);
+      ctx.stroke();
+      const ea = Math.PI * 0.2;
+      const ex = Math.cos(ea) * 7, ey = Math.sin(ea) * 7;
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex - 4.5, ey - 1.5);
+      ctx.lineTo(ex - 1, ey + 4);
+      ctx.closePath(); ctx.fill();
+      break;
+    }
+    case "dogwaste": // paw print
+      ctx.beginPath(); ctx.ellipse(0, 3.5, 4.6, 3.7, 0, 0, Math.PI * 2); ctx.fill();
+      for (const [tx, ty] of [[-5.2, -2.6], [-1.8, -6], [1.8, -6], [5.2, -2.6]] as const) {
+        ctx.beginPath(); ctx.arc(tx, ty, 2.1, 0, Math.PI * 2); ctx.fill();
+      }
+      break;
+    case "bench": // side profile
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(-8, 1); ctx.lineTo(8, 1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-8, 1); ctx.lineTo(-8, -7); ctx.moveTo(8, 1); ctx.lineTo(8, -7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-8, -5); ctx.lineTo(8, -5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-6, 1); ctx.lineTo(-6, 8); ctx.moveTo(6, 1); ctx.lineTo(6, 8); ctx.stroke();
+      break;
+    case "bike": // two wheels + frame
+      ctx.lineWidth = 1.9;
+      ctx.beginPath(); ctx.arc(-5, 4, 3.8, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(5, 4, 3.8, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-5, 4); ctx.lineTo(0, 4); ctx.lineTo(2, -3.5); ctx.lineTo(5, 4);
+      ctx.moveTo(0, 4); ctx.lineTo(-1, -3.5); ctx.lineTo(4, -3.5);
+      ctx.stroke();
+      break;
+    case "aed": // heart with a bolt cut out
+      ctx.beginPath();
+      ctx.moveTo(0, 8);
+      ctx.bezierCurveTo(-10, -1, -5, -9, 0, -3);
+      ctx.bezierCurveTo(5, -9, 10, -1, 0, 8);
+      ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath();
+      ctx.moveTo(1.5, -4); ctx.lineTo(-3.5, 1.5); ctx.lineTo(-0.3, 1.5);
+      ctx.lineTo(-1.5, 6); ctx.lineTo(4, -0.5); ctx.lineTo(0.6, -0.5);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+      break;
+    case "shelter": // roof + posts
+      ctx.beginPath();
+      ctx.moveTo(0, -8); ctx.lineTo(9.5, -1); ctx.lineTo(-9.5, -1);
+      ctx.closePath(); ctx.fill();
+      ctx.fillRect(-7, -1, 2.2, 9);
+      ctx.fillRect(4.8, -1, 2.2, 9);
+      break;
+    case "picnic": // table side profile
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(-9, -3.5); ctx.lineTo(9, -3.5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-6, -3.5); ctx.lineTo(-8.5, 8); ctx.moveTo(6, -3.5); ctx.lineTo(8.5, 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-9, 3); ctx.lineTo(9, 3); ctx.stroke();
+      break;
+    case "wifi": // signal arcs + dot
+      ctx.lineWidth = 2.4;
+      for (const r of [11, 7.5, 4]) {
+        ctx.beginPath();
+        ctx.arc(0, 7, r, Math.PI * 1.22, Math.PI * 1.78);
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(0, 7, 1.7, 0, Math.PI * 2); ctx.fill();
       break;
     default: // location pin
       ctx.beginPath();

@@ -63,6 +63,8 @@ const QUERY = (bbox: [number, number, number, number]) => `
 
   // Public-infrastructure amenities (these don't "close" — stable infrastructure)
   node["amenity"~"^(toilets|drinking_water|waste_basket|dog_waste_bin|recycling|water_point|shower|bench|picnic_table|bicycle_parking|bicycle_repair_station|defibrillator|shelter|bbq|fountain|public_bookcase|telephone|atm)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
+  // Public/free WiFi access points
+  node["internet_access"~"^(wlan|yes|free)$"]["internet_access:fee"!~"yes"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
 
   // Way geometries (buildings/areas)
   way["amenity"~"^(restaurant|cafe|bar|pub|cinema|theatre|library|community_centre|fire_station|police|townhall|courthouse|post_office|pharmacy|hospital|university|college|school|place_of_worship|parking|toilets)$"](${bbox[0]},${bbox[1]},${bbox[2]},${bbox[3]});
@@ -114,6 +116,12 @@ function mapTagToCategory(tags: Record<string, string>): { category_slug: string
   if (a === "bbq") return { category_slug: "picnic", osm_tag: "amenity=bbq" };
   if (a === "telephone") return { category_slug: "services", osm_tag: "amenity=telephone" };
   if (a === "public_bookcase") return { category_slug: "library", osm_tag: "amenity=public_bookcase" };
+
+  // Reached only when nothing stronger classified it: a node whose point is
+  // public/free WiFi (a cafe with wifi is still classified as a cafe above).
+  if (tags.internet_access && /^(wlan|yes|free)$/.test(tags.internet_access)) {
+    return { category_slug: "wifi", osm_tag: "internet_access=" + tags.internet_access };
+  }
 
   if (s) return { category_slug: "shopping", osm_tag: "shop=" + s };
   if (o) return { category_slug: "services", osm_tag: "office=" + o };

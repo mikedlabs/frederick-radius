@@ -69,13 +69,13 @@ const OSM_TRUSTED_CATEGORIES = new Set<string>([
   // Public amenities (don't go stale — trash cans, benches, restrooms don't "close")
   "restroom", "water", "trash", "recycling", "dog-waste",
   "bench", "picnic", "bike-parking", "bike-repair",
-  "defibrillator", "shelter",
+  "defibrillator", "shelter", "wifi",
 ]);
 
 const AMENITY_CATEGORIES = new Set<string>([
   "restroom", "water", "trash", "recycling", "dog-waste",
   "bench", "picnic", "bike-parking", "bike-repair",
-  "defibrillator", "shelter",
+  "defibrillator", "shelter", "wifi",
 ]);
 
 // Glyphs for the filter chips, matching the map marker language.
