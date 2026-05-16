@@ -3,7 +3,8 @@
   "crons": [
     { "path": "/api/ingest/all", "schedule": "0 9 * * *" },
     { "path": "/api/ingest/civicengage", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/data-health", "schedule": "30 9 * * *" }
+    { "path": "/api/cron/data-health", "schedule": "30 9 * * *" },
+    { "path": "/api/cron/business-status", "schedule": "0 7 * * *" }
   ],
   "headers": [
     {

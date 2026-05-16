@@ -87,6 +87,29 @@ The 15-deliverable strategy lives in `FREDERICK_RADIUS_STRATEGY.md`. Near-term:
 - [ ] Push notifications (civic emergencies opt-out, saved-event reminders opt-in)
 - [ ] AI itinerary builder (grounded in seed data, not hallucinated)
 
+## Closed-business status (P0-2)
+
+Closed places never display. Three layers enforce this:
+
+1. `isOperational` in `src/lib/loaders/places.ts` is the single
+   closed-place predicate (manual denylist plus `is_operational`).
+   Every surface, including the Radius page, filters through it.
+2. `src/data/closures.json` is the audit log of every suppressed
+   place. Regenerate with `npm run closures:report`.
+3. Google Place Details refresh keeps `is_operational` current for
+   curated places that have a `google_place_id`.
+
+Refresh job and cost:
+
+- `npm run refresh:business-status` writes `src/data/business-status.json`.
+  It is PAID: one Place Details call per curated place with a place id,
+  roughly tens of dollars one-time for the full catalog.
+- The nightly cron `/api/cron/business-status` (07:00 UTC) reports
+  newly closed places. It is OFF by default and no-ops unless
+  `BUSINESS_STATUS_CRON=1`, so deploying it incurs no spend. Each
+  enabled run is capped at 40 Place Details calls (well under the
+  monthly Google budget target).
+
 ## License
 
-Proprietary — © MAD Productions. All rights reserved.
+Proprietary, copyright MAD Productions. All rights reserved.

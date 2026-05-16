@@ -18,6 +18,8 @@
  * does NOT cache — it's a thin client. The backfill script + loaders own TTL.
  */
 
+import type { OperationalStatus } from "@/data/places";
+
 const BASE = "https://places.googleapis.com/v1";
 
 export type GoogleBusinessStatus =
@@ -25,6 +27,26 @@ export type GoogleBusinessStatus =
   | "CLOSED_TEMPORARILY"
   | "CLOSED_PERMANENTLY"
   | "UNKNOWN";
+
+/**
+ * Maps Google businessStatus to our OperationalStatus. UNKNOWN becomes
+ * needs_verification (not a closed state), so a missing Google answer
+ * never hides a place. Only an explicit Google closure suppresses it.
+ */
+export function googleStatusToOperational(
+  gs: GoogleBusinessStatus,
+): OperationalStatus {
+  switch (gs) {
+    case "CLOSED_PERMANENTLY":
+      return "closed_permanently";
+    case "CLOSED_TEMPORARILY":
+      return "closed_temporarily";
+    case "OPERATIONAL":
+      return "operational";
+    default:
+      return "needs_verification";
+  }
+}
 
 export type PlaceEnrichment = {
   google_place_id: string;
