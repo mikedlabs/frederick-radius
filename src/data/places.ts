@@ -1011,6 +1011,27 @@ export const PLACES: Place[] = [
  * Source: downtownfrederick.org/place/* scraped May 2026.
  */
 const CURATED_SLUGS = new Set(PLACES.map((p) => p.slug));
+/**
+ * DFP mis-buckets wellness and fitness businesses as "shopping" (Odin
+ * Crossfit, Briq Haus Pilates, Sho Lung Dojo, Unwind Massage, etc.), so
+ * the wellness section was nearly empty. This deterministically moves
+ * the obvious ones to the existing wellness/yoga taxonomy. Tightly
+ * gated (only "shopping" rows with a clear name signal), reversible,
+ * uses the real geocoded records (no fabricated venues).
+ */
+export function wellnessCategoryFix(name: string, category: string): string {
+  if (category !== "shopping") return category;
+  const n = name.toLowerCase();
+  if (/\b(yoga|pilates|barre)\b/.test(n)) return "yoga";
+  if (
+    /\b(crossfit|cross fit|gym|fitness|martial arts|taekwondo|karate|dojo|jiu.?jitsu|kickbox(?:ing)?|wellness|massage therapy|chiropractic|wellness center|wellness studio)\b/.test(
+      n,
+    )
+  )
+    return "wellness";
+  return category;
+}
+
 const PLACES_DFP: Place[] = (PLACES_DFP_RAW as Array<{
   slug: string; name: string; category: string; subcategories?: string[];
   short_blurb: string; address: string; city: string; postal_code: string;
@@ -1023,7 +1044,7 @@ const PLACES_DFP: Place[] = (PLACES_DFP_RAW as Array<{
   .map((p) => ({
     slug: p.slug,
     name: p.name,
-    category: p.category,
+    category: wellnessCategoryFix(p.name, p.category),
     subcategories: p.subcategories && p.subcategories.length > 0 ? p.subcategories : undefined,
     short_blurb: p.short_blurb,
     address: p.address,
