@@ -58,6 +58,7 @@ type Enrichment = {
   photo_names?: string[];
   phone?: string;
   website?: string;
+  enriched_at?: string;
 };
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
 
@@ -121,11 +122,46 @@ export type PlaceDetail = PlaceCardData & {
 
 export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
   const enriched = applyEnrichment(p);
+  // Hours provenance, Phase 1 precedence: Google enrichment, then a
+  // curated manual schedule. OSM hours apply to the map's OSM layer,
+  // not the static place records, so they are not stamped here.
+  const e = ENRICHMENT[p.slug];
+  const hours_source: Place["hours_source"] = e?.has_hours
+    ? "google_places"
+    : enriched.hours && enriched.hours_verified
+      ? "manual_override"
+      : undefined;
+  const hours_updated_at =
+    hours_source === "google_places"
+      ? e?.enriched_at
+      : hours_source === "manual_override"
+        ? p.updated_at
+        : undefined;
   return {
     ...enriched,
+    hours_source,
+    hours_updated_at,
     open_status: getOpenStatus(enriched.hours, { verified: enriched.hours_verified ?? false }, now),
     distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
   };
+}
+
+/** Share of places that carry verified hours, for the Open-now gate. */
+export function hoursCoverage(places: PlaceCardData[]): number {
+  if (!places.length) return 0;
+  return places.filter((p) => p.hours_source).length / places.length;
+}
+
+const HOURS_GATE = process.env.HOURS_GATE === "1";
+
+/**
+ * True when the Open-now affordance should hide because verified-hours
+ * coverage for the visible set is under 60 percent. Flag-gated, default
+ * off, so flags-off equals today's production. Callers render the
+ * STYLE.md message; no UI is changed in Phase 1.
+ */
+export function shouldHideOpenNow(places: PlaceCardData[]): boolean {
+  return HOURS_GATE && hoursCoverage(places) < 0.6;
 }
 
 export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Date()): PlaceDetail | null {

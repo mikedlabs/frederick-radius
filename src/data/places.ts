@@ -35,6 +35,10 @@ export type Place = {
   is_verified: boolean;
   /** True only when hours come from the owner, Yelp, or admin verification — never from seed guesses. */
   hours_verified?: boolean;
+  /** Phase 1 hours provenance. Set at compose time, never hand-authored. */
+  hours_source?: "google_places" | "osm" | "manual_override";
+  /** ISO timestamp the hours were last confirmed, for a freshness UI. */
+  hours_updated_at?: string;
   /** Operational status. "needs_verification" until cross-checked against Google Places / Yelp / etc. */
   is_operational?: OperationalStatus;
   feature_score: number;
