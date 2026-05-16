@@ -67,10 +67,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#FAFAF7" },
-    { media: "(prefers-color-scheme: dark)", color: "#141413" },
-  ],
+  // System Black brand: the browser chrome / status bar matches the
+  // app's dark identity in both schemes (validated premium direction).
+  themeColor: "#0A0A0A",
 };
 
 export default function RootLayout({
