@@ -8,6 +8,7 @@
  */
 
 import type { LngLat } from "@/lib/geo";
+import { easternWallToUtcISO } from "@/lib/tz";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
 
@@ -164,8 +165,10 @@ function parseICalDate(value: string, params: Record<string, string>): Date | nu
   }
   const [, Y, Mo, D, H, Mi, S, Z] = m;
   if (Z === "Z") return new Date(Date.UTC(+Y, +Mo - 1, +D, +H, +Mi, +S));
-  // For TZID values we treat as local; close enough for display.
-  return new Date(+Y, +Mo - 1, +D, +H, +Mi, +S);
+  // TZID values from the Frederick feeds (DFP, Celebrate, County) are
+  // America/New_York. Resolve to the correct UTC instant instead of
+  // treating the wall numbers as the server's local time.
+  return new Date(easternWallToUtcISO(+Y, +Mo, +D, +H, +Mi, +S));
 }
 
 function unescapeIcalText(s: string): string {

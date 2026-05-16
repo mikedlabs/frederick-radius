@@ -1,4 +1,5 @@
 import type { LngLat } from "@/lib/geo";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 export type Event = {
   slug: string;
@@ -29,13 +30,22 @@ export type Event = {
   is_verified: boolean;
 };
 
-const today = new Date("2026-05-14T00:00:00-04:00");
-const iso = (date: Date) => date.toISOString();
-const at = (offsetDays: number, hour: number, minute = 0) => {
-  const d = new Date(today);
-  d.setDate(d.getDate() + offsetDays);
-  d.setHours(hour, minute, 0, 0);
-  return d;
+// Day 0 of the seed calendar is 2026-05-14, an Eastern civil date.
+// Date math is done in UTC so it never depends on the server timezone.
+const SEED_ANCHOR_UTC = Date.UTC(2026, 4, 14);
+const iso = (s: string) => s;
+// Returns the correct UTC ISO for an America/New_York wall-clock time,
+// `offsetDays` from the anchor. Previously used server-local setHours,
+// which rendered every seed event 4 to 5 hours early on UTC production.
+const at = (offsetDays: number, hour: number, minute = 0): string => {
+  const base = new Date(SEED_ANCHOR_UTC + offsetDays * 86_400_000);
+  return easternWallToUtcISO(
+    base.getUTCFullYear(),
+    base.getUTCMonth() + 1,
+    base.getUTCDate(),
+    hour,
+    minute,
+  );
 };
 
 /**
