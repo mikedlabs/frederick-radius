@@ -43,15 +43,14 @@ export default function EventCard({ event }: { event: EventWithMeta }) {
           {date.time} · {event.venue_name}
         </p>
         <div className="mt-2 flex items-center gap-2">
-          <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-            style={{
-              color: cat?.color ?? "var(--app-brand)",
-              background: `${cat?.color ?? "#C4451C"}14`,
-            }}
-          >
-            {cat?.name ?? event.category}
-          </span>
+          {cat && (
+            <span
+              className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
+              style={{ color: cat.color, background: `${cat.color}14` }}
+            >
+              {cat.name}
+            </span>
+          )}
           {event.is_free ? (
             <span className="text-[11px] font-medium" style={{ color: "var(--app-positive)" }}>
               Free

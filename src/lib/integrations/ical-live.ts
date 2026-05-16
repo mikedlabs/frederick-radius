@@ -102,6 +102,21 @@ function categoryExists(slug: string, fallback: string): string {
   return CATEGORIES.some((c) => c.slug === slug) ? slug : fallback;
 }
 
+/**
+ * P0-5 Option A: the Frederick County feed's category bears no relation
+ * to the event, so county events get no category (and render no badge)
+ * rather than a wrong one. Other feeds keep the keyword inference.
+ * Option B (an LLM classifier at ingest) is a separate, paid change and
+ * is intentionally not done here.
+ */
+export function feedCategory(feed: FeedSpec, title: string, description: string): string {
+  if (feed.source === "county") return "";
+  return categoryExists(
+    inferCategory(title, description, feed.default_category),
+    feed.default_category,
+  );
+}
+
 type ICalEvent = {
   type?: string;
   summary?: string;
@@ -257,10 +272,7 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       const description = (item.description ?? "").trim();
       const venue = (item.location ?? "").split(",")[0].trim() || feed.default_venue;
       const address = item.location ?? "";
-      const inferredCategory = categoryExists(
-        inferCategory(title, description, feed.default_category),
-        feed.default_category,
-      );
+      const inferredCategory = feedCategory(feed, title, description);
 
       events.push({
         id: item.uid ?? `${feed.source}:${dedupeKey(title, start, venue)}`,
@@ -348,10 +360,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
         .replace(/\s+/g, " ")
         .trim() || feed.default_venue;
       const address = venue;
-      const inferredCategory = categoryExists(
-        inferCategory(title, description, feed.default_category),
-        feed.default_category,
-      );
+      const inferredCategory = feedCategory(feed, title, description);
 
       events.push({
         id: `${feed.source}:${dedupeKey(title, start, venue)}`,
