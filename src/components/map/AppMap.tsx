@@ -365,6 +365,9 @@ export default function AppMap({
         color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C",
         bucket: bucketOf(p.category),
         gem: HIDDEN_GEM_SLUGS.has(p.slug) ? 1 : 0,
+        // Collision priority within the curated tier: gem wins, then
+        // verified, then the rest. Lower number = placed first = kept.
+        pri: HIDDEN_GEM_SLUGS.has(p.slug) ? 0 : p.is_verified ? 1 : 2,
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
@@ -1117,7 +1120,7 @@ export default function AppMap({
                 "icon-allow-overlap": ["step", ["zoom"], false, 16, true],
                 "icon-anchor": "center",
               }}
-              paint={{ "icon-opacity": 0.92 }}
+              paint={{ "icon-opacity": 0.8 }}
             />
           </Source>
 
@@ -1252,7 +1255,12 @@ export default function AppMap({
                   16, 1,
                   18, 1.18,
                 ],
-                "icon-allow-overlap": ["step", ["zoom"], false, 15.5, true],
+                // Tier 1: curated places are the primary layer — always
+                // drawn (post-cluster), never suppressed by OSM/amenity
+                // clutter. Within the tier, gems then verified place
+                // first so the best pins win when they overlap.
+                "icon-allow-overlap": true,
+                "symbol-sort-key": ["get", "pri"],
                 "icon-anchor": "center",
               }}
             />
@@ -1271,6 +1279,7 @@ export default function AppMap({
                 "text-optional": true,
                 "text-allow-overlap": false,
                 "text-max-width": 9,
+                "symbol-sort-key": ["get", "pri"],
               }}
               paint={{
                 "text-color": "#1A1A1A",
