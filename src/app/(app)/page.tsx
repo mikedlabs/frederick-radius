@@ -5,7 +5,6 @@ import AirQualityBadge from "@/components/today/AirQualityBadge";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import LivePulse from "@/components/today/LivePulse";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
-import RedditPulse from "@/components/today/RedditPulse";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
@@ -203,9 +202,6 @@ export default async function HomePage() {
         <ExploreFooter>
           <Suspense fallback={<ShimmerCard rows={3} />}>
             <LocalNewsStrip />
-          </Suspense>
-          <Suspense fallback={<ShimmerCard rows={3} />}>
-            <RedditPulse />
           </Suspense>
           <section className="space-y-3">
             <div className="flex items-baseline justify-between">
