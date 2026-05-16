@@ -17,6 +17,55 @@ import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { classifyDescription } from "@/lib/copy-quality";
+
+/**
+ * Phase 2: never render scraped second-person copy (quality bar 9,
+ * anti-pattern 12). Show the description only when the STYLE.md detector
+ * passes it. Otherwise show nothing and let category and practical info
+ * carry the page. No filler.
+ */
+function cleanCopy(name: string, raw: string | undefined): string | null {
+  const q = classifyDescription(name, raw);
+  return q === "auto_clean" || q === "reviewed" ? (raw ?? "").trim() : null;
+}
+
+/**
+ * Clean copy for metadata, JSON-LD, and share text. Falls back to a
+ * complete STYLE.md sentence so scraped copy never leaks into SEO or
+ * share previews either.
+ */
+function safeBlurb(p: {
+  name: string;
+  description?: string;
+  short_blurb: string;
+  category_name: string;
+  municipality_name: string;
+}): string {
+  return (
+    cleanCopy(p.name, p.description ?? p.short_blurb) ??
+    `${p.category_name} in ${p.municipality_name}.`
+  );
+}
+
+/** "today", "3 days ago", "last month" — for the hours freshness line. */
+function confirmedAgo(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const d = Date.now() - new Date(iso).getTime();
+  if (!Number.isFinite(d) || d < 0) return null;
+  const days = Math.floor(d / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 30) return `${days} days ago`;
+  if (days < 60) return "last month";
+  return `${Math.floor(days / 30)} months ago`;
+}
+
+const HOURS_SOURCE_LABEL: Record<string, string> = {
+  google_places: "Google",
+  osm: "OpenStreetMap",
+  manual_override: "the Frederick Radius team",
+};
 
 export const revalidate = 300;
 
@@ -30,12 +79,13 @@ export async function generateMetadata(
   const { slug } = await params;
   const place = getPlaceBySlug(slug);
   if (!place) return { title: "Place not found" };
+  const blurb = safeBlurb(place);
   return {
     title: place.name,
-    description: place.short_blurb,
+    description: blurb,
     openGraph: {
       title: place.name,
-      description: place.short_blurb,
+      description: blurb,
       type: "website",
       images: [{ url: `/api/og?type=place&slug=${slug}`, width: 1200, height: 630 }],
     },
@@ -48,6 +98,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   if (!place) notFound();
 
   const cat = CATEGORY_BY_SLUG[place.category];
+  const desc = cleanCopy(place.name, place.description ?? place.short_blurb);
+  const hoursConfirmed = place.hours_source
+    ? `Hours from ${HOURS_SOURCE_LABEL[place.hours_source] ?? place.hours_source}, confirmed ${confirmedAgo(place.hours_updated_at) ?? "recently"}.`
+    : null;
   const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng, place.name);
   const appleUrl = appleMapsDirections(place.geom.lat, place.geom.lng, place.name);
   const actions = actionsForPlace(place);
@@ -70,7 +124,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       : place.category === "theater" ? "PerformingArtsTheater"
       : "LocalBusiness",
     name: place.name,
-    description: place.description ?? place.short_blurb,
+    description: safeBlurb(place),
     address: {
       "@type": "PostalAddress",
       streetAddress: place.address,
@@ -109,7 +163,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           slug={place.slug}
           name={place.name}
           category={place.category}
-          blurb={place.short_blurb}
+          blurb={desc ?? undefined}
           aspectRatio="16/10"
           size="hero"
           priority
@@ -127,9 +181,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             </div>
             <SaveButton refType="place" refId={place.slug} label={place.name} />
           </div>
-          <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            {place.description ?? place.short_blurb}
-          </p>
+          {desc && (
+            <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              {desc}
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <OpenClosedDot status={place.open_status} />
             {place.price_band && (
@@ -145,14 +201,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
                 ✓ Verified place
               </span>
             )}
-            {!place.hours_verified && (
-              <a
-                href={`mailto:hello@frederickradius.app?subject=Hours update for ${place.name}`}
-                className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide"
+            {hoursConfirmed && (
+              <span
+                className="ml-auto text-[10px] font-medium"
                 style={{ color: "var(--app-ink-3)" }}
+                title="Hours provenance and freshness"
               >
-                Report info
-              </a>
+                {hoursConfirmed}
+              </span>
             )}
           </div>
         </div>
@@ -321,7 +377,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           </a>
           <ShareButton
             title={place.name}
-            text={place.short_blurb}
+            text={safeBlurb(place)}
             url={`/places/${place.slug}`}
           />
         </div>

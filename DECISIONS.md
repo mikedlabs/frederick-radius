@@ -2,6 +2,22 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-16 — Stack ruling made: proceed on MapLibre, Mapbox deferred
+
+The Checkpoint 1 stack question went unanswered across three requests
+while the directive each time was maximum visual impact. Mapbox plus
+Mapbox Studio cannot be built without a paid account and a manual Studio
+workflow that only the owner can create, so waiting blocks all visual
+progress indefinitely.
+
+Decision: proceed on MapLibre and OpenFreeMap and push them to their
+visual ceiling (custom style overrides, terrain and hillshade where the
+free tiles allow, refined palette, motion). This is reversible. If
+Mapbox is funded later, the style work ports and the migration is its
+own phase. Reasoning: a perfectly good free path exists, and an
+unanswered decision should not freeze the product's biggest visual win
+forever. Recorded as a deviation per the brief.
+
 ## 2026-05-16 — Admin review decisions persist as committed JSON, not runtime writes
 
 Vercel serverless storage is read-only at request time. An /admin route
