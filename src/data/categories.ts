@@ -28,6 +28,7 @@ export const CATEGORIES: Category[] = [
   { slug: "gallery", name: "Galleries", parent: "arts", icon: "ImageIcon", color: "#7E2C6F", display_order: 32, blurb: "Independent art spaces and First Friday venues." },
   { slug: "theater", name: "Theaters", parent: "arts", icon: "Theater", color: "#5B1E55", display_order: 33, blurb: "Stage, film, and live performance venues." },
   { slug: "music", name: "Live Music", parent: "arts", icon: "Music", color: "#7E2C6F", display_order: 34, blurb: "Venues, regular nights, and outdoor stages." },
+  { slug: "public-art", name: "Public Art", parent: "arts", icon: "Palette", color: "#9B3F8A", display_order: 35, blurb: "Murals, sculptures, and installations out in the open." },
 
   { slug: "family", name: "Family", icon: "Baby", color: "#D9A441", display_order: 40, blurb: "Kid-friendly places, family-rated events, indoor rainy-day picks." },
   { slug: "library", name: "Libraries", parent: "family", icon: "Library", color: "#2A5D8F", display_order: 41, blurb: "County branches, story times, free wifi, and community rooms." },

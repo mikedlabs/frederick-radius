@@ -33,6 +33,9 @@ export type Place = {
   accessibility?: { wheelchair?: boolean; restroom?: boolean; parking?: boolean };
   hero_image?: string;
   is_verified: boolean;
+  /** Editorial: a lesser-known local standout. Set via HIDDEN_GEM_SLUGS at
+   *  compose time, never an algorithmic guess. */
+  hidden_gem?: boolean;
   /** True only when hours come from the owner, Yelp, or admin verification — never from seed guesses. */
   hours_verified?: boolean;
   /** Phase 1 hours provenance. Set at compose time, never hand-authored. */

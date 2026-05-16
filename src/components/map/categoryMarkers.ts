@@ -18,7 +18,7 @@ type Bucket =
   | "food" | "outdoors" | "arts" | "family" | "library" | "shopping"
   | "wellness" | "civic" | "services" | "lodging" | "transit" | "parking"
   | "restroom" | "water" | "trash" | "recycle" | "dogwaste" | "bench"
-  | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "ev" | "pin";
+  | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "ev" | "publicart" | "pin";
 
 const BUCKET: Record<string, Bucket> = {
   food: "food", restaurant: "food", pizza: "food", bakery: "food",
@@ -48,6 +48,7 @@ const BUCKET: Record<string, Bucket> = {
   shelter: "shelter",
   wifi: "wifi",
   "ev-charging": "ev",
+  "public-art": "publicart",
 };
 
 export function bucketOf(slug: string): Bucket {
@@ -65,6 +66,7 @@ export const BUCKET_COLOR: Record<Bucket, string> = {
   restroom: "#2A5D8F", water: "#2A5D8F", trash: "#4A4A48", recycle: "#1E6B3A",
   dogwaste: "#1E6B3A", bench: "#4A4A48", bike: "#1E6B3A", aed: "#A02929",
   shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#2A5D8F", ev: "#1E6B3A",
+  publicart: "#9B3F8A",
   pin: "#7A7975",
 };
 
@@ -264,6 +266,12 @@ function drawIcon(ctx: CanvasRenderingContext2D, b: Bucket, x: number, y: number
       ctx.lineTo(0.5, -1.5);
       ctx.closePath();
       ctx.fill();
+      break;
+    case "publicart": // ring sculpture on a pedestal
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.arc(0, -2, 5.4, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillRect(-1.3, 3, 2.6, 4);
+      ctx.fillRect(-6, 7, 12, 2.6);
       break;
     default: // location pin
       ctx.beginPath();

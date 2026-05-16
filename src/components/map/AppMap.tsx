@@ -23,6 +23,7 @@ import { isKnownClosed } from "@/lib/integrations/closures";
 import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
+import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
 
 type Props = {
   places: Place[];
@@ -65,6 +66,7 @@ const OSM_TRUSTED_CATEGORIES = new Set<string>([
   "civic",
   "transit",
   "museum",
+  "public-art",
   "parking",
   // Public amenities (don't go stale — trash cans, benches, restrooms don't "close")
   "restroom", "water", "trash", "recycling", "dog-waste",
@@ -177,6 +179,7 @@ export default function AppMap({
   const [showUnverified, setShowUnverified] = useState(false);
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(new Set());
   const [amenityOpen, setAmenityOpen] = useState(false);
+  const [onlyGems, setOnlyGems] = useState(false);
   const [demo, setDemo] = useState<null | "food-truck" | "transit">(null);
   const [showLegend, setShowLegend] = useState(false);
   const [q, setQ] = useState("");
@@ -232,12 +235,14 @@ export default function AppMap({
   }, [focus, places]);
 
   const filteredPlaces = useMemo(() => {
-    if (activeCats.size === 0) return places;
-    return places.filter((p) => {
+    let base = places;
+    if (onlyGems) base = base.filter((p) => HIDDEN_GEM_SLUGS.has(p.slug));
+    if (activeCats.size === 0) return base;
+    return base.filter((p) => {
       const cat = CATEGORY_BY_SLUG[p.category];
       return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
     });
-  }, [places, activeCats]);
+  }, [places, activeCats, onlyGems]);
 
   // Emit the curated places inside the current viewport (nearest-center
   // first) whenever the map settles — drives the synced results list.
@@ -359,9 +364,23 @@ export default function AppMap({
         category: p.category,
         color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C",
         bucket: bucketOf(p.category),
+        gem: HIDDEN_GEM_SLUGS.has(p.slug) ? 1 : 0,
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
+  }), [filteredPlaces]);
+
+  // Hidden gems get a soft gold halo so they're discoverable even when
+  // you haven't filtered to them — the "wander and find something" magic.
+  const gemGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: filteredPlaces
+      .filter((p) => HIDDEN_GEM_SLUGS.has(p.slug))
+      .map((p) => ({
+        type: "Feature" as const,
+        properties: { slug: p.slug },
+        geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
+      })),
   }), [filteredPlaces]);
 
   // The single selected place — drives a soft glow ring under its icon.
@@ -626,6 +645,24 @@ export default function AppMap({
                 </button>
               </li>
             )}
+            <li>
+              <button
+                type="button"
+                onClick={() => setOnlyGems((v) => !v)}
+                aria-pressed={onlyGems}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: onlyGems ? "#D9A441" : "var(--app-bg-elevated)",
+                  color: onlyGems ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${onlyGems ? "#D9A441" : "var(--app-border)"}`,
+                  boxShadow: onlyGems ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Lesser-known local standouts — the spots a resident sends a visitor to"
+              >
+                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"✨"}</span>
+                Hidden gems
+              </button>
+            </li>
             {civic.length > 0 && (
               <li>
                 <button
@@ -1244,6 +1281,27 @@ export default function AppMap({
                   15.5, 0,
                   16.5, 1,
                 ],
+              }}
+            />
+          </Source>
+
+          {/* Hidden-gem halo — a soft gold ring under the gem's icon. */}
+          <Source id="gem-halo" type="geojson" data={gemGeoJson}>
+            <Layer
+              id="gem-glow"
+              type="circle"
+              beforeId="curated-icons"
+              paint={{
+                "circle-color": "#D9A441",
+                "circle-opacity": 0.18,
+                "circle-radius": [
+                  "interpolate", ["linear"], ["zoom"],
+                  11, 12, 14, 18, 16, 26, 18, 34,
+                ],
+                "circle-stroke-color": "#D9A441",
+                "circle-stroke-opacity": 0.7,
+                "circle-stroke-width": 1.8,
+                "circle-blur": 0.25,
               }}
             />
           </Source>

@@ -93,7 +93,8 @@ function mapTagToCategory(tags: Record<string, string>): { category_slug: string
   if (a === "school" || a === "kindergarten" || a === "childcare") return { category_slug: "family", osm_tag: "amenity=" + a };
 
   if (t === "museum") return { category_slug: "museum", osm_tag: "tourism=museum" };
-  if (t === "gallery" || t === "artwork") return { category_slug: "gallery", osm_tag: "tourism=" + t };
+  if (t === "artwork") return { category_slug: "public-art", osm_tag: "tourism=artwork" };
+  if (t === "gallery") return { category_slug: "gallery", osm_tag: "tourism=gallery" };
   if (t === "attraction" || t === "viewpoint" || t === "theme_park" || t === "zoo") return { category_slug: "arts", osm_tag: "tourism=" + t };
   if (t === "hotel" || t === "motel" || t === "guest_house" || t === "hostel") return { category_slug: "lodging", osm_tag: "tourism=" + t };
 
@@ -142,12 +143,13 @@ function joinAddress(tags: Record<string, string>): string | undefined {
 const UNNAMED_OK = new Set([
   "restroom", "water", "trash", "recycling", "dog-waste", "bench",
   "picnic", "bike-parking", "bike-repair", "defibrillator", "shelter",
-  "ev-charging",
+  "ev-charging", "public-art",
 ]);
 
 const UNNAMED_LABELS: Record<string, string> = {
   "restroom": "Public restroom",
   "ev-charging": "EV charging station",
+  "public-art": "Public art",
   "water": "Drinking water",
   "trash": "Trash receptacle",
   "recycling": "Recycling drop-off",
