@@ -1,6 +1,7 @@
 import { Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind, ArrowUp, ArrowDown } from "lucide-react";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import WeeklyForecast from "./WeeklyForecast";
 
 const ICONS = {
   Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind,
@@ -75,6 +76,7 @@ export default async function WeatherStrip() {
   const maxPrecip = Math.max(10, ...next24.map((h) => h.probabilityOfPrecipitation ?? 0));
 
   return (
+    <>
     <div
       className="overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
       style={{ borderColor: "var(--app-border)", background: gradient }}
@@ -150,5 +152,7 @@ export default async function WeatherStrip() {
         </ul>
       </div>
     </div>
+    <WeeklyForecast daily={forecast.daily} />
+    </>
   );
 }

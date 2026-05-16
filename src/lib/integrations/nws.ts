@@ -13,6 +13,10 @@ export type NwsHourly = {
   windDirection: string;
   probabilityOfPrecipitation?: number;
   icon: string;
+  /** Daily periods carry these; hourly periods leave them undefined. */
+  name?: string;
+  isDaytime?: boolean;
+  detailedForecast?: string;
 };
 
 export type NwsForecast = {
@@ -38,11 +42,13 @@ type ForecastResp = {
       name: string;
       startTime: string;
       endTime: string;
+      isDaytime: boolean;
       temperature: number;
       temperatureUnit: "F" | "C";
       windSpeed: string;
       windDirection: string;
       shortForecast: string;
+      detailedForecast?: string;
       icon: string;
       probabilityOfPrecipitation?: { value: number | null };
     }>;
@@ -83,12 +89,16 @@ export async function getNwsForecast(point: LngLat): Promise<NwsForecast | null>
     windDirection: p.windDirection,
     probabilityOfPrecipitation: p.probabilityOfPrecipitation?.value ?? undefined,
     icon: p.icon,
+    name: p.name,
+    isDaytime: p.isDaytime,
+    detailedForecast: p.detailedForecast,
   });
 
   return {
     asOf: hourly?.properties.updated ?? daily?.properties.updated ?? new Date().toISOString(),
     hourly: (hourly?.properties.periods ?? []).slice(0, 12).map(mapPeriod),
-    daily: (daily?.properties.periods ?? []).slice(0, 7).map(mapPeriod),
+    // 14 periods = ~7 days of day/night pairs, grouped into days by the UI.
+    daily: (daily?.properties.periods ?? []).slice(0, 14).map(mapPeriod),
   };
 }
 
