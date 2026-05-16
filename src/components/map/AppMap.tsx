@@ -182,6 +182,7 @@ export default function AppMap({
   const { openSheet } = usePlaceSheet();
   const [selected, setSelected] = useState<Selected>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  const [hover, setHover] = useState<{ lng: number; lat: number; label: string; sub?: string } | null>(null);
   const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
@@ -513,6 +514,29 @@ export default function AppMap({
         lat: (feature.geometry as GeoJSON.Point).coordinates[1] as number,
       });
     }
+  };
+
+  // Lightweight hover preview: name (and category) of the pin under the
+  // pointer, so the map is scannable without clicking every icon.
+  const onHover = (e: MapMouseEvent) => {
+    const f = e.features?.[0];
+    if (!f || !f.layer?.id) { setHover((h) => (h ? null : h)); return; }
+    const props = (f.properties ?? {}) as Record<string, string | number>;
+    const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+    let next: { lng: number; lat: number; label: string; sub?: string } | null = null;
+    if (f.layer.id === "clusters" || f.layer.id === "curated-clusters") {
+      const n = props.point_count_abbreviated ?? props.point_count;
+      if (n != null) next = { lng, lat, label: `${n} places`, sub: "Zoom in to expand" };
+    } else if (f.layer.id === "curated-icons") {
+      const p = places.find((x) => x.slug === props.slug);
+      if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };
+    } else {
+      const name = String(props.name ?? "").trim();
+      if (name) next = { lng, lat, label: name, sub: CATEGORY_BY_SLUG[String(props.category)]?.name ?? undefined };
+    }
+    setHover((h) =>
+      h && next && h.label === next.label && h.lng === next.lng ? h : next,
+    );
   };
 
   const trustedOsmCount = osmPlaces.filter((p) => isTrustedOsm(p) && !isAmenity(p)).length;
@@ -1089,7 +1113,8 @@ export default function AppMap({
           onClick={onClick}
           onLoad={(e) => { installCategoryMarkers(e.target); applyFrederickPalette(e.target); emitInView(); }}
           onMoveEnd={emitInView}
-          onMouseEnter={() => { /* cursor change handled by interactiveLayerIds */ }}
+          onMouseMove={onHover}
+          onMouseLeave={() => setHover(null)}
         >
           {/* Municipality labels — no fake bbox rectangles, just point labels */}
           <Source id="muni-labels" type="geojson" data={muniLabelsGeoJson}>
@@ -1616,6 +1641,27 @@ export default function AppMap({
               maxWidth="280px"
             >
               <PointsPartnerPopup p={pointsPlace} />
+            </Popup>
+          )}
+
+          {hover && !selected && (
+            <Popup
+              longitude={hover.lng}
+              latitude={hover.lat}
+              anchor="bottom"
+              offset={16}
+              closeButton={false}
+              closeOnClick={false}
+              className="fr-hover-popup"
+            >
+              <div style={{ pointerEvents: "none", padding: "2px 2px", maxWidth: 220 }}>
+                <strong style={{ display: "block", fontSize: 13, color: "#1A1A1A", lineHeight: 1.25 }}>
+                  {hover.label}
+                </strong>
+                {hover.sub && (
+                  <span style={{ fontSize: 11, color: "#7A7975" }}>{hover.sub}</span>
+                )}
+              </div>
             </Popup>
           )}
 
