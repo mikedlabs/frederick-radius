@@ -15,8 +15,8 @@ const PAPER = "#FAFAF7";
 const PAPER_SUNKEN = "#F2F1EC";
 const PAPER_WARM = "#EAE3D3";       // soft warm cream for roads
 const PAPER_WARMER = "#E2D6BD";     // major roads / highways tint
-const WATER = "#D6E2E6";            // soft pale civic blue-cream
-const PARK = "#D8E5D1";             // soft sage for parks
+const WATER = "#C4DBE8";            // living civic blue
+const PARK = "#CDE3C2";             // living sage for parks
 const BUILDING = "#ECE6D8";         // warm cream for buildings
 const INK = "#1A1A1A";
 const INK_2 = "#4A4A48";
@@ -51,7 +51,7 @@ const PAINT_OVERRIDES: Record<string, Record<string, unknown>> = {
   road_service: { "line-color": PAPER_SUNKEN },
   // Generic catchalls
   landcover_grass: { "fill-color": PARK, "fill-opacity": 0.6 },
-  landcover_wood: { "fill-color": "#C9D8C0", "fill-opacity": 0.7 },
+  landcover_wood: { "fill-color": "#BFD4B4", "fill-opacity": 0.75 },
 };
 
 const TEXT_OVERRIDES: Record<string, Record<string, unknown>> = {

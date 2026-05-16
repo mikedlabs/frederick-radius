@@ -21,6 +21,7 @@ import { decoratePlace } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { applyFrederickPalette } from "./applyFrederickPalette";
+import { installCategoryMarkers } from "./categoryMarkers";
 
 type Props = {
   places: Place[];
@@ -299,7 +300,7 @@ export default function AppMap({
       return;
     }
 
-    if (layer === "curated-points") {
+    if (layer === "curated-icons") {
       const props = feature.properties as Record<string, string>;
       const place = places.find((p) => p.slug === props.slug);
       // Google-Maps-style: tap a pin → full card slides up from the bottom
@@ -308,7 +309,7 @@ export default function AppMap({
       return;
     }
 
-    if (layer === "osm-unclustered") {
+    if (layer === "osm-icons") {
       const props = feature.properties as Record<string, string>;
       setSelected({
         _kind: "osm",
@@ -451,9 +452,9 @@ export default function AppMap({
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={{ compact: true }}
-          interactiveLayerIds={["clusters", "osm-unclustered", "curated-clusters", "curated-points"]}
+          interactiveLayerIds={["clusters", "osm-icons", "curated-clusters", "curated-icons"]}
           onClick={onClick}
-          onLoad={(e) => { applyFrederickPalette(e.target); emitInView(); }}
+          onLoad={(e) => { installCategoryMarkers(e.target); applyFrederickPalette(e.target); emitInView(); }}
           onMoveEnd={emitInView}
           onMouseEnter={() => { /* cursor change handled by interactiveLayerIds */ }}
         >
@@ -523,18 +524,29 @@ export default function AppMap({
               }}
               paint={{ "text-color": "#fff" }}
             />
-            {/* Individual unclustered points */}
+            {/* Individual unclustered points — same icon language, smaller
+                and a touch softer so curated places stay primary */}
             <Layer
-              id="osm-unclustered"
-              type="circle"
+              id="osm-icons"
+              type="symbol"
               filter={["!", ["has", "point_count"]]}
-              paint={{
-                "circle-color": ["get", "color"],
-                "circle-radius": 5,
-                "circle-stroke-color": "#fff",
-                "circle-stroke-width": 1.5,
-                "circle-opacity": 0.9,
+              layout={{
+                "icon-image": [
+                  "coalesce",
+                  ["image", ["concat", "cat-", ["get", "category"]]],
+                  ["image", "cat-_default"],
+                ],
+                "icon-size": [
+                  "interpolate", ["linear"], ["zoom"],
+                  12, 0.34,
+                  14, 0.5,
+                  16, 0.72,
+                  18, 0.88,
+                ],
+                "icon-allow-overlap": ["step", ["zoom"], false, 16, true],
+                "icon-anchor": "center",
               }}
+              paint={{ "icon-opacity": 0.92 }}
             />
           </Source>
 
@@ -584,15 +596,51 @@ export default function AppMap({
               paint={{ "text-color": "#fff" }}
             />
             <Layer
-              id="curated-points"
-              type="circle"
+              id="curated-icons"
+              type="symbol"
               filter={["!", ["has", "point_count"]]}
+              layout={{
+                "icon-image": [
+                  "coalesce",
+                  ["image", ["concat", "cat-", ["get", "category"]]],
+                  ["image", "cat-_default"],
+                ],
+                "icon-size": [
+                  "interpolate", ["linear"], ["zoom"],
+                  11, 0.5,
+                  14, 0.72,
+                  16, 1,
+                  18, 1.18,
+                ],
+                "icon-allow-overlap": ["step", ["zoom"], false, 15.5, true],
+                "icon-anchor": "center",
+              }}
+            />
+            {/* Names reveal as you get closer — fade in past street zoom */}
+            <Layer
+              id="curated-labels"
+              type="symbol"
+              minzoom={15}
+              filter={["!", ["has", "point_count"]]}
+              layout={{
+                "text-field": ["get", "name"],
+                "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 13],
+                "text-font": ["Noto Sans Regular"],
+                "text-anchor": "top",
+                "text-offset": [0, 1.15],
+                "text-optional": true,
+                "text-allow-overlap": false,
+                "text-max-width": 9,
+              }}
               paint={{
-                "circle-color": ["get", "color"],
-                "circle-radius": 7,
-                "circle-stroke-color": "#fff",
-                "circle-stroke-width": 2,
-                "circle-opacity": 0.95,
+                "text-color": "#1A1A1A",
+                "text-halo-color": "#FAFAF7",
+                "text-halo-width": 1.7,
+                "text-opacity": [
+                  "interpolate", ["linear"], ["zoom"],
+                  15.5, 0,
+                  16.5, 1,
+                ],
               }}
             />
           </Source>
