@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink, GraduationCap, Rss, CalendarDays } from "lucide-react";
-import { allUpcoming, eventsLive, eventsNext24h, eventsWeekend, eventsByTown, aroundTheCounty, BY_TOWN_ENABLED, type EventWithMeta } from "@/lib/loaders/events";
+import { allUpcoming, eventsLive, eventsNext24h, eventsWeekend, eventsByTown, aroundTheCounty, dedupeLiveAgainstCurated, BY_TOWN_ENABLED, type EventWithMeta } from "@/lib/loaders/events";
 import EventsByTown from "@/components/event/EventsByTown";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents, type LiveEvent } from "@/lib/integrations/ical-live";
@@ -55,7 +55,8 @@ export default async function EventsIndexPage({
   const seedLive = eventsLive(now);
   const seedToday = eventsNext24h(now);
   const seedWeekend = eventsWeekend(now);
-  const seedLater = allUpcoming(now).filter(
+  const curatedUpcoming = allUpcoming(now);
+  const seedLater = curatedUpcoming.filter(
     (e) => !seedToday.some((x) => x.slug === e.slug) && !seedWeekend.some((x) => x.slug === e.slug)
   );
 
@@ -66,8 +67,12 @@ export default async function EventsIndexPage({
     getIngestedSummary(),
   ]);
 
-  // Bucket the live events into the same windows the seed uses
-  const liveCards = liveEventsRaw.map(liveToCardEvent);
+  // Bucket the live events into the same windows the seed uses, after
+  // dropping any that duplicate a curated event (curated wins, P0-4).
+  const liveCards = dedupeLiveAgainstCurated(
+    liveEventsRaw.map(liveToCardEvent),
+    curatedUpcoming,
+  );
 
   const inWindow = (e: EventWithMeta, from: Date, to: Date) => {
     const s = new Date(e.starts_at);

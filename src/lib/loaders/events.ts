@@ -42,6 +42,51 @@ function decorate(e: Event, origin?: LngLat): EventWithMeta {
   };
 }
 
+const normLoose = (s: string) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+function titlesMatch(a: string, b: string): boolean {
+  const x = normLoose(a);
+  const y = normLoose(b);
+  if (!x || !y) return false;
+  if (x.includes(y) || y.includes(x)) return true;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  for (let i = 0; i + 6 <= short.length; i++) {
+    if (long.includes(short.slice(i, i + 6))) return true;
+  }
+  return false;
+}
+
+function venuesMatch(a: string, b: string): boolean {
+  const x = normLoose(a);
+  const y = normLoose(b);
+  if (!x || !y) return false;
+  return x === y || x.includes(y) || y.includes(x);
+}
+
+/**
+ * Drops live or county-feed events that duplicate a curated event.
+ * Curated always wins (P0-4). A live event is a duplicate when it is at
+ * the same venue, starts within 60 minutes, and the titles match by
+ * containment or a six character common run. Conservative on purpose:
+ * all three signals must agree so distinct events are never merged.
+ */
+export function dedupeLiveAgainstCurated(
+  live: EventWithMeta[],
+  curated: EventWithMeta[],
+): EventWithMeta[] {
+  return live.filter((l) => {
+    const lt = +new Date(l.starts_at);
+    return !curated.some((c) => {
+      const within = Math.abs(+new Date(c.starts_at) - lt) <= 60 * 60 * 1000;
+      return (
+        within &&
+        venuesMatch(c.venue_name, l.venue_name) &&
+        titlesMatch(c.title, l.title)
+      );
+    });
+  });
+}
+
 export function getEventBySlug(slug: string): (EventWithMeta & { venue_place_name?: string }) | null {
   const e = EVENT_BY_SLUG[slug];
   if (!e) return null;
