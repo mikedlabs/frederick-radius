@@ -65,6 +65,14 @@ const AMENITY_CATEGORIES = new Set<string>([
   "defibrillator", "shelter",
 ]);
 
+// Glyphs for the filter chips, matching the map marker language.
+const CHIP_GLYPH: Record<string, string> = {
+  food: "\u{1F37D}", outdoors: "\u{1F333}", arts: "\u{1F3A8}", family: "\u{1F46A}",
+  shopping: "\u{1F6CD}", wellness: "\u{1F49A}", civic: "\u{1F3DB}", services: "\u{1F527}",
+  lodging: "\u{1F3E8}", transit: "\u{1F68C}", parking: "\u{1F17F}", amenities: "\u{1F6BB}",
+  music: "\u{1F3B5}", brewery: "\u{1F37A}",
+};
+
 function isTrustedOsm(p: OsmPlace): boolean {
   return OSM_TRUSTED_CATEGORIES.has(p.category_slug);
 }
@@ -119,6 +127,8 @@ export default function AppMap({
   const [osmError, setOsmError] = useState<string | null>(null);
   const [showUnverified, setShowUnverified] = useState(false);
   const [showAmenities, setShowAmenities] = useState(false);
+  const [demo, setDemo] = useState<null | "food-truck" | "transit">(null);
+  const [showLegend, setShowLegend] = useState(false);
 
   useEffect(() => {
     if (osmFromProps) {
@@ -335,68 +345,109 @@ export default function AppMap({
 
   return (
     <div className="space-y-2">
-      <div className="-mx-4 overflow-x-auto px-4 scrollbar-hide">
-        <ul className="flex min-w-max gap-1.5">
-          <li>
-            <button
-              type="button"
-              onClick={() => setActiveCats(new Set())}
-              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-              style={{
-                borderColor: activeCats.size === 0 ? "var(--app-brand)" : "var(--app-border)",
-                background: activeCats.size === 0 ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                color: activeCats.size === 0 ? "white" : "var(--app-ink-2)",
-              }}
-            >
-              All · {(places.length + (showUnverified ? osmPlaces.length : trustedOsmCount)).toLocaleString()}
-            </button>
-          </li>
-          {amenityCount > 0 && (
+      {/* Premium filter rail — glyphs match the map markers, edge fades hint scroll */}
+      <div className="relative -mx-4">
+        <div className="overflow-x-auto px-4 scrollbar-hide">
+          <ul className="flex min-w-max items-center gap-2 py-0.5">
             <li>
               <button
                 type="button"
-                onClick={() => setShowAmenities((v) => !v)}
-                aria-pressed={showAmenities}
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                onClick={() => setActiveCats(new Set())}
+                aria-pressed={activeCats.size === 0}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
                 style={{
-                  borderColor: showAmenities ? "var(--app-cool)" : "var(--app-border)",
-                  background: showAmenities ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                  color: showAmenities ? "white" : "var(--app-ink-2)",
+                  background: activeCats.size === 0 ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                  color: activeCats.size === 0 ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${activeCats.size === 0 ? "var(--app-brand)" : "var(--app-border)"}`,
+                  boxShadow: activeCats.size === 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                 }}
-                title="Public restrooms, water, dog stations, benches, picnic, bike parking"
               >
-                🚻 Amenities · {amenityCount}
+                All · {(places.length + (showUnverified ? osmPlaces.length : trustedOsmCount)).toLocaleString()}
               </button>
             </li>
-          )}
-          {TOP_CATEGORIES.map((c) => {
-            const active = activeCats.has(c.slug);
-            return (
-              <li key={c.slug}>
+            {amenityCount > 0 && (
+              <li>
                 <button
                   type="button"
-                  onClick={() => {
-                    setActiveCats((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(c.slug)) next.delete(c.slug);
-                      else next.add(c.slug);
-                      return next;
-                    });
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+                  onClick={() => setShowAmenities((v) => !v)}
+                  aria-pressed={showAmenities}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
                   style={{
-                    borderColor: active ? c.color : "var(--app-border)",
-                    background: active ? c.color : "var(--app-bg-elevated)",
-                    color: active ? "white" : "var(--app-ink-2)",
+                    background: showAmenities ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                    color: showAmenities ? "white" : "var(--app-ink-2)",
+                    border: `1px solid ${showAmenities ? "var(--app-cool)" : "var(--app-border)"}`,
+                    boxShadow: showAmenities ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                   }}
+                  title="Public restrooms, water, dog stations, benches, picnic, bike parking"
                 >
-                  <span style={{ color: active ? "rgba(255,255,255,0.85)" : c.color }}>●</span>
-                  {c.name}
+                  <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
+                  Amenities · {amenityCount}
                 </button>
               </li>
-            );
-          })}
-        </ul>
+            )}
+            {TOP_CATEGORIES.map((c) => {
+              const active = activeCats.has(c.slug);
+              return (
+                <li key={c.slug}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCats((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(c.slug)) next.delete(c.slug);
+                        else next.add(c.slug);
+                        return next;
+                      });
+                    }}
+                    aria-pressed={active}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                    style={{
+                      background: active ? c.color : "var(--app-bg-elevated)",
+                      color: active ? "white" : "var(--app-ink-2)",
+                      border: `1px solid ${active ? c.color : "var(--app-border)"}`,
+                      boxShadow: active ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                    }}
+                  >
+                    <span aria-hidden style={{ fontSize: 13, lineHeight: 1, color: active ? "rgba(255,255,255,0.92)" : c.color }}>
+                      {CHIP_GLYPH[c.slug] ?? "●"}
+                    </span>
+                    {c.name}
+                  </button>
+                </li>
+              );
+            })}
+            {/* Demos for future updates — clearly labeled previews */}
+            <li aria-hidden className="mx-1 h-5 w-px shrink-0 self-center" style={{ background: "var(--app-border)" }} />
+            {[
+              { key: "food-truck" as const, glyph: "\u{1F69A}", label: "Food Trucks" },
+              { key: "transit" as const, glyph: "\u{1F68C}", label: "Live Transit" },
+            ].map((d) => (
+              <li key={d.key}>
+                <button
+                  type="button"
+                  onClick={() => setDemo(d.key)}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-bg-elevated)",
+                    color: "var(--app-ink-3)",
+                    border: "1px dashed var(--app-border)",
+                  }}
+                >
+                  <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{d.glyph}</span>
+                  {d.label}
+                  <span
+                    className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                    style={{ background: "var(--app-accent)", color: "white" }}
+                  >
+                    Soon
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-5" style={{ background: "linear-gradient(90deg, var(--app-bg), transparent)" }} />
+        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-5" style={{ background: "linear-gradient(270deg, var(--app-bg), transparent)" }} />
       </div>
 
       <div
@@ -442,6 +493,87 @@ export default function AppMap({
             {showUnverified ? "Hide unverified" : `+${unverifiedOsmCount.toLocaleString()} unverified`}
           </button>
         )}
+
+        {/* Legend — quick key so it's easy to see what you're looking at */}
+        <div className="absolute bottom-3 left-3 z-10">
+          {showLegend ? (
+            <div
+              className="w-[220px] rounded-[var(--app-radius-md)] border p-3 text-[11px] shadow-[var(--app-shadow-2)] backdrop-blur"
+              style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.94)", color: "var(--app-ink-2)" }}
+            >
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>Legend</span>
+                <button type="button" onClick={() => setShowLegend(false)} aria-label="Close legend" style={{ color: "var(--app-ink-3)" }}>✕</button>
+              </div>
+              <ul className="space-y-1.5">
+                <li className="flex items-center gap-2">
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[8px]" style={{ background: "var(--app-brand)", color: "white" }}>●</span>
+                  Curated places — verified
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[8px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>○</span>
+                  Public &amp; OSM — lighter pins
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px]" style={{ background: "var(--app-cool)", color: "white" }}>#</span>
+                  Numbered circle — zoom in to expand
+                </li>
+                <li style={{ color: "var(--app-ink-3)" }}>Tap any pin for the full card.</li>
+              </ul>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowLegend(true)}
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-[var(--app-shadow-1)] backdrop-blur"
+              style={{ background: "rgba(255,255,255,0.92)", color: "var(--app-ink-2)" }}
+              aria-label="Show map legend"
+            >
+              <span aria-hidden>ⓘ</span> Legend
+            </button>
+          )}
+        </div>
+
+        {/* Demo preview for future updates */}
+        {demo && (
+          <div
+            className="absolute inset-x-3 bottom-3 z-20 rounded-[var(--app-radius-md)] border p-3.5 shadow-[var(--app-shadow-3)] backdrop-blur"
+            style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.96)" }}
+            role="status"
+          >
+            <div className="flex items-start gap-3">
+              <span aria-hidden className="text-2xl leading-none">
+                {demo === "food-truck" ? "\u{1F69A}" : "\u{1F68C}"}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--app-ink)" }}>
+                  {demo === "food-truck" ? "Live food truck map" : "Live transit"}
+                  <span
+                    className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                    style={{ background: "var(--app-accent)", color: "white" }}
+                  >
+                    Preview
+                  </span>
+                </p>
+                <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                  {demo === "food-truck"
+                    ? "Coming soon: every Frederick food truck's location in real time. For now, filter Food & Drink to see the spots trucks reliably park each week."
+                    : "Coming soon: real-time TransIT bus and MARC train positions, right on the map."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDemo(null)}
+                aria-label="Dismiss preview"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         <Map
           ref={mapRef}
           initialViewState={{

@@ -176,6 +176,28 @@ body {
   border-radius: var(--app-radius-md) !important;
   overflow: hidden;
   box-shadow: var(--app-shadow-2) !important;
+  background: var(--app-bg-elevated) !important;
+  border: 1px solid var(--app-border) !important;
+  margin: 0 12px 14px 0 !important;
+}
+.maplibregl-ctrl-group button {
+  width: 38px !important;
+  height: 38px !important;
+  background: var(--app-bg-elevated) !important;
+  transition: background 0.15s ease;
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--app-border) !important;
+}
+.maplibregl-ctrl-group button:hover {
+  background: var(--app-bg-sunken) !important;
+}
+.maplibregl-ctrl-group button:active {
+  transform: scale(0.96);
+}
+.maplibregl-ctrl-attrib {
+  border-radius: 999px !important;
+  margin: 0 0 12px 12px !important;
 }
 
 /* Marketing route group keeps its night-sky aesthetic. */
