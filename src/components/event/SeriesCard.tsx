@@ -4,16 +4,12 @@ import { useState } from "react";
 import { Repeat, ChevronDown, MapPin, ExternalLink, CalendarPlus } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import type { IngestedSeries } from "@/lib/loaders/ingested";
+import { formatEventDate, formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 
 function fmtDate(iso: string, allDay: boolean): string {
-  const d = new Date(iso);
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    ...(allDay ? {} : { hour: "numeric", minute: "2-digit" }),
-  }).format(d);
+  return allDay
+    ? formatEventDate(iso)
+    : `${formatEventDate(iso)}, ${formatEventTime(iso)}`;
 }
 
 /**
@@ -39,10 +35,10 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
           aria-hidden
         >
           <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--app-brand)" }}>
-            {new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short" }).format(new Date(next.startsAtUtc))}
+            {eventDateParts(next.startsAtUtc).monthShort}
           </span>
           <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
-            {new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", day: "numeric" }).format(new Date(next.startsAtUtc))}
+            {eventDateParts(next.startsAtUtc).day}
           </span>
         </div>
 

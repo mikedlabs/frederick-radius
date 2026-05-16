@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { formatEventTime } from "@/lib/format/eventTime";
 import type { CalEvent } from "@/lib/loaders/calendar";
 
 const WD = ["S", "M", "T", "W", "T", "F", "S"];
@@ -169,13 +170,7 @@ export default function MonthGrid({
           ) : (
             <ul className="space-y-1.5">
               {selectedEvents.map((e) => {
-                const time = e.allDay
-                  ? "All day"
-                  : new Date(e.startUtc).toLocaleTimeString("en-US", {
-                      timeZone: "America/New_York",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    });
+                const time = e.allDay ? "All day" : formatEventTime(e.startUtc);
                 const Inner = (
                   <div
                     className="flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5"

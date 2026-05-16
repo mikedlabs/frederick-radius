@@ -8,6 +8,7 @@ import { getLiveEvents, type LiveEvent } from "@/lib/integrations/ical-live";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import EventCard from "@/components/event/EventCard";
+import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 
@@ -195,10 +196,10 @@ export default async function EventsIndexPage({
                     style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
                   >
                     <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-cool)" }}>
-                      {new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short" }).format(new Date(e.starts_at)).toUpperCase()}
+                      {eventDateParts(e.starts_at).monthShortUpper}
                     </span>
                     <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
-                      {new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", day: "numeric" }).format(new Date(e.starts_at))}
+                      {eventDateParts(e.starts_at).day}
                     </span>
                   </div>
                   <div className="min-w-0 flex-1">
@@ -206,7 +207,7 @@ export default async function EventsIndexPage({
                       {e.title}
                     </h3>
                     <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-                      {new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(e.starts_at))} · {e.location}
+                      {formatEventTime(e.starts_at)} · {e.location}
                     </p>
                   </div>
                   <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
