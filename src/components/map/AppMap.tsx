@@ -9,9 +9,12 @@ import Map, {
   Source,
   Layer,
   type MapRef,
-  type MapLayerMouseEvent,
-} from "react-map-gl/maplibre";
-import "maplibre-gl/dist/maplibre-gl.css";
+  type MapMouseEvent,
+} from "react-map-gl/mapbox";
+import type { GeoJSONSource } from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 import Link from "next/link";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { Place } from "@/data/places";
@@ -156,7 +159,10 @@ function saveCachedOsm(data: OsmPlace[]) {
 }
 
 const FREDERICK: [number, number] = [-77.4105, 39.4143];
-const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+// Interim Mapbox base. The custom Frederick Radius Studio style is
+// P2-1, an owner-only manual workflow; its published style URL replaces
+// this when ready. Dark aligns with the System Black brand target.
+const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 
 type SelectedOsm = OsmPlace & { _kind: "osm" };
 type SelectedPlace = Place & { _kind: "place" };
@@ -263,6 +269,7 @@ export default function AppMap({
     if (!onPlacesInView || !mapRef.current) return;
     const map = mapRef.current.getMap();
     const b = map.getBounds();
+    if (!b) return;
     const c = map.getCenter();
     const inside = filteredPlaces
       .filter(
@@ -451,10 +458,11 @@ export default function AppMap({
     );
   }, [filteredPlaces, activeCats]);
 
-  const onClick = (e: MapLayerMouseEvent) => {
+  const onClick = (e: MapMouseEvent) => {
     const feature = e.features?.[0];
     if (!feature) { setSelectedSlug(null); return; }
-    const layer = feature.layer.id;
+    const layer = feature.layer?.id;
+    if (!layer) { setSelectedSlug(null); return; }
     const map = mapRef.current?.getMap();
 
     // Cluster expansion — works for both OSM and curated clusters
@@ -462,7 +470,7 @@ export default function AppMap({
       setSelectedSlug(null);
       const clusterId = feature.properties?.cluster_id as number | undefined;
       const sourceId = layer === "clusters" ? "osm-businesses" : "curated-places";
-      const source = map.getSource(sourceId) as maplibregl.GeoJSONSource | undefined;
+      const source = map.getSource(sourceId) as GeoJSONSource | undefined;
       if (clusterId !== undefined && source && "getClusterExpansionZoom" in source) {
         (source as unknown as { getClusterExpansionZoom: (id: number, cb: (err: Error | null, zoom: number) => void) => void })
           .getClusterExpansionZoom(clusterId, (err, zoom) => {
@@ -1068,6 +1076,7 @@ export default function AppMap({
 
         <Map
           ref={mapRef}
+          mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={{
             longitude: initialCenter[0],
             latitude: initialCenter[1],
@@ -1075,7 +1084,7 @@ export default function AppMap({
           }}
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
-          attributionControl={{ compact: true }}
+          attributionControl={true}
           interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons"]}
           onClick={onClick}
           onLoad={(e) => { installCategoryMarkers(e.target); applyFrederickPalette(e.target); emitInView(); }}

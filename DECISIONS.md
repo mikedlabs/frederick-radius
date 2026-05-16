@@ -2,6 +2,29 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-16: Mapbox funded, map migrated MapLibre to Mapbox GL
+
+The owner funded a Mapbox account and provided a public token, reversing
+the earlier "Mapbox deferred" ruling. This is the P1 audit-remediation
+foundation: P1-1 static placeholder, P1-3 isochrone, P2-1 Studio style,
+P2-5 search box, and P3-3 directions all require Mapbox.
+
+Changes: react-map-gl swapped from the maplibre entrypoint to the mapbox
+entrypoint; mapbox-gl added; AppMap and PlaceMiniMapInner pass
+mapboxAccessToken from NEXT_PUBLIC_MAPBOX_TOKEN. Interim base style is
+mapbox://styles/mapbox/dark-v11, which aligns with the System Black brand
+target; the custom Frederick Radius Studio style is P2-1, an owner-only
+manual workflow whose published URL replaces the interim style when
+ready. applyFrederickPalette is Positron-specific and now no-ops safely
+on the Mapbox style (it iterates existing layers with guarded writes).
+categoryMarkers re-adds its runtime icon images on style.load because
+Mapbox loads its style asynchronously after onLoad, unlike OpenFreeMap.
+
+Verified: tsc, vitest, node:test, and a browser screenshot showing the
+dark base with category pins rendering. The transient styleimagemissing
+warnings during first paint are the original code's documented one-frame
+flash, mitigated by the style.load re-add, not a functional defect.
+
 ## 2026-05-16 — Stack ruling made: proceed on MapLibre, Mapbox deferred
 
 The Checkpoint 1 stack question went unanswered across three requests

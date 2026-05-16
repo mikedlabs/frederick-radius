@@ -8,7 +8,7 @@
  * heights). Forking the whole JSON is brittle; overriding fill/line/text
  * paint is surgical and stays compatible if OpenFreeMap updates its style.
  */
-import type { Map as MapLibreMap } from "maplibre-gl";
+import type { Map as GLMap } from "mapbox-gl";
 
 // Frederick palette tokens
 const PAPER = "#FAFAF7";
@@ -68,7 +68,7 @@ const TEXT_OVERRIDES: Record<string, Record<string, unknown>> = {
   road_oneway: { "text-color": INK_3, "text-halo-color": PAPER, "text-halo-width": 1 },
 };
 
-export function applyFrederickPalette(map: MapLibreMap): void {
+export function applyFrederickPalette(map: GLMap): void {
   // Mutating layers can throw if the style hasn't finished parsing.
   // Listen for "styledata" instead of "load" for safety.
   const apply = () => {
@@ -80,13 +80,13 @@ export function applyFrederickPalette(map: MapLibreMap): void {
       const paint = PAINT_OVERRIDES[id];
       if (paint) {
         for (const [k, v] of Object.entries(paint)) {
-          try { map.setPaintProperty(id, k, v as never); } catch { /* layer may not support this property */ }
+          try { map.setPaintProperty(id, k as never, v as never); } catch { /* layer may not support this property */ }
         }
       }
       const text = TEXT_OVERRIDES[id];
       if (text) {
         for (const [k, v] of Object.entries(text)) {
-          try { map.setPaintProperty(id, k, v as never); } catch { /* not all symbol layers have text-color */ }
+          try { map.setPaintProperty(id, k as never, v as never); } catch { /* not all symbol layers have text-color */ }
         }
       }
       // Loose-match: any layer whose id starts with "road_" but not in overrides → soft minor road tint

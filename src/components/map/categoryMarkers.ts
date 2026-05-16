@@ -9,7 +9,7 @@
  * Served via the `styleimagemissing` event so it survives style reloads
  * and mount ordering. Drawn at 2x for retina crispness.
  */
-import type { Map as MapLibreMap } from "maplibre-gl";
+import type { Map as GLMap } from "mapbox-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 const DEFAULT_COLOR = "#C4451C";
@@ -319,7 +319,7 @@ function drawPuck(color: string, b: Bucket): ImageData {
   return ctx.getImageData(0, 0, W * R, H * R);
 }
 
-function addOne(map: MapLibreMap, id: string): void {
+function addOne(map: GLMap, id: string): void {
   if (map.hasImage(id)) return;
   const slug = id.startsWith("cat-") ? id.slice(4) : "_default";
   try {
@@ -333,10 +333,17 @@ function addOne(map: MapLibreMap, id: string): void {
  * Wire up category markers. The styleimagemissing handler is the
  * guarantee; the eager pass just avoids a one-frame flash.
  */
-export function installCategoryMarkers(map: MapLibreMap): void {
+export function installCategoryMarkers(map: GLMap): void {
+  const addAll = () => {
+    addOne(map, "cat-_default");
+    for (const slug of Object.keys(CATEGORY_BY_SLUG)) addOne(map, `cat-${slug}`);
+  };
   map.on("styleimagemissing", (e: { id: string }) => {
     if (e.id && e.id.startsWith("cat-")) addOne(map, e.id);
   });
-  addOne(map, "cat-_default");
-  for (const slug of Object.keys(CATEGORY_BY_SLUG)) addOne(map, `cat-${slug}`);
+  // Mapbox loads its style asynchronously after onLoad, which clears
+  // images added before the style settled. Re-add on every style load
+  // (idempotent via hasImage) so category icons survive.
+  map.on("style.load", addAll);
+  addAll();
 }

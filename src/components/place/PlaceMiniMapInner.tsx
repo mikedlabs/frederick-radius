@@ -1,9 +1,10 @@
 "use client";
 
-import Map, { Marker, NavigationControl } from "react-map-gl/maplibre";
-import "maplibre-gl/dist/maplibre-gl.css";
+import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
+import "mapbox-gl/dist/mapbox-gl.css";
 
-const STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 
 export default function PlaceMiniMapInner({
   lng,
@@ -24,10 +25,11 @@ export default function PlaceMiniMapInner({
       style={{ borderColor: "var(--app-border)", height }}
     >
       <Map
+        mapboxAccessToken={MAPBOX_TOKEN}
         initialViewState={{ longitude: lng, latitude: lat, zoom }}
         mapStyle={STYLE_URL}
         style={{ width: "100%", height: "100%" }}
-        attributionControl={{ compact: true }}
+        attributionControl={true}
         scrollZoom={false}
         dragRotate={false}
         touchPitch={false}
