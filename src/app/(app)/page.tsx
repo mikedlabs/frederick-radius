@@ -20,7 +20,7 @@ import { buildActivities } from "@/lib/live-activity";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import FadeUp from "@/components/ui/FadeUp";
 import { ShimmerWeatherStrip, ShimmerCard } from "@/components/ui/Shimmer";
-import { rankPlaces, placesWithinRadius, decoratePlace } from "@/lib/loaders/places";
+import { rankPlaces, placesWithinRadius, decoratePlace, likelyOpenPlaces } from "@/lib/loaders/places";
 import { eventsLive, eventsNext24h, eventsWeekend, allUpcoming, seriesKey, formatEventWhen } from "@/lib/loaders/events";
 import { PLACES, PLACE_BY_SLUG } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -51,10 +51,22 @@ export default async function HomePage() {
   const walkable = placesWithinRadius(origin, 1200, now)
     .filter((p) => p.open_status.state !== "closed")
     .slice(0, 8);
-  // "Open now" = places with hours-verified open status (so we don't lie)
-  const openNow = rankPlaces({ origin, now, preferOpen: true, limit: 30 })
+  // "Open now": Google-verified open first (so we do not lie). When that
+  // is thin (hours coverage is low), supplement with curated reliable
+  // windows tagged "likely" so the panel is never a defeating empty
+  // state. P0-6.
+  const verifiedOpen = rankPlaces({ origin, now, preferOpen: true, limit: 30 })
     .filter((p) => p.hours_verified && p.open_status.state === "open")
-    .slice(0, 8);
+    .map((p) => ({ ...p, open_confidence: "verified" as const }));
+  const openNow =
+    verifiedOpen.length >= 5
+      ? verifiedOpen.slice(0, 8)
+      : [
+          ...verifiedOpen,
+          ...likelyOpenPlaces(origin, now).filter(
+            (l) => !verifiedOpen.some((v) => v.slug === l.slug),
+          ),
+        ].slice(0, 8);
   // Family = parks, libraries, family-tagged, kids audience
   const familyPicks = rankPlaces({ origin, now, limit: 30 })
     .filter((p) =>

@@ -7,6 +7,7 @@ import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
+import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
@@ -82,6 +83,8 @@ const photoProxy = (name: string, w = 800) =>
 export type PlaceCardData = Place & PlaceEnriched & {
   open_status: OpenStatus;
   distance_m?: number;
+  /** "verified" = Google hours confirm open. "likely" = curated window. */
+  open_confidence?: "verified" | "likely";
 };
 
 function applyEnrichment(p: Place): Place & PlaceEnriched {
@@ -228,6 +231,20 @@ export function isOperational(p: Place): boolean {
  */
 export function radiusPlaces(): Place[] {
   return BASE_PLACES.filter(isOperational);
+}
+
+/**
+ * Marquee places whose curated reliable window says they are open now,
+ * tagged "likely". Used as the home "Open now" fallback when Google has
+ * not verified anything, so the panel never shows a defeating empty
+ * state. Closed places are still excluded.
+ */
+export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): PlaceCardData[] {
+  return BASE_PLACES
+    .filter(isOperational)
+    .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
+    .map((p) => ({ ...decoratePlace(p, origin, now), open_confidence: "likely" as const }))
+    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
 }
 
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {

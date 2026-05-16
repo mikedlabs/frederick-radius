@@ -55,6 +55,23 @@ export default function TodayTabs({
 
   // Render a place list photo-forward: promote the first place that has a
   // real Google photo to a full-bleed feature card, the rest as rows.
+  const confTag = (p: PlaceCardData) => {
+    if (!p.open_confidence) return null;
+    const verified = p.open_confidence === "verified";
+    return (
+      <span
+        className="mb-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+        style={
+          verified
+            ? { color: "var(--app-positive)", background: "rgba(22,163,74,0.12)" }
+            : { color: "var(--app-ink-3)", background: "var(--app-bg-sunken)" }
+        }
+      >
+        {verified ? "Verified open" : "Likely open"}
+      </span>
+    );
+  };
+
   const renderPlaces = (places: PlaceCardData[]) => {
     if (places.length === 0) return null;
     const pool = places.slice(0, 6);
@@ -62,7 +79,12 @@ export default function TodayTabs({
     if (heroIdx === -1) {
       return (
         <ul className="space-y-2">
-          {pool.map((p) => <li key={p.slug}><PlaceCard place={p} /></li>)}
+          {pool.map((p) => (
+            <li key={p.slug}>
+              {confTag(p)}
+              <PlaceCard place={p} />
+            </li>
+          ))}
         </ul>
       );
     }
@@ -70,13 +92,46 @@ export default function TodayTabs({
     const rest = pool.filter((_, i) => i !== heroIdx);
     return (
       <div className="space-y-2">
-        <PlaceCard place={hero} variant="feature" />
+        <div>
+          {confTag(hero)}
+          <PlaceCard place={hero} variant="feature" />
+        </div>
         <ul className="space-y-2">
-          {rest.map((p) => <li key={p.slug}><PlaceCard place={p} /></li>)}
+          {rest.map((p) => (
+            <li key={p.slug}>
+              {confTag(p)}
+              <PlaceCard place={p} />
+            </li>
+          ))}
         </ul>
       </div>
     );
   };
+
+  // P0-6: the "Open now" panel must never show a defeating empty state.
+  // Verified or likely-open places first, otherwise fall back to what is
+  // on tonight, then the weekend.
+  const openNowContent =
+    renderPlaces(openNow) ??
+    (tonight.length > 0 ? (
+      <div className="space-y-2">
+        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+          No verified open spots this late. Here is what is on tonight.
+        </p>
+        <ul className="space-y-2">
+          {tonight.map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
+        </ul>
+      </div>
+    ) : weekendEvents.length > 0 ? (
+      <div className="space-y-2">
+        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+          No verified open spots right now. Here is what is on this weekend.
+        </p>
+        <ul className="space-y-2">
+          {weekendEvents.slice(0, 6).map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
+        </ul>
+      </div>
+    ) : null);
 
   const tabs: Tab[] = [
     {
@@ -127,9 +182,9 @@ export default function TodayTabs({
       count: openNow.length,
       href: "/map?filter=open-now",
       hrefLabel: "See all open",
-      meta: <span>Hours-verified spots open right now</span>,
-      empty: "Nothing has verified hours showing open yet.",
-      content: renderPlaces(openNow),
+      meta: <span>Open now, or likely open by curated hours</span>,
+      empty: "",
+      content: openNowContent,
     },
     {
       key: "walkable",
