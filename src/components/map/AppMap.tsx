@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import Map, {
   Popup,
+  Marker,
   NavigationControl,
   GeolocateControl,
   Source,
@@ -24,6 +25,7 @@ import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
+import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
 
 type Props = {
   places: Place[];
@@ -181,6 +183,7 @@ export default function AppMap({
   const [amenityOpen, setAmenityOpen] = useState(false);
   const [onlyGems, setOnlyGems] = useState(false);
   const [demo, setDemo] = useState<null | "food-truck" | "transit">(null);
+  const [truck, setTruck] = useState<DemoFoodTruck | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
@@ -233,6 +236,12 @@ export default function AppMap({
       essential: true,
     });
   }, [focus, places]);
+
+  // The food-truck beacons only exist while that demo is on. Closing or
+  // switching the demo clears any open truck card so it never lingers.
+  useEffect(() => {
+    if (demo !== "food-truck") setTruck(null);
+  }, [demo]);
 
   const filteredPlaces = useMemo(() => {
     let base = places;
@@ -978,6 +987,10 @@ export default function AppMap({
 
         {/* Demo preview for future updates */}
         {demo && (
+          <>
+          {demo === "food-truck" && (
+            <style>{"@keyframes fr-ft-pulse{0%{transform:scale(.55);opacity:.5}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}"}</style>
+          )}
           <div
             className="absolute inset-x-3 bottom-3 z-20 rounded-[var(--app-radius-md)] border p-3.5 shadow-[var(--app-shadow-3)] backdrop-blur"
             style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.96)" }}
@@ -989,7 +1002,7 @@ export default function AppMap({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--app-ink)" }}>
-                  {demo === "food-truck" ? "Live food truck map" : "Live transit"}
+                  {demo === "food-truck" ? "Food truck map" : "Live transit"}
                   <span
                     className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
                     style={{ background: "var(--app-accent)", color: "white" }}
@@ -999,7 +1012,7 @@ export default function AppMap({
                 </p>
                 <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                   {demo === "food-truck"
-                    ? "Coming soon: every Frederick food truck's location in real time. For now, filter Food & Drink to see the spots trucks reliably park each week."
+                    ? "This preview shows sample trucks parked at real Frederick spots. The live version will show every truck's current location and today's menu. Tap a beacon for its menu and the order-ahead preview."
                     : "Coming soon: real-time TransIT bus and MARC train positions, right on the map."}
                 </p>
               </div>
@@ -1014,6 +1027,7 @@ export default function AppMap({
               </button>
             </div>
           </div>
+          </>
         )}
 
         <Map
@@ -1412,6 +1426,79 @@ export default function AppMap({
             />
           </Source>
 
+          {/* Food-truck beacons — a labeled demo layer, on only while the
+              food-truck demo is selected. Each is a pulsing pin; tapping
+              one opens a card with the menu and the order-ahead preview. */}
+          {demo === "food-truck" &&
+            DEMO_FOOD_TRUCKS.map((t) => (
+              <Marker key={t.id} longitude={t.lng} latitude={t.lat} anchor="center">
+                <button
+                  type="button"
+                  onClick={(ev) => {
+                    ev.stopPropagation();
+                    haptic("light");
+                    setTruck(t);
+                  }}
+                  aria-label={`${t.name}, ${t.cuisine}, preview`}
+                  style={{
+                    position: "relative",
+                    display: "grid",
+                    placeItems: "center",
+                    width: 34,
+                    height: 34,
+                    padding: 0,
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      borderRadius: 9999,
+                      background: "#C4451C",
+                      opacity: 0.5,
+                      animation: "fr-ft-pulse 2.2s ease-out infinite",
+                    }}
+                  />
+                  <span
+                    aria-hidden
+                    style={{
+                      position: "relative",
+                      display: "grid",
+                      placeItems: "center",
+                      width: 28,
+                      height: 28,
+                      borderRadius: 9999,
+                      background: "#fff",
+                      border: "1.5px solid #C4451C",
+                      boxShadow: "var(--app-shadow-2)",
+                      fontSize: 15,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {"\u{1F69A}"}
+                  </span>
+                </button>
+              </Marker>
+            ))}
+
+          {truck && (
+            <Popup
+              longitude={truck.lng}
+              latitude={truck.lat}
+              anchor="bottom"
+              offset={22}
+              closeOnClick={false}
+              onClose={() => setTruck(null)}
+              maxWidth="280px"
+            >
+              <FoodTruckPopup t={truck} />
+            </Popup>
+          )}
+
           {selected && (
             <Popup
               longitude={selected._kind === "place" ? selected.geom.lng : selected.lng}
@@ -1434,6 +1521,48 @@ export default function AppMap({
           <GeolocateControl position="bottom-right" trackUserLocation />
         </Map>
       </div>
+    </div>
+  );
+}
+
+function FoodTruckPopup({ t }: { t: DemoFoodTruck }) {
+  return (
+    <div style={{ minWidth: 220, padding: 4 }}>
+      <p style={{
+        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+        textTransform: "uppercase", color: "#C4451C", marginBottom: 4,
+      }}>
+        Food truck · Preview
+      </p>
+      <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
+        {t.name}
+      </strong>
+      <p style={{ fontSize: 12, margin: "4px 0 8px", color: "#4A4A48" }}>{t.cuisine}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: "#7A7975", marginBottom: 8 }}>
+        <span>Parked at {t.spot}</span>
+        <span>Here until {t.hereUntil}</span>
+      </div>
+      <ul style={{ listStyle: "none", margin: "0 0 10px", padding: 0, display: "flex", flexDirection: "column", gap: 3 }}>
+        {t.menu.map((m) => (
+          <li key={m} style={{ fontSize: 12, color: "#4A4A48", display: "flex", gap: 6 }}>
+            <span aria-hidden style={{ color: "#C4451C" }}>·</span>{m}
+          </li>
+        ))}
+      </ul>
+      <button
+        type="button"
+        disabled
+        style={{
+          width: "100%", padding: "8px 10px", borderRadius: 8,
+          border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)",
+          color: "var(--app-ink-3)", fontSize: 12, fontWeight: 600, cursor: "not-allowed",
+        }}
+      >
+        Order ahead (coming soon)
+      </button>
+      <p style={{ fontSize: 10, color: "#9A9892", margin: "6px 0 0", lineHeight: 1.4 }}>
+        Order ahead is a preview and is not connected yet. These trucks are sample data.
+      </p>
     </div>
   );
 }
