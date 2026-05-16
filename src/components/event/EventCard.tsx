@@ -3,6 +3,7 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDateBlock } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SaveButton from "@/components/saved/SaveButton";
+import EventActions from "@/components/event/EventActions";
 import { formatDistance } from "@/lib/geo";
 
 export default function EventCard({ event }: { event: EventWithMeta }) {
@@ -67,7 +68,8 @@ export default function EventCard({ event }: { event: EventWithMeta }) {
           )}
         </div>
       </div>
-      <div className="relative z-10 self-start">
+      <div className="relative z-10 flex shrink-0 items-center self-start">
+        <EventActions event={event} />
         <SaveButton refType="event" refId={event.slug} label={`Save ${event.title}`} />
       </div>
     </article>

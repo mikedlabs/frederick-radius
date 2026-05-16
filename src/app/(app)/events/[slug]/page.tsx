@@ -25,6 +25,7 @@ import { PLACES } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
+import EventActions from "@/components/event/EventActions";
 
 export const revalidate = 300;
 
@@ -139,7 +140,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 {event.title}
               </h1>
             </div>
-            <SaveButton refType="event" refId={event.slug} label={event.title} />
+            <div className="flex shrink-0 items-center">
+              <EventActions event={event} actions={["share"]} />
+              <SaveButton refType="event" refId={event.slug} label={event.title} />
+            </div>
           </div>
           {desc && (
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
