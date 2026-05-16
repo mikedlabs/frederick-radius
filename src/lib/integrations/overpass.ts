@@ -103,6 +103,7 @@ function mapTagToCategory(tags: Record<string, string>): { category_slug: string
 
   // Public-infrastructure amenities (stable — don't go stale)
   if (a === "toilets") return { category_slug: "restroom", osm_tag: "amenity=toilets" };
+  if (a === "charging_station") return { category_slug: "ev-charging", osm_tag: "amenity=charging_station" };
   if (a === "drinking_water" || a === "water_point" || a === "fountain") return { category_slug: "water", osm_tag: "amenity=" + a };
   if (a === "waste_basket") return { category_slug: "trash", osm_tag: "amenity=waste_basket" };
   if (a === "recycling") return { category_slug: "recycling", osm_tag: "amenity=recycling" };
@@ -141,10 +142,12 @@ function joinAddress(tags: Record<string, string>): string | undefined {
 const UNNAMED_OK = new Set([
   "restroom", "water", "trash", "recycling", "dog-waste", "bench",
   "picnic", "bike-parking", "bike-repair", "defibrillator", "shelter",
+  "ev-charging",
 ]);
 
 const UNNAMED_LABELS: Record<string, string> = {
   "restroom": "Public restroom",
+  "ev-charging": "EV charging station",
   "water": "Drinking water",
   "trash": "Trash receptacle",
   "recycling": "Recycling drop-off",

@@ -69,14 +69,34 @@ const OSM_TRUSTED_CATEGORIES = new Set<string>([
   // Public amenities (don't go stale — trash cans, benches, restrooms don't "close")
   "restroom", "water", "trash", "recycling", "dog-waste",
   "bench", "picnic", "bike-parking", "bike-repair",
-  "defibrillator", "shelter", "wifi",
+  "defibrillator", "shelter", "wifi", "ev-charging",
 ]);
 
 const AMENITY_CATEGORIES = new Set<string>([
   "restroom", "water", "trash", "recycling", "dog-waste",
   "bench", "picnic", "bike-parking", "bike-repair",
-  "defibrillator", "shelter", "wifi",
+  "defibrillator", "shelter", "wifi", "ev-charging",
 ]);
+
+/**
+ * Grouped amenity picker — the "what do you need?" tray. One tap reveals
+ * exactly one kind of ground-truth amenity instead of a single bundled
+ * dump. Combined with zoom-gating (these only render past street zoom),
+ * this is how the map shows everything without overwhelming.
+ */
+const AMENITY_GROUPS: { key: string; label: string; glyph: string; cats: string[] }[] = [
+  { key: "restroom", label: "Restrooms", glyph: "\u{1F6BB}", cats: ["restroom"] },
+  { key: "water", label: "Water", glyph: "\u{1F4A7}", cats: ["water"] },
+  { key: "trash", label: "Trash", glyph: "\u{1F5D1}", cats: ["trash", "recycling"] },
+  { key: "dog", label: "Dog stations", glyph: "\u{1F43E}", cats: ["dog-waste"] },
+  { key: "wifi", label: "Wifi", glyph: "\u{1F4F6}", cats: ["wifi"] },
+  { key: "ev", label: "EV charging", glyph: "\u{26A1}", cats: ["ev-charging"] },
+  { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
+  { key: "seating", label: "Sit & picnic", glyph: "\u{1FA91}", cats: ["bench", "picnic"] },
+  { key: "safety", label: "AED & shelter", glyph: "\u{2795}", cats: ["defibrillator", "shelter"] },
+];
+
+const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
 // Glyphs for the filter chips, matching the map marker language.
 const CHIP_GLYPH: Record<string, string> = {
@@ -155,7 +175,8 @@ export default function AppMap({
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
   const [osmError, setOsmError] = useState<string | null>(null);
   const [showUnverified, setShowUnverified] = useState(false);
-  const [showAmenities, setShowAmenities] = useState(false);
+  const [amenityGroups, setAmenityGroups] = useState<Set<string>>(new Set());
+  const [amenityOpen, setAmenityOpen] = useState(false);
   const [demo, setDemo] = useState<null | "food-truck" | "transit">(null);
   const [showLegend, setShowLegend] = useState(false);
   const [q, setQ] = useState("");
@@ -252,7 +273,9 @@ export default function AppMap({
     // unverified opt-in view. We never want to show a closed business as open.
     let pool = osmPlaces.filter((p) => !isKnownClosed(p.name));
     pool = showUnverified ? pool : pool.filter(isTrustedOsm);
-    if (!showAmenities) pool = pool.filter((p) => !isAmenity(p));
+    // Micro-amenities never ride the clustered business source — they get
+    // their own zoom-gated layer so they declutter the wide view.
+    pool = pool.filter((p) => !isAmenity(p));
     const filtered = activeCats.size === 0
       ? pool
       : pool.filter((p) => {
@@ -280,6 +303,46 @@ export default function AppMap({
       })),
     };
   }, [osmPlaces, activeCats]);
+
+  // Which raw amenity category slugs are active, from the selected groups.
+  const activeAmenityCats = useMemo(() => {
+    const s = new Set<string>();
+    for (const g of AMENITY_GROUPS) {
+      if (amenityGroups.has(g.key)) for (const c of g.cats) s.add(c);
+    }
+    return s;
+  }, [amenityGroups]);
+
+  // Amenities live in their own source, rendered only past street zoom
+  // (see the amenity-icons layer minzoom). Empty until the user opts in,
+  // so the default map is exactly as uncluttered as before.
+  const amenityGeoJson = useMemo(() => {
+    if (activeAmenityCats.size === 0) return EMPTY_FC;
+    const feats = osmPlaces
+      .filter(
+        (p) =>
+          isAmenity(p) &&
+          activeAmenityCats.has(p.category_slug) &&
+          !isKnownClosed(p.name)
+      )
+      .map((p) => ({
+        type: "Feature" as const,
+        properties: {
+          osm_id: p.osm_id,
+          name: p.name,
+          category: p.category_slug,
+          osm_tag: p.osm_tag,
+          address: p.address ?? "",
+          city: p.city ?? "",
+          phone: p.phone ?? "",
+          website: p.website ?? "",
+          opening_hours: p.opening_hours ?? "",
+          cuisine: "",
+        },
+        geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
+      }));
+    return { type: "FeatureCollection" as const, features: feats };
+  }, [osmPlaces, activeAmenityCats]);
 
   /**
    * Curated places as a clustered GeoJSON source.
@@ -387,7 +450,7 @@ export default function AppMap({
       return;
     }
 
-    if (layer === "osm-icons") {
+    if (layer === "osm-icons" || layer === "amenity-icons") {
       const props = feature.properties as Record<string, string>;
       setSelectedSlug(null);
       haptic("light");
@@ -409,9 +472,10 @@ export default function AppMap({
     }
   };
 
-  const trustedOsmCount = osmPlaces.filter(isTrustedOsm).length;
-  const unverifiedOsmCount = osmPlaces.length - trustedOsmCount;
+  const trustedOsmCount = osmPlaces.filter((p) => isTrustedOsm(p) && !isAmenity(p)).length;
+  const unverifiedOsmCount = osmPlaces.filter((p) => !isTrustedOsm(p)).length;
   const amenityCount = osmPlaces.filter(isAmenity).length;
+  const activeAmenityGroupCount = amenityGroups.size;
 
   // On-map search — match places already on the map by name/address/city.
   const searchMatches = useMemo(() => {
@@ -543,19 +607,22 @@ export default function AppMap({
               <li>
                 <button
                   type="button"
-                  onClick={() => setShowAmenities((v) => !v)}
-                  aria-pressed={showAmenities}
+                  onClick={() => setAmenityOpen((v) => !v)}
+                  aria-pressed={amenityOpen || activeAmenityGroupCount > 0}
+                  aria-expanded={amenityOpen}
                   className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
                   style={{
-                    background: showAmenities ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                    color: showAmenities ? "white" : "var(--app-ink-2)",
-                    border: `1px solid ${showAmenities ? "var(--app-cool)" : "var(--app-border)"}`,
-                    boxShadow: showAmenities ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                    background: activeAmenityGroupCount > 0 ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                    color: activeAmenityGroupCount > 0 ? "white" : "var(--app-ink-2)",
+                    border: `1px solid ${activeAmenityGroupCount > 0 || amenityOpen ? "var(--app-cool)" : "var(--app-border)"}`,
+                    boxShadow: activeAmenityGroupCount > 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                   }}
-                  title="Public restrooms, water, dog stations, benches, picnic, bike parking"
+                  title="What do you need? Restrooms, water, trash, dog stations, wifi, EV charging, bike, seating, AED"
                 >
                   <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
-                  Amenities · {amenityCount}
+                  What do you need?
+                  {activeAmenityGroupCount > 0 && ` · ${activeAmenityGroupCount}`}
+                  <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>{amenityOpen ? "▲" : "▼"}</span>
                 </button>
               </li>
             )}
@@ -647,6 +714,62 @@ export default function AppMap({
         <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-5" style={{ background: "linear-gradient(90deg, var(--app-bg), transparent)" }} />
         <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-5" style={{ background: "linear-gradient(270deg, var(--app-bg), transparent)" }} />
       </div>
+
+      {/* "What do you need?" tray — one tap per amenity kind. Collapsed by
+          default so the rail stays calm; amenities only paint on the map
+          once you zoom into a neighborhood. */}
+      {amenityOpen && (
+        <div className="relative -mx-4">
+          <div className="overflow-x-auto px-4 scrollbar-hide">
+            <ul className="flex min-w-max items-center gap-2 py-0.5">
+              {AMENITY_GROUPS.map((g) => {
+                const on = amenityGroups.has(g.key);
+                return (
+                  <li key={g.key}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAmenityGroups((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(g.key)) next.delete(g.key);
+                          else next.add(g.key);
+                          return next;
+                        })
+                      }
+                      aria-pressed={on}
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.96]"
+                      style={{
+                        background: on ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                        color: on ? "white" : "var(--app-ink-2)",
+                        border: `1px solid ${on ? "var(--app-cool)" : "var(--app-border)"}`,
+                        boxShadow: on ? "var(--app-shadow-1)" : "none",
+                      }}
+                    >
+                      <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>{g.glyph}</span>
+                      {g.label}
+                    </button>
+                  </li>
+                );
+              })}
+              {activeAmenityGroupCount > 0 && (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setAmenityGroups(new Set())}
+                    className="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.96]"
+                    style={{ background: "transparent", color: "var(--app-ink-3)", border: "1px solid var(--app-border)" }}
+                  >
+                    Clear
+                  </button>
+                </li>
+              )}
+            </ul>
+          </div>
+          <p className="px-1 pt-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+            Pick what you need. Zoom into a neighborhood to see it on the map.
+          </p>
+        </div>
+      )}
 
       {/* On-map search + near-me */}
       <div className="flex gap-2">
@@ -863,7 +986,7 @@ export default function AppMap({
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={{ compact: true }}
-          interactiveLayerIds={["clusters", "osm-icons", "curated-clusters", "curated-icons"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons"]}
           onClick={onClick}
           onLoad={(e) => { installCategoryMarkers(e.target); applyFrederickPalette(e.target); emitInView(); }}
           onMoveEnd={emitInView}
@@ -958,6 +1081,57 @@ export default function AppMap({
                 "icon-anchor": "center",
               }}
               paint={{ "icon-opacity": 0.92 }}
+            />
+          </Source>
+
+          {/*
+           * Micro-amenities — their own source, NOT clustered, and gated
+           * to street zoom (minzoom 14). Off the wide view entirely, so
+           * "everything" never means "overwhelming". Opt-in per group.
+           */}
+          <Source id="amenities" type="geojson" data={amenityGeoJson}>
+            <Layer
+              id="amenity-icons"
+              type="symbol"
+              minzoom={14}
+              layout={{
+                "icon-image": [
+                  "coalesce",
+                  ["image", ["concat", "cat-", ["get", "category"]]],
+                  ["image", "cat-_default"],
+                ],
+                "icon-size": [
+                  "interpolate", ["linear"], ["zoom"],
+                  14, 0.42,
+                  16, 0.66,
+                  18, 0.84,
+                ],
+                "icon-allow-overlap": true,
+                "icon-anchor": "center",
+              }}
+              paint={{ "icon-opacity": 0.96 }}
+            />
+            {/* Labels appear only when you're really close, so a dense
+                cluster of stations stays readable. */}
+            <Layer
+              id="amenity-labels"
+              type="symbol"
+              minzoom={16.5}
+              layout={{
+                "text-field": ["get", "name"],
+                "text-size": ["interpolate", ["linear"], ["zoom"], 16.5, 9, 18, 12],
+                "text-font": ["Noto Sans Regular"],
+                "text-anchor": "top",
+                "text-offset": [0, 1.05],
+                "text-optional": true,
+                "text-allow-overlap": false,
+                "text-max-width": 8,
+              }}
+              paint={{
+                "text-color": "#4A4A48",
+                "text-halo-color": "#FAFAF7",
+                "text-halo-width": 1.6,
+              }}
             />
           </Source>
 
