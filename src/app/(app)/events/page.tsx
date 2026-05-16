@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink, GraduationCap, Rss, CalendarDays } from "lucide-react";
-import { allUpcoming, eventsLive, eventsNext24h, eventsWeekend, eventsByTown, aroundTheCounty, dedupeLiveAgainstCurated, BY_TOWN_ENABLED, type EventWithMeta } from "@/lib/loaders/events";
-import EventsByTown from "@/components/event/EventsByTown";
+import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
+import EventsExplorer from "@/components/event/EventsExplorer";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents, type LiveEvent } from "@/lib/integrations/ical-live";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import EventCard from "@/components/event/EventCard";
 import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
@@ -45,20 +44,10 @@ function liveToCardEvent(e: LiveEvent): EventWithMeta {
   };
 }
 
-export default async function EventsIndexPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string; m?: string; when?: string }>;
-}) {
-  const { view, m, when } = await searchParams;
+export default async function EventsIndexPage() {
   const now = new Date();
   const seedLive = eventsLive(now);
-  const seedToday = eventsNext24h(now);
-  const seedWeekend = eventsWeekend(now);
   const curatedUpcoming = allUpcoming(now);
-  const seedLater = curatedUpcoming.filter(
-    (e) => !seedToday.some((x) => x.slug === e.slug) && !seedWeekend.some((x) => x.slug === e.slug)
-  );
 
   const [{ events: liveEventsRaw, sources_succeeded, sources_failed }, hood, ingestedSeries, ingestedSummary] = await Promise.all([
     getLiveEvents(60),
@@ -67,23 +56,36 @@ export default async function EventsIndexPage({
     getIngestedSummary(),
   ]);
 
-  // Bucket the live events into the same windows the seed uses, after
-  // dropping any that duplicate a curated event (curated wins, P0-4).
+  // Live/county events, with curated-duplicates dropped (P0-4).
   const liveCards = dedupeLiveAgainstCurated(
     liveEventsRaw.map(liveToCardEvent),
     curatedUpcoming,
   );
 
-  const inWindow = (e: EventWithMeta, from: Date, to: Date) => {
-    const s = new Date(e.starts_at);
-    return s >= from && s < to;
-  };
+  // One unified, de-duplicated, time-sorted set the explorer drives.
+  const bySlug = new Map<string, EventWithMeta>();
+  for (const e of [...curatedUpcoming, ...liveCards]) {
+    if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
+  }
+  const allEvents = [...bySlug.values()].sort(
+    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+  );
+  const totalUpcoming = allEvents.length;
+  const liveSlugs = seedLive.map((e) => e.slug);
 
-  const start0 = new Date(now);
-  start0.setHours(0, 0, 0, 0);
+  // Facet lists, only for values actually present.
+  const catSlugs = [...new Set(allEvents.map((e) => e.category).filter(Boolean))];
+  const categories = catSlugs
+    .map((s) => ({ slug: s, name: CATEGORY_BY_SLUG[s]?.name ?? s }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const townSlugs = [...new Set(allEvents.map((e) => e.municipality).filter(Boolean))];
+  const towns = townSlugs
+    .map((s) => ({ slug: s, name: MUNICIPALITY_BY_SLUG[s]?.name ?? s }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  // Server-computed window boundaries (no client TZ math).
   const start24 = new Date(now);
   start24.setHours(now.getHours() + 24);
-
   const dow = now.getDay();
   const friday = new Date(now);
   friday.setDate(friday.getDate() + ((5 - dow + 7) % 7));
@@ -91,27 +93,6 @@ export default async function EventsIndexPage({
   const monday = new Date(friday);
   monday.setDate(monday.getDate() + 3);
   monday.setHours(0, 0, 0, 0);
-
-  const today = [
-    ...seedToday,
-    ...liveCards.filter((e) => inWindow(e, now, start24)),
-  ].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
-
-  const weekend = [
-    ...seedWeekend,
-    ...liveCards.filter((e) => inWindow(e, friday, monday)),
-  ].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
-
-  const later = [
-    ...seedLater,
-    ...liveCards.filter((e) => new Date(e.starts_at) >= monday),
-  ].sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
-
-  const totalUpcoming = today.length + weekend.length + later.length;
-
-  const showTown = BY_TOWN_ENABLED && view === "town";
-  const townData = showTown ? eventsByTown(now) : [];
-  const aroundCounty = showTown ? aroundTheCounty(now) : [];
 
   return (
     <div className="space-y-7">
@@ -145,32 +126,16 @@ export default async function EventsIndexPage({
         </div>
       </header>
 
-      {BY_TOWN_ENABLED && (
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide">
-          <ToggleLink active={!showTown} href="/events">By time</ToggleLink>
-          <ToggleLink active={showTown} href="/events?view=town">By town</ToggleLink>
-        </div>
-      )}
-
-      {showTown ? (
-        <EventsByTown
-          towns={townData}
-          aroundCounty={aroundCounty}
-          initialTown={m}
-          initialWhen={when}
-          nowISO={now.toISOString()}
-          next24hISO={start24.toISOString()}
-          weekendStartISO={friday.toISOString()}
-          weekendEndISO={monday.toISOString()}
-        />
-      ) : (
-      <>
-      {seedLive.length > 0 && (
-        <EventGroup title="Happening right now" events={seedLive} meta={`${seedLive.length} live`} />
-      )}
-      <EventGroup title="Today" events={today} meta="Next 24 hours" />
-      <EventGroup title="This weekend" events={weekend} meta="Friday evening through Sunday" />
-      <EventGroup title="Later" events={later} meta="Coming up" />
+      <EventsExplorer
+        events={allEvents}
+        liveSlugs={liveSlugs}
+        categories={categories}
+        towns={towns}
+        nowISO={now.toISOString()}
+        next24ISO={start24.toISOString()}
+        weekendStartISO={friday.toISOString()}
+        weekendEndISO={monday.toISOString()}
+      />
 
       {ingestedSeries.length > 0 && (
         <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
@@ -222,8 +187,6 @@ export default async function EventsIndexPage({
           </ul>
         </section>
       )}
-      </>
-      )}
 
       <footer className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
@@ -236,63 +199,5 @@ export default async function EventsIndexPage({
         </p>
       </footer>
     </div>
-  );
-}
-
-function EventGroup({
-  title,
-  events,
-  meta,
-}: {
-  title: string;
-  events: EventWithMeta[];
-  meta: string;
-}) {
-  return (
-    <section className="space-y-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          {title}
-        </h2>
-        <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>{meta}</span>
-      </div>
-      {events.length === 0 ? (
-        <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-          Nothing yet.
-        </p>
-      ) : (
-        <ul className="space-y-2">
-          {events.map((e) => (
-            <li key={e.slug}><EventCard event={e} /></li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-function ToggleLink({
-  active,
-  href,
-  children,
-}: {
-  active: boolean;
-  href: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className="inline-flex shrink-0 items-center rounded-full border px-3.5 py-2 text-sm font-medium transition"
-      style={{
-        background: active ? "var(--app-brand)" : "var(--app-bg-elevated)",
-        color: active ? "white" : "var(--app-ink-2)",
-        borderColor: active ? "var(--app-brand)" : "var(--app-border)",
-      }}
-    >
-      {children}
-    </Link>
   );
 }
