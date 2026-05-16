@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import MonthGrid from "@/components/event/MonthGrid";
 import EventsMap from "@/components/event/EventsMap";
+import LensBar from "@/components/event/LensBar";
+import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { CalEvent } from "@/lib/loaders/calendar";
 
@@ -33,6 +35,8 @@ type Props = {
   next24ISO: string;
   weekendStartISO: string;
   weekendEndISO: string;
+  /** Deep-link view, parsed server-side so first paint matches the URL. */
+  initialView?: ViewState;
 };
 
 const nyMonth = (iso: string) =>
@@ -50,6 +54,15 @@ function addMonth(ym: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// Facet <-> shared ViewState. Search text is intentionally excluded: a
+// lens is a structural view, not an ephemeral query, and the confirmed
+// ViewState shape has no free-text field. "all" and the forward-compat
+// "upcoming" both mean "no time constraint" here.
+const timeToWhen = (t: TimeKey): When | undefined =>
+  t === "all" ? undefined : t;
+const whenToTime = (w?: When): TimeKey =>
+  w === "today" || w === "weekend" || w === "week" ? w : "all";
+
 export default function EventsExplorer({
   events,
   liveSlugs,
@@ -59,10 +72,11 @@ export default function EventsExplorer({
   next24ISO,
   weekendStartISO,
   weekendEndISO,
+  initialView,
 }: Props) {
-  const [cat, setCat] = useState<string | null>(null);
-  const [time, setTime] = useState<TimeKey>("all");
-  const [town, setTown] = useState<string | null>(null);
+  const [cat, setCat] = useState<string | null>(initialView?.cats?.[0] ?? null);
+  const [time, setTime] = useState<TimeKey>(whenToTime(initialView?.when));
+  const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"list" | "calendar" | "map">("list");
   const [month, setMonth] = useState(() => nyMonth(nowISO));
@@ -123,6 +137,32 @@ export default function EventsExplorer({
       })),
     [filtered],
   );
+
+  const viewState = useMemo<ViewState>(
+    () => ({
+      cats: cat ? [cat] : undefined,
+      municipality: town ?? undefined,
+      when: timeToWhen(time),
+    }),
+    [cat, town, time],
+  );
+
+  const applyViewState = (s: ViewState) => {
+    setCat(s.cats?.[0] ?? null);
+    setTown(s.municipality ?? null);
+    setTime(whenToTime(s.when));
+  };
+
+  // Mirror the structural view into the URL (deep-linkable, shareable).
+  // Initial state is parsed server-side (initialView), so no hydrate
+  // effect is needed. history.replaceState, not router navigation:
+  // filtering is fully client-side, so re-running the page's live-feed
+  // loaders would be wasteful. Search text stays out of the URL by design.
+  useEffect(() => {
+    const qs = toQuery(viewState);
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    window.history.replaceState(null, "", url);
+  }, [viewState]);
 
   const anyFilter = cat !== null || town !== null || time !== "all" || q.trim() !== "";
   const clear = () => {
@@ -239,6 +279,8 @@ export default function EventsExplorer({
           </button>
         ))}
       </div>
+
+      <LensBar current={viewState} onApply={applyViewState} />
 
       <div className="flex items-center justify-between gap-3">
         <select

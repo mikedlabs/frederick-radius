@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink, GraduationCap, Rss, CalendarDays } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
+import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
@@ -19,7 +20,11 @@ export const metadata: Metadata = {
 
 export const revalidate = 3600;
 
-export default async function EventsIndexPage() {
+export default async function EventsIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const now = new Date();
   const seedLive = eventsLive(now);
   const curatedUpcoming = allUpcoming(now);
@@ -69,6 +74,15 @@ export default async function EventsIndexPage() {
   monday.setDate(monday.getDate() + 3);
   monday.setHours(0, 0, 0, 0);
 
+  // Parse the deep-link view server-side so the explorer's first paint
+  // already reflects it (no post-mount setState, no hydration mismatch).
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(await searchParams)) {
+    if (typeof v === "string") sp.set(k, v);
+    else if (Array.isArray(v) && typeof v[0] === "string") sp.set(k, v[0]);
+  }
+  const initialView: ViewState = parseViewState(sp);
+
   return (
     <div className="space-y-7">
       <header className="space-y-2">
@@ -110,6 +124,7 @@ export default async function EventsIndexPage() {
         next24ISO={start24.toISOString()}
         weekendStartISO={friday.toISOString()}
         weekendEndISO={monday.toISOString()}
+        initialView={initialView}
       />
 
       {ingestedSeries.length > 0 && (
