@@ -1,6 +1,6 @@
 import { EVENTS as RAW_EVENTS, EVENT_BY_SLUG, type Event } from "@/data/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/municipalities";
 import { PLACE_BY_SLUG } from "@/data/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
@@ -12,6 +12,20 @@ import { isKnownClosed } from "@/lib/integrations/closures";
  * having to remember the filter in each one.
  */
 const EVENTS = RAW_EVENTS.filter((e) => !isKnownClosed(e.venue_name));
+
+/**
+ * User-visible "by town" events view. Default off means /events and
+ * /m/[municipality] render exactly today's production, which is the
+ * rollback path. This mirrors the RADIUS_DEDUPE and HOURS_GATE flags.
+ */
+export const BY_TOWN_ENABLED = process.env.RADIUS_EVENTS_BY_TOWN === "1";
+
+/**
+ * Radius for the "happening near <town>" fallback so a town with no
+ * events of its own is never a dead list. About ten miles, which is a
+ * real neighbor distance in a rural county.
+ */
+const NEAR_TOWN_RADIUS_M = 16_000;
 
 export type EventWithMeta = Event & {
   distance_m?: number;
@@ -180,4 +194,62 @@ export function eventDateBlock(e: Event): { weekday: string; day: string; month:
       hour12: true,
     }).format(start),
   };
+}
+
+export type TownEvents = {
+  municipality: Municipality;
+  events: EventWithMeta[];
+  nearby: EventWithMeta[];
+};
+
+/**
+ * Upcoming events near a town centroid, excluding events already in that
+ * town. This backs the "happening near <town>" fallback so an empty town
+ * is never a dead end. Distance is measured from the town centroid.
+ */
+export function nearTown(
+  slug: string,
+  now: Date = new Date(),
+  limit = 4,
+): EventWithMeta[] {
+  const m = MUNICIPALITY_BY_SLUG[slug];
+  if (!m) return [];
+  return EVENTS
+    .filter((e) => e.municipality !== slug && new Date(e.ends_at) >= now)
+    .map((e) => decorate(e, m.centroid))
+    .filter((e) => (e.distance_m ?? Infinity) <= NEAR_TOWN_RADIUS_M)
+    .sort((a, b) => {
+      const d = (a.distance_m ?? 0) - (b.distance_m ?? 0);
+      return d !== 0 ? d : +new Date(a.starts_at) - +new Date(b.starts_at);
+    })
+    .slice(0, limit);
+}
+
+/**
+ * Every municipality, in declared order, with its own upcoming events
+ * and a centroid-radius fallback. The caller renders all twelve at equal
+ * weight, so a town with one event is featured as deliberately as the
+ * county seat. The layout is never proportional to event volume.
+ */
+export function eventsByTown(now: Date = new Date()): TownEvents[] {
+  return MUNICIPALITIES.map((municipality) => ({
+    municipality,
+    events: eventsInMunicipality(municipality.slug, true, now),
+    nearby: nearTown(municipality.slug, now),
+  }));
+}
+
+/**
+ * The soonest single upcoming event in each town other than Frederick,
+ * sorted by start time. This guarantees small-town representation in the
+ * all-county view so Frederick volume never crowds the county out.
+ */
+export function aroundTheCounty(now: Date = new Date()): EventWithMeta[] {
+  const out: EventWithMeta[] = [];
+  for (const m of MUNICIPALITIES) {
+    if (m.slug === "frederick") continue;
+    const next = eventsInMunicipality(m.slug, true, now)[0];
+    if (next) out.push(next);
+  }
+  return out.sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
 }
