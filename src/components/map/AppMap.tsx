@@ -18,7 +18,7 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import { decoratePlace } from "@/lib/loaders/places";
-import { FREDERICK_CENTER } from "@/lib/geo";
+import { FREDERICK_CENTER, haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
@@ -36,6 +36,15 @@ type Props = {
   /** Tap a result in the synced list → fly the map there and glow it.
    *  `n` is a nonce so re-tapping the same place re-triggers. */
   focus?: { slug: string; n: number } | null;
+  /** Live civic points (traffic incidents, 311 reports) for the overlay. */
+  civic?: CivicPin[];
+};
+
+export type CivicPin = {
+  kind: "traffic" | "issue";
+  lng: number;
+  lat: number;
+  label: string;
 };
 
 const OSM_CACHE_KEY = "fr:osm-frederick:v1";
@@ -76,6 +85,19 @@ const CHIP_GLYPH: Record<string, string> = {
   lodging: "\u{1F3E8}", transit: "\u{1F68C}", parking: "\u{1F17F}", amenities: "\u{1F6BB}",
   music: "\u{1F3B5}", brewery: "\u{1F37A}",
 };
+
+const RADIUS_M = 1609; // 1 mile — the "Radius" ring
+
+function circlePolygon(center: LngLat, meters: number, steps = 72): GeoJSON.Feature<GeoJSON.Polygon> {
+  const ring: [number, number][] = [];
+  const latR = meters / 111320;
+  const lngR = meters / (111320 * Math.cos((center.lat * Math.PI) / 180));
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * 2 * Math.PI;
+    ring.push([center.lng + lngR * Math.cos(a), center.lat + latR * Math.sin(a)]);
+  }
+  return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } };
+}
 
 function isTrustedOsm(p: OsmPlace): boolean {
   return OSM_TRUSTED_CATEGORIES.has(p.category_slug);
@@ -122,6 +144,7 @@ export default function AppMap({
   initialZoom = 14,
   onPlacesInView,
   focus,
+  civic = [],
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const { openSheet } = usePlaceSheet();
@@ -135,6 +158,10 @@ export default function AppMap({
   const [showAmenities, setShowAmenities] = useState(false);
   const [demo, setDemo] = useState<null | "food-truck" | "transit">(null);
   const [showLegend, setShowLegend] = useState(false);
+  const [q, setQ] = useState("");
+  const [userLoc, setUserLoc] = useState<LngLat | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [showCivic, setShowCivic] = useState(false);
 
   useEffect(() => {
     if (osmFromProps) {
@@ -386,6 +413,110 @@ export default function AppMap({
   const unverifiedOsmCount = osmPlaces.length - trustedOsmCount;
   const amenityCount = osmPlaces.filter(isAmenity).length;
 
+  // On-map search — match places already on the map by name/address/city.
+  const searchMatches = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (term.length < 2) return [];
+    return places
+      .filter((p) =>
+        p.name.toLowerCase().includes(term) ||
+        (p.address ?? "").toLowerCase().includes(term) ||
+        (p.city ?? "").toLowerCase().includes(term)
+      )
+      .slice(0, 6);
+  }, [q, places]);
+
+  const pickSearch = (p: Place) => {
+    const map = mapRef.current?.getMap();
+    setSelectedSlug(p.slug);
+    setQ("");
+    haptic("light");
+    if (map) {
+      map.flyTo({
+        center: [p.geom.lng, p.geom.lat],
+        zoom: Math.max(map.getZoom(), 15.5),
+        duration: 900,
+        essential: true,
+      });
+    }
+    openSheet(decoratePlace(p, FREDERICK_CENTER));
+  };
+
+  // Near-me radius ring
+  const ringGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: userLoc ? [circlePolygon(userLoc, RADIUS_M)] : [],
+  }), [userLoc]);
+  const dotGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: userLoc
+      ? [{ type: "Feature" as const, properties: {}, geometry: { type: "Point" as const, coordinates: [userLoc.lng, userLoc.lat] } }]
+      : [],
+  }), [userLoc]);
+
+  // Directions: a direct connector from you to the selected place, with
+  // real distance + drive estimate and a one-tap handoff to native maps.
+  const selectedPlace = useMemo(
+    () => (selectedSlug ? places.find((x) => x.slug === selectedSlug) ?? null : null),
+    [selectedSlug, places],
+  );
+  const routeGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: userLoc && selectedPlace
+      ? [{
+          type: "Feature" as const,
+          properties: {},
+          geometry: {
+            type: "LineString" as const,
+            coordinates: [
+              [userLoc.lng, userLoc.lat],
+              [selectedPlace.geom.lng, selectedPlace.geom.lat],
+            ],
+          },
+        }]
+      : [],
+  }), [userLoc, selectedPlace]);
+  const routeInfo = useMemo(() => {
+    if (!userLoc || !selectedPlace) return null;
+    const m = haversineMeters(userLoc, selectedPlace.geom);
+    return {
+      dist: formatDistance(m),
+      drive: Math.max(1, Math.round(metersToMinutes("drive", m))),
+      href: `https://www.google.com/maps/dir/?api=1&destination=${selectedPlace.geom.lat},${selectedPlace.geom.lng}`,
+      name: selectedPlace.name,
+    };
+  }, [userLoc, selectedPlace]);
+
+  const civicGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: (showCivic ? civic : []).map((c) => ({
+      type: "Feature" as const,
+      properties: { kind: c.kind, label: c.label },
+      geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
+    })),
+  }), [civic, showCivic]);
+
+  const goNearMe = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        const loc = { lng: pos.coords.longitude, lat: pos.coords.latitude };
+        setUserLoc(loc);
+        haptic("light");
+        mapRef.current?.getMap().flyTo({
+          center: [loc.lng, loc.lat],
+          zoom: 14,
+          duration: 900,
+          essential: true,
+        });
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  };
+
   return (
     <div className="space-y-2">
       {/* Premium filter rail — glyphs match the map markers, edge fades hint scroll */}
@@ -425,6 +556,30 @@ export default function AppMap({
                 >
                   <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
                   Amenities · {amenityCount}
+                </button>
+              </li>
+            )}
+            {civic.length > 0 && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setShowCivic((v) => !v)}
+                  aria-pressed={showCivic}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                  style={{
+                    background: showCivic ? "var(--app-warning)" : "var(--app-bg-elevated)",
+                    color: showCivic ? "white" : "var(--app-ink-2)",
+                    border: `1px solid ${showCivic ? "var(--app-warning)" : "var(--app-border)"}`,
+                    boxShadow: showCivic ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                  }}
+                  title="Live traffic incidents and 311 reports"
+                >
+                  <span
+                    aria-hidden
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ background: showCivic ? "white" : "var(--app-warning)" }}
+                  />
+                  Live · {civic.length}
                 </button>
               </li>
             )}
@@ -493,6 +648,66 @@ export default function AppMap({
         <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-5" style={{ background: "linear-gradient(270deg, var(--app-bg), transparent)" }} />
       </div>
 
+      {/* On-map search + near-me */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search the map by name or address"
+          aria-label="Search the map"
+          className="w-full rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2.5 text-sm shadow-[var(--app-shadow-1)] outline-none focus:shadow-[var(--app-shadow-2)]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+        />
+        {searchMatches.length > 0 && (
+          <ul
+            className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            {searchMatches.map((p) => {
+              const cat = CATEGORY_BY_SLUG[p.category];
+              return (
+                <li key={p.slug}>
+                  <button
+                    type="button"
+                    onClick={() => pickSearch(p)}
+                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
+                  >
+                    <span
+                      aria-hidden
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ background: cat?.color ?? "#C4451C" }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
+                        {p.name}
+                      </span>
+                      <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                        {cat?.name ?? p.category}{p.address ? ` · ${p.address}` : ""}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        </div>
+        <button
+          type="button"
+          onClick={goNearMe}
+          aria-label="Find places near me"
+          className="shrink-0 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2.5 text-sm font-semibold shadow-[var(--app-shadow-1)] transition active:scale-[0.96]"
+          style={{
+            borderColor: userLoc ? "var(--app-brand)" : "var(--app-border)",
+            color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
+          }}
+        >
+          {locating ? "Locating…" : "Near me"}
+        </button>
+      </div>
+
       <div
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{ borderColor: "var(--app-border)", height }}
@@ -535,6 +750,27 @@ export default function AppMap({
             <span className="inline-block h-2 w-2 rounded-full" style={{ background: showUnverified ? "var(--app-warning)" : "var(--app-ink-3)" }} />
             {showUnverified ? "Hide unverified" : `+${unverifiedOsmCount.toLocaleString()} unverified`}
           </button>
+        )}
+
+        {/* Directions chip — distance + drive estimate + native handoff */}
+        {routeInfo && (
+          <div className="absolute inset-x-0 top-3 z-20 flex justify-center px-3">
+            <a
+              href={routeInfo.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => haptic("light")}
+              className="inline-flex max-w-full items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold shadow-[var(--app-shadow-2)] backdrop-blur"
+              style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)", color: "var(--app-ink-2)" }}
+            >
+              <span aria-hidden style={{ color: "#2A5D8F" }}>→</span>
+              <span className="truncate">{routeInfo.name}</span>
+              <span style={{ color: "var(--app-ink-3)" }}>
+                {routeInfo.dist} · ~{routeInfo.drive} min drive
+              </span>
+              <span style={{ color: "#2A5D8F" }}>Directions ↗</span>
+            </a>
+          </div>
         )}
 
         {/* Legend — quick key so it's easy to see what you're looking at */}
@@ -856,6 +1092,81 @@ export default function AppMap({
                 "circle-stroke-opacity": 0.6,
                 "circle-stroke-width": 2,
                 "circle-blur": 0.3,
+              }}
+            />
+          </Source>
+
+          {/* Near-me radius ring (under markers) + a "you are here" dot */}
+          <Source id="near-ring" type="geojson" data={ringGeoJson}>
+            <Layer
+              id="ring-fill"
+              type="fill"
+              beforeId="curated-clusters"
+              paint={{ "fill-color": "#C4451C", "fill-opacity": 0.07 }}
+            />
+            <Layer
+              id="ring-line"
+              type="line"
+              beforeId="curated-clusters"
+              paint={{
+                "line-color": "#C4451C",
+                "line-width": 2,
+                "line-opacity": 0.55,
+                "line-dasharray": [2, 2],
+              }}
+            />
+          </Source>
+          <Source id="near-dot" type="geojson" data={dotGeoJson}>
+            <Layer
+              id="dot-halo"
+              type="circle"
+              paint={{ "circle-radius": 13, "circle-color": "#2A5D8F", "circle-opacity": 0.22 }}
+            />
+            <Layer
+              id="dot-core"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": "#2A5D8F",
+                "circle-stroke-color": "#FFFFFF",
+                "circle-stroke-width": 2,
+              }}
+            />
+          </Source>
+          <Source id="near-route" type="geojson" data={routeGeoJson}>
+            <Layer
+              id="route-line"
+              type="line"
+              beforeId="curated-clusters"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "#2A5D8F",
+                "line-width": 3.5,
+                "line-opacity": 0.75,
+                "line-dasharray": [0.5, 1.6],
+              }}
+            />
+          </Source>
+
+          {/* Live civic overlay — traffic incidents + 311 reports */}
+          <Source id="civic" type="geojson" data={civicGeoJson}>
+            <Layer
+              id="civic-halo"
+              type="circle"
+              paint={{
+                "circle-radius": 9,
+                "circle-color": ["match", ["get", "kind"], "traffic", "#D9A441", "#2A5D8F"],
+                "circle-opacity": 0.22,
+              }}
+            />
+            <Layer
+              id="civic-core"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": ["match", ["get", "kind"], "traffic", "#D9A441", "#2A5D8F"],
+                "circle-stroke-color": "#FFFFFF",
+                "circle-stroke-width": 1.8,
               }}
             />
           </Source>

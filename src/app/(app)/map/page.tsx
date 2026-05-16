@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { PLACES } from "@/data/places";
 import { isKnownClosed } from "@/lib/integrations/closures";
-import AppMapClient from "@/components/map/AppMapClient";
+import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
+import { getFixItIssues } from "@/lib/integrations/seeclickfix";
+import AppMapClient, { type CivicPin } from "@/components/map/AppMapClient";
 
 const OPEN_PLACES = PLACES.filter(
   (p) => !isKnownClosed(p.name) && p.is_operational !== "closed_permanently"
@@ -12,7 +14,32 @@ export const metadata: Metadata = {
   description: "Every business, park, trail, library, and civic service in Frederick County on one map.",
 };
 
-export default function MapPage() {
+export const revalidate = 300;
+
+export default async function MapPage() {
+  const [incidents, fixit] = await Promise.all([
+    getChartIncidentsFrederick().catch(() => []),
+    getFixItIssues(30).catch(() => []),
+  ]);
+  const civic: CivicPin[] = [
+    ...incidents
+      .filter((i) => Number.isFinite(i.lat) && Number.isFinite(i.lng))
+      .map((i) => ({
+        kind: "traffic" as const,
+        lng: i.lng,
+        lat: i.lat,
+        label: `${i.road}: ${i.type}`,
+      })),
+    ...fixit
+      .filter((i) => Number.isFinite(i.lat) && Number.isFinite(i.lng))
+      .map((i) => ({
+        kind: "issue" as const,
+        lng: i.lng,
+        lat: i.lat,
+        label: i.summary,
+      })),
+  ];
+
   return (
     <div className="space-y-3">
       <header className="space-y-1">
@@ -27,7 +54,7 @@ export default function MapPage() {
         </p>
       </header>
 
-      <AppMapClient places={OPEN_PLACES} />
+      <AppMapClient places={OPEN_PLACES} civic={civic} />
 
       <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
         Business data from{" "}

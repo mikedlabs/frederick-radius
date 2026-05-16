@@ -26,7 +26,16 @@ const AppMap = dynamic(() => import("./AppMap"), {
  * (opens the place sheet). This turns a wall of pins into something you
  * can actually browse.
  */
-export default function AppMapClient({ places }: { places: Place[] }) {
+export type { CivicPin } from "./AppMap";
+import type { CivicPin } from "./AppMap";
+
+export default function AppMapClient({
+  places,
+  civic = [],
+}: {
+  places: Place[];
+  civic?: CivicPin[];
+}) {
   const [inView, setInView] = useState<string[]>([]);
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
 
@@ -47,7 +56,7 @@ export default function AppMapClient({ places }: { places: Place[] }) {
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} onPlacesInView={setInView} focus={focus} />
+      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} />
 
       <section className="space-y-2">
         <div className="flex items-baseline justify-between">
