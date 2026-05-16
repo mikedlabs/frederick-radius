@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { submitEventAction, type SubmitEventInput } from "./actions";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -10,6 +11,17 @@ export default function SubmitEventForm() {
   const [submitted, setSubmitted] = useState(false);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Prefill the town when arriving from a "Submit an event for <town>" CTA.
+  // Set post-mount on the uncontrolled select so there is no hydration
+  // mismatch and no behavior change when ?m= is absent.
+  useEffect(() => {
+    const slug = new URLSearchParams(window.location.search).get("m");
+    if (!slug || !MUNICIPALITIES.some((mm) => mm.slug === slug)) return;
+    const el = formRef.current?.elements.namedItem("municipality");
+    if (el instanceof HTMLSelectElement) el.value = slug;
+  }, []);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -54,13 +66,13 @@ export default function SubmitEventForm() {
         </div>
         <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks — submitted</h2>
         <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>We&apos;ll review and reach out within 3 business days.</p>
-        <a href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius →</a>
+        <Link href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius →</Link>
       </div>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-6 space-y-4">
+    <form ref={formRef} onSubmit={onSubmit} className="mt-6 space-y-4">
       <Field name="title" label="Event title" required placeholder="Punch Brothers at the Weinberg" />
       <Field name="organizer" label="Organizer" placeholder="Weinberg Center for the Arts" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

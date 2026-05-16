@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink, GraduationCap, Rss, CalendarDays } from "lucide-react";
-import { allUpcoming, eventsLive, eventsNext24h, eventsWeekend, type EventWithMeta } from "@/lib/loaders/events";
+import { allUpcoming, eventsLive, eventsNext24h, eventsWeekend, eventsByTown, aroundTheCounty, BY_TOWN_ENABLED, type EventWithMeta } from "@/lib/loaders/events";
+import EventsByTown from "@/components/event/EventsByTown";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents, type LiveEvent } from "@/lib/integrations/ical-live";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -43,7 +44,12 @@ function liveToCardEvent(e: LiveEvent): EventWithMeta {
   };
 }
 
-export default async function EventsIndexPage() {
+export default async function EventsIndexPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; m?: string; when?: string }>;
+}) {
+  const { view, m, when } = await searchParams;
   const now = new Date();
   const seedLive = eventsLive(now);
   const seedToday = eventsNext24h(now);
@@ -97,6 +103,10 @@ export default async function EventsIndexPage() {
 
   const totalUpcoming = today.length + weekend.length + later.length;
 
+  const showTown = BY_TOWN_ENABLED && view === "town";
+  const townData = showTown ? eventsByTown(now) : [];
+  const aroundCounty = showTown ? aroundTheCounty(now) : [];
+
   return (
     <div className="space-y-7">
       <header className="space-y-2">
@@ -129,6 +139,26 @@ export default async function EventsIndexPage() {
         </div>
       </header>
 
+      {BY_TOWN_ENABLED && (
+        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide">
+          <ToggleLink active={!showTown} href="/events">By time</ToggleLink>
+          <ToggleLink active={showTown} href="/events?view=town">By town</ToggleLink>
+        </div>
+      )}
+
+      {showTown ? (
+        <EventsByTown
+          towns={townData}
+          aroundCounty={aroundCounty}
+          initialTown={m}
+          initialWhen={when}
+          nowISO={now.toISOString()}
+          next24hISO={start24.toISOString()}
+          weekendStartISO={friday.toISOString()}
+          weekendEndISO={monday.toISOString()}
+        />
+      ) : (
+      <>
       {seedLive.length > 0 && (
         <EventGroup title="Happening right now" events={seedLive} meta={`${seedLive.length} live`} />
       )}
@@ -186,6 +216,8 @@ export default async function EventsIndexPage() {
           </ul>
         </section>
       )}
+      </>
+      )}
 
       <footer className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
@@ -231,5 +263,30 @@ function EventGroup({
         </ul>
       )}
     </section>
+  );
+}
+
+function ToggleLink({
+  active,
+  href,
+  children,
+}: {
+  active: boolean;
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className="inline-flex shrink-0 items-center rounded-full border px-3.5 py-2 text-sm font-medium transition"
+      style={{
+        background: active ? "var(--app-brand)" : "var(--app-bg-elevated)",
+        color: active ? "white" : "var(--app-ink-2)",
+        borderColor: active ? "var(--app-brand)" : "var(--app-border)",
+      }}
+    >
+      {children}
+    </Link>
   );
 }

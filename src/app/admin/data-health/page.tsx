@@ -28,6 +28,7 @@ export default function DataHealth() {
     ["Clean copy", `${SCORES.counts.auto_clean}`, "auto_clean, not yet editor-reviewed"],
     ["RADIUS_DEDUPE", process.env.RADIUS_DEDUPE === "1" ? "on" : "off", "default off = today's production"],
     ["HOURS_GATE", process.env.HOURS_GATE === "1" ? "on" : "off", "default off"],
+    ["RADIUS_EVENTS_BY_TOWN", process.env.RADIUS_EVENTS_BY_TOWN === "1" ? "on" : "off", "default off = today's production"],
   ];
 
   return (
