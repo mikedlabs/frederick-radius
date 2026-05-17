@@ -7,6 +7,8 @@ import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
+import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -30,16 +32,24 @@ export default async function EventsIndexPage({
   const seedLive = eventsLive(now);
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw }, hood, ingestedSeries, ingestedSummary] = await Promise.all([
-    getLiveEvents(60),
-    getHoodEvents(),
-    getIngestedSeries(),
-    getIngestedSummary(),
-  ]);
+  const [{ events: liveEventsRaw }, hood, ingestedSeries, ingestedSummary, tmEvents, bitEvents] =
+    await Promise.all([
+      getLiveEvents(60),
+      getHoodEvents(),
+      getIngestedSeries(),
+      getIngestedSummary(),
+      // Real live-music shows. Inert (returns []) until the owner sets
+      // TICKETMASTER_API_KEY / BANDSINTOWN_APP_ID — never fabricated.
+      fetchTicketmasterMusic().catch(() => []),
+      // Bandsintown public API is artist-scoped only (see the module):
+      // no curated local-artist list yet, so this is inert by design.
+      fetchBandsintownForArtists([]).catch(() => []),
+    ]);
 
-  // Live/county events, with curated-duplicates dropped (P0-4).
+  // Live/county events + real live-music feeds, with curated-duplicates
+  // dropped (P0-4).
   const liveCards = dedupeLiveAgainstCurated(
-    liveEventsRaw.map(liveToCardEvent),
+    [...liveEventsRaw, ...tmEvents, ...bitEvents].map(liveToCardEvent),
     curatedUpcoming,
   );
 
