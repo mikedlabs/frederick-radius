@@ -33,6 +33,7 @@ type Enriched = {
   photo_names?: string[];
   phone?: string;
   website?: string;
+  editorial_summary?: string;
   discovered_for?: { category?: string };
 };
 
@@ -95,7 +96,9 @@ function main() {
       slug,
       name: e.name,
       category,
-      short_blurb: `${catName} in ${muniName}.`, // factual, not invented
+      // Google's real one-liner when it exists; factual fallback
+      // otherwise (never invented marketing copy).
+      short_blurb: e.editorial_summary?.trim() || `${catName} in ${muniName}.`,
       address: (e.address ?? "").replace(/, USA$/, ""),
       city: muniName,
       state: "MD",
@@ -124,6 +127,7 @@ function main() {
       lat: e.lat,
       lng: e.lng,
       primary_type: e.detail_primary_type ?? e.primary_type,
+      editorial_summary: e.editorial_summary,
       enriched_at: new Date().toISOString(),
     };
   }
