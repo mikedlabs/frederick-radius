@@ -68,6 +68,10 @@ export type PlaceEnrichment = {
   /** Google's authoritative primary type, e.g. "coffee_shop",
    *  "lodging", "church" — drives the category auto-correction. */
   primary_type?: string;
+  /** Google's real one-line description — replaces placeholder blurbs. */
+  editorial_summary?: string;
+  /** Human label for the primary type, e.g. "Coffee shop". */
+  primary_type_display?: string;
 };
 
 function key(): string | null {
@@ -92,6 +96,8 @@ const DETAILS_FIELD_MASK = [
   "websiteUri",
   "location",
   "photos",
+  "editorialSummary",
+  "primaryTypeDisplayName",
 ].join(",");
 
 type GApiPlace = {
@@ -108,6 +114,8 @@ type GApiPlace = {
   websiteUri?: string;
   location?: { latitude?: number; longitude?: number };
   photos?: Array<{ name?: string }>;
+  editorialSummary?: { text?: string };
+  primaryTypeDisplayName?: { text?: string };
 };
 
 function normalize(p: GApiPlace): PlaceEnrichment | null {
@@ -132,6 +140,8 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
     lat: p.location?.latitude,
     lng: p.location?.longitude,
     primary_type: p.primaryType,
+    editorial_summary: p.editorialSummary?.text,
+    primary_type_display: p.primaryTypeDisplayName?.text,
   };
 }
 

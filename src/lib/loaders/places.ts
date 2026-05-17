@@ -66,6 +66,7 @@ type Enrichment = {
   lat?: number;
   lng?: number;
   primary_type?: string;
+  editorial_summary?: string;
   enriched_at?: string;
 };
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
@@ -125,10 +126,19 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
   // shopping, etc.). Conservative: only confident Google types map;
   // a vague type returns null and the existing category is kept.
   const category = categoryFromPrimaryType(e.primary_type) ?? p.category;
+  // Curated editorial voice (seed/manual) is kept; for DFP + Google-
+  // discovered, Google's real one-line description replaces the
+  // scraped/placeholder blurb ("Coffee in Thurmont"). Never blank,
+  // never fabricated — only a real Google summary wins.
+  const short_blurb =
+    p.source !== "seed" && p.source !== "manual" && e.editorial_summary?.trim()
+      ? e.editorial_summary.trim()
+      : p.short_blurb;
   return {
     ...p,
     geom,
     category,
+    short_blurb,
     is_operational,
     // Curated data wins; Google fills the gaps. This is why ~96% of places
     // (DFP scrapes with no phone/site) stay blank until enriched.

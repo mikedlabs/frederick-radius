@@ -82,6 +82,7 @@ async function main() {
     phone?: string;
     website?: string;
     detail_primary_type?: string;
+    editorial_summary?: string;
   }> = [];
   let ok = 0, miss = 0;
   for (let i = 0; i < clean.length; i++) {
@@ -100,6 +101,7 @@ async function main() {
         phone: d.phone,
         website: d.website,
         detail_primary_type: d.primary_type,
+        editorial_summary: d.editorial_summary,
       });
     } else {
       miss++;
