@@ -214,6 +214,39 @@ function unescapeIcalText(s: string): string {
     .replace(/\\\\/g, "\\");
 }
 
+/**
+ * The Frederick County CivicEngage RSS feed entity-encodes its HTML
+ * markup (e.g. `&lt;strong&gt;Event date:&lt;/strong&gt; … &lt;br&gt;`),
+ * so a bare `<[^>]+>` strip misses every tag and the entities surface
+ * as literal text on the explorer cards and the live-event detail page.
+ * Decode entities FIRST — `&amp;` before `&lt;`/`&gt;` so a doubly
+ * entity-encoded `&amp;lt;` still collapses to `<` in a single pass —
+ * then strip the now-real tags and collapse whitespace. Callers still
+ * apply the 300-char cap afterwards. Used by both feed paths since any
+ * entity-encoded feed (RSS or iCal) hits the same failure mode.
+ */
+export function cleanFeedText(raw: string): string {
+  const decoded = raw
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/gi, "'")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&mdash;/gi, "—")
+    .replace(/&ndash;/gi, "–")
+    .replace(/&hellip;/gi, "…")
+    .replace(/&[lr]squo;/gi, "'")
+    .replace(/&[lr]dquo;/gi, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)));
+  return decoded
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 type ParsedVEvent = {
   uid?: string;
   summary?: string;
@@ -297,7 +330,7 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       events.push({
         id: item.uid ?? `${feed.source}:${dedupeKey(title, start, venue)}`,
         title,
-        description: description.replace(/<[^>]+>/g, "").slice(0, 300),
+        description: cleanFeedText(description).slice(0, 300),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
         venue_name: venue,
@@ -350,7 +383,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
       };
       const title = pick("title").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
       const link = pick("link");
-      const description = pick("description").replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+      const description = cleanFeedText(pick("description"));
       if (!title) continue;
 
       // Frederick County CivicEngage uses:
