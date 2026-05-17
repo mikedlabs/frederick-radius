@@ -9,8 +9,7 @@ import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import PlacePhoto from "./PlacePhoto";
 import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
-import TrustChip from "@/components/ui/TrustChip";
-import { placeHoursTrust } from "@/lib/trust";
+import PlaceStatus from "./PlaceStatus";
 
 const GLYPH_BY_CATEGORY: Record<string, string> = {
   coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
@@ -33,7 +32,7 @@ export default function PlaceCard({
 }: {
   place: PlaceCardData;
   compact?: boolean;
-  variant?: "row" | "feature";
+  variant?: "row" | "feature" | "tile";
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "#1A1A1A";
@@ -91,31 +90,99 @@ export default function PlaceCard({
     );
   }
 
+  // Fixed-width, photo-forward tile for horizontal shelves. Crafted the
+  // same whether or not a photo exists — most DFP places have none, so a
+  // tonal category panel stands in so a shelf never looks broken.
+  if (variant === "tile") {
+    return (
+      <article
+        className="hover-lift group relative w-[208px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <button
+          type="button"
+          onClick={openDetail}
+          aria-label={`View ${place.name} details`}
+          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
+          <div className="relative h-28 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+            {photoUrl ? (
+              <>
+                <PlacePhoto
+                  src={photoUrl}
+                  alt={photo?.alt ?? place.name}
+                  glyph={glyph}
+                  color={color}
+                  sizes="208px"
+                  className="transition-transform duration-500 group-hover:scale-105"
+                  rounded="0"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
+              </>
+            ) : (
+              <div
+                aria-hidden
+                className="flex h-full w-full items-center justify-center"
+                style={{
+                  background: `linear-gradient(145deg, ${color}24, ${color}0a)`,
+                  color,
+                }}
+              >
+                <span className="text-[40px] leading-none opacity-90">{glyph}</span>
+              </div>
+            )}
+          </div>
+          <div className="space-y-1 p-3">
+            <h3
+              className="truncate text-[14px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {place.name}
+            </h3>
+            <p
+              className="truncate text-[11px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {cat?.name ?? place.category}
+              {place.distance_m !== undefined && (
+                <> · {formatDistance(place.distance_m)}</>
+              )}
+            </p>
+            <PlaceStatus status={place.open_status} className="!text-[11px]" />
+          </div>
+        </button>
+        <div className="absolute right-2 top-2 z-10">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+        </div>
+      </article>
+    );
+  }
+
   return (
     <article
-      className="hover-lift group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
+      className="hover-lift group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 shadow-[var(--app-shadow-1)]"
       style={{ borderColor: "var(--app-border)" }}
     >
       {photoUrl ? (
-        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
+        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
           <PlacePhoto
             src={photoUrl}
             alt={photo?.alt ?? place.name}
             glyph={glyph}
             color={color}
-            sizes="56px"
+            sizes="64px"
           />
         </div>
       ) : (
         <div
           aria-hidden
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
-          style={{ background: `${color}18`, color }}
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
+          style={{ background: `linear-gradient(145deg, ${color}26, ${color}0c)`, color }}
         >
-          <span className="text-[26px] leading-none">{glyph}</span>
+          <span className="text-[28px] leading-none opacity-90">{glyph}</span>
         </div>
       )}
-      <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-baseline gap-2">
           <button
             type="button"
@@ -128,20 +195,19 @@ export default function PlaceCard({
             {place.name}
           </button>
           {place.distance_m !== undefined && (
-            <span className="ml-auto whitespace-nowrap text-xs tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <span className="ml-auto whitespace-nowrap text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
               {formatDistance(place.distance_m)}
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-xs" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mt-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {cat?.name ?? place.category} · {place.short_blurb}
         </p>
         {!compact && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <OpenClosedDot status={place.open_status} />
-            <TrustChip signal={placeHoursTrust(place.open_status)} />
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <PlaceStatus status={place.open_status} />
             {place.price_band && (
-              <span className="text-xs font-medium" style={{ color: "var(--app-ink-3)" }}>
+              <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
                 {"$".repeat(place.price_band)}
               </span>
             )}

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Footprints, Bike, Car, MapPin } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
+import Shelf from "@/components/ui/Shelf";
 import { decoratePlace } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { minutesToMeters, type TravelMode, formatDistance } from "@/lib/geo";
@@ -150,17 +151,16 @@ export default function RadiusBuilder({ places }: { places: Place[] }) {
         </p>
       </section>
 
+      {/* Results as editorial shelves, not an infinite directory column.
+          Items are distance-sorted, so the rail leads with the nearest;
+          the header count stays the honest total even though the rail
+          shows the closest handful. */}
       {buckets.map((b) => b.items.length > 0 && (
-        <section key={b.id} className="space-y-2">
-          <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            {b.title} <span className="text-sm font-normal" style={{ color: "var(--app-ink-3)" }}>· {b.items.length}</span>
-          </h2>
-          <ul className="space-y-2">
-            {b.items.map((p) => (
-              <li key={p.slug}><PlaceCard place={p} /></li>
-            ))}
-          </ul>
-        </section>
+        <Shelf key={b.id} title={b.title} count={b.items.length}>
+          {b.items.slice(0, 12).map((p) => (
+            <PlaceCard key={p.slug} place={p} variant="tile" />
+          ))}
+        </Shelf>
       ))}
 
       {inside.length === 0 && (
