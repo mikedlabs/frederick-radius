@@ -10,6 +10,13 @@ import { CATEGORIES, TOP_CATEGORIES } from "@/data/categories";
 
 export const revalidate = 600;
 
+// Friendly glyph per top category — same visual vocabulary as the
+// place cards, so a town reads as pictures + color, not a list.
+const TOP_GLYPH: Record<string, string> = {
+  food: "🍴", outdoors: "🌲", arts: "🎭", shopping: "🛍", wellness: "💆",
+  family: "👨‍👩‍👧", civic: "🏛", services: "🛠", lodging: "🏨", worship: "⛪",
+};
+
 export async function generateStaticParams() {
   return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
 }
@@ -42,8 +49,14 @@ export default async function MunicipalityPage(
     .map((p) => decoratePlace(p, m.centroid))
     .sort((a, b) => b.feature_score - a.feature_score);
 
-  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 6);
+  const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
+  const verifiedCount = places.filter((p) => p.is_verified).length;
+
+  // A real photo FROM this town for the hero (highest feature score
+  // with a Google photo). Never stock or fabricated — if none, a
+  // System-Black gradient carries the name instead.
+  const heroPhoto = places.find((p) => p.google_photo_url)?.google_photo_url ?? null;
 
   const categoryCounts = TOP_CATEGORIES
     .map((c) => ({
@@ -57,76 +70,116 @@ export default async function MunicipalityPage(
     .sort((a, b) => b.n - a.n);
 
   return (
-    <div className="space-y-7">
-      <header className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {m.type} · est. {m.est} · pop. {m.population.toLocaleString()}
-        </p>
-        <h1 className="font-serif text-[32px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-          {m.name}, Maryland
-        </h1>
-        <p className="font-serif text-lg italic" style={{ color: "var(--app-brand)" }}>
-          {m.hero_blurb}
-        </p>
-        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {m.description}
-        </p>
+    <div className="space-y-6">
+      {/* Photo hero — image-forward, the town as a place not a row */}
+      <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
+        <div className="relative h-52 w-full sm:h-60">
+          {heroPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element -- key-safe proxied Google photo; plain img avoids a domain allowlist
+            <img src={heroPhoto} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div
+              className="h-full w-full"
+              style={{ background: "linear-gradient(150deg,#1A1A1A,#2A2A2A 60%,#3A2E1E)" }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
+          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
+              {m.type} · est. {m.est} · pop. {m.population.toLocaleString()}
+            </p>
+            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight text-white">
+              {m.name}, Maryland
+            </h1>
+            <p className="font-serif text-[15px] italic text-white/85">
+              {m.hero_blurb}
+            </p>
+          </div>
+        </div>
       </header>
 
-      <section className="grid grid-cols-3 gap-2">
-        <Stat label="Places" value={places.length.toString()} />
-        <Stat label="Upcoming" value={upcomingEvents.length.toString()} suffix="events" />
-        <Stat label="Verified" value={places.filter((p) => p.is_verified).length.toString()} />
-      </section>
+      <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        {m.description}
+      </p>
 
+      {/* Visual category tiles — 2-up, tappable, color + glyph + count */}
       {categoryCounts.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            Browse {m.name}
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+            Explore {m.name}
           </h2>
-          <ul className="flex flex-wrap gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
             {categoryCounts.map(({ c, n }) => (
-              <li key={c.slug}>
-                <Link
-                  href={`/category/${c.slug}`}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+              <Link
+                key={c.slug}
+                href={`/category/${c.slug}`}
+                className="hover-lift relative flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] border p-3 transition"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: `linear-gradient(135deg, ${c.color}1f, ${c.color}08)`,
+                }}
+              >
+                <span
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[20px]"
+                  style={{ background: `${c.color}26` }}
+                  aria-hidden
                 >
-                  <span style={{ color: c.color }}>●</span>
-                  {c.name}
-                  <span style={{ color: "var(--app-ink-3)" }}>{n}</span>
-                </Link>
-              </li>
+                  {TOP_GLYPH[c.slug] ?? "📍"}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                    {c.name}
+                  </span>
+                  <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                    {n} {n === 1 ? "place" : "places"}
+                  </span>
+                </span>
+              </Link>
             ))}
-          </ul>
+          </div>
         </section>
       )}
 
-      {!BY_TOWN_ENABLED && upcomingEvents.length > 0 && (
-        <section className="space-y-3">
+      {/* Worth your time — a 2-up PHOTO grid, not a stacked text list */}
+      <section className="space-y-2.5">
+        <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Upcoming in {m.name}
+            Worth your time
           </h2>
-          <ul className="space-y-2">
-            {upcomingEvents.map((e) => (
-              <li key={e.slug}><EventCard event={e} /></li>
+          {places.length > 0 && (
+            <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              {places.length} places{verifiedCount > 0 ? ` · ${verifiedCount} verified` : ""}
+            </span>
+          )}
+        </div>
+        {places.length === 0 ? (
+          <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
+             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+            We&apos;re still seeding places for {m.name}. Check back soon, or submit a place you love.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-2.5">
+            {places.slice(0, 12).map((p) => (
+              <PlaceCard key={p.slug} place={p} variant="grid" />
             ))}
-          </ul>
-        </section>
-      )}
+          </div>
+        )}
+      </section>
 
-      {BY_TOWN_ENABLED && (
-        <section className="space-y-3">
+      {/* Upcoming — kept tight (max 4); the page is about the place,
+          not an event directory. */}
+      {(upcomingEvents.length > 0 || BY_TOWN_ENABLED) && (
+        <section className="space-y-2.5">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
               Upcoming in {m.name}
             </h2>
             <Link
-              href={`/events?view=town&m=${m.slug}`}
-              className="shrink-0 text-xs font-medium tracking-tight"
+              href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
+              className="shrink-0 text-xs font-semibold tracking-tight"
               style={{ color: "var(--app-cool)" }}
             >
-              All county events
+              All events
             </Link>
           </div>
           {upcomingEvents.length > 0 ? (
@@ -137,18 +190,12 @@ export default async function MunicipalityPage(
             </ul>
           ) : (
             <div
-              className="space-y-4 rounded-[var(--app-radius-lg)] border border-dashed p-4"
+              className="space-y-3 rounded-[var(--app-radius-lg)] border border-dashed p-4"
               style={{ borderColor: "var(--app-border)" }}
             >
-              <div className="space-y-1">
-                <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
-                  No events are on the calendar for {m.name} yet.
-                </p>
-                <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-                  {m.name} runs on local word of mouth. If you know something
-                  happening here, it belongs on this page.
-                </p>
-              </div>
+              <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
+                Nothing on the calendar for {m.name} yet — it runs on word of mouth.
+              </p>
               <Link
                 href={`/submit/event?m=${m.slug}`}
                 className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
@@ -158,11 +205,11 @@ export default async function MunicipalityPage(
               </Link>
               {nearbyEvents.length > 0 && (
                 <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-                  <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
                     Happening near {m.name}
                   </p>
                   <ul className="space-y-2">
-                    {nearbyEvents.map((e) => (
+                    {nearbyEvents.slice(0, 3).map((e) => (
                       <li key={e.slug}><EventCard event={e} /></li>
                     ))}
                   </ul>
@@ -172,40 +219,6 @@ export default async function MunicipalityPage(
           )}
         </section>
       )}
-
-      <section className="space-y-3">
-        <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Worth your time
-        </h2>
-        {places.length === 0 ? (
-          <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            We&apos;re still seeding places for {m.name}. Check back soon, or submit a place you love.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {places.slice(0, 12).map((p) => (
-              <li key={p.slug}><PlaceCard place={p} /></li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </div>
-  );
-}
-
-function Stat({ label, value, suffix }: { label: string; value: string; suffix?: string }) {
-  return (
-    <div
-      className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-center"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <p className="font-serif text-2xl font-semibold tabular-nums leading-none" style={{ color: "var(--app-ink)" }}>
-        {value}
-      </p>
-      <p className="mt-1 text-[10px] font-medium uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
-        {label}{suffix ? ` ${suffix}` : ""}
-      </p>
     </div>
   );
 }

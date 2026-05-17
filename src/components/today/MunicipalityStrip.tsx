@@ -1,21 +1,52 @@
 import Link from "next/link";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import { publicPlacesByMunicipality } from "@/lib/loaders/places";
 
+// A deterministic System-Black accent per town so the grid reads as
+// distinct tiles, not one grey list.
+const ACCENTS = ["#C4451C", "#2A5D8F", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
+function accentFor(slug: string): string {
+  let h = 0;
+  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;
+  return ACCENTS[Math.abs(h) % ACCENTS.length];
+}
+
+/**
+ * All 12 towns as a visual tile grid (not a row of pills): each tile
+ * carries the town name, a real place count, and a color spine so the
+ * county reads as places, not a directory list.
+ */
 export default function MunicipalityStrip() {
-  // All 12 visible at once — wrapped, no hidden horizontal scroll.
+  const towns = MUNICIPALITIES.map((m) => ({
+    ...m,
+    count: publicPlacesByMunicipality(m.slug).length,
+  })).sort((a, b) => b.count - a.count);
+
   return (
-    <ul className="flex flex-wrap gap-2">
-      {MUNICIPALITIES.map((m) => (
-        <li key={m.slug}>
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {towns.map((m) => {
+        const accent = accentFor(m.slug);
+        return (
           <Link
+            key={m.slug}
             href={`/m/${m.slug}`}
-            className="block rounded-full border px-3 py-1.5 text-xs font-medium tracking-tight transition-colors hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            className="hover-lift relative overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-2.5 pl-4 pr-3 transition"
+            style={{ borderColor: "var(--app-border)" }}
           >
-            {m.name}
+            <span
+              aria-hidden
+              className="absolute inset-y-0 left-0 w-1"
+              style={{ background: accent }}
+            />
+            <span className="block truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              {m.name}
+            </span>
+            <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              {m.count > 0 ? `${m.count} ${m.count === 1 ? "place" : "places"}` : m.type}
+            </span>
           </Link>
-        </li>
-      ))}
-    </ul>
+        );
+      })}
+    </div>
   );
 }
