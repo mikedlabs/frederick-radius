@@ -849,3 +849,269 @@ sources:
       Public health sensitive. Same posture as pulsepoint: do not fetch
       until a privacy and accuracy review is recorded here and a human
       approves. Useful but must be presented carefully if ever used.
+
+  # ---------------------------------------------------------------------------
+  # discover-sources batch (2026-05-17)
+  #
+  # Goal: power a county-wide, location-aware "Live Now" — farmers markets,
+  # live events, in-city happenings at businesses, specials, and the
+  # things that today only live on Instagram/Facebook. We cannot legally
+  # scrape Meta; the durable answer is structured public sources + partner
+  # event feeds + a first-party owner-submission flow (business_specials,
+  # which ties to the gated submission queue). All rows below are inert
+  # until a human flips status to scaffold/active — none are fetched yet.
+  # ---------------------------------------------------------------------------
+
+  - id: usda_farmers_markets
+    name: USDA Local Food Portal — Farmers Markets
+    owner: USDA Agricultural Marketing Service
+    url: https://www.usdalocalfoodportal.com/api/farmersmarket/
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: weekly
+    license: US federal government open data, public domain
+    contact: USDA AMS Local Food Directories
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Authoritative national directory, queryable by lat/long radius —
+      the spine of the "find all the farmers markets" ask. Hours and
+      season text drive Live-Now open/closed. Needs a free API key at
+      activation. Cross-check against md_farmers_markets for coverage.
+
+  - id: md_farmers_markets
+    name: Maryland Dept of Agriculture — Farmers Market Directory
+    owner: Maryland Department of Agriculture
+    url: https://mda.maryland.gov/maryland_products/Pages/farmers-market-directory.aspx
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: weekly
+    license: Maryland state government, confirm reuse terms at activation
+    contact: MDA Marketing and Agribusiness Development
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      State-level coverage backstop for usda_farmers_markets — catches
+      Frederick County markets the federal portal misses. Scrape only if
+      no structured export exists; recheck for an open-data endpoint at
+      activation before writing a brittle HTML transform.
+
+  - id: eventbrite_frederick
+    name: Eventbrite — Frederick County Events
+    owner: Eventbrite
+    url: https://www.eventbriteapi.com/v3/
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: Eventbrite API terms, requires OAuth token, attribution required
+    contact: Eventbrite Platform / API
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Real-time ticketed + free events, location filterable — a primary
+      Live-Now feed for in-city happenings at businesses. OAuth token
+      required at activation; respect rate limits and attribution. Public
+      search was deprecated, so this needs an organizer/partner token —
+      flag for the Visit Frederick / DFP partner conversation.
+
+  - id: bandsintown
+    name: Bandsintown — Live Music
+    owner: Bandsintown
+    url: https://rest.bandsintown.com/
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: Bandsintown API terms, requires app id, attribution required
+    contact: Bandsintown for Artists / API
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Live music at Frederick venues — fills the gap where shows are only
+      promoted on social. Query by venue/city; needs a free app id at
+      activation. Pairs with songkick for coverage redundancy.
+
+  - id: songkick
+    name: Songkick — Concerts & Venues
+    owner: Songkick
+    url: https://api.songkick.com/api/3.0/
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: daily
+    license: Songkick API terms, requires API key, attribution required
+    contact: Songkick Developer Platform
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Metro-area concert calendar, venue-resolved — coverage redundancy
+      for bandsintown so we are not single-sourced on live music. API
+      key required at activation. May be partner-gated; flag at review.
+
+  - id: business_specials
+    name: Frederick Radius — Business Specials & Events (owner submitted)
+    owner: Frederick Radius (first party)
+    url: internal://submissions
+    endpoint_type: internal_submission
+    format: json
+    refresh_cadence: realtime
+    license: first party, submitted by verified business owners
+    contact: Frederick Radius product
+    status: pending_review
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      THE durable answer to "things only on Instagram/Facebook." We
+      cannot legally scrape Meta, so instead we let verified local
+      owners post specials, pop-ups, and tonight-only events directly.
+      This is the moat: structured, real-time, first-party data nobody
+      else has. Wires into the gated P0-6 submission queue — keep
+      pending_review until that queue + moderation policy are approved.
+
+  - id: fc_restaurant_inspections
+    name: Frederick County Health — Restaurant Inspections
+    owner: Frederick County Health Department
+    url: https://health.frederickcountymd.gov/
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: weekly
+    license: county government public records, confirm reuse at activation
+    contact: Frederick County Health Department, Environmental Health
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Inspection scores as a trust signal on food/drink places. Confirm
+      whether a structured portal exists before scraping; sensitive
+      framing — present factually, never as editorial judgment.
+
+  - id: fc_meeting_agendas
+    name: Frederick County — Public Meeting Agendas
+    owner: Frederick County Government
+    url: https://www.frederickcountymd.gov/
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: daily
+    license: county government public records
+    contact: Frederick County Clerk / Council Office
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Civic layer for the connectivity graph — council/board agendas
+      tied to municipalities. Confirm Legistar or Granicus backing at
+      activation (those expose clean JSON/iCal and beat HTML scraping).
+
+  - id: md_211
+    name: Maryland 211 — Community Services Directory
+    owner: 211 Maryland
+    url: https://211md.org/
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: monthly
+    license: nonprofit directory, confirm reuse terms at activation
+    contact: 211 Maryland
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Human-services safety net (food assistance, shelter, health) for
+      the civic mission. Check for an AIRS/211 structured API at
+      activation before scraping. Always-relevant, never time-bound.
+
+  - id: fcpl_libraries
+    name: Frederick County Public Libraries — Branches & Programs
+    owner: Frederick County Public Libraries
+    url: https://www.fcpl.org/
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: weekly
+    license: county government public information
+    contact: Frederick County Public Libraries
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Branch hours + program calendar — free family Live-Now content and
+      a strong civic anchor per municipality. Look for a LibCal/Bibliocommons
+      events feed at activation (structured) before HTML scraping.
+
+  - id: fc_parks_rec
+    name: Frederick County Parks & Recreation — Programs
+    owner: Frederick County Parks & Recreation
+    url: https://www.recreater.com/
+    endpoint_type: scrape
+    format: html
+    refresh_cadence: weekly
+    license: county government public information
+    contact: Frederick County Division of Parks and Recreation
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Rec programs, leagues, and park events — recurring location-aware
+      Live-Now content. Check for a registration-platform API
+      (CommunityPass/RecTrac) at activation before scraping.
+
+  - id: usgs_water
+    name: USGS — Monocacy River Water Data
+    owner: US Geological Survey
+    url: https://waterservices.usgs.gov/nwis/iv/
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: US federal government open data, public domain
+    contact: USGS Water Resources
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Real-time gauge data for the Monocacy and tributaries — flood
+      context that pairs with cof_floodplain and the safety surface.
+      Pin to Frederick County gauge site numbers at activation.
+
+  - id: frederick_news_post
+    name: Frederick News-Post — Local News RSS
+    owner: Frederick News-Post / Ogden Newspapers
+    url: https://www.fredericknewspost.com/
+    endpoint_type: rss
+    format: rss
+    refresh_cadence: hourly
+    license: publisher RSS, headline + link only, no full-text reuse
+    contact: Frederick News-Post
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Hyperlocal news headlines for context — strictly title + link +
+      timestamp, never full text (copyright). Confirm the RSS path at
+      activation; complements google_news_rss with primary-source local.
