@@ -1180,16 +1180,19 @@ sources:
       (DPW data remains the most authoritative route). Needs a free
       token; never fabricate pins from low-confidence detections.
 
-      STATUS: path (2) is now SCAFFOLDED + DORMANT at
-      src/lib/integrations/mapillary.ts — fetchMapillaryTrash() returns
-      the OsmPlace "trash" shape, drop-in for the map's amenities
-      layer. Double-gated, inert until BOTH are set by a human:
-      MAPILLARY_TOKEN (server-only env secret) AND MAPILLARY_TRASH=1
-      (explicit activation flag, mirrors COF_PARCELS=1). It is NOT yet
-      wired into AppMap — wiring it in is itself the activation step,
-      so the scaffold changes nothing a user sees. Verify
-      TRASH_OBJECT_VALUES against the live Mapillary taxonomy before
-      flipping on (an empty result is usually a stale class name, not
-      "no cans"). schema_file/transform_file stay null: the generic
-      pipeline (fetch_all.ts) has no token-auth, so this is a runtime
-      integration, not a fetch_all source — honest representation.
+      STATUS (2026-05-17): path (2) is VERIFIED + WIRED LIVE.
+      src/lib/integrations/mapillary.ts → fetchMapillaryTrash() is
+      called server-side in the map page and merged into AppMap's
+      amenity layer (extraAmenities prop), so the secret never reaches
+      the client. Token verified working; object--trash-can confirmed
+      as the class with ~51 detections downtown. Gated ONLY on
+      MAPILLARY_TOKEN presence now (the old MAPILLARY_TRASH flag was
+      removed — the owner is the activation). mapillaryToken()
+      sanitizes a trailing "|" / quotes / whitespace (a hand-pasted
+      dotenv value commonly carries that — it was a multi-round red
+      herring). PROD: MAPILLARY_TOKEN must be added to Vercel env for
+      the live site; absent it, fetchMapillaryTrash() returns [] and
+      this is fully inert. status stays non-active so fetch_all (no
+      token-auth) never tries to fetch it — this is a runtime
+      integration, not a pipeline source. schema_file/transform_file
+      stay null by design.

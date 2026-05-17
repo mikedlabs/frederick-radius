@@ -51,6 +51,9 @@ type Props = {
   focus?: { slug: string; n: number } | null;
   /** Live civic points (traffic incidents, 311 reports) for the overlay. */
   civic?: CivicPin[];
+  /** Server-fetched amenity points (Mapillary trash detections) merged
+   *  into the amenity layer — the secret token stays server-side. */
+  extraAmenities?: OsmPlace[];
 };
 
 export type CivicPin = {
@@ -182,6 +185,7 @@ export default function AppMap({
   onPlacesInView,
   focus,
   civic = [],
+  extraAmenities = [],
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const { openSheet } = usePlaceSheet();
@@ -355,7 +359,10 @@ export default function AppMap({
   // so the default map is exactly as uncluttered as before.
   const amenityGeoJson = useMemo(() => {
     if (activeAmenityCats.size === 0) return EMPTY_FC;
-    const feats = osmPlaces
+    // Merge server-fetched Mapillary trash detections in with OSM
+    // amenities — same OsmPlace shape, category_slug "trash", so they
+    // ride the existing "Trash" toggle with no special-casing.
+    const feats = [...osmPlaces, ...extraAmenities]
       .filter(
         (p) =>
           isAmenity(p) &&
@@ -379,7 +386,7 @@ export default function AppMap({
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       }));
     return { type: "FeatureCollection" as const, features: feats };
-  }, [osmPlaces, activeAmenityCats]);
+  }, [osmPlaces, extraAmenities, activeAmenityCats]);
 
   /**
    * Curated places as a clustered GeoJSON source.

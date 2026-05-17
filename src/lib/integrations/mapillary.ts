@@ -8,25 +8,27 @@
  * map-feature detections are openly licensed and intended for reuse —
  * so this is the ToS-clean version of the same idea.
  *
- * GATED AND DORMANT BY DEFAULT — like cofParcels. Two independent
- * gates, both required, so nothing can light up by accident:
- *   1. process.env.MAPILLARY_TOKEN must be set (the secret, server-only,
- *      added by a human to .env.local / Vercel env — never in code).
- *   2. process.env.MAPILLARY_TRASH must equal "1" (the explicit
- *      activation flag; mirrors COF_PARCELS=1). A token alone does
- *      nothing — a human flips this on at activation.
- * Absent either, every call returns [] and this module is inert. It is
- * also NOT wired into the map yet; wiring fetchMapillaryTrash() into
- * the amenities layer is itself the human activation step. So merely
- * landing this file changes nothing a user sees.
+ * GATED ON ONE SECRET. process.env.MAPILLARY_TOKEN (server-only, set
+ * by a human in .env.local / Vercel env — never in code). Absent it,
+ * every call returns [] and the module is inert (same pattern as
+ * google-places.ts). Verified live 2026-05-17: token authenticates,
+ * the trash class is object--trash-can, ~51 detections downtown.
+ *
+ * Token hygiene: a token hand-pasted into a dotenv file very commonly
+ * picks up a trailing "|" or whitespace (Mapillary tokens are
+ * MLY|id|secret, and editors/clipboards add junk). A valid token never
+ * ends in "|" or whitespace, so we defensively strip both — that one
+ * stray character was a multi-round red herring; the integration
+ * should just be robust to it.
  *
  * Output is the existing OsmPlace shape (category_slug "trash"), so it
- * is drop-in for the map's "Trash" amenities layer the day it is wired.
+ * is drop-in for the map's "Trash" amenities layer (now wired via the
+ * server map page → AppMap extraAmenities).
  *
  * Honesty: we surface only what Mapillary's CV actually returned at the
  * confidence Mapillary itself reports — never a fabricated or inferred
  * can. Coverage depends on whether Mapillary imagery exists for an
- * area, so this can legitimately return [] even when activated.
+ * area, so this can legitimately return [].
  */
 import { FREDERICK_COUNTY_BBOX, type OsmPlace } from "./overpass";
 
@@ -34,16 +36,24 @@ const ENDPOINT = "https://graph.mapillary.com/map_features";
 const FETCH_TIMEOUT_MS = 20_000;
 
 /**
- * Mapillary point-object taxonomy value(s) for a public waste basket.
- * VERIFY-AT-ACTIVATION: confirm the exact value(s) against the live
- * taxonomy before flipping MAPILLARY_TRASH on — Mapillary occasionally
- * revises class names, and an empty result usually means a stale value
- * here, not "no cans". Kept as a list so synonyms can be added.
+ * Mapillary point-object taxonomy value for a public waste basket.
+ * Confirmed against the live taxonomy (2026-05-17). Kept as a list so
+ * synonyms can be added if Mapillary revises class names.
  */
 export const TRASH_OBJECT_VALUES = ["object--trash-can"] as const;
 
+/**
+ * The token as Mapillary will accept it: quotes, surrounding
+ * whitespace, and any trailing "|" stripped. Returns "" when unset.
+ */
+export function mapillaryToken(): string {
+  const raw = process.env.MAPILLARY_TOKEN;
+  if (!raw) return "";
+  return raw.trim().replace(/^["']|["']$/g, "").replace(/\|+$/, "").trim();
+}
+
 export function mapillaryConfigured(): boolean {
-  return Boolean(process.env.MAPILLARY_TOKEN) && process.env.MAPILLARY_TRASH === "1";
+  return mapillaryToken().split("|").length === 3;
 }
 
 type MapillaryFeature = {
@@ -94,14 +104,13 @@ export function normalizeMapillaryFeatures(raw: unknown): OsmPlace[] {
 
 /**
  * Fetch Mapillary-detected trash cans for the county. Returns [] —
- * never throws into the map — unless BOTH gates are set. The token
+ * never throws into the map — when no token is configured. The token
  * goes in the Authorization header (not the URL) so it never lands in
- * a log or referrer.
+ * a log or referrer, and is sanitized via mapillaryToken().
  */
 export async function fetchMapillaryTrash(): Promise<OsmPlace[]> {
-  if (process.env.MAPILLARY_TRASH !== "1") return []; // dormant flag
-  const token = process.env.MAPILLARY_TOKEN;
-  if (!token) return []; // no secret → inert
+  const token = mapillaryToken();
+  if (token.split("|").length !== 3) return []; // no/!valid token → inert
 
   const [s, w, n, e] = FREDERICK_COUNTY_BBOX;
   const url =

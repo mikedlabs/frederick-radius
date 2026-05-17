@@ -28,13 +28,18 @@ const AppMap = dynamic(() => import("./AppMap"), {
  */
 export type { CivicPin } from "./AppMap";
 import type { CivicPin } from "./AppMap";
+import type { OsmPlace } from "@/lib/integrations/overpass";
 
 export default function AppMapClient({
   places,
   civic = [],
+  extraAmenities = [],
 }: {
   places: Place[];
   civic?: CivicPin[];
+  /** Server-fetched amenity points (e.g. Mapillary trash) merged into
+   *  the map's amenity layer — keeps the secret token server-side. */
+  extraAmenities?: OsmPlace[];
 }) {
   const [inView, setInView] = useState<string[]>([]);
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
@@ -56,7 +61,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} />
+      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} />
 
       <section className="space-y-2">
         <div className="flex items-baseline justify-between">
