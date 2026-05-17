@@ -12,9 +12,9 @@ function formatAge(iso: string): string {
   return `${d}d ago`;
 }
 
-// A small deterministic accent per source so the rail reads as
-// distinct cards at a glance, not one grey list. Hash → palette.
-const ACCENTS = ["#C4451C", "#2A5D8F", "#5B3A8F", "#3F7E5A", "#B07A1E"];
+// Deterministic accent per source so the desk reads as distinct
+// outlets at a glance, not one grey list.
+const ACCENTS = ["#C4451C", "#2A5D8F", "#5B3A8F", "#3F7E5A", "#B07A1E", "#1E6B3A"];
 function accentFor(source: string): string {
   let h = 0;
   for (let i = 0; i < source.length; i++) h = (h * 31 + source.charCodeAt(i)) | 0;
@@ -22,14 +22,20 @@ function accentFor(source: string): string {
 }
 
 /**
- * Local news as a swipeable card rail (not a grey list buried in a
- * collapsible footer). News RSS carries no images, so type IS the
- * visual: a colored source spine, a serif headline, honest age. No
- * fabricated thumbnails.
+ * Local news desk — an editorial lead story + a scannable column of
+ * the rest. Vertical, the way people actually read news (the old
+ * horizontal text-card rail read thin). Multi-source, county-wide,
+ * refreshed hourly. RSS carries no images, so type + a per-source
+ * color spine carry it — never a fabricated thumbnail.
  */
 export default async function LocalNewsStrip() {
   const headlines = await getLocalHeadlines();
   if (headlines.length === 0) return null;
+
+  const [lead, ...rest] = headlines;
+  const list = rest.slice(0, 11);
+  const sources = new Set(headlines.map((h) => h.source)).size;
+  const leadAccent = accentFor(lead.source);
 
   return (
     <section aria-label="Local news">
@@ -41,55 +47,77 @@ export default async function LocalNewsStrip() {
           </h2>
         </div>
         <p className="text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Refreshed every 30 min
+          {headlines.length} stories · {sources} sources · hourly
         </p>
       </div>
 
-      <div className="shelf-rail flex gap-3 pb-1">
-        {headlines.slice(0, 8).map((h, i) => {
-          const accent = accentFor(h.source);
-          return (
-            <a
-              key={i}
-              href={h.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative flex w-[15.5rem] shrink-0 flex-col overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <span
-                aria-hidden
-                className="absolute inset-y-0 left-0 w-1"
-                style={{ background: accent }}
-              />
-              <div className="flex flex-1 flex-col gap-2 py-3 pl-4 pr-3.5">
-                <div className="flex items-center justify-between gap-2">
+      <div
+        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        {/* Lead story */}
+        <a
+          href={lead.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative block px-4 py-3.5 transition active:bg-[var(--app-bg-sunken)]"
+        >
+          <span aria-hidden className="absolute inset-y-0 left-0 w-1" style={{ background: leadAccent }} />
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="truncate text-[10px] font-bold uppercase tracking-[0.08em]" style={{ color: leadAccent }}>
+              {lead.source}
+            </span>
+            <span className="shrink-0 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+              {formatAge(lead.published_at)}
+            </span>
+          </div>
+          <p
+            className="font-serif text-[18px] font-semibold leading-snug"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {lead.title}
+          </p>
+        </a>
+
+        {/* The rest — tight, scannable column */}
+        <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+          {list.map((h, i) => {
+            const accent = accentFor(h.source);
+            return (
+              <li key={i} className={i > 0 ? "border-t" : ""} style={{ borderColor: "var(--app-border)" }}>
+                <a
+                  href={h.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--app-bg-sunken)]"
+                >
                   <span
-                    className="truncate text-[10px] font-bold uppercase tracking-[0.08em]"
-                    style={{ color: accent }}
-                  >
-                    {h.source}
+                    aria-hidden
+                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: accent }}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className="line-clamp-2 text-[14px] font-semibold leading-snug"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {h.title}
+                    </span>
+                    <span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                      <span style={{ color: accent }}>{h.source}</span> · {formatAge(h.published_at)}
+                    </span>
                   </span>
                   <ArrowUpRight
-                    className="h-3.5 w-3.5 shrink-0"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
                     strokeWidth={2}
                     style={{ color: "var(--app-ink-3)" }}
                     aria-hidden
                   />
-                </div>
-                <p
-                  className="line-clamp-4 font-serif text-[15px] font-semibold leading-snug"
-                  style={{ color: "var(--app-ink)" }}
-                >
-                  {h.title}
-                </p>
-                <p className="mt-auto text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                  {formatAge(h.published_at)}
-                </p>
-              </div>
-            </a>
-          );
-        })}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     </section>
   );
