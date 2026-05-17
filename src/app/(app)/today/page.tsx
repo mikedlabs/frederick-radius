@@ -17,6 +17,7 @@ import LiveActivityPill from "@/components/today/LiveActivityPill";
 import FeaturedTonight from "@/components/today/FeaturedTonight";
 import FeaturedEvents, { type EventSlide } from "@/components/today/FeaturedEvents";
 import RightNow from "@/components/today/RightNow";
+import NearbyNow from "@/components/today/NearbyNow";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import { buildActivities } from "@/lib/live-activity";
@@ -186,6 +187,15 @@ export default async function HomePage() {
             <FeaturedTonight place={featured} />
           </FadeUp>
         ) : null}
+
+        {/* Location-aware, county-wide "around you right now" — fuses the
+            user's actual position to municipality + civic + nearest open
+            places + live/soon events via the connectivity layer. Opt-in,
+            on-device, one tap to clear. The companion to time-aware
+            discovery below. */}
+        <FadeUp>
+          <NearbyNow />
+        </FadeUp>
 
         {/* Time-aware discovery: morning coffee, evening dinner, etc.
             Open or likely-open only, and the user can hide it. */}
