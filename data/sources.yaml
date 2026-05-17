@@ -1179,3 +1179,17 @@ sources:
       (needs a transform + token). Pairs with cof_trash_receptacles
       (DPW data remains the most authoritative route). Needs a free
       token; never fabricate pins from low-confidence detections.
+
+      STATUS: path (2) is now SCAFFOLDED + DORMANT at
+      src/lib/integrations/mapillary.ts — fetchMapillaryTrash() returns
+      the OsmPlace "trash" shape, drop-in for the map's amenities
+      layer. Double-gated, inert until BOTH are set by a human:
+      MAPILLARY_TOKEN (server-only env secret) AND MAPILLARY_TRASH=1
+      (explicit activation flag, mirrors COF_PARCELS=1). It is NOT yet
+      wired into AppMap — wiring it in is itself the activation step,
+      so the scaffold changes nothing a user sees. Verify
+      TRASH_OBJECT_VALUES against the live Mapillary taxonomy before
+      flipping on (an empty result is usually a stale class name, not
+      "no cans"). schema_file/transform_file stay null: the generic
+      pipeline (fetch_all.ts) has no token-auth, so this is a runtime
+      integration, not a fetch_all source — honest representation.
