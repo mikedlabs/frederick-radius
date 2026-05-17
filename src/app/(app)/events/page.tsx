@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ExternalLink, GraduationCap, Rss, CalendarDays } from "lucide-react";
+import { ExternalLink, GraduationCap, CalendarDays } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
+import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import { getHoodEvents } from "@/lib/integrations/hood";
@@ -29,7 +30,7 @@ export default async function EventsIndexPage({
   const seedLive = eventsLive(now);
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw, sources_succeeded, sources_failed }, hood, ingestedSeries, ingestedSummary] = await Promise.all([
+  const [{ events: liveEventsRaw }, hood, ingestedSeries, ingestedSummary] = await Promise.all([
     getLiveEvents(60),
     getHoodEvents(),
     getIngestedSeries(),
@@ -47,10 +48,11 @@ export default async function EventsIndexPage({
   for (const e of [...curatedUpcoming, ...liveCards]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
-  const allEvents = [...bySlug.values()].sort(
-    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+  const allEvents = withVenueThumbs(
+    [...bySlug.values()].sort(
+      (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+    ),
   );
-  const totalUpcoming = allEvents.length;
   const liveSlugs = seedLive.map((e) => e.slug);
 
   // Facet lists, only for values actually present.
@@ -85,34 +87,22 @@ export default async function EventsIndexPage({
 
   return (
     <div className="space-y-7">
-      <header className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {totalUpcoming} upcoming · {hood.length} from Hood · live feeds refreshed hourly
-        </p>
-        <div className="flex items-center justify-between gap-3">
+      <header className="flex items-center justify-between gap-3">
+        <div>
           <h1 className="font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             Events
           </h1>
-          <Link
-            href="/events/calendar"
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
-            style={{ background: "var(--app-brand)" }}
-          >
-            <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Calendar
-          </Link>
+          <p className="mt-0.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+            What&apos;s on across Frederick County — now through the season.
+          </p>
         </div>
-        <div
-          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium"
-          style={{
-            borderColor: "var(--app-border)",
-            color: sources_failed.length > 0 ? "var(--app-warning)" : "var(--app-positive)",
-          }}
-          role="status"
+        <Link
+          href="/events/calendar"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
+          style={{ background: "var(--app-brand)" }}
         >
-          <Rss className="h-3 w-3" aria-hidden />
-          {sources_succeeded.length}/{sources_succeeded.length + sources_failed.length} live feeds connected
-          {sources_failed.length > 0 && ` · ${sources_failed.join(", ")} unavailable`}
-        </div>
+          <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Calendar
+        </Link>
       </header>
 
       <EventsExplorer

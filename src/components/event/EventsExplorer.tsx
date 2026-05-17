@@ -5,9 +5,7 @@ import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown 
 import EventCard from "@/components/event/EventCard";
 import MonthGrid from "@/components/event/MonthGrid";
 import EventsMap from "@/components/event/EventsMap";
-import LensBar from "@/components/event/LensBar";
 import SectionHeading from "@/components/ui/SectionHeading";
-import FilterChip from "@/components/ui/FilterChip";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -173,12 +171,6 @@ export default function EventsExplorer({
     [cat, town, time],
   );
 
-  const applyViewState = (s: ViewState) => {
-    setCat(s.cats?.[0] ?? null);
-    setTown(s.municipality ?? null);
-    setTime(whenToTime(s.when));
-  };
-
   // Mirror the structural view into the URL (deep-linkable, shareable).
   // Initial state is parsed server-side (initialView), so no hydrate
   // effect is needed. history.replaceState, not router navigation:
@@ -253,65 +245,44 @@ export default function EventsExplorer({
         </div>
       </div>
 
-      {/* Time + category chips — wrapped, every option visible at a
-          glance (no hidden horizontal scroll). */}
-      <div className="space-y-2">
-        <div className="flex flex-wrap gap-1.5">
-          {(
-            [
-              ["all", "Any time"],
-              ["today", "Today"],
-              ["weekend", "This weekend"],
-              ["week", "This week"],
-            ] as const
-          ).map(([key, label]) => (
-            <FilterChip
-              key={key}
-              label={label}
-              active={time === key}
-              onClick={() => setTime(key)}
-            />
-          ))}
+      {/* Two compact dropdowns instead of two rows of chips. The time
+          filter is gone — the horizon groups below ("Today & tonight",
+          "This weekend"…) already organize by time, so a time filter
+          on top of that was redundant noise. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <label htmlFor="evt-cat" className="sr-only">Filter by type</label>
+          <select
+            id="evt-cat"
+            value={cat ?? ""}
+            onChange={(e) => setCat(e.target.value || null)}
+            className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+          >
+            <option value="">All types</option>
+            {categories.map((c) => (
+              <option key={c.slug} value={c.slug}>{c.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <FilterChip
-            label="All types"
-            active={cat === null}
-            onClick={() => setCat(null)}
-          />
-          {categories.map((c) => (
-            <FilterChip
-              key={c.slug}
-              label={c.name}
-              active={cat === c.slug}
-              onClick={() => setCat(cat === c.slug ? null : c.slug)}
-            />
-          ))}
+        <div className="relative">
+          <label htmlFor="evt-town" className="sr-only">Filter by town</label>
+          <select
+            id="evt-town"
+            value={town ?? ""}
+            onChange={(e) => setTown(e.target.value || null)}
+            className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+          >
+            <option value="">All towns</option>
+            {towns.map((t) => (
+              <option key={t.slug} value={t.slug}>{t.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
         </div>
-      </div>
-
-      <LensBar current={viewState} onApply={applyViewState} />
-
-      <div className="flex items-center justify-between gap-3">
-        <select
-          value={town ?? ""}
-          onChange={(e) => setTown(e.target.value || null)}
-          aria-label="Filter by town"
-          className="rounded-full border px-3 py-2 text-xs font-semibold"
-          style={{
-            background: "var(--app-bg-elevated)",
-            borderColor: "var(--app-border)",
-            color: "var(--app-ink-2)",
-          }}
-        >
-          <option value="">All towns</option>
-          {towns.map((t) => (
-            <option key={t.slug} value={t.slug}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-        <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+        <span className="ml-auto text-xs" style={{ color: "var(--app-ink-3)" }}>
           {filtered.length} {filtered.length === 1 ? "event" : "events"}
           {anyFilter && (
             <button
