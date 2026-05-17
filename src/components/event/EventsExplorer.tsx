@@ -3,26 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
-import MonthGrid from "@/components/event/MonthGrid";
+import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
-import type { CalEvent } from "@/lib/loaders/calendar";
-
-// Inlined (pure, no deps) so this client component does not pull the
-// server-only calendar loader (drizzle/postgres) into the bundle.
-function nyDayKey(iso: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(new Date(iso));
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}`;
-}
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 
@@ -39,21 +25,6 @@ type Props = {
   /** Deep-link view, parsed server-side so first paint matches the URL. */
   initialView?: ViewState;
 };
-
-const nyMonth = (iso: string) =>
-  new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-  })
-    .format(new Date(iso))
-    .slice(0, 7);
-
-function addMonth(ym: string, delta: number): string {
-  const [y, m] = ym.split("-").map(Number);
-  const d = new Date(y, m - 1 + delta, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
 
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
 // lens is a structural view, not an ephemeral query, and the confirmed
@@ -80,7 +51,6 @@ export default function EventsExplorer({
   const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"list" | "calendar" | "map">("list");
-  const [month, setMonth] = useState(() => nyMonth(nowISO));
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (k: string) =>
@@ -131,24 +101,6 @@ export default function EventsExplorer({
       }),
     [filtered, now, next24ISO, weekendStartISO, weekendEndISO, live],
   );
-
-  const byDay = useMemo(() => {
-    const m: Record<string, CalEvent[]> = {};
-    for (const e of filtered) {
-      const key = nyDayKey(e.starts_at);
-      (m[key] = m[key] ?? []).push({
-        id: e.slug,
-        title: e.title,
-        startUtc: e.starts_at,
-        allDay: e.is_all_day ?? false,
-        municipality: e.municipality,
-        category: e.category ?? null,
-        href: `/events/${e.slug}`,
-        source: "seed",
-      });
-    }
-    return m;
-  }, [filtered]);
 
   const mapPins = useMemo(
     () =>
@@ -222,7 +174,7 @@ export default function EventsExplorer({
           {(
             [
               ["list", ListIcon, "List"],
-              ["calendar", CalendarDays, "Calendar"],
+              ["calendar", CalendarDays, "Agenda"],
               ["map", MapIcon, "Map"],
             ] as const
           ).map(([key, Icon, label]) => (
@@ -299,27 +251,7 @@ export default function EventsExplorer({
 
       {/* Results */}
       {view === "calendar" ? (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setMonth((mm) => addMonth(mm, -1))}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold"
-              style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", border: "1px solid var(--app-border)" }}
-            >
-              ‹ Prev
-            </button>
-            <button
-              type="button"
-              onClick={() => setMonth((mm) => addMonth(mm, 1))}
-              className="rounded-full px-3 py-1.5 text-xs font-semibold"
-              style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", border: "1px solid var(--app-border)" }}
-            >
-              Next ›
-            </button>
-          </div>
-          <MonthGrid month={month} byDay={byDay} total={filtered.length} />
-        </div>
+        <EventAgenda events={filtered} nowMs={now} />
       ) : view === "map" ? (
         <EventsMap events={mapPins} />
       ) : filtered.length === 0 ? (
@@ -347,21 +279,21 @@ export default function EventsExplorer({
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading title={g.label} count={g.events.length} />
-                <ul className="space-y-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   {shown.map((e) => (
-                    <li key={e.slug} className="relative">
+                    <div key={e.slug} className="relative">
                       {live.has(e.slug) && (
                         <span
-                          className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                          className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
                           style={{ background: "var(--app-positive)", color: "white" }}
                         >
-                          ● Live now
+                          ● Live
                         </span>
                       )}
-                      <EventCard event={e} />
-                    </li>
+                      <EventCard event={e} variant="tile" />
+                    </div>
                   ))}
-                </ul>
+                </div>
                 {g.events.length > PEEK && (
                   <button
                     type="button"

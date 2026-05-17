@@ -70,13 +70,11 @@ export default function RightNow({
           .
         </p>
       ) : (
-        <ul className="space-y-2">
+        <div className="grid grid-cols-2 gap-2.5">
           {picks.map((p) => (
-            <li key={p.slug}>
-              <PlaceCard place={p} compact />
-            </li>
+            <PlaceCard key={p.slug} place={p} variant="grid" />
           ))}
-        </ul>
+        </div>
       )}
     </DismissibleSection>
   );
