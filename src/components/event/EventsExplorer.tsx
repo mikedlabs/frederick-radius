@@ -54,6 +54,7 @@ export default function EventsExplorer({
   // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
   // collapsed by default so the page leads with events, not controls.
   const [showFilters, setShowFilters] = useState(false);
+  const [freeOnly, setFreeOnly] = useState(false);
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (k: string) =>
@@ -80,6 +81,7 @@ export default function EventsExplorer({
       if (time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
       if (cat && e.category !== cat) return false;
       if (town && e.municipality !== town) return false;
+      if (freeOnly && !e.is_free) return false;
       if (
         term &&
         !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""}`
@@ -89,7 +91,7 @@ export default function EventsExplorer({
         return false;
       return true;
     });
-  }, [events, time, cat, town, q, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [events, time, cat, town, q, freeOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
 
   // Group the filtered list into human horizons so the default view is
   // navigable at a glance instead of a 400-row chronological scroll.
@@ -137,7 +139,8 @@ export default function EventsExplorer({
     window.history.replaceState(null, "", url);
   }, [viewState]);
 
-  const anyFilter = cat !== null || town !== null || time !== "all" || q.trim() !== "";
+  const anyFilter =
+    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly;
   // Count only the panel facets (search is its own visible field).
   const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0);
   const clear = () => {
@@ -145,10 +148,43 @@ export default function EventsExplorer({
     setTown(null);
     setTime("all");
     setQ("");
+    setFreeOnly(false);
   };
+
+  // One-tap intent chips — what people actually open an events page
+  // for. They drive the existing state; the deeper facets stay in the
+  // Filters drawer so the main area leads with these, not controls.
+  const QUICK: { key: string; label: string; on: boolean; toggle: () => void }[] = [
+    { key: "tonight", label: "Tonight", on: time === "today", toggle: () => setTime(time === "today" ? "all" : "today") },
+    { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
+    { key: "music", label: "Live music", on: cat === "music", toggle: () => setCat(cat === "music" ? null : "music") },
+    { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
+    { key: "family", label: "Family", on: cat === "family", toggle: () => setCat(cat === "family" ? null : "family") },
+  ];
 
   return (
     <div className="space-y-3">
+      {/* Quick intent — the lead affordance. One tap for what people
+          actually want; deeper facets stay tucked in Filters. */}
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Quick filters">
+        {QUICK.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            onClick={c.toggle}
+            aria-pressed={c.on}
+            className="rounded-full border px-3.5 py-2 text-[13px] font-semibold transition active:scale-[0.98]"
+            style={{
+              borderColor: c.on ? "var(--app-brand)" : "var(--app-border)",
+              background: c.on ? "var(--app-brand)" : "var(--app-bg-elevated)",
+              color: c.on ? "white" : "var(--app-ink-2)",
+            }}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
       {/* Search + view toggle */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
