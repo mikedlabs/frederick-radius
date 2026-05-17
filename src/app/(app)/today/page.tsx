@@ -10,7 +10,6 @@ import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
 import FloatingPlanFab from "@/components/today/FloatingPlanFab";
 import TodayTabs from "@/components/today/TodayTabs";
-import ExploreFooter from "@/components/today/ExploreFooter";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import ModeAwareCta from "@/components/today/ModeAwareCta";
 import LiveActivityPill from "@/components/today/LiveActivityPill";
@@ -18,7 +17,6 @@ import FeaturedTonight from "@/components/today/FeaturedTonight";
 import FeaturedEvents, { type EventSlide } from "@/components/today/FeaturedEvents";
 import RightNow from "@/components/today/RightNow";
 import NearbyNow from "@/components/today/NearbyNow";
-import DismissibleSection from "@/components/today/DismissibleSection";
 import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import { buildActivities } from "@/lib/live-activity";
 import { getNwsForecast } from "@/lib/integrations/nws";
@@ -188,6 +186,23 @@ export default async function HomePage() {
           </FadeUp>
         ) : null}
 
+        {/* Explore by town — promoted near the top (owner: it's
+            important). Visual tiles with real place counts, no longer
+            buried in a collapsed drawer at the bottom. */}
+        <FadeUp>
+          <section className="space-y-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                Explore by town
+              </h2>
+              <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                All 12 municipalities
+              </span>
+            </div>
+            <MunicipalityStrip />
+          </section>
+        </FadeUp>
+
         {/* Location-aware, county-wide "around you right now" — fuses the
             user's actual position to municipality + civic + nearest open
             places + live/soon events via the connectivity layer. Opt-in,
@@ -237,12 +252,6 @@ export default async function HomePage() {
           </Suspense>
         </FadeUp>
 
-        <ExploreFooter>
-          <DismissibleSection id="browse-town" title="Browse by town" meta="All 12 municipalities">
-            <MunicipalityStrip />
-          </DismissibleSection>
-        </ExploreFooter>
-
         {/* One quiet civic line — the full board lives at /pulse, this
             is just the single most-urgent status (or "all clear"). */}
         <FadeUp>
@@ -254,7 +263,6 @@ export default async function HomePage() {
         <HiddenSectionsBar
           sections={[
             { id: "right-now", label: "Right now" },
-            { id: "browse-town", label: "Browse by town" },
           ]}
         />
       </div>

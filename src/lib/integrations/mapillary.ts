@@ -31,9 +31,31 @@
  * area, so this can legitimately return [].
  */
 import { FREDERICK_COUNTY_BBOX, type OsmPlace } from "./overpass";
+import { MUNICIPALITIES } from "@/data/municipalities";
 
 const ENDPOINT = "https://graph.mapillary.com/map_features";
-const FETCH_TIMEOUT_MS = 20_000;
+const FETCH_TIMEOUT_MS = 15_000;
+
+// Mapillary's map_features endpoint rejects any bbox larger than 0.010
+// square degrees (HTTP 500). The whole county is ~0.26 sq°, so a single
+// county query ALWAYS failed and silently returned [] — the real reason
+// no trash ever showed. Mapillary only has street-level imagery where
+// there are streets, so we tile a small box around each municipality
+// centroid (0.09° per side = 0.0081 sq°, safely under the cap) and
+// aggregate. Exported pure for unit testing.
+const TILE_HALF_DEG = 0.045; // 0.09° per side → 0.0081 sq° < 0.010 cap
+
+export function mapillaryTiles(): Array<[number, number, number, number]> {
+  // [west, south, east, north] per tile, clamped to the county bbox.
+  const [cs, cw, cn, ce] = FREDERICK_COUNTY_BBOX; // [south, west, north, east]
+  return MUNICIPALITIES.map((m) => {
+    const w = Math.max(cw, m.centroid.lng - TILE_HALF_DEG);
+    const e = Math.min(ce, m.centroid.lng + TILE_HALF_DEG);
+    const s = Math.max(cs, m.centroid.lat - TILE_HALF_DEG);
+    const n = Math.min(cn, m.centroid.lat + TILE_HALF_DEG);
+    return [w, s, e, n] as [number, number, number, number];
+  });
+}
 
 /**
  * Mapillary point-object taxonomy value for a public waste basket.
@@ -108,31 +130,61 @@ export function normalizeMapillaryFeatures(raw: unknown): OsmPlace[] {
  * goes in the Authorization header (not the URL) so it never lands in
  * a log or referrer, and is sanitized via mapillaryToken().
  */
-export async function fetchMapillaryTrash(): Promise<OsmPlace[]> {
-  const token = mapillaryToken();
-  if (token.split("|").length !== 3) return []; // no/!valid token → inert
-
-  const [s, w, n, e] = FREDERICK_COUNTY_BBOX;
+/** One tile fetch + normalize. One retry on a 5xx (Mapillary 500s
+ *  transiently). Any failure yields [] for that tile so a single bad
+ *  tile never empties the whole map. */
+async function fetchTile(
+  token: string,
+  [w, s, e, n]: [number, number, number, number],
+): Promise<OsmPlace[]> {
   const url =
     `${ENDPOINT}?fields=id,object_value,geometry` +
     `&bbox=${w},${s},${e},${n}` +
     `&object_values=${TRASH_OBJECT_VALUES.join(",")}`;
-
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      headers: {
-        Authorization: `OAuth ${token}`,
-        Accept: "application/json",
-      },
-    });
-    if (!res.ok) return [];
-    return normalizeMapillaryFeatures(await res.json());
-  } catch {
-    return []; // network/abort/parse — degrade silently, never fabricate
-  } finally {
-    clearTimeout(timer);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, {
+        signal: ctrl.signal,
+        headers: { Authorization: `OAuth ${token}`, Accept: "application/json" },
+      });
+      if (res.ok) return normalizeMapillaryFeatures(await res.json());
+      if (res.status >= 500 && attempt === 0) continue; // transient — retry once
+      return [];
+    } catch {
+      if (attempt === 0) continue; // network blip — retry once
+      return [];
+    } finally {
+      clearTimeout(timer);
+    }
   }
+  return [];
+}
+
+export async function fetchMapillaryTrash(): Promise<OsmPlace[]> {
+  const token = mapillaryToken();
+  if (token.split("|").length !== 3) return []; // no/!valid token → inert
+
+  // Tiles are small and bounded (one per municipality), so fetch them
+  // in parallel; allSettled means one failed tile is just fewer cans,
+  // never an empty map.
+  const results = await Promise.allSettled(
+    mapillaryTiles().map((t) => fetchTile(token, t)),
+  );
+
+  // Global dedupe across overlapping tiles, same ~11 m coordinate key
+  // normalizeMapillaryFeatures uses within a tile.
+  const seen = new Set<string>();
+  const out: OsmPlace[] = [];
+  for (const r of results) {
+    if (r.status !== "fulfilled") continue;
+    for (const p of r.value) {
+      const key = `${p.lng.toFixed(4)},${p.lat.toFixed(4)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(p);
+    }
+  }
+  return out;
 }
