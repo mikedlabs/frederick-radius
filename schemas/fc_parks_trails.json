@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/fc_parks_trails.json",
+  "title": "Frederick County Parks Trails (Cartegraph), ArcGIS GeoJSON",
+  "description": "The Parks/Parks_Trails_Cartegraph FeatureServer layer 0 queried with f=geojson and outSR=4326. Property keys are the exact ArcGIS field names confirmed from live layer metadata, not aliases. Geometry is polyline and passes through. Only the fields the transform reads are constrained; ArcGIS adds others.",
+  "type": "object",
+  "required": ["type", "features"],
+  "properties": {
+    "type": { "const": "FeatureCollection" },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "geometry", "properties"],
+        "properties": {
+          "type": { "const": "Feature" },
+          "geometry": {
+            "type": ["object", "null"],
+            "properties": {
+              "type": { "type": "string" },
+              "coordinates": { "type": "array" }
+            }
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "OBJECTID": { "type": ["number", "null"] },
+              "Trail_Name": { "type": ["string", "null"] },
+              "Park_Name": { "type": ["string", "null"] },
+              "Trail_System": { "type": ["string", "null"] },
+              "Trail_Desc": { "type": ["string", "null"] },
+              "Status": { "type": ["string", "null"] },
+              "ADA_Accessible": { "type": ["string", "null"] },
+              "Hiking": { "type": ["string", "null"] },
+              "Road_Cycling": { "type": ["string", "null"] },
+              "Mtn_Biking": { "type": ["string", "null"] },
+              "eBikes": { "type": ["string", "null"] },
+              "Equestrian": { "type": ["string", "null"] },
+              "Dogs_Allowed": { "type": ["string", "null"] },
+              "Motorcycles": { "type": ["string", "null"] },
+              "Surface_Type": { "type": ["string", "null"] },
+              "Paved": { "type": ["string", "null"] },
+              "Trail_Length_FT": { "type": ["number", "null"] },
+              "Trail_SkillLevel": { "type": ["string", "null"] },
+              "Trail_Type": { "type": ["string", "null"] },
+              "Owned_By": { "type": ["string", "null"] },
+              "Maintained_By": { "type": ["string", "null"] },
+              "Notes": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}
