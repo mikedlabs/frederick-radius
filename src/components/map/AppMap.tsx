@@ -194,6 +194,9 @@ export default function AppMap({
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
   // must degrade to a stable branded state, never a blank rectangle.
   const [mapError, setMapError] = useState(false);
+  // P0-10: a graceful note when the user denies (or we cannot get)
+  // geolocation, instead of the "Near me" button silently doing nothing.
+  const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [osmError, setOsmError] = useState<string | null>(null);
   const [showUnverified, setShowUnverified] = useState(false);
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(new Set());
@@ -638,9 +641,11 @@ export default function AppMap({
   const goNearMe = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     setLocating(true);
+    setGeoMsg(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
+        setGeoMsg(null);
         const loc = { lng: pos.coords.longitude, lat: pos.coords.latitude };
         setUserLoc(loc);
         haptic("light");
@@ -651,7 +656,14 @@ export default function AppMap({
           essential: true,
         });
       },
-      () => setLocating(false),
+      (err) => {
+        setLocating(false);
+        setGeoMsg(
+          err && err.code === 1
+            ? "Location is off — enable it in your browser to use Near me."
+            : "Couldn't get your location. Try again.",
+        );
+      },
       { enableHighAccuracy: true, timeout: 8000 },
     );
   };
@@ -951,6 +963,16 @@ export default function AppMap({
             >
               Reload the map
             </button>
+          </div>
+        )}
+        {geoMsg && (
+          <div
+            className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            role="status"
+          >
+            {geoMsg}
+            <button type="button" onClick={() => setGeoMsg(null)} aria-label="Dismiss" style={{ color: "var(--app-ink-3)" }}>✕</button>
           </div>
         )}
         {(osmLoading || osmError || osmPlaces.length > 0) && (
