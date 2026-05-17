@@ -8,17 +8,33 @@ import FilterChip from "@/components/ui/FilterChip";
 import { decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
+import { MUNICIPALITIES } from "@/data/municipalities";
 import { minutesToMeters, type TravelMode, formatDistance } from "@/lib/geo";
 import type { Place } from "@/data/places";
 
-const PRESETS = [
-  { slug: "downtown", label: "Downtown Frederick", lng: -77.4109, lat: 39.4143 },
-  { slug: "carroll-creek", label: "Carroll Creek", lng: -77.4109, lat: 39.4137 },
-  { slug: "brunswick", label: "Brunswick", lng: -77.6280, lat: 39.3134 },
-  { slug: "thurmont", label: "Thurmont", lng: -77.4108, lat: 39.6231 },
-  { slug: "catoctin", label: "Catoctin trailhead", lng: -77.4505, lat: 39.6361 },
-  { slug: "middletown", label: "Middletown", lng: -77.5447, lat: 39.4434 },
-] as const;
+// Center options: ALL 12 municipalities (Frederick first = default) +
+// a couple of landmark points. A dropdown, not a hidden horizontal
+// scroll — every choice is reachable and obvious. Municipalities come
+// straight from the canonical data so the county is fully covered.
+type Preset = {
+  slug: string;
+  label: string;
+  lng: number;
+  lat: number;
+  kind: "muni" | "poi";
+};
+const MUNI_PRESETS: Preset[] = MUNICIPALITIES.map((m) => ({
+  slug: `m-${m.slug}`,
+  label: m.name,
+  lng: m.centroid.lng,
+  lat: m.centroid.lat,
+  kind: "muni",
+}));
+const POI_PRESETS: Preset[] = [
+  { slug: "carroll-creek", label: "Carroll Creek", lng: -77.4109, lat: 39.4137, kind: "poi" },
+  { slug: "catoctin", label: "Catoctin trailhead", lng: -77.4505, lat: 39.6361, kind: "poi" },
+];
+const PRESETS: Preset[] = [...MUNI_PRESETS, ...POI_PRESETS];
 
 const MODES: { mode: TravelMode; label: string; icon: typeof Footprints }[] = [
   { mode: "walk", label: "Walk", icon: Footprints },
@@ -135,81 +151,86 @@ export default function RadiusBuilder({ places }: { places: Place[] }) {
 
   return (
     <div className="space-y-5">
-      <section className="space-y-3 rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)]"
+      <section className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 shadow-[var(--app-shadow-1)]"
                style={{ borderColor: "var(--app-border)" }}>
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            Center
-          </p>
-          <div className="-mx-1 mt-1.5 overflow-x-auto px-1 scrollbar-hide">
-            <ul className="flex min-w-max gap-1.5">
-              {PRESETS.map((p, i) => {
-                const active = i === presetIdx;
-                return (
-                  <li key={p.slug}>
-                    <button
-                      type="button"
-                      onClick={() => setPresetIdx(i)}
-                      aria-pressed={active}
-                      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-                      style={{
-                        borderColor: active ? "var(--app-brand)" : "var(--app-border)",
-                        background: active ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                        color: active ? "white" : "var(--app-ink-2)",
-                      }}
-                    >
-                      <MapPin className="h-3 w-3" strokeWidth={2} aria-hidden />
-                      {p.label}
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+        {/* Center — a dropdown with every municipality + landmarks.
+            Obvious, fully reachable, no hidden horizontal scroll. */}
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+            style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+          >
+            <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
+          </span>
+          <div className="relative min-w-0 flex-1">
+            <label htmlFor="center-select" className="sr-only">Center point</label>
+            <select
+              id="center-select"
+              value={presetIdx}
+              onChange={(e) => setPresetIdx(Number(e.target.value))}
+              className="w-full appearance-none rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] py-2 pl-3 pr-9 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            >
+              <optgroup label="Municipalities">
+                {PRESETS.map((p, i) =>
+                  p.kind === "muni" ? (
+                    <option key={p.slug} value={i}>{p.label}</option>
+                  ) : null,
+                )}
+              </optgroup>
+              <optgroup label="Landmarks">
+                {PRESETS.map((p, i) =>
+                  p.kind === "poi" ? (
+                    <option key={p.slug} value={i}>{p.label}</option>
+                  ) : null,
+                )}
+              </optgroup>
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
           </div>
         </div>
 
-        <div>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            Getting there
-          </p>
-          {/* One connected segmented control — not three separate
-              buttons. Mode + distance are one instrument: "how far,
-              by what". */}
-          <div
-            role="group"
-            aria-label="Travel mode"
-            className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
-            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-          >
-            {MODES.map(({ mode: m, label, icon: Icon }) => {
-              const active = m === mode;
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  aria-pressed={active}
-                  className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-2 text-[13px] font-semibold transition-colors"
-                  style={{
-                    background: active ? "var(--app-brand)" : "transparent",
-                    color: active ? "#fff" : "var(--app-ink-2)",
-                  }}
-                >
-                  <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
-                  {label}
-                </button>
-              );
-            })}
-          </div>
+        {/* Mode + distance read as one instrument. */}
+        <div
+          role="group"
+          aria-label="Travel mode"
+          className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+        >
+          {MODES.map(({ mode: m, label, icon: Icon }) => {
+            const active = m === mode;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                aria-pressed={active}
+                className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
+                style={{
+                  background: active ? "var(--app-brand)" : "transparent",
+                  color: active ? "#fff" : "var(--app-ink-2)",
+                }}
+              >
+                <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         <div>
           <div className="flex items-baseline justify-between gap-2">
-            <label htmlFor="minutes-slider" className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            <label htmlFor="minutes-slider" className="text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
               Distance
             </label>
-            <span className="font-serif text-2xl font-semibold tabular-nums" style={{ color: "var(--app-brand)" }}>
-              {minutes} min · <span className="text-base" style={{ color: "var(--app-ink-2)" }}>{formatDistance(meters)}</span>
+            <span className="font-serif text-lg font-semibold tabular-nums" style={{ color: "var(--app-brand)" }}>
+              {minutes} min <span className="text-[13px] font-normal" style={{ color: "var(--app-ink-3)" }}>· {formatDistance(meters)}</span>
             </span>
           </div>
           <input
@@ -297,25 +318,26 @@ export default function RadiusBuilder({ places }: { places: Place[] }) {
             <SectionHeading title={g.label} count={g.items.length} />
 
             {isFood && facets.length > 1 && (
-              <div className="-mx-4 px-4">
-                <div className="shelf-rail gap-1.5 pb-1">
+              // Wrapped, not scrolled — every cuisine is visible at a
+              // glance so the filter is discoverable, never hidden off
+              // the right edge.
+              <div className="flex flex-wrap gap-1.5">
+                <FilterChip
+                  label="All"
+                  active={!activeCuisine}
+                  onClick={() => setCuisine(null)}
+                />
+                {facets.map((f) => (
                   <FilterChip
-                    label="All"
-                    active={!activeCuisine}
-                    onClick={() => setCuisine(null)}
+                    key={f.slug}
+                    label={f.label}
+                    count={f.count}
+                    active={activeCuisine === f.slug}
+                    onClick={() =>
+                      setCuisine(activeCuisine === f.slug ? null : f.slug)
+                    }
                   />
-                  {facets.map((f) => (
-                    <FilterChip
-                      key={f.slug}
-                      label={f.label}
-                      count={f.count}
-                      active={activeCuisine === f.slug}
-                      onClick={() =>
-                        setCuisine(activeCuisine === f.slug ? null : f.slug)
-                      }
-                    />
-                  ))}
-                </div>
+                ))}
               </div>
             )}
 
