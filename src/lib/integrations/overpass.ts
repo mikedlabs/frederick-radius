@@ -87,7 +87,7 @@ function mapTagToCategory(tags: Record<string, string>): { category_slug: string
   if (a === "pharmacy") return { category_slug: "pharmacy", osm_tag: "amenity=pharmacy" };
   if (a === "hospital" || a === "clinic" || a === "dentist" || a === "veterinary") return { category_slug: "wellness", osm_tag: "amenity=" + a };
   if (a === "parking" || a === "parking_entrance") return { category_slug: "parking", osm_tag: "amenity=" + a };
-  if (a === "place_of_worship") return { category_slug: "civic", osm_tag: "amenity=place_of_worship" };
+  if (a === "place_of_worship") return { category_slug: "worship", osm_tag: "amenity=place_of_worship" };
   if (a === "university" || a === "college") return { category_slug: "civic", osm_tag: "amenity=" + a };
   if (a === "school" || a === "kindergarten" || a === "childcare") return { category_slug: "family", osm_tag: "amenity=" + a };
 

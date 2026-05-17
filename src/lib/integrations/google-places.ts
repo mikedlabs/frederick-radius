@@ -65,6 +65,9 @@ export type PlaceEnrichment = {
   website?: string;
   lat?: number;
   lng?: number;
+  /** Google's authoritative primary type, e.g. "coffee_shop",
+   *  "lodging", "church" — drives the category auto-correction. */
+  primary_type?: string;
 };
 
 function key(): string | null {
@@ -80,6 +83,7 @@ const DETAILS_FIELD_MASK = [
   "displayName",
   "formattedAddress",
   "businessStatus",
+  "primaryType",
   "currentOpeningHours.weekdayDescriptions",
   "regularOpeningHours.weekdayDescriptions",
   "rating",
@@ -95,6 +99,7 @@ type GApiPlace = {
   displayName?: { text?: string };
   formattedAddress?: string;
   businessStatus?: string;
+  primaryType?: string;
   currentOpeningHours?: { weekdayDescriptions?: string[] };
   regularOpeningHours?: { weekdayDescriptions?: string[] };
   rating?: number;
@@ -126,6 +131,7 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
     website: p.websiteUri,
     lat: p.location?.latitude,
     lng: p.location?.longitude,
+    primary_type: p.primaryType,
   };
 }
 

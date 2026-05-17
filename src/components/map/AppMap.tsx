@@ -757,6 +757,31 @@ export default function AppMap({
                 Coffee
               </button>
             </li>
+            <li>
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveCats((prev) => {
+                    const next = new Set(prev);
+                    if (next.has("worship")) next.delete("worship");
+                    else next.add("worship");
+                    return next;
+                  })
+                }
+                aria-pressed={activeCats.has("worship")}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: activeCats.has("worship") ? "#5B3A8F" : "var(--app-bg-elevated)",
+                  color: activeCats.has("worship") ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${activeCats.has("worship") ? "#5B3A8F" : "var(--app-border)"}`,
+                  boxShadow: activeCats.has("worship") ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Churches, temples, and houses of worship"
+              >
+                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"⛪"}</span>
+                Churches
+              </button>
+            </li>
             {civic.length > 0 && (
               <li>
                 <button

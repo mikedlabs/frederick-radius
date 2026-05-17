@@ -18,7 +18,7 @@ export const CATEGORIES: Category[] = [
   { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#C4451C", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
   { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#C4451C", display_order: 17, blurb: "Frederick's food trucks rotate weekly — here's where they reliably park, plus the festivals built around them." },
 
-  { slug: "outdoors", name: "Outdoors", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, water, and views." },
+  { slug: "outdoors", name: "Parks & Trails", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, playgrounds, water, and views." },
   { slug: "park", name: "Parks", parent: "outdoors", icon: "Trees", color: "#1E6B3A", display_order: 21, blurb: "Public parks across all 12 municipalities and the county." },
   { slug: "trail", name: "Trails", parent: "outdoors", icon: "Mountain", color: "#1E3A2F", display_order: 22, blurb: "200+ miles of hikes, towpaths, and rail-trails." },
   { slug: "playground", name: "Playgrounds", parent: "outdoors", icon: "ToyBrick", color: "#1E6B3A", display_order: 23, blurb: "Where to take the kids when it's nice out." },
@@ -45,6 +45,7 @@ export const CATEGORIES: Category[] = [
   { slug: "government", name: "Government", parent: "civic", icon: "Building", color: "#2A5D8F", display_order: 71, blurb: "City and county government buildings and services." },
   { slug: "public-safety", name: "Public Safety", parent: "civic", icon: "ShieldCheck", color: "#A02929", display_order: 72, blurb: "Police, fire, and emergency services." },
   { slug: "voting", name: "Voting", parent: "civic", icon: "Vote", color: "#2A5D8F", display_order: 73, blurb: "Election day and early voting centers." },
+  { slug: "worship", name: "Churches & Worship", parent: "civic", icon: "Church", color: "#5B3A8F", display_order: 74, blurb: "Churches, temples, and houses of worship across the county." },
 
   { slug: "services", name: "Services", icon: "Wrench", color: "#4A4A48", display_order: 80, blurb: "Pharmacy, hardware, post, and other practical needs." },
   { slug: "pharmacy", name: "Pharmacies", parent: "services", icon: "Pill", color: "#1E6B3A", display_order: 81, blurb: "Independent and chain pharmacies." },
