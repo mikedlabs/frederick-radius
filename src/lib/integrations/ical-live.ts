@@ -9,6 +9,7 @@
 
 import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
+import { cutAtWordBoundary } from "@/lib/slug";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
 
@@ -142,8 +143,8 @@ function toDate(d: ICalEvent["start"] | ICalEvent["end"]): Date | null {
 function dedupeKey(title: string, starts: Date, venue: string): string {
   const day = starts.toISOString().slice(0, 10);
   const time = starts.toISOString().slice(11, 16);
-  const normTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
-  const normVenue = venue.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30);
+  const normTitle = cutAtWordBoundary(title.toLowerCase().replace(/[^a-z0-9]+/g, "-"), 60);
+  const normVenue = cutAtWordBoundary(venue.toLowerCase().replace(/[^a-z0-9]+/g, "-"), 40);
   return `${normTitle}-${normVenue}-${day}-${time}`;
 }
 

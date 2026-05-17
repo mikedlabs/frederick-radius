@@ -2,6 +2,7 @@ import { sql, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db/client";
 import { CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import { cutAtWordBoundary } from "@/lib/slug";
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic"] },
@@ -24,13 +25,13 @@ function inferCategory(title: string, description: string): string {
 }
 
 function slugify(s: string, extra?: string): string {
-  const base = s
+  const cleaned = s
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 80);
+    .replace(/^-|-$/g, "");
+  const base = cutAtWordBoundary(cleaned, 80);
   return extra ? `${base}-${extra}` : base;
 }
 
