@@ -32,7 +32,7 @@ export default function PlaceCard({
 }: {
   place: PlaceCardData;
   compact?: boolean;
-  variant?: "row" | "feature" | "tile";
+  variant?: "row" | "feature" | "tile" | "grid";
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "#1A1A1A";
@@ -156,6 +156,71 @@ export default function PlaceCard({
         <div className="absolute right-2 top-2 z-10">
           <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
         </div>
+      </article>
+    );
+  }
+
+  // Fluid compact card for a responsive grid — fills its cell, small
+  // image, tight text. Roughly a third the footprint of `tile`, so a
+  // 2-up grid shows ~6 places per fold instead of ~1.5.
+  if (variant === "grid") {
+    return (
+      <article
+        className="hover-lift group relative overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <button
+          type="button"
+          onClick={openDetail}
+          aria-label={`View ${place.name} details`}
+          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
+          <div className="relative h-[88px] w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+            {photoUrl ? (
+              <>
+                <PlacePhoto
+                  src={photoUrl}
+                  alt={photo?.alt ?? place.name}
+                  glyph={glyph}
+                  color={color}
+                  sizes="50vw"
+                  className="transition-transform duration-500 ease-out group-hover:scale-105"
+                  rounded="0"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
+              </>
+            ) : (
+              <div
+                aria-hidden
+                className="flex h-full w-full items-center justify-center"
+                style={{
+                  background: `radial-gradient(120% 120% at 30% 20%, ${color}2e, ${color}0a 70%)`,
+                  color,
+                }}
+              >
+                <span className="text-[30px] leading-none opacity-90">{glyph}</span>
+              </div>
+            )}
+          </div>
+          <div className="space-y-0.5 px-2.5 py-2">
+            <h3
+              className="truncate text-[13.5px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {place.name}
+            </h3>
+            <p
+              className="truncate text-[11px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {cat?.name ?? place.category}
+              {place.distance_m !== undefined && (
+                <> · {formatDistance(place.distance_m)}</>
+              )}
+            </p>
+            <PlaceStatus status={place.open_status} className="!text-[11px]" />
+          </div>
+        </button>
       </article>
     );
   }
