@@ -15,6 +15,7 @@ import ShareButton from "./ShareButton";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import TrustChip from "@/components/ui/TrustChip";
 import { placeHoursTrust } from "@/lib/trust";
+import type { ParcelContext } from "@/lib/loaders/cofParcels";
 
 /**
  * Bottom-sheet detail view for a place. Slides up with spring physics,
@@ -130,6 +131,19 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
     return () => { cancelled = true; setExtra(null); };
   }, [place.slug, place.google_photo_url]);
 
+  // City of Frederick parcel context, on-demand. Dormant by default:
+  // the route returns null until the City source is approved, activated,
+  // and COF_PARCELS=1, so nothing renders in production until then.
+  const [parcel, setParcel] = useState<ParcelContext | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/place/${place.slug}/parcel`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d && d.parcel_id) setParcel(d as ParcelContext); })
+      .catch(() => {});
+    return () => { cancelled = true; setParcel(null); };
+  }, [place.slug]);
+
   // Static enrichment wins; on-demand fills the gap.
   const photos = place.google_photos?.length
     ? place.google_photos
@@ -237,6 +251,64 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} aria-hidden />
             Verified by Google
           </p>
+        )}
+
+        {parcel && (
+          <div
+            className="mt-3 rounded-[var(--app-radius-md)] border p-3"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+                City of Frederick record
+              </p>
+              <TrustChip
+                signal={{
+                  level: "official",
+                  label: "City record",
+                  basis: "Matched to the City of Frederick parcel",
+                }}
+              />
+            </div>
+            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+              {parcel.zoning && (
+                <>
+                  <dt style={{ color: "var(--app-ink-3)" }}>Zoning</dt>
+                  <dd>{parcel.zoning}{parcel.zoning_overlays.length > 0 ? ` (+ ${parcel.zoning_overlays.join(", ")})` : ""}</dd>
+                </>
+              )}
+              {parcel.land_use && (
+                <>
+                  <dt style={{ color: "var(--app-ink-3)" }}>Land use</dt>
+                  <dd>{parcel.land_use}</dd>
+                </>
+              )}
+              {parcel.subdivision && (
+                <>
+                  <dt style={{ color: "var(--app-ink-3)" }}>Subdivision</dt>
+                  <dd>{parcel.subdivision}</dd>
+                </>
+              )}
+              {parcel.neighborhood_advisory_council && (
+                <>
+                  <dt style={{ color: "var(--app-ink-3)" }}>Neighborhood council</dt>
+                  <dd>{parcel.neighborhood_advisory_council}</dd>
+                </>
+              )}
+              {parcel.election_district != null && (
+                <>
+                  <dt style={{ color: "var(--app-ink-3)" }}>Election district</dt>
+                  <dd>{parcel.election_district}</dd>
+                </>
+              )}
+              {(parcel.schools.elementary || parcel.schools.middle || parcel.schools.high) && (
+                <>
+                  <dt style={{ color: "var(--app-ink-3)" }}>Schools</dt>
+                  <dd>{[parcel.schools.elementary, parcel.schools.middle, parcel.schools.high].filter(Boolean).join(" / ")}</dd>
+                </>
+              )}
+            </dl>
+          </div>
         )}
 
         {/* Real travel time from downtown (Routes API) */}
