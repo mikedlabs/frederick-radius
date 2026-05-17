@@ -37,18 +37,52 @@ export default function RightNow({
   const slot = slotFor(now);
   const inSlot = (p: PlaceCardData) => slot.cats.includes(p.category);
 
-  // Verified open in the slot first, then curated likely-open, so the
-  // row is honest about which is which and is never a dead end.
-  const open = rankPlaces({ origin, now, preferOpen: true, limit: 60 })
+  // County-wide (not downtown-anchored): a big open/likely-open pool in
+  // the slot, then spread across municipalities and rotated by day so
+  // it is genuinely *different places* each visit, never the same six
+  // Frederick spots. Honest: verified-open first, curated likely-open
+  // fills, nothing closed is shown.
+  const openVerified = rankPlaces({ origin, now, preferOpen: true, limit: 500 })
     .filter((p) => inSlot(p) && p.open_status.state === "open");
   const likely = likelyOpenPlaces(origin, now).filter(
-    (p) => inSlot(p) && !open.some((o) => o.slug === p.slug),
+    (p) => inSlot(p) && !openVerified.some((o) => o.slug === p.slug),
+  );
+  const seen = new Set<string>();
+  const uniq = [...openVerified, ...likely].filter((p) =>
+    seen.has(p.slug) ? false : (seen.add(p.slug), true),
   );
 
-  const seen = new Set<string>();
-  const picks = [...open, ...likely]
-    .filter((p) => (seen.has(p.slug) ? false : (seen.add(p.slug), true)))
-    .slice(0, 6);
+  const dayIdx = Math.floor(now.getTime() / 86_400_000);
+  const byMuni = new Map<string, PlaceCardData[]>();
+  for (const p of uniq) {
+    const a = byMuni.get(p.municipality);
+    if (a) a.push(p);
+    else byMuni.set(p.municipality, [p]);
+  }
+  // Rotate each town's list + the town order by day → fresh picks daily.
+  for (const arr of byMuni.values()) {
+    if (arr.length > 1) arr.unshift(...arr.splice(dayIdx % arr.length));
+  }
+  const munis = [...byMuni.keys()];
+  const start = munis.length ? dayIdx % munis.length : 0;
+  const order = [...munis.slice(start), ...munis.slice(0, start)];
+  // Round-robin one per town across the county until we have 8.
+  const picks: PlaceCardData[] = [];
+  const cursor: Record<string, number> = {};
+  let progressed = true;
+  while (picks.length < 8 && progressed) {
+    progressed = false;
+    for (const m of order) {
+      const arr = byMuni.get(m)!;
+      const c = cursor[m] ?? 0;
+      if (c < arr.length) {
+        picks.push(arr[c]);
+        cursor[m] = c + 1;
+        progressed = true;
+        if (picks.length >= 8) break;
+      }
+    }
+  }
 
   return (
     <DismissibleSection
@@ -56,7 +90,7 @@ export default function RightNow({
       title={slot.title}
       href="/map"
       cta="Explore"
-      meta={picks.length > 0 ? "Open or likely open near you right now" : undefined}
+      meta={picks.length > 0 ? "Open or likely open across the county right now" : undefined}
     >
       {picks.length === 0 ? (
         <p
