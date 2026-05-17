@@ -3,6 +3,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
@@ -63,6 +64,7 @@ type Enrichment = {
   website?: string;
   lat?: number;
   lng?: number;
+  primary_type?: string;
   enriched_at?: string;
 };
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
@@ -116,9 +118,16 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     haversineMeters(p.geom, { lng: e.lng, lat: e.lat }) <= 2000
       ? { lng: e.lng, lat: e.lat }
       : p.geom;
+  // Category correction: Google's primaryType is authoritative — it
+  // fixes the DFP miscategorization that no name heuristic can (a
+  // coffee shop with no "coffee" in its name, a hotel filed under
+  // shopping, etc.). Conservative: only confident Google types map;
+  // a vague type returns null and the existing category is kept.
+  const category = categoryFromPrimaryType(e.primary_type) ?? p.category;
   return {
     ...p,
     geom,
+    category,
     is_operational,
     // Curated data wins; Google fills the gaps. This is why ~96% of places
     // (DFP scrapes with no phone/site) stay blank until enriched.

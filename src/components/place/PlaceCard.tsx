@@ -51,6 +51,7 @@ const GLYPH_BY_CATEGORY: Record<string, string> = {
   pharmacy: "💊", hardware: "🔧", government: "🏛", "public-safety": "🚓",
   voting: "🗳", transit: "🚆", arts: "🎭", outdoors: "🌲", family: "👨‍👩‍👧",
   shopping: "🛍", wellness: "💆", civic: "🏛", services: "🛠", food: "🍽",
+  worship: "⛪",
 };
 
 function glyphFor(slug: string): string {
