@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, LayoutGrid, Rows3, ChevronDown } from "lucide-react";
+import { Footprints, Bike, Car, MapPin, LayoutGrid, Rows3, ChevronDown, Navigation, ArrowDownAZ } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
@@ -65,6 +65,8 @@ function groupOrder(key: string): number {
 
 type ViewMode = "grid" | "list";
 const VIEW_KEY = "fr:radius:view:v1";
+type SortMode = "near" | "az";
+const SORT_KEY = "fr:radius:sort:v1";
 // How many to show before "Show all" expands a section in place. No
 // data is hidden now — everything inside is one tap away. Distance-
 // sorted, so the initial slice is always "the nearest few".
@@ -92,6 +94,27 @@ export default function RadiusBuilder({ places }: { places: Place[] }) {
     setView(v);
     try {
       localStorage.setItem(VIEW_KEY, v);
+    } catch {
+      // non-fatal
+    }
+  };
+  // Sort within each group: "near" (distance, the default — inside is
+  // already distance-sorted) or "az" (alphabetical). Same SSR-safe
+  // localStorage settle as the view toggle.
+  const [sort, setSort] = useState<SortMode>("near");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(SORT_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders the default, the stored preference is applied after mount (localStorage is unavailable during SSR)
+      if (saved === "near" || saved === "az") setSort(saved);
+    } catch {
+      // localStorage unavailable (private mode, etc.) — keep default
+    }
+  }, []);
+  const chooseSort = (s: SortMode) => {
+    setSort(s);
+    try {
+      localStorage.setItem(SORT_KEY, s);
     } catch {
       // non-fatal
     }
@@ -129,12 +152,22 @@ export default function RadiusBuilder({ places }: { places: Place[] }) {
       else byKey.set(k, [p]);
     }
     return [...byKey.entries()]
-      .map(([key, items]) => ({ key, label: groupLabel(key), items }))
+      .map(([key, items]) => ({
+        key,
+        label: groupLabel(key),
+        // "near" keeps inside's distance order; "az" sorts by name.
+        items:
+          sort === "az"
+            ? [...items].sort((a, b) =>
+                a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
+              )
+            : items,
+      }))
       .sort((a, b) => {
         const d = groupOrder(a.key) - groupOrder(b.key);
         return d !== 0 ? d : b.items.length - a.items.length;
       });
-  }, [inside]);
+  }, [inside, sort]);
 
   // Cuisine facets from the food group's actual contents, so the chip
   // row only ever offers cuisines that are genuinely nearby.
@@ -265,35 +298,69 @@ export default function RadiusBuilder({ places }: { places: Place[] }) {
           )}
         </p>
         {inside.length > 0 && (
-          <div
-            role="group"
-            aria-label="Result density"
-            className="flex shrink-0 items-center gap-0.5 rounded-full border p-0.5"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            {([
-              { v: "grid" as const, Icon: LayoutGrid, label: "Grid" },
-              { v: "list" as const, Icon: Rows3, label: "List" },
-            ]).map(({ v, Icon, label }) => {
-              const active = view === v;
-              return (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => chooseView(v)}
-                  aria-pressed={active}
-                  aria-label={`${label} view`}
-                  title={`${label} view`}
-                  className="grid h-7 w-7 place-items-center rounded-full transition-colors"
-                  style={{
-                    background: active ? "var(--app-brand)" : "transparent",
-                    color: active ? "white" : "var(--app-ink-3)",
-                  }}
-                >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                </button>
-              );
-            })}
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Sort — Nearest (default) or A–Z. */}
+            <div
+              role="group"
+              aria-label="Sort order"
+              className="flex items-center gap-0.5 rounded-full border p-0.5"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              {([
+                { s: "near" as const, Icon: Navigation, label: "Nearest" },
+                { s: "az" as const, Icon: ArrowDownAZ, label: "A to Z" },
+              ]).map(({ s, Icon, label }) => {
+                const active = sort === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => chooseSort(s)}
+                    aria-pressed={active}
+                    aria-label={`Sort ${label}`}
+                    title={`Sort ${label}`}
+                    className="grid h-7 w-7 place-items-center rounded-full transition-colors"
+                    style={{
+                      background: active ? "var(--app-brand)" : "transparent",
+                      color: active ? "white" : "var(--app-ink-3)",
+                    }}
+                  >
+                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                  </button>
+                );
+              })}
+            </div>
+            {/* Density — Grid or List. */}
+            <div
+              role="group"
+              aria-label="Result density"
+              className="flex items-center gap-0.5 rounded-full border p-0.5"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              {([
+                { v: "grid" as const, Icon: LayoutGrid, label: "Grid" },
+                { v: "list" as const, Icon: Rows3, label: "List" },
+              ]).map(({ v, Icon, label }) => {
+                const active = view === v;
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => chooseView(v)}
+                    aria-pressed={active}
+                    aria-label={`${label} view`}
+                    title={`${label} view`}
+                    className="grid h-7 w-7 place-items-center rounded-full transition-colors"
+                    style={{
+                      background: active ? "var(--app-brand)" : "transparent",
+                      color: active ? "white" : "var(--app-ink-3)",
+                    }}
+                  >
+                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </section>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind,
-  ChevronDown, CalendarDays, Droplets,
+  ChevronDown, Droplets,
 } from "lucide-react";
 import { iconForShortForecast, type NwsHourly } from "@/lib/integrations/nws";
 
@@ -61,67 +61,113 @@ function groupDays(daily: NwsHourly[]): Day[] {
   });
 }
 
-export default function WeeklyForecast({ daily }: { daily: NwsHourly[] }) {
+/**
+ * The 7-day outlook, rendered as a frosted sub-panel of the weather
+ * card (NOT a detached card). `tone` is the parent card's light/dark
+ * tone so the type sits legibly on the same gradient as the hourly
+ * strip — one cohesive weather module, not an afterthought. Collapsed
+ * by default it shows a four-day glance; tap to expand the full week.
+ */
+export default function WeeklyForecast({
+  daily,
+  tone,
+}: {
+  daily: NwsHourly[];
+  tone: "light" | "dark";
+}) {
   const [open, setOpen] = useState(false);
   const days = groupDays(daily);
   if (days.length === 0) return null;
 
+  const ink = tone === "dark" ? "#FFFFFF" : "#1A1A1A";
+  const ink2 = tone === "dark" ? "rgba(255,255,255,0.78)" : "rgba(26,26,26,0.62)";
+  const ink3 = tone === "dark" ? "rgba(255,255,255,0.55)" : "rgba(26,26,26,0.42)";
+  const panel = tone === "dark" ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.45)";
+  const hairline = tone === "dark" ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)";
+  const cool = tone === "dark" ? "#9CC4E8" : "#2A5D8F";
+
   return (
     <div
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
+      className="mt-px"
+      style={{ background: panel, backdropFilter: "blur(2px)" }}
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold transition active:scale-[0.99]"
-        style={{ color: "var(--app-ink)" }}
+        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-semibold transition active:scale-[0.99]"
+        style={{ color: ink }}
       >
-        <span className="inline-flex items-center gap-2">
-          <CalendarDays className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-          7-day forecast
+        <span className="flex min-w-0 items-center gap-2.5">
+          <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: ink2 }}>
+            7-day
+          </span>
+          {!open && (
+            <span className="flex min-w-0 items-center gap-2.5 overflow-hidden" style={{ color: ink3 }}>
+              {days.slice(1, 5).map((d) => {
+                const k = iconForShortForecast(d.short);
+                const Icon = ICONS[k];
+                return (
+                  <span key={d.key} className="inline-flex shrink-0 items-center gap-1">
+                    <span className="text-[10px] font-medium">{d.label}</span>
+                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                    <span className="text-[10px] font-semibold tabular-nums" style={{ color: ink2 }}>
+                      {d.hi != null ? `${d.hi}°` : "–"}
+                    </span>
+                  </span>
+                );
+              })}
+            </span>
+          )}
         </span>
         <ChevronDown
-          className="h-4 w-4 transition-transform"
+          className="h-3.5 w-3.5 shrink-0 transition-transform"
           strokeWidth={2.5}
-          style={{ color: "var(--app-ink-3)", transform: open ? "rotate(180deg)" : "none" }}
+          style={{ color: ink3, transform: open ? "rotate(180deg)" : "none" }}
           aria-hidden
         />
       </button>
 
       {open && (
-        <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+        <ul style={{ borderTop: `1px solid ${hairline}` }}>
           {days.map((d) => {
             const k = iconForShortForecast(d.short);
             const Icon = ICONS[k];
             return (
               <li
                 key={d.key}
-                className="flex items-center gap-3 px-4 py-2.5"
-                style={{ borderTop: "1px solid var(--app-border)" }}
+                className="flex items-center gap-3 px-4 py-2"
+                style={{ borderTop: `1px solid ${hairline}` }}
               >
-                <span className="w-10 shrink-0 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                <span className="w-9 shrink-0 text-[12px] font-semibold" style={{ color: ink }}>
                   {d.label}
                 </span>
-                <Icon className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: ICON_TINT[k] }} aria-hidden />
-                <span className="min-w-0 flex-1 truncate text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+                <Icon
+                  className="h-4 w-4 shrink-0"
+                  strokeWidth={1.75}
+                  style={{ color: tone === "dark" ? "#fff" : ICON_TINT[k] }}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1 truncate text-[11px]" style={{ color: ink2 }}>
                   {d.short}
                 </span>
                 {d.precip > 15 && (
-                  <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] tabular-nums" style={{ color: "var(--app-cool)" }}>
+                  <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums" style={{ color: cool }}>
                     <Droplets className="h-3 w-3" strokeWidth={2} aria-hidden />
                     {d.precip}%
                   </span>
                 )}
-                <span className="w-16 shrink-0 text-right text-[13px] font-semibold tabular-nums" style={{ color: "var(--app-ink)" }}>
+                <span className="w-14 shrink-0 text-right text-[12px] font-semibold tabular-nums" style={{ color: ink }}>
                   {d.hi != null ? `${d.hi}°` : "–"}
-                  <span style={{ color: "var(--app-ink-3)" }}> / {d.lo != null ? `${d.lo}°` : "–"}</span>
+                  <span style={{ color: ink3 }}> {d.lo != null ? `${d.lo}°` : "–"}</span>
                 </span>
               </li>
             );
           })}
-          <li className="px-4 py-2 text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)", borderTop: "1px solid var(--app-border)" }}>
+          <li
+            className="px-4 py-1.5 text-[9px] uppercase tracking-[0.1em]"
+            style={{ color: ink3, borderTop: `1px solid ${hairline}` }}
+          >
             National Weather Service · Frederick
           </li>
         </ul>
