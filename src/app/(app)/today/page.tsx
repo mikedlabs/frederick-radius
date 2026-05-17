@@ -20,9 +20,8 @@ import { buildActivities } from "@/lib/live-activity";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import FadeUp from "@/components/ui/FadeUp";
 import { ShimmerWeatherStrip, ShimmerCard } from "@/components/ui/Shimmer";
-import { rankPlaces, placesWithinRadius, decoratePlace, likelyOpenPlaces } from "@/lib/loaders/places";
+import { rankPlaces, placesWithinRadius, decoratePlace, likelyOpenPlaces, publicPlaces, publicPlaceBySlug } from "@/lib/loaders/places";
 import { eventsLive, eventsNext24h, eventsWeekend, allUpcoming, seriesKey, formatEventWhen } from "@/lib/loaders/events";
-import { PLACES, PLACE_BY_SLUG } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
@@ -80,7 +79,7 @@ export default async function HomePage() {
   // Google-enriched), NOT the global 1,331-place ranking where they'd be
   // buried under DFP entries. Highest-rated open one with a real photo,
   // rotated daily so the homepage feels fresh on repeat visits.
-  const featuredPool = PLACES.filter((p) => p.source !== "dfp")
+  const featuredPool = publicPlaces().filter((p) => p.source !== "dfp")
     .map((p) => decoratePlace(p, origin, now))
     .filter(
       (p) =>
@@ -111,7 +110,7 @@ export default async function HomePage() {
   // Resolve each event's venue photo once, then rank: city of Frederick
   // first, then slides that have a real photo, then soonest.
   const withPhoto = [...eventBySeries.values()].map((e) => {
-    const vp = e.venue_place_slug ? PLACE_BY_SLUG[e.venue_place_slug] : null;
+    const vp = e.venue_place_slug ? publicPlaceBySlug(e.venue_place_slug) : null;
     const photo =
       (vp ? decoratePlace(vp, origin, now).google_photo_url : undefined) ||
       e.hero_image ||

@@ -1,8 +1,9 @@
 "use client";
 
 import { useSavedList, useMounted } from "@/hooks/useSaved";
-import { PLACE_BY_SLUG } from "@/data/places";
+import { publicPlaceBySlug } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG } from "@/data/events";
+import type { Place } from "@/data/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import { decoratePlace } from "@/lib/loaders/places";
@@ -47,8 +48,8 @@ export default function SavedList() {
 
   const places = items
     .filter((i) => i.type === "place")
-    .map((i) => PLACE_BY_SLUG[i.id])
-    .filter(Boolean)
+    .map((i) => publicPlaceBySlug(i.id))
+    .filter((p): p is Place => Boolean(p))
     .map((p) => decoratePlace(p));
 
   const events = items

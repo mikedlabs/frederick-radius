@@ -1,7 +1,7 @@
 import { EVENTS as RAW_EVENTS, EVENT_BY_SLUG, type Event } from "@/data/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/municipalities";
-import { PLACE_BY_SLUG } from "@/data/places";
+import { publicPlaceBySlug } from "@/lib/loaders/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
 
@@ -92,7 +92,7 @@ export function dedupeLiveAgainstCurated(
 export function getEventBySlug(slug: string): (EventWithMeta & { venue_place_name?: string }) | null {
   const e = EVENT_BY_SLUG[slug];
   if (!e) return null;
-  const venue = e.venue_place_slug ? PLACE_BY_SLUG[e.venue_place_slug] : null;
+  const venue = e.venue_place_slug ? publicPlaceBySlug(e.venue_place_slug) : null;
   return {
     ...decorate(e),
     venue_place_name: venue?.name,

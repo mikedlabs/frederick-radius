@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
-import { PLACES } from "@/data/places";
-import { isKnownClosed } from "@/lib/integrations/closures";
+import { publicPlaces } from "@/lib/loaders/places";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import AppMapClient, { type CivicPin } from "@/components/map/AppMapClient";
 
-const OPEN_PLACES = PLACES.filter(
-  (p) => !isKnownClosed(p.name) && p.is_operational !== "closed_permanently"
-);
+// P0-1: one canonical public place set, same as every other route.
+const OPEN_PLACES = publicPlaces();
 
 export const metadata: Metadata = {
   title: "Map",

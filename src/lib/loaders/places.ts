@@ -230,13 +230,35 @@ export function isOperational(p: Place): boolean {
 }
 
 /**
- * The place set every surface should start from: deduplicated (gated by
- * RADIUS_DEDUPE, so enabling it in production stays an env decision) and
- * with closed businesses removed. The Radius page must use this instead
- * of the raw PLACES array, which is why it showed Volt and duplicates.
+ * P0-1: the ONE canonical public place set. Every non-admin surface
+ * (Radius/home, Map, Search, Municipality, Saved, Sitemap, Plan) must
+ * start here so users see the same reality on every route: deduplicated
+ * (gated by RADIUS_DEDUPE) and with closed businesses removed. Raw
+ * PLACES stays available only for admin, audits, and scripts.
  */
-export function radiusPlaces(): Place[] {
+export function publicPlaces(): Place[] {
   return BASE_PLACES.filter(isOperational);
+}
+
+/** Public places in one municipality (canonical set, not raw). */
+export function publicPlacesByMunicipality(slug: string): Place[] {
+  return publicPlaces().filter((p) => p.municipality === slug);
+}
+
+/**
+ * Resolve a slug to its canonical public place. Folded-duplicate and
+ * old slugs resolve to the canonical record (BASE_BY_SLUG already does
+ * this); closed or unknown slugs return undefined so saved/linked
+ * closed records do not render.
+ */
+export function publicPlaceBySlug(slug: string): Place | undefined {
+  const p = BASE_BY_SLUG[slug];
+  return p && isOperational(p) ? p : undefined;
+}
+
+/** Back-compat alias. Prefer publicPlaces() in new code. */
+export function radiusPlaces(): Place[] {
+  return publicPlaces();
 }
 
 /**

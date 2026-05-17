@@ -8,7 +8,7 @@
  * underlying data changes during HMR.
  */
 
-import { PLACES } from "@/data/places";
+import { publicPlaces } from "@/lib/loaders/places";
 import { EVENTS } from "@/data/events";
 import { CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -32,8 +32,8 @@ let CACHED_INDEX: SearchResult[] | null = null;
 function buildIndex(): SearchResult[] {
   const idx: SearchResult[] = [];
 
-  // Places (1,479)
-  for (const p of PLACES) {
+  // Places — canonical public set (deduped, operational, enriched)
+  for (const p of publicPlaces()) {
     const cat = CATEGORIES.find((c) => c.slug === p.category);
     const muni = MUNICIPALITIES.find((m) => m.slug === p.municipality);
     idx.push({

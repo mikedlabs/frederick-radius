@@ -1,4 +1,5 @@
-import { PLACES, type Place } from "@/data/places";
+import type { Place } from "@/data/places";
+import { publicPlaces } from "@/lib/loaders/places";
 import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
@@ -37,7 +38,7 @@ export function search(query: string, limit = 30): SearchHit[] {
 
   const hits: SearchHit[] = [];
 
-  for (const p of PLACES) {
+  for (const p of publicPlaces()) {
     const s =
       fieldScore(p.name, terms) * 4 +
       fieldScore(p.short_blurb, terms) * 1 +

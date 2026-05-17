@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { PLACES } from "@/data/places";
+import { publicPlaces } from "@/lib/loaders/places";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
@@ -16,7 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/radius`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/saved`, lastModified: now, changeFrequency: "weekly", priority: 0.4 },
   ];
-  const places = PLACES.map((p) => ({
+  const places = publicPlaces().map((p) => ({
     url: `${BASE}/places/${p.slug}`,
     lastModified: new Date(p.updated_at),
     changeFrequency: "weekly" as const,

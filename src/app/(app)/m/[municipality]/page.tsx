@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { placesByMunicipality } from "@/data/places";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
-import { decoratePlace } from "@/lib/loaders/places";
+import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import { CATEGORIES, TOP_CATEGORIES } from "@/data/categories";
@@ -39,7 +38,7 @@ export default async function MunicipalityPage(
   const m = MUNICIPALITY_BY_SLUG[municipality];
   if (!m) notFound();
 
-  const places = placesByMunicipality(m.slug)
+  const places = publicPlacesByMunicipality(m.slug)
     .map((p) => decoratePlace(p, m.centroid))
     .sort((a, b) => b.feature_score - a.feature_score);
 
@@ -181,7 +180,7 @@ export default async function MunicipalityPage(
         {places.length === 0 ? (
           <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            We're still seeding places for {m.name}. Check back soon, or submit a place you love.
+            We&apos;re still seeding places for {m.name}. Check back soon, or submit a place you love.
           </p>
         ) : (
           <ul className="space-y-2">

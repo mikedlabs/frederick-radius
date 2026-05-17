@@ -25,8 +25,7 @@ function eventBlurb(e: {
   const d = (e.description ?? "").trim();
   return d.length > 0 ? d : `${e.category_name} at ${e.venue_name}.`;
 }
-import { decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
-import { PLACES } from "@/data/places";
+import { decoratePlace, publicPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
@@ -76,14 +75,14 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${event.geom.lat},${event.geom.lng}`;
   const icsUrl = `/api/events/${event.slug}/ics`;
 
-  const nearbyFood: PlaceCardData[] = PLACES
+  const nearbyFood: PlaceCardData[] = publicPlaces()
     .filter((p) => ["restaurant", "coffee", "bar", "brewery", "bakery", "pizza"].includes(p.category))
     .map((p) => decoratePlace(p, event.geom))
     .filter((p) => (p.distance_m ?? Infinity) < 2000)
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 4);
 
-  const nearbyParking: PlaceCardData[] = PLACES
+  const nearbyParking: PlaceCardData[] = publicPlaces()
     .filter((p) => p.category === "parking")
     .map((p) => decoratePlace(p, event.geom))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))

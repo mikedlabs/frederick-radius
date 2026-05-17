@@ -6,7 +6,8 @@
  * is grounded in our actual data — no hallucinated places.
  */
 
-import { PLACES, type Place } from "@/data/places";
+import type { Place } from "@/data/places";
+import { publicPlaces } from "@/lib/loaders/places";
 import { upcomingEvents, type Event } from "@/data/events";
 import { haversineMeters, FREDERICK_CENTER, formatDistance } from "@/lib/geo";
 
@@ -70,7 +71,7 @@ export function buildPlan(input: PlanInputs): Plan {
   const origin = input.start_near ?? FREDERICK_CENTER;
   const now = input.start_at ?? new Date();
 
-  const candidatePool = PLACES
+  const candidatePool = publicPlaces()
     .filter((p) => p.is_operational === "operational")
     .map((p) => ({
       place: p,
