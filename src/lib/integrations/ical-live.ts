@@ -32,7 +32,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "visit-frederick" | "weinberg" | "delaplaine";
+  source: "dfp" | "celebrate" | "county" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown";
   source_label: string;
   url: string;
   is_free: boolean;
