@@ -3,7 +3,7 @@
 import Map, { Marker, NavigationControl } from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+import { MAPBOX_TOKEN } from "@/lib/mapbox";
 const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 
 export default function PlaceMiniMapInner({

@@ -14,7 +14,7 @@ import Map, {
 import type { GeoJSONSource } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import Link from "next/link";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { Place } from "@/data/places";

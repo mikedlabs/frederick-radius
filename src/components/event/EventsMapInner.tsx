@@ -9,7 +9,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+import { MAPBOX_TOKEN } from "@/lib/mapbox";
 const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 
 export type EventPin = {
