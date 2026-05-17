@@ -76,7 +76,6 @@ export default async function WeatherStrip() {
   const maxPrecip = Math.max(10, ...next24.map((h) => h.probabilityOfPrecipitation ?? 0));
 
   return (
-    <>
     <div
       className="overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
       style={{ borderColor: "var(--app-border)", background: gradient }}
@@ -151,8 +150,10 @@ export default async function WeatherStrip() {
           })}
         </ul>
       </div>
+
+      {/* 7-day outlook — a frosted sub-panel of THIS card, not a
+          detached afterthought. One cohesive weather module. */}
+      <WeeklyForecast daily={forecast.daily} tone={tone} />
     </div>
-    <WeeklyForecast daily={forecast.daily} />
-    </>
   );
 }

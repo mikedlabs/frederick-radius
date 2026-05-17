@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import WeatherStrip from "@/components/today/WeatherStrip";
 import AirQualityBadge from "@/components/today/AirQualityBadge";
 import CivicAlerts from "@/components/today/CivicAlerts";
-import LivePulse from "@/components/today/LivePulse";
+import PulseSummary from "@/components/today/PulseSummary";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import SkyHero from "@/components/today/SkyHero";
@@ -228,20 +228,26 @@ export default async function HomePage() {
           />
         </FadeUp>
 
-        {/* ── ZONE 3 · Explore (quieter, collapsible) ───────── */}
-        <ExploreFooter>
+        {/* ── ZONE 3 · Explore ──────────────────────────────── */}
+        {/* News is its own visible card rail now, not buried in a
+            collapsed drawer (owner: "needs visuals"). */}
+        <FadeUp>
           <Suspense fallback={<ShimmerCard rows={3} />}>
             <LocalNewsStrip />
           </Suspense>
+        </FadeUp>
+
+        <ExploreFooter>
           <DismissibleSection id="browse-town" title="Browse by town" meta="All 12 municipalities">
             <MunicipalityStrip />
           </DismissibleSection>
         </ExploreFooter>
 
-        {/* Live civic pulse — anchored at the bottom; full board at /pulse */}
+        {/* One quiet civic line — the full board lives at /pulse, this
+            is just the single most-urgent status (or "all clear"). */}
         <FadeUp>
           <Suspense fallback={null}>
-            <LivePulse />
+            <PulseSummary />
           </Suspense>
         </FadeUp>
 
