@@ -15,16 +15,22 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 const DEFAULT_COLOR = "#C4451C";
 
 type Bucket =
-  | "food" | "outdoors" | "arts" | "family" | "library" | "shopping"
+  | "food" | "brewery" | "wine" | "bar" | "coffee" | "bakery"
+  | "outdoors" | "arts" | "music" | "family" | "library" | "shopping"
   | "wellness" | "civic" | "services" | "lodging" | "transit" | "parking"
   | "restroom" | "water" | "trash" | "recycle" | "dogwaste" | "bench"
   | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "ev" | "publicart" | "pin";
 
+// Consumer drink/food categories get their OWN mark, not one generic
+// fork. A brewery, winery, bar, coffee shop, and bakery should read
+// distinctly at a glance; collapsing them was the "everything looks the
+// same" problem. Live music is split off from the arts frame too.
 const BUCKET: Record<string, Bucket> = {
-  food: "food", restaurant: "food", pizza: "food", bakery: "food",
-  bar: "food", brewery: "food", coffee: "food", "food-truck": "food",
+  food: "food", restaurant: "food", pizza: "food", "food-truck": "food",
+  bakery: "bakery", bar: "bar", brewery: "brewery", coffee: "coffee",
+  winery: "wine", wine: "wine", cidery: "wine", distillery: "wine",
   outdoors: "outdoors", park: "outdoors", trail: "outdoors", playground: "outdoors",
-  arts: "arts", museum: "arts", gallery: "arts", theater: "arts", music: "arts",
+  arts: "arts", museum: "arts", gallery: "arts", theater: "arts", music: "music",
   family: "family",
   library: "library", "book-store": "library",
   shopping: "shopping", antiques: "shopping", market: "shopping",
@@ -59,7 +65,9 @@ export function bucketOf(slug: string): Bucket {
 
 /** Cluster tint per macro bucket — a glance tells you what an area is. */
 export const BUCKET_COLOR: Record<Bucket, string> = {
-  food: "#C4451C", outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#B26B00",
+  food: "#C4451C", brewery: "#D9A441", wine: "#6E2233", bar: "#7E1F1F",
+  coffee: "#8B5A2B", bakery: "#C9852B", music: "#9B3F8A",
+  outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#B26B00",
   library: "#2A5D8F", shopping: "#B26B00", wellness: "#A02929",
   civic: "#2A5D8F", services: "#4A4A48", lodging: "#5B3A8F",
   transit: "#2A5D8F", parking: "#4A4A48",
@@ -101,6 +109,58 @@ function drawIcon(ctx: CanvasRenderingContext2D, b: Bucket, x: number, y: number
       ctx.moveTo(-8, -3); ctx.lineTo(-2, -3); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(6, -8); ctx.lineTo(6, 8); ctx.lineTo(3, 8); ctx.quadraticCurveTo(2, -2, 6, -8); ctx.fill();
       break;
+    case "brewery": { // beer mug with foam + handle
+      ctx.beginPath();
+      ctx.arc(-3.5, -6, 2.4, 0, Math.PI * 2);
+      ctx.arc(0, -7.6, 2.7, 0, Math.PI * 2);
+      ctx.arc(3.5, -6, 2.4, 0, Math.PI * 2);
+      ctx.fill();
+      rr(-6, -4, 10, 13, 2); ctx.fill();
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.arc(6.5, 2.5, 3.4, Math.PI * 1.45, Math.PI * 0.55); ctx.stroke();
+      break;
+    }
+    case "wine": // wine glass
+      ctx.beginPath();
+      ctx.moveTo(-5, -8); ctx.lineTo(5, -8);
+      ctx.quadraticCurveTo(5, 0, 0, 1.5);
+      ctx.quadraticCurveTo(-5, 0, -5, -8);
+      ctx.closePath(); ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, 1.5); ctx.lineTo(0, 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-4.5, 9); ctx.lineTo(4.5, 9); ctx.stroke();
+      break;
+    case "bar": // martini glass
+      ctx.beginPath();
+      ctx.moveTo(-8, -7); ctx.lineTo(8, -7); ctx.lineTo(0, 1.5); ctx.closePath();
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, 1.5); ctx.lineTo(0, 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-4.5, 9); ctx.lineTo(4.5, 9); ctx.stroke();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.arc(2.6, -3, 1.7, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      break;
+    case "coffee": // to-go cup
+      ctx.fillRect(-6.5, -8.5, 13, 2.7);
+      ctx.fillRect(-2, -10.5, 4, 2);
+      ctx.beginPath();
+      ctx.moveTo(-6, -5.5); ctx.lineTo(6, -5.5); ctx.lineTo(4.4, 9); ctx.lineTo(-4.4, 9);
+      ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.fillRect(-5.4, 0, 10.8, 3); ctx.restore();
+      break;
+    case "bakery": // cupcake
+      ctx.beginPath();
+      ctx.moveTo(-5.6, 0.5); ctx.lineTo(5.6, 0.5); ctx.lineTo(4, 9.5); ctx.lineTo(-4, 9.5);
+      ctx.closePath(); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(-3, -2, 3, 0, Math.PI * 2);
+      ctx.arc(3, -2, 3, 0, Math.PI * 2);
+      ctx.arc(0, -5, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.arc(0, -7.6, 1, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      break;
     case "outdoors": { // pine tree
       ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(6, 0); ctx.lineTo(-6, 0); ctx.closePath();
       ctx.moveTo(0, -3); ctx.lineTo(7, 6); ctx.lineTo(-7, 6); ctx.closePath(); ctx.fill();
@@ -111,6 +171,16 @@ function drawIcon(ctx: CanvasRenderingContext2D, b: Bucket, x: number, y: number
       rr(-8, -7, 16, 14, 2.5); ctx.stroke();
       ctx.beginPath(); ctx.arc(-3, -2, 2, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.moveTo(-7, 6); ctx.lineTo(0, -1); ctx.lineTo(7, 6); ctx.closePath(); ctx.fill();
+      break;
+    case "music": // eighth note
+      ctx.beginPath(); ctx.ellipse(-3, 6, 4, 3, -0.35, 0, Math.PI * 2); ctx.fill();
+      ctx.lineWidth = 2.2;
+      ctx.beginPath(); ctx.moveTo(1, 5.5); ctx.lineTo(1, -8); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(1, -8);
+      ctx.quadraticCurveTo(7.5, -6.5, 6, 0.5);
+      ctx.quadraticCurveTo(6.5, -4, 1, -3.5);
+      ctx.closePath(); ctx.fill();
       break;
     case "family": // two people
       ctx.beginPath(); ctx.arc(-4, -4, 2.6, 0, Math.PI * 2); ctx.arc(4, -4, 2.6, 0, Math.PI * 2); ctx.fill();
