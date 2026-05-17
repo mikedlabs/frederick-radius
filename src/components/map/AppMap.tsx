@@ -191,6 +191,9 @@ export default function AppMap({
   const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
+  // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
+  // must degrade to a stable branded state, never a blank rectangle.
+  const [mapError, setMapError] = useState(false);
   const [osmError, setOsmError] = useState<string | null>(null);
   const [showUnverified, setShowUnverified] = useState(false);
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(new Set());
@@ -928,6 +931,28 @@ export default function AppMap({
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
         style={{ borderColor: "var(--app-border)", height }}
       >
+        {mapError && (
+          <div
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 px-6 text-center"
+            style={{ background: "var(--app-bg)" }}
+            role="alert"
+          >
+            <p className="font-serif text-base font-semibold" style={{ color: "var(--app-ink)" }}>
+              The map is temporarily unavailable
+            </p>
+            <p className="max-w-xs text-xs leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+              Every place in the county is still listed below — the map view will return shortly.
+            </p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-1 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              Reload the map
+            </button>
+          </div>
+        )}
         {(osmLoading || osmError || osmPlaces.length > 0) && (
           <div
             className="absolute left-3 top-3 z-10 inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
@@ -1120,6 +1145,12 @@ export default function AppMap({
           onClick={onClick}
           onLoad={(e) => { installCategoryMarkers(e.target); applyFrederickPalette(e.target); emitInView(); }}
           onMoveEnd={emitInView}
+          onError={(e) => {
+            const msg = String(e?.error?.message ?? "");
+            if (/access token|unauthorized|forbidden|\b40[13]\b|failed to (fetch|load)/i.test(msg)) {
+              setMapError(true);
+            }
+          }}
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
         >
