@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Disc, Calendar, Route } from "lucide-react";
+import { Disc, Sun, Map, Calendar, Route, Bookmark } from "lucide-react";
 
-// Phase 2: collapsed from five tabs to three. Radius is the home route,
-// Map and Today folded into it, and Saved moved to a TopBar corner icon
-// (it is not a primary destination). This stops the navigation from
-// splintering the one ownable idea.
+// Phase 2 collapsed this to three tabs. Per the 2026-05-17 owner
+// decision the primary destinations are surfaced again: Radius (home),
+// Today, Map, Events, Plan, and Saved. Search stays a persistent action
+// in the top bar rather than a tab.
 const TABS = [
   { href: "/", label: "Radius", icon: Disc },
+  { href: "/today", label: "Today", icon: Sun },
+  { href: "/map", label: "Map", icon: Map },
   { href: "/events", label: "Events", icon: Calendar },
   { href: "/plan", label: "Plan", icon: Route },
+  { href: "/saved", label: "Saved", icon: Bookmark },
 ] as const;
 
 export default function BottomNav() {
@@ -21,7 +24,7 @@ export default function BottomNav() {
       aria-label="Primary"
       className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]/85 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="mx-auto grid max-w-screen-md grid-cols-3">
+      <ul className="mx-auto grid max-w-screen-md grid-cols-6">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/"
@@ -31,7 +34,7 @@ export default function BottomNav() {
             <li key={href} className="flex">
               <Link
                 href={href}
-                className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium tracking-tight transition-colors"
+                className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium tracking-tight transition-colors"
                 aria-current={active ? "page" : undefined}
                 style={{ color: active ? "var(--app-brand)" : "var(--app-ink-3)" }}
               >

@@ -87,10 +87,19 @@ async function loadModule<T>(rel: string): Promise<T> {
   return (await import(join(ROOT, rel))) as T;
 }
 
-function summarizeZodError(issues: { path: (string | number)[]; message: string }[]): string {
+function summarizeZodError(
+  issues: ReadonlyArray<{ path: ReadonlyArray<PropertyKey>; message: string }>,
+): string {
   return issues
     .slice(0, 20)
-    .map((i) => `  at ${i.path.join(".") || "(root)"}: ${i.message}`)
+    .map((i) => {
+      // Zod paths are PropertyKey, so a symbol key would throw on a
+      // plain join. Stringify each segment defensively.
+      const path = i.path
+        .map((p) => (typeof p === "symbol" ? p.description ?? "symbol" : String(p)))
+        .join(".");
+      return `  at ${path || "(root)"}: ${i.message}`;
+    })
     .join("\n");
 }
 
