@@ -13,8 +13,9 @@ import { getSql } from "@/lib/db/client";
 import { isVenueStatusNonEvent, isRoutineRecurringClass } from "@/lib/event-noise";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
-// sessions. Off by default, so flags-off equals today's production.
-const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER === "1";
+// sessions. Default ON by owner directive (2026-05-16: "ship
+// everything"). Set RADIUS_EVENT_NOISE_FILTER=0 to disable.
+const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER !== "0";
 
 export type IngestedOccurrence = {
   sourceUid: string;

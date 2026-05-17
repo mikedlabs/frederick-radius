@@ -14,11 +14,13 @@ import { isKnownClosed } from "@/lib/integrations/closures";
 const EVENTS = RAW_EVENTS.filter((e) => !isKnownClosed(e.venue_name));
 
 /**
- * User-visible "by town" events view. Default off means /events and
- * /m/[municipality] render exactly today's production, which is the
- * rollback path. This mirrors the RADIUS_DEDUPE and HOURS_GATE flags.
+ * User-visible "by town" events view. Default ON by owner directive
+ * (2026-05-16: "ship everything"). Set RADIUS_EVENTS_BY_TOWN=0 to
+ * disable without a code change (instant rollback). Note: flag-on
+ * browser QA for this view was never completed in a prior session, so
+ * it should be sanity-checked on the live site after deploy.
  */
-export const BY_TOWN_ENABLED = process.env.RADIUS_EVENTS_BY_TOWN === "1";
+export const BY_TOWN_ENABLED = process.env.RADIUS_EVENTS_BY_TOWN !== "0";
 
 /**
  * Radius for the "happening near <town>" fallback so a town with no

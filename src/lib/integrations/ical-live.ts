@@ -13,8 +13,10 @@ import { cutAtWordBoundary } from "@/lib/slug";
 import { isVenueStatusNonEvent } from "@/lib/event-noise";
 
 // Phase 1.6: drop venue open-status entries that are not events.
-// Off by default, so flags-off equals today's production.
-const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER === "1";
+// Default ON by owner directive (2026-05-16: "ship everything"). The
+// predicate is conservative and unit-tested. Set
+// RADIUS_EVENT_NOISE_FILTER=0 to disable (instant rollback).
+const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER !== "0";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
 

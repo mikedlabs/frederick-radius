@@ -17,12 +17,14 @@ test("enriched places carry google_places hours provenance", () => {
   console.log(`${g.length} places stamped google_places, coverage ${(hoursCoverage(all) * 100).toFixed(1)}%`);
 });
 
-test("coverage is honest and the gate is flag-off safe", () => {
+test("coverage is honest and the gate hides Open-now under the 60% bar", () => {
   const all = rankPlaces({});
   const cov = hoursCoverage(all);
   assert.ok(cov >= 0 && cov < 0.6, "current coverage is well under the 60% bar");
-  // Flag off by default: never hide. This is the rollback path.
-  assert.equal(shouldHideOpenNow(all), false);
+  // HOURS_GATE defaults on (owner directive, 2026-05-16). Under 60%
+  // verified-hours coverage the Open-now affordance hides in favor of
+  // an honest message. Set HOURS_GATE=0 for the always-show rollback.
+  assert.equal(shouldHideOpenNow(all), true);
   assert.equal(hoursCoverage([]), 0);
-  console.log("gate respects HOURS_GATE flag (off by default)");
+  console.log(`gate active, coverage ${(cov * 100).toFixed(1)}% < 60% -> Open-now hidden`);
 });

@@ -11,8 +11,10 @@ import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-win
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
-// Default off, so flags-off behavior is exactly today's production.
-const DEDUPE_ON = process.env.RADIUS_DEDUPE === "1";
+// Default ON by owner directive (2026-05-16: "ship everything"). The
+// dedupe is verified and all named venues fold. Set RADIUS_DEDUPE=0 to
+// disable without a code change (instant rollback).
+const DEDUPE_ON = process.env.RADIUS_DEDUPE !== "0";
 
 /**
  * Collapse fuzzy duplicates to one canonical record (curated wins) and
@@ -155,13 +157,17 @@ export function hoursCoverage(places: PlaceCardData[]): number {
   return places.filter((p) => p.hours_source).length / places.length;
 }
 
-const HOURS_GATE = process.env.HOURS_GATE === "1";
+// Default ON by owner directive (2026-05-16: "ship everything"). At
+// today's ~3.6% verified-hours coverage this hides the Open-now
+// affordance widely in favor of an honest message, which is the
+// trustworthy behavior the data-layer brief asked for. Set
+// HOURS_GATE=0 to restore the always-show behavior (instant rollback).
+const HOURS_GATE = process.env.HOURS_GATE !== "0";
 
 /**
  * True when the Open-now affordance should hide because verified-hours
- * coverage for the visible set is under 60 percent. Flag-gated, default
- * off, so flags-off equals today's production. Callers render the
- * STYLE.md message; no UI is changed in Phase 1.
+ * coverage for the visible set is under 60 percent. Callers render the
+ * STYLE.md message in place of the affordance.
  */
 export function shouldHideOpenNow(places: PlaceCardData[]): boolean {
   return HOURS_GATE && hoursCoverage(places) < 0.6;

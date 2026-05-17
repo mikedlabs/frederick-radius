@@ -2,6 +2,28 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-16: Data-quality flags flipped to default ON ("ship everything")
+
+The owner directed shipping everything after a long period in which
+correct, tested data-quality work was built behind flags that defaulted
+off and the flip was deferred each time. That deferral loop became the
+problem: the live site did not reflect the work.
+
+Decision: invert the defaults for the proven flags so the work is
+active in production without a Vercel env change: RADIUS_DEDUPE,
+RADIUS_EVENT_NOISE_FILTER, RADIUS_EVENTS_BY_TOWN, and HOURS_GATE now
+read `!== "0"` (default on). Each keeps an escape hatch: set the env
+var to "0" for an instant, code-free rollback. This reverses the
+earlier "flags default off equals today's production is the rollback
+path" posture, which was prudent but had compounded.
+
+Consequence to note honestly: at today's roughly 3.6 percent
+verified-hours coverage, HOURS_GATE on hides the Open-now affordance
+widely in favor of an honest message. That is the trustworthy behavior
+the data-layer brief asked for, and it is reversible with HOURS_GATE=0.
+RADIUS_OBDB stays off because the brewery source is not yet surfaced;
+flipping it would change nothing visible.
+
 ## 2026-05-16: Mapbox funded, map migrated MapLibre to Mapbox GL
 
 The owner funded a Mapbox account and provided a public token, reversing
