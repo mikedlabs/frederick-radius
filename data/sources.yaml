@@ -548,3 +548,304 @@ sources:
     schema_file: null
     transform_file: null
     notes: Demographic context for municipalities. A key raises limits.
+
+  # ------------------------------------------------------------------ #
+  # City of Frederick SpiresGIS, ArcGIS REST at                         #
+  # spires.cityoffrederick.com/arcgis/rest/services. Pending approval:  #
+  # the GIS data page gives an accuracy disclaimer but no explicit      #
+  # license or attribution, so production use must be confirmed with    #
+  # City IT before any of these is set active. This server has no       #
+  # FeatureServer extension; every layer is a MapServer queried with    #
+  # f=geojson and outSR=4326. Layer ids other than parcels are          #
+  # confirmed at activation through audit-sources or diagnose-failure.  #
+  # ------------------------------------------------------------------ #
+
+  - id: cof_parcels
+    name: City of Frederick Tax Parcels
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/Parcels/MapServer/8/query?where=1%3D1&outFields=*&outSR=4326&f=geojson
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    license: local government, accuracy disclaimer, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: schemas/cof_parcels.json
+    transform_file: transforms/cof_parcels.ts
+    notes: |
+      First activation candidate. Layer 8 (Tax Parcel) confirmed.
+      Schema and transform are drafted and ready; activation is gated
+      only on the owner confirming usage and attribution. Authoritative
+      parcel polygons with address, zoning, land use, acreage, NAC, and
+      school districts. No owner name is exposed by the source.
+
+  - id: cof_geocoder
+    name: City of Frederick Address Locator
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/COFLocator/GeocodeServer
+    endpoint_type: arcgis_geocode
+    format: json
+    refresh_cadence: on_demand
+    license: local government, confirm usage with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Request-time geocoder, not a daily feed, so the worker does not
+      run it. Supports findAddressCandidates, reverseGeocode, and
+      suggest; request outSR=4326. Intended as a free, authoritative,
+      local replacement or fallback for the paid Google geocoder.
+
+  - id: cof_places
+    name: City of Frederick Places
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/Places/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: City points of interest, to cross-check curated and OSM places.
+
+  - id: cof_addresses
+    name: City of Frederick Address Points
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/Addresses/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Canonical address points for the dedupe and coordinate spine.
+
+  - id: cof_zoning
+    name: City of Frederick Zoning
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/Zoning/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    license: local government, one of the city's published data access datasets
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Zoning districts. City explicitly offers this for integration.
+
+  - id: cof_bike_paths
+    name: City of Frederick Bike Paths
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/BikePaths/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Bike network for the walkable, trail, and Plan experiences.
+
+  - id: cof_path_plan
+    name: City of Frederick Path Plan
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/PathPlan/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: quarterly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Planned path network, paired with bike paths and sidewalks.
+
+  - id: cof_historic_district
+    name: City of Frederick Historic District
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/HistoricDistrict/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: local government, one of the city's published data access datasets
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Historic district boundary, strong context for downtown places.
+
+  - id: cof_hpc_properties
+    name: City of Frederick Historic Properties
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/HPC_Properties/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Historic Preservation Commission property list.
+
+  - id: cof_cultural_assets
+    name: City of Frederick Cultural Assets
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/CulturalAssets/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Cultural sites, feeds the arts and culture category.
+
+  - id: cof_council_districts
+    name: City of Frederick Council Districts
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/CouncilDistricts/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Council district boundaries for civic context per place.
+
+  - id: cof_capital_improvement
+    name: City of Frederick Capital Improvement Projects
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/CapitalImprovementProjects/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: City projects, feeds a what is changing near you civic surface.
+
+  - id: cof_development_review
+    name: City of Frederick Development Review
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/DevelopmentReview/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Active development and planning projects.
+
+  - id: cof_snow_removal
+    name: City of Frederick Snow Removal
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/SnowRemoval/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: hourly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Seasonal snow operations, pairs with the civic alerts surface.
+
+  - id: cof_floodplain
+    name: City of Frederick Floodplain
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: yearly
+    license: local government, one of the city's published data access datasets
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Listed on the city GIS data page as available, but the exact
+      service path was not in the services catalog read. Confirm the
+      service and layer at activation. Safety and context overlay.
+
+  - id: cof_aerial_imagery
+    name: City of Frederick Aerial Imagery
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/Aerial_2025/MapServer
+    endpoint_type: arcgis_tiles
+    format: tiles
+    refresh_cadence: yearly
+    license: local government, confirm attribution with City IT
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Historical aerials 1958 through 2025 as tile services, a possible
+      time machine basemap layer. Imagery tiles, not feature data, so
+      the daily worker does not fetch it; it would be a map style layer.
+
+  - id: cof_lead_service_lines
+    name: City of Frederick Lead Service Lines
+    owner: City of Frederick GIS
+    url: https://spires.cityoffrederick.com/arcgis/rest/services/LeadServiceLines/MapServer
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    license: local government, review required
+    contact: Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_review
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Public health sensitive. Same posture as pulsepoint: do not fetch
+      until a privacy and accuracy review is recorded here and a human
+      approves. Useful but must be presented carefully if ever used.

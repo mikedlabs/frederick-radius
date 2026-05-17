@@ -85,6 +85,20 @@ export function featureCollection(features: PointFeature[]): FeatureCollection {
 }
 
 /** What every transform returns. The worker picks the file extension. */
+/**
+ * A generic GeoJSON feature. Point sources use PointFeature above;
+ * polygon sources such as parcels keep their source geometry, so the
+ * worker accepts any GeoJSON FeatureCollection here. PointFeature is
+ * assignable to this, so existing point transforms are unaffected.
+ */
+export type GeoFeature = {
+  type: "Feature";
+  geometry: unknown;
+  properties: Record<string, unknown>;
+};
+
+export type GeoJson = { type: "FeatureCollection"; features: GeoFeature[] };
+
 export type TransformResult =
-  | { format: "geojson"; data: FeatureCollection }
+  | { format: "geojson"; data: GeoJson }
   | { format: "json"; data: unknown };

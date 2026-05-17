@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/cof_parcels.json",
+  "title": "City of Frederick Tax Parcel, ArcGIS GeoJSON",
+  "description": "The Parcels MapServer layer 8 (Tax Parcel) queried with f=geojson and outSR=4326. Property keys are the ArcGIS field names, not aliases. Only the fields the transform reads are constrained; ArcGIS adds others.",
+  "type": "object",
+  "required": ["type", "features"],
+  "properties": {
+    "type": { "const": "FeatureCollection" },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "geometry", "properties"],
+        "properties": {
+          "type": { "const": "Feature" },
+          "geometry": {
+            "type": ["object", "null"],
+            "properties": {
+              "type": { "type": "string" },
+              "coordinates": { "type": "array" }
+            }
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "TAX_ACCT": { "type": ["string", "null"] },
+              "ACCT": { "type": ["string", "null"] },
+              "PIN": { "type": ["string", "null"] },
+              "ADDRESS": { "type": ["string", "null"] },
+              "ZONING": { "type": ["string", "null"] },
+              "OVERLAY_1": { "type": ["string", "null"] },
+              "OVERLAY_2": { "type": ["string", "null"] },
+              "LandUse": { "type": ["string", "null"] },
+              "CALC_ACRE": { "type": ["number", "null"] },
+              "Sub": { "type": ["string", "null"] },
+              "NAC": { "type": ["string", "null"] },
+              "ElectionDistrict": { "type": ["number", "null"] },
+              "ELEM_DIST": { "type": ["string", "null"] },
+              "MID_DIST": { "type": ["string", "null"] },
+              "HIGH_DIST": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}
