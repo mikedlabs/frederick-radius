@@ -368,3 +368,75 @@ body {
   transition: transform 220ms var(--app-ease-out), box-shadow 220ms var(--app-ease-out);
 }
 .hover-lift:hover { transform: translateY(-2px); box-shadow: var(--app-shadow-3); }
+
+/* ─────────────────────────────────────────────────────
+ * Mobile interaction polish — applies app-wide. The fundamentals that
+ * are easy to miss: native-feeling taps, no rogue zoom, finger-sized
+ * targets, and discoverable horizontal scrollers.
+ * ───────────────────────────────────────────────────── */
+
+/* Stop iOS from inflating body text in landscape. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* Remove the grey tap-flash and the 300ms tap delay / double-tap zoom
+ * on every control, so touch feels immediate and native. */
+a,
+button,
+[role="button"],
+summary,
+label[for],
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Opt-in press feedback. Fast and subtle; durations are already zeroed
+ * under prefers-reduced-motion by the global rule above. */
+.tap-press {
+  transition: transform var(--app-dur-fast) var(--app-ease-out),
+    opacity var(--app-dur-fast) var(--app-ease-out);
+}
+.tap-press:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+/* Finger-friendly minimum target (Apple HIG 44pt / Material 48dp).
+ * Opt-in so it is only applied where spacing allows. */
+.hit {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Horizontal scroller: momentum, no scroll-chaining into the browser
+ * back-swipe, hidden bar, and an edge fade so it is obvious there is
+ * more content to swipe to. */
+.hscroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 16px),
+    transparent 100%
+  );
+}
+.hscroll::-webkit-scrollbar {
+  display: none;
+}

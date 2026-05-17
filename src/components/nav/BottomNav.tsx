@@ -33,7 +33,7 @@ export default function BottomNav() {
             <li key={href} className="flex">
               <Link
                 href={href}
-                className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium tracking-tight transition-colors"
+                className="tap-press flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium tracking-tight transition-colors"
                 aria-current={active ? "page" : undefined}
                 style={{ color: active ? "var(--app-brand)" : "var(--app-ink-3)" }}
               >

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Search, Bookmark } from "lucide-react";
+import { Search } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
 
@@ -61,7 +61,7 @@ export default function TopBar() {
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Search places, events, towns"
-            className="ml-auto flex h-9 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
+            className="ml-auto hit tap-press gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -74,16 +74,8 @@ export default function TopBar() {
             </kbd>
           </button>
 
-          <Link
-            href="/saved"
-            aria-label="Saved"
-            title="Saved"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            <Bookmark className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          </Link>
-
+          {/* Saved lives in the bottom nav now; a second top-right copy
+              just crowded the hardest-to-reach corner. */}
           <LocationChip />
         </div>
       </header>

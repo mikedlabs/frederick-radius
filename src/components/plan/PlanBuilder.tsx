@@ -367,8 +367,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ChipRow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="-mx-1 overflow-x-auto px-1 scrollbar-hide">
-      <div className="flex min-w-max gap-1.5">{children}</div>
+    <div className="hscroll -mx-1 px-1">
+      <div className="flex min-w-max gap-1.5 py-0.5">{children}</div>
     </div>
   );
 }
@@ -390,7 +390,7 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+      className="tap-press inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition-colors"
       style={{
         borderColor: active ? accentColor : "var(--app-border)",
         background: active ? accentColor : "var(--app-bg-elevated)",
