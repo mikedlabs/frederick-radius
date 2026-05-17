@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown } from "lucide-react";
+import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
@@ -51,6 +51,9 @@ export default function EventsExplorer({
   const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"list" | "calendar" | "map">("list");
+  // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
+  // collapsed by default so the page leads with events, not controls.
+  const [showFilters, setShowFilters] = useState(false);
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (k: string) =>
@@ -135,6 +138,8 @@ export default function EventsExplorer({
   }, [viewState]);
 
   const anyFilter = cat !== null || town !== null || time !== "all" || q.trim() !== "";
+  // Count only the panel facets (search is its own visible field).
+  const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0);
   const clear = () => {
     setCat(null);
     setTown(null);
@@ -197,43 +202,43 @@ export default function EventsExplorer({
         </div>
       </div>
 
-      {/* Two compact dropdowns instead of two rows of chips. The time
-          filter is gone — the horizon groups below ("Today & tonight",
-          "This weekend"…) already organize by time, so a time filter
-          on top of that was redundant noise. */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative">
-          <label htmlFor="evt-cat" className="sr-only">Filter by type</label>
-          <select
-            id="evt-cat"
-            value={cat ?? ""}
-            onChange={(e) => setCat(e.target.value || null)}
-            className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-          >
-            <option value="">All types</option>
-            {categories.map((c) => (
-              <option key={c.slug} value={c.slug}>{c.name}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-        </div>
-        <div className="relative">
-          <label htmlFor="evt-town" className="sr-only">Filter by town</label>
-          <select
-            id="evt-town"
-            value={town ?? ""}
-            onChange={(e) => setTown(e.target.value || null)}
-            className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-          >
-            <option value="">All towns</option>
-            {towns.map((t) => (
-              <option key={t.slug} value={t.slug}>{t.name}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-        </div>
+      {/* One Filters button instead of an always-on facet wall, so the
+          page leads with events. The facets (type/town) tuck into a
+          panel. State / ViewState / lens / deeplink wiring is unchanged
+          — this is purely how the controls are presented. */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setShowFilters((v) => !v)}
+          aria-expanded={showFilters}
+          aria-controls="evt-filter-panel"
+          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition"
+          style={{
+            borderColor: "var(--app-border)",
+            background:
+              filterCount > 0
+                ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
+                : "var(--app-bg-elevated)",
+            color: filterCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
+          }}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          Filters
+          {filterCount > 0 && (
+            <span
+              className="inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+              style={{ background: "var(--app-brand)" }}
+            >
+              {filterCount}
+            </span>
+          )}
+          <ChevronDown
+            className="h-3.5 w-3.5 transition-transform"
+            strokeWidth={2.25}
+            style={{ transform: showFilters ? "rotate(180deg)" : "none", color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+        </button>
         <span className="ml-auto text-xs" style={{ color: "var(--app-ink-3)" }}>
           {filtered.length} {filtered.length === 1 ? "event" : "events"}
           {anyFilter && (
@@ -248,6 +253,47 @@ export default function EventsExplorer({
           )}
         </span>
       </div>
+
+      {showFilters && (
+        <div
+          id="evt-filter-panel"
+          className="flex flex-wrap items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-2.5"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <div className="relative">
+            <label htmlFor="evt-cat" className="sr-only">Filter by type</label>
+            <select
+              id="evt-cat"
+              value={cat ?? ""}
+              onChange={(e) => setCat(e.target.value || null)}
+              className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              <option value="">All types</option>
+              {categories.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          </div>
+          <div className="relative">
+            <label htmlFor="evt-town" className="sr-only">Filter by town</label>
+            <select
+              id="evt-town"
+              value={town ?? ""}
+              onChange={(e) => setTown(e.target.value || null)}
+              className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              <option value="">All towns</option>
+              {towns.map((t) => (
+                <option key={t.slug} value={t.slug}>{t.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       {view === "calendar" ? (
