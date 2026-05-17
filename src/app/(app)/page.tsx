@@ -1,32 +1,9 @@
-import type { Metadata } from "next";
-import RadiusBuilder from "@/components/radius/RadiusBuilder";
-import { radiusPlaces } from "@/lib/loaders/places";
+import { redirect } from "next/navigation";
 
-// Phase 2: Radius is the home route. The page set is the same as every
-// other surface: deduplicated (gated by RADIUS_DEDUPE) and with closed
-// businesses removed. Consuming the raw PLACES array is why Volt
-// (closed 2020) and triple-listed businesses appeared here.
-const OPEN_PLACES = radiusPlaces();
-
-export const metadata: Metadata = {
-  description: "Set a point, set a distance — see everything inside. The Frederick Radius signature interaction.",
-};
-
-export default function HomeRadiusPage() {
-  return (
-    <div className="space-y-5">
-      <header className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Signature interaction
-        </p>
-        <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Set a point. Set a distance. See what&apos;s inside.
-        </h1>
-        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Frederick&apos;s defining interaction — walking from your hotel, driving from a meeting, hiking from a trailhead.
-        </p>
-      </header>
-      <RadiusBuilder places={OPEN_PLACES} />
-    </div>
-  );
+// Owner decision (2026-05-17): the app opens on Today, not Radius.
+// Today is the daily landing — what's happening now and what's
+// coming up. Radius is its own destination at /radius (and a nav
+// tab). Old "/" bookmarks / the PWA entry land on Today.
+export default function Home() {
+  redirect("/today");
 }

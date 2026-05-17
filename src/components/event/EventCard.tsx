@@ -17,19 +17,37 @@ export default function EventCard({ event }: { event: EventWithMeta }) {
       style={{ borderColor: "var(--app-border)" }}
     >
       <div
-        aria-hidden
-        className="flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
+        className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] border"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
       >
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: cat?.color ?? "var(--app-brand)" }}>
-          {date.month}
-        </span>
-        <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
-          {date.day}
-        </span>
-        <span className="mt-0.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-          {date.weekday}
-        </span>
+        {event.hero_image ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo; plain img avoids a domain allowlist for the key-safe proxy */}
+            <img
+              src={event.hero_image}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 flex items-baseline justify-center gap-1 px-1 pb-1 text-white">
+              <span className="text-[9px] font-bold uppercase tracking-wide">{date.month}</span>
+              <span className="font-serif text-[15px] font-semibold leading-none">{date.day}</span>
+            </div>
+          </>
+        ) : (
+          <div aria-hidden className="flex h-full w-full flex-col items-center justify-center">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: cat?.color ?? "var(--app-brand)" }}>
+              {date.month}
+            </span>
+            <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
+              {date.day}
+            </span>
+            <span className="mt-0.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+              {date.weekday}
+            </span>
+          </div>
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-2">

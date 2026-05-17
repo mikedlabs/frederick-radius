@@ -247,64 +247,53 @@ export default function TodayTabs({
         </Link>
       </div>
 
-      {/* Pill tabs — horizontal scroll on mobile, with edge fade hint */}
-      <div className="tab-strip relative -mx-4">
-        <div
-          role="tablist"
-          aria-label="What to do filters"
-          className="flex gap-1.5 overflow-x-auto px-4 pb-1 scrollbar-hide"
-          style={{ scrollSnapType: "x mandatory" }}
-        >
-          {orderedTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = tab.key === active;
-            return (
-              <button
-                key={tab.key}
-                role="tab"
-                aria-selected={isActive}
-                aria-controls={`tab-panel-${tab.key}`}
-                onClick={() => {
-                  setActive(tab.key);
-                  // Light haptic on tab switch
-                  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-                    navigator.vibrate?.(8);
-                  }
-                }}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition active:scale-[0.97]"
-                style={{
-                  background: isActive ? tab.accent : "var(--app-bg-elevated)",
-                  color: isActive ? "white" : "var(--app-ink-2)",
-                  borderColor: isActive ? tab.accent : "var(--app-border)",
-                  scrollSnapAlign: "start",
-                  minHeight: 36,
-                }}
-              >
-                <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                {tab.label}
-                {tab.count > 0 && (
-                  <span
-                    className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums"
-                    style={{
-                      background: isActive ? "rgba(255,255,255,0.25)" : "var(--app-bg-sunken)",
-                      color: isActive ? "white" : "var(--app-ink-3)",
-                    }}
-                  >
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-        {/* Right edge fade — signals more content scrollable on mobile */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute right-0 top-0 h-full w-8 sm:hidden"
-          style={{
-            background: "linear-gradient(to left, var(--app-bg) 0%, transparent 100%)",
-          }}
-        />
+      {/* Pill tabs — wrapped, every tab visible at once (no hidden
+          horizontal scroll). */}
+      <div
+        role="tablist"
+        aria-label="What to do filters"
+        className="flex flex-wrap gap-1.5"
+      >
+        {orderedTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = tab.key === active;
+          return (
+            <button
+              key={tab.key}
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`tab-panel-${tab.key}`}
+              onClick={() => {
+                setActive(tab.key);
+                // Light haptic on tab switch
+                if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+                  navigator.vibrate?.(8);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition active:scale-[0.97]"
+              style={{
+                background: isActive ? tab.accent : "var(--app-bg-elevated)",
+                color: isActive ? "white" : "var(--app-ink-2)",
+                borderColor: isActive ? tab.accent : "var(--app-border)",
+                minHeight: 36,
+              }}
+            >
+              <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+              {tab.label}
+              {tab.count > 0 && (
+                <span
+                  className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums"
+                  style={{
+                    background: isActive ? "rgba(255,255,255,0.25)" : "var(--app-bg-sunken)",
+                    color: isActive ? "white" : "var(--app-ink-3)",
+                  }}
+                >
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Meta line + accent rule */}

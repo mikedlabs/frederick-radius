@@ -9,8 +9,39 @@ import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import PlacePhoto from "./PlacePhoto";
 import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
-import TrustChip from "@/components/ui/TrustChip";
-import { placeHoursTrust } from "@/lib/trust";
+import PlaceStatus from "./PlaceStatus";
+import { knownFor } from "@/lib/cuisine";
+import { Star } from "lucide-react";
+
+/**
+ * "What people rave about" — only when there is a real Google rating
+ * with enough reviews to mean something (≥20). Honest: most DFP rows
+ * have no rating and simply show nothing, never a fabricated score.
+ */
+function Rave({
+  rating,
+  count,
+  className = "",
+}: {
+  rating?: number;
+  count?: number;
+  className?: string;
+}) {
+  if (!rating || !count || count < 20) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[12px] font-semibold tabular-nums ${className}`}
+      style={{ color: "var(--app-ink-2)" }}
+      title={`${rating.toFixed(1)} from ${count.toLocaleString()} Google reviews`}
+    >
+      <Star className="h-3 w-3" strokeWidth={0} fill="var(--app-warning)" aria-hidden />
+      {rating.toFixed(1)}
+      <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>
+        ({count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count})
+      </span>
+    </span>
+  );
+}
 
 const GLYPH_BY_CATEGORY: Record<string, string> = {
   coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
@@ -33,7 +64,7 @@ export default function PlaceCard({
 }: {
   place: PlaceCardData;
   compact?: boolean;
-  variant?: "row" | "feature";
+  variant?: "row" | "feature" | "tile" | "grid";
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "#1A1A1A";
@@ -43,6 +74,8 @@ export default function PlaceCard({
   const photoUrl = place.google_photo_url ?? place.hero_image ?? (photo ? wikimediaUrl(photo.file, 800) : null);
   const { openSheet } = usePlaceSheet();
   const openDetail = () => { haptic("light"); openSheet(place); };
+  // "Known for" — the real descriptive blurb, or null for DFP filler.
+  const kf = knownFor(place);
 
   if (variant === "feature" && photoUrl) {
     return (
@@ -91,31 +124,180 @@ export default function PlaceCard({
     );
   }
 
+  // Fixed-width, photo-forward tile for horizontal shelves. Crafted the
+  // same whether or not a photo exists — most DFP places have none, so a
+  // tonal category panel stands in so a shelf never looks broken.
+  if (variant === "tile") {
+    return (
+      <article
+        className="hover-lift group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <button
+          type="button"
+          onClick={openDetail}
+          aria-label={`View ${place.name} details`}
+          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
+          <div className="relative h-40 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+            {photoUrl ? (
+              <>
+                <PlacePhoto
+                  src={photoUrl}
+                  alt={photo?.alt ?? place.name}
+                  glyph={glyph}
+                  color={color}
+                  sizes="244px"
+                  className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.06]"
+                  rounded="0"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
+              </>
+            ) : (
+              <div
+                aria-hidden
+                className="flex h-full w-full items-center justify-center"
+                style={{
+                  background: `radial-gradient(120% 120% at 30% 20%, ${color}30, ${color}0a 70%)`,
+                  color,
+                }}
+              >
+                <span className="text-[56px] leading-none opacity-90 transition-transform duration-[600ms] ease-out group-hover:scale-[1.08]">
+                  {glyph}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="space-y-1 p-3.5">
+            <h3
+              className="truncate text-[15px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {place.name}
+            </h3>
+            <p
+              className="truncate text-[12px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {cat?.name ?? place.category}
+              {place.distance_m !== undefined && (
+                <> · {formatDistance(place.distance_m)}</>
+              )}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <PlaceStatus status={place.open_status} className="!text-[12px]" />
+              <Rave
+                rating={place.google_rating}
+                count={place.google_rating_count}
+                className="!text-[12px]"
+              />
+            </div>
+          </div>
+        </button>
+        <div className="absolute right-2 top-2 z-10">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+        </div>
+      </article>
+    );
+  }
+
+  // Fluid compact card for a responsive grid — fills its cell, small
+  // image, tight text. Roughly a third the footprint of `tile`, so a
+  // 2-up grid shows ~6 places per fold instead of ~1.5.
+  if (variant === "grid") {
+    return (
+      <article
+        className="hover-lift group relative overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <button
+          type="button"
+          onClick={openDetail}
+          aria-label={`View ${place.name} details`}
+          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
+          <div className="relative h-[88px] w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+            {photoUrl ? (
+              <>
+                <PlacePhoto
+                  src={photoUrl}
+                  alt={photo?.alt ?? place.name}
+                  glyph={glyph}
+                  color={color}
+                  sizes="50vw"
+                  className="transition-transform duration-500 ease-out group-hover:scale-105"
+                  rounded="0"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
+              </>
+            ) : (
+              <div
+                aria-hidden
+                className="flex h-full w-full items-center justify-center"
+                style={{
+                  background: `radial-gradient(120% 120% at 30% 20%, ${color}2e, ${color}0a 70%)`,
+                  color,
+                }}
+              >
+                <span className="text-[30px] leading-none opacity-90">{glyph}</span>
+              </div>
+            )}
+          </div>
+          <div className="space-y-0.5 px-2.5 py-2">
+            <h3
+              className="truncate text-[13.5px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {place.name}
+            </h3>
+            <p
+              className="truncate text-[11px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {cat?.name ?? place.category}
+              {place.distance_m !== undefined && (
+                <> · {formatDistance(place.distance_m)}</>
+              )}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <PlaceStatus status={place.open_status} className="!text-[11px]" />
+              <Rave
+                rating={place.google_rating}
+                count={place.google_rating_count}
+                className="!text-[11px]"
+              />
+            </div>
+          </div>
+        </button>
+      </article>
+    );
+  }
+
   return (
     <article
-      className="hover-lift group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
+      className="hover-lift group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 shadow-[var(--app-shadow-1)]"
       style={{ borderColor: "var(--app-border)" }}
     >
       {photoUrl ? (
-        <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
+        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
           <PlacePhoto
             src={photoUrl}
             alt={photo?.alt ?? place.name}
             glyph={glyph}
             color={color}
-            sizes="56px"
+            sizes="64px"
           />
         </div>
       ) : (
         <div
           aria-hidden
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
-          style={{ background: `${color}18`, color }}
+          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
+          style={{ background: `linear-gradient(145deg, ${color}26, ${color}0c)`, color }}
         >
-          <span className="text-[26px] leading-none">{glyph}</span>
+          <span className="text-[28px] leading-none opacity-90">{glyph}</span>
         </div>
       )}
-      <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-baseline gap-2">
           <button
             type="button"
@@ -128,20 +310,21 @@ export default function PlaceCard({
             {place.name}
           </button>
           {place.distance_m !== undefined && (
-            <span className="ml-auto whitespace-nowrap text-xs tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <span className="ml-auto whitespace-nowrap text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
               {formatDistance(place.distance_m)}
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {cat?.name ?? place.category} · {place.short_blurb}
+        <p className="mt-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          {cat?.name ?? place.category}
+          {kf && <> · {kf}</>}
         </p>
         {!compact && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <OpenClosedDot status={place.open_status} />
-            <TrustChip signal={placeHoursTrust(place.open_status)} />
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <PlaceStatus status={place.open_status} />
+            <Rave rating={place.google_rating} count={place.google_rating_count} />
             {place.price_band && (
-              <span className="text-xs font-medium" style={{ color: "var(--app-ink-3)" }}>
+              <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
                 {"$".repeat(place.price_band)}
               </span>
             )}

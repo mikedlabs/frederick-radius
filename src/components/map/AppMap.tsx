@@ -670,10 +670,11 @@ export default function AppMap({
 
   return (
     <div className="space-y-2">
-      {/* Premium filter rail — glyphs match the map markers, edge fades hint scroll */}
-      <div className="relative -mx-4">
-        <div className="overflow-x-auto px-4 scrollbar-hide">
-          <ul className="flex min-w-max items-center gap-2 py-0.5">
+      {/* Filter chips — wrapped, every category visible at once (no
+          hidden horizontal scroll), consistent with the rest of the app. */}
+      <div>
+        <div>
+          <ul className="flex flex-wrap items-center gap-2 py-0.5">
             <li>
               <button
                 type="button"
@@ -729,6 +730,31 @@ export default function AppMap({
               >
                 <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"✨"}</span>
                 Hidden gems
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveCats((prev) => {
+                    const next = new Set(prev);
+                    if (next.has("coffee")) next.delete("coffee");
+                    else next.add("coffee");
+                    return next;
+                  })
+                }
+                aria-pressed={activeCats.has("coffee")}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: activeCats.has("coffee") ? "#8B5A2B" : "var(--app-bg-elevated)",
+                  color: activeCats.has("coffee") ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${activeCats.has("coffee") ? "#8B5A2B" : "var(--app-border)"}`,
+                  boxShadow: activeCats.has("coffee") ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Just coffee — cafes, roasters, espresso bars"
+              >
+                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"☕"}</span>
+                Coffee
               </button>
             </li>
             {civic.length > 0 && (
@@ -827,9 +853,9 @@ export default function AppMap({
           default so the rail stays calm; amenities only paint on the map
           once you zoom into a neighborhood. */}
       {amenityOpen && (
-        <div className="relative -mx-4">
-          <div className="overflow-x-auto px-4 scrollbar-hide">
-            <ul className="flex min-w-max items-center gap-2 py-0.5">
+        <div>
+          <div>
+            <ul className="flex flex-wrap items-center gap-2 py-0.5">
               {AMENITY_GROUPS.map((g) => {
                 const on = amenityGroups.has(g.key);
                 return (
@@ -1205,10 +1231,27 @@ export default function AppMap({
             type="geojson"
             data={filteredOsmGeoJson}
             cluster
-            clusterRadius={50}
-            clusterMaxZoom={15}
+            clusterRadius={70}
+            clusterMaxZoom={16}
           >
-            {/* Cluster circles */}
+            {/* Soft glow under each cluster — depth, not a flat disk */}
+            <Layer
+              id="cluster-glow"
+              type="circle"
+              filter={["has", "point_count"]}
+              paint={{
+                "circle-color": [
+                  "step", ["get", "point_count"],
+                  "#2A5D8F", 25, "#C4451C", 100, "#7E1F1F",
+                ],
+                "circle-opacity": 0.22,
+                "circle-blur": 1,
+                "circle-radius": [
+                  "step", ["get", "point_count"],
+                  26, 25, 34, 100, 42,
+                ],
+              }}
+            />
             <Layer
               id="clusters"
               type="circle"
@@ -1216,19 +1259,17 @@ export default function AppMap({
               paint={{
                 "circle-color": [
                   "step", ["get", "point_count"],
-                  "#2A5D8F", 25,
-                  "#C4451C", 100,
-                  "#7E1F1F",
+                  "#2A5D8F", 25, "#C4451C", 100, "#7E1F1F",
                 ],
-                "circle-opacity": 0.85,
+                "circle-opacity": 0.95,
+                "circle-blur": 0.15,
                 "circle-radius": [
-                  "step", ["get", "point_count"],
-                  16, 25,
-                  22, 100,
-                  28,
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 15, 25, 19, 100, 25, 500, 32,
                 ],
-                "circle-stroke-color": "#FAFAF7",
-                "circle-stroke-width": 2,
+                "circle-stroke-color": "#0A0A0A",
+                "circle-stroke-width": 1,
+                "circle-stroke-opacity": 0.5,
               }}
             />
             <Layer
@@ -1237,10 +1278,17 @@ export default function AppMap({
               filter={["has", "point_count"]}
               layout={{
                 "text-field": "{point_count_abbreviated}",
-                "text-size": 12,
-                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+                "text-size": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 12, 100, 15, 500, 17,
+                ],
+                "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
               }}
-              paint={{ "text-color": "#fff" }}
+              paint={{
+                "text-color": "#fff",
+                "text-halo-color": "rgba(0,0,0,0.25)",
+                "text-halo-width": 0.8,
+              }}
             />
             {/* Individual unclustered points — same icon language, smaller
                 and a touch softer so curated places stay primary */}
@@ -1256,12 +1304,15 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  12, 0.34,
-                  14, 0.5,
-                  16, 0.72,
-                  18, 0.88,
+                  12, 0.22,
+                  14, 0.3,
+                  16, 0.42,
+                  18, 0.54,
                 ],
-                "icon-allow-overlap": ["step", ["zoom"], false, 16, true],
+                // Collision declutter at every zoom (no step→true): OSM
+                // is secondary, so let crowded pins hide and reveal as
+                // you zoom — the "dynamic" behavior other maps have.
+                "icon-allow-overlap": false,
                 "icon-anchor": "center",
               }}
               paint={{ "icon-opacity": 0.8 }}
@@ -1286,11 +1337,13 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  14, 0.42,
-                  16, 0.66,
-                  18, 0.84,
+                  14, 0.32,
+                  16, 0.48,
+                  18, 0.62,
                 ],
-                "icon-allow-overlap": true,
+                // Opt-in + minzoom 14 + sparse, but still collision-
+                // declutter so a dense block of bins stays readable.
+                "icon-allow-overlap": false,
                 "icon-anchor": "center",
               }}
               paint={{ "icon-opacity": 0.96 }}
@@ -1328,8 +1381,8 @@ export default function AppMap({
             type="geojson"
             data={curatedGeoJson}
             cluster
-            clusterRadius={50}
-            clusterMaxZoom={15}
+            clusterRadius={70}
+            clusterMaxZoom={16}
             clusterProperties={{
               food: ["+", ["case", ["==", ["get", "bucket"], "food"], 1, 0]],
               outdoors: ["+", ["case", ["==", ["get", "bucket"], "outdoors"], 1, 0]],
@@ -1338,6 +1391,35 @@ export default function AppMap({
               civic: ["+", ["case", ["==", ["get", "bucket"], "civic"], 1, 0]],
             }}
           >
+            {/* Dominant-category tint, shared by the glow + the disk. */}
+            <Layer
+              id="curated-cluster-glow"
+              type="circle"
+              filter={["has", "point_count"]}
+              paint={{
+                "circle-color": [
+                  "let",
+                  "mx",
+                  ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
+                  [
+                    "case",
+                    ["==", ["var", "mx"], 0], "#C4451C",
+                    ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
+                    ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
+                    ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
+                    ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
+                    ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
+                    "#C4451C",
+                  ],
+                ],
+                "circle-opacity": 0.25,
+                "circle-blur": 1,
+                "circle-radius": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 26, 25, 32, 100, 40, 500, 50,
+                ],
+              }}
+            />
             <Layer
               id="curated-clusters"
               type="circle"
@@ -1360,15 +1442,15 @@ export default function AppMap({
                     "#C4451C",
                   ],
                 ],
-                "circle-opacity": 0.92,
+                "circle-opacity": 0.96,
+                "circle-blur": 0.15,
                 "circle-radius": [
-                  "step", ["get", "point_count"],
-                  18, 25,
-                  24, 100,
-                  30,
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 16, 25, 21, 100, 27, 500, 34,
                 ],
-                "circle-stroke-color": "#FAFAF7",
-                "circle-stroke-width": 2.5,
+                "circle-stroke-color": "#0A0A0A",
+                "circle-stroke-width": 1,
+                "circle-stroke-opacity": 0.45,
               }}
             />
             <Layer
@@ -1377,10 +1459,17 @@ export default function AppMap({
               filter={["has", "point_count"]}
               layout={{
                 "text-field": "{point_count_abbreviated}",
-                "text-size": 13,
-                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+                "text-size": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 12, 100, 15, 500, 18,
+                ],
+                "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
               }}
-              paint={{ "text-color": "#fff" }}
+              paint={{
+                "text-color": "#fff",
+                "text-halo-color": "rgba(0,0,0,0.28)",
+                "text-halo-width": 0.8,
+              }}
             />
             <Layer
               id="curated-icons"
@@ -1394,10 +1483,10 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  11, 0.5,
-                  14, 0.72,
-                  16, 1,
-                  18, 1.18,
+                  11, 0.32,
+                  14, 0.46,
+                  16, 0.62,
+                  18, 0.76,
                 ],
                 // Decluttering is done by CLUSTERING, not icon collision:
                 // with the label-heavy interim base style, collision makes

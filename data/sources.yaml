@@ -1115,3 +1115,81 @@ sources:
       Hyperlocal news headlines for context — strictly title + link +
       timestamp, never full text (copyright). Confirm the RSS path at
       activation; complements google_news_rss with primary-source local.
+
+  - id: cof_trash_receptacles
+    name: City of Frederick Public Trash Receptacles
+    owner: City of Frederick Department of Public Works
+    url: internal://needs-acquisition
+    endpoint_type: internal_submission
+    format: geojson
+    refresh_cadence: yearly
+    license: local government public records, request from DPW
+    contact: City of Frederick DPW / Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_review
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Requested feature: show downtown trash-can locations. Honest
+      status of the data: there is NO authoritative public dataset.
+      The City SpiresGIS was probed (all 72 published services) and
+      has NO waste/refuse/sanitation/recycling layer. OSM
+      amenity=waste_basket already flows through the pipeline into
+      the map's "Trash" amenities toggle (overpass.ts → category
+      "trash" → AppMap AMENITY_GROUPS), so it works the moment OSM
+      has coverage — but Frederick street-furniture tagging is
+      volunteer-sparse. Durable paths, both human-gated: (1) a direct
+      data request to City DPW for a receptacle list/shapefile, wired
+      first-party like business_specials; (2) crowd/staff-map them
+      into OSM, which the existing pipeline ingests automatically.
+      Do NOT fabricate pins. Keep pending_review until real data is
+      obtained.
+
+  - id: mapillary_objects
+    name: Mapillary — Street-Level Object Detections
+    owner: Mapillary
+    url: https://graph.mapillary.com/map_features
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: monthly
+    license: |
+      Mapillary API terms; requires a free access token. Imagery is
+      CC-BY-SA; derived map-feature detections are openly licensed and
+      explicitly intended for OSM import. Confirm exact CC terms +
+      attribution string at activation.
+    contact: Mapillary developer platform
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      The ToS-clean "use street imagery to find trash cans" path
+      (Google Street View forbids automated extraction; Mapillary is
+      purpose-built for it). map_features exposes CV-detected point
+      objects with lat/lng; the waste class is object--trash-can
+      (verify the exact value + bbox-filter against Frederick at
+      activation — Mapillary coverage is itself capture-dependent, so
+      do not assume density). Two activation paths, both human-gated:
+      (1) PREFERRED — push detections into OSM as amenity=waste_basket;
+      the existing overpass.ts pipeline then ingests them into the
+      map's "Trash" amenities layer with ZERO new app code; (2) wire
+      graph.mapillary.com/map_features directly as a first-party layer
+      (needs a transform + token). Pairs with cof_trash_receptacles
+      (DPW data remains the most authoritative route). Needs a free
+      token; never fabricate pins from low-confidence detections.
+
+      STATUS: path (2) is now SCAFFOLDED + DORMANT at
+      src/lib/integrations/mapillary.ts — fetchMapillaryTrash() returns
+      the OsmPlace "trash" shape, drop-in for the map's amenities
+      layer. Double-gated, inert until BOTH are set by a human:
+      MAPILLARY_TOKEN (server-only env secret) AND MAPILLARY_TRASH=1
+      (explicit activation flag, mirrors COF_PARCELS=1). It is NOT yet
+      wired into AppMap — wiring it in is itself the activation step,
+      so the scaffold changes nothing a user sees. Verify
+      TRASH_OBJECT_VALUES against the live Mapillary taxonomy before
+      flipping on (an empty result is usually a stale class name, not
+      "no cans"). schema_file/transform_file stay null: the generic
+      pipeline (fetch_all.ts) has no token-auth, so this is a runtime
+      integration, not a fetch_all source — honest representation.

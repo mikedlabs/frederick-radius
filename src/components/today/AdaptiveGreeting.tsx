@@ -2,7 +2,15 @@ import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
 function pickGreeting(hour: number, conditions: string, precip: number): string {
-  const wet = precip >= 30 || /rain|storm|shower|snow|sleet/i.test(conditions);
+  // Honest weather: NWS shortForecast like "Isolated Rain Showers" or
+  // "Slight Chance Rain" describes a POSSIBILITY, not active rain, and
+  // precip is a percent chance — not "it's raining". Telling someone to
+  // "duck inside" on a dry 30%-chance day is the app lying. Only call it
+  // wet when conditions name active precip WITHOUT a hedge, or the
+  // chance is genuinely high.
+  const hedged = /chance|slight|isolated|scattered|patchy|areas of|possible|partly|a few/i.test(conditions);
+  const activeWet = /\b(rain|showers?|thunderstorms?|storms?|snow|sleet|drizzle)\b/i.test(conditions) && !hedged;
+  const wet = activeWet || precip >= 65;
   const fog = /fog|mist|haze/i.test(conditions);
   const sunny = /sun|clear|fair/i.test(conditions);
   const cloudy = /cloud|overcast/i.test(conditions);

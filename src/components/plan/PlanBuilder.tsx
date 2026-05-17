@@ -366,11 +366,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ChipRow({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="-mx-1 overflow-x-auto px-1 scrollbar-hide">
-      <div className="flex min-w-max gap-1.5">{children}</div>
-    </div>
-  );
+  // Wrapped — every option visible at once, no hidden horizontal scroll.
+  return <div className="flex flex-wrap gap-1.5">{children}</div>;
 }
 
 function Chip({

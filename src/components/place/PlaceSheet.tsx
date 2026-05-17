@@ -340,7 +340,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
 
         {/* Photo strip — more of what the place actually looks like */}
         {photos.length > 1 && (
-          <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+          <div className="shelf-rail -mx-1 mt-4 gap-2 px-1 pb-1">
             {photos.slice(1, 8).map((u, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -363,7 +363,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         )}
 
         {/* In-app actions — reserve / order / park / directions without leaving */}
-        <div className="-mx-1 mt-5 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+        <div className="mt-5 flex flex-wrap gap-2">
           {placeActions(effectivePlace).map((a) => (
             <ActionChip key={a.key} action={a} />
           ))}

@@ -151,6 +151,39 @@ body {
 }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 
+/* Horizontal "shelf" rail — momentum scroll, gentle snap, contained
+   overscroll so a horizontal flick never hijacks the page, and a soft
+   edge fade so the row reads as "more this way" rather than a hard cut.
+   Named distinctly so it never collides with an unrelated .hscroll. */
+.shelf-rail {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 22px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 16px,
+    #000 calc(100% - 22px),
+    transparent 100%
+  );
+}
+.shelf-rail::-webkit-scrollbar { display: none; }
+.shelf-rail > * { scroll-snap-align: start; }
+@media (prefers-reduced-motion: reduce) {
+  .shelf-rail { scroll-behavior: auto; }
+}
+
 .font-serif { font-family: var(--font-plex-serif), ui-serif, Georgia, serif; }
 .font-mono { font-family: var(--font-plex-mono), ui-monospace, monospace; }
 

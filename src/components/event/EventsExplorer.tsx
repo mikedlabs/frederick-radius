@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X } from "lucide-react";
+import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import MonthGrid from "@/components/event/MonthGrid";
 import EventsMap from "@/components/event/EventsMap";
-import LensBar from "@/components/event/LensBar";
+import SectionHeading from "@/components/ui/SectionHeading";
+import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import type { CalEvent } from "@/lib/loaders/calendar";
@@ -80,6 +81,15 @@ export default function EventsExplorer({
   const [q, setQ] = useState("");
   const [view, setView] = useState<"list" | "calendar" | "map">("list");
   const [month, setMonth] = useState(() => nyMonth(nowISO));
+  // Which horizon groups are expanded past their scannable peek.
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (k: string) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
 
   const live = useMemo(() => new Set(liveSlugs), [liveSlugs]);
   const now = +new Date(nowISO);
@@ -107,6 +117,20 @@ export default function EventsExplorer({
       return true;
     });
   }, [events, time, cat, town, q, now, next24ISO, weekendStartISO, weekendEndISO]);
+
+  // Group the filtered list into human horizons so the default view is
+  // navigable at a glance instead of a 400-row chronological scroll.
+  const horizonGroups = useMemo(
+    () =>
+      groupByHorizon(filtered, {
+        now,
+        next24: +new Date(next24ISO),
+        weekendStart: +new Date(weekendStartISO),
+        weekendEnd: +new Date(weekendEndISO),
+        live,
+      }),
+    [filtered, now, next24ISO, weekendStartISO, weekendEndISO, live],
+  );
 
   const byDay = useMemo(() => {
     const m: Record<string, CalEvent[]> = {};
@@ -147,12 +171,6 @@ export default function EventsExplorer({
     [cat, town, time],
   );
 
-  const applyViewState = (s: ViewState) => {
-    setCat(s.cats?.[0] ?? null);
-    setTown(s.municipality ?? null);
-    setTime(whenToTime(s.when));
-  };
-
   // Mirror the structural view into the URL (deep-linkable, shareable).
   // Initial state is parsed server-side (initialView), so no hydrate
   // effect is needed. history.replaceState, not router navigation:
@@ -171,13 +189,6 @@ export default function EventsExplorer({
     setTime("all");
     setQ("");
   };
-
-  const chip = (active: boolean) =>
-    ({
-      background: active ? "var(--app-brand)" : "var(--app-bg-elevated)",
-      color: active ? "white" : "var(--app-ink-2)",
-      border: `1px solid ${active ? "var(--app-brand)" : "var(--app-border)"}`,
-    }) as const;
 
   return (
     <div className="space-y-3">
@@ -234,74 +245,44 @@ export default function EventsExplorer({
         </div>
       </div>
 
-      {/* Time + category + town chips */}
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-hide">
-        {(
-          [
-            ["all", "All"],
-            ["today", "Today"],
-            ["weekend", "This weekend"],
-            ["week", "This week"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setTime(key)}
-            className="shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-            style={chip(time === key)}
+      {/* Two compact dropdowns instead of two rows of chips. The time
+          filter is gone — the horizon groups below ("Today & tonight",
+          "This weekend"…) already organize by time, so a time filter
+          on top of that was redundant noise. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <label htmlFor="evt-cat" className="sr-only">Filter by type</label>
+          <select
+            id="evt-cat"
+            value={cat ?? ""}
+            onChange={(e) => setCat(e.target.value || null)}
+            className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
-            {label}
-          </button>
-        ))}
-        <span
-          aria-hidden
-          className="mx-1 h-5 w-px shrink-0 self-center"
-          style={{ background: "var(--app-border)" }}
-        />
-        <button
-          type="button"
-          onClick={() => setCat(null)}
-          className="shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-          style={chip(cat === null)}
-        >
-          All types
-        </button>
-        {categories.map((c) => (
-          <button
-            key={c.slug}
-            type="button"
-            onClick={() => setCat(cat === c.slug ? null : c.slug)}
-            className="shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-            style={chip(cat === c.slug)}
+            <option value="">All types</option>
+            {categories.map((c) => (
+              <option key={c.slug} value={c.slug}>{c.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+        </div>
+        <div className="relative">
+          <label htmlFor="evt-town" className="sr-only">Filter by town</label>
+          <select
+            id="evt-town"
+            value={town ?? ""}
+            onChange={(e) => setTown(e.target.value || null)}
+            className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
-            {c.name}
-          </button>
-        ))}
-      </div>
-
-      <LensBar current={viewState} onApply={applyViewState} />
-
-      <div className="flex items-center justify-between gap-3">
-        <select
-          value={town ?? ""}
-          onChange={(e) => setTown(e.target.value || null)}
-          aria-label="Filter by town"
-          className="rounded-full border px-3 py-2 text-xs font-semibold"
-          style={{
-            background: "var(--app-bg-elevated)",
-            borderColor: "var(--app-border)",
-            color: "var(--app-ink-2)",
-          }}
-        >
-          <option value="">All towns</option>
-          {towns.map((t) => (
-            <option key={t.slug} value={t.slug}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-        <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+            <option value="">All towns</option>
+            {towns.map((t) => (
+              <option key={t.slug} value={t.slug}>{t.name}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+        </div>
+        <span className="ml-auto text-xs" style={{ color: "var(--app-ink-3)" }}>
           {filtered.length} {filtered.length === 1 ? "event" : "events"}
           {anyFilter && (
             <button
@@ -354,21 +335,54 @@ export default function EventsExplorer({
           )}
         </p>
       ) : (
-        <ul className="space-y-2">
-          {filtered.map((e) => (
-            <li key={e.slug} className="relative">
-              {live.has(e.slug) && (
-                <span
-                  className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-                  style={{ background: "var(--app-positive)", color: "white" }}
-                >
-                  ● Live now
-                </span>
-              )}
-              <EventCard event={e} />
-            </li>
-          ))}
-        </ul>
+        // Grouped by human time horizon — "what's on now / today / this
+        // weekend / later" — so the page is navigable at a glance, not
+        // a 400-row chronological scroll. Each group shows a scannable
+        // peek and expands in place; nothing is hidden.
+        <div className="space-y-6">
+          {horizonGroups.map((g) => {
+            const isOpen = openGroups.has(g.key);
+            const PEEK = 6;
+            const shown = isOpen ? g.events : g.events.slice(0, PEEK);
+            return (
+              <section key={g.key} className="space-y-3">
+                <SectionHeading title={g.label} count={g.events.length} />
+                <ul className="space-y-2">
+                  {shown.map((e) => (
+                    <li key={e.slug} className="relative">
+                      {live.has(e.slug) && (
+                        <span
+                          className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                          style={{ background: "var(--app-positive)", color: "white" }}
+                        >
+                          ● Live now
+                        </span>
+                      )}
+                      <EventCard event={e} />
+                    </li>
+                  ))}
+                </ul>
+                {g.events.length > PEEK && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(g.key)}
+                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold transition active:opacity-70"
+                    style={{ color: "var(--app-brand)" }}
+                  >
+                    <ChevronDown
+                      className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      strokeWidth={2.25}
+                      aria-hidden
+                    />
+                    {isOpen
+                      ? "Show fewer"
+                      : `Show all ${g.events.length} · ${g.label.toLowerCase()}`}
+                  </button>
+                )}
+              </section>
+            );
+          })}
+        </div>
       )}
     </div>
   );

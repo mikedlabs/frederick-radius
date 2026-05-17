@@ -115,7 +115,7 @@ export default function EventsByTown({
       <div
         role="tablist"
         aria-label="When"
-        className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 scrollbar-hide"
+        className="flex flex-wrap gap-1.5"
       >
         {WHEN_TABS.map((t) => {
           const active = t.key === when;
@@ -139,9 +139,9 @@ export default function EventsByTown({
         })}
       </div>
 
-      {/* Town chip rail */}
-      <div className="-mx-4 overflow-x-auto px-4 scrollbar-hide">
-        <ul className="flex min-w-max gap-2">
+      {/* Town chips — wrapped, all visible */}
+      <div>
+        <ul className="flex flex-wrap gap-2">
           <li>
             <button
               onClick={() => pickTown(undefined)}

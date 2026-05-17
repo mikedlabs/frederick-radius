@@ -30,10 +30,59 @@ const HALO = "#0A0A0A";
 const has = (id: string, ...needles: string[]) =>
   needles.some((n) => id.includes(n));
 
+/**
+ * Frederick County IS its terrain — the Catoctin and South Mountain
+ * ridges wrapped around the Monocacy valley. A flat dark grid throws
+ * that away and reads as anyone's map. A subtle, System-Black-tuned
+ * hillshade makes the relief register as faint warm light on the
+ * ridges without turning it into a topo map or costing legibility.
+ * Idempotent: the style reloads on nav, so guard the source/layer.
+ */
+function installRelief(map: GLMap): void {
+  try {
+    if (!map.getSource("fr-dem")) {
+      map.addSource("fr-dem", {
+        type: "raster-dem",
+        url: "mapbox://mapbox.mapbox-terrain-dem-v1",
+        tileSize: 512,
+        maxzoom: 14,
+      });
+    }
+    if (!map.getLayer("fr-hillshade")) {
+      // Sit relief above land/landuse fills but below roads + labels so
+      // wayfinding stays crisp. Anchor to the first road/bridge/symbol.
+      const layers = map.getStyle()?.layers ?? [];
+      const beforeId = layers.find(
+        (l) =>
+          l.type === "symbol" ||
+          /road|bridge|tunnel|street/.test(l.id),
+      )?.id;
+      map.addLayer(
+        {
+          id: "fr-hillshade",
+          type: "hillshade",
+          source: "fr-dem",
+          paint: {
+            "hillshade-shadow-color": "#000000",
+            "hillshade-highlight-color": "#3A352B", // faint warm light
+            "hillshade-accent-color": "#0A0A0A",
+            "hillshade-exaggeration": 0.4, // relief, not a topo map
+            "hillshade-illumination-direction": 315,
+          },
+        },
+        beforeId,
+      );
+    }
+  } catch {
+    /* DEM unavailable on this token/style — degrade silently to flat */
+  }
+}
+
 export function applyFrederickPalette(map: GLMap): void {
   const apply = () => {
     const style = map.getStyle();
     if (!style?.layers) return;
+    installRelief(map);
 
     for (const layer of style.layers) {
       const id = layer.id;
@@ -78,7 +127,19 @@ export function applyFrederickPalette(map: GLMap): void {
 
       if (layer.type === "line") {
         if (has(id, "water", "waterway", "river", "canal", "stream")) {
-          set("line-color", WATER);
+          // The Monocacy and Carroll Creek are the county's spine —
+          // give them a confident, zoom-scaled presence instead of a
+          // default hairline, in the brand's lighter civic blue.
+          set("line-color", "#2C5A6E");
+          set("line-opacity", 0.9);
+          set("line-width", [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            8, 1.2,
+            12, 2.6,
+            16, 5,
+          ]);
           continue;
         }
         if (has(id, "motorway", "trunk")) set("line-color", ROAD_HWY);
