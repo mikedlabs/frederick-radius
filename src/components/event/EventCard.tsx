@@ -4,6 +4,8 @@ import { eventDateBlock } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
+import TrustChip from "@/components/ui/TrustChip";
+import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 
 export default function EventCard({ event }: { event: EventWithMeta }) {
@@ -52,6 +54,7 @@ export default function EventCard({ event }: { event: EventWithMeta }) {
               {cat.name}
             </span>
           )}
+          <TrustChip signal={eventTrust(event)} />
           {event.is_free ? (
             <span className="text-[11px] font-medium" style={{ color: "var(--app-positive)" }}>
               Free

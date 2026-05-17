@@ -32,6 +32,8 @@ import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
+import TrustChip from "@/components/ui/TrustChip";
+import { eventTrust } from "@/lib/trust";
 
 export const revalidate = 300;
 
@@ -151,6 +153,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               <h1 className="mt-0.5 font-serif text-[24px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {event.title}
               </h1>
+              <TrustChip signal={eventTrust(event)} detail className="mt-2" />
             </div>
             <div className="flex shrink-0 items-center">
               <EventActions event={event} actions={["share"]} />
