@@ -732,6 +732,31 @@ export default function AppMap({
                 Hidden gems
               </button>
             </li>
+            <li>
+              <button
+                type="button"
+                onClick={() =>
+                  setActiveCats((prev) => {
+                    const next = new Set(prev);
+                    if (next.has("coffee")) next.delete("coffee");
+                    else next.add("coffee");
+                    return next;
+                  })
+                }
+                aria-pressed={activeCats.has("coffee")}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: activeCats.has("coffee") ? "#8B5A2B" : "var(--app-bg-elevated)",
+                  color: activeCats.has("coffee") ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${activeCats.has("coffee") ? "#8B5A2B" : "var(--app-border)"}`,
+                  boxShadow: activeCats.has("coffee") ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Just coffee — cafes, roasters, espresso bars"
+              >
+                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"☕"}</span>
+                Coffee
+              </button>
+            </li>
             {civic.length > 0 && (
               <li>
                 <button
