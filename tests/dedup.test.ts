@@ -25,7 +25,11 @@ test("applyDedup folds duplicates into canonicals (curated wins)", () => {
   assert.ok(!slugs.has("isabellas-taverna-tapas-bar"), "Isabella's DFP variant folded");
   assert.ok(slugs.has("isabellas-taverna-tapas-bar-frederick"), "curated Isabella's kept");
   assert.ok(!slugs.has("hootch-banter"), "Hootch DFP variant folded");
-  assert.ok(slugs.has("hootch-and-banter"), "curated Hootch kept");
+  // The curated record is hootch-and-banter-frederick (places.ts); the
+  // plain hootch-and-banter is DFP-only and folds. The prior committed
+  // artifact predated the curated record, so its canonical was stale.
+  assert.ok(!slugs.has("hootch-and-banter"), "Hootch DFP variant folded");
+  assert.ok(slugs.has("hootch-and-banter-frederick"), "curated Hootch kept");
 
   console.log(`dedup: ${before} -> ${after.length} (${foldedCount} folded), ${after.length} canonical+singleton`);
 });
