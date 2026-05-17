@@ -66,13 +66,11 @@ describe("publicPlaces (canonical public set)", () => {
 });
 
 describe("publicPlaceBySlug (canonical resolve)", () => {
-  const publicSlugs = new Set(slugsOf(publicPlaces()));
-
   it("returns undefined for an unknown slug", () => {
     expect(publicPlaceBySlug("definitely-not-a-real-place-xyz")).toBeUndefined();
   });
 
-  it("resolves a folded slug to a canonical that is itself public", () => {
+  it("resolves a folded slug to a live canonical (idempotent)", () => {
     let checked = 0;
     for (const [slug, v] of Object.entries(DEDUP)) {
       if (v.canonical === slug) continue; // not a fold
@@ -80,7 +78,14 @@ describe("publicPlaceBySlug (canonical resolve)", () => {
       // The canonical may itself be closed; if so resolve is undefined.
       if (!resolved) continue;
       expect(resolved.slug).toBe(v.canonical);
-      expect(publicSlugs.has(resolved.slug)).toBe(true);
+      // The canonical is real, operational, and resolves idempotently.
+      // We deliberately do NOT assert it is in publicPlaces(): the
+      // relevance filter intentionally hides non-discoverable B2B
+      // canonicals (a folded law firm, freight broker, …) from
+      // discovery while keeping them directly resolvable so saved or
+      // linked records never 404 — "hide from discovery, never destroy".
+      expect(isOperational(resolved)).toBe(true);
+      expect(publicPlaceBySlug(resolved.slug)?.slug).toBe(v.canonical);
       checked++;
     }
     // At least one fold must actually exercise the canonical path.

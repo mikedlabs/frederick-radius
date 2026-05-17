@@ -4,6 +4,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
+import { isNonDiscoverable } from "@/lib/relevance";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
@@ -207,6 +208,8 @@ export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Da
 
   const nearby_places = BASE_PLACES
     .filter((x) => x.slug !== p.slug)
+    .filter(isOperational)
+    .filter(isDiscoverable)
     .map((x) => decoratePlace(x, p.geom, now))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 6);
@@ -256,15 +259,39 @@ export function isOperational(p: Place): boolean {
   return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
 }
 
+// Default ON by owner directive (2026-05-17: "hide the businesses most
+// people wouldn't look for"). At today's enrichment this quiets ~304
+// DFP-scraped B2B/trade/professional/residential records that made the
+// product feel like a phone book. Set RADIUS_RELEVANCE=0 to show
+// everything again without a code change (instant rollback).
+const RELEVANCE_ON = process.env.RADIUS_RELEVANCE !== "0";
+
+/**
+ * Discovery-relevance predicate. False ONLY when both guards agree:
+ * the record is DFP-scraped (curated seed/manual/GIS is always kept,
+ * so a bad Google text-match can't erase it) AND Google's primaryType
+ * is an explicit non-discoverable type (B2B / trade / professional-
+ * services / residential — see relevance.ts). A vague or missing type
+ * is always kept. Used by the list/map/Radius generators below; single-
+ * slug retrieval deliberately does NOT use it, so a saved or linked
+ * record still resolves — we hide from discovery, never destroy.
+ */
+export function isDiscoverable(p: Place): boolean {
+  if (!RELEVANCE_ON) return true;
+  if (p.source !== "dfp") return true; // never hide curated content
+  return !isNonDiscoverable(ENRICHMENT[p.slug]?.primary_type);
+}
+
 /**
  * P0-1: the ONE canonical public place set. Every non-admin surface
  * (Radius/home, Map, Search, Municipality, Saved, Sitemap, Plan) must
  * start here so users see the same reality on every route: deduplicated
- * (gated by RADIUS_DEDUPE) and with closed businesses removed. Raw
+ * (gated by RADIUS_DEDUPE), closed businesses removed, and the non-
+ * discoverable B2B long tail quieted (gated by RADIUS_RELEVANCE). Raw
  * PLACES stays available only for admin, audits, and scripts.
  */
 export function publicPlaces(): Place[] {
-  return BASE_PLACES.filter(isOperational);
+  return BASE_PLACES.filter(isOperational).filter(isDiscoverable);
 }
 
 /** Public places in one municipality (canonical set, not raw). */
@@ -297,6 +324,7 @@ export function radiusPlaces(): Place[] {
 export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): PlaceCardData[] {
   return BASE_PLACES
     .filter(isOperational)
+    .filter(isDiscoverable)
     .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
     .map((p) => ({ ...decoratePlace(p, origin, now), open_confidence: "likely" as const }))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
@@ -306,6 +334,7 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   const now = ctx.now ?? new Date();
   let results = BASE_PLACES
     .filter(isOperational)
+    .filter(isDiscoverable)
     .map((p) => decoratePlace(p, ctx.origin, now));
 
   if (ctx.category) {
@@ -335,6 +364,7 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
 export function placesWithinRadius(origin: LngLat, meters: number, now: Date = new Date()): PlaceCardData[] {
   return BASE_PLACES
     .filter(isOperational)
+    .filter(isDiscoverable)
     .map((p) => decoratePlace(p, origin, now))
     .filter((p) => (p.distance_m ?? Infinity) <= meters)
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
