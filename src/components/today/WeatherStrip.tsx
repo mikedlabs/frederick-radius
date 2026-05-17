@@ -1,7 +1,19 @@
-import { Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind, ArrowUp, ArrowDown } from "lucide-react";
+import { Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind, ArrowUp, ArrowDown, Sunrise, Sunset, Sparkles } from "lucide-react";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { sunTimes, nextSunHint } from "@/lib/sun";
 import WeeklyForecast from "./WeeklyForecast";
+
+function fmtClock(d: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+    .format(d)
+    .replace(" ", "")
+    .toLowerCase();
+}
 
 const ICONS = {
   Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind,
@@ -73,7 +85,15 @@ export default async function WeatherStrip() {
   const { gradient, tone } = backdrop(cur.shortForecast);
   const ink = tone === "dark" ? "#FFFFFF" : "#1A1A1A";
   const ink2 = tone === "dark" ? "rgba(255,255,255,0.78)" : "rgba(26,26,26,0.62)";
+  const ink3 = tone === "dark" ? "rgba(255,255,255,0.55)" : "rgba(26,26,26,0.42)";
+  const sunPanel = tone === "dark" ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.45)";
   const maxPrecip = Math.max(10, ...next24.map((h) => h.probabilityOfPrecipitation ?? 0));
+
+  // Pure, computed (no API): sun + the golden-hour window, the light a
+  // place-discovery app actually cares about.
+  const now = new Date();
+  const sun = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+  const sunHint = nextSunHint(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
 
   return (
     <div
@@ -150,6 +170,37 @@ export default async function WeatherStrip() {
           })}
         </ul>
       </div>
+
+      {/* Sun + golden hour — a frosted line of THIS card. The good
+          light is named only when it's actually upcoming/now. */}
+      {(sun.sunrise || sun.sunset) && (
+        <div
+          className="flex items-center gap-x-4 gap-y-1 px-4 py-2 text-[11px]"
+          style={{ background: sunPanel, backdropFilter: "blur(2px)", borderTop: `1px solid ${tone === "dark" ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)"}` }}
+        >
+          {sunHint && sunHint.to && (
+            <span className="inline-flex items-center gap-1 font-semibold" style={{ color: ink }}>
+              <Sparkles className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: tone === "dark" ? "#E8C99A" : "#B07A1E" }} />
+              {sunHint.label}
+              <span className="font-medium tabular-nums" style={{ color: ink2 }}>
+                {fmtClock(sunHint.from)}–{fmtClock(sunHint.to)}
+              </span>
+            </span>
+          )}
+          {sun.sunrise && (
+            <span className="inline-flex items-center gap-1 tabular-nums" style={{ color: ink2 }}>
+              <Sunrise className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: ink3 }} />
+              {fmtClock(sun.sunrise)}
+            </span>
+          )}
+          {sun.sunset && (
+            <span className="inline-flex items-center gap-1 tabular-nums" style={{ color: ink2 }}>
+              <Sunset className="h-3.5 w-3.5" strokeWidth={2} aria-hidden style={{ color: ink3 }} />
+              {fmtClock(sun.sunset)}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* 7-day outlook — a frosted sub-panel of THIS card, not a
           detached afterthought. One cohesive weather module. */}
