@@ -1,21 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Footprints, Bike, Car, MapPin } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import { decoratePlace } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { minutesToMeters, type TravelMode, formatDistance } from "@/lib/geo";
 import type { Place } from "@/data/places";
-
-const PRESETS = [
-  { slug: "downtown", label: "Downtown Frederick", lng: -77.4109, lat: 39.4143 },
-  { slug: "carroll-creek", label: "Carroll Creek", lng: -77.4109, lat: 39.4137 },
-  { slug: "brunswick", label: "Brunswick", lng: -77.6280, lat: 39.3134 },
-  { slug: "thurmont", label: "Thurmont", lng: -77.4108, lat: 39.6231 },
-  { slug: "catoctin", label: "Catoctin trailhead", lng: -77.4505, lat: 39.6361 },
-  { slug: "middletown", label: "Middletown", lng: -77.5447, lat: 39.4434 },
-] as const;
+import { useRadius, RADIUS_PRESETS } from "@/components/radius/RadiusContext";
 
 const MODES: { mode: TravelMode; label: string; icon: typeof Footprints }[] = [
   { mode: "walk", label: "Walk", icon: Footprints },
@@ -30,11 +22,7 @@ const BUCKETS = [
 ];
 
 export default function RadiusBuilder({ places }: { places: Place[] }) {
-  const [presetIdx, setPresetIdx] = useState(0);
-  const [mode, setMode] = useState<TravelMode>("walk");
-  const [minutes, setMinutes] = useState(10);
-
-  const center = PRESETS[presetIdx];
+  const { center, mode, minutes, setCenter, setMode, setMinutes } = useRadius();
   const meters = minutesToMeters(mode, minutes);
 
   const inside = useMemo(() => {
@@ -64,13 +52,13 @@ export default function RadiusBuilder({ places }: { places: Place[] }) {
           </p>
           <div className="-mx-1 mt-1.5 overflow-x-auto px-1 scrollbar-hide">
             <ul className="flex min-w-max gap-1.5">
-              {PRESETS.map((p, i) => {
-                const active = i === presetIdx;
+              {RADIUS_PRESETS.map((p) => {
+                const active = p.slug === center.slug;
                 return (
                   <li key={p.slug}>
                     <button
                       type="button"
-                      onClick={() => setPresetIdx(i)}
+                      onClick={() => setCenter(p)}
                       aria-pressed={active}
                       className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
                       style={{
