@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { resolveMunicipality, locationLabel } from "@/lib/connect";
 
 export type GeoPosition = {
   lng: number;
@@ -63,10 +64,22 @@ export function useGeolocation() {
     setState({ status: "loading" });
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const position: GeoPosition = {
+        const coords = {
           lng: pos.coords.longitude,
           lat: pos.coords.latitude,
+        };
+        // Resolve the municipality + friendly label locally via the
+        // connectivity layer — pure, offline, no reverse-geocode key.
+        // This finally populates the two fields GeoPosition has always
+        // declared but nothing ever filled.
+        const hit = resolveMunicipality(coords);
+        const position: GeoPosition = {
+          ...coords,
           accuracy: pos.coords.accuracy,
+          municipality_slug: hit.inside
+            ? hit.municipality.slug
+            : "frederick-county",
+          label: locationLabel(coords),
           timestamp: Date.now(),
         };
         try {
