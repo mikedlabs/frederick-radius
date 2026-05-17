@@ -581,6 +581,30 @@ sources:
       parcel polygons with address, zoning, land use, acreage, NAC, and
       school districts. No owner name is exposed by the source.
 
+  - id: fc_parks_trails
+    name: Frederick County Parks Trails (Cartegraph)
+    owner: Frederick County GIS
+    url: https://gis.frederickco.gov/arcgis/rest/services/Parks/Parks_Trails_Cartegraph/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=geojson
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    license: public, Frederick County GIS open data
+    contact: https://gis-fcgmd.opendata.arcgis.com
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: schemas/fc_parks_trails.json
+    transform_file: transforms/fc_parks_trails.ts
+    notes: |
+      County-wide trails, the free data lever for the "missing parks
+      and trails" gap. Layer 0 (Parks Trails -Cartegraph, polyline) and
+      its field names are confirmed from live ArcGIS layer metadata, so
+      the schema and transform are real, not guessed. The sandbox cannot
+      reach ArcGIS, so this stays scaffold: the first CI/owner pipeline
+      run fetches one live response, the worker validates it against the
+      wired schema, and only then is it flipped to active. No fabricated
+      transform was shipped against an unprobed endpoint.
+
   - id: cof_geocoder
     name: City of Frederick Address Locator
     owner: City of Frederick GIS
