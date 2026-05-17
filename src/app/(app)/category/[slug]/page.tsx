@@ -82,7 +82,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         {places.length === 0 ? (
           <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            We're still seeding this category. Submit a place you love.
+            We&apos;re still seeding this category. Submit a place you love.
           </p>
         ) : (
           <ul className="space-y-2">

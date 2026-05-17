@@ -333,7 +333,7 @@ export default function AppMap({
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       })),
     };
-  }, [osmPlaces, activeCats]);
+  }, [osmPlaces, activeCats, showUnverified]);
 
   // Which raw amenity category slugs are active, from the selected groups.
   const activeAmenityCats = useMemo(() => {

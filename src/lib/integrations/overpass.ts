@@ -14,7 +14,6 @@
 
 import { isKnownClosed } from "./closures";
 
-const OVERPASS = "https://overpass-api.de/api/interpreter";
 
 // Frederick County bbox (south, west, north, east)
 export const FREDERICK_COUNTY_BBOX: [number, number, number, number] = [

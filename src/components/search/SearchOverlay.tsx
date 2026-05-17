@@ -70,6 +70,7 @@ export default function SearchOverlay({
   // Reset on close
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional UI reset when the overlay closes
       setQuery("");
       setActiveIdx(0);
     }
@@ -103,6 +104,7 @@ export default function SearchOverlay({
   }, [open, results, activeIdx, onClose]);
 
   // Reset active index when query changes
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reset highlight to the top result whenever the query changes
   useEffect(() => { setActiveIdx(0); }, [query]);
 
   // Scroll active result into view

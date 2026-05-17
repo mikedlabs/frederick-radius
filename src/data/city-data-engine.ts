@@ -331,7 +331,7 @@ export const SNAPSHOT = {
     tagline: "One Radius. One Community.",
 };
 
-export default {
+const CITY_DATA = {
     DEMOGRAPHICS,
     ECONOMY,
     LIFESTYLE,
@@ -346,3 +346,5 @@ export default {
     TRANSIT,
     SNAPSHOT,
 };
+
+export default CITY_DATA;

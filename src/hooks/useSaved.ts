@@ -84,6 +84,7 @@ export function useToggleSave(type: SavedRef["type"], id: string) {
 
 export function useMounted(): boolean {
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag; the SSR hydration guard requires a post-mount state flip
   useEffect(() => setMounted(true), []);
   return mounted;
 }

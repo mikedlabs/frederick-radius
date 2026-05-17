@@ -11,7 +11,7 @@
  * Politeness: 8 concurrent requests, 100ms jitter, brief backoff on 429/5xx.
  */
 
-import { writeFileSync, appendFileSync, existsSync, unlinkSync } from "node:fs";
+import { appendFileSync, existsSync, unlinkSync } from "node:fs";
 
 const UA = "FrederickRadius/1.0 (+https://frederickradius.app; civic discovery)";
 const SITEMAPS = [

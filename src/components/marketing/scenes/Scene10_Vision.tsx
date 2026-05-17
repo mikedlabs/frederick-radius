@@ -45,7 +45,7 @@ export default function Scene10_Vision() {
                         <GradientText>Civic Connection</GradientText>
                     </h1>
                     <p className="text-2xl text-gray-400 font-light leading-relaxed max-w-3xl mx-auto">
-                        Frederick Radius isn't just an app—it's the operating system for modern community life.
+                        Frederick Radius isn&apos;t just an app—it&apos;s the operating system for modern community life.
                         Join us in building a more connected, informed, and empowered Frederick County.
                     </p>
                 </motion.div>
@@ -100,10 +100,10 @@ export default function Scene10_Vision() {
                             </div>
                         </div>
                         <h3 className="text-3xl font-semibold text-white mb-2">
-                            You're on the list!
+                            You&apos;re on the list!
                         </h3>
                         <p className="text-gray-400">
-                            We'll keep you updated on launch progress and exclusive early access opportunities.
+                            We&apos;ll keep you updated on launch progress and exclusive early access opportunities.
                         </p>
                     </motion.div>
                 )}

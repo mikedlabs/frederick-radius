@@ -5,7 +5,6 @@ import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Utensils, Shoppin
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
-import { formatDistance } from "@/lib/geo";
 import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
 import OpenClosedDot from "@/components/place/OpenClosedDot";
 import HoursBlock from "@/components/place/HoursBlock";

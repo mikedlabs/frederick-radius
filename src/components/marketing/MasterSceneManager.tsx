@@ -27,6 +27,7 @@ export default function MasterSceneManager() {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional client-mount flag for SSR-safe scene rendering
         setMounted(true);
     }, []);
 

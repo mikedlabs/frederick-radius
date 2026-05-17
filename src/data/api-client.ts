@@ -4,7 +4,7 @@
  * or falls back to direct API calls / static data
  */
 
-import { DEMOGRAPHICS, ECONOMY, LIFESTYLE, GEO_LAYERS, SNAPSHOT } from './city-data-engine';
+import { DEMOGRAPHICS, GEO_LAYERS, SNAPSHOT } from './city-data-engine';
 import {
   fetchLiveWeather,
   fetchWeatherAlerts,

@@ -75,6 +75,7 @@ export function useInstallPrompt(): {
       firstSeen: e.firstSeen || now,
     };
     writeEngagement(updated);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time read of persisted engagement to derive client-only install eligibility (SSR-unsafe storage)
     setDismissed(wasDismissed());
     setEligible(
       !isStandalone() &&

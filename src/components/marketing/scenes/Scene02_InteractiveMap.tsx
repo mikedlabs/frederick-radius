@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { DEMOGRAPHICS, GEO_LAYERS } from "@/data/city-data-engine";
+import { DEMOGRAPHICS } from "@/data/city-data-engine";
 import { MapPin, Users, TrendingUp } from "lucide-react";
 
 /**

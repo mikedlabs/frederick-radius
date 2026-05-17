@@ -2,7 +2,7 @@
 
 import { GlassCard } from "@/components/ui/glass-card";
 import { motion } from "framer-motion";
-import { BarChart3, Users, TrendingUp, Activity } from "lucide-react";
+import { Users, TrendingUp, Activity } from "lucide-react";
 
 export default function BusinessScene() {
     return (
@@ -14,7 +14,7 @@ export default function BusinessScene() {
                         Local Business
                     </h2>
                     <p className="text-xl text-gray-400 mb-8 leading-relaxed">
-                        Enterprise-grade tools for local entrepreneurs. Real-time analytics, location-based promotions, and customer insights that traditional platforms can't match.
+                        Enterprise-grade tools for local entrepreneurs. Real-time analytics, location-based promotions, and customer insights that traditional platforms can&apos;t match.
                     </p>
 
                     <div className="space-y-4">

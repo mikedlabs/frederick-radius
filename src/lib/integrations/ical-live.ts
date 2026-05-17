@@ -125,27 +125,7 @@ export function feedCategory(feed: FeedSpec, title: string, description: string)
   );
 }
 
-type ICalEvent = {
-  type?: string;
-  summary?: string;
-  description?: string;
-  start?: Date | string | { toISOString: () => string };
-  end?: Date | string | { toISOString: () => string };
-  location?: string;
-  uid?: string;
-  url?: string;
-};
 
-function toDate(d: ICalEvent["start"] | ICalEvent["end"]): Date | null {
-  if (!d) return null;
-  if (d instanceof Date) return d;
-  if (typeof d === "string") return new Date(d);
-  try {
-    return new Date(d.toISOString());
-  } catch {
-    return null;
-  }
-}
 
 function dedupeKey(title: string, starts: Date, venue: string): string {
   const day = starts.toISOString().slice(0, 10);

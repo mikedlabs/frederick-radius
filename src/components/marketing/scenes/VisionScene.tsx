@@ -26,7 +26,7 @@ export default function VisionScene() {
                     transition={{ delay: 0.2 }}
                     className="text-xl md:text-2xl text-gray-300 mb-12 leading-relaxed"
                 >
-                    Frederick Radius is more than an app. It's the operating system for our community's growth.
+                    Frederick Radius is more than an app. It&apos;s the operating system for our community&apos;s growth.
                     Join us in building the most connected county in America.
                 </motion.p>
 

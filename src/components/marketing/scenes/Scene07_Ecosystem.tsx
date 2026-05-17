@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useAnimation } from "framer-motion";
+import { motion } from "framer-motion";
 import { PERSONAS } from "@/data/city-data-engine";
 import { Home, MapPin, Store, Building2 } from "lucide-react";
 import { useState } from "react";

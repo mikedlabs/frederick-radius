@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Check } from "lucide-react";
 import { submitPlaceAction, type SubmitPlaceInput } from "./actions";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -56,9 +57,9 @@ export default function SubmitPlaceForm() {
         <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>
           We&apos;ll cross-verify and either publish or reach out to you for clarification within a week.
         </p>
-        <a href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>
+        <Link href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>
           Back to Frederick Radius →
-        </a>
+        </Link>
       </div>
     );
   }

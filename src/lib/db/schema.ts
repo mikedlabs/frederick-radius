@@ -1,6 +1,6 @@
 import {
   pgTable, uuid, text, integer, real, boolean, jsonb,
-  smallint, timestamp, primaryKey, index, uniqueIndex, doublePrecision,
+  smallint, timestamp, index, uniqueIndex, doublePrecision,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 

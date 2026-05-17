@@ -2,8 +2,7 @@
 
 import { DEMO_DATA } from "@/lib/data";
 import { GlassCard } from "@/components/ui/glass-card";
-import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { motion } from "framer-motion";
 
 function Counter({ value, label }: { value: string; label: string }) {
     return (
@@ -32,7 +31,7 @@ export default function EconomicScene() {
                 <div className="text-center mb-20">
                     <h2 className="text-4xl md:text-6xl font-bold mb-6 font-outfit">Economic Powerhouse</h2>
                     <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                        Frederick County is thriving. We're capturing the value of a $560M tourism economy.
+                        Frederick County is thriving. We&apos;re capturing the value of a $560M tourism economy.
                     </p>
                 </div>
 

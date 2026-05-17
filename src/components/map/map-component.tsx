@@ -44,7 +44,7 @@ interface MapComponentProps {
     simulationState?: SimulationState;
 }
 
-export default function MapComponent({ lensMode = "visitor", simulationState }: MapComponentProps) {
+export default function MapComponent({ lensMode = "visitor" }: MapComponentProps) {
     const layer = MAP_LAYERS[lensMode];
     const centerPoint = layer.points[0];
 

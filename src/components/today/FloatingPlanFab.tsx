@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 
@@ -11,10 +12,9 @@ import { Sparkles } from "lucide-react";
  */
 export default function FloatingPlanFab() {
   const [visible, setVisible] = useState(false);
-  const [pathname, setPathname] = useState<string>("");
+  const pathname = usePathname();
 
   useEffect(() => {
-    setPathname(window.location.pathname);
     let lastY = window.scrollY;
     let raf = 0;
     const onScroll = () => {

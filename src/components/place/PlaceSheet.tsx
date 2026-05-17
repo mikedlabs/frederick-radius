@@ -36,6 +36,7 @@ export default function PlaceSheet({ place, onClose }: Props) {
 
   useEffect(() => {
     if (place) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs sheet-open state to the incoming place prop to drive the open animation
       setOpen(true);
       haptic("light");
     }
@@ -102,7 +103,6 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
   const cat = CATEGORY_BY_SLUG[place.category];
   const muni = MUNICIPALITY_BY_SLUG[place.municipality];
   const color = cat?.color ?? "var(--app-brand)";
-  const mapsUrl = `https://maps.apple.com/?q=${encodeURIComponent(place.name)}&ll=${place.geom.lat},${place.geom.lng}`;
 
   // Real walk/drive time from downtown via Routes API (on-demand, cached server-side)
   const [travel, setTravel] = useState<{ walkMin?: number; driveMin?: number } | null>(null);

@@ -45,6 +45,7 @@ export function useGeolocation() {
       if (!raw) return;
       const cached = JSON.parse(raw) as GeoPosition;
       if (Date.now() - cached.timestamp < TTL_MS) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrating client-only cached position on mount; sessionStorage is unavailable during SSR
         setState({ status: "granted", position: cached });
       } else {
         sessionStorage.removeItem(STORAGE_KEY);

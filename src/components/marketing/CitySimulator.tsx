@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
+import { motion } from "framer-motion";
 import { ChevronDown, ChevronUp, Activity } from "lucide-react";
 
 export interface SimulationState {
@@ -22,22 +22,17 @@ export function CitySimulator({ onChange }: CitySimulatorProps) {
         incentives: 40,
     });
 
-    const [metrics, setMetrics] = useState({
-        impact: 560,
-        visitors: 1.9,
-    });
+    const metrics = useMemo(() => {
+        const impact = 560 + (state.infrastructure * 2) + (state.incentives * 3);
+        const visitors = 1.9 + (state.marketing * 0.05) + (state.infrastructure * 0.01);
+        return {
+            impact: Math.round(impact),
+            visitors: Number(visitors.toFixed(1)),
+        };
+    }, [state]);
 
     useEffect(() => {
         onChange(state);
-
-        // Calculate projected metrics
-        const impact = 560 + (state.infrastructure * 2) + (state.incentives * 3);
-        const visitors = 1.9 + (state.marketing * 0.05) + (state.infrastructure * 0.01);
-
-        setMetrics({
-            impact: Math.round(impact),
-            visitors: Number(visitors.toFixed(1)),
-        });
     }, [state, onChange]);
 
     const handleSliderChange = (key: keyof SimulationState, value: number) => {
