@@ -10,6 +10,11 @@
 import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
 import { cutAtWordBoundary } from "@/lib/slug";
+import { isVenueStatusNonEvent } from "@/lib/event-noise";
+
+// Phase 1.6: drop venue open-status entries that are not events.
+// Off by default, so flags-off equals today's production.
+const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER === "1";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
 
@@ -470,9 +475,9 @@ export async function getLiveEvents(windowDays = 60): Promise<{
     }
   }
 
-  const events = [...seen.values()].sort(
-    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-  );
+  const events = [...seen.values()]
+    .filter((e) => !EVENT_NOISE_FILTER || !isVenueStatusNonEvent(e.title))
+    .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
 
   return {
     events,

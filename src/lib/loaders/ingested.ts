@@ -10,6 +10,11 @@
  */
 import { unstable_cache } from "next/cache";
 import { getSql } from "@/lib/db/client";
+import { isVenueStatusNonEvent, isRoutineRecurringClass } from "@/lib/event-noise";
+
+// Phase 1.6: drop venue open-status and routine recurring class/work
+// sessions. Off by default, so flags-off equals today's production.
+const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER === "1";
 
 export type IngestedOccurrence = {
   sourceUid: string;
@@ -98,7 +103,11 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       venueName: head.venue_name,
       address: head.address,
       municipality: head.municipality,
-      category: head.category,
+      // Phase 1.5: the county catid mapping is unreliable (birthday
+      // parties, theatre, and tasting rooms all arrive as "Workforce
+      // Services"). Quarantine the surfaced label until the upstream
+      // mapping is rebuilt. The raw value remains in ingested_events.
+      category: null,
       lat: head.lat != null ? Number(head.lat) : null,
       lng: head.lng != null ? Number(head.lng) : null,
       description: head.description,
@@ -114,8 +123,15 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       isRecurring: rs.length > 1,
     });
   }
-  series.sort((a, b) => +new Date(a.nextStart) - +new Date(b.nextStart));
-  return series;
+  const visible = EVENT_NOISE_FILTER
+    ? series.filter(
+        (s) =>
+          !isVenueStatusNonEvent(s.title) &&
+          !(s.isRecurring && isRoutineRecurringClass(s.title)),
+      )
+    : series;
+  visible.sort((a, b) => +new Date(a.nextStart) - +new Date(b.nextStart));
+  return visible;
 }
 
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
