@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import {
   normalizeMapillaryFeatures,
   mapillaryConfigured,
+  mapillaryToken,
   fetchMapillaryTrash,
 } from "@/lib/integrations/mapillary";
 
@@ -44,29 +45,35 @@ describe("normalizeMapillaryFeatures", () => {
   });
 });
 
-describe("gating — dormant by default", () => {
-  const saved = { tok: process.env.MAPILLARY_TOKEN, flag: process.env.MAPILLARY_TRASH };
+describe("token gating + sanitization", () => {
+  const saved = process.env.MAPILLARY_TOKEN;
   afterEach(() => {
-    process.env.MAPILLARY_TOKEN = saved.tok;
-    process.env.MAPILLARY_TRASH = saved.flag;
+    if (saved === undefined) delete process.env.MAPILLARY_TOKEN;
+    else process.env.MAPILLARY_TOKEN = saved;
   });
 
-  it("mapillaryConfigured is false without BOTH token and flag", () => {
+  it("strips the trailing | / quotes / whitespace that broke it for rounds", () => {
+    process.env.MAPILLARY_TOKEN = "MLY|123|abc|";
+    expect(mapillaryToken()).toBe("MLY|123|abc");
+    process.env.MAPILLARY_TOKEN = '  "MLY|123|abc"  ';
+    expect(mapillaryToken()).toBe("MLY|123|abc");
+    process.env.MAPILLARY_TOKEN = "MLY|123|abc";
+    expect(mapillaryToken()).toBe("MLY|123|abc");
+  });
+
+  it("configured only with a clean 3-part token", () => {
     delete process.env.MAPILLARY_TOKEN;
-    delete process.env.MAPILLARY_TRASH;
     expect(mapillaryConfigured()).toBe(false);
-    process.env.MAPILLARY_TOKEN = "MLY|test";
-    expect(mapillaryConfigured()).toBe(false); // flag still off
-    process.env.MAPILLARY_TRASH = "1";
+    process.env.MAPILLARY_TOKEN = "MLY|123"; // 2 parts
+    expect(mapillaryConfigured()).toBe(false);
+    process.env.MAPILLARY_TOKEN = "MLY|123|abc|"; // trailing | tolerated
     expect(mapillaryConfigured()).toBe(true);
   });
 
-  it("fetchMapillaryTrash returns [] (no network) when not fully activated", async () => {
-    delete process.env.MAPILLARY_TRASH;
-    process.env.MAPILLARY_TOKEN = "MLY|test";
-    expect(await fetchMapillaryTrash()).toEqual([]); // dormant flag off
-    process.env.MAPILLARY_TRASH = "1";
+  it("fetchMapillaryTrash returns [] (no network) when no/!valid token", async () => {
     delete process.env.MAPILLARY_TOKEN;
-    expect(await fetchMapillaryTrash()).toEqual([]); // no token
+    expect(await fetchMapillaryTrash()).toEqual([]);
+    process.env.MAPILLARY_TOKEN = "MLY|123"; // not 3 parts
+    expect(await fetchMapillaryTrash()).toEqual([]);
   });
 });

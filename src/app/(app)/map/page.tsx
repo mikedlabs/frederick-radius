@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
+import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import AppMapClient, { type CivicPin } from "@/components/map/AppMapClient";
 
 // P0-1: one canonical public place set, same as every other route.
@@ -19,9 +20,12 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function MapPage() {
-  const [incidents, fixit] = await Promise.all([
+  const [incidents, fixit, mapillaryTrash] = await Promise.all([
     getChartIncidentsFrederick().catch(() => []),
     getFixItIssues(30).catch(() => []),
+    // Server-side: the secret token never reaches the client. Returns
+    // [] when no MAPILLARY_TOKEN, so this is inert in any env without it.
+    fetchMapillaryTrash().catch(() => []),
   ]);
   const civic: CivicPin[] = [
     ...incidents
@@ -56,7 +60,7 @@ export default async function MapPage() {
         </p>
       </header>
 
-      <AppMapClient places={OPEN_PLACES} civic={civic} />
+      <AppMapClient places={OPEN_PLACES} civic={civic} extraAmenities={mapillaryTrash} />
 
       <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
         Business data from{" "}
