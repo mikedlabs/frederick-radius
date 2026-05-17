@@ -1208,7 +1208,24 @@ export default function AppMap({
             clusterRadius={70}
             clusterMaxZoom={16}
           >
-            {/* Cluster circles */}
+            {/* Soft glow under each cluster — depth, not a flat disk */}
+            <Layer
+              id="cluster-glow"
+              type="circle"
+              filter={["has", "point_count"]}
+              paint={{
+                "circle-color": [
+                  "step", ["get", "point_count"],
+                  "#2A5D8F", 25, "#C4451C", 100, "#7E1F1F",
+                ],
+                "circle-opacity": 0.22,
+                "circle-blur": 1,
+                "circle-radius": [
+                  "step", ["get", "point_count"],
+                  26, 25, 34, 100, 42,
+                ],
+              }}
+            />
             <Layer
               id="clusters"
               type="circle"
@@ -1216,19 +1233,17 @@ export default function AppMap({
               paint={{
                 "circle-color": [
                   "step", ["get", "point_count"],
-                  "#2A5D8F", 25,
-                  "#C4451C", 100,
-                  "#7E1F1F",
+                  "#2A5D8F", 25, "#C4451C", 100, "#7E1F1F",
                 ],
-                "circle-opacity": 0.85,
+                "circle-opacity": 0.95,
+                "circle-blur": 0.15,
                 "circle-radius": [
-                  "step", ["get", "point_count"],
-                  16, 25,
-                  22, 100,
-                  28,
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 15, 25, 19, 100, 25, 500, 32,
                 ],
-                "circle-stroke-color": "#FAFAF7",
-                "circle-stroke-width": 2,
+                "circle-stroke-color": "#0A0A0A",
+                "circle-stroke-width": 1,
+                "circle-stroke-opacity": 0.5,
               }}
             />
             <Layer
@@ -1237,10 +1252,17 @@ export default function AppMap({
               filter={["has", "point_count"]}
               layout={{
                 "text-field": "{point_count_abbreviated}",
-                "text-size": 12,
-                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+                "text-size": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 12, 100, 15, 500, 17,
+                ],
+                "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
               }}
-              paint={{ "text-color": "#fff" }}
+              paint={{
+                "text-color": "#fff",
+                "text-halo-color": "rgba(0,0,0,0.25)",
+                "text-halo-width": 0.8,
+              }}
             />
             {/* Individual unclustered points — same icon language, smaller
                 and a touch softer so curated places stay primary */}
@@ -1338,6 +1360,35 @@ export default function AppMap({
               civic: ["+", ["case", ["==", ["get", "bucket"], "civic"], 1, 0]],
             }}
           >
+            {/* Dominant-category tint, shared by the glow + the disk. */}
+            <Layer
+              id="curated-cluster-glow"
+              type="circle"
+              filter={["has", "point_count"]}
+              paint={{
+                "circle-color": [
+                  "let",
+                  "mx",
+                  ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
+                  [
+                    "case",
+                    ["==", ["var", "mx"], 0], "#C4451C",
+                    ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
+                    ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
+                    ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
+                    ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
+                    ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
+                    "#C4451C",
+                  ],
+                ],
+                "circle-opacity": 0.25,
+                "circle-blur": 1,
+                "circle-radius": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 26, 25, 32, 100, 40, 500, 50,
+                ],
+              }}
+            />
             <Layer
               id="curated-clusters"
               type="circle"
@@ -1360,15 +1411,15 @@ export default function AppMap({
                     "#C4451C",
                   ],
                 ],
-                "circle-opacity": 0.92,
+                "circle-opacity": 0.96,
+                "circle-blur": 0.15,
                 "circle-radius": [
-                  "step", ["get", "point_count"],
-                  18, 25,
-                  24, 100,
-                  30,
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 16, 25, 21, 100, 27, 500, 34,
                 ],
-                "circle-stroke-color": "#FAFAF7",
-                "circle-stroke-width": 2.5,
+                "circle-stroke-color": "#0A0A0A",
+                "circle-stroke-width": 1,
+                "circle-stroke-opacity": 0.45,
               }}
             />
             <Layer
@@ -1377,10 +1428,17 @@ export default function AppMap({
               filter={["has", "point_count"]}
               layout={{
                 "text-field": "{point_count_abbreviated}",
-                "text-size": 13,
-                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
+                "text-size": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 12, 100, 15, 500, 18,
+                ],
+                "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
               }}
-              paint={{ "text-color": "#fff" }}
+              paint={{
+                "text-color": "#fff",
+                "text-halo-color": "rgba(0,0,0,0.28)",
+                "text-halo-width": 0.8,
+              }}
             />
             <Layer
               id="curated-icons"
