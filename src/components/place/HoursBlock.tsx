@@ -3,6 +3,8 @@
 import { useState } from "react";
 import type { Hours } from "@/data/places";
 import { formatFullHours, formatTime, getOpenStatus, formatHoursLine } from "@/lib/hours";
+import { placeHoursTrust } from "@/lib/trust";
+import TrustChip from "@/components/ui/TrustChip";
 import { ChevronDown, AlertCircle } from "lucide-react";
 
 export default function HoursBlock({ hours, verified = false }: { hours?: Hours; verified?: boolean }) {
@@ -18,8 +20,11 @@ export default function HoursBlock({ hours, verified = false }: { hours?: Hours;
       onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
     >
       <summary className="flex cursor-pointer items-center justify-between gap-2 px-3 py-2.5 list-none">
-        <span className="text-sm font-medium" style={{ color: "var(--app-ink)" }}>
-          {formatHoursLine(status)}
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
+            {formatHoursLine(status)}
+          </span>
+          <TrustChip signal={placeHoursTrust(status)} className="shrink-0" />
         </span>
         <ChevronDown
           aria-hidden
