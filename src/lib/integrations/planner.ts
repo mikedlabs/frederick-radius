@@ -172,7 +172,7 @@ function summaryFor(input: PlanInputs, stops: PlanStop[]): string {
     friends: "with friends",
     visitor: "if you're visiting",
   };
-  return `${stops.length} stops · ${audienceFor[input.audience]}. Verified places only.`;
+  return `${stops.length} stops · ${audienceFor[input.audience]}. Real places, nothing invented.`;
 }
 
 // Optional Claude-narrative pass; activated only when ANTHROPIC_API_KEY is set.

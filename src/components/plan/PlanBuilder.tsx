@@ -155,8 +155,7 @@ export default function PlanBuilder() {
           {plan.stops.length > 0 && (
             <div className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-xs"
                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-              Every recommendation is from our verified list. Hours and operational status will be cross-checked
-              against Google Places once the API key is configured.
+              Every stop is a real, operational place from our directory — nothing invented.
               {plan.stops[0]?.place && (
                 <> Total radius: ~{formatDistance(estimateTotalRadius(plan))}.</>
               )}

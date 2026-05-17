@@ -100,9 +100,7 @@ export default function TrailPage() {
 
       <footer className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-4 text-[12px] leading-relaxed"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-        Operational status will be cross-checked against Google Places weekly once
-        <code className="mx-1 rounded bg-[var(--app-bg-elevated)] px-1.5 py-0.5 text-[11px]">GOOGLE_PLACES_API_KEY</code>
-        is configured. Spot a closure or a missing stop? <a href="/submit/place" style={{ color: "var(--app-cool)" }} className="underline">Send us the fix</a>.
+        Trails are curated from our directory. Spot a closure or a missing stop? <a href="/submit/place" style={{ color: "var(--app-cool)" }} className="underline">Send us the fix</a>.
       </footer>
     </div>
   );

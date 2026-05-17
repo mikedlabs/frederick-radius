@@ -42,7 +42,7 @@ export default async function MapPage() {
     <div className="space-y-3">
       <header className="space-y-1">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {OPEN_PLACES.length.toLocaleString()} curated · plus every OSM business in the county
+          {OPEN_PLACES.length.toLocaleString()} curated places · plus OpenStreetMap businesses
         </p>
         <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           Explore the map
@@ -58,8 +58,7 @@ export default async function MapPage() {
         Business data from{" "}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">
           OpenStreetMap contributors
-        </a>{" "}
-        · refreshed daily.
+        </a>.
       </p>
     </div>
   );
