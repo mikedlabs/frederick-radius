@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Shuffle } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
+import FilterChip from "@/components/ui/FilterChip";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 type Vibe = "all" | "date-night" | "kids-6-12" | "rainy-day" | "outdoor-seating" | "live-music" | "dog-friendly";
@@ -67,47 +68,27 @@ export default function TodayFilters({ candidates }: { candidates: PlaceCardData
 
   return (
     <div className="space-y-3">
-      <div className="-mx-4 overflow-x-auto px-4 scrollbar-hide">
-        <div className="flex min-w-max items-center gap-1.5">
-          {(Object.keys(TIME_LABELS) as TimeFilter[]).map((t) => {
-            const active = t === time;
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTime(t)}
-                aria-pressed={active}
-                className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-                style={{
-                  borderColor: active ? "var(--app-cool)" : "var(--app-border)",
-                  background: active ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                  color: active ? "white" : "var(--app-ink-2)",
-                }}
-              >
-                {TIME_LABELS[t]}
-              </button>
-            );
-          })}
-          <span className="mx-1 inline-block h-5 w-px bg-[var(--app-border)]" aria-hidden />
-          {(Object.keys(VIBE_LABELS) as Vibe[]).map((v) => {
-            const active = v === vibe;
-            return (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setVibe(v)}
-                aria-pressed={active}
-                className="rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
-                style={{
-                  borderColor: active ? "var(--app-brand)" : "var(--app-border)",
-                  background: active ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                  color: active ? "white" : "var(--app-ink-2)",
-                }}
-              >
-                {VIBE_LABELS[v]}
-              </button>
-            );
-          })}
+      {/* Wrapped, fully visible — no hidden horizontal scroll. */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(TIME_LABELS) as TimeFilter[]).map((t) => (
+            <FilterChip
+              key={t}
+              label={TIME_LABELS[t]}
+              active={t === time}
+              onClick={() => setTime(t)}
+            />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(VIBE_LABELS) as Vibe[]).map((v) => (
+            <FilterChip
+              key={v}
+              label={VIBE_LABELS[v]}
+              active={v === vibe}
+              onClick={() => setVibe(v)}
+            />
+          ))}
         </div>
       </div>
 

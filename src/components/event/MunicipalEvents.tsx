@@ -77,8 +77,8 @@ export default function MunicipalEvents({
         )}
       </div>
 
-      {/* Municipality + recurring chips — horizontal scroll on mobile */}
-      <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 scrollbar-hide">
+      {/* Municipality + recurring chips — wrapped, all visible */}
+      <div className="flex flex-wrap gap-1.5">
         <Chip active={!muni} onClick={() => { haptic("light"); setMuni(null); }} label={`All ${series.length}`} />
         {munis.map(([m, n]) => (
           <Chip key={m} active={muni === m} onClick={() => { haptic("light"); setMuni(muni === m ? null : m); }} label={`${m} ${n}`} />

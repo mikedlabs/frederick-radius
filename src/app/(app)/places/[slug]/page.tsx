@@ -284,7 +284,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
             Photos
           </h2>
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 scrollbar-hide">
+          <div className="shelf-rail -mx-1 gap-2 px-1 pb-1">
             {place.google_photos.slice(1, 8).map((url, i) => (
               // eslint-disable-next-line @next/next/no-img-element
               <img
