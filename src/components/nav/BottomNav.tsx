@@ -4,13 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Disc, Sun, Map, Calendar, Route, Bookmark } from "lucide-react";
 
-// Phase 2 collapsed this to three tabs. Per the 2026-05-17 owner
-// decision the primary destinations are surfaced again: Radius (home),
-// Today, Map, Events, Plan, and Saved. Search stays a persistent action
-// in the top bar rather than a tab.
+// Primary destinations. Per the 2026-05-17 owner decision Today leads
+// the bar (the daily landing); Radius stays the "/" home route, just
+// not the first tab. Search stays a persistent top-bar action.
 const TABS = [
-  { href: "/", label: "Radius", icon: Disc },
   { href: "/today", label: "Today", icon: Sun },
+  { href: "/", label: "Radius", icon: Disc },
   { href: "/map", label: "Map", icon: Map },
   { href: "/events", label: "Events", icon: Calendar },
   { href: "/plan", label: "Plan", icon: Route },
