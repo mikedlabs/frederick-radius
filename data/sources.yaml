@@ -1115,3 +1115,33 @@ sources:
       Hyperlocal news headlines for context — strictly title + link +
       timestamp, never full text (copyright). Confirm the RSS path at
       activation; complements google_news_rss with primary-source local.
+
+  - id: cof_trash_receptacles
+    name: City of Frederick Public Trash Receptacles
+    owner: City of Frederick Department of Public Works
+    url: internal://needs-acquisition
+    endpoint_type: internal_submission
+    format: geojson
+    refresh_cadence: yearly
+    license: local government public records, request from DPW
+    contact: City of Frederick DPW / Matt Bowman, mbowman@cityoffrederickmd.gov
+    status: pending_review
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Requested feature: show downtown trash-can locations. Honest
+      status of the data: there is NO authoritative public dataset.
+      The City SpiresGIS was probed (all 72 published services) and
+      has NO waste/refuse/sanitation/recycling layer. OSM
+      amenity=waste_basket already flows through the pipeline into
+      the map's "Trash" amenities toggle (overpass.ts → category
+      "trash" → AppMap AMENITY_GROUPS), so it works the moment OSM
+      has coverage — but Frederick street-furniture tagging is
+      volunteer-sparse. Durable paths, both human-gated: (1) a direct
+      data request to City DPW for a receptacle list/shapefile, wired
+      first-party like business_specials; (2) crowd/staff-map them
+      into OSM, which the existing pipeline ingests automatically.
+      Do NOT fabricate pins. Keep pending_review until real data is
+      obtained.
