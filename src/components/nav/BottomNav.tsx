@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Disc, Sun, Map, Calendar, Route, Bookmark } from "lucide-react";
 
-// Primary destinations. Per the 2026-05-17 owner decision Today leads
-// the bar (the daily landing); Radius stays the "/" home route, just
-// not the first tab. Search stays a persistent top-bar action.
+// Primary destinations. Per the 2026-05-17 owner decision the app
+// opens on Today (the daily landing — "/" redirects there); Radius is
+// its own destination at /radius. Search stays a top-bar action.
 const TABS = [
   { href: "/today", label: "Today", icon: Sun },
-  { href: "/", label: "Radius", icon: Disc },
+  { href: "/radius", label: "Radius", icon: Disc },
   { href: "/map", label: "Map", icon: Map },
   { href: "/events", label: "Events", icon: Calendar },
   { href: "/plan", label: "Plan", icon: Route },
@@ -26,9 +26,7 @@ export default function BottomNav() {
       <ul className="mx-auto grid max-w-screen-md grid-cols-6">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active =
-            href === "/"
-              ? pathname === "/"
-              : pathname === href || pathname.startsWith(href + "/");
+            pathname === href || pathname.startsWith(href + "/");
           return (
             <li key={href} className="flex">
               <Link

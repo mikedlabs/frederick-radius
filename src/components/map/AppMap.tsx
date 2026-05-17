@@ -670,10 +670,11 @@ export default function AppMap({
 
   return (
     <div className="space-y-2">
-      {/* Premium filter rail — glyphs match the map markers, edge fades hint scroll */}
-      <div className="relative -mx-4">
-        <div className="overflow-x-auto px-4 scrollbar-hide">
-          <ul className="flex min-w-max items-center gap-2 py-0.5">
+      {/* Filter chips — wrapped, every category visible at once (no
+          hidden horizontal scroll), consistent with the rest of the app. */}
+      <div>
+        <div>
+          <ul className="flex flex-wrap items-center gap-2 py-0.5">
             <li>
               <button
                 type="button"
@@ -827,9 +828,9 @@ export default function AppMap({
           default so the rail stays calm; amenities only paint on the map
           once you zoom into a neighborhood. */}
       {amenityOpen && (
-        <div className="relative -mx-4">
-          <div className="overflow-x-auto px-4 scrollbar-hide">
-            <ul className="flex min-w-max items-center gap-2 py-0.5">
+        <div>
+          <div>
+            <ul className="flex flex-wrap items-center gap-2 py-0.5">
               {AMENITY_GROUPS.map((g) => {
                 const on = amenityGroups.has(g.key);
                 return (
@@ -1278,12 +1279,15 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  12, 0.34,
-                  14, 0.5,
-                  16, 0.72,
-                  18, 0.88,
+                  12, 0.22,
+                  14, 0.3,
+                  16, 0.42,
+                  18, 0.54,
                 ],
-                "icon-allow-overlap": ["step", ["zoom"], false, 16, true],
+                // Collision declutter at every zoom (no step→true): OSM
+                // is secondary, so let crowded pins hide and reveal as
+                // you zoom — the "dynamic" behavior other maps have.
+                "icon-allow-overlap": false,
                 "icon-anchor": "center",
               }}
               paint={{ "icon-opacity": 0.8 }}
@@ -1308,11 +1312,13 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  14, 0.42,
-                  16, 0.66,
-                  18, 0.84,
+                  14, 0.32,
+                  16, 0.48,
+                  18, 0.62,
                 ],
-                "icon-allow-overlap": true,
+                // Opt-in + minzoom 14 + sparse, but still collision-
+                // declutter so a dense block of bins stays readable.
+                "icon-allow-overlap": false,
                 "icon-anchor": "center",
               }}
               paint={{ "icon-opacity": 0.96 }}
@@ -1452,10 +1458,10 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  11, 0.5,
-                  14, 0.72,
-                  16, 1,
-                  18, 1.18,
+                  11, 0.32,
+                  14, 0.46,
+                  16, 0.62,
+                  18, 0.76,
                 ],
                 // Decluttering is done by CLUSTERING, not icon collision:
                 // with the label-heavy interim base style, collision makes
