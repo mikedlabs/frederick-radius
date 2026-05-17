@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sun, Map, Calendar, Disc, Bookmark } from "lucide-react";
+import { Disc, Calendar, Route } from "lucide-react";
 
+// Phase 2: collapsed from five tabs to three. Radius is the home route,
+// Map and Today folded into it, and Saved moved to a TopBar corner icon
+// (it is not a primary destination). This stops the navigation from
+// splintering the one ownable idea.
 const TABS = [
-  { href: "/", label: "Today", icon: Sun },
-  { href: "/map", label: "Map", icon: Map },
+  { href: "/", label: "Radius", icon: Disc },
   { href: "/events", label: "Events", icon: Calendar },
-  { href: "/radius", label: "Radius", icon: Disc },
-  { href: "/saved", label: "Saved", icon: Bookmark },
+  { href: "/plan", label: "Plan", icon: Route },
 ] as const;
 
 export default function BottomNav() {
@@ -19,9 +21,12 @@ export default function BottomNav() {
       aria-label="Primary"
       className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]/85 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="mx-auto grid max-w-screen-md grid-cols-5">
+      <ul className="mx-auto grid max-w-screen-md grid-cols-3">
         {TABS.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/");
+          const active =
+            href === "/"
+              ? pathname === "/"
+              : pathname === href || pathname.startsWith(href + "/");
           return (
             <li key={href} className="flex">
               <Link
