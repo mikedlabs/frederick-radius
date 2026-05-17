@@ -32,6 +32,11 @@ import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
 import { DEMO_POINTS_PARTNERS, type DemoPointsPartner } from "@/data/radius-points-demo";
 import { RADIUS_COIN } from "@/data/city-data-engine";
 
+// Preview-only map demo layers (Food Trucks / Radius Points / Live
+// Transit) render sample data, not real coverage. OFF in production;
+// set NEXT_PUBLIC_RADIUS_DEMO_LAYERS=1 to enable locally.
+const SHOW_DEMO_LAYERS = process.env.NEXT_PUBLIC_RADIUS_DEMO_LAYERS === "1";
+
 type Props = {
   places: Place[];
   osmPlaces?: OsmPlace[];
@@ -766,7 +771,8 @@ export default function AppMap({
                 </li>
               );
             })}
-            {/* Demos for future updates — clearly labeled previews */}
+            {SHOW_DEMO_LAYERS && (<>
+            {/* Preview-only demo layers — OFF in production (set NEXT_PUBLIC_RADIUS_DEMO_LAYERS=1 to enable). Sample data, not real coverage. */}
             <li aria-hidden className="mx-1 h-5 w-px shrink-0 self-center" style={{ background: "var(--app-border)" }} />
             {[
               { key: "food-truck" as const, glyph: "\u{1F69A}", label: "Food Trucks" },
@@ -795,6 +801,7 @@ export default function AppMap({
                 </button>
               </li>
             ))}
+            </>)}
           </ul>
         </div>
         <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-5" style={{ background: "linear-gradient(90deg, var(--app-bg), transparent)" }} />
