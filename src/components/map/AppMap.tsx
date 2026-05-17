@@ -1205,8 +1205,8 @@ export default function AppMap({
             type="geojson"
             data={filteredOsmGeoJson}
             cluster
-            clusterRadius={50}
-            clusterMaxZoom={15}
+            clusterRadius={70}
+            clusterMaxZoom={16}
           >
             {/* Cluster circles */}
             <Layer
@@ -1328,8 +1328,8 @@ export default function AppMap({
             type="geojson"
             data={curatedGeoJson}
             cluster
-            clusterRadius={50}
-            clusterMaxZoom={15}
+            clusterRadius={70}
+            clusterMaxZoom={16}
             clusterProperties={{
               food: ["+", ["case", ["==", ["get", "bucket"], "food"], 1, 0]],
               outdoors: ["+", ["case", ["==", ["get", "bucket"], "outdoors"], 1, 0]],
