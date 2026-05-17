@@ -18,6 +18,7 @@
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed.ts",
     "enrich": "tsx --tsconfig tsconfig.json scripts/enrich-places.ts",
     "discover": "tsx --tsconfig tsconfig.json scripts/discover-places.ts",
+    "ingest:candidates": "tsx --tsconfig tsconfig.json scripts/ingest-candidates.ts",
     "ingest": "tsx --tsconfig tsconfig.json scripts/run-ingest.ts",
     "dedup": "tsx --tsconfig tsconfig.json scripts/dedup.ts",
     "closures:report": "tsx --tsconfig tsconfig.json scripts/closures-report.ts",
