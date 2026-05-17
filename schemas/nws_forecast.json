@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/nws_forecast.json",
+  "title": "NWS forecast response",
+  "description": "The resolved forecast document. The worker follows properties.forecast from the points response before validation, so this describes the forecast document, not the points document.",
+  "type": "object",
+  "required": ["properties"],
+  "properties": {
+    "properties": {
+      "type": "object",
+      "required": ["periods"],
+      "properties": {
+        "updated": { "type": "string" },
+        "periods": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["startTime", "temperature"],
+            "properties": {
+              "number": { "type": "number" },
+              "name": { "type": "string" },
+              "startTime": { "type": "string" },
+              "endTime": { "type": "string" },
+              "isDaytime": { "type": "boolean" },
+              "temperature": { "type": "number" },
+              "temperatureUnit": { "type": "string", "enum": ["F", "C"] },
+              "windSpeed": { "type": "string" },
+              "windDirection": { "type": "string" },
+              "shortForecast": { "type": "string" },
+              "detailedForecast": { "type": "string" },
+              "icon": { "type": "string" },
+              "probabilityOfPrecipitation": {
+                "type": ["object", "null"],
+                "properties": { "value": { "type": ["number", "null"] } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

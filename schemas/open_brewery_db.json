@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/open_brewery_db.json",
+  "title": "Open Brewery DB v1 breweries response",
+  "description": "An array of brewery records. The schema checks the fields the transform reads and tolerates extra fields the API may add.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "name"],
+    "properties": {
+      "id": { "type": "string", "minLength": 1 },
+      "name": { "type": "string", "minLength": 1 },
+      "brewery_type": { "type": "string" },
+      "address_1": { "type": ["string", "null"] },
+      "city": { "type": ["string", "null"] },
+      "state_province": { "type": ["string", "null"] },
+      "postal_code": { "type": ["string", "null"] },
+      "country": { "type": ["string", "null"] },
+      "longitude": { "type": ["string", "number", "null"] },
+      "latitude": { "type": ["string", "number", "null"] },
+      "phone": { "type": ["string", "null"] },
+      "website_url": { "type": ["string", "null"] }
+    }
+  }
+}

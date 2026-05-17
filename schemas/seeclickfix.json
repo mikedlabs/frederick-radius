@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/seeclickfix.json",
+  "title": "SeeClickFix v2 issues response",
+  "description": "An object with an issues array. Each issue must carry an id, coordinates, status, and a created timestamp for the transform to use it.",
+  "type": "object",
+  "required": ["issues"],
+  "properties": {
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "lat", "lng", "status", "created_at"],
+        "properties": {
+          "id": { "type": "number" },
+          "summary": { "type": "string" },
+          "description": { "type": ["string", "null"] },
+          "address": { "type": ["string", "null"] },
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "status": { "type": "string" },
+          "request_type": {
+            "type": ["object", "null"],
+            "properties": { "title": { "type": "string" } }
+          },
+          "created_at": { "type": "string" },
+          "url": { "type": "string" },
+          "html_url": { "type": "string" }
+        }
+      }
+    }
+  }
+}

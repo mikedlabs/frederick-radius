@@ -1,0 +1,550 @@
+# Frederick Radius data source manifest.
+#
+# This file is the single source of truth for every data source the app
+# uses or plans to use. The daily worker only processes rows with
+# status: active. Other statuses are intentional gates:
+#   active           validated, schema and transform exist, worker runs it
+#   scaffold         mapped from code, not yet wired to the worker; its
+#                    schema and transform are generated when it is
+#                    activated, through the diagnose-failure command
+#   pending_approval candidate source, never fetched until a human
+#                    promotes it to active
+#   pending_review   found in code but needs a policy decision before use
+#   broken           known dead source, kept for history
+#
+# A row may set resolve_json_path. When present the worker fetches url,
+# reads that dotted path from the JSON response to get a second URL, then
+# fetches and stores that. This supports two step APIs such as NWS.
+
+version: 1
+
+sources:
+  # ------------------------------------------------------------------ #
+  # Active. The worker fetches, validates, and transforms these daily.  #
+  # ------------------------------------------------------------------ #
+
+  - id: open_brewery_db
+    name: Open Brewery DB, Maryland
+    owner: Open Brewery DB
+    url: https://api.openbrewerydb.org/v1/breweries?by_state=maryland&per_page=200
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: weekly
+    license: open, attribution requested
+    contact: https://www.openbrewerydb.org
+    status: active
+    last_validated: null
+    last_success: null
+    schema_file: schemas/open_brewery_db.json
+    transform_file: transforms/open_brewery_db.ts
+    notes: |
+      Public brewery directory, no key. The transform keeps only
+      Frederick County municipalities and drops closed or planning rows.
+
+  - id: mdot_chart
+    name: Maryland CHART Traffic Incidents
+    owner: Maryland Department of Transportation
+    url: https://chart.maryland.gov/Incidents/GetIncidents
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public domain, State of Maryland
+    contact: https://chart.maryland.gov
+    status: active
+    last_validated: null
+    last_success: null
+    schema_file: schemas/mdot_chart.json
+    transform_file: transforms/mdot_chart.ts
+    notes: |
+      Statewide live incident feed, no key. The transform filters to
+      Frederick County and normalizes coordinates and times.
+
+  - id: seeclickfix
+    name: SeeClickFix Frederick County 311
+    owner: SeeClickFix, Frederick County FCG FixIT
+    url: https://seeclickfix.com/api/v2/issues?bbox=39.265,-77.700,39.745,-77.150&per_page=50&sort=created_at&sort_direction=DESC
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public read access
+    contact: https://seeclickfix.com
+    status: active
+    last_validated: null
+    last_success: null
+    schema_file: schemas/seeclickfix.json
+    transform_file: transforms/seeclickfix.ts
+    notes: |
+      Open311 style civic issue reports inside the county bounding box.
+
+  - id: nws_forecast
+    name: National Weather Service Forecast, Frederick
+    owner: NOAA National Weather Service
+    url: https://api.weather.gov/points/39.4143,-77.4105
+    resolve_json_path: properties.forecast
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public domain
+    contact: https://www.weather.gov/disclaimer
+    status: active
+    last_validated: null
+    last_success: null
+    schema_file: schemas/nws_forecast.json
+    transform_file: transforms/nws_forecast.ts
+    notes: |
+      Two step API. The worker reads the points response, follows
+      properties.forecast, then stores the forecast periods.
+
+  - id: nws_alerts
+    name: National Weather Service Active Alerts, Frederick County
+    owner: NOAA National Weather Service
+    url: https://api.weather.gov/alerts/active?area=MD
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: public domain
+    contact: https://www.weather.gov/disclaimer
+    status: active
+    last_validated: null
+    last_success: null
+    schema_file: schemas/nws_alerts.json
+    transform_file: transforms/nws_alerts.ts
+    notes: |
+      Active weather alerts for Maryland. The transform keeps alerts
+      whose area description mentions Frederick.
+
+  # ------------------------------------------------------------------ #
+  # Scaffold. Mapped from the codebase, not yet run by the worker.      #
+  # Promote to active after the schema and transform are generated and  #
+  # one live response is validated through the diagnose-failure flow.   #
+  # ------------------------------------------------------------------ #
+
+  - id: frederick_county_arcgis
+    name: Frederick County ArcGIS Services
+    owner: Frederick County GIS
+    url: https://maps.frederickcountymd.gov/arcgis/rest/services
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: public, Frederick County
+    contact: https://www.frederickcountymd.gov
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Facilities, boundaries, and points of interest layers.
+
+  - id: md_imap_arcgis
+    name: Maryland iMAP Services
+    owner: Maryland Department of Information Technology
+    url: https://geodata.md.gov/imap/rest/services
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: weekly
+    license: public, State of Maryland
+    contact: https://imap.maryland.gov
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Parcels, physical boundaries, and state parks layers.
+
+  - id: osm_overpass
+    name: OpenStreetMap via Overpass
+    owner: OpenStreetMap contributors
+    url: https://overpass-api.de/api/interpreter
+    endpoint_type: overpass
+    format: json
+    refresh_cadence: daily
+    license: Open Database License
+    contact: https://www.openstreetmap.org/copyright
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: County business and amenity points. Heavy query, mirrors exist.
+
+  - id: google_places
+    name: Google Places
+    owner: Google
+    url: https://places.googleapis.com/v1
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: weekly
+    license: Google Places terms, attribution required
+    contact: https://developers.google.com/maps
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Enrichment only. Requires GOOGLE_PLACES_API_KEY.
+
+  - id: wikimedia_commons
+    name: Wikimedia Commons
+    owner: Wikimedia Foundation
+    url: https://commons.wikimedia.org
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: monthly
+    license: Creative Commons, per file
+    contact: https://commons.wikimedia.org
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Landmark photos.
+
+  - id: dfp_events
+    name: Downtown Frederick Partnership
+    owner: Downtown Frederick Partnership
+    url: https://downtownfrederick.org/upcoming-events
+    endpoint_type: scrape
+    format: json
+    refresh_cadence: daily
+    license: unknown, confirm with owner
+    contact: https://downtownfrederick.org
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Scrape class. Events and a merchant directory. Expect this to be
+      one of the more fragile sources. License needs confirmation.
+
+  - id: celebrate_frederick
+    name: Celebrate Frederick
+    owner: Celebrate Frederick
+    url: https://celebratefrederick.com/calendar-of-events
+    endpoint_type: ical
+    format: json
+    refresh_cadence: daily
+    license: unknown, confirm with owner
+    contact: https://celebratefrederick.com
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: iCal export of city events.
+
+  - id: hood_college
+    name: Hood College Calendar
+    owner: Hood College
+    url: https://www.trumba.com/calendars/hood-college-events.ics
+    endpoint_type: ical
+    format: json
+    refresh_cadence: weekly
+    license: public calendar
+    contact: https://www.hood.edu
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Campus events. Override the URL with HOOD_CALENDAR_URL.
+
+  - id: frederick_county_calendar
+    name: Frederick County Calendar
+    owner: Frederick County Government
+    url: https://www.frederickcountymd.gov/RSSFeed.aspx
+    endpoint_type: rss
+    format: json
+    refresh_cadence: daily
+    license: public, Frederick County
+    contact: https://www.frederickcountymd.gov
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: County events and public meetings, CivicEngage RSS.
+
+  - id: airnow
+    name: AirNow Air Quality
+    owner: US EPA AirNow
+    url: https://www.airnowapi.org/aq/observation/latLong/current
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: AirNow terms, attribution required
+    contact: https://www.airnow.gov
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Requires AIRNOW_API_KEY.
+
+  - id: nps
+    name: National Park Service
+    owner: US National Park Service
+    url: https://developer.nps.gov/api/v1
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: weekly
+    license: public domain, NPS
+    contact: https://www.nps.gov
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Catoctin Mountain Park and Monocacy. Requires NPS_API_KEY.
+
+  - id: fcps_news
+    name: Frederick County Public Schools News
+    owner: Frederick County Public Schools
+    url: https://www.fcps.org/news.rss
+    endpoint_type: rss
+    format: json
+    refresh_cadence: daily
+    license: public
+    contact: https://www.fcps.org
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: School district news. Override with FCPS_FEED_URL.
+
+  - id: google_news_rss
+    name: Google News, Frederick
+    owner: Google News
+    url: https://news.google.com/rss/search
+    endpoint_type: rss
+    format: json
+    refresh_cadence: hourly
+    license: usage limited, headlines only
+    contact: https://news.google.com
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Local news headlines. Headlines and links only, no full text.
+
+  - id: reddit_frederick
+    name: Reddit r/Frederick
+    owner: Reddit
+    url: https://www.reddit.com/r/Frederick/top.rss
+    endpoint_type: rss
+    format: json
+    refresh_cadence: hourly
+    license: Reddit API terms
+    contact: https://www.reddit.com
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Community pulse. OAuth optional via REDDIT_CLIENT_ID.
+
+  - id: firstenergy_outages
+    name: FirstEnergy Outages, Potomac Edison
+    owner: FirstEnergy
+    url: https://outages-mdwv.firstenergycorp.com/data/interval_generation_data/2/report.js
+    endpoint_type: scrape
+    format: json
+    refresh_cadence: hourly
+    license: unknown, confirm with owner
+    contact: https://www.firstenergycorp.com
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Scrape class. Power outage counts. Format may change without notice.
+
+  - id: google_geocode
+    name: Google Geocoding
+    owner: Google
+    url: https://maps.googleapis.com/maps/api/geocode/json
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: on_demand
+    license: Google Maps terms
+    contact: https://developers.google.com/maps
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: On demand only, not a batch source. Requires a key.
+
+  - id: google_routes
+    name: Google Routes
+    owner: Google
+    url: https://routes.googleapis.com/distanceMatrix/v2
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: on_demand
+    license: Google Maps terms
+    contact: https://developers.google.com/maps
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: On demand travel time, not a batch source. Requires a key.
+
+  # ------------------------------------------------------------------ #
+  # Pending review. Policy decision required before any fetch.          #
+  # ------------------------------------------------------------------ #
+
+  - id: pulsepoint
+    name: PulsePoint Incidents
+    owner: PulsePoint Foundation
+    url: https://web.pulsepoint.org/DB/giba.php
+    endpoint_type: scrape
+    format: json
+    refresh_cadence: on_demand
+    license: restricted, review required
+    contact: https://www.pulsepoint.org
+    status: pending_review
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Public safety incident data. The project guidance calls for a
+      strict privacy review of public safety layers. Do not fetch until
+      a human approves and the review is recorded here.
+
+  # ------------------------------------------------------------------ #
+  # Pending approval. Candidates for the discover-sources command.      #
+  # Never fetched until a human promotes one to active.                 #
+  # ------------------------------------------------------------------ #
+
+  - id: md_socrata_open_data
+    name: Maryland Open Data, Socrata
+    owner: State of Maryland
+    url: https://opendata.maryland.gov
+    endpoint_type: socrata
+    format: json
+    refresh_cadence: weekly
+    license: public, State of Maryland
+    contact: https://opendata.maryland.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Over a thousand datasets. Rate limited without an app token.
+
+  - id: fc_open_data_hub
+    name: Frederick County Open Data Hub
+    owner: Frederick County GIS
+    url: https://gis-fcgmd.opendata.arcgis.com
+    endpoint_type: arcgis_hub
+    format: geojson
+    refresh_cadence: weekly
+    license: public, Frederick County
+    contact: https://www.frederickcountymd.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: ArcGIS Hub datasets, parcels and facilities.
+
+  - id: transit_gtfs
+    name: Frederick County TransIT GTFS
+    owner: Frederick County TransIT
+    url: https://www.transit.land/feeds/f-dr0b-transitservicesoffrederickcounty
+    endpoint_type: gtfs
+    format: gtfs
+    refresh_cadence: weekly
+    license: public, Frederick County
+    contact: https://frederickcountymd.gov/transit
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Nine bus routes. Static GTFS via Transitland.
+
+  - id: mta_marc_rt
+    name: MTA MARC GTFS realtime
+    owner: Maryland Transit Administration
+    url: https://feeds.mta.maryland.gov
+    endpoint_type: gtfs_rt
+    format: gtfs_rt
+    refresh_cadence: realtime
+    license: public, MTA
+    contact: https://www.mta.maryland.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Brunswick Line. May require a Swiftly or MTA key.
+
+  - id: visit_frederick
+    name: Visit Frederick Events
+    owner: Tourism Council of Frederick County
+    url: https://www.visitfrederick.org/events
+    endpoint_type: scrape
+    format: json
+    refresh_cadence: daily
+    license: unknown, confirm with owner
+    contact: https://www.visitfrederick.org
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Tourism events. Scrape or iCal, confirm before use.
+
+  - id: google_civic
+    name: Google Civic Information
+    owner: Google
+    url: https://www.googleapis.com/civicinfo/v2
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: monthly
+    license: Google API terms
+    contact: https://developers.google.com/civic-information
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Voting locations and representatives. Requires a key.
+
+  - id: md_dnr_trails
+    name: Maryland DNR Trail Atlas
+    owner: Maryland Department of Natural Resources
+    url: https://dnr.maryland.gov/land
+    endpoint_type: arcgis_rest
+    format: geojson
+    refresh_cadence: monthly
+    license: public, State of Maryland
+    contact: https://dnr.maryland.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: State trail data, ArcGIS.
+
+  - id: census_acs
+    name: US Census American Community Survey
+    owner: US Census Bureau
+    url: https://api.census.gov/data
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: yearly
+    license: public domain
+    contact: https://www.census.gov/developers
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Demographic context for municipalities. A key raises limits.

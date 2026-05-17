@@ -48,3 +48,8 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# data pipeline: raw and clean snapshots live on the data-snapshots
+# branch, never on main, to keep history small.
+/data/raw/
+/data/clean/

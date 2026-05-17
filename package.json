@@ -22,7 +22,9 @@
     "closures:report": "tsx --tsconfig tsconfig.json scripts/closures-report.ts",
     "coord:audit": "tsx --tsconfig tsconfig.json scripts/coord-audit.ts",
     "refresh:business-status": "tsx --tsconfig tsconfig.json scripts/refresh-business-status.ts",
-    "copy:scores": "tsx --tsconfig tsconfig.json scripts/copy-scores.ts"
+    "copy:scores": "tsx --tsconfig tsconfig.json scripts/copy-scores.ts",
+    "pipeline:fetch": "tsx --tsconfig tsconfig.json pipeline/fetch_all.ts",
+    "pipeline:freshness": "tsx --tsconfig tsconfig.json pipeline/freshness_check.ts"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.21",
@@ -56,6 +58,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.1",
     "typescript": "^5",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "yaml": "^2.9.0",
+    "zod": "^4.4.3"
   }
 }

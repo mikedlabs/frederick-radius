@@ -1,0 +1,91 @@
+name: data-refresh
+
+# Daily refresh of every active data source. Raw and clean output are
+# committed to the data-snapshots branch, force pushed, so the main
+# branch history stays small. On any failure this opens an issue and
+# fires a repository_dispatch so the diagnose-failure command can run.
+
+on:
+  schedule:
+    - cron: "0 10 * * *" # 10:00 UTC, about 6 AM Eastern
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: data-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the worker
+        id: fetch
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run pipeline:fetch 2>&1 | tee pipeline-run.log
+
+      - name: Commit snapshots to data-snapshots
+        # Always run, even on partial failure: the raw responses are
+        # what diagnose-failure needs to inspect drift.
+        if: always()
+        run: |
+          git config user.name "frederick-radius-bot"
+          git config user.email "bot@frederickradius.app"
+          git checkout --orphan data-snapshots
+          git rm -rf --cached . >/dev/null 2>&1 || true
+          git add -f data/raw data/clean data/sources.yaml
+          git commit -m "data snapshot $(date -u +%Y-%m-%dT%H:%MZ)" || echo "nothing to commit"
+          git push -f origin data-snapshots
+
+      - name: Open an issue and dispatch diagnosis on failure
+        if: steps.fetch.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let log = '';
+            try { log = fs.readFileSync('pipeline-run.log', 'utf8').slice(-6000); } catch (e) {}
+            const body = [
+              'The daily data refresh reported one or more failing sources.',
+              '',
+              'Worker output (tail):',
+              '```',
+              log,
+              '```',
+              '',
+              'Run the diagnose-failure command in AGENTS.md for each failing source.',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Data refresh failure ${new Date().toISOString().slice(0, 10)}`,
+              body,
+              labels: ['data-pipeline', 'automated'],
+            });
+            await github.rest.repos.createDispatchEvent({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              event_type: 'diagnose-failure',
+              client_payload: { run_id: context.runId },
+            });
+
+      - name: Fail the job if the worker failed
+        if: steps.fetch.outcome == 'failure'
+        run: exit 1
