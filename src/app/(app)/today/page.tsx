@@ -16,6 +16,9 @@ import ModeAwareCta from "@/components/today/ModeAwareCta";
 import LiveActivityPill from "@/components/today/LiveActivityPill";
 import FeaturedTonight from "@/components/today/FeaturedTonight";
 import FeaturedEvents, { type EventSlide } from "@/components/today/FeaturedEvents";
+import RightNow from "@/components/today/RightNow";
+import DismissibleSection from "@/components/today/DismissibleSection";
+import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import { buildActivities } from "@/lib/live-activity";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import FadeUp from "@/components/ui/FadeUp";
@@ -184,6 +187,12 @@ export default async function HomePage() {
           </FadeUp>
         ) : null}
 
+        {/* Time-aware discovery: morning coffee, evening dinner, etc.
+            Open or likely-open only, and the user can hide it. */}
+        <FadeUp>
+          <RightNow origin={origin} now={now} />
+        </FadeUp>
+
         <FadeUp>
           <Suspense fallback={<ShimmerWeatherStrip />}>
             <div className="space-y-2">
@@ -214,15 +223,9 @@ export default async function HomePage() {
           <Suspense fallback={<ShimmerCard rows={3} />}>
             <LocalNewsStrip />
           </Suspense>
-          <section className="space-y-3">
-            <div className="flex items-baseline justify-between">
-              <h3 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                Browse by town
-              </h3>
-              <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>All 12 municipalities</span>
-            </div>
+          <DismissibleSection id="browse-town" title="Browse by town" meta="All 12 municipalities">
             <MunicipalityStrip />
-          </section>
+          </DismissibleSection>
         </ExploreFooter>
 
         {/* Live civic pulse — anchored at the bottom; full board at /pulse */}
@@ -231,6 +234,13 @@ export default async function HomePage() {
             <LivePulse />
           </Suspense>
         </FadeUp>
+
+        <HiddenSectionsBar
+          sections={[
+            { id: "right-now", label: "Right now" },
+            { id: "browse-town", label: "Browse by town" },
+          ]}
+        />
       </div>
     </>
   );
