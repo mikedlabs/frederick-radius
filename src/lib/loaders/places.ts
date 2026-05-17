@@ -61,6 +61,8 @@ type Enrichment = {
   photo_names?: string[];
   phone?: string;
   website?: string;
+  lat?: number;
+  lng?: number;
   enriched_at?: string;
 };
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
@@ -99,8 +101,24 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     e.business_status === "OPERATIONAL" ? "operational" :
     p.is_operational;
   const photos = (e.photo_names ?? []).slice(0, 8);
+  // Pin accuracy: the DFP scrape geocoded ~157 places to the wrong
+  // spot (owner verified several on the ground). Google's coordinate
+  // for a matched place is authoritative, so snap to it — but ONLY
+  // when it is a sane correction (≤2 km from the scrape). ~106
+  // enrichments are bad Text-Search matches that resolved a same-name
+  // business 3–50 km away; using those would teleport pins across the
+  // county. Beyond 2 km we keep the scrape and treat the match as
+  // suspect. Every surface (map, radius distance, nearby) inherits
+  // this via the one canonical loader.
+  const geom =
+    typeof e.lat === "number" &&
+    typeof e.lng === "number" &&
+    haversineMeters(p.geom, { lng: e.lng, lat: e.lat }) <= 2000
+      ? { lng: e.lng, lat: e.lat }
+      : p.geom;
   return {
     ...p,
+    geom,
     is_operational,
     // Curated data wins; Google fills the gaps. This is why ~96% of places
     // (DFP scrapes with no phone/site) stay blank until enriched.

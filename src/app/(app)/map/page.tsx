@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
-import { publicPlaces } from "@/lib/loaders/places";
+import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import AppMapClient, { type CivicPin } from "@/components/map/AppMapClient";
 
 // P0-1: one canonical public place set, same as every other route.
-const OPEN_PLACES = publicPlaces();
+// Decorated so map pins use the enrichment-corrected coordinate
+// (the guarded Google-coord override in applyEnrichment) instead of
+// the wrong DFP-scraped geom — ~157 pins move to where the business
+// actually is.
+const OPEN_PLACES = publicPlaces().map((p) => decoratePlace(p));
 
 export const metadata: Metadata = {
   title: "Map",
