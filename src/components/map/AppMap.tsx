@@ -172,6 +172,34 @@ const FREDERICK: [number, number] = [-77.4105, 39.4143];
 // this when ready. Dark aligns with the System Black brand target.
 const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 
+// ── Curated-vs-OSM dedupe ───────────────────────────────────────────
+// The map renders our curated set AND the live OSM layer. They were
+// never reconciled, so anything in both showed twice. Normalize a name
+// and drop an OSM pin when a curated place with the same name sits
+// within ~150 m. Conservative: exact normalized match or clear
+// containment only, so distinct same-name places in different towns
+// are NOT collapsed.
+const STOP_TOKENS = new Set(["the", "a", "an", "llc", "inc", "co", "ltd", "company"]);
+function normName(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .split(" ")
+    .filter((t) => t && !STOP_TOKENS.has(t))
+    .join(" ");
+}
+function cellKey(lat: number, lng: number): string {
+  return `${Math.round(lat * 100)},${Math.round(lng * 100)}`;
+}
+function nameCollision(a: string, b: string): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  return short.length >= 6 && long.includes(short);
+}
+
 type SelectedOsm = OsmPlace & { _kind: "osm" };
 type SelectedPlace = Place & { _kind: "place" };
 type Selected = SelectedOsm | SelectedPlace | null;
@@ -305,6 +333,41 @@ export default function AppMap({
     onPlacesInView(inside);
   };
 
+  // Spatial hash of curated places by ~1 km cell, for OSM dedupe.
+  const placeDupeIndex = useMemo(() => {
+    // Plain object, not Map — `Map` is the react-map-gl component here.
+    const idx: Record<string, { n: string; lat: number; lng: number }[]> = {};
+    for (const p of places) {
+      const k = cellKey(p.geom.lat, p.geom.lng);
+      (idx[k] ??= []).push({ n: normName(p.name), lat: p.geom.lat, lng: p.geom.lng });
+    }
+    return idx;
+  }, [places]);
+
+  const osmDupesCurated = useMemo(() => {
+    return (p: OsmPlace): boolean => {
+      const n = normName(p.name);
+      if (!n) return false;
+      const cy = Math.round(p.lat * 100);
+      const cx = Math.round(p.lng * 100);
+      for (let dz = -1; dz <= 1; dz++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const bucket = placeDupeIndex[`${cy + dz},${cx + dx}`];
+          if (!bucket) continue;
+          for (const q of bucket) {
+            if (
+              nameCollision(n, q.n) &&
+              haversineMeters({ lng: p.lng, lat: p.lat }, { lng: q.lng, lat: q.lat }) <= 150
+            ) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    };
+  }, [placeDupeIndex]);
+
   const filteredOsmGeoJson = useMemo(() => {
     // Default: only show OSM data we trust (parks/libraries/fire/transit/civic).
     // Commercial businesses (restaurants/shops/bars) only show when user opts in.
@@ -317,6 +380,9 @@ export default function AppMap({
     // Micro-amenities never ride the clustered business source — they get
     // their own zoom-gated layer so they declutter the wide view.
     pool = pool.filter((p) => !isAmenity(p));
+    // Drop OSM pins that duplicate a curated place (same name within
+    // ~150 m) — the fix for "still duplicates on the map".
+    pool = pool.filter((p) => !osmDupesCurated(p));
     const filtered = activeCats.size === 0
       ? pool
       : pool.filter((p) => {
@@ -343,7 +409,7 @@ export default function AppMap({
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       })),
     };
-  }, [osmPlaces, activeCats, showUnverified]);
+  }, [osmPlaces, activeCats, showUnverified, osmDupesCurated]);
 
   // Which raw amenity category slugs are active, from the selected groups.
   const activeAmenityCats = useMemo(() => {
