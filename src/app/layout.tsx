@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, IBM_Plex_Serif, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import Plausible from "@/components/analytics/Plausible";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -94,6 +95,7 @@ export default function RootLayout({
           Skip to content
         </a>
         <div id="main">{children}</div>
+        <Plausible />
       </body>
     </html>
   );
