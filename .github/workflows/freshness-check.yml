@@ -1,0 +1,66 @@
+name: freshness-check
+
+# Weekly check that every active source is updating as often as it
+# claims. A source can fetch without error yet stop changing upstream;
+# this catches that case, which the daily error check cannot.
+
+on:
+  schedule:
+    - cron: "0 11 * * 1" # Mondays, 11:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check freshness
+        id: fresh
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run pipeline:freshness 2>&1 | tee freshness.log
+
+      - name: Open an issue for stale sources
+        if: steps.fresh.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let log = '';
+            try { log = fs.readFileSync('freshness.log', 'utf8').slice(-6000); } catch (e) {}
+            const body = [
+              'One or more active sources are past their declared refresh cadence.',
+              '',
+              '```',
+              log,
+              '```',
+              '',
+              'A stale source usually means the upstream feed stopped updating or the manifest cadence is wrong. Confirm with the owner, then either fix the source or correct refresh_cadence in data/sources.yaml.',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Stale data sources ${new Date().toISOString().slice(0, 10)}`,
+              body,
+              labels: ['data-pipeline', 'automated', 'stale-source'],
+            });
+
+      - name: Fail the job if anything is stale
+        if: steps.fresh.outcome == 'failure'
+        run: exit 1

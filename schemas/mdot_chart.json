@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/mdot_chart.json",
+  "title": "Maryland CHART GetIncidents response",
+  "description": "An array of statewide incident records. CHART field casing has shifted historically, so only the coordinate and county fields are treated as load bearing and the schema stays lenient on the rest.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "Id": { "type": ["string", "number"] },
+      "EventType": { "type": "string" },
+      "Description": { "type": "string" },
+      "County": { "type": "string" },
+      "Road": { "type": "string" },
+      "Direction": { "type": "string" },
+      "Location": { "type": "string" },
+      "Lat": { "type": ["string", "number"] },
+      "Lng": { "type": ["string", "number"] },
+      "Long": { "type": ["string", "number"] },
+      "Started": { "type": "string" },
+      "EstimatedClearance": { "type": "string" },
+      "Severity": { "type": "string" },
+      "LanesAffected": { "type": "string" }
+    }
+  }
+}

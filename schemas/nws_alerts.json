@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/nws_alerts.json",
+  "title": "NWS active alerts response",
+  "description": "A GeoJSON FeatureCollection of active alerts for Maryland. Only the alert properties the transform reads are constrained.",
+  "type": "object",
+  "required": ["features"],
+  "properties": {
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["properties"],
+        "properties": {
+          "properties": {
+            "type": "object",
+            "required": ["event", "areaDesc"],
+            "properties": {
+              "id": { "type": "string" },
+              "areaDesc": { "type": "string" },
+              "event": { "type": "string" },
+              "severity": { "type": "string" },
+              "certainty": { "type": "string" },
+              "urgency": { "type": "string" },
+              "headline": { "type": ["string", "null"] },
+              "description": { "type": ["string", "null"] },
+              "effective": { "type": "string" },
+              "expires": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
