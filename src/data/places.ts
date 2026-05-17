@@ -1,5 +1,6 @@
 import type { LngLat } from "@/lib/geo";
 import PLACES_DFP_RAW from "./places-dfp.json" with { type: "json" };
+import PLACES_DISCOVERED_RAW from "./places-discovered.json" with { type: "json" };
 
 export type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export type HoursWindow = { open: string; close: string };
@@ -1115,6 +1116,47 @@ const PLACES_DFP: Place[] = (PLACES_DFP_RAW as Array<{
 
 // Re-export PLACES with DFP merged in.
 PLACES.push(...PLACES_DFP);
+
+/**
+ * Google-discovered county places (Phase 3). Built by
+ * scripts/build-discovered-places.ts from the reviewed, deduped,
+ * geo-validated set — this is what fills the towns the DFP scrape
+ * never reached. Slugs are collision-safe vs curated + DFP, so the
+ * filter here is belt-and-suspenders. Source "google" (already in the
+ * union); they flow through publicPlaces() (relevance keeps non-DFP,
+ * isOperational drops closed, applyEnrichment supplies hours/photos/
+ * rating + the category + geom guards) like any enriched place.
+ */
+const TAKEN_SLUGS = new Set(PLACES.map((p) => p.slug));
+const PLACES_DISCOVERED: Place[] = (PLACES_DISCOVERED_RAW as Array<{
+  slug: string; name: string; category: string; short_blurb: string;
+  address: string; city: string; postal_code: string; municipality: string;
+  geom: LngLat; website?: string; phone?: string; google_place_id?: string;
+  feature_score: number; updated_at: string;
+}>)
+  .filter((p) => !TAKEN_SLUGS.has(p.slug))
+  .map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    category: p.category,
+    short_blurb: p.short_blurb,
+    address: p.address,
+    city: p.city,
+    state: "MD" as const,
+    postal_code: p.postal_code,
+    municipality: p.municipality,
+    geom: p.geom,
+    website: p.website,
+    phone: p.phone,
+    google_place_id: p.google_place_id,
+    is_verified: false,
+    hours_verified: false,
+    is_operational: "operational" as const,
+    feature_score: p.feature_score,
+    source: "google" as const,
+    updated_at: p.updated_at,
+  }));
+PLACES.push(...PLACES_DISCOVERED);
 
 export const PLACE_BY_SLUG = Object.fromEntries(
   PLACES.map((p) => [p.slug, p])
