@@ -13,6 +13,8 @@ import GoogleHours from "./GoogleHours";
 import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import TrustChip from "@/components/ui/TrustChip";
+import { placeHoursTrust } from "@/lib/trust";
 
 /**
  * Bottom-sheet detail view for a place. Slides up with spring physics,
@@ -226,6 +228,9 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
               {place.distance_m < 1000 ? `${Math.round(place.distance_m)} ft` : `${(place.distance_m / 1000).toFixed(1)} km away`}
             </span>
           )}
+        </div>
+        <div className="mt-2">
+          <TrustChip signal={placeHoursTrust(place.open_status)} />
         </div>
         {place.google_verified && (
           <p className="mt-2 inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>

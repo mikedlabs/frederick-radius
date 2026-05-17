@@ -9,6 +9,8 @@ import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import PlacePhoto from "./PlacePhoto";
 import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
+import TrustChip from "@/components/ui/TrustChip";
+import { placeHoursTrust } from "@/lib/trust";
 
 const GLYPH_BY_CATEGORY: Record<string, string> = {
   coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
@@ -135,8 +137,9 @@ export default function PlaceCard({
           {cat?.name ?? place.category} · {place.short_blurb}
         </p>
         {!compact && (
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <OpenClosedDot status={place.open_status} />
+            <TrustChip signal={placeHoursTrust(place.open_status)} />
             {place.price_band && (
               <span className="text-xs font-medium" style={{ color: "var(--app-ink-3)" }}>
                 {"$".repeat(place.price_band)}

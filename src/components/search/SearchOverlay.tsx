@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2 } from "lucide-react";
 import { searchIndex, type SearchResult, type SearchResultType } from "@/lib/search/index";
+import { publicPlaceBySlug, decoratePlace } from "@/lib/loaders/places";
+import { EVENT_BY_SLUG } from "@/data/events";
+import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
+import TrustChip from "@/components/ui/TrustChip";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   place: MapPin,
@@ -11,6 +15,24 @@ const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   category: Tag,
   municipality: Building2,
 };
+
+/**
+ * Same trust signal the rest of the app shows, resolved from the
+ * lightweight search index. Places go through the P0-1 canonical
+ * resolver so a closed/folded slug never carries a stale signal;
+ * categories and municipalities have no provenance, so no chip.
+ */
+function resultTrust(r: SearchResult): TrustSignal | null {
+  if (r.type === "place") {
+    const p = publicPlaceBySlug(r.id.replace(/^place:/, ""));
+    return p ? placeHoursTrust(decoratePlace(p).open_status) : null;
+  }
+  if (r.type === "event") {
+    const e = EVENT_BY_SLUG[r.id.replace(/^event:/, "")];
+    return e ? eventTrust(e) : null;
+  }
+  return null;
+}
 
 const COLOR_BY_TYPE: Record<SearchResultType, string> = {
   place: "var(--app-brand)",
@@ -171,6 +193,7 @@ export default function SearchOverlay({
                 const Icon = ICON_BY_TYPE[r.type];
                 const color = COLOR_BY_TYPE[r.type];
                 const active = i === activeIdx;
+                const trust = resultTrust(r);
                 return (
                   <li key={r.id} role="option" aria-selected={active} data-idx={i}>
                     <Link
@@ -196,6 +219,7 @@ export default function SearchOverlay({
                         <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                           {r.subtitle}
                         </p>
+                        {trust && <TrustChip signal={trust} className="mt-1" />}
                       </div>
                       <span
                         className="ml-2 shrink-0 self-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
