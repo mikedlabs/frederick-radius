@@ -1178,7 +1178,7 @@ export default function AppMap({
               layout={{
                 "text-field": "{point_count_abbreviated}",
                 "text-size": 12,
-                "text-font": ["Noto Sans Regular"],
+                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
               }}
               paint={{ "text-color": "#fff" }}
             />
@@ -1244,7 +1244,7 @@ export default function AppMap({
               layout={{
                 "text-field": ["get", "name"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 16.5, 9, 18, 12],
-                "text-font": ["Noto Sans Regular"],
+                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
                 "text-anchor": "top",
                 "text-offset": [0, 1.05],
                 "text-optional": true,
@@ -1318,7 +1318,7 @@ export default function AppMap({
               layout={{
                 "text-field": "{point_count_abbreviated}",
                 "text-size": 13,
-                "text-font": ["Noto Sans Regular"],
+                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
               }}
               paint={{ "text-color": "#fff" }}
             />
@@ -1361,7 +1361,7 @@ export default function AppMap({
               layout={{
                 "text-field": ["get", "name"],
                 "text-size": ["interpolate", ["linear"], ["zoom"], 15, 10, 18, 13],
-                "text-font": ["Noto Sans Regular"],
+                "text-font": ["DIN Pro Regular", "Arial Unicode MS Regular"],
                 "text-anchor": "top",
                 "text-offset": [0, 1.15],
                 "text-optional": true,
