@@ -10,6 +10,38 @@ import PlacePhoto from "./PlacePhoto";
 import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
+import { knownFor } from "@/lib/cuisine";
+import { Star } from "lucide-react";
+
+/**
+ * "What people rave about" — only when there is a real Google rating
+ * with enough reviews to mean something (≥20). Honest: most DFP rows
+ * have no rating and simply show nothing, never a fabricated score.
+ */
+function Rave({
+  rating,
+  count,
+  className = "",
+}: {
+  rating?: number;
+  count?: number;
+  className?: string;
+}) {
+  if (!rating || !count || count < 20) return null;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 text-[12px] font-semibold tabular-nums ${className}`}
+      style={{ color: "var(--app-ink-2)" }}
+      title={`${rating.toFixed(1)} from ${count.toLocaleString()} Google reviews`}
+    >
+      <Star className="h-3 w-3" strokeWidth={0} fill="var(--app-warning)" aria-hidden />
+      {rating.toFixed(1)}
+      <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>
+        ({count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count})
+      </span>
+    </span>
+  );
+}
 
 const GLYPH_BY_CATEGORY: Record<string, string> = {
   coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
@@ -42,6 +74,8 @@ export default function PlaceCard({
   const photoUrl = place.google_photo_url ?? place.hero_image ?? (photo ? wikimediaUrl(photo.file, 800) : null);
   const { openSheet } = usePlaceSheet();
   const openDetail = () => { haptic("light"); openSheet(place); };
+  // "Known for" — the real descriptive blurb, or null for DFP filler.
+  const kf = knownFor(place);
 
   if (variant === "feature" && photoUrl) {
     return (
@@ -150,7 +184,14 @@ export default function PlaceCard({
                 <> · {formatDistance(place.distance_m)}</>
               )}
             </p>
-            <PlaceStatus status={place.open_status} className="!text-[12px]" />
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <PlaceStatus status={place.open_status} className="!text-[12px]" />
+              <Rave
+                rating={place.google_rating}
+                count={place.google_rating_count}
+                className="!text-[12px]"
+              />
+            </div>
           </div>
         </button>
         <div className="absolute right-2 top-2 z-10">
@@ -218,7 +259,14 @@ export default function PlaceCard({
                 <> · {formatDistance(place.distance_m)}</>
               )}
             </p>
-            <PlaceStatus status={place.open_status} className="!text-[11px]" />
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+              <PlaceStatus status={place.open_status} className="!text-[11px]" />
+              <Rave
+                rating={place.google_rating}
+                count={place.google_rating_count}
+                className="!text-[11px]"
+              />
+            </div>
           </div>
         </button>
       </article>
@@ -268,11 +316,13 @@ export default function PlaceCard({
           )}
         </div>
         <p className="mt-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {cat?.name ?? place.category} · {place.short_blurb}
+          {cat?.name ?? place.category}
+          {kf && <> · {kf}</>}
         </p>
         {!compact && (
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             <PlaceStatus status={place.open_status} />
+            <Rave rating={place.google_rating} count={place.google_rating_count} />
             {place.price_band && (
               <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
                 {"$".repeat(place.price_band)}

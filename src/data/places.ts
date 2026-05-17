@@ -1032,6 +1032,53 @@ export function wellnessCategoryFix(name: string, category: string): string {
   return category;
 }
 
+/**
+ * DFP also dumps a large number of obvious restaurants, cafes, bakeries,
+ * bars, and breweries into "shopping" (Il Porto Restaurant, Cafe 611
+ * Restaurant, Stone Hearth Bakery, Black Hog BBQ, Roros Mexican Grill,
+ * Frederick Coffee Co Cafe, ...). That mislabel is the single biggest
+ * reason the Radius tool "wasn't showing everything": hundreds of real
+ * food places were invisible to the food grouping. Same posture as
+ * wellnessCategoryFix — only "shopping" rows, only on a strong name
+ * signal, with explicit anti-patterns so non-food "...Kitchens Inc /
+ * kitchen & bath / cabinet / appliance / salon" stays shopping. Pure,
+ * deterministic, reversible, uses the real geocoded records.
+ */
+export function foodCategoryFix(name: string, category: string): string {
+  if (category !== "shopping") return category;
+  const n = name.toLowerCase();
+  // Non-food businesses whose names contain food-ish words.
+  if (
+    /\b(kitchen|countertop)s?\s*(&|and)?\s*(bath|cabinet|remodel|design|supply|inc\b)|cabinet|remodel|granite|appliance|hardware|salon|nail|barber|\bspa\b|boutique|consignment|antiques?|realty|insurance|dental|auto|cleaners?\b/.test(
+      n,
+    )
+  )
+    return category;
+  if (/\b(bakery|bakeshop|patisserie|donut|doughnut)\b/.test(n)) return "bakery";
+  if (/\b(brewery|brewing|brewpub|taproom|tap\s?room|cidery|meadery)\b/.test(n))
+    return "brewery";
+  if (/\b(pizzeria|pizza)\b/.test(n)) return "pizza";
+  if (
+    /\bcoffee\b|\bespresso\b|\broaster(?:y|s)?\b|\bcaf[eé]\b(?!.*\b(restaurant|grill|kitchen|bar)\b)|tea\s?house/.test(
+      n,
+    )
+  )
+    return "coffee";
+  if (
+    /\b(tavern|pub|ale\s?house|alehouse|wine\s?bar|cocktail|tequila\s?bar|speakeasy)\b/.test(
+      n,
+    )
+  )
+    return "bar";
+  if (
+    /\b(restaurant|ristorante|trattoria|osteria|bistro|brasserie|diner|eatery|steakhouse|grill|grille|kitchen|cantina|bbq|barbecue|sushi|noodle|ramen|pho\b|taqueria|taco|kabob|kebab|gyro|creamery|ice\s?cream|gelato|deli\b|delicatessen|sandwich|smoothie|juice\s?bar|cuisine|cafe\b|café\b)\b/.test(
+      n,
+    )
+  )
+    return "restaurant";
+  return category;
+}
+
 const PLACES_DFP: Place[] = (PLACES_DFP_RAW as Array<{
   slug: string; name: string; category: string; subcategories?: string[];
   short_blurb: string; address: string; city: string; postal_code: string;
@@ -1044,7 +1091,7 @@ const PLACES_DFP: Place[] = (PLACES_DFP_RAW as Array<{
   .map((p) => ({
     slug: p.slug,
     name: p.name,
-    category: wellnessCategoryFix(p.name, p.category),
+    category: foodCategoryFix(p.name, wellnessCategoryFix(p.name, p.category)),
     subcategories: p.subcategories && p.subcategories.length > 0 ? p.subcategories : undefined,
     short_blurb: p.short_blurb,
     address: p.address,
