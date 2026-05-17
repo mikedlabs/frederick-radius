@@ -96,7 +96,7 @@ export default function PlaceCard({
   if (variant === "tile") {
     return (
       <article
-        className="hover-lift group relative w-[208px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+        className="hover-lift group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
         style={{ borderColor: "var(--app-border)" }}
       >
         <button
@@ -105,7 +105,7 @@ export default function PlaceCard({
           aria-label={`View ${place.name} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <div className="relative h-28 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+          <div className="relative h-40 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
             {photoUrl ? (
               <>
                 <PlacePhoto
@@ -113,34 +113,36 @@ export default function PlaceCard({
                   alt={photo?.alt ?? place.name}
                   glyph={glyph}
                   color={color}
-                  sizes="208px"
-                  className="transition-transform duration-500 group-hover:scale-105"
+                  sizes="244px"
+                  className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.06]"
                   rounded="0"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
               </>
             ) : (
               <div
                 aria-hidden
                 className="flex h-full w-full items-center justify-center"
                 style={{
-                  background: `linear-gradient(145deg, ${color}24, ${color}0a)`,
+                  background: `radial-gradient(120% 120% at 30% 20%, ${color}30, ${color}0a 70%)`,
                   color,
                 }}
               >
-                <span className="text-[40px] leading-none opacity-90">{glyph}</span>
+                <span className="text-[56px] leading-none opacity-90 transition-transform duration-[600ms] ease-out group-hover:scale-[1.08]">
+                  {glyph}
+                </span>
               </div>
             )}
           </div>
-          <div className="space-y-1 p-3">
+          <div className="space-y-1 p-3.5">
             <h3
-              className="truncate text-[14px] font-semibold tracking-tight"
+              className="truncate text-[15px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               {place.name}
             </h3>
             <p
-              className="truncate text-[11px]"
+              className="truncate text-[12px]"
               style={{ color: "var(--app-ink-3)" }}
             >
               {cat?.name ?? place.category}
@@ -148,7 +150,7 @@ export default function PlaceCard({
                 <> · {formatDistance(place.distance_m)}</>
               )}
             </p>
-            <PlaceStatus status={place.open_status} className="!text-[11px]" />
+            <PlaceStatus status={place.open_status} className="!text-[12px]" />
           </div>
         </button>
         <div className="absolute right-2 top-2 z-10">
