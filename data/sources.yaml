@@ -1145,3 +1145,37 @@ sources:
       into OSM, which the existing pipeline ingests automatically.
       Do NOT fabricate pins. Keep pending_review until real data is
       obtained.
+
+  - id: mapillary_objects
+    name: Mapillary — Street-Level Object Detections
+    owner: Mapillary
+    url: https://graph.mapillary.com/map_features
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: monthly
+    license: |
+      Mapillary API terms; requires a free access token. Imagery is
+      CC-BY-SA; derived map-feature detections are openly licensed and
+      explicitly intended for OSM import. Confirm exact CC terms +
+      attribution string at activation.
+    contact: Mapillary developer platform
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      The ToS-clean "use street imagery to find trash cans" path
+      (Google Street View forbids automated extraction; Mapillary is
+      purpose-built for it). map_features exposes CV-detected point
+      objects with lat/lng; the waste class is object--trash-can
+      (verify the exact value + bbox-filter against Frederick at
+      activation — Mapillary coverage is itself capture-dependent, so
+      do not assume density). Two activation paths, both human-gated:
+      (1) PREFERRED — push detections into OSM as amenity=waste_basket;
+      the existing overpass.ts pipeline then ingests them into the
+      map's "Trash" amenities layer with ZERO new app code; (2) wire
+      graph.mapillary.com/map_features directly as a first-party layer
+      (needs a transform + token). Pairs with cof_trash_receptacles
+      (DPW data remains the most authoritative route). Needs a free
+      token; never fabricate pins from low-confidence detections.
