@@ -40,14 +40,14 @@ function variantOf(v: Variant): { cls: string; style: CSSProperties } {
       };
     case "ghost":
       return {
-        cls: "transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.98]",
+        cls: "transition-[transform,background-color,color] duration-150 hover:bg-[var(--app-bg-sunken)] hover:text-[var(--app-ink)] active:scale-[0.97]",
         style: { color: "var(--app-ink-2)" },
       };
   }
 }
 
 const BASE =
-  "inline-flex select-none items-center justify-center whitespace-nowrap rounded-[var(--app-radius-md)] font-semibold";
+  "inline-flex select-none items-center justify-center whitespace-nowrap rounded-[var(--app-radius-md)] font-semibold tracking-tight outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--app-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--app-bg)]";
 
 function Spinner() {
   return (
