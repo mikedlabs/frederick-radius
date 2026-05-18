@@ -2,6 +2,209 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-18: Resident/Visitor toggle, real fork or remove (OPEN, owner call)
+
+Brief reference: external-audit-actions section 6.1. Per AGENTS.md an
+agent does not make this call. This entry states options, tradeoffs,
+estimates, and a recommendation, then stops. Nothing is implemented.
+
+Current state, verified in code. `src/hooks/useMode.ts` already persists
+the choice to localStorage (`fr:mode:v1`, default resident), so "persist
+in user prefs" is not a cost in either option. `TodayTabs.tsx` defines
+one `TAB_ORDER` map that reorders the same five tabs (tonight, weekend,
+family, walkable, open-now). The data, the cards, and the panels are
+identical in both modes. The only content that changes by mode is the
+heading ("What to see" vs "What to do"), a one-line subtitle, and the
+`ModeAwareCta` and `ModeLead` blocks at the top of `/today`.
+north-star.md names dual resident/visitor mode as one of three
+defensible pillars and frames Visit Frederick as visitor-only, so the
+differentiator is serving both audiences. The current toggle reorders.
+It does not fork. The implementation underdelivers the thesis, as the
+brief states.
+
+Option A, real fork. Each mode leads with its own composition and its
+own focal element. Resident lead: Pulse (live, /pulse exists), Transit
+(/transit exists), 311 reports (SeeClickFix, county-scoped after PR
+#95), Saved (/saved exists), Trash and recycling day (no source in the
+repo today), School status (no source in the repo today). Visitor lead:
+Open Now (exists, with the honest HOURS_GATE caveat at the current
+verified-hours coverage), Walkable (exists), Tonight (exists), Parking
+(City of Frederick deck occupancy is a pending source, brief Batch 4.2),
+Top Picks (exists as featured and family picks). The toggle already
+persists, so only the per-mode section list and focal element are new.
+Honest dependency: three named surfaces (Trash and recycling, School
+status, Parking occupancy) have no data source wired today. A front-end
+fork that defers those three to their data-source phases is roughly a
+two-week build: compose two mode layouts from existing loaders, one
+focal element per mode, tests, and a 375px pass. Including the three new
+feeds is not a two-week job and is not all front-end. It is source
+integration that belongs in Batch 4 sequencing.
+
+Option B, remove. Drop `ModeToggle`, delete `TAB_ORDER` and the mode
+reorder in `TodayTabs`, collapse `ModeAwareCta` and `ModeLead` into one
+clear headline, and reclaim the space. `useMode` stays only if another
+surface reads it; the consumers today are ModeToggle, TodayTabs,
+ModeAwareCta, and ModeLead. Estimate: two to three days, low risk. Cost:
+this removes the only visible expression of a stated north-star pillar.
+
+Recommendation (advisory, not a decision). Take a scoped Option A: ship
+the real fork using only surfaces that already exist (Resident: Pulse,
+Transit, 311, Saved; Visitor: Open Now, Walkable, Tonight, Top Picks),
+each mode with its own focal element, and defer Trash, School status,
+and Parking to their Batch 4 data phases. This delivers the thesis at
+the two-week cost without blocking on unbuilt feeds. Option B is the
+right call only if the owner judges the dual-mode pillar not worth the
+home-screen surface area. Decision deferred to the owner. Do not
+implement either option until approved.
+
+## 2026-05-18: Radius as the primary action on /today (OPEN, owner call)
+
+Brief reference: external-audit-actions section 6.2. Proposal only.
+Nothing is implemented.
+
+Current state, verified in code. `/today` is the home. The section order
+today is CivicAlerts, SkyHero (AdaptiveGreeting, ModeAwareCta),
+ModeLead, weather and air quality, LiveActivityPill, featured, the
+Explore hub, then the tabs. Radius is one entry among many and also a
+full route at `/radius`. The product is named after the radius
+interaction and north-star calls it the signature.
+
+Premise correction (verify before trust, the same class as the 4.1 slug
+and the 4.4 baseline). The brief states "the radius interaction imports
+the full map; the compact hero must not." That is not accurate in this
+codebase. `src/components/radius/RadiusBuilder.tsx` is already map-free
+and loader-free by design: it imports PlaceCard, geo math
+(`minutesToMeters`, `haversineMeters`, `formatDistance`), categories,
+and municipalities only, with type-only loader imports and
+server-decorated props documented in its own header comment.
+`/radius/page.tsx` decorates places server-side to keep the roughly 12MB
+enrichment JSON out of the client bundle. There is no Mapbox or
+react-map-gl import on the radius path. A compact hero that reuses the
+same pure geo helpers carries zero map weight by construction. The
+bundle risk the brief raises is already solved upstream.
+
+Proposal. The top of `/today` on mobile becomes a compact radius hero: a
+center selector, a mode chip (walk, bike, drive), a distance slider, an
+inline result count, and a one-tap expand to the full `/radius` surface.
+Weather, civic alerts, and the Explore hub move below it.
+
+Estimated client weight. The hero adds a slider and a count to logic
+that already exists. Geo math is already in the bundle via the radius
+route pattern, and the lucide icons are shared. No map, no enrichment
+JSON, no new heavy dependency. Order of magnitude: a few KB of component
+code, not the hundreds of KB a map would cost. Any future map stays
+behind the `/radius` expand and behind the existing server-decoration
+discipline.
+
+Paste-able sketch (illustrative, not implemented, ui primitives and
+tokens, no em dashes in copy):
+
+```tsx
+// src/components/today/RadiusHero.tsx  (SKETCH, owner approval required)
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+import { Footprints, Bike, Car, ChevronRight } from "lucide-react";
+import { minutesToMeters } from "@/lib/geo";
+
+const MODES = [
+  { key: "walk", label: "Walk", icon: Footprints },
+  { key: "bike", label: "Bike", icon: Bike },
+  { key: "drive", label: "Drive", icon: Car },
+] as const;
+
+export default function RadiusHero({
+  resultCount,
+}: {
+  resultCount: (meters: number) => number;
+}) {
+  const [center, setCenter] = useState("Downtown Frederick");
+  const [mode, setMode] = useState<(typeof MODES)[number]["key"]>("walk");
+  const [minutes, setMinutes] = useState(15);
+  const count = resultCount(minutesToMeters(minutes, mode));
+  return (
+    <section
+      className="rounded-[var(--app-radius-lg)] border p-4"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+    >
+      <p
+        className="text-[11px] font-medium uppercase tracking-[0.1em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        Signature interaction
+      </p>
+      <select
+        aria-label="Center point"
+        value={center}
+        onChange={(e) => setCenter(e.target.value)}
+        className="mt-1 w-full bg-transparent text-lg font-semibold tracking-tight"
+        style={{ color: "var(--app-ink)" }}
+      >
+        <option>Downtown Frederick</option>
+        {/* all 12 municipalities, Frederick first */}
+      </select>
+      <div className="mt-3 flex items-center gap-1.5">
+        {MODES.map((m) => {
+          const Icon = m.icon;
+          const on = m.key === mode;
+          return (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMode(m.key)}
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium"
+              style={{
+                background: on ? "var(--app-brand)" : "transparent",
+                color: on ? "white" : "var(--app-ink-2)",
+                borderColor: on ? "var(--app-brand)" : "var(--app-border)",
+              }}
+            >
+              <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+      <input
+        type="range"
+        min={5}
+        max={30}
+        step={5}
+        value={minutes}
+        onChange={(e) => setMinutes(Number(e.target.value))}
+        aria-label="Distance in minutes"
+        className="mt-3 w-full"
+      />
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-sm" style={{ color: "var(--app-ink-2)" }}>
+          {count} places within {minutes} min
+        </span>
+        <Link
+          href="/radius"
+          className="inline-flex items-center gap-1 text-xs font-medium"
+          style={{ color: "var(--app-brand)" }}
+        >
+          Open full radius
+          <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        </Link>
+      </div>
+    </section>
+  );
+}
+```
+
+The `resultCount` prop is computed server-side on `/today` from the same
+decorated public place set the route already loads, so the hero stays
+loader-free and map-free, consistent with the radius route discipline.
+
+Recommendation (advisory, not a decision). Adopt the compact radius
+hero. The premise correction makes it cheaper and lower risk than the
+brief assumed: the signature interaction is already a pure computation,
+so leading with it on the home screen is mostly a layout change and a
+server-side count, not a bundle problem. Keep the full `/radius` route
+as the expand target. Decision deferred to the owner. Do not implement
+until approved.
+
 ## 2026-05-16: Data-quality flags flipped to default ON ("ship everything")
 
 The owner directed shipping everything after a long period in which
