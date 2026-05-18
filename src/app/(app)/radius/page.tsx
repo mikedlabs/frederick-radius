@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
-import { radiusPlaces } from "@/lib/loaders/places";
+import { radiusPlaces, decoratePlace } from "@/lib/loaders/places";
 
 // Radius now lives at /radius (Today is the home landing). Same
 // canonical public place set as every other route: deduplicated and
 // with closed businesses removed.
-const OPEN_PLACES = radiusPlaces();
+// Decorated SERVER-SIDE (enrichment overlay) so the ~12MB
+// places-enrichment.json stays out of the client bundle; RadiusBuilder
+// only recomputes the radius-relative distance.
+const OPEN_PLACES = radiusPlaces().map((p) => decoratePlace(p));
 
 export const metadata: Metadata = {
   title: "Radius",
