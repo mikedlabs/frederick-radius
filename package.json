@@ -19,6 +19,7 @@
     "enrich": "tsx --tsconfig tsconfig.json scripts/enrich-places.ts",
     "discover": "tsx --tsconfig tsconfig.json scripts/discover-places.ts",
     "audit:data": "tsx --tsconfig tsconfig.json scripts/audit-data.ts",
+    "gen:dedup": "tsx --tsconfig tsconfig.json scripts/gen-dedup.ts",
     "ingest:candidates": "tsx --tsconfig tsconfig.json scripts/ingest-candidates.ts",
     "enrich:discovered": "tsx --tsconfig tsconfig.json scripts/enrich-discovered.ts",
     "build:discovered": "tsx --tsconfig tsconfig.json scripts/build-discovered-places.ts",
