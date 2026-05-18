@@ -97,8 +97,8 @@ export default async function WeatherStrip() {
 
   return (
     <div
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)", background: gradient }}
+      className="tactile overflow-hidden rounded-[var(--app-radius-lg)]"
+      style={{ background: gradient }}
     >
       {/* Hero "now" block */}
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
@@ -147,23 +147,45 @@ export default async function WeatherStrip() {
                 <span className="text-[10px] font-semibold uppercase" style={{ color: ink2 }}>
                   {idx === 0 ? "Now" : formatHour(h.startTime)}
                 </span>
-                <Icon className="h-5 w-5" strokeWidth={1.75} style={{ color: tone === "dark" ? "#fff" : ICON_TINT[k] }} aria-hidden />
+                <Icon className="h-[22px] w-[22px]" strokeWidth={2} style={{ color: tone === "dark" ? "#fff" : ICON_TINT[k] }} aria-hidden />
                 <span className="text-[13px] font-bold tabular-nums" style={{ color: ink }}>
                   {h.temperature}°
                 </span>
-                {/* Precip mini-bar */}
-                <div className="h-6 w-1.5 overflow-hidden rounded-full" style={{ background: tone === "dark" ? "rgba(255,255,255,0.18)" : "rgba(42,93,143,0.15)" }}>
-                  <div
-                    className="w-full rounded-full"
-                    style={{
-                      height: `${Math.round((precip / maxPrecip) * 100)}%`,
-                      marginTop: `${100 - Math.round((precip / maxPrecip) * 100)}%`,
-                      background: "var(--app-cool)",
-                    }}
-                  />
+                {/* Precip is shown only when it actually matters, so the
+                    strip stays calm instead of a row of empty ticks. */}
+                <div
+                  className="flex h-6 w-2 items-end overflow-hidden rounded-full"
+                  style={{
+                    background:
+                      precip >= 10
+                        ? tone === "dark"
+                          ? "rgba(255,255,255,0.16)"
+                          : "rgba(42,93,143,0.14)"
+                        : "transparent",
+                  }}
+                >
+                  {precip >= 10 && (
+                    <div
+                      className="w-full rounded-full"
+                      style={{
+                        height: `${Math.max(14, Math.round((precip / maxPrecip) * 100))}%`,
+                        background: "linear-gradient(180deg, var(--app-cool-2), var(--app-cool))",
+                      }}
+                    />
+                  )}
                 </div>
-                <span className="text-[9px] font-medium tabular-nums" style={{ color: precip > 15 ? "var(--app-cool)" : "transparent" }}>
-                  {precip}%
+                <span
+                  className="text-[9px] font-semibold tabular-nums"
+                  style={{
+                    color:
+                      precip >= 10
+                        ? tone === "dark"
+                          ? "rgba(255,255,255,0.82)"
+                          : "var(--app-cool)"
+                        : "transparent",
+                  }}
+                >
+                  {precip >= 10 ? `${precip}%` : " "}
                 </span>
               </li>
             );
