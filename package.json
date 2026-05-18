@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:node": "node --import tsx --test tests/*.test.ts",
