@@ -48,8 +48,7 @@ export default function ModeLead() {
 
   return (
     <section
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
+      className="tactile overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
       aria-label="Quick start"
     >
       <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
@@ -69,30 +68,37 @@ export default function ModeLead() {
         <ModeToggle />
       </div>
 
-      <div className="grid grid-cols-2 gap-px p-3" style={{ background: "transparent" }}>
+      <div className="grid grid-cols-2 gap-2 p-3">
         {set.tiles.map((t) => (
           <Link
             key={t.href + t.label}
             href={t.href}
-            className="hover-lift group flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] px-3 py-2.5 transition active:scale-[0.99]"
-            style={{ borderColor: "var(--app-border)" }}
+            className="tactile tactile-interactive group flex items-center gap-3 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] px-3 py-3"
           >
             <span
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-              style={{ background: `color-mix(in srgb, ${t.c} 16%, transparent)` }}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-[var(--app-radius-sm)]"
+              style={{
+                background: `color-mix(in srgb, ${t.c} 14%, var(--app-bg-elevated))`,
+                boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${t.c} 32%, transparent)`,
+              }}
               aria-hidden
             >
-              <t.Icon className="h-4 w-4" strokeWidth={2} style={{ color: t.c }} />
+              <t.Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: t.c }} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              <span className="block truncate text-[13px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {t.label}
               </span>
               <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                 {t.sub}
               </span>
             </span>
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+            <ChevronRight
+              className="h-4 w-4 shrink-0 opacity-30 transition-transform duration-200 group-hover:translate-x-0.5"
+              strokeWidth={2.5}
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
           </Link>
         ))}
       </div>
