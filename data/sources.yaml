@@ -461,6 +461,28 @@ sources:
     transform_file: null
     notes: ArcGIS Hub datasets, parcels and facilities.
 
+  - id: kfdk_metars
+    name: Frederick Municipal Airport METARs (KFDK)
+    owner: NOAA Aviation Weather Center
+    url: https://aviationweather.gov/api/data/metar?ids=KFDK&format=json
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: US federal government open data, public domain
+    contact: https://aviationweather.gov
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Hourly surface observation at the downtown-adjacent field. A real
+      measured observation (temperature, dewpoint, wind, altimeter,
+      derived flight category), not the regional NWS point forecast.
+      Proposed to sharpen the Today weather strip. Schema and transform
+      are staged on disk; the row stays pending_approval and the worker
+      does not fetch it until a human flips the status.
+
   - id: transit_gtfs
     name: Frederick County TransIT GTFS
     owner: Frederick County TransIT
