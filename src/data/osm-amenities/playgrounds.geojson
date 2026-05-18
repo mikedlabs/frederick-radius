@@ -1,0 +1,3824 @@
+{
+  "type": "FeatureCollection",
+  "name": "playgrounds",
+  "metadata": {
+    "source": "OpenStreetMap contributors, ODbL",
+    "fetched_at": "2026-05-18T12:21:12Z",
+    "feature_count": 250
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3087858,
+          39.3988792
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "node",
+        "_osm_id": 10572003322
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4231673,
+          39.4032926
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "surface": "woodchips",
+        "_osm_type": "node",
+        "_osm_id": 10905874657
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4234341,
+          39.4033182
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "surface": "woodchips",
+        "_osm_type": "node",
+        "_osm_id": 10905874660
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4650252,
+          39.4207564
+        ]
+      },
+      "properties": {
+        "access": "customers",
+        "leisure": "playground",
+        "_osm_type": "node",
+        "_osm_id": 11071815749
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2689824,
+          39.6027558
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "node",
+        "_osm_id": 11245017693
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4525232,
+          39.3964082
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "node",
+        "_osm_id": 11282432322
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.456488,
+          39.3931679
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "node",
+        "_osm_id": 11282432362
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4080946,
+          39.465862
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "node",
+        "_osm_id": 12125705840
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.124504,
+          39.3542269
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "source": "USGS Ortho",
+        "_osm_type": "way",
+        "_osm_id": 177134865
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.075305,
+          39.3482152
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "source": "USGS Ortho",
+        "_osm_type": "way",
+        "_osm_id": 177134866
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.0953612,
+          39.349404
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "source": "USGS Ortho",
+        "_osm_type": "way",
+        "_osm_id": 177134868
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.0669975,
+          39.3340206
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "source": "USGS Ortho",
+        "_osm_type": "way",
+        "_osm_id": 177178443
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.0680681,
+          39.3343424
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "source": "USGS Ortho",
+        "_osm_type": "way",
+        "_osm_id": 177178446
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2769464,
+          39.3202625
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 241522616
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4109127,
+          39.4324013
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 310655438
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3989689,
+          39.429033
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 313965649
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3990473,
+          39.4287523
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 313965650
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4340189,
+          39.3944743
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 318122543
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4317404,
+          39.3777405
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 318140312
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4093573,
+          39.4277108
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 321358029
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.618488,
+          39.3228805
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 358985164
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6186598,
+          39.322845
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 358985165
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6238489,
+          39.3215035
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 358985166
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6183889,
+          39.322995
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 358985167
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6239379,
+          39.3216798
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 358985168
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6122861,
+          39.3434482
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 358985288
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4090434,
+          39.4667709
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 387589931
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4483408,
+          39.3911301
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 392881178
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3351574,
+          39.4038886
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 405030467
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3524244,
+          39.6085601
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 413726524
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6245948,
+          39.4981421
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "operator": "Maryland Park Service",
+        "_osm_type": "way",
+        "_osm_id": 416594263
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4478738,
+          39.3830917
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 422551636
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4476492,
+          39.3832921
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 422551638
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4454636,
+          39.3820594
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 422551670
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4097856,
+          39.4492765
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 427513359
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4099017,
+          39.4491805
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 427513360
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4100424,
+          39.448974
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 427513361
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4100624,
+          39.4488733
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 427513411
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4147987,
+          39.4128953
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 429117399
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3765394,
+          39.4465837
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "centralkey": "no",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 434807833
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3766654,
+          39.4462937
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "centralkey": "no",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 434807834
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3972264,
+          39.4501792
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 435036918
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3842619,
+          39.4561828
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 435315711
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4176905,
+          39.4119046
+        ]
+      },
+      "properties": {
+        "access": "private",
+        "leisure": "playground",
+        "operator": "Lincoln Apartments",
+        "_osm_type": "way",
+        "_osm_id": 435669432
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6266556,
+          39.3223522
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 436147444
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3574953,
+          39.4090921
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 440049048
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3471353,
+          39.5024087
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 440504823
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3489971,
+          39.502625
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 440504824
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1485219,
+          39.3809791
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 441360959
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1466678,
+          39.3787688
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 441360961
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3815299,
+          39.4481119
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 442097107
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.423187,
+          39.409008
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 445260497
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3880521,
+          39.4336723
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 445813254
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3880778,
+          39.4339343
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 445813255
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4064341,
+          39.4271411
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 445969296
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4368611,
+          39.3941375
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 446436934
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.368066,
+          39.4474849
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 450653846
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4070843,
+          39.4268903
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 451650016
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4070731,
+          39.4268022
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 451650017
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3779962,
+          39.447845
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 451956253
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4080106,
+          39.4625297
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 454947666
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5314575,
+          39.4475024
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 455729056
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5303427,
+          39.4457637
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 455729070
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3330782,
+          39.3348573
+        ]
+      },
+      "properties": {
+        "access": "customers",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 459013349
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4273354,
+          39.4048851
+        ]
+      },
+      "properties": {
+        "access": "residents",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 459910313
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3250437,
+          39.7026638
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 465544959
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3216079,
+          39.7027562
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 465544960
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3187608,
+          39.7068327
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 465544961
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3301463,
+          39.7036918
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 465544969
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3237094,
+          39.7019517
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 465544982
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3268595,
+          39.7018589
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 470011476
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3265794,
+          39.7018562
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 470011477
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3142712,
+          39.7075318
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 470013958
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4028868,
+          39.6157467
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 470019356
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6234342,
+          39.3221531
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 474718686
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.0595734,
+          39.6041886
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 485530904
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2348239,
+          39.3348607
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 486871617
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.235114,
+          39.3320333
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 486871618
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1036385,
+          39.5427001
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 487889172
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3418274,
+          39.3299365
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 509366151
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6008451,
+          39.5951836
+        ]
+      },
+      "properties": {
+        "access": "private",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 520074913
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4624874,
+          39.6280053
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 533285996
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1337381,
+          39.3676733
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 543896418
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1466967,
+          39.3758098
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 543896422
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1452811,
+          39.3774959
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "name": "Watkins Playplace",
+        "playground:theme": "playground",
+        "wheelchair": "yes",
+        "_osm_type": "way",
+        "_osm_id": 543896424
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.0514214,
+          39.4283662
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 544523778
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4137939,
+          39.4218754
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "surface": "wood",
+        "_osm_type": "way",
+        "_osm_id": 544860792
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4043718,
+          39.6328614
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 552258619
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4134313,
+          39.6211484
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "name": "Thurmont Community Kiddie Park",
+        "_osm_type": "way",
+        "_osm_id": 552301003
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4091847,
+          39.6238612
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 552449417
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3514524,
+          39.5642864
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 555001204
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4394743,
+          39.3691249
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 578613771
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4395703,
+          39.3692517
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 578613772
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4404521,
+          39.3704325
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 578613791
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4406475,
+          39.3703153
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 578613792
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4345515,
+          39.3658037
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 578619520
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4364314,
+          39.3686517
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 578619525
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2674804,
+          39.3824003
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582298371
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2674511,
+          39.3822981
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582299187
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2962222,
+          39.4048661
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582305742
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2922784,
+          39.4028378
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582309742
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2915168,
+          39.4028747
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582309745
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.291028,
+          39.4033048
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582309773
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2940571,
+          39.4043336
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582310487
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2954414,
+          39.4136869
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582374983
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3293123,
+          39.4208066
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582376374
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.304774,
+          39.4292527
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582380294
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3104536,
+          39.4168841
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582381939
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.312752,
+          39.4153484
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 582382710
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2357644,
+          39.4828828
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 583366024
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3420834,
+          39.408081
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 584120740
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2934075,
+          39.4064847
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 585285314
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.123296,
+          39.3686788
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 588445343
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4948111,
+          39.461942
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "name": "Natural Playground",
+        "_osm_type": "way",
+        "_osm_id": 591686451
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3716396,
+          39.3861452
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "surface": "mulch",
+        "_osm_type": "way",
+        "_osm_id": 612691531
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5080621,
+          39.7170112
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 651837517
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1638901,
+          39.3779313
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 662357856
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2911179,
+          39.3547016
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 681909720
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3362022,
+          39.3469559
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 682082103
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.284369,
+          39.3546454
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 682486559
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3432021,
+          39.3289499
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 707973155
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5927793,
+          39.3543229
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 747034130
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2344352,
+          39.4824158
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 751150057
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1327619,
+          39.3740869
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 757336680
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4271138,
+          39.3785199
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 759624522
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4655184,
+          39.4096541
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 772808755
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6483997,
+          39.5145703
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 800489401
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5634575,
+          39.3918792
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 808144772
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3491484,
+          39.4072194
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 827552430
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3417111,
+          39.4043911
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 827552431
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4098959,
+          39.4638182
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 843335060
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4117041,
+          39.462306
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 843341494
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4299841,
+          39.4878201
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 844669373
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4955983,
+          39.4644207
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 854660235
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4263712,
+          39.4045433
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 866493639
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3378593,
+          39.4859458
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "description": "Swings, Basketball, and small climbing structure",
+        "leisure": "playground",
+        "playground:theme": "playground",
+        "surface": "grass",
+        "_osm_type": "way",
+        "_osm_id": 867088884
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1707971,
+          39.6528386
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 867150574
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1704534,
+          39.6525133
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 867150575
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1715873,
+          39.6532692
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 867150580
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1718472,
+          39.652996
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 867150582
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4255916,
+          39.376771
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 890888910
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2296845,
+          39.3778197
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 903580541
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2271942,
+          39.3793712
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "name": "Old National Pike District Park",
+        "_osm_type": "way",
+        "_osm_id": 903580552
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1517814,
+          39.3844609
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 906913718
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3625011,
+          39.4799387
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 925608221
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3633139,
+          39.4795953
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 925608222
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3635647,
+          39.4796108
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 925608224
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3635778,
+          39.4793701
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 925608225
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3634685,
+          39.4792352
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 925608226
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3633116,
+          39.4792406
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 925608227
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3631671,
+          39.4793628
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 925608228
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3633789,
+          39.4793786
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 925608229
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3623054,
+          39.4747258
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 931760772
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3631982,
+          39.4745168
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 931760773
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4112804,
+          39.4549306
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 938247888
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5650181,
+          39.5100075
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 951589905
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4195728,
+          39.4014813
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 963473516
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4168771,
+          39.4093297
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 963753221
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.25721,
+          39.3874792
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 965991159
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2526217,
+          39.3919046
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 965991163
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5655773,
+          39.5088935
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 966071489
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5597358,
+          39.5089085
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 966279181
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.572762,
+          39.5144692
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 966286593
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4274789,
+          39.6207212
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 969949868
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4623232,
+          39.648584
+        ]
+      },
+      "properties": {
+        "access": "private",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 969950073
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4442347,
+          39.3863417
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 970137442
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.423836,
+          39.6153332
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 970500594
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3076094,
+          39.3940293
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 988782114
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4088157,
+          39.4277432
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 997049977
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4087162,
+          39.4276763
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 997049978
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4091637,
+          39.427841
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 997049979
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4091799,
+          39.4279851
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 997049980
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4118694,
+          39.4291441
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 997639356
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4132632,
+          39.4292504
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 997639357
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4134828,
+          39.4289943
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 997639358
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4116591,
+          39.4282849
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 997639359
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4068216,
+          39.4271315
+        ]
+      },
+      "properties": {
+        "access": "private",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 999816999
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2793045,
+          39.3615705
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1024695683
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5667152,
+          39.5128306
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1028740098
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4197853,
+          39.4157821
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1047291665
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4147065,
+          39.4161914
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1047291666
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4148556,
+          39.6157968
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1053564742
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5400761,
+          39.4362632
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1057647138
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5391925,
+          39.4365312
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1057647139
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5388792,
+          39.4370869
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1057647141
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1819761,
+          39.6624409
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1075623668
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1821739,
+          39.6617897
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1075623689
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.642502,
+          39.3339964
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1078939233
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6299491,
+          39.3265318
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1080151830
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6251674,
+          39.390206
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1081724931
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6316235,
+          39.3255068
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1081807988
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6317646,
+          39.3257722
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1081807989
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3502104,
+          39.4001742
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1087524663
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6044282,
+          39.5277725
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090679567
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6002132,
+          39.5247783
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090679804
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6068925,
+          39.3220326
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090681183
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4411246,
+          39.3778919
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090682696
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4204864,
+          39.3732986
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090683005
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4154913,
+          39.3272028
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090684300
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3657257,
+          39.3400534
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090684632
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3646139,
+          39.3376202
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090685623
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3608749,
+          39.3285877
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1090686345
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4023019,
+          39.5122653
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1091233331
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4348495,
+          39.5884148
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1091233915
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4819563,
+          39.617099
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1093814438
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4909622,
+          39.7135018
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "playground": "structure",
+        "_osm_type": "way",
+        "_osm_id": 1106744719
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5338496,
+          39.3657872
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1112825305
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1577848,
+          39.6532817
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1134362229
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6158582,
+          39.5391058
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1147754748
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1025438,
+          39.6294061
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1152539899
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2836812,
+          39.3597742
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1192940033
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1559527,
+          39.3792713
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "name": "Jungle Gym",
+        "surface": "metal",
+        "_osm_type": "way",
+        "_osm_id": 1199661608
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1559802,
+          39.3794505
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1199661609
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1641583,
+          39.38308
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1199664325
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4500842,
+          39.4643101
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1205452667
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4422792,
+          39.4628478
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1205663270
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4344667,
+          39.4674667
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1206583424
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4380349,
+          39.3815965
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1251798463
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4385843,
+          39.3831681
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1251798464
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3785428,
+          39.3885445
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1273355400
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3768889,
+          39.3879908
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1273355410
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5653547,
+          39.6659702
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1273357922
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.375821,
+          39.3924703
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1273516968
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6011881,
+          39.3479964
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1276550564
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.0612319,
+          39.4527812
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1297697384
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3691504,
+          39.4752311
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1304442202
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3072875,
+          39.3964522
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1350578113
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.149635,
+          39.3966031
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1368430262
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3938603,
+          39.4222522
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1369756984
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3987803,
+          39.4196055
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1369756985
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3080525,
+          39.3899165
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1374245441
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3120049,
+          39.4003661
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1374307403
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5429686,
+          39.4421818
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1409328634
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6201377,
+          39.6927514
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1414664900
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3138582,
+          39.3967575
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1414774751
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4257377,
+          39.4277159
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1423398920
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.429557,
+          39.4377288
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1423405036
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4616301,
+          39.4273898
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1423425113
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4619661,
+          39.4273015
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1423425114
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4616532,
+          39.4272015
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1423425115
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4514428,
+          39.4563766
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1425471189
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.451196,
+          39.4562617
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1425471190
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4018432,
+          39.5166576
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1431871546
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.403137,
+          39.5214644
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1431871591
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4028169,
+          39.5217227
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1431871592
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4055199,
+          39.5120036
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1431984424
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4057868,
+          39.5119187
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1431984425
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2975547,
+          39.3906795
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1478724395
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.266025,
+          39.3847621
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1481255334
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2962664,
+          39.3905857
+        ]
+      },
+      "properties": {
+        "leisure": "playground",
+        "_osm_type": "way",
+        "_osm_id": 1481256599
+      }
+    }
+  ]
+}

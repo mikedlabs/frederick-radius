@@ -1,0 +1,614 @@
+{
+  "type": "FeatureCollection",
+  "name": "ev_charging",
+  "metadata": {
+    "source": "OpenStreetMap contributors, ODbL",
+    "fetched_at": "2026-05-18T12:21:59Z",
+    "feature_count": 23
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4127893,
+          39.3760914
+        ]
+      },
+      "properties": {
+        "access": "customers",
+        "amenity": "charging_station",
+        "brand": "sema",
+        "capacity": "2",
+        "fee": "no",
+        "operator": "MOM's Organic Market",
+        "_osm_type": "node",
+        "_osm_id": 3628945983
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.154642,
+          39.375455
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "_osm_type": "node",
+        "_osm_id": 3629226777
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1929099,
+          39.4223203
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "capacity": "2",
+        "frequency": "60",
+        "name": "SemaCharge",
+        "opening_hours": "24/7",
+        "socket:type1": "2",
+        "_osm_type": "node",
+        "_osm_id": 3664100719
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4366837,
+          39.4188845
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "fee": "no",
+        "frequency": "60",
+        "socket:type1": "yes",
+        "_osm_type": "node",
+        "_osm_id": 5683582645
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4497695,
+          39.6337239
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "authentication:none": "yes",
+        "capacity": "2",
+        "fee": "no",
+        "frequency": "60",
+        "motorcar": "yes",
+        "opening_hours": "24/7",
+        "operator": "National Park Service",
+        "socket:type1": "2",
+        "_osm_type": "node",
+        "_osm_id": 7970582926
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3466001,
+          39.3279505
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "_osm_type": "node",
+        "_osm_id": 8191632841
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4048705,
+          39.4117464
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "amenity": "charging_station",
+        "brand": "ChargePoint",
+        "brand:wikidata": "Q5176149",
+        "capacity": "2",
+        "charge": "$0.16/kWh",
+        "fee": "yes",
+        "name": "ChargePoint",
+        "operator": "ChargePoint",
+        "operator:wikidata": "Q5176149",
+        "payment:contactless": "yes",
+        "_osm_type": "node",
+        "_osm_id": 8664305062
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1458156,
+          39.3756031
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "brand": "Tesla",
+        "brand:wikidata": "Q478214",
+        "capacity": "2",
+        "name": "Tesla Destination Charger",
+        "operator": "Tesla",
+        "operator:wikipedia": "en:Tesla, Inc.",
+        "short_name": "Tesla",
+        "_osm_type": "node",
+        "_osm_id": 9215149523
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5477065,
+          39.4430039
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "brand": "ChargePoint",
+        "brand:wikidata": "Q5176149",
+        "frequency": "60",
+        "name": "ChargePoint",
+        "socket:type1": "2",
+        "_osm_type": "node",
+        "_osm_id": 9503409338
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5664483,
+          39.5061439
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "brand": "ChargePoint",
+        "brand:wikidata": "Q5176149",
+        "name": "ChargePoint",
+        "operator": "ChargePoint",
+        "operator:wikidata": "Q5176149",
+        "_osm_type": "node",
+        "_osm_id": 10679098632
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.419277,
+          39.3700272
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "_osm_type": "node",
+        "_osm_id": 10916767303
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4214348,
+          39.3700655
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "_osm_type": "node",
+        "_osm_id": 10916767304
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4216789,
+          39.3689925
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "_osm_type": "node",
+        "_osm_id": 10916773105
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4202144,
+          39.3688017
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "_osm_type": "node",
+        "_osm_id": 10916773106
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4192526,
+          39.427878
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "brand": "ChargePoint",
+        "brand:wikidata": "Q5176149",
+        "capacity": "4",
+        "name": "ChargePoint",
+        "operator": "ChargePoint",
+        "operator:wikidata": "Q5176149",
+        "_osm_type": "node",
+        "_osm_id": 11114813832
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.40549,
+          39.38469
+        ]
+      },
+      "properties": {
+        "access": "customers",
+        "addr:city": "Frederick",
+        "addr:country": "US",
+        "addr:housenumber": "5500",
+        "addr:postcode": "21703",
+        "addr:state": "MD",
+        "addr:street": "Buckeystown Pike",
+        "amenity": "charging_station",
+        "authentication:app": "yes",
+        "bicycle": "no",
+        "brand": "Tesla Supercharger",
+        "brand:en": "Tesla Supercharger",
+        "brand:website": "https://www.tesla.com/supercharger",
+        "brand:wikidata": "Q17089620",
+        "bus": "no",
+        "capacity": "10",
+        "ele": "90",
+        "fee": "yes",
+        "frequency": "0",
+        "hgv": "no",
+        "maxstay": "no",
+        "motorcar": "designated",
+        "name": "Frederick Supercharger",
+        "network": "Supercharger",
+        "network:website": "https://www.tesla.com/supercharger",
+        "network:wikidata": "Q17089620",
+        "note": "This Tesla Supercharger was edited or added by the June 2025 import from supercharge.info... if you have any questions, comments, or concerns, please reach out to the US Slack / Forum",
+        "opening_hours": "24/7",
+        "operator": "Tesla, Inc.",
+        "operator:wikidata": "Q478214",
+        "operator:wikipedia": "en:Tesla, Inc.",
+        "payment:app:tesla": "yes",
+        "ref:plugshare": "217230",
+        "ref:supercharge_info": "1827",
+        "ref:tesla": "frederickmdsupercharger",
+        "reservation": "no",
+        "scooter": "no",
+        "socket:nacs": "10",
+        "socket:nacs:output": "150",
+        "source": "https://supercharge.info",
+        "start_date": "2019-11-26",
+        "website": "https://www.tesla.com/findus/location/supercharger/frederickmdsupercharger",
+        "_osm_type": "node",
+        "_osm_id": 11519261312
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4077,
+          39.3867
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "addr:city": "Frederick",
+        "addr:country": "US",
+        "addr:housenumber": "5601",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "Buckeystown Pike",
+        "amenity": "charging_station",
+        "authentication:app": "yes",
+        "bicycle": "no",
+        "brand": "Tesla Supercharger",
+        "brand:en": "Tesla Supercharger",
+        "brand:website": "https://www.tesla.com/supercharger",
+        "brand:wikidata": "Q17089620",
+        "bus": "no",
+        "capacity": "8",
+        "ele": "98",
+        "fee": "yes",
+        "frequency": "0",
+        "hgv": "no",
+        "maxstay": "no",
+        "motorcar": "designated",
+        "name": "Frederick Supercharger",
+        "network": "Supercharger",
+        "network:website": "https://www.tesla.com/supercharger",
+        "network:wikidata": "Q17089620",
+        "note": "This Tesla Supercharger was edited or added by the June 2025 import from supercharge.info... if you have any questions, comments, or concerns, please reach out to the US Slack / Forum",
+        "opening_hours": "24/7",
+        "operator": "Tesla, Inc.",
+        "operator:wikidata": "Q478214",
+        "operator:wikipedia": "en:Tesla, Inc.",
+        "payment:app:tesla": "yes",
+        "ref:plugshare": "369235",
+        "ref:supercharge_info": "3808",
+        "ref:tesla": "FrederickMDSupercharger2",
+        "reservation": "no",
+        "scooter": "no",
+        "socket:nacs": "8",
+        "socket:nacs:output": "250",
+        "source": "https://supercharge.info",
+        "start_date": "2022-03-24",
+        "website": "https://www.tesla.com/findus/location/supercharger/FrederickMDSupercharger2",
+        "_osm_type": "node",
+        "_osm_id": 11519261313
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.34652,
+          39.32727
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "addr:city": "Urbana",
+        "addr:country": "US",
+        "addr:housenumber": "9180",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Fingerboard Road",
+        "amenity": "charging_station",
+        "authentication:app": "yes",
+        "bicycle": "no",
+        "brand": "Tesla Supercharger",
+        "brand:en": "Tesla Supercharger",
+        "brand:website": "https://www.tesla.com/supercharger",
+        "brand:wikidata": "Q17089620",
+        "bus": "no",
+        "capacity": "8",
+        "ele": "142",
+        "fee": "yes",
+        "frequency": "0",
+        "hgv": "no",
+        "maxstay": "no",
+        "motorcar": "designated",
+        "name": "Tesla Supercharger",
+        "network": "Supercharger",
+        "network:website": "https://www.tesla.com/supercharger",
+        "network:wikidata": "Q17089620",
+        "note": "This Tesla Supercharger was edited or added by the June 2025 import from supercharge.info... if you have any questions, comments, or concerns, please reach out to the US Slack / Forum",
+        "opening_hours": "24/7",
+        "operator": "Tesla, Inc.",
+        "operator:wikidata": "Q478214",
+        "operator:wikipedia": "en:Tesla, Inc.",
+        "payment:app:tesla": "yes",
+        "ref:plugshare": "366605",
+        "ref:supercharge_info": "3233",
+        "ref:tesla": "UrbanaMDsupercharger",
+        "reservation": "no",
+        "scooter": "no",
+        "socket:nacs": "8",
+        "socket:nacs:output": "250",
+        "source": "https://supercharge.info",
+        "start_date": "2022-03-09",
+        "website": "https://www.tesla.com/findus/location/supercharger/UrbanaMDsupercharger",
+        "_osm_type": "node",
+        "_osm_id": 11519261314
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.193178,
+          39.4220538
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "brand": "Tesla, Inc.",
+        "brand:wikidata": "Q478214",
+        "capacity": "4",
+        "name": "Tesla Destination Charger",
+        "short_name": "Tesla",
+        "_osm_type": "node",
+        "_osm_id": 12294031359
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.43861,
+          39.39257
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "addr:city": "Frederick",
+        "addr:country": "US",
+        "addr:housenumber": "5833",
+        "addr:postcode": "21703",
+        "addr:state": "MD",
+        "addr:street": "Ballenger Creek Pike",
+        "amenity": "charging_station",
+        "authentication:app": "yes",
+        "bicycle": "no",
+        "brand": "Tesla Supercharger",
+        "brand:en": "Tesla Supercharger",
+        "brand:website": "https://www.tesla.com/supercharger",
+        "brand:wikidata": "Q17089620",
+        "bus": "no",
+        "capacity": "12",
+        "ele": "99",
+        "fee": "yes",
+        "frequency": "0",
+        "hgv": "no",
+        "maxstay": "no",
+        "motorcar": "designated",
+        "name": "Frederick Supercharger",
+        "network": "Supercharger",
+        "network:website": "https://www.tesla.com/supercharger",
+        "network:wikidata": "Q17089620",
+        "note": "This Tesla Supercharger was edited or added by the June 2025 import from supercharge.info... if you have any questions, comments, or concerns, please reach out to the US Slack / Forum",
+        "opening_hours": "24/7",
+        "operator": "Tesla, Inc.",
+        "operator:wikidata": "Q478214",
+        "operator:wikipedia": "en:Tesla, Inc.",
+        "payment:app:tesla": "yes",
+        "ref:plugshare": "603646",
+        "ref:supercharge_info": "6311",
+        "ref:tesla": "33863",
+        "reservation": "no",
+        "scooter": "no",
+        "socket:nacs": "12",
+        "socket:nacs:output": "250",
+        "source": "https://supercharge.info",
+        "start_date": "2024-03-16",
+        "website": "https://www.tesla.com/findus/location/supercharger/33863",
+        "_osm_type": "node",
+        "_osm_id": 12944744282
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1544246,
+          39.3685923
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "amenity": "charging_station",
+        "brand": "Potomac Edison",
+        "capacity": "2",
+        "charge": "$0.21/kWh",
+        "description": "Owned, operated, and maintained by Potomac Edison, though ChargePoint manufactured the unit, handles the payments, and provides driver support.",
+        "fee": "yes",
+        "manufacturer": "ChargePoint",
+        "name": "ChargePoint and Potomac Edison",
+        "network": "ChargePoint",
+        "not:brand:wikidata": "Q5176149",
+        "operator": "Potomac Edison",
+        "operator:wikidata": "Q5176149",
+        "payment:american_express": "yes",
+        "payment:contactless": "yes",
+        "payment:credit_cards": "yes",
+        "payment:debit_cards": "yes",
+        "payment:discover_card": "yes",
+        "payment:mastercard": "yes",
+        "payment:visa": "yes",
+        "website": "https://www.plugshare.com/location/368229",
+        "_osm_type": "node",
+        "_osm_id": 13025812592
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4095154,
+          39.3956586
+        ]
+      },
+      "properties": {
+        "addr:street": "Guilford Drive",
+        "amenity": "charging_station",
+        "name": "Electrify America Charging station",
+        "_osm_type": "node",
+        "_osm_id": 13123280301
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4169608,
+          39.6172736
+        ]
+      },
+      "properties": {
+        "amenity": "charging_station",
+        "authentication:none": "yes",
+        "building": "yes",
+        "building:levels": "1",
+        "fee": "no",
+        "frequency": "60",
+        "motorcar": "yes",
+        "name": "Criswell Chevrolet",
+        "opening_hours": "24/7",
+        "operator": "Criswell Chevrolet",
+        "roof:levels": "1",
+        "roof:shape": "flat",
+        "shop": "car",
+        "socket:type1": "2",
+        "_osm_type": "way",
+        "_osm_id": 310502007
+      }
+    }
+  ]
+}
