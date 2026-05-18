@@ -173,9 +173,8 @@ export default function EventsExplorer({
             type="button"
             onClick={c.toggle}
             aria-pressed={c.on}
-            className="rounded-full border px-3.5 py-2 text-[13px] font-semibold transition active:scale-[0.98]"
+            className={`rounded-full px-3.5 py-2 text-[13px] font-semibold transition active:scale-[0.97] ${c.on ? "" : "tactile"}`}
             style={{
-              borderColor: c.on ? "var(--app-brand)" : "var(--app-border)",
               background: c.on ? "var(--app-brand)" : "var(--app-bg-elevated)",
               color: c.on ? "white" : "var(--app-ink-2)",
             }}
@@ -198,17 +197,15 @@ export default function EventsExplorer({
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search events, venues…"
             aria-label="Search events"
-            className="w-full rounded-full border py-2.5 pl-9 pr-3 text-sm"
+            className="tactile w-full rounded-full py-2.5 pl-9 pr-3 text-sm"
             style={{
               background: "var(--app-bg-elevated)",
-              borderColor: "var(--app-border)",
               color: "var(--app-ink)",
             }}
           />
         </div>
         <div
-          className="inline-flex shrink-0 overflow-hidden rounded-full border"
-          style={{ borderColor: "var(--app-border)" }}
+          className="tactile inline-flex shrink-0 overflow-hidden rounded-full"
           role="tablist"
           aria-label="View"
         >
@@ -248,9 +245,8 @@ export default function EventsExplorer({
           onClick={() => setShowFilters((v) => !v)}
           aria-expanded={showFilters}
           aria-controls="evt-filter-panel"
-          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition"
+          className="tactile inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition"
           style={{
-            borderColor: "var(--app-border)",
             background:
               filterCount > 0
                 ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
@@ -293,8 +289,7 @@ export default function EventsExplorer({
       {showFilters && (
         <div
           id="evt-filter-panel"
-          className="flex flex-wrap items-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-2.5"
-          style={{ borderColor: "var(--app-border)" }}
+          className="tactile flex flex-wrap items-center gap-2 rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] p-2.5"
         >
           <div className="relative">
             <label htmlFor="evt-cat" className="sr-only">Filter by type</label>
@@ -356,12 +351,12 @@ export default function EventsExplorer({
         <div className="space-y-6">
           {horizonGroups.map((g) => {
             const isOpen = openGroups.has(g.key);
-            const PEEK = 6;
+            const PEEK = 9;
             const shown = isOpen ? g.events : g.events.slice(0, PEEK);
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading title={g.label} count={g.events.length} />
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="stagger grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                   {shown.map((e) => (
                     <div key={e.slug} className="relative">
                       {live.has(e.slug) && (

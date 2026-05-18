@@ -5,6 +5,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import TrustChip from "@/components/ui/TrustChip";
+import { Chip } from "@/components/ui/Chip";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 
@@ -23,10 +24,7 @@ export default function EventCard({
   // colored date block when there is no real photo (never fabricated).
   if (variant === "tile") {
     return (
-      <article
-        className="hover-lift group relative overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
-      >
+      <article className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]">
         <div className="relative h-[96px] w-full overflow-hidden bg-[var(--app-bg-sunken)]">
           {event.hero_image ? (
             <>
@@ -80,10 +78,7 @@ export default function EventCard({
   }
 
   return (
-    <article
-      className="group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)] transition hover:shadow-[var(--app-shadow-2)]"
-      style={{ borderColor: "var(--app-border)" }}
-    >
+    <article className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3">
       <div
         className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] border"
         style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
@@ -133,12 +128,9 @@ export default function EventCard({
         </p>
         <div className="mt-2 flex items-center gap-2">
           {cat && (
-            <span
-              className="rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-              style={{ color: cat.color, background: `${cat.color}14` }}
-            >
+            <Chip color={cat.color} className="uppercase tracking-wide">
               {cat.name}
-            </span>
+            </Chip>
           )}
           <TrustChip signal={eventTrust(event)} />
           {event.is_free ? (
