@@ -1,4 +1,4 @@
-import { PLACES, PLACE_BY_SLUG, type Place } from "@/data/places";
+import { PLACES, type Place } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
@@ -9,9 +9,11 @@ import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
+import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
+import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
@@ -62,28 +64,45 @@ type Enrichment = {
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
 
 /**
- * Human-override layer: slugs the curator explicitly marked
- * `canonical === self` are PINNED — the automatic rule must never
- * fold them away. This is the one-line veto for a rare wrong
- * auto-merge, so a judgement call never requires touching the engine.
+ * The HUMAN data-cleaning layer (places-overrides.json, written by
+ * `npm run data:review`). This is how the irreducible judgement tail
+ * the safe engine cannot touch — typo dupes ("Summitra" vs "Sumittra
+ * Thai Cuisine"), junk records, wrong categories — gets fixed in one
+ * place and lands on every surface. Applied HERE so it can never be
+ * forgotten by a caller.
  */
-const PINNED: ReadonlySet<string> = new Set(
-  Object.entries(DEDUP)
-    .filter(([slug, e]) => e.canonical === slug)
-    .map(([slug]) => slug),
-);
+const OVERRIDES = OVERRIDES_RAW as Overrides;
+const OV_FOLD: Record<string, string> = OVERRIDES.fold ?? {};
+const OV_REMOVE: ReadonlySet<string> = new Set(OVERRIDES.remove ?? []);
+const OV_KEEP: ReadonlySet<string> = new Set(OVERRIDES.keepApart ?? []);
+const OV_PATCH = OVERRIDES.patch;
 
 /**
- * Two-stage dedupe applied HERE, at the one canonical source, so every
- * non-admin surface (Radius/home, Map, Search, Municipality, Saved,
- * Sitemap, Plan) inherits a single reality and the "I keep seeing the
- * same thing twice" problem cannot regress:
- *   1. places-dedup.json — curated human judgement / hard cases.
+ * Slugs the automatic engine must never fold away: the curator's
+ * `canonical === self` markers in places-dedup.json PLUS every
+ * `keepApart` slug in the overrides file. The one-line manual veto.
+ */
+const PINNED: ReadonlySet<string> = new Set([
+  ...Object.entries(DEDUP)
+    .filter(([slug, e]) => e.canonical === slug)
+    .map(([slug]) => slug),
+  ...OV_KEEP,
+]);
+
+/**
+ * Three-stage cleaning applied HERE, at the one canonical source, so
+ * every non-admin surface (Radius/home, Map, Search, Municipality,
+ * Saved, Sitemap, Plan) inherits a single reality and the "I keep
+ * seeing the same thing twice" problem cannot regress:
+ *   1. places-dedup.json — curated legacy human folds.
  *   2. autoFold — the deterministic same-place rule (src/lib/dedupe.ts)
- *      over the survivors, so a NEW duplicate is collapsed the moment
- *      it enters the data, with zero human upkeep. Conservative by
- *      construction (safelist-guarded), so it never destroys a
- *      distinct place. Gated by RADIUS_DEDUPE for instant rollback.
+ *      over the survivors, so a NEW exact/variant dupe is collapsed
+ *      the moment it enters the data, zero upkeep, safelist-guarded.
+ *   3. places-overrides.json — the human judgement tail the safe rule
+ *      cannot touch: typo folds, junk removals, field patches. Written
+ *      by `npm run data:review`; applied last so a human always wins.
+ * Gated by RADIUS_DEDUPE for instant rollback (overrides remove/patch
+ * are data corrections and stay honored even then).
  */
 const STATIC_DEDUPED: Place[] = DEDUPE_ON ? applyDedup(PLACES) : PLACES;
 
@@ -103,30 +122,38 @@ const AUTO_FOLD: Map<string, string> = DEDUPE_ON
     )
   : new Map<string, string>();
 
-const BASE_PLACES: Place[] = DEDUPE_ON
-  ? STATIC_DEDUPED.filter((p) => !AUTO_FOLD.has(p.slug))
-  : PLACES;
+// Every slug → its final surviving canonical, chasing human folds
+// first, then auto folds, then legacy folds (chain- and cycle-safe).
+const DEDUP_AS_MAP: Record<string, string> = Object.fromEntries(
+  Object.entries(DEDUP).map(([s, e]) => [s, e.canonical]),
+);
+const resolveCanonicalSlug = makeResolver([OV_FOLD, AUTO_FOLD, DEDUP_AS_MAP]);
 
-const BASE_BY_SLUG: Record<string, Place> = DEDUPE_ON
-  ? (() => {
-      const byCanon: Record<string, Place> = {};
-      for (const p of BASE_PLACES) byCanon[p.slug] = p;
-      const idx: Record<string, Place> = { ...byCanon };
-      // Auto-folded slug → its canonical, so saved/linked old slugs
-      // still resolve. Done before the static loop so a static
-      // canonical that itself got auto-folded resolves transitively.
-      for (const [slug, canon] of AUTO_FOLD) {
-        if (byCanon[canon]) idx[slug] = byCanon[canon];
-      }
-      // Static-folded + legacy slugs → canonical (resolve against the
-      // final index in case the canonical was itself auto-folded).
-      for (const [slug, e] of Object.entries(DEDUP)) {
-        const resolved = byCanon[e.canonical] ?? idx[e.canonical];
-        if (resolved) idx[slug] = resolved;
-      }
-      return idx;
-    })()
-  : PLACE_BY_SLUG;
+const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
+  // Drop anything folded away (auto OR human typo fold) and any
+  // human-removed junk; then apply human field patches. remove/patch
+  // are data corrections so they apply even with dedupe disabled.
+  .filter(
+    (p) =>
+      !OV_REMOVE.has(p.slug) &&
+      (!DEDUPE_ON || (!AUTO_FOLD.has(p.slug) && !OV_FOLD[p.slug])),
+  )
+  .map((p) => patchRecord(p, OV_PATCH));
+
+const BASE_BY_SLUG: Record<string, Place> = (() => {
+  const byCanon: Record<string, Place> = {};
+  for (const p of BASE_PLACES) byCanon[p.slug] = p;
+  const idx: Record<string, Place> = { ...byCanon };
+  // Every original slug (folded, legacy, typo, old link) resolves to
+  // its surviving canonical record. Removed slugs deliberately do not
+  // resolve, so getPlaceBySlug returns null and they vanish entirely.
+  for (const p of PLACES) {
+    if (OV_REMOVE.has(p.slug) || idx[p.slug]) continue;
+    const canon = byCanon[resolveCanonicalSlug(p.slug)];
+    if (canon) idx[p.slug] = canon;
+  }
+  return idx;
+})();
 
 /** Google-verified data merged onto a place, when available. */
 export type PlaceEnriched = {
