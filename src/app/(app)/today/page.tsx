@@ -22,7 +22,24 @@ import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import { buildActivities } from "@/lib/live-activity";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import Link from "next/link";
-import { Mountain, Trees, Palette, Landmark, Sprout, Bus, Waves, ChevronRight } from "lucide-react";
+import { Mountain, Trees, Palette, Landmark, Sprout, Bus, Waves } from "lucide-react";
+
+/**
+ * The live-county-data sources, consolidated into ONE "Explore
+ * Frederick" hub instead of seven stacked full-width cards (which had
+ * begun to read like the directory the app deliberately is not). Each
+ * keeps its established per-source accent so the color still means
+ * what it means elsewhere in the app.
+ */
+const EXPLORE_LINKS = [
+  { href: "/trails", label: "Trails", desc: "Maintained trails", icon: Mountain, color: "var(--app-positive, #1E6B3A)" },
+  { href: "/parks", label: "Parks", desc: "Parks & open space", icon: Trees, color: "var(--app-brand-2, #1E3A2F)" },
+  { href: "/art", label: "Public art", desc: "Murals & sculptures", icon: Palette, color: "var(--app-accent)" },
+  { href: "/historic", label: "Historic", desc: "National Register", icon: Landmark, color: "var(--app-brand, #C4451C)" },
+  { href: "/markets", label: "Markets", desc: "Farmers markets", icon: Sprout, color: "var(--app-positive, #1E6B3A)" },
+  { href: "/transit", label: "Transit", desc: "County bus routes", icon: Bus, color: "var(--app-cool)" },
+  { href: "/water", label: "Rivers", desc: "Live water levels", icon: Waves, color: "var(--app-cool)" },
+] as const;
 import FadeUp from "@/components/ui/FadeUp";
 import { ShimmerWeatherStrip, ShimmerCard } from "@/components/ui/Shimmer";
 import { rankPlaces, placesWithinRadius, decoratePlace, likelyOpenPlaces, publicPlaces, publicPlaceBySlug } from "@/lib/loaders/places";
@@ -212,194 +229,48 @@ export default async function HomePage() {
           </section>
         </FadeUp>
 
-        {/* County trails — surfaces the live Frederick County GIS trail
-            data (hundreds of trails) which otherwise has no entry point. */}
+        {/* Explore Frederick — the live county-data sources, ONE hub
+            (was seven stacked cards). Compact, scannable, not a stack. */}
         <FadeUp>
-          <Link
-            href="/trails"
-            className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "color-mix(in srgb, var(--app-positive, #1E6B3A) 16%, transparent)" }}
-              aria-hidden
-            >
-              <Mountain className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-positive, #1E6B3A)" }} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                County trails
+          <section className="space-y-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                Explore Frederick
+              </h2>
+              <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                Live county data
               </span>
-              <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Every maintained trail — surface, length, what you can do
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </Link>
-        </FadeUp>
-
-        {/* County parks — the live Frederick County GIS parks & open-
-            space layer (every named park, deduped to one card each). */}
-        <FadeUp>
-          <Link
-            href="/parks"
-            className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "color-mix(in srgb, var(--app-brand-2, #1E3A2F) 16%, transparent)" }}
-              aria-hidden
-            >
-              <Trees className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-brand-2, #1E3A2F)" }} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                County parks
-              </span>
-              <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Every park &amp; open space — type, size, who maintains it
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </Link>
-        </FadeUp>
-
-        {/* Public art tour — the live Frederick County GIS public-art
-            point layer. A self-guided discovery experience, not a list. */}
-        <FadeUp>
-          <Link
-            href="/art"
-            className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "color-mix(in srgb, var(--app-accent) 16%, transparent)" }}
-              aria-hidden
-            >
-              <Palette className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-accent)" }} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                Public art tour
-              </span>
-              <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                A self-guided walk through the city&apos;s murals &amp; sculptures
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </Link>
-        </FadeUp>
-
-        {/* Historic places — the live Maryland National Register layer,
-            Frederick-filtered. Heritage discovery, sibling to the art
-            tour, not a list. Keyless. */}
-        <FadeUp>
-          <Link
-            href="/historic"
-            className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "color-mix(in srgb, var(--app-brand, #C4451C) 16%, transparent)" }}
-              aria-hidden
-            >
-              <Landmark className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-brand, #C4451C)" }} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                Historic places
-              </span>
-              <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Every National Register site: districts, landmarks, Civil War ground
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </Link>
-        </FadeUp>
-
-        {/* Farmers markets — the genuine ones pulled out of the noisy
-            "market" places, county-wide. Keyless, honest. */}
-        <FadeUp>
-          <Link
-            href="/markets"
-            className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "color-mix(in srgb, var(--app-positive, #1E6B3A) 16%, transparent)" }}
-              aria-hidden
-            >
-              <Sprout className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-positive, #1E6B3A)" }} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                Farmers markets
-              </span>
-              <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Every farmers &amp; farm market across the county, by town
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </Link>
-        </FadeUp>
-
-        {/* TransIT routes — real county bus routes from MD Open Data
-            (the cataloged GTFS ZIP is offline; live arrivals pending). */}
-        <FadeUp>
-          <Link
-            href="/transit"
-            className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "color-mix(in srgb, var(--app-cool) 16%, transparent)" }}
-              aria-hidden
-            >
-              <Bus className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                TransIT routes
-              </span>
-              <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Every county bus route and where it goes
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </Link>
-        </FadeUp>
-
-        {/* Rivers & streams — live USGS gauge readings (gage height &
-            streamflow), real-time civic-safety context. Keyless. */}
-        <FadeUp>
-          <Link
-            href="/water"
-            className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-              style={{ background: "color-mix(in srgb, var(--app-cool) 16%, transparent)" }}
-              aria-hidden
-            >
-              <Waves className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                Rivers &amp; streams
-              </span>
-              <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Live USGS gauge levels — gage height &amp; streamflow
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-          </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {EXPLORE_LINKS.map((e) => {
+                const Icon = e.icon;
+                return (
+                  <Link
+                    key={e.href}
+                    href={e.href}
+                    className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.98]"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <span
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                      style={{ background: `color-mix(in srgb, ${e.color} 16%, transparent)` }}
+                      aria-hidden
+                    >
+                      <Icon className="h-4 w-4" strokeWidth={2} style={{ color: e.color }} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                        {e.label}
+                      </span>
+                      <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                        {e.desc}
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
         </FadeUp>
 
         {/* Location-aware, county-wide "around you right now" — fuses the
