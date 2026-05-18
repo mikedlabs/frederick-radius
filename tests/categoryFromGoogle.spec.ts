@@ -32,11 +32,35 @@ describe("categoryFromPrimaryType", () => {
     expect(categoryFromPrimaryType("  Coffee_Shop ")).toBe("coffee");
   });
 
+  it("maps the audit-driven uncovered types to real categories", () => {
+    // Health & body → wellness
+    expect(categoryFromPrimaryType("medical_clinic")).toBe("wellness");
+    expect(categoryFromPrimaryType("doctor")).toBe("wellness");
+    expect(categoryFromPrimaryType("dentist")).toBe("wellness");
+    expect(categoryFromPrimaryType("hair_salon")).toBe("wellness");
+    expect(categoryFromPrimaryType("beauty_salon")).toBe("wellness");
+    expect(categoryFromPrimaryType("barber_shop")).toBe("wellness");
+    expect(categoryFromPrimaryType("massage")).toBe("wellness");
+    // Community → civic
+    expect(categoryFromPrimaryType("non_profit_organization")).toBe("civic");
+    expect(categoryFromPrimaryType("association_or_organization")).toBe("civic");
+    // Practical → services
+    expect(categoryFromPrimaryType("bank")).toBe("services");
+    expect(categoryFromPrimaryType("car_repair")).toBe("services");
+    // Retail → shopping
+    expect(categoryFromPrimaryType("liquor_store")).toBe("shopping");
+    expect(categoryFromPrimaryType("convenience_store")).toBe("shopping");
+    expect(categoryFromPrimaryType("parking_garage")).toBe("parking");
+  });
+
   it("returns null for vague/unknown types so curated stays put", () => {
     expect(categoryFromPrimaryType("point_of_interest")).toBe(null);
     expect(categoryFromPrimaryType("establishment")).toBe(null);
     expect(categoryFromPrimaryType("store")).toBe(null);
     expect(categoryFromPrimaryType("food")).toBe(null);
+    expect(categoryFromPrimaryType("service")).toBe(null);
+    expect(categoryFromPrimaryType("premise")).toBe(null);
+    expect(categoryFromPrimaryType("manufacturer")).toBe(null);
     expect(categoryFromPrimaryType("")).toBe(null);
     expect(categoryFromPrimaryType(undefined)).toBe(null);
     expect(categoryFromPrimaryType(null)).toBe(null);
