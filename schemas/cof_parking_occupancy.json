@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/cof_parking_occupancy.json",
+  "title": "City of Frederick parking deck occupancy (SCAFFOLD, unverified)",
+  "description": "Provisional shape only. The live City of Frederick occupancy endpoint is not confirmed, so this schema is a scaffold modeled on the common deck/available/capacity pattern and MUST be revalidated against the real feed before activation. The transform is defensive so an unexpected real shape degrades to nulls rather than fabricating counts.",
+  "type": "object",
+  "required": ["decks"],
+  "properties": {
+    "as_of": { "type": ["string", "null"] },
+    "decks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "available": { "type": ["number", "null"] },
+          "occupied": { "type": ["number", "null"] },
+          "capacity": { "type": ["number", "null"] },
+          "status": { "type": ["string", "null"] },
+          "updated": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}
