@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
-import { Trees, Ruler, Building2, MapPin } from "lucide-react";
+import { Trees, Ruler, Building2, MapPin, ExternalLink } from "lucide-react";
 import { getFrederickParks, type Park } from "@/lib/integrations/fcParks";
+import {
+  getFrederickParkLocations,
+  enrichParksWithLocations,
+} from "@/lib/integrations/fcParkLocations";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 export const metadata: Metadata = {
   title: "Parks",
   description:
-    "Every park and open-space area in Frederick County — type, size, and who maintains it. Live from Frederick County GIS.",
+    "Every park and open-space area in Frederick County — type, size, address, and who maintains it. Live from Frederick County GIS.",
 };
 
 // Parks change rarely; the integration revalidates weekly.
@@ -30,7 +34,7 @@ function ParkRow({ p }: { p: Park }) {
     >
       <a
         href={`/map?focus=${p.lat},${p.lng}`}
-        className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--app-bg-sunken)]"
+        className="flex items-start gap-3 px-4 pt-3 pb-2 transition-colors hover:bg-[var(--app-bg-sunken)]"
       >
         <span
           className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
@@ -46,6 +50,11 @@ function ParkRow({ p }: { p: Park }) {
           {kind && (
             <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-2)" }}>
               {kind}
+            </span>
+          )}
+          {p.address && (
+            <span className="mt-0.5 block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              {p.address}
             </span>
           )}
           <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -65,12 +74,32 @@ function ParkRow({ p }: { p: Park }) {
         </span>
         <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
       </a>
+      {p.detailsUrl && (
+        <a
+          href={p.detailsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="-mt-1 flex items-center gap-1 pb-2.5 pl-[60px] pr-4 text-[11px] font-semibold"
+          style={{ color: "var(--app-cool)" }}
+        >
+          Official county page
+          <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
+        </a>
+      )}
     </li>
   );
 }
 
 export default async function ParksPage() {
-  const parks = await getFrederickParks();
+  // Two county layers: POS_Areas (acreage / planning types, the spine)
+  // and the cleaner official Park_Locations points (address + detail
+  // link). Joined by EXACT normalized name only — never fuzzy, so a
+  // wrong address can't land on the wrong park. Both degrade to [].
+  const [parksRaw, parkLocs] = await Promise.all([
+    getFrederickParks().catch(() => []),
+    getFrederickParkLocations().catch(() => []),
+  ]);
+  const parks = enrichParksWithLocations(parksRaw, parkLocs);
 
   const byMuni = new Map<string, Park[]>();
   for (const p of parks) {
@@ -136,8 +165,8 @@ export default async function ParksPage() {
             </section>
           ))}
           <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Data: Frederick County GIS open data (Parks &amp; Open Space),
-            refreshed weekly.
+            Data: Frederick County GIS open data (Parks &amp; Open Space
+            and official Park Locations), refreshed weekly.
           </p>
         </>
       )}

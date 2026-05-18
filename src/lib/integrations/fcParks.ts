@@ -52,6 +52,11 @@ export type Park = {
   maintainedBy?: string;
   /** Total acres summed across every polygon sharing this name. */
   acres?: number;
+  /** Real street address, joined from the official Park_Locations
+   *  layer by exact name match (see fcParkLocations). */
+  address?: string;
+  /** Official county (or external) detail-page link, same join. */
+  detailsUrl?: string;
   municipality: string;
   /** Representative point (largest polygon's ring centroid) for the
    *  map-focus deep link + municipality resolve. */
