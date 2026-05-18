@@ -68,6 +68,32 @@
   --app-shadow-1: 0 1px 2px rgba(20, 20, 18, 0.06);
   --app-shadow-2: 0 4px 12px rgba(20, 20, 18, 0.08);
   --app-shadow-3: 0 12px 32px rgba(20, 20, 18, 0.12);
+
+  /* ─────────────────────────────────────────────────────
+   * VISUAL SYSTEM v2 — tactile depth.
+   * Layered, ink-tinted elevation + a top inner highlight so
+   * surfaces read as physical paper, not flat rectangles.
+   * Additive: --app-shadow-1/2/3 are untouched for existing
+   * consumers; primitives use the --app-elev-* scale.
+   * ───────────────────────────────────────────────────── */
+  --app-elev-1:
+    0 1px 1.5px rgba(26, 26, 26, 0.05),
+    0 1px 2px rgba(26, 26, 26, 0.05);
+  --app-elev-2:
+    0 1px 2px rgba(26, 26, 26, 0.05),
+    0 4px 10px -2px rgba(26, 26, 26, 0.08);
+  --app-elev-3:
+    0 2px 4px rgba(26, 26, 26, 0.05),
+    0 12px 24px -6px rgba(26, 26, 26, 0.12);
+  --app-elev-4:
+    0 4px 8px rgba(26, 26, 26, 0.06),
+    0 24px 48px -12px rgba(196, 69, 28, 0.16); /* brand-tinted ambient */
+  /* The "made" look: a 1px top inner highlight + crisp inner edge
+   * (reads sharper than a 1px border on a tinted surface). */
+  --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.06);
+  /* Gentle overshoot for press/lift physics. */
+  --app-ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -79,6 +105,13 @@
     --app-ink: #F4F2EE;
     --app-ink-2: #BFBDB7;
     --app-ink-3: #8A8884;
+    /* Depth reads via darker ambient + a faint white top hairline. */
+    --app-elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --app-elev-2: 0 2px 6px rgba(0, 0, 0, 0.45);
+    --app-elev-3: 0 8px 20px rgba(0, 0, 0, 0.5);
+    --app-elev-4: 0 16px 40px rgba(0, 0, 0, 0.55);
+    --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --app-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   }
 }
 
@@ -401,3 +434,38 @@ body {
   transition: transform 220ms var(--app-ease-out), box-shadow 220ms var(--app-ease-out);
 }
 .hover-lift:hover { transform: translateY(-2px); box-shadow: var(--app-shadow-3); }
+
+/* ─────────────────────────────────────────────────────
+ * VISUAL SYSTEM v2 — tactile surface + press physics.
+ * .tactile          = edge + top highlight + base elevation
+ * .tactile-e2/3/4   = swap the ambient elevation layer
+ * .tactile-interactive = spring lift on hover, crisp press
+ * Used by the Surface / Button / Chip primitives. Motion is
+ * tokenized so the global reduced-motion rule neutralizes it.
+ * ───────────────────────────────────────────────────── */
+.tactile {
+  box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
+  transition:
+    box-shadow var(--app-dur-med) var(--app-ease-out),
+    transform var(--app-dur-med) var(--app-ease-spring),
+    filter var(--app-dur-fast) var(--app-ease-out);
+}
+.tactile-e2 { box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-2); }
+.tactile-e3 { box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-3); }
+.tactile-e4 { box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-4); }
+.tactile-interactive {
+  cursor: pointer;
+  will-change: transform;
+}
+.tactile-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-3);
+}
+.tactile-interactive:active {
+  transform: translateY(0) scale(0.985);
+  box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
+  transition-duration: var(--app-dur-fast);
+}
+/* Filled controls get a subtle lighten on hover for material feel. */
+.tactile-lift:hover { filter: brightness(1.04); }
+.tactile-lift:active { filter: brightness(0.98); }

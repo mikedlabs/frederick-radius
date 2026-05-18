@@ -5,6 +5,9 @@ import {
   type HistoricPlace,
 } from "@/lib/integrations/mdHistoricPlaces";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { Surface } from "@/components/ui/Surface";
+import { Chip } from "@/components/ui/Chip";
+import { Button } from "@/components/ui/Button";
 
 export const metadata: Metadata = {
   title: "Historic places",
@@ -40,13 +43,10 @@ function PlaceRow({ h }: { h: HistoricPlace }) {
               {h.name}
             </span>
             {h.isNHL && (
-              <span
-                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                style={{ background: "color-mix(in srgb, var(--app-brand, #C4451C) 14%, transparent)", color: BRICK }}
-              >
+              <Chip tone="brand" className="shrink-0">
                 <Award className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
                 National Landmark
-              </span>
+              </Chip>
             )}
           </span>
           {h.altName && (
@@ -69,16 +69,19 @@ function PlaceRow({ h }: { h: HistoricPlace }) {
         <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
       </a>
       {h.url && (
-        <a
-          href={h.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="-mt-1 flex items-center gap-1 pb-2.5 pl-[60px] pr-4 text-[11px] font-semibold"
-          style={{ color: "var(--app-cool)" }}
-        >
-          Maryland Historical Trust record
-          <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
-        </a>
+        <div className="-mt-1 pb-2.5 pl-[52px] pr-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            href={h.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: "var(--app-cool)" }}
+            iconRight={<ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />}
+          >
+            Maryland Historical Trust record
+          </Button>
+        </div>
       )}
     </li>
   );
@@ -142,14 +145,11 @@ export default async function HistoricPage() {
                   {g.list.length}
                 </span>
               </h2>
-              <ul
-                className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-                style={{ borderColor: "var(--app-border)" }}
-              >
+              <Surface as="ul" elevation={1} className="overflow-hidden">
                 {g.list.map((h) => (
                   <PlaceRow key={h.id} h={h} />
                 ))}
-              </ul>
+              </Surface>
             </section>
           ))}
           <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
