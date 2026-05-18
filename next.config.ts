@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import path from "path";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   turbopack: {
@@ -15,4 +16,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// MVP wrap: runtime error capture only. Source-map upload is disabled
+// so no SENTRY_AUTH_TOKEN is required to build, and Sentry build-time
+// telemetry is off. Org/project/auth are intentionally omitted.
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  telemetry: false,
+  sourcemaps: { disable: true },
+});
