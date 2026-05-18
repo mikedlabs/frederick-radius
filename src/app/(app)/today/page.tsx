@@ -61,7 +61,7 @@ function ExploreHub({ counts }: { counts: Record<string, number> }) {
     <FadeUp>
       <section className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <h2 className="display-2" style={{ color: "var(--app-ink)" }}>
             Explore Frederick
           </h2>
           <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -336,7 +336,7 @@ export default async function HomePage() {
         <FadeUp>
           <section className="space-y-2">
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <h2 className="display-2" style={{ color: "var(--app-ink)" }}>
                 Explore by town
               </h2>
               <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
