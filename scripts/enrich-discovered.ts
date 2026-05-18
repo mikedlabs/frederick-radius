@@ -83,6 +83,8 @@ async function main() {
     website?: string;
     detail_primary_type?: string;
     editorial_summary?: string;
+    review_snippet?: string;
+    review_author?: string;
   }> = [];
   let ok = 0, miss = 0;
   for (let i = 0; i < clean.length; i++) {
@@ -102,6 +104,8 @@ async function main() {
         website: d.website,
         detail_primary_type: d.primary_type,
         editorial_summary: d.editorial_summary,
+        review_snippet: d.review_snippet,
+        review_author: d.review_author,
       });
     } else {
       miss++;

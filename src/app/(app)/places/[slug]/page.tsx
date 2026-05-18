@@ -184,6 +184,19 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               {desc}
             </p>
           )}
+          {place.review_snippet && (
+            <figure
+              className="border-l-2 pl-3"
+              style={{ borderColor: "color-mix(in srgb, var(--app-cool) 45%, transparent)" }}
+            >
+              <blockquote className="text-[13px] italic leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                &ldquo;{place.review_snippet}&rdquo;
+              </blockquote>
+              <figcaption className="mt-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                {place.review_author ? `${place.review_author} · ` : ""}via Google reviews
+              </figcaption>
+            </figure>
+          )}
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <OpenClosedDot status={place.open_status} />
             {place.price_band && (

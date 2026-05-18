@@ -72,6 +72,11 @@ export type PlaceEnrichment = {
   editorial_summary?: string;
   /** Human label for the primary type, e.g. "Coffee shop". */
   primary_type_display?: string;
+  /** One real, quality-filtered Google review snippet — surfaced as
+   *  an ATTRIBUTED "what people say" line when there is no editorial
+   *  summary. Never presented as our own copy. */
+  review_snippet?: string;
+  review_author?: string;
 };
 
 function key(): string | null {
@@ -98,6 +103,7 @@ const DETAILS_FIELD_MASK = [
   "photos",
   "editorialSummary",
   "primaryTypeDisplayName",
+  "reviews",
 ].join(",");
 
 type GApiPlace = {
@@ -116,7 +122,34 @@ type GApiPlace = {
   photos?: Array<{ name?: string }>;
   editorialSummary?: { text?: string };
   primaryTypeDisplayName?: { text?: string };
+  reviews?: Array<{
+    text?: { text?: string };
+    rating?: number;
+    authorAttribution?: { displayName?: string };
+  }>;
 };
+
+/**
+ * Pick ONE usable review snippet: highest-rated first, then sane
+ * length (a one-liner, not an essay), single line, trimmed. Returns
+ * undefined when nothing clears the bar — never fabricates.
+ */
+function pickReview(
+  reviews: GApiPlace["reviews"],
+): { snippet: string; author?: string } | undefined {
+  if (!Array.isArray(reviews) || reviews.length === 0) return undefined;
+  const ranked = [...reviews].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+  for (const r of ranked) {
+    const raw = r.text?.text?.replace(/\s+/g, " ").trim() ?? "";
+    if (raw.length < 40 || raw.length > 240) continue;
+    if ((r.rating ?? 0) < 4) continue; // lead with positive, honest signal
+    return {
+      snippet: raw,
+      author: r.authorAttribution?.displayName?.trim() || undefined,
+    };
+  }
+  return undefined;
+}
 
 function normalize(p: GApiPlace): PlaceEnrichment | null {
   if (!p.id) return null;
@@ -142,6 +175,8 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
     primary_type: p.primaryType,
     editorial_summary: p.editorialSummary?.text,
     primary_type_display: p.primaryTypeDisplayName?.text,
+    review_snippet: pickReview(p.reviews)?.snippet,
+    review_author: pickReview(p.reviews)?.author,
   };
 }
 
