@@ -62,19 +62,23 @@ sources:
   - id: seeclickfix
     name: SeeClickFix Frederick County 311
     owner: SeeClickFix, Frederick County FCG FixIT
-    url: https://seeclickfix.com/api/v2/issues?bbox=39.265,-77.700,39.745,-77.150&per_page=50&sort=created_at&sort_direction=DESC
+    url: https://seeclickfix.com/api/v2/issues?place_url=frederick-county&per_page=50&sort=created_at&sort_direction=DESC
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
     license: public read access
     contact: https://seeclickfix.com
     status: active
-    last_validated: null
+    last_validated: 2026-05-18
     last_success: null
     schema_file: schemas/seeclickfix.json
     transform_file: transforms/seeclickfix.ts
     notes: |
-      Open311 style civic issue reports inside the county bounding box.
+      Open311 311 reports scoped to the canonical place
+      (place_url=frederick-county, id 72540). A bbox-only query is
+      silently ignored by the SeeClickFix v2 API and returns the
+      global feed; the integration also applies a hard in-county bbox
+      post-filter as defense in depth.
 
   - id: nws_forecast
     name: National Weather Service Forecast, Frederick

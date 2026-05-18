@@ -1,10 +1,27 @@
 /**
  * SeeClickFix issues to a normalized GeoJSON FeatureCollection.
  *
- * The query already restricts to the county bounding box, so the
- * transform only normalizes shape: stable status values, an ISO
- * timestamp, and a trimmed description.
+ * The request is scoped to place_url=frederick-county (a bbox-only
+ * query is silently ignored by the v2 API and returns the global
+ * feed). As defense in depth this transform also drops any issue
+ * outside the county bounding box before normalizing shape.
  */
+
+// Frederick County bbox: south, west, north, east.
+const BBOX_S = 39.265;
+const BBOX_W = -77.7;
+const BBOX_N = 39.745;
+const BBOX_E = -77.15;
+function inFrederickBbox(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= BBOX_S &&
+    lat <= BBOX_N &&
+    lng >= BBOX_W &&
+    lng <= BBOX_E
+  );
+}
 
 import {
   isoDate,
@@ -24,7 +41,7 @@ function normStatus(s: string): "open" | "acknowledged" | "closed" {
 export function transform(raw: SeeClickFixRaw): TransformResult {
   const features = [];
   for (const i of raw.issues) {
-    if (!Number.isFinite(i.lat) || !Number.isFinite(i.lng)) continue;
+    if (!inFrederickBbox(i.lat, i.lng)) continue;
     features.push(
       pointFeature(
         { lat: i.lat, lng: i.lng },

@@ -1,6 +1,6 @@
 /**
  * SeeClickFix — Frederick County FCG FixIT (Open311).
- * Free, public API. Returns recent 311 reports inside the county bbox.
+ * Free, public API. Returns recent 311 reports for Frederick County.
  *
  * Endpoint: https://seeclickfix.com/api/v2/issues
  * No key required for public read-only access.
@@ -8,8 +8,41 @@
 
 const ENDPOINT = "https://seeclickfix.com/api/v2/issues";
 
-// Frederick County bbox: south, west, north, east
-const BBOX = "39.265,-77.700,39.745,-77.150";
+// SeeClickFix v2 silently IGNORES a bbox-only query and returns the
+// GLOBAL recent feed (Las Vegas, Toledo, etc. shown under a Frederick
+// header). Scope the request to the canonical place instead —
+// confirmed via the /places API: "Frederick County" => url_name
+// "frederick-county" (id 72540).
+const PLACE_URL = "frederick-county";
+
+// Frederick County bounding box: south, west, north, east.
+const BBOX_S = 39.265;
+const BBOX_W = -77.7;
+const BBOX_N = 39.745;
+const BBOX_E = -77.15;
+
+/** True only when a point falls inside the Frederick County bbox. */
+export function inFrederickBbox(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= BBOX_S &&
+    lat <= BBOX_N &&
+    lng >= BBOX_W &&
+    lng <= BBOX_E
+  );
+}
+
+/**
+ * Belt-and-suspenders post-filter. Even with the place-scoped URL, if
+ * the upstream silently regresses again the UI must not show
+ * out-of-county 311. Pure, so it is unit tested.
+ */
+export function filterToCounty<T extends { lat: number; lng: number }>(
+  rows: T[],
+): T[] {
+  return rows.filter((r) => inFrederickBbox(r.lat, r.lng));
+}
 
 export type FixItIssue = {
   id: number;
@@ -49,7 +82,7 @@ function normStatus(s: string): FixItIssue["status"] {
 }
 
 export async function getFixItIssues(limit = 20): Promise<FixItIssue[]> {
-  const url = `${ENDPOINT}?bbox=${BBOX}&per_page=${limit}&sort=created_at&sort_direction=DESC`;
+  const url = `${ENDPOINT}?place_url=${PLACE_URL}&per_page=${limit}&sort=created_at&sort_direction=DESC`;
   try {
     const res = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -58,8 +91,8 @@ export async function getFixItIssues(limit = 20): Promise<FixItIssue[]> {
     if (!res.ok) return [];
     const data = await res.json() as { issues?: RawIssue[] };
     const issues = data.issues ?? [];
-    return issues
-      .filter((i) => Number.isFinite(i.lat) && Number.isFinite(i.lng))
+    // Defensive: even scoped, never let an out-of-county point render.
+    return filterToCounty(issues)
       .map((i) => ({
         id: i.id,
         summary: i.summary,
