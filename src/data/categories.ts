@@ -33,6 +33,8 @@ export const CATEGORIES: Category[] = [
   { slug: "family", name: "Family", icon: "Baby", color: "#D9A441", display_order: 40, blurb: "Kid-friendly places, family-rated events, indoor rainy-day picks." },
   { slug: "library", name: "Libraries", parent: "family", icon: "Library", color: "#2A5D8F", display_order: 41, blurb: "County branches, story times, free wifi, and community rooms." },
 
+  { slug: "sports", name: "Sports", icon: "Activity", color: "#0F8A5F", display_order: 45, blurb: "Games to go see — Frederick Keys, Hood Blazers, and local league play." },
+
   { slug: "shopping", name: "Shopping", icon: "ShoppingBag", color: "#B26B00", display_order: 50, blurb: "Boutique, antique, and Main Street commerce." },
   { slug: "antiques", name: "Antiques", parent: "shopping", icon: "Lamp", color: "#8B5A2B", display_order: 51, blurb: "Twelve blocks of New Market and beyond." },
   { slug: "book-store", name: "Book Stores", parent: "shopping", icon: "BookOpen", color: "#8B5A2B", display_order: 52, blurb: "Independent booksellers." },

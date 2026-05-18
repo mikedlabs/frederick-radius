@@ -242,12 +242,16 @@ sources:
     refresh_cadence: weekly
     license: public calendar
     contact: https://www.hood.edu
-    status: scaffold
-    last_validated: null
+    status: active
+    last_validated: 2026-05-18
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Campus events. Override the URL with HOOD_CALENDAR_URL.
+    transform_file: src/lib/integrations/ical-live.ts
+    notes: |
+      Campus events. Live via the no-DB iCal path in
+      src/lib/integrations/ical-live.ts (FEEDS, source "hood"),
+      alongside the already-live Celebrate Frederick + Frederick
+      County feeds. Override the URL with HOOD_CALENDAR_URL.
 
   - id: frederick_county_calendar
     name: Frederick County Calendar
@@ -500,6 +504,65 @@ sources:
     schema_file: null
     transform_file: null
     notes: Tourism events. Scrape or iCal, confirm before use.
+
+  # Sports games — owner: "people need to know about sports games".
+  # Registered as real candidates, NOT fabricated: none publishes a
+  # confirmed clean iCal/RSS, so per the no-ungated-data rule they
+  # stay pending until a feed + license is verified. Sports events
+  # that arrive via the already-live Celebrate/County/Hood feeds are
+  # already classified (ical-live CATEGORY_KEYWORDS "sports").
+  - id: frederick_keys
+    name: Frederick Keys (MLB Draft League)
+    owner: Frederick Keys / MiLB
+    url: https://www.milb.com/frederick/schedule
+    endpoint_type: scrape
+    format: json
+    refresh_cadence: daily
+    license: unknown, confirm with owner (MiLB terms)
+    contact: https://www.milb.com/frederick
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Home games at Nymeo Field. No public iCal/RSS found; schedule is
+      a PDF + the MiLB site. Needs a resilient parser + license OK
+      before activation. Do NOT fabricate the schedule.
+  - id: hood_athletics
+    name: Hood College Blazers Athletics
+    owner: Hood College Athletics
+    url: https://hoodathletics.com/calendar
+    endpoint_type: ical
+    format: json
+    refresh_cadence: daily
+    license: public calendar, confirm export URL
+    contact: https://hoodathletics.com
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Separate from the Hood general Trumba feed (already active).
+      Uses ActiveCalendar (go.activecalendar.com/hood); an .ics export
+      likely exists but the exact URL is unconfirmed — promote once a
+      real export URL is verified, then add to ical-live FEEDS.
+  - id: fcc_athletics
+    name: Frederick Community College Athletics
+    owner: Frederick Community College
+    url: https://www.frederick.edu/athletics
+    endpoint_type: scrape
+    format: json
+    refresh_cadence: weekly
+    license: unknown, confirm with owner
+    contact: https://www.frederick.edu
+    status: pending_approval
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: Cougars schedules. Feed format/license unconfirmed.
 
   - id: google_civic
     name: Google Civic Information

@@ -32,7 +32,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -73,11 +73,31 @@ const FEEDS: FeedSpec[] = [
     default_municipality: "frederick",
     default_category: "civic",
   },
+  {
+    // Hood College public Trumba calendar (license: public calendar,
+    // per data/sources.yaml). Clean structured iCal — the safe,
+    // license-clear way to add real-time campus events, vs. scraping
+    // a blog. URL overridable so a calendar move needs no deploy.
+    source: "hood",
+    source_label: "Hood College",
+    url:
+      process.env.HOOD_CALENDAR_URL ||
+      "https://www.trumba.com/calendars/hood-college-events.ics",
+    format: "ical",
+    default_venue: "Hood College",
+    default_geom: { lng: -77.3997, lat: 39.4246 },
+    default_municipality: "frederick",
+    default_category: "civic",
+  },
 ];
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
   { slug: "theater", words: ["theater", "play", "stage", "broadway", "show", "comedy", "weinberg"] },
+  // Sports is checked early so a game beats the family/outdoors/market
+  // fallbacks ("youth soccer at the park" is sports, not outdoors).
+  // Tight, low-noise terms only (no bare "game"/"match").
+  { slug: "sports", words: ["baseball", "basketball", "soccer", "lacrosse", "softball", "volleyball", "frederick keys", "blazers", "athletics", "tournament", "playoff", "doubleheader", "scrimmage", " vs ", "vs."] },
   { slug: "gallery", words: ["art", "exhibit", "gallery", "first saturday", "first friday", "mural", "delaplaine"] },
   { slug: "market", words: ["market", "vendor", "farmers", "makers", "fair"] },
   { slug: "family", words: ["kids", "family", "children", "story time", "all ages", "scout", "youth"] },
