@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     default: "Frederick Radius — A smarter way to experience Frederick County",
   },
   description:
-    "Find what's nearby, happening, open, and worth your time across all 12 Frederick County, Maryland municipalities. Places, events, parks, parking, civic services — one app.",
+    "Find what's nearby, happening, open, and worth your time across every town and community in Frederick County, Maryland. Places, events, parks, parking, civic services — one app.",
   applicationName: "Frederick Radius",
   authors: [{ name: "MAD Productions" }],
   generator: "Next.js",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     siteName: "Frederick Radius",
     title: "Frederick Radius — A smarter way to experience Frederick County",
     description:
-      "Find what's nearby, happening, open, and worth your time across all 12 Frederick County, Maryland municipalities.",
+      "Find what's nearby, happening, open, and worth your time across every town and community in Frederick County, Maryland.",
     images: [{ url: `${BASE}/api/og`, width: 1200, height: 630 }],
   },
   twitter: {

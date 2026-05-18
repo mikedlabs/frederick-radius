@@ -336,7 +336,7 @@ export default async function HomePage() {
                 Explore by town
               </h2>
               <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                All 12 municipalities
+                Every town &amp; community
               </span>
             </div>
             <MunicipalityStrip />
