@@ -11,7 +11,7 @@ import Map, {
   type MapRef,
   type MapMouseEvent,
 } from "react-map-gl/mapbox";
-import type { GeoJSONSource } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -26,12 +26,21 @@ import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 // the map never loads. Places arrive already decorated from the
 // server page; the client only attaches a viewport distance.
 import type { PlaceCardData } from "@/lib/loaders/places";
+// TYPE ONLY: the amenities loader only reads the small static
+// amenities.json, but to keep this component strictly loader-free
+// (the rule that closed the 12MB bundle leak) the points arrive as a
+// server prop and only the Amenity type is imported (erased at build).
+import type { Amenity } from "@/lib/loaders/amenities";
 import { FREDERICK_CENTER, haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
+// THE one duplicate rule (pure, no data imports — bundle-safe). The
+// map's curated-vs-OSM de-dupe now uses the exact same contract as
+// the canonical loader, so "the same thing twice" is closed by one
+// rule on every surface instead of a weaker map-only heuristic.
+import { isSamePlace, type DedupeRecord } from "@/lib/dedupe";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
-import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
 import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
 import { DEMO_POINTS_PARTNERS, type DemoPointsPartner } from "@/data/radius-points-demo";
 import { RADIUS_COIN } from "@/data/city-data-engine";
@@ -58,6 +67,11 @@ type Props = {
   /** Server-fetched amenity points (Mapillary trash detections) merged
    *  into the amenity layer — the secret token stays server-side. */
   extraAmenities?: OsmPlace[];
+  /** Curated civic amenities (restrooms, Wi-Fi, EV, bike parking,
+   *  picnic, playgrounds — amenities.json, 442 pts). Server prop so
+   *  this stays loader-free; always present, unlike the flaky live
+   *  OSM amenity fetch. Folded into the same grouped Amenities tray. */
+  amenities?: Amenity[];
   /** Server-fetched line geometry for toggleable overlays (#3). Plain
    *  GeoJSON FeatureCollections; default off, so the base map is
    *  unchanged unless the user opts in. */
@@ -109,7 +123,26 @@ const AMENITY_CATEGORIES = new Set<string>([
   "restroom", "water", "trash", "recycling", "dog-waste",
   "bench", "picnic", "bike-parking", "bike-repair",
   "defibrillator", "shelter", "wifi", "ev-charging",
+  // A playground is an amenity people look for, not a business — it
+  // rides the amenity tray/layer, not the place cluster.
+  "playground",
 ]);
+
+/**
+ * Curated amenities.json uses underscored kinds; the map's marker
+ * and grouping language is the hyphenated category slug (what
+ * bucketOf / the cat- puck images understand). One small bridge so
+ * the 442 curated points render with the right icon and land in the
+ * right tray group.
+ */
+const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
+  restroom: "restroom",
+  ev_charging: "ev-charging",
+  wifi: "wifi",
+  bike_parking: "bike-parking",
+  picnic: "picnic",
+  playground: "playground",
+};
 
 /**
  * Grouped amenity picker — the "what do you need?" tray. One tap reveals
@@ -126,6 +159,7 @@ const AMENITY_GROUPS: { key: string; label: string; glyph: string; cats: string[
   { key: "ev", label: "EV charging", glyph: "\u{26A1}", cats: ["ev-charging"] },
   { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
   { key: "seating", label: "Sit & picnic", glyph: "\u{1FA91}", cats: ["bench", "picnic"] },
+  { key: "play", label: "Playgrounds", glyph: "\u{1F6DD}", cats: ["playground"] },
   { key: "safety", label: "AED & shelter", glyph: "\u{2795}", cats: ["defibrillator", "shelter"] },
 ];
 
@@ -150,6 +184,30 @@ function circlePolygon(center: LngLat, meters: number, steps = 72): GeoJSON.Feat
     ring.push([center.lng + lngR * Math.cos(a), center.lat + latR * Math.sin(a)]);
   }
   return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } };
+}
+
+// Camera easing shared by every programmatic move so zooming feels
+// calm and consistent — never the hard jump that read as "erratic".
+// easeInOutCubic: slow start, slow stop, no snap.
+const CAM_EASE = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+/**
+ * Gentle recenter + zoom. The old code flew straight to z15.5 from
+ * wherever you were — a county-wide view punching to street level in
+ * one motion is exactly the jolt the owner flagged. This clamps the
+ * zoom change to a small step toward a sensible focus level and eases
+ * it, so tapping a result or a search hit glides instead of snapping.
+ */
+function smoothFocus(
+  map: MapboxMap,
+  center: [number, number],
+  opts?: { minZoom?: number; maxStep?: number },
+) {
+  const cur = map.getZoom();
+  const want = Math.max(cur, opts?.minZoom ?? 14.5);
+  const zoom = Math.min(want, cur + (opts?.maxStep ?? 2.2));
+  map.easeTo({ center, zoom, duration: 900, easing: CAM_EASE, essential: true });
 }
 
 function isTrustedOsm(p: OsmPlace): boolean {
@@ -189,31 +247,15 @@ const FREDERICK: [number, number] = [-77.4105, 39.4143];
 const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 
 // ── Curated-vs-OSM dedupe ───────────────────────────────────────────
-// The map renders our curated set AND the live OSM layer. They were
-// never reconciled, so anything in both showed twice. Normalize a name
-// and drop an OSM pin when a curated place with the same name sits
-// within ~150 m. Conservative: exact normalized match or clear
-// containment only, so distinct same-name places in different towns
-// are NOT collapsed.
-const STOP_TOKENS = new Set(["the", "a", "an", "llc", "inc", "co", "ltd", "company"]);
-function normName(s: string): string {
-  return (s || "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(" ")
-    .filter((t) => t && !STOP_TOKENS.has(t))
-    .join(" ");
-}
-function cellKey(lat: number, lng: number): string {
-  return `${Math.round(lat * 100)},${Math.round(lng * 100)}`;
-}
-function nameCollision(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
-  return short.length >= 6 && long.includes(short);
+// The map renders our curated set AND the live OSM layer; anything in
+// both used to show twice. This now defers to the ONE shared rule
+// (src/lib/dedupe.ts) — same safelist, same name logic as the loader
+// — so an OSM "Baker Park" folds into the curated one while an OSM
+// "Carroll Creek Parking Deck" is never wrongly merged into the park.
+// ~300 m cells so a ±1 neighborhood always spans the 250 m rule.
+const DUPE_K = 370;
+function dupeCellKey(lat: number, lng: number): string {
+  return `${Math.round(lat * DUPE_K)},${Math.round(lng * DUPE_K)}`;
 }
 
 type SelectedOsm = OsmPlace & { _kind: "osm" };
@@ -230,6 +272,7 @@ export default function AppMap({
   focus,
   civic = [],
   extraAmenities = [],
+  amenities = [],
   trailLines = EMPTY_LINE_FC,
   transitLines = EMPTY_LINE_FC,
 }: Props) {
@@ -251,7 +294,9 @@ export default function AppMap({
   const [showUnverified, setShowUnverified] = useState(false);
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(new Set());
   const [amenityOpen, setAmenityOpen] = useState(false);
-  const [onlyGems, setOnlyGems] = useState(false);
+  // The category rail is heavy; collapsed by default so the in-map
+  // deck stays a clean glass bar. "Filters" reveals it as a panel.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [demo, setDemo] = useState<null | "food-truck" | "transit" | "rewards">(null);
   const [truck, setTruck] = useState<DemoFoodTruck | null>(null);
   const [pointsPlace, setPointsPlace] = useState<DemoPointsPartner | null>(null);
@@ -302,12 +347,7 @@ export default function AppMap({
     if (!p || !map) return;
     setSelectedSlug(p.slug);
     haptic("light");
-    map.flyTo({
-      center: [p.geom.lng, p.geom.lat],
-      zoom: Math.max(map.getZoom(), 15.5),
-      duration: 900,
-      essential: true,
-    });
+    smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
   }, [focus, places]);
 
   // Demo beacons only exist while their demo is on. Closing or switching
@@ -318,14 +358,13 @@ export default function AppMap({
   }, [demo]);
 
   const filteredPlaces = useMemo(() => {
-    let base = places;
-    if (onlyGems) base = base.filter((p) => HIDDEN_GEM_SLUGS.has(p.slug));
+    const base = places;
     if (activeCats.size === 0) return base;
     return base.filter((p) => {
       const cat = CATEGORY_BY_SLUG[p.category];
       return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
     });
-  }, [places, activeCats, onlyGems]);
+  }, [places, activeCats]);
 
   // Emit the curated places inside the current viewport (nearest-center
   // first) whenever the map settles — drives the synced results list.
@@ -353,34 +392,44 @@ export default function AppMap({
     onPlacesInView(inside);
   };
 
-  // Spatial hash of curated places by ~1 km cell, for OSM dedupe.
+  // Spatial hash of curated places (as DedupeRecords) for the OSM
+  // de-dupe — keyed so a ±1 neighborhood spans the shared rule radius.
   const placeDupeIndex = useMemo(() => {
     // Plain object, not Map — `Map` is the react-map-gl component here.
-    const idx: Record<string, { n: string; lat: number; lng: number }[]> = {};
+    const idx: Record<string, DedupeRecord[]> = {};
     for (const p of places) {
-      const k = cellKey(p.geom.lat, p.geom.lng);
-      (idx[k] ??= []).push({ n: normName(p.name), lat: p.geom.lat, lng: p.geom.lng });
+      const rec: DedupeRecord = {
+        slug: p.slug,
+        name: p.name,
+        geom: p.geom,
+        source: p.source,
+        google_place_id: p.google_place_id,
+        feature_score: p.feature_score,
+      };
+      (idx[dupeCellKey(p.geom.lat, p.geom.lng)] ??= []).push(rec);
     }
     return idx;
   }, [places]);
 
   const osmDupesCurated = useMemo(() => {
     return (p: OsmPlace): boolean => {
-      const n = normName(p.name);
-      if (!n) return false;
-      const cy = Math.round(p.lat * 100);
-      const cx = Math.round(p.lng * 100);
+      if (!p.name) return false;
+      // Same contract as the canonical loader — the safelist inside
+      // isSamePlace is what keeps "Carroll Creek Parking Deck" from
+      // ever folding into "Carroll Creek Park".
+      const osm: DedupeRecord = {
+        slug: `osm:${p.osm_id}`,
+        name: p.name,
+        geom: { lng: p.lng, lat: p.lat },
+      };
+      const cy = Math.round(p.lat * DUPE_K);
+      const cx = Math.round(p.lng * DUPE_K);
       for (let dz = -1; dz <= 1; dz++) {
         for (let dx = -1; dx <= 1; dx++) {
           const bucket = placeDupeIndex[`${cy + dz},${cx + dx}`];
           if (!bucket) continue;
           for (const q of bucket) {
-            if (
-              nameCollision(n, q.n) &&
-              haversineMeters({ lng: p.lng, lat: p.lat }, { lng: q.lng, lat: q.lat }) <= 150
-            ) {
-              return true;
-            }
+            if (isSamePlace(osm, q)) return true;
           }
         }
       }
@@ -471,8 +520,32 @@ export default function AppMap({
         },
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       }));
-    return { type: "FeatureCollection" as const, features: feats };
-  }, [osmPlaces, extraAmenities, activeAmenityCats]);
+    // Curated amenities.json — the deterministic, always-present set
+    // (the restrooms / Wi-Fi / EV / bike / picnic / playgrounds the
+    // owner "added but couldn't see"). Same feature shape, mapped onto
+    // the hyphenated category slug so they share the marker language
+    // and the same active-group filter as the live OSM amenities.
+    const curated = amenities
+      .map((a) => ({ a, cat: AMENITY_KIND_TO_CAT[a.kind] }))
+      .filter(({ cat }) => activeAmenityCats.has(cat))
+      .map(({ a, cat }) => ({
+        type: "Feature" as const,
+        properties: {
+          osm_id: a.id,
+          name: a.name,
+          category: cat,
+          osm_tag: "",
+          address: a.detail ?? "",
+          city: a.municipality,
+          phone: "",
+          website: "",
+          opening_hours: "",
+          cuisine: "",
+        },
+        geometry: { type: "Point" as const, coordinates: [a.lng, a.lat] },
+      }));
+    return { type: "FeatureCollection" as const, features: [...feats, ...curated] };
+  }, [osmPlaces, extraAmenities, amenities, activeAmenityCats]);
 
   /**
    * Curated places as a clustered GeoJSON source.
@@ -489,26 +562,12 @@ export default function AppMap({
         category: p.category,
         color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C",
         bucket: bucketOf(p.category),
-        gem: HIDDEN_GEM_SLUGS.has(p.slug) ? 1 : 0,
-        // Collision priority within the curated tier: gem wins, then
-        // verified, then the rest. Lower number = placed first = kept.
-        pri: HIDDEN_GEM_SLUGS.has(p.slug) ? 0 : p.is_verified ? 1 : 2,
+        // Draw order within the curated tier: verified places first so
+        // the strongest pins win the spot when icons stack.
+        pri: p.is_verified ? 0 : 1,
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
-  }), [filteredPlaces]);
-
-  // Hidden gems get a soft gold halo so they're discoverable even when
-  // you haven't filtered to them — the "wander and find something" magic.
-  const gemGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: filteredPlaces
-      .filter((p) => HIDDEN_GEM_SLUGS.has(p.slug))
-      .map((p) => ({
-        type: "Feature" as const,
-        properties: { slug: p.slug },
-        geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
-      })),
   }), [filteredPlaces]);
 
   // The single selected place — drives a soft glow ring under its icon.
@@ -559,7 +618,7 @@ export default function AppMap({
     );
     mapRef.current.fitBounds(
       [[bounds.min[0], bounds.min[1]], [bounds.max[0], bounds.max[1]]],
-      { padding: 56, maxZoom: 15, duration: 600 },
+      { padding: 56, maxZoom: 15, duration: 900, easing: CAM_EASE },
     );
   }, [filteredPlaces, activeCats]);
 
@@ -581,7 +640,11 @@ export default function AppMap({
           .getClusterExpansionZoom(clusterId, (err, zoom) => {
             if (err) return;
             const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
-            map.easeTo({ center: coords, zoom });
+            // Glide toward the expansion zoom, but clamped so a tap on a
+            // dense downtown cluster steps in calmly instead of snapping
+            // the whole county to street level. Very dense clusters take
+            // a second tap — that gentle tiering is the intended feel.
+            smoothFocus(map, coords, { minZoom: zoom, maxStep: 2.5 });
           });
       }
       return;
@@ -629,8 +692,7 @@ export default function AppMap({
     const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates as [number, number];
     let next: { lng: number; lat: number; label: string; sub?: string } | null = null;
     if (f.layer.id === "clusters" || f.layer.id === "curated-clusters") {
-      const n = props.point_count_abbreviated ?? props.point_count;
-      if (n != null) next = { lng, lat, label: `${n} places`, sub: "Zoom in to expand" };
+      next = { lng, lat, label: "A cluster of places", sub: "Zoom in to see them" };
     } else if (f.layer.id === "curated-icons") {
       const p = places.find((x) => x.slug === props.slug);
       if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };
@@ -645,7 +707,11 @@ export default function AppMap({
 
   const trustedOsmCount = osmPlaces.filter((p) => isTrustedOsm(p) && !isAmenity(p)).length;
   const unverifiedOsmCount = osmPlaces.filter((p) => !isTrustedOsm(p)).length;
-  const amenityCount = osmPlaces.filter(isAmenity).length;
+  // OSM amenities are flaky (live Overpass; empty in the sandbox). The
+  // curated amenities.json is always present, so the Amenities tray is
+  // gated on EITHER source having points — that is the fix for "I
+  // don't see the water fountains / things we just added".
+  const amenityCount = osmPlaces.filter(isAmenity).length + amenities.length;
   const activeAmenityGroupCount = amenityGroups.size;
 
   // On-map search — match places already on the map by name/address/city.
@@ -666,14 +732,7 @@ export default function AppMap({
     setSelectedSlug(p.slug);
     setQ("");
     haptic("light");
-    if (map) {
-      map.flyTo({
-        center: [p.geom.lng, p.geom.lat],
-        zoom: Math.max(map.getZoom(), 15.5),
-        duration: 900,
-        essential: true,
-      });
-    }
+    if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
     openSheet({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) });
   };
 
@@ -742,10 +801,15 @@ export default function AppMap({
         const loc = { lng: pos.coords.longitude, lat: pos.coords.latitude };
         setUserLoc(loc);
         haptic("light");
+        // A deliberate cross-county recenter, so a flight is right here
+        // — but eased with the same curve as every other move so it
+        // still feels calm, not a snap.
         mapRef.current?.getMap().flyTo({
           center: [loc.lng, loc.lat],
           zoom: 14,
-          duration: 900,
+          duration: 1100,
+          curve: 1.25,
+          easing: CAM_EASE,
           essential: true,
         });
       },
@@ -762,11 +826,106 @@ export default function AppMap({
   };
 
   return (
-    <div className="space-y-2">
-      {/* Filter chips — wrapped, every category visible at once (no
-          hidden horizontal scroll), consistent with the rest of the app. */}
-      <div>
-        <div>
+    <div
+      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
+      style={{ borderColor: "var(--app-border)", height }}
+    >
+      {/* ── Floating in-map control deck (glass). The map renders
+          behind; controls overlay it, Apple/Google-Maps style. The
+          heavy category rail is tucked into a collapsible panel so the
+          default view is a clean, premium map. ── */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-2.5 pt-2.5 sm:px-3 sm:pt-3">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search the map"
+                aria-label="Search the map"
+                className="w-full rounded-full border px-4 py-2.5 text-sm outline-none backdrop-blur"
+                style={{
+                  borderColor: "var(--app-border)",
+                  color: "var(--app-ink)",
+                  background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                  boxShadow: "var(--app-shadow-2)",
+                }}
+              />
+              {searchMatches.length > 0 && (
+                <ul
+                  className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",
+                    boxShadow: "var(--app-shadow-3)",
+                  }}
+                >
+                  {searchMatches.map((p) => {
+                    const cat = CATEGORY_BY_SLUG[p.category];
+                    return (
+                      <li key={p.slug}>
+                        <button
+                          type="button"
+                          onClick={() => pickSearch(p)}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
+                        >
+                          <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: cat?.color ?? "#C4451C" }} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
+                              {p.name}
+                            </span>
+                            <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                              {cat?.name ?? p.category}{p.address ? ` · ${p.address}` : ""}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={goNearMe}
+              aria-label="Find places near me"
+              className="shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
+              style={{
+                borderColor: userLoc ? "var(--app-brand)" : "var(--app-border)",
+                color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                boxShadow: "var(--app-shadow-2)",
+              }}
+            >
+              {locating ? "Locating…" : "Near me"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-pressed={filtersOpen}
+              aria-expanded={filtersOpen}
+              className="shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
+              style={{
+                borderColor: filtersOpen || activeCats.size > 0 ? "var(--app-brand)" : "var(--app-border)",
+                color: filtersOpen || activeCats.size > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                boxShadow: "var(--app-shadow-2)",
+              }}
+            >
+              Filters{activeCats.size > 0 ? ` · ${activeCats.size}` : ""}
+              <span aria-hidden style={{ marginLeft: 6, fontSize: 9, opacity: 0.7 }}>{filtersOpen ? "▲" : "▼"}</span>
+            </button>
+          </div>
+          {filtersOpen && (
+            <div
+              className="max-h-[44vh] overflow-y-auto rounded-[var(--app-radius-md)] border p-2.5 backdrop-blur"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 90%, transparent)",
+                boxShadow: "var(--app-shadow-3)",
+              }}
+            >
           <ul className="flex flex-wrap items-center gap-2 py-0.5">
             <li>
               <button
@@ -798,33 +957,15 @@ export default function AppMap({
                     border: `1px solid ${activeAmenityGroupCount > 0 || amenityOpen ? "var(--app-cool)" : "var(--app-border)"}`,
                     boxShadow: activeAmenityGroupCount > 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                   }}
-                  title="What do you need? Restrooms, water, trash, dog stations, wifi, EV charging, bike, seating, AED"
+                  title="Amenities — restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water, trash, AED"
                 >
                   <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
-                  What do you need?
+                  Amenities
                   {activeAmenityGroupCount > 0 && ` · ${activeAmenityGroupCount}`}
                   <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>{amenityOpen ? "▲" : "▼"}</span>
                 </button>
               </li>
             )}
-            <li>
-              <button
-                type="button"
-                onClick={() => setOnlyGems((v) => !v)}
-                aria-pressed={onlyGems}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: onlyGems ? "#D9A441" : "var(--app-bg-elevated)",
-                  color: onlyGems ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${onlyGems ? "#D9A441" : "var(--app-border)"}`,
-                  boxShadow: onlyGems ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="Lesser-known local standouts — the spots a resident sends a visitor to"
-              >
-                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"✨"}</span>
-                Hidden gems
-              </button>
-            </li>
             <li>
               <button
                 type="button"
@@ -888,14 +1029,14 @@ export default function AppMap({
                     border: `1px solid ${showCivic ? "var(--app-warning)" : "var(--app-border)"}`,
                     boxShadow: showCivic ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                   }}
-                  title="Live traffic incidents and 311 reports"
+                  title="Live traffic incidents and county 311 reports"
                 >
                   <span
                     aria-hidden
                     className="inline-block h-2 w-2 rounded-full"
                     style={{ background: showCivic ? "white" : "var(--app-warning)" }}
                   />
-                  Live · {civic.length}
+                  Traffic &amp; 311
                 </button>
               </li>
             )}
@@ -1002,17 +1143,10 @@ export default function AppMap({
             ))}
             </>)}
           </ul>
-        </div>
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-5" style={{ background: "linear-gradient(90deg, var(--app-bg), transparent)" }} />
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-5" style={{ background: "linear-gradient(270deg, var(--app-bg), transparent)" }} />
-      </div>
-
-      {/* "What do you need?" tray — one tap per amenity kind. Collapsed by
-          default so the rail stays calm; amenities only paint on the map
-          once you zoom into a neighborhood. */}
-      {amenityOpen && (
-        <div>
-          <div>
+          {/* Amenities sub-tray — toggled by the Amenities chip,
+              nested inside the same glass filter panel. */}
+          {amenityOpen && (
+            <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
             <ul className="flex flex-wrap items-center gap-2 py-0.5">
               {AMENITY_GROUPS.map((g) => {
                 const on = amenityGroups.has(g.key);
@@ -1056,77 +1190,16 @@ export default function AppMap({
                 </li>
               )}
             </ul>
-          </div>
-          <p className="px-1 pt-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Pick what you need. Zoom into a neighborhood to see it on the map.
-          </p>
+              <p className="px-1 pt-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                Pick what you need — it appears on the map and folds into your Radius results.
+              </p>
+            </div>
+          )}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* On-map search + near-me */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search the map by name or address"
-          aria-label="Search the map"
-          className="w-full rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2.5 text-sm shadow-[var(--app-shadow-1)] outline-none focus:shadow-[var(--app-shadow-2)]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-        />
-        {searchMatches.length > 0 && (
-          <ul
-            className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            {searchMatches.map((p) => {
-              const cat = CATEGORY_BY_SLUG[p.category];
-              return (
-                <li key={p.slug}>
-                  <button
-                    type="button"
-                    onClick={() => pickSearch(p)}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
-                  >
-                    <span
-                      aria-hidden
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: cat?.color ?? "#C4451C" }}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
-                        {p.name}
-                      </span>
-                      <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                        {cat?.name ?? p.category}{p.address ? ` · ${p.address}` : ""}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        </div>
-        <button
-          type="button"
-          onClick={goNearMe}
-          aria-label="Find places near me"
-          className="shrink-0 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2.5 text-sm font-semibold shadow-[var(--app-shadow-1)] transition active:scale-[0.96]"
-          style={{
-            borderColor: userLoc ? "var(--app-brand)" : "var(--app-border)",
-            color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
-          }}
-        >
-          {locating ? "Locating…" : "Near me"}
-        </button>
       </div>
 
-      <div
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{ borderColor: "var(--app-border)", height }}
-      >
         {mapError && (
           <div
             className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 px-6 text-center"
@@ -1241,10 +1314,10 @@ export default function AppMap({
                   Public &amp; OSM — lighter pins
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px]" style={{ background: "var(--app-cool)", color: "white" }}>#</span>
-                  Numbered circle — zoom in to expand
+                  <span aria-hidden className="inline-flex h-4 w-4 items-center justify-center"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--app-cool)", opacity: 0.55 }} /></span>
+                  Soft dot — more places, zoom in
                 </li>
-                <li style={{ color: "var(--app-ink-3)" }}>Tap any pin for the full card.</li>
+                <li style={{ color: "var(--app-ink-3)" }}>Tap a soft dot or pin to open it.</li>
               </ul>
             </div>
           ) : (
@@ -1412,69 +1485,49 @@ export default function AppMap({
             />
           </Source>
 
-          {/* OSM businesses — clustered */}
+          {/* OSM businesses — clustered. Calm tier: a soft cool dot that
+              says "more here, zoom in", NOT a loud numbered disk. OSM is
+              the secondary layer so it stays quiet and cool-toned. */}
           <Source
             id="osm-businesses"
             type="geojson"
             data={filteredOsmGeoJson}
             cluster
-            clusterRadius={70}
-            clusterMaxZoom={16}
+            clusterRadius={64}
+            clusterMaxZoom={15}
           >
-            {/* Soft glow under each cluster — depth, not a flat disk */}
+            {/* Soft halo — gentle depth, barely-there. */}
             <Layer
               id="cluster-glow"
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": [
-                  "step", ["get", "point_count"],
-                  "#2A5D8F", 25, "#C4451C", 100, "#7E1F1F",
-                ],
-                "circle-opacity": 0.22,
+                "circle-color": "#2A5D8F",
+                "circle-opacity": 0.14,
                 "circle-blur": 1,
                 "circle-radius": [
-                  "step", ["get", "point_count"],
-                  26, 25, 34, 100, 42,
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 16, 50, 22, 300, 28,
                 ],
               }}
             />
+            {/* Calm core dot — no number, no hard outline. A quiet
+                cool marker that resolves into real pins as you zoom. */}
             <Layer
               id="clusters"
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": [
-                  "step", ["get", "point_count"],
-                  "#2A5D8F", 25, "#C4451C", 100, "#7E1F1F",
-                ],
-                "circle-opacity": 0.95,
-                "circle-blur": 0.15,
+                "circle-color": "#2A5D8F",
+                "circle-opacity": 0.5,
+                "circle-blur": 0.3,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
-                  2, 15, 25, 19, 100, 25, 500, 32,
+                  2, 7, 50, 10, 300, 13,
                 ],
-                "circle-stroke-color": "#0A0A0A",
+                "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.5,
-              }}
-            />
-            <Layer
-              id="cluster-count"
-              type="symbol"
-              filter={["has", "point_count"]}
-              layout={{
-                "text-field": "{point_count_abbreviated}",
-                "text-size": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  2, 12, 100, 15, 500, 17,
-                ],
-                "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
-              }}
-              paint={{
-                "text-color": "#fff",
-                "text-halo-color": "rgba(0,0,0,0.25)",
-                "text-halo-width": 0.8,
+                "circle-stroke-opacity": 0.25,
               }}
             />
             {/* Individual unclustered points — same icon language, smaller
@@ -1515,7 +1568,7 @@ export default function AppMap({
             <Layer
               id="amenity-icons"
               type="symbol"
-              minzoom={14}
+              minzoom={12}
               layout={{
                 "icon-image": [
                   "coalesce",
@@ -1524,7 +1577,8 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  14, 0.32,
+                  12, 0.26,
+                  14, 0.34,
                   16, 0.48,
                   18, 0.62,
                 ],
@@ -1568,8 +1622,8 @@ export default function AppMap({
             type="geojson"
             data={curatedGeoJson}
             cluster
-            clusterRadius={70}
-            clusterMaxZoom={16}
+            clusterRadius={64}
+            clusterMaxZoom={15}
             clusterProperties={{
               food: ["+", ["case", ["==", ["get", "bucket"], "food"], 1, 0]],
               outdoors: ["+", ["case", ["==", ["get", "bucket"], "outdoors"], 1, 0]],
@@ -1599,11 +1653,11 @@ export default function AppMap({
                     "#C4451C",
                   ],
                 ],
-                "circle-opacity": 0.25,
+                "circle-opacity": 0.18,
                 "circle-blur": 1,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
-                  2, 26, 25, 32, 100, 40, 500, 50,
+                  2, 18, 50, 26, 300, 34,
                 ],
               }}
             />
@@ -1629,33 +1683,20 @@ export default function AppMap({
                     "#C4451C",
                   ],
                 ],
-                "circle-opacity": 0.96,
-                "circle-blur": 0.15,
+                // Calm, not loud: a soft category-tinted dot, no number,
+                // no hard black ring. It reads "a place cluster, mostly
+                // <category>" at a glance and dissolves into real pins
+                // as you zoom — the de-cluttering that makes the wide
+                // view make sense.
+                "circle-opacity": 0.55,
+                "circle-blur": 0.3,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
-                  2, 16, 25, 21, 100, 27, 500, 34,
+                  2, 8, 50, 12, 300, 16,
                 ],
-                "circle-stroke-color": "#0A0A0A",
+                "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.45,
-              }}
-            />
-            <Layer
-              id="curated-cluster-count"
-              type="symbol"
-              filter={["has", "point_count"]}
-              layout={{
-                "text-field": "{point_count_abbreviated}",
-                "text-size": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  2, 12, 100, 15, 500, 18,
-                ],
-                "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
-              }}
-              paint={{
-                "text-color": "#fff",
-                "text-halo-color": "rgba(0,0,0,0.28)",
-                "text-halo-width": 0.8,
+                "circle-stroke-opacity": 0.3,
               }}
             />
             <Layer
@@ -1714,27 +1755,6 @@ export default function AppMap({
                   15.5, 0,
                   16.5, 1,
                 ],
-              }}
-            />
-          </Source>
-
-          {/* Hidden-gem halo — a soft gold ring under the gem's icon. */}
-          <Source id="gem-halo" type="geojson" data={gemGeoJson}>
-            <Layer
-              id="gem-glow"
-              type="circle"
-              beforeId="curated-icons"
-              paint={{
-                "circle-color": "#D9A441",
-                "circle-opacity": 0.18,
-                "circle-radius": [
-                  "interpolate", ["linear"], ["zoom"],
-                  11, 12, 14, 18, 16, 26, 18, 34,
-                ],
-                "circle-stroke-color": "#D9A441",
-                "circle-stroke-opacity": 0.7,
-                "circle-stroke-width": 1.8,
-                "circle-blur": 0.25,
               }}
             />
           </Source>
@@ -2027,7 +2047,6 @@ export default function AppMap({
           <GeolocateControl position="bottom-right" trackUserLocation />
         </Map>
       </div>
-    </div>
   );
 }
 

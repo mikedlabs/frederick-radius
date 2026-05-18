@@ -1,4 +1,5 @@
 import AMENITIES_RAW from "@/data/amenities.json" with { type: "json" };
+import { haversineMeters, type LngLat } from "@/lib/geo";
 
 /**
  * Civic amenities — static, keyless points from OpenStreetMap (ODbL,
@@ -46,4 +47,111 @@ export function amenitiesByKind(): { kind: AmenityKind; label: string; blurb: st
       a.name.localeCompare(b.name),
     ),
   })).filter((g) => g.list.length > 0);
+}
+
+/** Slim place projection the amenity de-dupe needs (no loader import). */
+export type AmenityPlacePoint = { name: string; category: string; geom: LngLat };
+
+// Place categories that ARE a green space — a park/trail/playground
+// place already conveys "there is a park here", so the generic
+// picnic/playground OSM nodes piled on top of it are the visible
+// doubling, not new information. Utility amenities (restroom, Wi-Fi,
+// EV, bike) are NOT dropped near a park — those stay useful.
+const GREENSPACE = new Set([
+  "park", "trail", "playground", "outdoors", "recreation", "nature",
+]);
+const PLACE_IMPLIED_KINDS = new Set<AmenityKind>(["picnic", "playground"]);
+
+const CLUSTER_M = 45; // same-kind points this close are one thing
+const PLACE_OVERLAP_M = 60; // an implied-kind point this close to its park
+
+const cell = (lat: number, lng: number, sizeM: number) => {
+  const k = 111_320 / sizeM;
+  return `${Math.round(lat * k)},${Math.round(lng * k)}`;
+};
+
+/**
+ * The amenity side of the ONE duplicate rule. Two deterministic,
+ * conservative passes so a user never sees the same amenity twice:
+ *
+ *  1. Internal cluster collapse — many identical OSM nodes of the
+ *     SAME kind within ~45 m (the measured "Picnic area ×8 at one
+ *     overlook") fold to a single representative (the most specifically
+ *     named one). Every kind, county-wide.
+ *  2. Place-overlap — a `picnic`/`playground` point sitting on a
+ *     canonical green-space PLACE (≤60 m) is dropped: the park place
+ *     already represents it. Utility kinds (restroom/Wi-Fi/EV/bike)
+ *     are intentionally kept — they are real, distinct utility.
+ *
+ * Pure (places passed in), so the same result on server + tests.
+ */
+export function dedupeAmenities(
+  list: Amenity[],
+  places: AmenityPlacePoint[],
+): Amenity[] {
+  // Pass 1 — collapse same-kind clusters via a spatial union.
+  const byKind = new Map<AmenityKind, Amenity[]>();
+  for (const a of list) (byKind.get(a.kind) ?? byKind.set(a.kind, []).get(a.kind)!).push(a);
+  const kept: Amenity[] = [];
+  for (const group of byKind.values()) {
+    const used = new Array(group.length).fill(false);
+    const idx: Record<string, number[]> = {};
+    group.forEach((a, i) =>
+      (idx[cell(a.lat, a.lng, CLUSTER_M)] ??= []).push(i),
+    );
+    for (let i = 0; i < group.length; i++) {
+      if (used[i]) continue;
+      const cluster = [i];
+      used[i] = true;
+      const cy = Math.round((group[i].lat * 111_320) / CLUSTER_M);
+      const cx = Math.round((group[i].lng * 111_320) / CLUSTER_M);
+      for (let dz = -1; dz <= 1; dz++)
+        for (let dx = -1; dx <= 1; dx++)
+          for (const j of idx[`${cy + dz},${cx + dx}`] ?? []) {
+            if (used[j]) continue;
+            if (
+              haversineMeters(
+                { lng: group[i].lng, lat: group[i].lat },
+                { lng: group[j].lng, lat: group[j].lat },
+              ) <= CLUSTER_M
+            ) {
+              used[j] = true;
+              cluster.push(j);
+            }
+          }
+      // Representative = the most specifically named (longest name
+      // wins over a bare "Picnic area"); stable by id otherwise.
+      let best = group[cluster[0]];
+      for (const c of cluster) {
+        const cand = group[c];
+        if (
+          cand.name.length > best.name.length ||
+          (cand.name.length === best.name.length && cand.id < best.id)
+        ) {
+          best = cand;
+        }
+      }
+      kept.push(best);
+    }
+  }
+
+  // Pass 2 — drop place-implied kinds that sit on a green-space place.
+  const parks = places.filter((p) => GREENSPACE.has(p.category));
+  const pIdx: Record<string, AmenityPlacePoint[]> = {};
+  for (const p of parks)
+    (pIdx[cell(p.geom.lat, p.geom.lng, PLACE_OVERLAP_M)] ??= []).push(p);
+  return kept.filter((a) => {
+    if (!PLACE_IMPLIED_KINDS.has(a.kind)) return true;
+    const cy = Math.round((a.lat * 111_320) / PLACE_OVERLAP_M);
+    const cx = Math.round((a.lng * 111_320) / PLACE_OVERLAP_M);
+    for (let dz = -1; dz <= 1; dz++)
+      for (let dx = -1; dx <= 1; dx++)
+        for (const p of pIdx[`${cy + dz},${cx + dx}`] ?? [])
+          if (
+            haversineMeters({ lng: a.lng, lat: a.lat }, p.geom) <=
+            PLACE_OVERLAP_M
+          )
+            return false;
+    return true;
+  });
 }
