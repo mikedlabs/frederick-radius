@@ -107,10 +107,8 @@ export default async function HistoricPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-          Maryland Historical Trust · live
-        </p>
-        <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <p className="eyebrow">Maryland Historical Trust · live</p>
+        <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
           Historic places
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>

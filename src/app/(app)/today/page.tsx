@@ -66,7 +66,7 @@ function ExploreHub({ counts }: { counts: Record<string, number> }) {
             Live county data
           </span>
         </div>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <div className="stagger grid grid-cols-2 gap-2 sm:grid-cols-3">
           {EXPLORE_LINKS.map((e) => {
             const Icon = e.icon;
             const n = counts[e.href] ?? 0;
