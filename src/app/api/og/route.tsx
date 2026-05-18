@@ -4,7 +4,14 @@ import { EVENT_BY_SLUG } from "@/data/events";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
-export const runtime = "edge";
+// NOTE: deliberately the Node runtime, NOT edge. This route imports
+// the full composed place/event datasets (PLACE_BY_SLUG / EVENT_BY_SLUG)
+// for the title + kicker; on the edge runtime the whole dataset is
+// bundled into the function and exceeds Vercel's 1 MB edge limit
+// ("Edge Function api/og size is 1.09 MB"). Node serverless functions
+// have a far larger limit and next/og's ImageResponse runs there too,
+// so this fixes the deploy error with zero loss of functionality.
+export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
