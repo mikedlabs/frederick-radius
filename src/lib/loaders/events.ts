@@ -1,7 +1,10 @@
 import { EVENTS as RAW_EVENTS, EVENT_BY_SLUG, type Event } from "@/data/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/municipalities";
-import { publicPlaceBySlug } from "@/lib/loaders/places";
+// Client-safe: this loader is imported by "use client" event
+// components, so it must use the slim set, not @/lib/loaders/places
+// (which static-imports the ~12MB enrichment into the bundle).
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
 
@@ -92,7 +95,7 @@ export function dedupeLiveAgainstCurated(
 export function getEventBySlug(slug: string): (EventWithMeta & { venue_place_name?: string }) | null {
   const e = EVENT_BY_SLUG[slug];
   if (!e) return null;
-  const venue = e.venue_place_slug ? publicPlaceBySlug(e.venue_place_slug) : null;
+  const venue = e.venue_place_slug ? clientPlaceBySlug(e.venue_place_slug) : null;
   return {
     ...decorate(e),
     venue_place_name: venue?.name,

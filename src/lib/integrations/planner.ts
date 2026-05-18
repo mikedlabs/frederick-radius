@@ -11,7 +11,11 @@
  */
 
 import type { Place } from "@/data/places";
-import { publicPlaces, publicPlaceBySlug, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
+// Client-safe: PlanBuilder ("use client") imports this, so use the
+// slim already-decorated set, NOT @/lib/loaders/places (which
+// static-imports the ~12MB enrichment into the client bundle).
+import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import { upcomingEvents, EVENT_BY_SLUG, type Event } from "@/data/events";
 import { haversineMeters, FREDERICK_CENTER, formatDistance, type LngLat } from "@/lib/geo";
 
@@ -132,9 +136,9 @@ type Scored = { d: PlaceCardData; score: number; distance: number };
 
 function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[] {
   const slot = slotFor(now);
-  return publicPlaces()
+  return clientPlaces()
     .map((p) => {
-      const d = decoratePlace(p, origin, now);
+      const d: PlaceCardData = { ...p, distance_m: haversineMeters(origin, p.geom) };
       const distance = d.distance_m ?? haversineMeters(origin, p.geom);
       const base = categoryScore(p.category, input.vibe, slot);
       const rating = d.google_rating ? (d.google_rating - 3.5) * 1.2 : 0;
@@ -300,9 +304,9 @@ export function reconstructPlan(spec: PlanSpec): Plan | null {
   const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string }> = [];
   for (const ref of spec.s) {
     if ("p" in ref) {
-      const p = publicPlaceBySlug(ref.p);
+      const p = clientPlaceBySlug(ref.p);
       if (!p) continue;
-      const d = decoratePlace(p, origin, now);
+      const d: PlaceCardData = { ...p, distance_m: haversineMeters(origin, p.geom) };
       ordered.push({
         place: p,
         openState: d.open_status.state === "closed" ? "closed"
@@ -363,7 +367,7 @@ export function swapStopInSpec(spec: PlanSpec, index: number): PlanSpec {
   const otherCats = new Set(
     spec.s
       .filter((r): r is { p: string } => "p" in r && r.p !== ref.p)
-      .map((r) => publicPlaceBySlug(r.p)?.category)
+      .map((r) => clientPlaceBySlug(r.p)?.category)
       .filter(Boolean) as string[],
   );
   const ranked = scoredCandidates(spec.i, origin, now);

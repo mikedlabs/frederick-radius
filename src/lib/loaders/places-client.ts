@@ -1,5 +1,6 @@
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { haversineMeters, type LngLat } from "@/lib/geo";
 
 /**
  * CLIENT-SAFE place data. Imports ONLY the slim, pre-decorated
@@ -26,4 +27,23 @@ export function clientPlaces(): PlaceCardData[] {
 
 export function clientPlaceBySlug(slug: string): PlaceCardData | undefined {
   return BY_SLUG[slug];
+}
+
+/**
+ * Client-safe placesWithinRadius: same shape/contract, over the slim
+ * already-decorated set. The only difference vs the server loader is
+ * open_status is the build-time value (recomputing it live needs the
+ * per-place hours arrays, which were intentionally dropped to keep
+ * this 2MB instead of 12MB — an honest tradeoff for a UI hint).
+ */
+export function clientPlacesWithinRadius(
+  origin: LngLat,
+  meters: number,
+): PlaceCardData[] {
+  return CLIENT_PLACES.map((p) => ({
+    ...p,
+    distance_m: haversineMeters(origin, p.geom),
+  }))
+    .filter((p) => (p.distance_m ?? Infinity) <= meters)
+    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
 }
