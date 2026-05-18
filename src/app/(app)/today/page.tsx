@@ -21,6 +21,13 @@ import NearbyNow from "@/components/today/NearbyNow";
 import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import { buildActivities } from "@/lib/live-activity";
 import { getNwsForecast } from "@/lib/integrations/nws";
+import { getFrederickTrails } from "@/lib/integrations/fcTrails";
+import { getFrederickParks } from "@/lib/integrations/fcParks";
+import { getFrederickArt } from "@/lib/integrations/fcArtTour";
+import { getFrederickHistoricPlaces } from "@/lib/integrations/mdHistoricPlaces";
+import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
+import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
+import { isFarmersMarket } from "@/lib/farmersMarkets";
 import Link from "next/link";
 import { Mountain, Trees, Palette, Landmark, Sprout, Bus, Waves } from "lucide-react";
 
@@ -40,6 +47,95 @@ const EXPLORE_LINKS = [
   { href: "/transit", label: "Transit", desc: "County bus routes", icon: Bus, color: "var(--app-cool)" },
   { href: "/water", label: "Rivers", desc: "Live water levels", icon: Waves, color: "var(--app-cool)" },
 ] as const;
+
+/**
+ * The Explore hub, presentational. `counts` is a live per-source
+ * tally; a tile shows a badge only when its count is > 0, so the hub
+ * degrades cleanly (no badge) for any source that is briefly
+ * unreachable. Rendered both as the instant Suspense fallback (empty
+ * counts) and, streamed in, with the real numbers.
+ */
+function ExploreHub({ counts }: { counts: Record<string, number> }) {
+  return (
+    <FadeUp>
+      <section className="space-y-2.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Explore Frederick
+          </h2>
+          <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+            Live county data
+          </span>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {EXPLORE_LINKS.map((e) => {
+            const Icon = e.icon;
+            const n = counts[e.href] ?? 0;
+            return (
+              <Link
+                key={e.href}
+                href={e.href}
+                className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.98]"
+                style={{ borderColor: "var(--app-border)" }}
+              >
+                <span
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                  style={{ background: `color-mix(in srgb, ${e.color} 16%, transparent)` }}
+                  aria-hidden
+                >
+                  <Icon className="h-4 w-4" strokeWidth={2} style={{ color: e.color }} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[13px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                    {e.label}
+                  </span>
+                  <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                    {e.desc}
+                  </span>
+                </span>
+                {n > 0 && (
+                  <span
+                    className="ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
+                    style={{ background: `color-mix(in srgb, ${e.color} 14%, transparent)`, color: e.color }}
+                  >
+                    {n.toLocaleString()}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    </FadeUp>
+  );
+}
+
+/**
+ * Streams the live counts in parallel without blocking Today. Every
+ * getter is already graceful (returns [] on any failure), so a slow or
+ * unreachable feed simply yields no badge for that tile.
+ */
+async function ExploreHubData() {
+  const [trails, parks, art, historic, transit, water] = await Promise.all([
+    getFrederickTrails().then((a) => a.length).catch(() => 0),
+    getFrederickParks().then((a) => a.length).catch(() => 0),
+    getFrederickArt().then((a) => a.length).catch(() => 0),
+    getFrederickHistoricPlaces().then((a) => a.length).catch(() => 0),
+    getFrederickTransitRoutes().then((a) => a.length).catch(() => 0),
+    getFrederickWaterSites().then((a) => a.length).catch(() => 0),
+  ]);
+  const markets = publicPlaces().filter((p) => isFarmersMarket(p.name)).length;
+  const counts: Record<string, number> = {
+    "/trails": trails,
+    "/parks": parks,
+    "/art": art,
+    "/historic": historic,
+    "/markets": markets,
+    "/transit": transit,
+    "/water": water,
+  };
+  return <ExploreHub counts={counts} />;
+}
 import FadeUp from "@/components/ui/FadeUp";
 import { ShimmerWeatherStrip, ShimmerCard } from "@/components/ui/Shimmer";
 import { rankPlaces, placesWithinRadius, decoratePlace, likelyOpenPlaces, publicPlaces, publicPlaceBySlug } from "@/lib/loaders/places";
@@ -229,49 +325,12 @@ export default async function HomePage() {
           </section>
         </FadeUp>
 
-        {/* Explore Frederick — the live county-data sources, ONE hub
-            (was seven stacked cards). Compact, scannable, not a stack. */}
-        <FadeUp>
-          <section className="space-y-2.5">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                Explore Frederick
-              </h2>
-              <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                Live county data
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {EXPLORE_LINKS.map((e) => {
-                const Icon = e.icon;
-                return (
-                  <Link
-                    key={e.href}
-                    href={e.href}
-                    className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.98]"
-                    style={{ borderColor: "var(--app-border)" }}
-                  >
-                    <span
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                      style={{ background: `color-mix(in srgb, ${e.color} 16%, transparent)` }}
-                      aria-hidden
-                    >
-                      <Icon className="h-4 w-4" strokeWidth={2} style={{ color: e.color }} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                        {e.label}
-                      </span>
-                      <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                        {e.desc}
-                      </span>
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </section>
-        </FadeUp>
+        {/* Explore Frederick — ONE hub for the live county-data
+            sources, with per-source live count badges streamed in via
+            Suspense (the empty-count hub renders instantly). */}
+        <Suspense fallback={<ExploreHub counts={{}} />}>
+          <ExploreHubData />
+        </Suspense>
 
         {/* Location-aware, county-wide "around you right now" — fuses the
             user's actual position to municipality + civic + nearest open
