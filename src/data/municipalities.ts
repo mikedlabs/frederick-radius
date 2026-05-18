@@ -138,7 +138,9 @@ export const MUNICIPALITIES: Municipality[] = [
   {
     slug: "burkittsville",
     name: "Burkittsville",
-    type: "village",
+    // Incorporated municipality (Town of Burkittsville, inc. 1894).
+    // Maryland has no legal "village" class — it is a town.
+    type: "town",
     population: 153,
     centroid: { lng: -77.6253, lat: 39.3940 },
     bbox: [-77.635, 39.388, -77.615, 39.400],
@@ -150,7 +152,8 @@ export const MUNICIPALITIES: Municipality[] = [
   {
     slug: "rosemont",
     name: "Rosemont",
-    type: "village",
+    // Incorporated municipality (Town of Rosemont, inc. 1953).
+    type: "town",
     population: 280,
     centroid: { lng: -77.6608, lat: 39.3261 },
     bbox: [-77.670, 39.320, -77.650, 39.335],
