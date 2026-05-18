@@ -26,20 +26,27 @@ const AppMap = dynamic(() => import("./AppMap"), {
  * (opens the place sheet). This turns a wall of pins into something you
  * can actually browse.
  */
-export type { CivicPin } from "./AppMap";
-import type { CivicPin } from "./AppMap";
+export type { CivicPin, MapLineFC } from "./AppMap";
+import type { CivicPin, MapLineFC } from "./AppMap";
 import type { OsmPlace } from "@/lib/integrations/overpass";
+
+const EMPTY_FC: MapLineFC = { type: "FeatureCollection", features: [] };
 
 export default function AppMapClient({
   places,
   civic = [],
   extraAmenities = [],
+  trailLines = EMPTY_FC,
+  transitLines = EMPTY_FC,
 }: {
   places: Place[];
   civic?: CivicPin[];
   /** Server-fetched amenity points (e.g. Mapillary trash) merged into
    *  the map's amenity layer — keeps the secret token server-side. */
   extraAmenities?: OsmPlace[];
+  /** Server-fetched toggleable line overlays (#3). */
+  trailLines?: MapLineFC;
+  transitLines?: MapLineFC;
 }) {
   const [inView, setInView] = useState<string[]>([]);
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
@@ -61,7 +68,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} />
+      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} trailLines={trailLines} transitLines={transitLines} />
 
       <section className="space-y-2">
         <div className="flex items-baseline justify-between">

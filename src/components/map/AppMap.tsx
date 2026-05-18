@@ -54,7 +54,19 @@ type Props = {
   /** Server-fetched amenity points (Mapillary trash detections) merged
    *  into the amenity layer — the secret token stays server-side. */
   extraAmenities?: OsmPlace[];
+  /** Server-fetched line geometry for toggleable overlays (#3). Plain
+   *  GeoJSON FeatureCollections; default off, so the base map is
+   *  unchanged unless the user opts in. */
+  trailLines?: MapLineFC;
+  transitLines?: MapLineFC;
 };
+
+/** Minimal GeoJSON line FeatureCollection (decoupled from the feeds). */
+export type MapLineFC = {
+  type: "FeatureCollection";
+  features: Array<{ type: "Feature"; geometry: unknown; properties: Record<string, unknown> }>;
+};
+const EMPTY_LINE_FC: MapLineFC = { type: "FeatureCollection", features: [] };
 
 export type CivicPin = {
   kind: "traffic" | "issue";
@@ -214,6 +226,8 @@ export default function AppMap({
   focus,
   civic = [],
   extraAmenities = [],
+  trailLines = EMPTY_LINE_FC,
+  transitLines = EMPTY_LINE_FC,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const { openSheet } = usePlaceSheet();
@@ -242,6 +256,8 @@ export default function AppMap({
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
   const [showCivic, setShowCivic] = useState(false);
+  const [showTrails, setShowTrails] = useState(false);
+  const [showTransit, setShowTransit] = useState(false);
 
   useEffect(() => {
     if (osmFromProps) {
@@ -879,6 +895,46 @@ export default function AppMap({
                 </button>
               </li>
             )}
+            {transitLines.features.length > 0 && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setShowTransit((v) => !v)}
+                  aria-pressed={showTransit}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                  style={{
+                    background: showTransit ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                    color: showTransit ? "white" : "var(--app-ink-2)",
+                    border: `1px solid ${showTransit ? "var(--app-cool)" : "var(--app-border)"}`,
+                    boxShadow: showTransit ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                  }}
+                  title="TransIT bus routes"
+                >
+                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showTransit ? "white" : "var(--app-cool)" }} />
+                  Transit · {transitLines.features.length}
+                </button>
+              </li>
+            )}
+            {trailLines.features.length > 0 && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setShowTrails((v) => !v)}
+                  aria-pressed={showTrails}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                  style={{
+                    background: showTrails ? "var(--app-positive)" : "var(--app-bg-elevated)",
+                    color: showTrails ? "white" : "var(--app-ink-2)",
+                    border: `1px solid ${showTrails ? "var(--app-positive)" : "var(--app-border)"}`,
+                    boxShadow: showTrails ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                  }}
+                  title="County trails"
+                >
+                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showTrails ? "white" : "var(--app-positive)" }} />
+                  Trails · {trailLines.features.length}
+                </button>
+              </li>
+            )}
             {TOP_CATEGORIES.map((c) => {
               const active = activeCats.has(c.slug);
               return (
@@ -1319,6 +1375,35 @@ export default function AppMap({
                 "text-color": "#7A7975",
                 "text-halo-color": "#FAFAF7",
                 "text-halo-width": 1.8,
+              }}
+            />
+          </Source>
+
+          {/* #3 toggleable line overlays — rendered BEFORE the point
+              layers so pins sit on top. Empty (invisible) unless the
+              user opts in; base map unchanged by default. */}
+          <Source id="transit-lines" type="geojson" data={(showTransit ? transitLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
+            <Layer
+              id="transit-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "var(--app-cool, #2A5D8F)",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 14, 3, 17, 5],
+                "line-opacity": 0.75,
+              }}
+            />
+          </Source>
+          <Source id="trail-lines" type="geojson" data={(showTrails ? trailLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
+            <Layer
+              id="trail-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": "var(--app-positive, #1E6B3A)",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 14, 2.5, 17, 4],
+                "line-opacity": 0.7,
+                "line-dasharray": [2, 1.5],
               }}
             />
           </Source>

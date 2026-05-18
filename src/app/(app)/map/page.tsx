@@ -3,7 +3,11 @@ import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
+import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
+import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import AppMapClient, { type CivicPin } from "@/components/map/AppMapClient";
+
+const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
 // P0-1: one canonical public place set, same as every other route.
 // Decorated so map pins use the enrichment-corrected coordinate
@@ -20,12 +24,16 @@ export const metadata: Metadata = {
 export const revalidate = 300;
 
 export default async function MapPage() {
-  const [incidents, fixit, mapillaryTrash] = await Promise.all([
+  const [incidents, fixit, mapillaryTrash, trailLines, transitLines] = await Promise.all([
     getChartIncidentsFrederick().catch(() => []),
     getFixItIssues(30).catch(() => []),
     // Server-side: the secret token never reaches the client. Returns
     // [] when no MAPILLARY_TOKEN, so this is inert in any env without it.
     fetchMapillaryTrash().catch(() => []),
+    // #3: toggleable line overlays. Graceful empty FC if a feed blips
+    // (sandbox can't reach them; Vercel can) — map stays usable.
+    getFrederickTrailShapes().catch(() => EMPTY_FC),
+    getFrederickTransitRouteShapes().catch(() => EMPTY_FC),
   ]);
   const civic: CivicPin[] = [
     ...incidents
@@ -60,7 +68,7 @@ export default async function MapPage() {
         </p>
       </header>
 
-      <AppMapClient places={OPEN_PLACES} civic={civic} extraAmenities={mapillaryTrash} />
+      <AppMapClient places={OPEN_PLACES} civic={civic} extraAmenities={mapillaryTrash} trailLines={trailLines} transitLines={transitLines} />
 
       <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
         Business data from{" "}
