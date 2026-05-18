@@ -41,7 +41,7 @@
 
   --app-ink: #1A1A1A;
   --app-ink-2: #4A4A48;
-  --app-ink-3: #7A7975;
+  --app-ink-3: #6A6964; /* WCAG AA: ≥4.5:1 on bg/elevated/sunken (was #7A7975 = 3.85–4.36, sub-AA for normal text) */
   --app-ink-inverse: #FAFAF7;
 
   --app-brand: #C4451C;          /* Frederick brick — used sparingly: brand chrome, primary CTA */
