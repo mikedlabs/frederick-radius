@@ -32,7 +32,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -70,6 +70,22 @@ const FEEDS: FeedSpec[] = [
     format: "rss",
     default_venue: "Frederick County",
     default_geom: { lng: -77.4109, lat: 39.4143 },
+    default_municipality: "frederick",
+    default_category: "civic",
+  },
+  {
+    // Hood College public Trumba calendar (license: public calendar,
+    // per data/sources.yaml). Clean structured iCal — the safe,
+    // license-clear way to add real-time campus events, vs. scraping
+    // a blog. URL overridable so a calendar move needs no deploy.
+    source: "hood",
+    source_label: "Hood College",
+    url:
+      process.env.HOOD_CALENDAR_URL ||
+      "https://www.trumba.com/calendars/hood-college-events.ics",
+    format: "ical",
+    default_venue: "Hood College",
+    default_geom: { lng: -77.3997, lat: 39.4246 },
     default_municipality: "frederick",
     default_category: "civic",
   },
