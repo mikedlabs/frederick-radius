@@ -41,7 +41,25 @@ export function applyDedup(list: Place[]): Place[] {
     });
 }
 
-const BASE_PLACES: Place[] = DEDUPE_ON ? applyDedup(PLACES) : PLACES;
+// Urbana was added as a community AFTER the place data was scraped, so
+// places physically inside its bounds were tagged to a neighbor and
+// /m/urbana, the by-town view, and Radius would be empty for it. Claim
+// them by geography so Urbana gets "all the things the other towns
+// have". Scoped to Urbana ONLY — deterministic, zero effect on any
+// other municipality's set.
+const URBANA_BBOX = MUNICIPALITY_BY_SLUG["urbana"]?.bbox;
+function claimUrbana(p: Place): Place {
+  if (!URBANA_BBOX || p.municipality === "urbana") return p;
+  const [minLng, minLat, maxLng, maxLat] = URBANA_BBOX;
+  const { lng, lat } = p.geom;
+  return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat
+    ? { ...p, municipality: "urbana" }
+    : p;
+}
+
+const BASE_PLACES: Place[] = (DEDUPE_ON ? applyDedup(PLACES) : PLACES).map(
+  claimUrbana,
+);
 const BASE_BY_SLUG: Record<string, Place> = DEDUPE_ON
   ? (() => {
       const byCanon: Record<string, Place> = {};

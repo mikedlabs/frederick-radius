@@ -159,6 +159,21 @@ export const MUNICIPALITIES: Municipality[] = [
     hero_blurb: "Above the canal, below the ridge.",
     est: 1830,
   },
+  {
+    // Unincorporated, but one of the most-populous communities in the
+    // county — people absolutely identify with it, so it is a
+    // first-class place here even though it is a CDP, not a town.
+    slug: "urbana",
+    name: "Urbana",
+    type: "unincorporated",
+    population: 13_304,
+    centroid: { lng: -77.3514, lat: 39.3259 },
+    bbox: [-77.385, 39.300, -77.315, 39.360],
+    description:
+      "A fast-growing planned community in the county's south, along I-270 and MD-355. Urbana District Park, the regional library, and Sugarloaf Mountain rising just to the southwest.",
+    hero_blurb: "The county's southern gateway, under Sugarloaf.",
+    est: 1809,
+  },
 ];
 
 export const MUNICIPALITY_BY_SLUG = Object.fromEntries(
