@@ -158,9 +158,10 @@ export default async function HomePage() {
   // Live activity pill data — best-effort, no blocking
   const forecast = await getNwsForecast(origin).catch(() => null);
   const liveActivities = buildActivities({
-    liveEvents: eventsLive(now).map((e) => ({ slug: e.slug, title: e.title, venue_name: e.venue_name })),
+    liveEvents: eventsLive(now).map((e) => ({ slug: e.slug, title: e.title, venue_name: e.venue_name, starts_at: e.starts_at, ends_at: e.ends_at })),
     upcomingEvents: eventsNext24h(now).slice(0, 3).map((e) => ({ slug: e.slug, title: e.title, venue_name: e.venue_name, starts_at: e.starts_at })),
     weather: forecast?.hourly[0] ?? undefined,
+    now,
   });
 
   // Curate picks per tab

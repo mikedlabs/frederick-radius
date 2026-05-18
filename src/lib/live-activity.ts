@@ -4,6 +4,29 @@
  * this payload to plain serializable data (no function refs / components).
  */
 
+/** Default event length when a feed gives a start but no end. */
+const DEFAULT_EVENT_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * True only when `now` falls inside the event window. Pure, with `now`
+ * injected so it is unit-testable. A missing, invalid, or
+ * start-or-earlier `ends_at` defaults to start + 3h. This is the one
+ * temporal source of truth for any "Live now" label; provenance
+ * (live-feed vs curated) is NOT a temporal signal.
+ */
+export function isHappeningNow(
+  starts_at: string,
+  ends_at: string | null | undefined,
+  now: Date,
+): boolean {
+  const start = new Date(starts_at).getTime();
+  if (!Number.isFinite(start)) return false;
+  let end = ends_at ? new Date(ends_at).getTime() : NaN;
+  if (!Number.isFinite(end) || end <= start) end = start + DEFAULT_EVENT_MS;
+  const t = now.getTime();
+  return t >= start && t <= end;
+}
+
 export type ActivityIcon = "music" | "rain" | "alert" | "sparkles";
 
 export type Activity = {
@@ -24,15 +47,23 @@ export function buildActivities({
   upcomingEvents,
   weather,
   civicAlertCount,
+  now = new Date(),
 }: {
-  liveEvents: Array<{ slug: string; title: string; venue_name: string }>;
+  liveEvents: Array<{ slug: string; title: string; venue_name: string; starts_at?: string; ends_at?: string }>;
   upcomingEvents: Array<{ slug: string; title: string; venue_name: string; starts_at: string }>;
   weather?: { shortForecast: string; probabilityOfPrecipitation?: number; temperature: number };
   civicAlertCount?: number;
+  /** Injected for testability and a single clock across the build. */
+  now?: Date;
 }): Activity[] {
   const list: Activity[] = [];
 
   for (const e of liveEvents.slice(0, 1)) {
+    // Self-defensive: a "Live now" label must be temporal, not a
+    // provenance guess. When the caller provides times, only label it
+    // live if it is genuinely happening now. (When no times are given
+    // the caller is responsible for the live set; behavior unchanged.)
+    if (e.starts_at && !isHappeningNow(e.starts_at, e.ends_at, now)) continue;
     list.push({
       id: `live-${e.slug}`,
       kind: "live-event",
@@ -75,12 +106,12 @@ export function buildActivities({
     });
   }
 
-  const now = Date.now();
+  const nowMs = now.getTime();
   const TWO_HOURS = 2 * 60 * 60 * 1000;
   for (const e of upcomingEvents) {
     const startMs = new Date(e.starts_at).getTime();
-    const minutesUntil = Math.round((startMs - now) / 60000);
-    if (startMs > now && startMs - now <= TWO_HOURS) {
+    const minutesUntil = Math.round((startMs - nowMs) / 60000);
+    if (startMs > nowMs && startMs - nowMs <= TWO_HOURS) {
       list.push({
         id: `upcoming-${e.slug}`,
         kind: "upcoming",
