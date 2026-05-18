@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/kfdk_metars.json",
+  "title": "Aviation Weather Center METAR JSON response",
+  "description": "An array of METAR observations for one or more stations. The transform keeps the most recent KFDK observation. Only icaoId and an observation time are required; every measured field may be absent when the sensor did not report it, and a missing field stays null rather than being guessed.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["icaoId"],
+    "properties": {
+      "icaoId": { "type": "string" },
+      "obsTime": { "type": ["number", "null"] },
+      "reportTime": { "type": ["string", "null"] },
+      "receiptTime": { "type": ["string", "null"] },
+      "temp": { "type": ["number", "null"] },
+      "dewp": { "type": ["number", "null"] },
+      "wdir": { "type": ["number", "string", "null"] },
+      "wspd": { "type": ["number", "null"] },
+      "wgst": { "type": ["number", "null"] },
+      "visib": { "type": ["number", "string", "null"] },
+      "altim": { "type": ["number", "null"] },
+      "slp": { "type": ["number", "null"] },
+      "wxString": { "type": ["string", "null"] },
+      "name": { "type": ["string", "null"] },
+      "lat": { "type": ["number", "null"] },
+      "lon": { "type": ["number", "null"] },
+      "elev": { "type": ["number", "null"] },
+      "rawOb": { "type": ["string", "null"] },
+      "mostRecent": { "type": ["number", "null"] },
+      "clouds": {
+        "type": ["array", "null"],
+        "items": {
+          "type": "object",
+          "properties": {
+            "cover": { "type": ["string", "null"] },
+            "base": { "type": ["number", "null"] }
+          }
+        }
+      }
+    }
+  }
+}

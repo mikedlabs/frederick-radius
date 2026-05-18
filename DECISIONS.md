@@ -2,6 +2,31 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-18: Activate kfdk_metars (PROPOSAL, owner flips the row)
+
+Brief reference: external-audit-actions section 7.1. Per AGENTS.md
+agents propose and humans activate. The row is added at
+`status: pending_approval`; the daily worker only fetches `active`, so
+nothing is fetched until the owner flips it.
+
+What is staged. `data/sources.yaml` row `kfdk_metars`,
+`schemas/kfdk_metars.json`, `pipeline/schemas_ts/kfdk_metars.ts` (zod
+validator), `transforms/kfdk_metars.ts`, and a Vitest fixture
+(`tests/kfdk-metars.spec.ts`). The source is the NOAA Aviation Weather
+Center METAR JSON for KFDK: free, public domain, no key.
+
+Why activate. Today the weather strip is the regional NWS point
+forecast. KFDK is the downtown-adjacent field and reports a real
+measured hourly observation (temperature, dewpoint, wind, altimeter,
+derived flight category). Activating it gives the Today strip an actual
+current observation instead of a forecast cell, which is the more
+honest and more local signal.
+
+Gate and activation steps. No license or partner gate (US federal open
+data). To activate: set `status: active`, set `schema_file` and
+`transform_file` to the staged paths, and let the hourly cadence run.
+Recommendation: activate. Decision deferred to the owner.
+
 ## 2026-05-18: Resident/Visitor toggle, real fork or remove (OPEN, owner call)
 
 Brief reference: external-audit-actions section 6.1. Per AGENTS.md an
