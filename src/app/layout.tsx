@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, IBM_Plex_Serif, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
 
@@ -96,6 +97,7 @@ export default function RootLayout({
         </a>
         <div id="main">{children}</div>
         <Plausible />
+        <SpeedInsights />
       </body>
     </html>
   );
