@@ -22,7 +22,7 @@ import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import { buildActivities } from "@/lib/live-activity";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import Link from "next/link";
-import { Mountain, Trees, Sprout, Bus, Waves, ChevronRight } from "lucide-react";
+import { Mountain, Trees, Palette, Sprout, Bus, Waves, ChevronRight } from "lucide-react";
 import FadeUp from "@/components/ui/FadeUp";
 import { ShimmerWeatherStrip, ShimmerCard } from "@/components/ui/Shimmer";
 import { rankPlaces, placesWithinRadius, decoratePlace, likelyOpenPlaces, publicPlaces, publicPlaceBySlug } from "@/lib/loaders/places";
@@ -260,6 +260,33 @@ export default async function HomePage() {
               </span>
               <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                 Every park &amp; open space — type, size, who maintains it
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          </Link>
+        </FadeUp>
+
+        {/* Public art tour — the live Frederick County GIS public-art
+            point layer. A self-guided discovery experience, not a list. */}
+        <FadeUp>
+          <Link
+            href="/art"
+            className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.99]"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <span
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+              style={{ background: "color-mix(in srgb, var(--app-accent) 16%, transparent)" }}
+              aria-hidden
+            >
+              <Palette className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-accent)" }} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                Public art tour
+              </span>
+              <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                A self-guided walk through the city&apos;s murals &amp; sculptures
               </span>
             </span>
             <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
