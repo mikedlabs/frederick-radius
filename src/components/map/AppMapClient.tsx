@@ -3,10 +3,9 @@
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { MapPin } from "lucide-react";
-import type { Place } from "@/data/places";
-import { decoratePlace } from "@/lib/loaders/places";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
-import { FREDERICK_CENTER } from "@/lib/geo";
+import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
@@ -39,7 +38,11 @@ export default function AppMapClient({
   trailLines = EMPTY_FC,
   transitLines = EMPTY_FC,
 }: {
-  places: Place[];
+  /** Already decorated server-side (map/page → publicPlaces().map
+   *  (decoratePlace)). The client must NOT re-import the loader: it
+   *  drags the ~12MB places-enrichment.json into the browser bundle
+   *  and the map never loads. */
+  places: PlaceCardData[];
   civic?: CivicPin[];
   /** Server-fetched amenity points (e.g. Mapillary trash) merged into
    *  the map's amenity layer — keeps the secret token server-side. */
@@ -52,17 +55,19 @@ export default function AppMapClient({
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
 
   const bySlug = useMemo(() => {
-    const m = new Map<string, Place>();
+    const m = new Map<string, PlaceCardData>();
     for (const p of places) m.set(p.slug, p);
     return m;
   }, [places]);
 
+  // Already decorated server-side; only attach the viewport-relative
+  // distance here (pure, no loader/JSON in the client bundle).
   const results = useMemo(
     () =>
       inView
         .map((slug) => bySlug.get(slug))
-        .filter((p): p is Place => Boolean(p))
-        .map((p) => decoratePlace(p, FREDERICK_CENTER)),
+        .filter((p): p is PlaceCardData => Boolean(p))
+        .map((p) => ({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) })),
     [inView, bySlug]
   );
 

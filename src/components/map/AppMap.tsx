@@ -21,7 +21,11 @@ import type { Place } from "@/data/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
-import { decoratePlace } from "@/lib/loaders/places";
+// TYPE ONLY: importing the loader at runtime drags the ~12MB
+// places-enrichment.json into the client bundle (a 13MB chunk) and
+// the map never loads. Places arrive already decorated from the
+// server page; the client only attaches a viewport distance.
+import type { PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER, haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { haptic } from "@/lib/haptics";
@@ -38,7 +42,7 @@ import { RADIUS_COIN } from "@/data/city-data-engine";
 const SHOW_DEMO_LAYERS = process.env.NEXT_PUBLIC_RADIUS_DEMO_LAYERS === "1";
 
 type Props = {
-  places: Place[];
+  places: PlaceCardData[];
   osmPlaces?: OsmPlace[];
   height?: string;
   initialCenter?: [number, number];
@@ -590,7 +594,7 @@ export default function AppMap({
       haptic("light");
       // Google-Maps-style: tap a pin → full card slides up from the bottom
       // (photo, rating, hours, directions, save) instead of a cramped popup.
-      if (place) openSheet(decoratePlace(place, FREDERICK_CENTER));
+      if (place) openSheet({ ...place, distance_m: haversineMeters(FREDERICK_CENTER, place.geom) });
       return;
     }
 
@@ -657,7 +661,7 @@ export default function AppMap({
       .slice(0, 6);
   }, [q, places]);
 
-  const pickSearch = (p: Place) => {
+  const pickSearch = (p: PlaceCardData) => {
     const map = mapRef.current?.getMap();
     setSelectedSlug(p.slug);
     setQ("");
@@ -670,7 +674,7 @@ export default function AppMap({
         essential: true,
       });
     }
-    openSheet(decoratePlace(p, FREDERICK_CENTER));
+    openSheet({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) });
   };
 
   // Near-me radius ring
