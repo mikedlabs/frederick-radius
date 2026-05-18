@@ -97,12 +97,12 @@ export default async function EventsIndexPage({
 
   return (
     <div className="space-y-7">
-      <header className="flex items-center justify-between gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
             Live across the county
           </p>
-          <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
+          <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
             Events
           </h1>
           <p className="mt-0.5 text-[13px] text-pretty" style={{ color: "var(--app-ink-3)" }}>
