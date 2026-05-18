@@ -2,6 +2,34 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-18: cof_parking_occupancy (PROPOSAL, blocked on two gates)
+
+Brief reference: external-audit-actions section 7.2. Added as
+`pending_review`, not `pending_approval`, because two real-world
+questions are unresolved and must not be guessed.
+
+What is staged. A `cof_parking_occupancy` row (status pending_review,
+url null on purpose), `schemas/cof_parking_occupancy.json` and
+`pipeline/schemas_ts/cof_parking_occupancy.ts` and
+`transforms/cof_parking_occupancy.ts` all marked SCAFFOLD, and a Vitest
+fixture. The transform is defensive: it derives the missing one of
+available/occupied from capacity and otherwise leaves counts null.
+
+Why it is worth doing. Friday and Saturday night downtown parking is a
+genuine resident and visitor pain point. Live deck counts for Court
+Street, Carroll Creek, and West Patrick would be a high-value Today and
+Radius signal, and it is the kind of civic-layer data the north-star
+says to bring in rather than bounce out.
+
+The two gates, unresolved here by design. (1) Endpoint: a
+machine-readable live-occupancy feed is not confirmed. The public
+parking page exists; a documented API does not. No URL was invented;
+`url` is null. (2) License: redistributing live counts needs the city's
+confirmation. Recommendation: a maintainer confirms the endpoint and
+the license with the City of Frederick before anything is activated.
+Until then this stays pending_review. Decision and the real-world
+confirmation are the owner's.
+
 ## 2026-05-18: Activate kfdk_metars (PROPOSAL, owner flips the row)
 
 Brief reference: external-audit-actions section 7.1. Per AGENTS.md

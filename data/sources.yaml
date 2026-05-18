@@ -483,6 +483,32 @@ sources:
       are staged on disk; the row stays pending_approval and the worker
       does not fetch it until a human flips the status.
 
+  - id: cof_parking_occupancy
+    name: City of Frederick parking deck occupancy
+    owner: City of Frederick
+    url: null
+    endpoint_type: unknown
+    format: unknown
+    refresh_cadence: realtime
+    license: unconfirmed
+    contact: https://www.cityoffrederickmd.gov/161/Parking
+    status: pending_review
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: null
+    notes: |
+      Live counts for the Court Street, Carroll Creek, and West Patrick
+      Street decks. Two gates block activation and are deliberately left
+      unresolved here rather than guessed: (1) a machine-readable
+      live-occupancy endpoint is not confirmed (the public parking page
+      exists; a documented feed has not been verified), so url is null
+      on purpose, no URL is invented; (2) licensing for redistributing
+      live counts is unconfirmed. Schema and transform are scaffolds
+      shaped to the common deck / available / capacity model and must be
+      validated against the real feed before activation. pending_review
+      by design.
+
   - id: transit_gtfs
     name: Frederick County TransIT GTFS
     owner: Frederick County TransIT
