@@ -11,6 +11,7 @@ import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" }
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
+import { autoFold } from "@/lib/dedupe";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
@@ -41,20 +42,6 @@ export function applyDedup(list: Place[]): Place[] {
     });
 }
 
-const BASE_PLACES: Place[] = DEDUPE_ON ? applyDedup(PLACES) : PLACES;
-const BASE_BY_SLUG: Record<string, Place> = DEDUPE_ON
-  ? (() => {
-      const byCanon: Record<string, Place> = {};
-      for (const p of BASE_PLACES) byCanon[p.slug] = p;
-      const idx: Record<string, Place> = { ...byCanon };
-      // A folded slug resolves to its canonical so old links still work.
-      for (const [slug, e] of Object.entries(DEDUP)) {
-        if (byCanon[e.canonical]) idx[slug] = byCanon[e.canonical];
-      }
-      return idx;
-    })()
-  : PLACE_BY_SLUG;
-
 type Enrichment = {
   business_status?: "OPERATIONAL" | "CLOSED_TEMPORARILY" | "CLOSED_PERMANENTLY" | "UNKNOWN";
   weekday_hours?: string[];
@@ -73,6 +60,73 @@ type Enrichment = {
   enriched_at?: string;
 };
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
+
+/**
+ * Human-override layer: slugs the curator explicitly marked
+ * `canonical === self` are PINNED — the automatic rule must never
+ * fold them away. This is the one-line veto for a rare wrong
+ * auto-merge, so a judgement call never requires touching the engine.
+ */
+const PINNED: ReadonlySet<string> = new Set(
+  Object.entries(DEDUP)
+    .filter(([slug, e]) => e.canonical === slug)
+    .map(([slug]) => slug),
+);
+
+/**
+ * Two-stage dedupe applied HERE, at the one canonical source, so every
+ * non-admin surface (Radius/home, Map, Search, Municipality, Saved,
+ * Sitemap, Plan) inherits a single reality and the "I keep seeing the
+ * same thing twice" problem cannot regress:
+ *   1. places-dedup.json — curated human judgement / hard cases.
+ *   2. autoFold — the deterministic same-place rule (src/lib/dedupe.ts)
+ *      over the survivors, so a NEW duplicate is collapsed the moment
+ *      it enters the data, with zero human upkeep. Conservative by
+ *      construction (safelist-guarded), so it never destroys a
+ *      distinct place. Gated by RADIUS_DEDUPE for instant rollback.
+ */
+const STATIC_DEDUPED: Place[] = DEDUPE_ON ? applyDedup(PLACES) : PLACES;
+
+const AUTO_FOLD: Map<string, string> = DEDUPE_ON
+  ? autoFold(
+      STATIC_DEDUPED.map((p) => ({
+        slug: p.slug,
+        name: p.name,
+        geom: p.geom,
+        source: p.source,
+        municipality: p.municipality,
+        google_place_id: p.google_place_id,
+        feature_score: p.feature_score,
+        hasEnrichment: Boolean(ENRICHMENT[p.slug]),
+      })),
+      PINNED,
+    )
+  : new Map<string, string>();
+
+const BASE_PLACES: Place[] = DEDUPE_ON
+  ? STATIC_DEDUPED.filter((p) => !AUTO_FOLD.has(p.slug))
+  : PLACES;
+
+const BASE_BY_SLUG: Record<string, Place> = DEDUPE_ON
+  ? (() => {
+      const byCanon: Record<string, Place> = {};
+      for (const p of BASE_PLACES) byCanon[p.slug] = p;
+      const idx: Record<string, Place> = { ...byCanon };
+      // Auto-folded slug → its canonical, so saved/linked old slugs
+      // still resolve. Done before the static loop so a static
+      // canonical that itself got auto-folded resolves transitively.
+      for (const [slug, canon] of AUTO_FOLD) {
+        if (byCanon[canon]) idx[slug] = byCanon[canon];
+      }
+      // Static-folded + legacy slugs → canonical (resolve against the
+      // final index in case the canonical was itself auto-folded).
+      for (const [slug, e] of Object.entries(DEDUP)) {
+        const resolved = byCanon[e.canonical] ?? idx[e.canonical];
+        if (resolved) idx[slug] = resolved;
+      }
+      return idx;
+    })()
+  : PLACE_BY_SLUG;
 
 /** Google-verified data merged onto a place, when available. */
 export type PlaceEnriched = {
