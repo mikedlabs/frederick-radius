@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/usda_farmers_markets.json",
+  "title": "USDA Local Food Portal farmers market response",
+  "description": "The Local Food Portal returns an object with a data array of market listings. Only the listing id is structurally required; coordinates are USDA convention (location_x is longitude, location_y is latitude) and arrive as strings. The transform parses them to numbers and drops markets outside Frederick County rather than trusting the national result set.",
+  "type": "object",
+  "required": ["data"],
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["listing_id"],
+        "properties": {
+          "listing_id": { "type": ["string", "number"] },
+          "listing_name": { "type": ["string", "null"] },
+          "location_address": { "type": ["string", "null"] },
+          "location_x": { "type": ["number", "string", "null"] },
+          "location_y": { "type": ["number", "string", "null"] },
+          "listing_desc": { "type": ["string", "null"] },
+          "media_website": { "type": ["string", "null"] },
+          "contact_phone": { "type": ["string", "null"] },
+          "updatetime": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}
