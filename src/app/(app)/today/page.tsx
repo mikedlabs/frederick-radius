@@ -28,7 +28,6 @@ import { getFrederickHistoricPlaces } from "@/lib/integrations/mdHistoricPlaces"
 import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { isFarmersMarket } from "@/lib/farmersMarkets";
-import Link from "next/link";
 import { Mountain, Trees, Palette, Landmark, Sprout, Bus, Waves } from "lucide-react";
 
 /**
@@ -72,11 +71,12 @@ function ExploreHub({ counts }: { counts: Record<string, number> }) {
             const Icon = e.icon;
             const n = counts[e.href] ?? 0;
             return (
-              <Link
+              <Surface
                 key={e.href}
                 href={e.href}
-                className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 shadow-[var(--app-shadow-1)] transition active:scale-[0.98]"
-                style={{ borderColor: "var(--app-border)" }}
+                interactive
+                radius="var(--app-radius-md)"
+                className="flex items-center gap-2.5 px-3 py-2.5"
               >
                 <span
                   className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
@@ -94,14 +94,11 @@ function ExploreHub({ counts }: { counts: Record<string, number> }) {
                   </span>
                 </span>
                 {n > 0 && (
-                  <span
-                    className="ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums"
-                    style={{ background: `color-mix(in srgb, ${e.color} 14%, transparent)`, color: e.color }}
-                  >
+                  <Chip color={e.color} tabular className="ml-auto shrink-0">
                     {n.toLocaleString()}
-                  </span>
+                  </Chip>
                 )}
-              </Link>
+              </Surface>
             );
           })}
         </div>
@@ -137,6 +134,8 @@ async function ExploreHubData() {
   return <ExploreHub counts={counts} />;
 }
 import FadeUp from "@/components/ui/FadeUp";
+import { Surface } from "@/components/ui/Surface";
+import { Chip } from "@/components/ui/Chip";
 import { ShimmerWeatherStrip, ShimmerCard } from "@/components/ui/Shimmer";
 import { rankPlaces, placesWithinRadius, decoratePlace, likelyOpenPlaces, publicPlaces, publicPlaceBySlug } from "@/lib/loaders/places";
 import { eventsLive, eventsNext24h, eventsWeekend, allUpcoming, seriesKey, formatEventWhen } from "@/lib/loaders/events";
