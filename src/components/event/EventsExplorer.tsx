@@ -356,7 +356,7 @@ export default function EventsExplorer({
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading title={g.label} count={g.events.length} />
-                <div className="stagger grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <div className="stagger grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                   {shown.map((e) => (
                     <div key={e.slug} className="relative">
                       {live.has(e.slug) && (
