@@ -5,7 +5,7 @@ import { decodeSpec, reconstructPlan } from "@/lib/integrations/planner";
 export const metadata: Metadata = {
   title: "Plan my evening",
   description:
-    "Tell us how much time you've got and the vibe — we'll string together real Frederick County stops, nothing invented.",
+    "Tell us how much time you've got and the vibe. We'll string together real Frederick County stops, nothing invented.",
 };
 
 export default async function PlanPage({
@@ -35,7 +35,7 @@ export default async function PlanPage({
           ) : (
             <>
               Tell us how much time you&apos;ve got, who you&apos;re with, and the vibe. We&apos;ll stitch together
-              stops you can actually do — every recommendation is a real place from our directory.
+              stops you can actually do. Every recommendation is a real place from our directory.
             </>
           )}
         </p>
