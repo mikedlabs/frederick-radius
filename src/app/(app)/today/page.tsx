@@ -59,7 +59,7 @@ const EXPLORE_LINKS = [
 function ExploreHub({ counts }: { counts: Record<string, number> }) {
   return (
     <FadeUp>
-      <section className="space-y-2.5">
+      <section className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
           <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             Explore Frederick
@@ -268,7 +268,10 @@ export default async function HomePage() {
       <PullToRefresh />
       <FloatingPlanFab />
 
-      <div className="space-y-6">
+      {/* Tightened module rhythm (owner: "tighten up the module
+          design") — 1rem between modules instead of 1.5rem reads as
+          one cohesive page, not a stack of distant cards. */}
+      <div className="space-y-4">
         {/* ── ZONE 1 · Right now ─────────────────────────────── */}
         <Suspense fallback={null}>
           <CivicAlerts />
@@ -288,9 +291,16 @@ export default async function HomePage() {
           <ModeAwareCta />
         </SkyHero>
 
-        {/* Weather + air quality — promoted to the top (owner: it's
-            what decides what people want to do today), right under the
-            greeting so the day's conditions frame everything below. */}
+        {/* Mode-aware quick start ("Plan your visit" in visitor mode) —
+            Resident vs Visitor actually changes what the app
+            foregrounds (one toggle, here). */}
+        <FadeUp>
+          <ModeLead />
+        </FadeUp>
+
+        {/* Weather + air quality — sits directly BELOW the plan lead
+            (owner): you decide to plan, then the day's conditions
+            inform what kind of plan. */}
         <FadeUp>
           <Suspense fallback={<ShimmerWeatherStrip />}>
             <div className="space-y-2">
@@ -302,12 +312,6 @@ export default async function HomePage() {
               </div>
             </div>
           </Suspense>
-        </FadeUp>
-
-        {/* Mode-aware quick start — Resident vs Visitor actually
-            changes what the app foregrounds (one toggle, here). */}
-        <FadeUp>
-          <ModeLead />
         </FadeUp>
 
         {liveActivities.length > 0 && (
@@ -330,7 +334,7 @@ export default async function HomePage() {
             important). Visual tiles with real place counts, no longer
             buried in a collapsed drawer at the bottom. */}
         <FadeUp>
-          <section className="space-y-2.5">
+          <section className="space-y-2">
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                 Explore by town
