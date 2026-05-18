@@ -11,7 +11,7 @@ import Map, {
   type MapRef,
   type MapMouseEvent,
 } from "react-map-gl/mapbox";
-import type { GeoJSONSource } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -31,7 +31,6 @@ import { isKnownClosed } from "@/lib/integrations/closures";
 import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
-import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
 import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
 import { DEMO_POINTS_PARTNERS, type DemoPointsPartner } from "@/data/radius-points-demo";
 import { RADIUS_COIN } from "@/data/city-data-engine";
@@ -152,6 +151,30 @@ function circlePolygon(center: LngLat, meters: number, steps = 72): GeoJSON.Feat
   return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } };
 }
 
+// Camera easing shared by every programmatic move so zooming feels
+// calm and consistent — never the hard jump that read as "erratic".
+// easeInOutCubic: slow start, slow stop, no snap.
+const CAM_EASE = (t: number) =>
+  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+/**
+ * Gentle recenter + zoom. The old code flew straight to z15.5 from
+ * wherever you were — a county-wide view punching to street level in
+ * one motion is exactly the jolt the owner flagged. This clamps the
+ * zoom change to a small step toward a sensible focus level and eases
+ * it, so tapping a result or a search hit glides instead of snapping.
+ */
+function smoothFocus(
+  map: MapboxMap,
+  center: [number, number],
+  opts?: { minZoom?: number; maxStep?: number },
+) {
+  const cur = map.getZoom();
+  const want = Math.max(cur, opts?.minZoom ?? 14.5);
+  const zoom = Math.min(want, cur + (opts?.maxStep ?? 2.2));
+  map.easeTo({ center, zoom, duration: 900, easing: CAM_EASE, essential: true });
+}
+
 function isTrustedOsm(p: OsmPlace): boolean {
   return OSM_TRUSTED_CATEGORIES.has(p.category_slug);
 }
@@ -251,7 +274,6 @@ export default function AppMap({
   const [showUnverified, setShowUnverified] = useState(false);
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(new Set());
   const [amenityOpen, setAmenityOpen] = useState(false);
-  const [onlyGems, setOnlyGems] = useState(false);
   const [demo, setDemo] = useState<null | "food-truck" | "transit" | "rewards">(null);
   const [truck, setTruck] = useState<DemoFoodTruck | null>(null);
   const [pointsPlace, setPointsPlace] = useState<DemoPointsPartner | null>(null);
@@ -302,12 +324,7 @@ export default function AppMap({
     if (!p || !map) return;
     setSelectedSlug(p.slug);
     haptic("light");
-    map.flyTo({
-      center: [p.geom.lng, p.geom.lat],
-      zoom: Math.max(map.getZoom(), 15.5),
-      duration: 900,
-      essential: true,
-    });
+    smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
   }, [focus, places]);
 
   // Demo beacons only exist while their demo is on. Closing or switching
@@ -318,14 +335,13 @@ export default function AppMap({
   }, [demo]);
 
   const filteredPlaces = useMemo(() => {
-    let base = places;
-    if (onlyGems) base = base.filter((p) => HIDDEN_GEM_SLUGS.has(p.slug));
+    const base = places;
     if (activeCats.size === 0) return base;
     return base.filter((p) => {
       const cat = CATEGORY_BY_SLUG[p.category];
       return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
     });
-  }, [places, activeCats, onlyGems]);
+  }, [places, activeCats]);
 
   // Emit the curated places inside the current viewport (nearest-center
   // first) whenever the map settles — drives the synced results list.
@@ -489,26 +505,12 @@ export default function AppMap({
         category: p.category,
         color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C",
         bucket: bucketOf(p.category),
-        gem: HIDDEN_GEM_SLUGS.has(p.slug) ? 1 : 0,
-        // Collision priority within the curated tier: gem wins, then
-        // verified, then the rest. Lower number = placed first = kept.
-        pri: HIDDEN_GEM_SLUGS.has(p.slug) ? 0 : p.is_verified ? 1 : 2,
+        // Draw order within the curated tier: verified places first so
+        // the strongest pins win the spot when icons stack.
+        pri: p.is_verified ? 0 : 1,
       },
       geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
     })),
-  }), [filteredPlaces]);
-
-  // Hidden gems get a soft gold halo so they're discoverable even when
-  // you haven't filtered to them — the "wander and find something" magic.
-  const gemGeoJson = useMemo(() => ({
-    type: "FeatureCollection" as const,
-    features: filteredPlaces
-      .filter((p) => HIDDEN_GEM_SLUGS.has(p.slug))
-      .map((p) => ({
-        type: "Feature" as const,
-        properties: { slug: p.slug },
-        geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
-      })),
   }), [filteredPlaces]);
 
   // The single selected place — drives a soft glow ring under its icon.
@@ -559,7 +561,7 @@ export default function AppMap({
     );
     mapRef.current.fitBounds(
       [[bounds.min[0], bounds.min[1]], [bounds.max[0], bounds.max[1]]],
-      { padding: 56, maxZoom: 15, duration: 600 },
+      { padding: 56, maxZoom: 15, duration: 900, easing: CAM_EASE },
     );
   }, [filteredPlaces, activeCats]);
 
@@ -581,7 +583,11 @@ export default function AppMap({
           .getClusterExpansionZoom(clusterId, (err, zoom) => {
             if (err) return;
             const coords = (feature.geometry as GeoJSON.Point).coordinates as [number, number];
-            map.easeTo({ center: coords, zoom });
+            // Glide toward the expansion zoom, but clamped so a tap on a
+            // dense downtown cluster steps in calmly instead of snapping
+            // the whole county to street level. Very dense clusters take
+            // a second tap — that gentle tiering is the intended feel.
+            smoothFocus(map, coords, { minZoom: zoom, maxStep: 2.5 });
           });
       }
       return;
@@ -629,8 +635,7 @@ export default function AppMap({
     const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates as [number, number];
     let next: { lng: number; lat: number; label: string; sub?: string } | null = null;
     if (f.layer.id === "clusters" || f.layer.id === "curated-clusters") {
-      const n = props.point_count_abbreviated ?? props.point_count;
-      if (n != null) next = { lng, lat, label: `${n} places`, sub: "Zoom in to expand" };
+      next = { lng, lat, label: "A cluster of places", sub: "Zoom in to see them" };
     } else if (f.layer.id === "curated-icons") {
       const p = places.find((x) => x.slug === props.slug);
       if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };
@@ -666,14 +671,7 @@ export default function AppMap({
     setSelectedSlug(p.slug);
     setQ("");
     haptic("light");
-    if (map) {
-      map.flyTo({
-        center: [p.geom.lng, p.geom.lat],
-        zoom: Math.max(map.getZoom(), 15.5),
-        duration: 900,
-        essential: true,
-      });
-    }
+    if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
     openSheet({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) });
   };
 
@@ -742,10 +740,15 @@ export default function AppMap({
         const loc = { lng: pos.coords.longitude, lat: pos.coords.latitude };
         setUserLoc(loc);
         haptic("light");
+        // A deliberate cross-county recenter, so a flight is right here
+        // — but eased with the same curve as every other move so it
+        // still feels calm, not a snap.
         mapRef.current?.getMap().flyTo({
           center: [loc.lng, loc.lat],
           zoom: 14,
-          duration: 900,
+          duration: 1100,
+          curve: 1.25,
+          easing: CAM_EASE,
           essential: true,
         });
       },
@@ -810,24 +813,6 @@ export default function AppMap({
             <li>
               <button
                 type="button"
-                onClick={() => setOnlyGems((v) => !v)}
-                aria-pressed={onlyGems}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: onlyGems ? "#D9A441" : "var(--app-bg-elevated)",
-                  color: onlyGems ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${onlyGems ? "#D9A441" : "var(--app-border)"}`,
-                  boxShadow: onlyGems ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="Lesser-known local standouts — the spots a resident sends a visitor to"
-              >
-                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"✨"}</span>
-                Hidden gems
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
                 onClick={() =>
                   setActiveCats((prev) => {
                     const next = new Set(prev);
@@ -888,14 +873,14 @@ export default function AppMap({
                     border: `1px solid ${showCivic ? "var(--app-warning)" : "var(--app-border)"}`,
                     boxShadow: showCivic ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                   }}
-                  title="Live traffic incidents and 311 reports"
+                  title="Live traffic incidents and county 311 reports"
                 >
                   <span
                     aria-hidden
                     className="inline-block h-2 w-2 rounded-full"
                     style={{ background: showCivic ? "white" : "var(--app-warning)" }}
                   />
-                  Live · {civic.length}
+                  Traffic &amp; 311
                 </button>
               </li>
             )}
@@ -1241,10 +1226,10 @@ export default function AppMap({
                   Public &amp; OSM — lighter pins
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[9px]" style={{ background: "var(--app-cool)", color: "white" }}>#</span>
-                  Numbered circle — zoom in to expand
+                  <span aria-hidden className="inline-flex h-4 w-4 items-center justify-center"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--app-cool)", opacity: 0.55 }} /></span>
+                  Soft dot — more places, zoom in
                 </li>
-                <li style={{ color: "var(--app-ink-3)" }}>Tap any pin for the full card.</li>
+                <li style={{ color: "var(--app-ink-3)" }}>Tap a soft dot or pin to open it.</li>
               </ul>
             </div>
           ) : (
@@ -1412,69 +1397,49 @@ export default function AppMap({
             />
           </Source>
 
-          {/* OSM businesses — clustered */}
+          {/* OSM businesses — clustered. Calm tier: a soft cool dot that
+              says "more here, zoom in", NOT a loud numbered disk. OSM is
+              the secondary layer so it stays quiet and cool-toned. */}
           <Source
             id="osm-businesses"
             type="geojson"
             data={filteredOsmGeoJson}
             cluster
-            clusterRadius={70}
-            clusterMaxZoom={16}
+            clusterRadius={64}
+            clusterMaxZoom={15}
           >
-            {/* Soft glow under each cluster — depth, not a flat disk */}
+            {/* Soft halo — gentle depth, barely-there. */}
             <Layer
               id="cluster-glow"
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": [
-                  "step", ["get", "point_count"],
-                  "#2A5D8F", 25, "#C4451C", 100, "#7E1F1F",
-                ],
-                "circle-opacity": 0.22,
+                "circle-color": "#2A5D8F",
+                "circle-opacity": 0.14,
                 "circle-blur": 1,
                 "circle-radius": [
-                  "step", ["get", "point_count"],
-                  26, 25, 34, 100, 42,
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 16, 50, 22, 300, 28,
                 ],
               }}
             />
+            {/* Calm core dot — no number, no hard outline. A quiet
+                cool marker that resolves into real pins as you zoom. */}
             <Layer
               id="clusters"
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": [
-                  "step", ["get", "point_count"],
-                  "#2A5D8F", 25, "#C4451C", 100, "#7E1F1F",
-                ],
-                "circle-opacity": 0.95,
-                "circle-blur": 0.15,
+                "circle-color": "#2A5D8F",
+                "circle-opacity": 0.5,
+                "circle-blur": 0.3,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
-                  2, 15, 25, 19, 100, 25, 500, 32,
+                  2, 7, 50, 10, 300, 13,
                 ],
-                "circle-stroke-color": "#0A0A0A",
+                "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.5,
-              }}
-            />
-            <Layer
-              id="cluster-count"
-              type="symbol"
-              filter={["has", "point_count"]}
-              layout={{
-                "text-field": "{point_count_abbreviated}",
-                "text-size": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  2, 12, 100, 15, 500, 17,
-                ],
-                "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
-              }}
-              paint={{
-                "text-color": "#fff",
-                "text-halo-color": "rgba(0,0,0,0.25)",
-                "text-halo-width": 0.8,
+                "circle-stroke-opacity": 0.25,
               }}
             />
             {/* Individual unclustered points — same icon language, smaller
@@ -1568,8 +1533,8 @@ export default function AppMap({
             type="geojson"
             data={curatedGeoJson}
             cluster
-            clusterRadius={70}
-            clusterMaxZoom={16}
+            clusterRadius={64}
+            clusterMaxZoom={15}
             clusterProperties={{
               food: ["+", ["case", ["==", ["get", "bucket"], "food"], 1, 0]],
               outdoors: ["+", ["case", ["==", ["get", "bucket"], "outdoors"], 1, 0]],
@@ -1599,11 +1564,11 @@ export default function AppMap({
                     "#C4451C",
                   ],
                 ],
-                "circle-opacity": 0.25,
+                "circle-opacity": 0.18,
                 "circle-blur": 1,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
-                  2, 26, 25, 32, 100, 40, 500, 50,
+                  2, 18, 50, 26, 300, 34,
                 ],
               }}
             />
@@ -1629,33 +1594,20 @@ export default function AppMap({
                     "#C4451C",
                   ],
                 ],
-                "circle-opacity": 0.96,
-                "circle-blur": 0.15,
+                // Calm, not loud: a soft category-tinted dot, no number,
+                // no hard black ring. It reads "a place cluster, mostly
+                // <category>" at a glance and dissolves into real pins
+                // as you zoom — the de-cluttering that makes the wide
+                // view make sense.
+                "circle-opacity": 0.55,
+                "circle-blur": 0.3,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
-                  2, 16, 25, 21, 100, 27, 500, 34,
+                  2, 8, 50, 12, 300, 16,
                 ],
-                "circle-stroke-color": "#0A0A0A",
+                "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.45,
-              }}
-            />
-            <Layer
-              id="curated-cluster-count"
-              type="symbol"
-              filter={["has", "point_count"]}
-              layout={{
-                "text-field": "{point_count_abbreviated}",
-                "text-size": [
-                  "interpolate", ["linear"], ["get", "point_count"],
-                  2, 12, 100, 15, 500, 18,
-                ],
-                "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
-              }}
-              paint={{
-                "text-color": "#fff",
-                "text-halo-color": "rgba(0,0,0,0.28)",
-                "text-halo-width": 0.8,
+                "circle-stroke-opacity": 0.3,
               }}
             />
             <Layer
@@ -1714,27 +1666,6 @@ export default function AppMap({
                   15.5, 0,
                   16.5, 1,
                 ],
-              }}
-            />
-          </Source>
-
-          {/* Hidden-gem halo — a soft gold ring under the gem's icon. */}
-          <Source id="gem-halo" type="geojson" data={gemGeoJson}>
-            <Layer
-              id="gem-glow"
-              type="circle"
-              beforeId="curated-icons"
-              paint={{
-                "circle-color": "#D9A441",
-                "circle-opacity": 0.18,
-                "circle-radius": [
-                  "interpolate", ["linear"], ["zoom"],
-                  11, 12, 14, 18, 16, 26, 18, 34,
-                ],
-                "circle-stroke-color": "#D9A441",
-                "circle-stroke-opacity": 0.7,
-                "circle-stroke-width": 1.8,
-                "circle-blur": 0.25,
               }}
             />
           </Source>
