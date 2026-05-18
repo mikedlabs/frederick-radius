@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Home, Compass, Activity, Navigation, Map as MapIcon, CalendarDays, Mountain, Utensils, Sprout, ChevronRight } from "lucide-react";
+import { Home, Compass, Activity, Navigation, Map as MapIcon, CalendarDays, Mountain, Utensils, ChevronRight } from "lucide-react";
 import { useMode } from "@/hooks/useMode";
 import { useMounted } from "@/hooks/useSaved";
 import ModeToggle from "./ModeToggle";
