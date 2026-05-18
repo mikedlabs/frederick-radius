@@ -127,6 +127,47 @@ const MAP: Record<string, string> = {
   subway_station: "transit",
   light_rail_station: "transit",
   parking: "parking",
+  parking_garage: "parking",
+  parking_lot: "parking",
+
+  // Audit-driven additions: Google gave a clear type for ~560 places
+  // the corrector had no mapping for, so they sat in vague buckets.
+  // These map only the unambiguous ones (the genuinely vague —
+  // "service", "store", "premise", "point_of_interest", "manufacturer"
+  // — are deliberately still NOT here, same null-on-vague rule).
+  // Health & body → wellness (the taxonomy's health umbrella)
+  medical_clinic: "wellness",
+  medical_center: "wellness",
+  health: "wellness",
+  doctor: "wellness",
+  dentist: "wellness",
+  dental_clinic: "wellness",
+  general_hospital: "wellness",
+  hospital: "wellness",
+  physiotherapist: "wellness",
+  chiropractor: "wellness",
+  hair_salon: "wellness",
+  beauty_salon: "wellness",
+  barber_shop: "wellness",
+  nail_salon: "wellness",
+  massage: "wellness",
+  tanning_studio: "wellness",
+  // Community → civic
+  association_or_organization: "civic",
+  non_profit_organization: "civic",
+  community_center: "civic",
+  // Practical → services
+  bank: "services",
+  car_repair: "services",
+  car_wash: "services",
+  laundry: "services",
+  // Retail → shopping
+  liquor_store: "shopping",
+  convenience_store: "shopping",
+  discount_store: "shopping",
+  electronics_store: "shopping",
+  pet_store: "shopping",
+  sporting_goods_store: "shopping",
 };
 
 /**
