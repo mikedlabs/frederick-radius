@@ -288,6 +288,22 @@ export default async function HomePage() {
           <ModeAwareCta />
         </SkyHero>
 
+        {/* Weather + air quality — promoted to the top (owner: it's
+            what decides what people want to do today), right under the
+            greeting so the day's conditions frame everything below. */}
+        <FadeUp>
+          <Suspense fallback={<ShimmerWeatherStrip />}>
+            <div className="space-y-2">
+              <WeatherStrip />
+              <div className="flex">
+                <Suspense fallback={null}>
+                  <AirQualityBadge />
+                </Suspense>
+              </div>
+            </div>
+          </Suspense>
+        </FadeUp>
+
         {/* Mode-aware quick start — Resident vs Visitor actually
             changes what the app foregrounds (one toggle, here). */}
         <FadeUp>
@@ -347,19 +363,6 @@ export default async function HomePage() {
             Open or likely-open only, and the user can hide it. */}
         <FadeUp>
           <RightNow origin={origin} now={now} />
-        </FadeUp>
-
-        <FadeUp>
-          <Suspense fallback={<ShimmerWeatherStrip />}>
-            <div className="space-y-2">
-              <WeatherStrip />
-              <div className="flex">
-                <Suspense fallback={null}>
-                  <AirQualityBadge />
-                </Suspense>
-              </div>
-            </div>
-          </Suspense>
         </FadeUp>
 
         {/* ── ZONE 2 · What to do (tabbed, replaces 5 separate sections) ── */}
