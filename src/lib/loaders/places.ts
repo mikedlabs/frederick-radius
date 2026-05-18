@@ -10,6 +10,7 @@ import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
+import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
@@ -220,6 +221,7 @@ export function getPlaceBySlug(slug: string, origin?: LngLat, now: Date = new Da
     .filter((x) => x.slug !== p.slug)
     .filter(isOperational)
     .filter(isDiscoverable)
+    .filter(isSubstantive)
     .map((x) => decoratePlace(x, p.geom, now))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 6);
@@ -292,6 +294,38 @@ export function isDiscoverable(p: Place): boolean {
   return !isNonDiscoverable(ENRICHMENT[p.slug]?.primary_type);
 }
 
+// Default ON (owner: "prune the bare entries", 2026-05-18). Hides the
+// ~2% bare-bones discovered tail. Set RADIUS_PRUNE_THIN=0 to disable
+// without a code change (instant rollback).
+const PRUNE_THIN_ON = process.env.RADIUS_PRUNE_THIN !== "0";
+
+/**
+ * Substance predicate. False ONLY for the bare-bones discovered tail:
+ * a bulk-scraped/discovered record (dfp|google) with NO Google rating,
+ * NO photo, and NO editorial summary — nothing but a name, category
+ * and a point. Curated seed/manual is ALWAYS substantive (never hidden
+ * by this). Like isDiscoverable: the discovery generators below use
+ * it; single-slug retrieval deliberately does NOT, so a saved or
+ * linked record still resolves — we hide from discovery, never
+ * destroy. Cheap: reads the enrichment map, never decorates.
+ */
+export function isSubstantive(p: Place): boolean {
+  if (!PRUNE_THIN_ON) return true;
+  if (p.source !== "dfp" && p.source !== "google") return true;
+  // Any real signal keeps it: a Google rating, a photo of ANY kind
+  // (Google enrichment, seed hero, or a Wikimedia landmark match), or
+  // a real editorial summary. Hidden only when it has NONE of these —
+  // a name + category + point and nothing else.
+  if (p.hero_image || getLandmarkPhoto(p.slug)) return true;
+  const e = ENRICHMENT[p.slug];
+  if (!e) return false;
+  return Boolean(
+    e.rating ||
+      (e.photo_names && e.photo_names.length > 0) ||
+      (e.editorial_summary && e.editorial_summary.trim().length > 0),
+  );
+}
+
 /**
  * P0-1: the ONE canonical public place set. Every non-admin surface
  * (Radius/home, Map, Search, Municipality, Saved, Sitemap, Plan) must
@@ -301,7 +335,7 @@ export function isDiscoverable(p: Place): boolean {
  * PLACES stays available only for admin, audits, and scripts.
  */
 export function publicPlaces(): Place[] {
-  return BASE_PLACES.filter(isOperational).filter(isDiscoverable);
+  return BASE_PLACES.filter(isOperational).filter(isDiscoverable).filter(isSubstantive);
 }
 
 /** Public places in one municipality (canonical set, not raw). */
@@ -335,6 +369,7 @@ export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): Place
   return BASE_PLACES
     .filter(isOperational)
     .filter(isDiscoverable)
+    .filter(isSubstantive)
     .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
     .map((p) => ({ ...decoratePlace(p, origin, now), open_confidence: "likely" as const }))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
@@ -345,6 +380,7 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
   let results = BASE_PLACES
     .filter(isOperational)
     .filter(isDiscoverable)
+    .filter(isSubstantive)
     .map((p) => decoratePlace(p, ctx.origin, now));
 
   if (ctx.category) {
@@ -375,6 +411,7 @@ export function placesWithinRadius(origin: LngLat, meters: number, now: Date = n
   return BASE_PLACES
     .filter(isOperational)
     .filter(isDiscoverable)
+    .filter(isSubstantive)
     .map((p) => decoratePlace(p, origin, now))
     .filter((p) => (p.distance_m ?? Infinity) <= meters)
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
