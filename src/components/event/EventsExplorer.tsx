@@ -173,10 +173,14 @@ export default function EventsExplorer({
             type="button"
             onClick={c.toggle}
             aria-pressed={c.on}
-            className={`rounded-full px-3.5 py-2 text-[13px] font-semibold transition active:scale-[0.97] ${c.on ? "" : "tactile"}`}
+            className={`rounded-full px-3.5 py-2 text-[13px] font-semibold transition active:scale-[0.94] ${c.on ? "" : "tactile tactile-interactive"}`}
             style={{
-              background: c.on ? "var(--app-brand)" : "var(--app-bg-elevated)",
+              background: c.on
+                ? "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))"
+                : "var(--app-bg-elevated)",
               color: c.on ? "white" : "var(--app-ink-2)",
+              boxShadow: c.on ? "var(--app-elev-2)" : undefined,
+              transitionTimingFunction: "var(--app-ease-spring)",
             }}
           >
             {c.label}
