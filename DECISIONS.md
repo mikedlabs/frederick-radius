@@ -2,6 +2,32 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-18: Activate transit_gtfs (PROPOSAL, owner flips the row)
+
+Brief reference: external-audit-actions section 7.3. The
+`transit_gtfs` row already exists at `status: pending_approval`; this
+PR does not touch it. It stages the schema and transform so the owner
+can flip the row in one step.
+
+What is staged. `schemas/fc_transit_gtfs.json`,
+`pipeline/schemas_ts/fc_transit_gtfs.ts`,
+`transforms/fc_transit_gtfs.ts` (bus routes plus county-validated
+stops), and a Vitest fixture. The row, the url, and the license
+(public, Frederick County) are unchanged.
+
+Why activate. The /transit surface today links out to a county PDF.
+The north-star rule is to bring civic data in, never bounce out. Static
+GTFS gives nine bus routes and their stops as first-class in-app data,
+mappable on the same spine as every other place. It is free, public,
+no key.
+
+Activation steps. Flip `status` to `active`, set `schema_file` to
+`schemas/fc_transit_gtfs.json` and `transform_file` to
+`transforms/fc_transit_gtfs.ts`, and the weekly cadence runs. The
+transform already drops out-of-county or coordinate-less stops, so a
+bad GTFS row cannot place a phantom stop. Recommendation: activate.
+Decision deferred to the owner.
+
 ## 2026-05-18: cof_parking_occupancy (PROPOSAL, blocked on two gates)
 
 Brief reference: external-audit-actions section 7.2. Added as

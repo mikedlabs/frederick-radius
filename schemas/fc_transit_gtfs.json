@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://frederickradius.app/schemas/fc_transit_gtfs.json",
+  "title": "Frederick County TransIT GTFS, parsed routes and stops",
+  "description": "Input is the GTFS feed already unzipped to its tables. This source only needs routes.txt and stops.txt to power an in-app /transit surface, so only those two are required. Field names are the GTFS spec names. The transform parses coordinates to numbers and drops stops outside the county rather than trusting every row.",
+  "type": "object",
+  "required": ["routes", "stops"],
+  "properties": {
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["route_id"],
+        "properties": {
+          "route_id": { "type": "string" },
+          "route_short_name": { "type": ["string", "null"] },
+          "route_long_name": { "type": ["string", "null"] },
+          "route_type": { "type": ["number", "string", "null"] },
+          "route_color": { "type": ["string", "null"] },
+          "route_text_color": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "stops": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stop_id"],
+        "properties": {
+          "stop_id": { "type": "string" },
+          "stop_code": { "type": ["string", "null"] },
+          "stop_name": { "type": ["string", "null"] },
+          "stop_lat": { "type": ["number", "string", "null"] },
+          "stop_lon": { "type": ["number", "string", "null"] }
+        }
+      }
+    }
+  }
+}
