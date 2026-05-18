@@ -56,6 +56,34 @@ the license with the City of Frederick before anything is activated.
 Until then this stays pending_review. Decision and the real-world
 confirmation are the owner's.
 
+## 2026-05-18: Activate usda_farmers_markets (PROPOSAL, owner flips it)
+
+Brief reference: external-audit-actions section 7.4. The
+`usda_farmers_markets` row already exists at `status: pending_approval`
+and is not modified here.
+
+What is staged. `schemas/usda_farmers_markets.json`,
+`pipeline/schemas_ts/usda_farmers_markets.ts`,
+`transforms/usda_farmers_markets.ts` (county-scoped, drops any market
+outside the Frederick bbox, never relocates one), and a Vitest fixture.
+
+Seam confirmed. `src/lib/connect.ts` already exposes the typed seam:
+`GatedFeeds.farmersMarkets: PlaceCardData[]` and `nearbyNow` returns
+`feeds: { farmersMarkets: [], specials: [] }`. The seam is empty by
+design until an active source and a transform land, so activation is a
+mapping step, not new plumbing.
+
+Why activate. A queryable national directory with lat/long radius is
+the authoritative spine for the "find all the farmers markets" ask.
+Season and hours text drive a real Live-Now open/closed signal.
+
+Activation steps and gate. The USDA API needs a free API key, so
+activation is owner-gated on obtaining the key. Then flip `status` to
+`active`, set `schema_file` and `transform_file` to the staged paths,
+map the transform output into `connect.ts` `feeds.farmersMarkets`, and
+cross-check coverage against `md_farmers_markets`. Recommendation:
+activate once the key is in hand. Decision deferred to the owner.
+
 ## 2026-05-18: Activate kfdk_metars (PROPOSAL, owner flips the row)
 
 Brief reference: external-audit-actions section 7.1. Per AGENTS.md
