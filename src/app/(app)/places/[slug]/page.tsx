@@ -17,6 +17,8 @@ import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { classifyDescription } from "@/lib/copy-quality";
+import { Chip } from "@/components/ui/Chip";
+import { Button } from "@/components/ui/Button";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -139,7 +141,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 stagger">
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
           <li><Link href="/" className="hover:underline">Today</Link></li>
@@ -154,10 +156,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </ol>
       </nav>
 
-      <header
-        className="overflow-hidden rounded-[var(--app-radius-xl)] border"
-        style={{ borderColor: "var(--app-border)" }}
-      >
+      <header className="overflow-hidden rounded-[var(--app-radius-xl)] tactile tactile-e2">
         <PlaceHero
           slug={place.slug}
           name={place.name}
@@ -171,7 +170,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="font-serif text-[26px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
                 {place.name}
               </h1>
               <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
@@ -193,12 +192,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               </span>
             )}
             {place.is_verified && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-                style={{ background: "#2A5D8F14", color: "var(--app-cool)" }}
-              >
+              <Chip tone="cool" className="uppercase tracking-wide">
                 ✓ Verified place
-              </span>
+              </Chip>
             )}
             {hoursConfirmed && (
               <span
@@ -281,7 +277,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       {place.google_photos && place.google_photos.length > 1 && (
         <section className="space-y-2">
-          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+          <h2 className="eyebrow">
             Photos
           </h2>
           <div className="shelf-rail -mx-1 gap-2 px-1 pb-1">
@@ -301,12 +297,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       )}
 
       <section className="space-y-2">
-        <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+        <h2 className="eyebrow">
           Location
         </h2>
         <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "#C4451C"} />
-        <div className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-sm"
-             style={{ borderColor: "var(--app-border)" }}>
+        <div className="flex items-start gap-2 rounded-[var(--app-radius-md)] tactile bg-[var(--app-bg-elevated)] p-3 text-sm">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <div>
             <p style={{ color: "var(--app-ink)" }}>{place.address}</p>
@@ -317,18 +312,15 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       {place.amenities && place.amenities.length > 0 && (
         <section className="space-y-2">
-          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+          <h2 className="eyebrow">
             Amenities
           </h2>
           <ul className="flex flex-wrap gap-1.5">
             {place.amenities.map((a) => (
               <li key={a}>
-                <span
-                  className="inline-block rounded-full border px-2.5 py-1 text-xs"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-                >
+                <Chip tone="neutral" className="px-2.5 py-1 text-xs">
                   {prettyAmenity(a)}
-                </span>
+                </Chip>
               </li>
             ))}
           </ul>
@@ -398,8 +390,8 @@ function ActionButton({
     <Comp
       href={href}
       {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-      style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+      className="tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] py-3 text-xs font-medium"
+      style={{ color: "var(--app-ink)" }}
     >
       <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-brand)" }} />
       {label}
@@ -441,23 +433,24 @@ function IntegrationRow({
 }) {
   return (
     <section className="space-y-2">
-      <h2 className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+      <h2 className="eyebrow inline-flex items-center gap-1.5">
         <Icon className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-cool)" }} />
         {title}
       </h2>
       <div className="flex flex-wrap gap-1.5">
         {actions.map((a) => (
-          <a
+          <Button
             key={a.key}
+            variant="secondary"
+            size="sm"
             href={a.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1.5 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+            className="rounded-full"
+            iconRight={<ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />}
           >
             {a.label}
-            <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-ink-3)" }} />
-          </a>
+          </Button>
         ))}
       </div>
     </section>
