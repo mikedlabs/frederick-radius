@@ -94,6 +94,10 @@ const FEEDS: FeedSpec[] = [
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
   { slug: "music", words: ["concert", "band", "music", "dj", "open mic", "acoustic", "punch brothers", "alive @ five"] },
   { slug: "theater", words: ["theater", "play", "stage", "broadway", "show", "comedy", "weinberg"] },
+  // Sports is checked early so a game beats the family/outdoors/market
+  // fallbacks ("youth soccer at the park" is sports, not outdoors).
+  // Tight, low-noise terms only (no bare "game"/"match").
+  { slug: "sports", words: ["baseball", "basketball", "soccer", "lacrosse", "softball", "volleyball", "frederick keys", "blazers", "athletics", "tournament", "playoff", "doubleheader", "scrimmage", " vs ", "vs."] },
   { slug: "gallery", words: ["art", "exhibit", "gallery", "first saturday", "first friday", "mural", "delaplaine"] },
   { slug: "market", words: ["market", "vendor", "farmers", "makers", "fair"] },
   { slug: "family", words: ["kids", "family", "children", "story time", "all ages", "scout", "youth"] },
