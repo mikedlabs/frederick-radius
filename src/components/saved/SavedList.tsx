@@ -1,12 +1,13 @@
 "use client";
 
 import { useSavedList, useMounted } from "@/hooks/useSaved";
-import { publicPlaceBySlug } from "@/lib/loaders/places";
+// Client-safe: slim pre-decorated set, NOT @/lib/loaders/places
+// (that static-imports the ~12MB enrichment into the browser).
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG } from "@/data/events";
-import type { Place } from "@/data/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
-import { decoratePlace } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
@@ -48,9 +49,8 @@ export default function SavedList() {
 
   const places = items
     .filter((i) => i.type === "place")
-    .map((i) => publicPlaceBySlug(i.id))
-    .filter((p): p is Place => Boolean(p))
-    .map((p) => decoratePlace(p));
+    .map((i) => clientPlaceBySlug(i.id))
+    .filter((p): p is PlaceCardData => Boolean(p));
 
   const events = items
     .filter((i) => i.type === "event")

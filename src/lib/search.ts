@@ -1,5 +1,8 @@
 import type { Place } from "@/data/places";
-import { publicPlaces } from "@/lib/loaders/places";
+// Slim, client-safe set (same canonical public places, pre-decorated
+// at build) so this shared search core never drags the ~12MB
+// places-enrichment.json into the SearchOverlay client bundle.
+import { clientPlaces } from "@/lib/loaders/places-client";
 import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
@@ -38,7 +41,7 @@ export function search(query: string, limit = 30): SearchHit[] {
 
   const hits: SearchHit[] = [];
 
-  for (const p of publicPlaces()) {
+  for (const p of clientPlaces()) {
     const s =
       fieldScore(p.name, terms) * 4 +
       fieldScore(p.short_blurb, terms) * 1 +

@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2 } from "lucide-react";
 import { searchIndex, type SearchResult, type SearchResultType } from "@/lib/search/index";
-import { publicPlaceBySlug, decoratePlace } from "@/lib/loaders/places";
+// Client-safe slim set (already decorated); NOT @/lib/loaders/places
+// which static-imports the ~12MB enrichment into the browser bundle.
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { EVENT_BY_SLUG } from "@/data/events";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
@@ -24,8 +26,8 @@ const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
  */
 function resultTrust(r: SearchResult): TrustSignal | null {
   if (r.type === "place") {
-    const p = publicPlaceBySlug(r.id.replace(/^place:/, ""));
-    return p ? placeHoursTrust(decoratePlace(p).open_status) : null;
+    const p = clientPlaceBySlug(r.id.replace(/^place:/, ""));
+    return p ? placeHoursTrust(p.open_status) : null;
   }
   if (r.type === "event") {
     const e = EVENT_BY_SLUG[r.id.replace(/^event:/, "")];
