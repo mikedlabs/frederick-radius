@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
-import { Sprout } from "lucide-react";
+import { Sprout, CalendarClock, ExternalLink } from "lucide-react";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { isFarmersMarket } from "@/lib/farmersMarkets";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import PlaceCard from "@/components/place/PlaceCard";
+import {
+  getFrederickMdMarkets,
+  findMarketSchedule,
+  type MdMarket,
+} from "@/lib/integrations/mdFarmersMarkets";
 
 export const metadata: Metadata = {
   title: "Farmers markets",
@@ -13,7 +18,48 @@ export const metadata: Metadata = {
 
 export const revalidate = 3600;
 
-export default function MarketsPage() {
+/**
+ * Official schedule caption rendered UNDER a market's PlaceCard (so the
+ * shared card component is untouched). Day and hours come from the
+ * state's official market list; the season is intentionally omitted
+ * (those dates are stale in the source — see mdFarmersMarkets).
+ */
+function MarketSchedule({ s }: { s: MdMarket }) {
+  const when = [s.day, s.hours].filter(Boolean).join(" · ");
+  const snap = s.benefits && /\b(SNAP|FMNP|WIC)\b/i.test(s.benefits);
+  if (!when && !s.website && !snap) return null;
+  return (
+    <div
+      className="rounded-[var(--app-radius-md)] border px-2.5 py-1.5 text-[11px]"
+      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+    >
+      {when && (
+        <p className="flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
+          <CalendarClock className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
+          {when}
+        </p>
+      )}
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+        {snap && <span>SNAP/WIC accepted</span>}
+        {s.website && (
+          <a
+            href={s.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 font-semibold"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Market site
+            <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default async function MarketsPage() {
+  const mdMarkets = await getFrederickMdMarkets();
   const markets = publicPlaces()
     .filter((p) => isFarmersMarket(p.name))
     .map((p) => decoratePlace(p))
@@ -43,8 +89,9 @@ export default function MarketsPage() {
           Farmers markets
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Real farmers and farm markets across the county, by town. Tap
-          one for hours, location, and what it offers.
+          Real farmers and farm markets across the county, by town, with
+          the day and time from the state&apos;s official market list
+          where it is published. Tap one for full details.
         </p>
       </header>
 
@@ -73,12 +120,22 @@ export default function MarketsPage() {
                 </span>
               </h2>
               <div className="grid grid-cols-2 gap-2.5">
-                {g.list.map((m) => (
-                  <PlaceCard key={m.slug} place={m} variant="grid" />
-                ))}
+                {g.list.map((m) => {
+                  const sched = findMarketSchedule(m.name, mdMarkets);
+                  return (
+                    <div key={m.slug} className="space-y-1">
+                      <PlaceCard place={m} variant="grid" />
+                      {sched && <MarketSchedule s={sched} />}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           ))}
+          <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+            Day and time, where shown, from Maryland Open Data (official
+            farmers-market list). Refreshed weekly.
+          </p>
         </>
       )}
     </div>
