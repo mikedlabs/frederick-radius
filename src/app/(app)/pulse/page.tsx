@@ -115,6 +115,46 @@ export default async function PulsePage() {
         </DashSection>
       )}
 
+      {/* ── Police calls for service ──
+          Frederick PD's CFS data is a CommunityCrimeMap (LexisNexis)
+          embed with no public feed/API — so we link to the official
+          map honestly rather than scrape or fabricate it. The
+          disclaimer is the one the City/PD itself requires. */}
+      <section
+        id="police"
+        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <div className="flex items-center gap-2 border-b px-4 py-2.5" style={{ borderColor: "var(--app-border)" }}>
+          <Siren className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+          <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Police calls for service
+          </h2>
+        </div>
+        <div className="space-y-2.5 px-4 py-3">
+          <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            Frederick PD publishes the prior day&apos;s calls for service
+            from its CAD system, updated daily, on an official map. You
+            can browse it and subscribe to alerts for your area there.
+          </p>
+          <a
+            href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
+            style={{ background: "var(--app-cool)" }}
+          >
+            Open the official CFS map
+            <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+          </a>
+          <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+            Calls for service are not confirmed crimes — they reflect
+            requests for police response. Source: Frederick Police
+            Department via CommunityCrimeMap.
+          </p>
+        </div>
+      </section>
+
       {/* ── Traffic ── */}
       <DashSection
         id="traffic"
