@@ -34,6 +34,8 @@ type Enriched = {
   phone?: string;
   website?: string;
   editorial_summary?: string;
+  review_snippet?: string;
+  review_author?: string;
   discovered_for?: { category?: string };
 };
 
@@ -128,6 +130,8 @@ function main() {
       lng: e.lng,
       primary_type: e.detail_primary_type ?? e.primary_type,
       editorial_summary: e.editorial_summary,
+      review_snippet: e.review_snippet,
+      review_author: e.review_author,
       enriched_at: new Date().toISOString(),
     };
   }

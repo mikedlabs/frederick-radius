@@ -68,6 +68,8 @@ type Enrichment = {
   lng?: number;
   primary_type?: string;
   editorial_summary?: string;
+  review_snippet?: string;
+  review_author?: string;
   enriched_at?: string;
 };
 const ENRICHMENT = ENRICHMENT_RAW as Record<string, Enrichment>;
@@ -84,6 +86,10 @@ export type PlaceEnriched = {
   google_hours?: string[];
   /** True once Google has verified this place */
   google_verified?: boolean;
+  /** One attributed Google review snippet — "what people say". Shown
+   *  as labelled UGC, never as our own description/SEO copy. */
+  review_snippet?: string;
+  review_author?: string;
 };
 
 const photoProxy = (name: string, w = 800) =>
@@ -154,6 +160,8 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     google_rating_count: e.user_rating_count,
     google_hours: e.weekday_hours,
     google_verified: Boolean(e.business_status && e.business_status !== "UNKNOWN"),
+    review_snippet: e.review_snippet?.trim() || undefined,
+    review_author: e.review_author?.trim() || undefined,
   };
 }
 
