@@ -153,3 +153,56 @@ export async function getFrederickTrails(): Promise<Trail[]> {
     clearTimeout(timer);
   }
 }
+
+// ── #3 phase 1: geometry-preserving accessor (foundation for the map
+// layer manager). Additive — does not touch getFrederickTrails() or
+// any rendering. Returns the simplified trail polylines as a plain
+// GeoJSON FeatureCollection with light props; pure + unit-tested.
+export type TrailLineFC = {
+  type: "FeatureCollection";
+  features: Array<{ type: "Feature"; geometry: unknown; properties: Record<string, unknown> }>;
+};
+
+export function trailShapesFC(raw: unknown): TrailLineFC {
+  const feats = (raw as { features?: ArcFeature[] })?.features;
+  const out: TrailLineFC["features"] = [];
+  const [s, w, n, e] = BBOX;
+  if (Array.isArray(feats)) {
+    for (const f of feats) {
+      const g = f?.geometry;
+      const t = g?.type;
+      if (t !== "LineString" && t !== "MultiLineString") continue;
+      const p = f?.properties ?? {};
+      const name = str(p.Trail_Name) ?? str(p.Park_Name);
+      if (!name) continue;
+      const pt = midpoint(g?.coordinates);
+      if (!pt) continue;
+      const [lng, lat] = pt;
+      if (lat < s || lat > n || lng < w || lng > e) continue;
+      out.push({
+        type: "Feature",
+        geometry: g,
+        properties: { name, surface: str(p.Surface_Type) ?? "", park: str(p.Park_Name) ?? "" },
+      });
+    }
+  }
+  return { type: "FeatureCollection", features: out };
+}
+
+export async function getFrederickTrailShapes(): Promise<TrailLineFC> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(ENDPOINT, {
+      signal: ctrl.signal,
+      headers: { Accept: "application/json" },
+      next: { revalidate: 604800 },
+    });
+    if (!res.ok) return { type: "FeatureCollection", features: [] };
+    return trailShapesFC(await res.json());
+  } catch {
+    return { type: "FeatureCollection", features: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
