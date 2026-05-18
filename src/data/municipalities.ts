@@ -1,6 +1,9 @@
 import type { LngLat } from "@/lib/geo";
 
-export type MunicipalityType = "city" | "town" | "village" | "unincorporated";
+// "village" was dropped: Maryland has no legal village municipal
+// class, so after Burkittsville/Rosemont were corrected to "town"
+// (#87) nothing used it. Add it back only if a non-MD use arises.
+export type MunicipalityType = "city" | "town" | "unincorporated";
 
 export type Municipality = {
   slug: string;
