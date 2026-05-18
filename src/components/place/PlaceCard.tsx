@@ -81,8 +81,7 @@ export default function PlaceCard({
   if (variant === "feature" && photoUrl) {
     return (
       <article
-        className="hover-lift group relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
+        className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
       >
         <button
           type="button"
@@ -131,8 +130,7 @@ export default function PlaceCard({
   if (variant === "tile") {
     return (
       <article
-        className="hover-lift group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
+        className="tactile tactile-interactive group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
       >
         <button
           type="button"
@@ -208,8 +206,7 @@ export default function PlaceCard({
   if (variant === "grid") {
     return (
       <article
-        className="hover-lift group relative overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
+        className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]"
       >
         <button
           type="button"
@@ -276,8 +273,7 @@ export default function PlaceCard({
 
   return (
     <article
-      className="hover-lift group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
+      className="tactile tactile-interactive group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3.5"
     >
       {photoUrl ? (
         <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
