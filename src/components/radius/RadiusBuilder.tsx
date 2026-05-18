@@ -5,12 +5,15 @@ import { Footprints, Bike, Car, MapPin, LayoutGrid, Rows3, ChevronDown, Navigati
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
-import { decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
+// TYPE ONLY: importing the loader at runtime drags the ~12MB
+// places-enrichment.json into the client bundle. Places arrive
+// already decorated from radius/page; only the radius-relative
+// distance is computed here.
+import type { PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { minutesToMeters, type TravelMode, formatDistance } from "@/lib/geo";
-import type { Place } from "@/data/places";
+import { minutesToMeters, haversineMeters, type TravelMode, formatDistance } from "@/lib/geo";
 
 // Center options: ALL 12 municipalities (Frederick first = default) +
 // a couple of landmark points. A dropdown, not a hidden horizontal
@@ -73,7 +76,7 @@ const SORT_KEY = "fr:radius:sort:v1";
 const PEEK: Record<ViewMode, number> = { grid: 8, list: 10 };
 const FOOD_GROUP = "food";
 
-export default function RadiusBuilder({ places }: { places: Place[] }) {
+export default function RadiusBuilder({ places }: { places: PlaceCardData[] }) {
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
@@ -135,7 +138,7 @@ export default function RadiusBuilder({ places }: { places: Place[] }) {
 
   const inside = useMemo(() => {
     return places
-      .map((p) => ({ ...decoratePlace(p, { lng: center.lng, lat: center.lat }) }))
+      .map((p) => ({ ...p, distance_m: haversineMeters({ lng: center.lng, lat: center.lat }, p.geom) }))
       .filter((p) => (p.distance_m ?? Infinity) <= meters)
       .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
   }, [places, center.lng, center.lat, meters]);
