@@ -38,6 +38,7 @@
     "build:client-places": "tsx --tsconfig tsconfig.json scripts/build-client-places.ts"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.53.1",
     "@types/leaflet": "^1.9.21",
     "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2.1.1",
