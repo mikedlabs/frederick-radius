@@ -99,10 +99,13 @@ export default async function EventsIndexPage({
     <div className="space-y-7">
       <header className="flex items-center justify-between gap-3">
         <div>
+          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+            Live across the county
+          </p>
           <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
             Events
           </h1>
-          <p className="mt-0.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="mt-0.5 text-[13px] text-pretty" style={{ color: "var(--app-ink-3)" }}>
             What&apos;s on across Frederick County — now through the season.
           </p>
         </div>
@@ -141,7 +144,7 @@ export default async function EventsIndexPage({
             </h2>
             <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>{hood.length} upcoming</span>
           </div>
-          <ul className="space-y-2">
+          <ul className="stagger space-y-2">
             {hood.map((e) => (
               <li key={e.id}>
                 <a
