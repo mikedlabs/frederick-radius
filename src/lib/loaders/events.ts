@@ -14,7 +14,28 @@ import { isKnownClosed } from "@/lib/integrations/closures";
  * filtering at the source means every loader function is protected without
  * having to remember the filter in each one.
  */
-const EVENTS = RAW_EVENTS.filter((e) => !isKnownClosed(e.venue_name));
+/**
+ * Urbana geo-claim — parallel to the one in the places loader. Urbana
+ * was added as a community after the data was authored, so an event
+ * physically inside its bounds was tagged to a neighbor. Reassign by
+ * geography so Urbana is a first-class events town like every other
+ * (its by-town list, /m/urbana, aroundTheCounty) and any future
+ * curated OR live-feed event in Urbana surfaces with no code change.
+ * Scoped to Urbana ONLY; deterministic; no effect elsewhere.
+ */
+const URBANA_BBOX = MUNICIPALITY_BY_SLUG["urbana"]?.bbox;
+function claimUrbanaEvent<T extends { geom: LngLat; municipality: string }>(e: T): T {
+  if (!URBANA_BBOX || e.municipality === "urbana") return e;
+  const [minLng, minLat, maxLng, maxLat] = URBANA_BBOX;
+  const { lng, lat } = e.geom;
+  return lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat
+    ? { ...e, municipality: "urbana" }
+    : e;
+}
+
+const EVENTS = RAW_EVENTS.filter((e) => !isKnownClosed(e.venue_name)).map(
+  claimUrbanaEvent,
+);
 
 /**
  * User-visible "by town" events view. Default ON by owner directive
