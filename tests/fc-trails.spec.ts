@@ -78,3 +78,19 @@ describe("normalizeTrails", () => {
     expect(out[0].uses).toEqual([]);
   });
 });
+
+import { trailShapesFC } from "@/lib/integrations/fcTrails";
+describe("trailShapesFC (geometry foundation)", () => {
+  it("keeps named in-county trail lines with geometry + light props", () => {
+    const fc = trailShapesFC(raw);
+    expect(fc.type).toBe("FeatureCollection");
+    expect(fc.features).toHaveLength(1); // only the named, in-county, line-geom one
+    const p = fc.features[0].properties as { name: string; surface: string };
+    expect(p.name).toBe("Catoctin Blue Trail");
+    expect(p.surface).toBe("Natural");
+    expect(fc.features[0].geometry).toBeTruthy();
+  });
+  it("returns empty FC for junk", () => {
+    expect(trailShapesFC({})).toEqual({ type: "FeatureCollection", features: [] });
+  });
+});

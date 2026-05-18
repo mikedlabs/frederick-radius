@@ -118,3 +118,57 @@ export async function getFrederickTransitRoutes(): Promise<TransitRoute[]> {
     clearTimeout(timer);
   }
 }
+
+// ── #3 phase 1: geometry-preserving accessor (foundation for the
+// map layer manager). Additive — does not touch the point accessor
+// above or any rendering. Returns a plain GeoJSON FeatureCollection
+// of route lines with light props; pure normalizer is unit-tested.
+export type LineFC = {
+  type: "FeatureCollection";
+  features: Array<{ type: "Feature"; geometry: unknown; properties: Record<string, unknown> }>;
+};
+
+export function transitRouteShapesFC(raw: unknown): LineFC {
+  const feats = (raw as { features?: Feature[] })?.features;
+  const out: LineFC["features"] = [];
+  if (Array.isArray(feats)) {
+    for (const f of feats) {
+      const g = f?.geometry;
+      const t = g?.type;
+      if (t !== "LineString" && t !== "MultiLineString") continue;
+      const pt = firstVertex(g?.coordinates);
+      if (!pt) continue;
+      const [lng, lat] = pt;
+      const [s, w, n, e] = BBOX;
+      if (lat < s || lat > n || lng < w || lng > e) continue;
+      const p = f.properties ?? {};
+      out.push({
+        type: "Feature",
+        geometry: g,
+        properties: {
+          name: pick(p, "route_name", "Route Name", "routename") ?? "Route",
+          destination: pick(p, "destination", "Destination") ?? "",
+        },
+      });
+    }
+  }
+  return { type: "FeatureCollection", features: out };
+}
+
+export async function getFrederickTransitRouteShapes(): Promise<LineFC> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(ENDPOINT, {
+      signal: ctrl.signal,
+      headers: { Accept: "application/json" },
+      next: { revalidate: 604800 },
+    });
+    if (!res.ok) return { type: "FeatureCollection", features: [] };
+    return transitRouteShapesFC(await res.json());
+  } catch {
+    return { type: "FeatureCollection", features: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}

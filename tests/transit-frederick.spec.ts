@@ -64,3 +64,21 @@ describe("normalizeTransitRoutes", () => {
     expect(normalizeTransitRoutes({ features: 5 })).toEqual([]);
   });
 });
+
+import { transitRouteShapesFC } from "@/lib/integrations/transitFrederick";
+describe("transitRouteShapesFC (geometry foundation)", () => {
+  it("keeps in-county route lines with light props, drops the rest", () => {
+    const fc = transitRouteShapesFC(raw);
+    expect(fc.type).toBe("FeatureCollection");
+    // raw has 1 MultiLineString in-county (#10) + 1 LineString in-county
+    // (#20) + 1 out-of-county + nameless(LineString in-county, no name
+    // ok for shapes? shapes keep geometry regardless of name) + null geom
+    const names = fc.features.map((f) => (f.properties as { name: string }).name);
+    expect(fc.features.length).toBeGreaterThanOrEqual(2);
+    expect(names).toContain("Route 10 Golden Mile");
+    expect(fc.features.every((f) => f.geometry)).toBe(true);
+  });
+  it("returns empty FC for junk", () => {
+    expect(transitRouteShapesFC(null)).toEqual({ type: "FeatureCollection", features: [] });
+  });
+});
