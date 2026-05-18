@@ -84,6 +84,53 @@ function main() {
     }
   }
 
+  // (3) CURATED-ANCHORED, same municipality, regardless of distance.
+  //
+  // Catches the "same place, slightly different name" dupes the user
+  // sees in Radius: a curated seed/manual record that DFP/Google ALSO
+  // captured under a near-identical name, whose coordinates drift past
+  // signal (2)'s 120m gate (e.g. "Frederick Coffee Company" vs
+  // "Frederick Coffee Co & Cafe", "C. Burr Artz" vs "C Burr Artz").
+  //
+  // STRICT + EMPIRICALLY VALIDATED: fold a non-curated record into a
+  // curated one ONLY when, same municipality, their names are EQUAL
+  // after norm() PLUS stripping a tight generic-commercial allowlist.
+  // This deliberately does NOT use substring/containment — that was
+  // proven to merge genuinely distinct places ("The Garage" music
+  // venue vs five parking garages; "Carroll Creek Park" vs "Carroll
+  // Creek Parking Deck"; Baker Park vs its Bandshell; park sub-areas
+  // and trailheads). Missing a borderline true dupe is acceptable;
+  // destroying a distinct place is not.
+  const GENERIC = new Set(["cafe", "coop", "restaurant", "eatery", "and"]);
+  const folddKey = (s: string): string =>
+    norm(s)
+      .split(" ")
+      .filter((t) => t && !GENERIC.has(t))
+      .join(" ");
+  const CURATED = new Set(["seed", "manual"]);
+  const byMuni3: Record<string, P[]> = {};
+  for (const p of PLACES) {
+    const muni = (p as unknown as { municipality?: string }).municipality ?? "";
+    (byMuni3[muni] ??= []).push(p);
+  }
+  for (const arr of Object.values(byMuni3)) {
+    for (let i = 0; i < arr.length; i++) {
+      for (let j = i + 1; j < arr.length; j++) {
+        const a = arr[i], b = arr[j];
+        if (a.source === b.source) continue;
+        const cur = CURATED.has(a.source) ? a : CURATED.has(b.source) ? b : null;
+        if (!cur) continue;
+        const other = cur === a ? b : a;
+        const ka = folddKey(cur.name), kb = folddKey(other.name);
+        if (ka.length < 3 || ka !== kb) continue;
+        const key = [cur.slug, other.slug].sort().join("::");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairs.push([cur, other]);
+      }
+    }
+  }
+
   // Build fold entries (drop -> canonical), skip ones already folded.
   const folds: Record<string, { canonical: string }> = {};
   const summary: string[] = [];
