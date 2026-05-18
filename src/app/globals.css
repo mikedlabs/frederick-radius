@@ -469,3 +469,56 @@ body {
 /* Filled controls get a subtle lighten on hover for material feel. */
 .tactile-lift:hover { filter: brightness(1.04); }
 .tactile-lift:active { filter: brightness(0.98); }
+
+/* ─────────────────────────────────────────────────────
+ * VISUAL SYSTEM v2 — Layer 2: editorial type + entrance.
+ * Display tier (serif, fluid clamp, tight optical tracking,
+ * balanced wrapping) so headlines read "set", not defaulted.
+ * ───────────────────────────────────────────────────── */
+.display-1 {
+  font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(2rem, 1.2rem + 4vw, 3.5rem);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.display-2 {
+  font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
+  font-weight: 600;
+  font-size: clamp(1.5rem, 1.05rem + 2.2vw, 2.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
+.text-balance { text-wrap: balance; }
+.text-pretty { text-wrap: pretty; }
+
+/* Entrance: stagger children on first paint. CSS-only and SSR-safe —
+ * content is visible by default; ONLY the first render animates (via
+ * @starting-style, same proven pattern as .fade-up). The global
+ * reduced-motion rule zeroes the durations. */
+.stagger > * {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 520ms var(--app-ease-out),
+    transform 520ms var(--app-ease-out);
+}
+@starting-style {
+  .stagger > * { opacity: 0; transform: translateY(10px); }
+}
+.stagger > *:nth-child(1) { transition-delay: 40ms; }
+.stagger > *:nth-child(2) { transition-delay: 90ms; }
+.stagger > *:nth-child(3) { transition-delay: 140ms; }
+.stagger > *:nth-child(4) { transition-delay: 190ms; }
+.stagger > *:nth-child(5) { transition-delay: 240ms; }
+.stagger > *:nth-child(6) { transition-delay: 290ms; }
+.stagger > *:nth-child(n + 7) { transition-delay: 340ms; }
