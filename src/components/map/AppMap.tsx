@@ -294,6 +294,9 @@ export default function AppMap({
   const [showUnverified, setShowUnverified] = useState(false);
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(new Set());
   const [amenityOpen, setAmenityOpen] = useState(false);
+  // The category rail is heavy; collapsed by default so the in-map
+  // deck stays a clean glass bar. "Filters" reveals it as a panel.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [demo, setDemo] = useState<null | "food-truck" | "transit" | "rewards">(null);
   const [truck, setTruck] = useState<DemoFoodTruck | null>(null);
   const [pointsPlace, setPointsPlace] = useState<DemoPointsPartner | null>(null);
@@ -823,11 +826,106 @@ export default function AppMap({
   };
 
   return (
-    <div className="space-y-2">
-      {/* Filter chips — wrapped, every category visible at once (no
-          hidden horizontal scroll), consistent with the rest of the app. */}
-      <div>
-        <div>
+    <div
+      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
+      style={{ borderColor: "var(--app-border)", height }}
+    >
+      {/* ── Floating in-map control deck (glass). The map renders
+          behind; controls overlay it, Apple/Google-Maps style. The
+          heavy category rail is tucked into a collapsible panel so the
+          default view is a clean, premium map. ── */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-2.5 pt-2.5 sm:px-3 sm:pt-3">
+        <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search the map"
+                aria-label="Search the map"
+                className="w-full rounded-full border px-4 py-2.5 text-sm outline-none backdrop-blur"
+                style={{
+                  borderColor: "var(--app-border)",
+                  color: "var(--app-ink)",
+                  background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                  boxShadow: "var(--app-shadow-2)",
+                }}
+              />
+              {searchMatches.length > 0 && (
+                <ul
+                  className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",
+                    boxShadow: "var(--app-shadow-3)",
+                  }}
+                >
+                  {searchMatches.map((p) => {
+                    const cat = CATEGORY_BY_SLUG[p.category];
+                    return (
+                      <li key={p.slug}>
+                        <button
+                          type="button"
+                          onClick={() => pickSearch(p)}
+                          className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
+                        >
+                          <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: cat?.color ?? "#C4451C" }} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
+                              {p.name}
+                            </span>
+                            <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                              {cat?.name ?? p.category}{p.address ? ` · ${p.address}` : ""}
+                            </span>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={goNearMe}
+              aria-label="Find places near me"
+              className="shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
+              style={{
+                borderColor: userLoc ? "var(--app-brand)" : "var(--app-border)",
+                color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                boxShadow: "var(--app-shadow-2)",
+              }}
+            >
+              {locating ? "Locating…" : "Near me"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-pressed={filtersOpen}
+              aria-expanded={filtersOpen}
+              className="shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
+              style={{
+                borderColor: filtersOpen || activeCats.size > 0 ? "var(--app-brand)" : "var(--app-border)",
+                color: filtersOpen || activeCats.size > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                boxShadow: "var(--app-shadow-2)",
+              }}
+            >
+              Filters{activeCats.size > 0 ? ` · ${activeCats.size}` : ""}
+              <span aria-hidden style={{ marginLeft: 6, fontSize: 9, opacity: 0.7 }}>{filtersOpen ? "▲" : "▼"}</span>
+            </button>
+          </div>
+          {filtersOpen && (
+            <div
+              className="max-h-[44vh] overflow-y-auto rounded-[var(--app-radius-md)] border p-2.5 backdrop-blur"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 90%, transparent)",
+                boxShadow: "var(--app-shadow-3)",
+              }}
+            >
           <ul className="flex flex-wrap items-center gap-2 py-0.5">
             <li>
               <button
@@ -1045,17 +1143,10 @@ export default function AppMap({
             ))}
             </>)}
           </ul>
-        </div>
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 w-5" style={{ background: "linear-gradient(90deg, var(--app-bg), transparent)" }} />
-        <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-5" style={{ background: "linear-gradient(270deg, var(--app-bg), transparent)" }} />
-      </div>
-
-      {/* Amenities tray — one tap per amenity kind. Collapsed by
-          default so the rail stays calm; the curated set is sparse
-          enough to paint from a town-wide zoom (no longer street-only). */}
-      {amenityOpen && (
-        <div>
-          <div>
+          {/* Amenities sub-tray — toggled by the Amenities chip,
+              nested inside the same glass filter panel. */}
+          {amenityOpen && (
+            <div className="mt-2 border-t pt-2" style={{ borderColor: "var(--app-border)" }}>
             <ul className="flex flex-wrap items-center gap-2 py-0.5">
               {AMENITY_GROUPS.map((g) => {
                 const on = amenityGroups.has(g.key);
@@ -1099,77 +1190,16 @@ export default function AppMap({
                 </li>
               )}
             </ul>
-          </div>
-          <p className="px-1 pt-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Pick what you need — it appears on the map and folds into your Radius results.
-          </p>
+              <p className="px-1 pt-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                Pick what you need — it appears on the map and folds into your Radius results.
+              </p>
+            </div>
+          )}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* On-map search + near-me */}
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-        <input
-          type="search"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search the map by name or address"
-          aria-label="Search the map"
-          className="w-full rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2.5 text-sm shadow-[var(--app-shadow-1)] outline-none focus:shadow-[var(--app-shadow-2)]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-        />
-        {searchMatches.length > 0 && (
-          <ul
-            className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            {searchMatches.map((p) => {
-              const cat = CATEGORY_BY_SLUG[p.category];
-              return (
-                <li key={p.slug}>
-                  <button
-                    type="button"
-                    onClick={() => pickSearch(p)}
-                    className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
-                  >
-                    <span
-                      aria-hidden
-                      className="h-2 w-2 shrink-0 rounded-full"
-                      style={{ background: cat?.color ?? "#C4451C" }}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
-                        {p.name}
-                      </span>
-                      <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                        {cat?.name ?? p.category}{p.address ? ` · ${p.address}` : ""}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        </div>
-        <button
-          type="button"
-          onClick={goNearMe}
-          aria-label="Find places near me"
-          className="shrink-0 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2.5 text-sm font-semibold shadow-[var(--app-shadow-1)] transition active:scale-[0.96]"
-          style={{
-            borderColor: userLoc ? "var(--app-brand)" : "var(--app-border)",
-            color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
-          }}
-        >
-          {locating ? "Locating…" : "Near me"}
-        </button>
       </div>
 
-      <div
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
-        style={{ borderColor: "var(--app-border)", height }}
-      >
         {mapError && (
           <div
             className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 px-6 text-center"
@@ -2017,7 +2047,6 @@ export default function AppMap({
           <GeolocateControl position="bottom-right" trackUserLocation />
         </Map>
       </div>
-    </div>
   );
 }
 
