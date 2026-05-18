@@ -35,10 +35,10 @@ export default async function TransitPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+        <p className="eyebrow">
           TransIT Services of Frederick County
         </p>
-        <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
           Transit
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -64,7 +64,7 @@ export default async function TransitPage() {
             routes
           </p>
           <ul
-            className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+            className="overflow-hidden rounded-[var(--app-radius-lg)] tactile bg-[var(--app-bg-elevated)]"
             style={{ borderColor: "var(--app-border)" }}
           >
             {list.map((r, i) => {
