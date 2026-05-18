@@ -10,6 +10,10 @@ import FilterChip from "@/components/ui/FilterChip";
 // already decorated from radius/page; only the radius-relative
 // distance is computed here.
 import type { PlaceCardData } from "@/lib/loaders/places";
+// TYPE ONLY: the points arrive as a server prop (radius/page →
+// allAmenities()), so this client component never imports the loader
+// or amenities.json — same loader-free discipline as places.
+import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -76,7 +80,26 @@ const SORT_KEY = "fr:radius:sort:v1";
 const PEEK: Record<ViewMode, number> = { grid: 8, list: 10 };
 const FOOD_GROUP = "food";
 
-export default function RadiusBuilder({ places }: { places: PlaceCardData[] }) {
+// Local label + glyph table for the 6 curated amenity kinds, in
+// most-asked-for order. Kept here (not imported from the loader) so
+// this client component stays loader-free; the points themselves
+// arrive as a server prop. Glyphs match the map's amenity language.
+const AMENITY_META: { kind: AmenityKind; label: string; glyph: string }[] = [
+  { kind: "restroom", label: "Restrooms", glyph: "\u{1F6BB}" },
+  { kind: "wifi", label: "Free Wi-Fi", glyph: "\u{1F4F6}" },
+  { kind: "ev_charging", label: "EV charging", glyph: "\u{26A1}" },
+  { kind: "bike_parking", label: "Bike parking", glyph: "\u{1F6B2}" },
+  { kind: "picnic", label: "Picnic spots", glyph: "\u{1FA91}" },
+  { kind: "playground", label: "Playgrounds", glyph: "\u{1F6DD}" },
+];
+
+export default function RadiusBuilder({
+  places,
+  amenities = [],
+}: {
+  places: PlaceCardData[];
+  amenities?: Amenity[];
+}) {
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
@@ -184,6 +207,37 @@ export default function RadiusBuilder({ places }: { places: PlaceCardData[] }) {
     cuisine && facets.some((f) => f.slug === cuisine) ? cuisine : null;
 
   const farthest = inside[inside.length - 1]?.distance_m ?? 0;
+
+  // Amenities inside the same radius — "what's within X" now genuinely
+  // includes the restrooms / Wi-Fi / EV / bike / picnic / playgrounds,
+  // not just businesses. Same haversine + center + meters as places.
+  const insideAmenities = useMemo(() => {
+    return amenities
+      .map((a) => ({
+        ...a,
+        distance_m: haversineMeters(
+          { lng: center.lng, lat: center.lat },
+          { lng: a.lng, lat: a.lat },
+        ),
+      }))
+      .filter((a) => a.distance_m <= meters)
+      .sort((a, b) => a.distance_m - b.distance_m);
+  }, [amenities, center.lng, center.lat, meters]);
+
+  // Grouped by kind in the most-asked-for order; only kinds that
+  // actually have a point inside the radius. Nearest stays first.
+  const amenityGroups = useMemo(() => {
+    const byKind = new Map<AmenityKind, (Amenity & { distance_m: number })[]>();
+    for (const a of insideAmenities) {
+      const arr = byKind.get(a.kind);
+      if (arr) arr.push(a);
+      else byKind.set(a.kind, [a]);
+    }
+    return AMENITY_META.map((m) => ({
+      ...m,
+      list: byKind.get(m.kind) ?? [],
+    })).filter((g) => g.list.length > 0);
+  }, [insideAmenities]);
 
   return (
     <div className="space-y-5">
@@ -455,7 +509,85 @@ export default function RadiusBuilder({ places }: { places: PlaceCardData[] }) {
         );
       })}
 
-      {inside.length === 0 && (
+      {/* Amenities inside the radius — restrooms, Wi-Fi, EV, bike
+          parking, picnic, playgrounds. Each kind is a calm summary row
+          (count + nearest) that expands to the full list, so "what's
+          within X" genuinely includes them without a wall of pins. */}
+      {amenityGroups.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeading title="Amenities" count={insideAmenities.length} />
+          <div className="space-y-2">
+            {amenityGroups.map((g) => {
+              const key = `amenity:${g.kind}`;
+              const isOpen = expanded.has(key);
+              const nearest = g.list[0]?.distance_m ?? 0;
+              return (
+                <div
+                  key={g.kind}
+                  className="overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleExpand(key)}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition active:opacity-80"
+                  >
+                    <span
+                      aria-hidden
+                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[15px]"
+                      style={{ background: "var(--app-bg-sunken)" }}
+                    >
+                      {g.glyph}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                        {g.label}
+                      </span>
+                      <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                        {g.list.length} within · nearest {formatDistance(nearest)}
+                      </span>
+                    </span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                      strokeWidth={2.25}
+                      style={{ color: "var(--app-ink-3)" }}
+                      aria-hidden
+                    />
+                  </button>
+                  {isOpen && (
+                    <ul>
+                      {g.list.map((a) => (
+                        <li
+                          key={a.id}
+                          className="flex items-center gap-3 px-3.5 py-2 text-[13px]"
+                          style={{ borderTop: "1px solid var(--app-border)" }}
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate" style={{ color: "var(--app-ink-2)" }}>
+                              {a.name}
+                            </span>
+                            {a.detail && (
+                              <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                                {a.detail}
+                              </span>
+                            )}
+                          </span>
+                          <span className="shrink-0 tabular-nums text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                            {formatDistance(a.distance_m)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {inside.length === 0 && insideAmenities.length === 0 && (
         <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
           Nothing inside this radius. Move the slider, change the mode, or pick a different center.

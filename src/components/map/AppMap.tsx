@@ -26,6 +26,11 @@ import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 // the map never loads. Places arrive already decorated from the
 // server page; the client only attaches a viewport distance.
 import type { PlaceCardData } from "@/lib/loaders/places";
+// TYPE ONLY: the amenities loader only reads the small static
+// amenities.json, but to keep this component strictly loader-free
+// (the rule that closed the 12MB bundle leak) the points arrive as a
+// server prop and only the Amenity type is imported (erased at build).
+import type { Amenity } from "@/lib/loaders/amenities";
 import { FREDERICK_CENTER, haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { haptic } from "@/lib/haptics";
@@ -57,6 +62,11 @@ type Props = {
   /** Server-fetched amenity points (Mapillary trash detections) merged
    *  into the amenity layer — the secret token stays server-side. */
   extraAmenities?: OsmPlace[];
+  /** Curated civic amenities (restrooms, Wi-Fi, EV, bike parking,
+   *  picnic, playgrounds — amenities.json, 442 pts). Server prop so
+   *  this stays loader-free; always present, unlike the flaky live
+   *  OSM amenity fetch. Folded into the same grouped Amenities tray. */
+  amenities?: Amenity[];
   /** Server-fetched line geometry for toggleable overlays (#3). Plain
    *  GeoJSON FeatureCollections; default off, so the base map is
    *  unchanged unless the user opts in. */
@@ -108,7 +118,26 @@ const AMENITY_CATEGORIES = new Set<string>([
   "restroom", "water", "trash", "recycling", "dog-waste",
   "bench", "picnic", "bike-parking", "bike-repair",
   "defibrillator", "shelter", "wifi", "ev-charging",
+  // A playground is an amenity people look for, not a business — it
+  // rides the amenity tray/layer, not the place cluster.
+  "playground",
 ]);
+
+/**
+ * Curated amenities.json uses underscored kinds; the map's marker
+ * and grouping language is the hyphenated category slug (what
+ * bucketOf / the cat- puck images understand). One small bridge so
+ * the 442 curated points render with the right icon and land in the
+ * right tray group.
+ */
+const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
+  restroom: "restroom",
+  ev_charging: "ev-charging",
+  wifi: "wifi",
+  bike_parking: "bike-parking",
+  picnic: "picnic",
+  playground: "playground",
+};
 
 /**
  * Grouped amenity picker — the "what do you need?" tray. One tap reveals
@@ -125,6 +154,7 @@ const AMENITY_GROUPS: { key: string; label: string; glyph: string; cats: string[
   { key: "ev", label: "EV charging", glyph: "\u{26A1}", cats: ["ev-charging"] },
   { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
   { key: "seating", label: "Sit & picnic", glyph: "\u{1FA91}", cats: ["bench", "picnic"] },
+  { key: "play", label: "Playgrounds", glyph: "\u{1F6DD}", cats: ["playground"] },
   { key: "safety", label: "AED & shelter", glyph: "\u{2795}", cats: ["defibrillator", "shelter"] },
 ];
 
@@ -253,6 +283,7 @@ export default function AppMap({
   focus,
   civic = [],
   extraAmenities = [],
+  amenities = [],
   trailLines = EMPTY_LINE_FC,
   transitLines = EMPTY_LINE_FC,
 }: Props) {
@@ -487,8 +518,32 @@ export default function AppMap({
         },
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       }));
-    return { type: "FeatureCollection" as const, features: feats };
-  }, [osmPlaces, extraAmenities, activeAmenityCats]);
+    // Curated amenities.json — the deterministic, always-present set
+    // (the restrooms / Wi-Fi / EV / bike / picnic / playgrounds the
+    // owner "added but couldn't see"). Same feature shape, mapped onto
+    // the hyphenated category slug so they share the marker language
+    // and the same active-group filter as the live OSM amenities.
+    const curated = amenities
+      .map((a) => ({ a, cat: AMENITY_KIND_TO_CAT[a.kind] }))
+      .filter(({ cat }) => activeAmenityCats.has(cat))
+      .map(({ a, cat }) => ({
+        type: "Feature" as const,
+        properties: {
+          osm_id: a.id,
+          name: a.name,
+          category: cat,
+          osm_tag: "",
+          address: a.detail ?? "",
+          city: a.municipality,
+          phone: "",
+          website: "",
+          opening_hours: "",
+          cuisine: "",
+        },
+        geometry: { type: "Point" as const, coordinates: [a.lng, a.lat] },
+      }));
+    return { type: "FeatureCollection" as const, features: [...feats, ...curated] };
+  }, [osmPlaces, extraAmenities, amenities, activeAmenityCats]);
 
   /**
    * Curated places as a clustered GeoJSON source.
@@ -650,7 +705,11 @@ export default function AppMap({
 
   const trustedOsmCount = osmPlaces.filter((p) => isTrustedOsm(p) && !isAmenity(p)).length;
   const unverifiedOsmCount = osmPlaces.filter((p) => !isTrustedOsm(p)).length;
-  const amenityCount = osmPlaces.filter(isAmenity).length;
+  // OSM amenities are flaky (live Overpass; empty in the sandbox). The
+  // curated amenities.json is always present, so the Amenities tray is
+  // gated on EITHER source having points — that is the fix for "I
+  // don't see the water fountains / things we just added".
+  const amenityCount = osmPlaces.filter(isAmenity).length + amenities.length;
   const activeAmenityGroupCount = amenityGroups.size;
 
   // On-map search — match places already on the map by name/address/city.
@@ -801,10 +860,10 @@ export default function AppMap({
                     border: `1px solid ${activeAmenityGroupCount > 0 || amenityOpen ? "var(--app-cool)" : "var(--app-border)"}`,
                     boxShadow: activeAmenityGroupCount > 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                   }}
-                  title="What do you need? Restrooms, water, trash, dog stations, wifi, EV charging, bike, seating, AED"
+                  title="Amenities — restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water, trash, AED"
                 >
                   <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
-                  What do you need?
+                  Amenities
                   {activeAmenityGroupCount > 0 && ` · ${activeAmenityGroupCount}`}
                   <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>{amenityOpen ? "▲" : "▼"}</span>
                 </button>
@@ -992,9 +1051,9 @@ export default function AppMap({
         <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-5" style={{ background: "linear-gradient(270deg, var(--app-bg), transparent)" }} />
       </div>
 
-      {/* "What do you need?" tray — one tap per amenity kind. Collapsed by
-          default so the rail stays calm; amenities only paint on the map
-          once you zoom into a neighborhood. */}
+      {/* Amenities tray — one tap per amenity kind. Collapsed by
+          default so the rail stays calm; the curated set is sparse
+          enough to paint from a town-wide zoom (no longer street-only). */}
       {amenityOpen && (
         <div>
           <div>
@@ -1043,7 +1102,7 @@ export default function AppMap({
             </ul>
           </div>
           <p className="px-1 pt-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Pick what you need. Zoom into a neighborhood to see it on the map.
+            Pick what you need — it appears on the map and folds into your Radius results.
           </p>
         </div>
       )}
@@ -1480,7 +1539,7 @@ export default function AppMap({
             <Layer
               id="amenity-icons"
               type="symbol"
-              minzoom={14}
+              minzoom={12}
               layout={{
                 "icon-image": [
                   "coalesce",
@@ -1489,7 +1548,8 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  14, 0.32,
+                  12, 0.26,
+                  14, 0.34,
                   16, 0.48,
                   18, 0.62,
                 ],

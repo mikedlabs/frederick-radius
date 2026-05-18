@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import { radiusPlaces, decoratePlace } from "@/lib/loaders/places";
+import { allAmenities } from "@/lib/loaders/amenities";
 
 // Radius now lives at /radius (Today is the home landing). Same
 // canonical public place set as every other route: deduplicated and
@@ -30,7 +31,7 @@ export default function RadiusPage() {
           Frederick&apos;s defining interaction — walking from your hotel, driving from a meeting, hiking from a trailhead.
         </p>
       </header>
-      <RadiusBuilder places={OPEN_PLACES} />
+      <RadiusBuilder places={OPEN_PLACES} amenities={allAmenities()} />
     </div>
   );
 }

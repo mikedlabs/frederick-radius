@@ -5,6 +5,7 @@ import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
+import { allAmenities } from "@/lib/loaders/amenities";
 import AppMapClient, { type CivicPin } from "@/components/map/AppMapClient";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
@@ -68,7 +69,7 @@ export default async function MapPage() {
         </p>
       </header>
 
-      <AppMapClient places={OPEN_PLACES} civic={civic} extraAmenities={mapillaryTrash} trailLines={trailLines} transitLines={transitLines} />
+      <AppMapClient places={OPEN_PLACES} civic={civic} extraAmenities={mapillaryTrash} amenities={allAmenities()} trailLines={trailLines} transitLines={transitLines} />
 
       <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
         Business data from{" "}
