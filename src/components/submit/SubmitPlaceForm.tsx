@@ -82,7 +82,7 @@ export default function SubmitPlaceForm() {
         <FieldText name="submitter_email" label="Your email" required type="email" />
         <label className="mt-2 inline-flex items-center gap-2 text-sm" style={{ color: "var(--app-ink-2)" }}>
           <input type="checkbox" name="is_owner" className="h-4 w-4" />
-          I&apos;m the owner or staff at this place
+          I&apos;m the owner or on the team at this place
         </label>
       </div>
 

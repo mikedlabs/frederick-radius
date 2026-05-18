@@ -1,7 +1,7 @@
 {
   "note": "Pre-existing STYLE.md debt. Burn down, owner-reviewed; do not grow.",
-  "generated": "2026-05-18T20:23:23.214Z",
-  "count": 88,
+  "generated": "2026-05-18T20:34:06.924Z",
+  "count": 85,
   "entries": [
     "src/app/(app)/events/calendar/page.tsx|em-dash|…Frederick County event — municipal, live feeds,…",
     "src/app/(app)/events/calendar/page.tsx|em-dash|…eeds, and curated picks — combined. Tap any day.…",
@@ -59,7 +59,6 @@
     "src/components/submit/SubmitEventForm.tsx|em-dash|Thanks — submitted",
     "src/components/submit/SubmitPlaceForm.tsx|em-dash|Thanks — submitted",
     "src/components/submit/SubmitPlaceForm.tsx|em-dash|…urces before publishing — your email isn&apos;t s…",
-    "src/components/submit/SubmitPlaceForm.tsx|staff|…I&apos;m the owner or staff at this place",
     "src/components/today/AdaptiveGreeting.tsx|em-dash|Catch the sunrise — Frederick is glowing.",
     "src/components/today/AdaptiveGreeting.tsx|em-dash|Cozy morning — the museum is calling.",
     "src/components/today/AdaptiveGreeting.tsx|em-dash|Foggy night — Carroll Creek looks lik…",
@@ -88,8 +87,6 @@
     "src/data/places.ts|em-dash|…29. Camp David-adjacent — every president since F…",
     "src/data/places.ts|em-dash|…flagship craft brewery — flagship IPA, taproom,…",
     "src/data/places.ts|em-dash|…ryland's largest winery — 230 acres, weekend musi…",
-    "src/data/places.ts|hidden gem|…ils and aged balsamics. Hidden gem on East Patrick.",
-    "src/data/places.ts|staff|…ore on N Market. Strong staff picks, local-author eve…",
-    "src/data/places.ts|staff|…toast, friendly counter staff."
+    "src/data/places.ts|hidden gem|…ils and aged balsamics. Hidden gem on East Patrick."
   ]
 }
