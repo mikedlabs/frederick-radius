@@ -1,4 +1,6 @@
-import { publicPlaceBySlug, decoratePlace } from "@/lib/loaders/places";
+// Client-safe slim set (already decorated) — NOT @/lib/loaders/places
+// (static-imports the ~12MB enrichment into client bundles).
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 /**
@@ -18,9 +20,9 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 export function withVenueThumbs(events: EventWithMeta[]): EventWithMeta[] {
   return events.map((e) => {
     if (e.hero_image || !e.venue_place_slug) return e;
-    const place = publicPlaceBySlug(e.venue_place_slug);
+    const place = clientPlaceBySlug(e.venue_place_slug);
     if (!place) return e;
-    const photo = decoratePlace(place).google_photo_url;
+    const photo = place.google_photo_url;
     return photo ? { ...e, hero_image: photo } : e;
   });
 }

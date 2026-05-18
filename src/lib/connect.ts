@@ -34,7 +34,10 @@
 
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { haversineMeters, type LngLat } from "@/lib/geo";
-import { placesWithinRadius, type PlaceCardData } from "@/lib/loaders/places";
+// Client-safe: NearbyNow ("use client") imports this lib, so it must
+// not pull @/lib/loaders/places (the ~12MB enrichment). Slim set.
+import { clientPlacesWithinRadius } from "@/lib/loaders/places-client";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import {
   eventsLive,
   eventsNext24h,
@@ -223,7 +226,7 @@ export function nearbyNow(origin: LngLat, opts: NearbyOptions): NearbyContext {
   const hit = resolveMunicipality(origin);
 
   // placesWithinRadius already: dedupes, drops closed, stamps distance.
-  const openPlaces = placesWithinRadius(origin, radiusM, now)
+  const openPlaces = clientPlacesWithinRadius(origin, radiusM)
     .filter((p) => p.open_status.state !== "closed")
     .slice(0, limit);
 
