@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ExternalLink, GraduationCap, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
@@ -99,20 +99,21 @@ export default async function EventsIndexPage({
     <div className="space-y-7">
       <header className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
             Events
           </h1>
           <p className="mt-0.5 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
             What&apos;s on across Frederick County — now through the season.
           </p>
         </div>
-        <Link
+        <Button
           href="/events/calendar"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)]"
-          style={{ background: "var(--app-brand)" }}
+          size="sm"
+          className="shrink-0 rounded-full"
+          iconLeft={<CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
         >
-          <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Calendar
-        </Link>
+          Calendar
+        </Button>
       </header>
 
       <EventsExplorer
@@ -147,8 +148,7 @@ export default async function EventsIndexPage({
                   href={e.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)] transition hover:shadow-[var(--app-shadow-2)]"
-                  style={{ borderColor: "var(--app-border)" }}
+                  className="tactile tactile-interactive flex items-start gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3"
                 >
                   <div
                     aria-hidden
