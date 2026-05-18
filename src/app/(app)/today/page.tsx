@@ -12,6 +12,7 @@ import FloatingPlanFab from "@/components/today/FloatingPlanFab";
 import TodayTabs from "@/components/today/TodayTabs";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import ModeAwareCta from "@/components/today/ModeAwareCta";
+import ModeLead from "@/components/today/ModeLead";
 import LiveActivityPill from "@/components/today/LiveActivityPill";
 import FeaturedTonight from "@/components/today/FeaturedTonight";
 import FeaturedEvents, { type EventSlide } from "@/components/today/FeaturedEvents";
@@ -171,6 +172,12 @@ export default async function HomePage() {
           </Suspense>
           <ModeAwareCta />
         </SkyHero>
+
+        {/* Mode-aware quick start — Resident vs Visitor actually
+            changes what the app foregrounds (one toggle, here). */}
+        <FadeUp>
+          <ModeLead />
+        </FadeUp>
 
         {liveActivities.length > 0 && (
           <LiveActivityPill activities={liveActivities} />

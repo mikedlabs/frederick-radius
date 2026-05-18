@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Sparkles, Map } from "lucide-react";
 import { motion } from "framer-motion";
 import { useMode } from "@/hooks/useMode";
-import ModeToggle from "./ModeToggle";
 import { haptic } from "@/lib/haptics";
 
 /**
@@ -39,7 +38,6 @@ export default function ModeAwareCta() {
           {label}
         </Link>
       </motion.span>
-      <ModeToggle />
     </div>
   );
 }
