@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import { radiusPlaces, decoratePlace } from "@/lib/loaders/places";
-import { allAmenities } from "@/lib/loaders/amenities";
+import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
 
 // Radius now lives at /radius (Today is the home landing). Same
 // canonical public place set as every other route: deduplicated and
@@ -10,6 +10,14 @@ import { allAmenities } from "@/lib/loaders/amenities";
 // places-enrichment.json stays out of the client bundle; RadiusBuilder
 // only recomputes the radius-relative distance.
 const OPEN_PLACES = radiusPlaces().map((p) => decoratePlace(p));
+
+// Same canonical-aware amenity de-dupe the map uses, so "what's
+// within X" can never list the same picnic area eight times or
+// restate a park that is already in the results.
+const OPEN_AMENITIES = dedupeAmenities(
+  allAmenities(),
+  OPEN_PLACES.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
+);
 
 export const metadata: Metadata = {
   title: "Radius",
@@ -31,7 +39,7 @@ export default function RadiusPage() {
           Frederick&apos;s defining interaction — walking from your hotel, driving from a meeting, hiking from a trailhead.
         </p>
       </header>
-      <RadiusBuilder places={OPEN_PLACES} amenities={allAmenities()} />
+      <RadiusBuilder places={OPEN_PLACES} amenities={OPEN_AMENITIES} />
     </div>
   );
 }

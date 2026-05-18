@@ -32,6 +32,11 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
 import { FREDERICK_CENTER, haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
+// THE one duplicate rule (pure, no data imports — bundle-safe). The
+// map's curated-vs-OSM de-dupe now uses the exact same contract as
+// the canonical loader, so "the same thing twice" is closed by one
+// rule on every surface instead of a weaker map-only heuristic.
+import { isSamePlace, type DedupeRecord } from "@/lib/dedupe";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
@@ -242,31 +247,15 @@ const FREDERICK: [number, number] = [-77.4105, 39.4143];
 const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 
 // ── Curated-vs-OSM dedupe ───────────────────────────────────────────
-// The map renders our curated set AND the live OSM layer. They were
-// never reconciled, so anything in both showed twice. Normalize a name
-// and drop an OSM pin when a curated place with the same name sits
-// within ~150 m. Conservative: exact normalized match or clear
-// containment only, so distinct same-name places in different towns
-// are NOT collapsed.
-const STOP_TOKENS = new Set(["the", "a", "an", "llc", "inc", "co", "ltd", "company"]);
-function normName(s: string): string {
-  return (s || "")
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim()
-    .split(" ")
-    .filter((t) => t && !STOP_TOKENS.has(t))
-    .join(" ");
-}
-function cellKey(lat: number, lng: number): string {
-  return `${Math.round(lat * 100)},${Math.round(lng * 100)}`;
-}
-function nameCollision(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
-  return short.length >= 6 && long.includes(short);
+// The map renders our curated set AND the live OSM layer; anything in
+// both used to show twice. This now defers to the ONE shared rule
+// (src/lib/dedupe.ts) — same safelist, same name logic as the loader
+// — so an OSM "Baker Park" folds into the curated one while an OSM
+// "Carroll Creek Parking Deck" is never wrongly merged into the park.
+// ~300 m cells so a ±1 neighborhood always spans the 250 m rule.
+const DUPE_K = 370;
+function dupeCellKey(lat: number, lng: number): string {
+  return `${Math.round(lat * DUPE_K)},${Math.round(lng * DUPE_K)}`;
 }
 
 type SelectedOsm = OsmPlace & { _kind: "osm" };
@@ -400,34 +389,44 @@ export default function AppMap({
     onPlacesInView(inside);
   };
 
-  // Spatial hash of curated places by ~1 km cell, for OSM dedupe.
+  // Spatial hash of curated places (as DedupeRecords) for the OSM
+  // de-dupe — keyed so a ±1 neighborhood spans the shared rule radius.
   const placeDupeIndex = useMemo(() => {
     // Plain object, not Map — `Map` is the react-map-gl component here.
-    const idx: Record<string, { n: string; lat: number; lng: number }[]> = {};
+    const idx: Record<string, DedupeRecord[]> = {};
     for (const p of places) {
-      const k = cellKey(p.geom.lat, p.geom.lng);
-      (idx[k] ??= []).push({ n: normName(p.name), lat: p.geom.lat, lng: p.geom.lng });
+      const rec: DedupeRecord = {
+        slug: p.slug,
+        name: p.name,
+        geom: p.geom,
+        source: p.source,
+        google_place_id: p.google_place_id,
+        feature_score: p.feature_score,
+      };
+      (idx[dupeCellKey(p.geom.lat, p.geom.lng)] ??= []).push(rec);
     }
     return idx;
   }, [places]);
 
   const osmDupesCurated = useMemo(() => {
     return (p: OsmPlace): boolean => {
-      const n = normName(p.name);
-      if (!n) return false;
-      const cy = Math.round(p.lat * 100);
-      const cx = Math.round(p.lng * 100);
+      if (!p.name) return false;
+      // Same contract as the canonical loader — the safelist inside
+      // isSamePlace is what keeps "Carroll Creek Parking Deck" from
+      // ever folding into "Carroll Creek Park".
+      const osm: DedupeRecord = {
+        slug: `osm:${p.osm_id}`,
+        name: p.name,
+        geom: { lng: p.lng, lat: p.lat },
+      };
+      const cy = Math.round(p.lat * DUPE_K);
+      const cx = Math.round(p.lng * DUPE_K);
       for (let dz = -1; dz <= 1; dz++) {
         for (let dx = -1; dx <= 1; dx++) {
           const bucket = placeDupeIndex[`${cy + dz},${cx + dx}`];
           if (!bucket) continue;
           for (const q of bucket) {
-            if (
-              nameCollision(n, q.n) &&
-              haversineMeters({ lng: p.lng, lat: p.lat }, { lng: q.lng, lat: q.lat }) <= 150
-            ) {
-              return true;
-            }
+            if (isSamePlace(osm, q)) return true;
           }
         }
       }
