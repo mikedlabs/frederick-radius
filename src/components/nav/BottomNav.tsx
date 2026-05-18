@@ -31,11 +31,21 @@ export default function BottomNav() {
             <li key={href} className="flex">
               <Link
                 href={href}
-                className="flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium tracking-tight transition-colors"
+                className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium tracking-tight transition-transform active:scale-[0.94]"
                 aria-current={active ? "page" : undefined}
                 style={{ color: active ? "var(--app-brand)" : "var(--app-ink-3)" }}
               >
-                <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                <span
+                  className="grid h-7 w-12 place-items-center rounded-full transition-colors"
+                  style={{
+                    background: active
+                      ? "color-mix(in srgb, var(--app-brand) 14%, transparent)"
+                      : "transparent",
+                  }}
+                  aria-hidden
+                >
+                  <Icon className="h-[19px] w-[19px]" strokeWidth={active ? 2.25 : 2} />
+                </span>
                 <span>{label}</span>
               </Link>
             </li>
