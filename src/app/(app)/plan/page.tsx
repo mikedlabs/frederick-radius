@@ -23,13 +23,13 @@ export default async function PlanPage({
   return (
     <div className="space-y-5">
       <header className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           Itinerary builder · real places, nothing invented
         </p>
-        <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
           {shared ? "A plan to explore." : "Plan my evening."}
         </h1>
-        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        <p className="text-[15px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
           {shared ? (
             "Someone shared this Frederick County plan. Open any stop, get directions, or make it your own."
           ) : (

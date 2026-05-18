@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock } from "lucide-react";
+import { Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock, Wand2 } from "lucide-react";
 import Link from "next/link";
 import type { Plan, PlanInputs } from "@/lib/integrations/planner";
 import { generatePlan, removeStop, swapStop } from "./actions";
@@ -15,20 +15,20 @@ const AUDIENCES: { value: PlanInputs["audience"]; label: string; emoji: string }
   { value: "visitor", label: "Visitor", emoji: "🧳" },
 ];
 
-const VIBES: { value: PlanInputs["vibe"]; label: string }[] = [
-  { value: "easy", label: "Easy" },
-  { value: "active", label: "Active" },
-  { value: "cultural", label: "Cultural" },
-  { value: "outdoors", label: "Outdoors" },
-  { value: "food", label: "Food first" },
+const VIBES: { value: PlanInputs["vibe"]; label: string; emoji: string }[] = [
+  { value: "easy", label: "Easy", emoji: "🌿" },
+  { value: "active", label: "Active", emoji: "⚡️" },
+  { value: "cultural", label: "Cultural", emoji: "🎭" },
+  { value: "outdoors", label: "Outdoors", emoji: "🥾" },
+  { value: "food", label: "Food first", emoji: "🍽️" },
 ];
 
 const DURATIONS: PlanInputs["duration_hours"][] = [2, 3, 4, 6];
 type StartMode = "now" | "afternoon" | "evening";
-const STARTS: { value: StartMode; label: string }[] = [
-  { value: "now", label: "Now" },
-  { value: "afternoon", label: "Afternoon" },
-  { value: "evening", label: "Evening" },
+const STARTS: { value: StartMode; label: string; emoji: string }[] = [
+  { value: "now", label: "Now", emoji: "⏱️" },
+  { value: "afternoon", label: "Afternoon", emoji: "🌤️" },
+  { value: "evening", label: "Evening", emoji: "🌆" },
 ];
 
 /** Local clock time for a preset, as an ISO string the planner accepts. */
@@ -127,18 +127,30 @@ export default function PlanBuilder({
     }
   };
 
+  const building = pending && busy === null;
+
   return (
     <div className="space-y-5">
       {(!shared || editing) && (
         <section
-          className="space-y-3 rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)]"
-          style={{ borderColor: "var(--app-border)" }}
+          className="tactile tactile-e2 space-y-4 rounded-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] p-4 sm:p-5"
         >
+          <div className="flex items-center gap-2">
+            <span
+              aria-hidden
+              className="grid h-7 w-7 place-items-center rounded-full text-white"
+              style={{ background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 55%, var(--app-cool)))" }}
+            >
+              <Wand2 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </span>
+            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>Design your night</p>
+          </div>
+
           <Field label="Who you're with">
             <ChipRow>
               {AUDIENCES.map((a) => (
                 <Chip key={a.value} active={a.value === audience} onClick={() => setAudience(a.value)} accent="brand">
-                  <span aria-hidden>{a.emoji}</span> {a.label}
+                  <span aria-hidden className="text-[15px] leading-none">{a.emoji}</span> {a.label}
                 </Chip>
               ))}
             </ChipRow>
@@ -147,32 +159,34 @@ export default function PlanBuilder({
             <ChipRow>
               {VIBES.map((v) => (
                 <Chip key={v.value} active={v.value === vibe} onClick={() => setVibe(v.value)} accent="cool">
-                  {v.label}
+                  <span aria-hidden className="text-[15px] leading-none">{v.emoji}</span> {v.label}
                 </Chip>
               ))}
             </ChipRow>
           </Field>
-          <Field label="How long">
-            <ChipRow>
-              {DURATIONS.map((d) => (
-                <Chip key={d} active={d === hours} onClick={() => setHours(d)} accent="cool">
-                  {d}h
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="How long">
+              <ChipRow>
+                {DURATIONS.map((d) => (
+                  <Chip key={d} active={d === hours} onClick={() => setHours(d)} accent="cool">
+                    {d} hours
+                  </Chip>
+                ))}
+              </ChipRow>
+            </Field>
+            <Field label="Start">
+              <ChipRow>
+                {STARTS.map((s) => (
+                  <Chip key={s.value} active={s.value === startMode} onClick={() => setStartMode(s.value)} accent="cool">
+                    <span aria-hidden className="text-[15px] leading-none">{s.emoji}</span> {s.label}
+                  </Chip>
+                ))}
+                <Chip active={near != null} onClick={useMyLocation} accent="brand">
+                  <Navigation className="h-3.5 w-3.5" aria-hidden /> {near ? "Your spot" : "Near me"}
                 </Chip>
-              ))}
-            </ChipRow>
-          </Field>
-          <Field label="Start">
-            <ChipRow>
-              {STARTS.map((s) => (
-                <Chip key={s.value} active={s.value === startMode} onClick={() => setStartMode(s.value)} accent="cool">
-                  {s.label}
-                </Chip>
-              ))}
-              <Chip active={near != null} onClick={useMyLocation} accent="brand">
-                <Navigation className="h-3 w-3" aria-hidden /> {near ? "Using your spot" : "Near me"}
-              </Chip>
-            </ChipRow>
-          </Field>
+              </ChipRow>
+            </Field>
+          </div>
           {geoMsg && (
             <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{geoMsg}</p>
           )}
@@ -180,11 +194,14 @@ export default function PlanBuilder({
             type="button"
             onClick={onBuild}
             disabled={pending}
-            className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3 text-sm font-semibold text-white shadow-[var(--app-shadow-1)] transition disabled:opacity-60"
-            style={{ background: "var(--app-brand)" }}
+            className="tactile tactile-lift group relative mt-1 inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--app-radius-md)] px-4 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-70"
+            style={{
+              background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
+              transitionTimingFunction: "var(--app-ease-spring)",
+            }}
           >
-            <Sparkles className="h-4 w-4" strokeWidth={2} aria-hidden />
-            {pending && busy === null ? "Building your plan…" : plan ? "Build a new plan" : "Build my plan"}
+            <Sparkles className={`h-4 w-4 ${building ? "animate-spin" : "transition-transform group-hover:rotate-12"}`} strokeWidth={2.25} aria-hidden />
+            {building ? "Stitching your night together…" : plan ? "Build a new plan" : "Build my evening"}
           </button>
         </section>
       )}
@@ -192,18 +209,18 @@ export default function PlanBuilder({
       {plan && (
         <section className="space-y-4">
           <header className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="font-serif text-2xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <div className="min-w-0">
+              <h2 className="display-2" style={{ color: "var(--app-ink)" }}>
                 {plan.title}
               </h2>
-              <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>{plan.summary}</p>
+              <p className="mt-1 text-[14px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-3)" }}>{plan.summary}</p>
             </div>
             {plan.stops.length > 0 && (
               <button
                 type="button"
                 onClick={onShare}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--app-bg-elevated)] px-3.5 py-2 text-xs font-semibold"
+                style={{ color: "var(--app-ink-2)" }}
               >
                 <Share2 className="h-3.5 w-3.5" aria-hidden /> Share
               </button>
@@ -214,32 +231,57 @@ export default function PlanBuilder({
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white"
-              style={{ background: "var(--app-brand)" }}
+              className="tactile tactile-lift inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-white transition active:scale-[0.97]"
+              style={{
+                background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
+                transitionTimingFunction: "var(--app-ease-spring)",
+              }}
             >
               <Sparkles className="h-3.5 w-3.5" aria-hidden /> Make it your own
             </button>
           )}
 
           {plan.narrative && (
-            <p
-              className="rounded-[var(--app-radius-md)] border-l-2 pl-3 text-[13px] italic leading-relaxed"
-              style={{ borderColor: "var(--app-cool)", color: "var(--app-ink-2)" }}
+            <figure
+              className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4 pl-5"
             >
-              {plan.narrative}
-            </p>
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 w-1"
+                style={{ background: "linear-gradient(var(--app-brand), var(--app-cool))" }}
+              />
+              <figcaption className="eyebrow mb-1" style={{ color: "var(--app-cool)" }}>The night, in a sentence</figcaption>
+              <blockquote className="font-serif text-[15px] italic leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                {plan.narrative}
+              </blockquote>
+            </figure>
           )}
 
           {plan.stops.length === 0 ? (
-            <p
-              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-8 text-center text-sm"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+            <div
+              className="tactile flex flex-col items-center gap-2 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] px-6 py-10 text-center"
             >
-              No good matches for that combo. Try a different vibe, more time, or a wider start.
-            </p>
+              <span
+                aria-hidden
+                className="grid h-12 w-12 place-items-center rounded-full text-2xl"
+                style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)" }}
+              >
+                🗺️
+              </span>
+              <p className="font-serif text-base font-semibold" style={{ color: "var(--app-ink)" }}>
+                No clean match for that combo
+              </p>
+              <p className="max-w-xs text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+                Try a different vibe, give it more time, or start &ldquo;Near me&rdquo; for a wider net.
+              </p>
+            </div>
           ) : (
-            <ol className="relative space-y-3 pl-8">
-              <div className="absolute left-3 top-3 bottom-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
+            <ol className="stagger relative space-y-3 pl-9">
+              <span
+                className="absolute bottom-4 left-[15px] top-4 w-[2px] rounded-full"
+                style={{ background: "linear-gradient(var(--app-brand), var(--app-cool))", opacity: 0.55 }}
+                aria-hidden
+              />
               {plan.stops.map((stop, idx) => {
                 const href = stop.place ? `/places/${stop.place.slug}` : stop.event ? `/events/${stop.event.slug}` : "#";
                 const name = stop.place?.name ?? stop.event?.title ?? "";
@@ -249,45 +291,50 @@ export default function PlanBuilder({
                 return (
                   <li key={`${stop.order}-${name}`} className="relative">
                     <span
-                      className="absolute -left-7 top-3 grid h-6 w-6 place-items-center rounded-full font-serif text-xs font-bold text-white shadow-[var(--app-shadow-1)]"
-                      style={{ background: "var(--app-brand)" }}
+                      className="absolute -left-9 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full font-serif text-sm font-bold text-white"
+                      style={{
+                        background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 55%, var(--app-cool)))",
+                        boxShadow: "var(--app-elev-2), 0 0 0 4px var(--app-bg)",
+                      }}
                       aria-hidden
                     >
                       {stop.order}
                     </span>
                     <article
-                      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)]"
-                      style={{ borderColor: "var(--app-border)" }}
+                      className="tactile tactile-interactive rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
                     >
-                      <div className="flex items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wider" style={{ color: "var(--app-cool)" }}>
-                        <span className="inline-flex items-center gap-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums"
+                          style={{ background: "color-mix(in srgb, var(--app-cool) 12%, transparent)", color: "var(--app-cool)" }}
+                        >
                           <Clock className="h-3 w-3" aria-hidden /> {clock(stop.at)} · {stop.duration_min} min
                         </span>
-                        <span className="inline-flex items-center gap-1" style={{ color: ol.color }}>
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: ol.color }}>
                           <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: ol.color }} aria-hidden />
                           {ol.text}
                         </span>
                       </div>
-                      <Link href={href} className="mt-1.5 block group">
-                        <h3 className="font-serif text-lg font-semibold tracking-tight transition-colors group-hover:underline" style={{ color: "var(--app-ink)" }}>
+                      <Link href={href} className="group mt-2 block">
+                        <h3 className="font-serif text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:underline" style={{ color: "var(--app-ink)" }}>
                           {name}
                         </h3>
                         <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
                           <MapPin className="-mt-0.5 mr-1 inline h-3 w-3" aria-hidden />
                           {where}
                         </p>
-                        <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+                        <p className="mt-2 text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
                           {stop.why}
                         </p>
                       </Link>
-                      <div className="mt-3 flex items-center gap-2">
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
                         {geom && (
                           <a
                             href={`https://www.google.com/maps/dir/?api=1&destination=${geom.lat},${geom.lng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium"
-                            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                            className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] px-3 py-1.5 text-[11px] font-semibold"
+                            style={{ color: "var(--app-ink-2)" }}
                           >
                             <Navigation className="h-3 w-3" aria-hidden /> Directions
                           </a>
@@ -298,8 +345,8 @@ export default function PlanBuilder({
                               type="button"
                               disabled={pending}
                               onClick={() => mutate(() => swapStop(plan.share, idx), idx)}
-                              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium disabled:opacity-50"
-                              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                              className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                              style={{ color: "var(--app-ink-2)" }}
                             >
                               <RefreshCw className={`h-3 w-3 ${busy === idx ? "animate-spin" : ""}`} aria-hidden /> Swap
                             </button>
@@ -307,8 +354,8 @@ export default function PlanBuilder({
                               type="button"
                               disabled={pending}
                               onClick={() => mutate(() => removeStop(plan.share, idx), idx)}
-                              className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium disabled:opacity-50"
-                              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                              className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-[var(--app-bg-sunken)] disabled:opacity-50"
+                              style={{ color: "var(--app-ink-3)" }}
                             >
                               <X className="h-3 w-3" aria-hidden /> Remove
                             </button>
@@ -323,13 +370,16 @@ export default function PlanBuilder({
           )}
 
           {plan.stops.length > 0 && (
-            <div
-              className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-xs"
+            <p
+              className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px] leading-relaxed"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              Every stop is a real, operational place from our directory, nothing invented.
-              {plan.stops[0]?.place && <> Total radius: ~{formatDistance(estimateTotalRadius(plan))}.</>}
-            </div>
+              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+              <span>
+                Every stop is a real, operational place from our directory — nothing invented.
+                {plan.stops[0]?.place && <> Total radius ~{formatDistance(estimateTotalRadius(plan))}.</>}
+              </span>
+            </p>
           )}
         </section>
       )}
@@ -359,8 +409,8 @@ function estimateTotalRadius(plan: Plan): number {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>{label}</p>
-      <div className="mt-1.5">{children}</div>
+      <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>{label}</p>
+      <div className="mt-2">{children}</div>
     </div>
   );
 }
@@ -387,11 +437,13 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors"
+      className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-medium transition active:scale-[0.94]"
       style={{
         borderColor: active ? accentColor : "var(--app-border)",
         background: active ? accentColor : "var(--app-bg-elevated)",
         color: active ? "white" : "var(--app-ink-2)",
+        boxShadow: active ? "var(--app-elev-2)" : "var(--app-elev-1)",
+        transitionTimingFunction: "var(--app-ease-spring)",
       }}
     >
       {children}
