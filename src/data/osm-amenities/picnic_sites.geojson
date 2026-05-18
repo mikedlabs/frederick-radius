@@ -1,0 +1,1599 @@
+{
+  "type": "FeatureCollection",
+  "name": "picnic_sites",
+  "metadata": {
+    "source": "OpenStreetMap contributors, ODbL",
+    "fetched_at": "2026-05-18T12:20:53Z",
+    "feature_count": 104
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6248426,
+          39.4981722
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4173439701
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6247756,
+          39.4983119
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4173439723
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6247622,
+          39.4983896
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4173439733
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6247514,
+          39.4984858
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4173439744
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3948229,
+          39.3775208
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4201098080
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3948658,
+          39.3775302
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4201098082
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4220189,
+          39.6245329
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4202769306
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6021444,
+          39.5424278
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4216323287
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3147473,
+          39.7078273
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642649765
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3144932,
+          39.7079046
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642649766
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3146468,
+          39.7075326
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642649767
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3142352,
+          39.7076478
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642649768
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3140228,
+          39.7075326
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642649769
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.313854,
+          39.7074873
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642649770
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3139147,
+          39.7073925
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642649771
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3143225,
+          39.7073006
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642649772
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4028333,
+          39.6158372
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4642698616
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3545547,
+          39.6821876
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 4804414669
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4781354,
+          39.6485116
+        ]
+      },
+      "properties": {
+        "name": "Chestnut Picnic Area",
+        "tourism": "picnic_site",
+        "_osm_type": "node",
+        "_osm_id": 7929421722
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4514796,
+          39.6340101
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7932182411
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4514474,
+          39.6340235
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7932182412
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4514072,
+          39.63404
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7932182413
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4513589,
+          39.6340514
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7932182414
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4513106,
+          39.634071
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7932182415
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4512583,
+          39.6340803
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7932182416
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4954953,
+          39.463943
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224966
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4952251,
+          39.4635912
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224972
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4956851,
+          39.4636365
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224973
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4954417,
+          39.4621204
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224975
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4953891,
+          39.4618137
+        ]
+      },
+      "properties": {
+        "covered": "yes",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224976
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4952495,
+          39.4627621
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224979
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4955235,
+          39.4631154
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224980
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4955697,
+          39.4632268
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224981
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4956053,
+          39.4633013
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224982
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4955483,
+          39.4634007
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224983
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4952284,
+          39.4631092
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970224984
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.495215,
+          39.4632081
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970384685
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4952345,
+          39.4632868
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970384686
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4952033,
+          39.4636668
+        ]
+      },
+      "properties": {
+        "covered": "yes",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970384687
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4952177,
+          39.4637675
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970384688
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4949609,
+          39.4636559
+        ]
+      },
+      "properties": {
+        "covered": "no",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 7970384707
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5622335,
+          39.3894293
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 8713009666
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5602389,
+          39.3905278
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 8713009667
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.325883,
+          39.6937126
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 9820293445
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3250114,
+          39.6934658
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 9820314206
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3268132,
+          39.6941958
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 9820355743
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3559192,
+          39.681119
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 10572708848
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3559398,
+          39.6811088
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 10572708849
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3559608,
+          39.6810984
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 10572708850
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3559346,
+          39.6810751
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 10572708851
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3559147,
+          39.6810851
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 10572708852
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3558883,
+          39.6810984
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 10572708853
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6152409,
+          39.5398941
+        ]
+      },
+      "properties": {
+        "bench": "yes",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 10679278661
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6157838,
+          39.5409207
+        ]
+      },
+      "properties": {
+        "bench": "yes",
+        "leisure": "picnic_table",
+        "lit": "no",
+        "material": "wood",
+        "_osm_type": "node",
+        "_osm_id": 10679306538
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6157295,
+          39.5409165
+        ]
+      },
+      "properties": {
+        "bench": "yes",
+        "leisure": "picnic_table",
+        "lit": "no",
+        "material": "wood",
+        "_osm_type": "node",
+        "_osm_id": 10679306545
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6125482,
+          39.5377678
+        ]
+      },
+      "properties": {
+        "bench": "yes",
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 10679346639
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4617716,
+          39.6263799
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420906
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.461789,
+          39.6263468
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420907
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4618909,
+          39.6263448
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420908
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4618695,
+          39.6263788
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420909
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.46184,
+          39.6262962
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420910
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4618963,
+          39.6262394
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420911
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4621511,
+          39.6260814
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420912
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4616737,
+          39.6264191
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420914
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.462312,
+          39.6273106
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420915
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4623791,
+          39.6273736
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420916
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4627613,
+          39.6280036
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420919
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4626138,
+          39.6276783
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420920
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4626607,
+          39.6278281
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420921
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.46265,
+          39.6277971
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420922
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.46265,
+          39.6277299
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420923
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4626969,
+          39.6278921
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420924
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.462709,
+          39.6279324
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12103420925
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4863557,
+          39.6537504
+        ]
+      },
+      "properties": {
+        "name": "Owens Creek Picnic Area",
+        "tourism": "picnic_site",
+        "_osm_type": "node",
+        "_osm_id": 12172586805
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6315257,
+          39.4619581
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12248418876
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6304134,
+          39.4619898
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 12248527466
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4116307,
+          39.4623736
+        ]
+      },
+      "properties": {
+        "leisure": "picnic_table",
+        "_osm_type": "node",
+        "_osm_id": 13335036855
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.621455,
+          39.4978017
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594246
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6211439,
+          39.4978566
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594247
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6247804,
+          39.4983115
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594249
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6248363,
+          39.4981662
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594250
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6247554,
+          39.4983914
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594251
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6219995,
+          39.4983471
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594252
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6222504,
+          39.4983066
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594253
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6212727,
+          39.4977249
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594254
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6247515,
+          39.4984819
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594255
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6215299,
+          39.4981865
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594256
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.621959,
+          39.4980259
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 416594257
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3559221,
+          39.6810946
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 468607238
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3528012,
+          39.6815692
+        ]
+      },
+      "properties": {
+        "name": "Founder's Plaza",
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 478100013
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3529123,
+          39.6813173
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 478100018
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3519462,
+          39.6809344
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 488306822
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3517792,
+          39.6810014
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 488306823
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2359539,
+          39.4840341
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 583366393
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.237523,
+          39.4785016
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 717890447
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2366997,
+          39.484094
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 751188651
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4513777,
+          39.6340405
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 850241952
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4192005,
+          39.4159129
+        ]
+      },
+      "properties": {
+        "name": "Public Grills & Picnic Area",
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 1022990579
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.615242,
+          39.5399082
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 1147754067
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6159267,
+          39.5379779
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 1147754745
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6173502,
+          39.5367598
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 1147754747
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4623244,
+          39.6273249
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 1306928745
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4626972,
+          39.6278481
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 1306928746
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4619622,
+          39.6259779
+        ]
+      },
+      "properties": {
+        "tourism": "picnic_site",
+        "_osm_type": "way",
+        "_osm_id": 1306928754
+      }
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "type": "FeatureCollection",
+  "name": "public_restrooms",
+  "metadata": {
+    "source": "OpenStreetMap contributors, ODbL",
+    "fetched_at": "2026-05-18T12:19:30Z",
+    "feature_count": 7
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3941109,
+          39.4113106
+        ]
+      },
+      "properties": {
+        "amenity": "toilets",
+        "_osm_type": "node",
+        "_osm_id": 3096729699
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3950184,
+          39.4111892
+        ]
+      },
+      "properties": {
+        "amenity": "toilets",
+        "_osm_type": "node",
+        "_osm_id": 3096729700
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3956095,
+          39.4121082
+        ]
+      },
+      "properties": {
+        "amenity": "toilets",
+        "_osm_type": "node",
+        "_osm_id": 3096729713
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4180337,
+          39.416244
+        ]
+      },
+      "properties": {
+        "amenity": "toilets",
+        "check_date": "2021-08-12",
+        "fee": "no",
+        "wheelchair": "yes",
+        "_osm_type": "node",
+        "_osm_id": 3435344893
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4099802,
+          39.4133504
+        ]
+      },
+      "properties": {
+        "amenity": "toilets",
+        "_osm_type": "node",
+        "_osm_id": 9641370204
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4001321,
+          39.428882
+        ]
+      },
+      "properties": {
+        "access": "yes",
+        "amenity": "toilets",
+        "building": "yes",
+        "drinking_water": "yes",
+        "fee": "no",
+        "toilets:disposal": "flush",
+        "_osm_type": "way",
+        "_osm_id": 311940756
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4089531,
+          39.4280885
+        ]
+      },
+      "properties": {
+        "amenity": "toilets",
+        "building": "yes",
+        "_osm_type": "way",
+        "_osm_id": 997035224
+      }
+    }
+  ]
+}

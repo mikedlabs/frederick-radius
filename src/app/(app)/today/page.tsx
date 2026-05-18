@@ -28,7 +28,8 @@ import { getFrederickHistoricPlaces } from "@/lib/integrations/mdHistoricPlaces"
 import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { isFarmersMarket } from "@/lib/farmersMarkets";
-import { Mountain, Trees, Palette, Landmark, Sprout, Bus, Waves } from "lucide-react";
+import { AMENITY_COUNT } from "@/lib/loaders/amenities";
+import { Mountain, Trees, Palette, Landmark, Sprout, Bus, Waves, MapPinned } from "lucide-react";
 
 /**
  * The live-county-data sources, consolidated into ONE "Explore
@@ -45,6 +46,7 @@ const EXPLORE_LINKS = [
   { href: "/markets", label: "Markets", desc: "Farmers markets", icon: Sprout, color: "var(--app-positive, #1E6B3A)" },
   { href: "/transit", label: "Transit", desc: "County bus routes", icon: Bus, color: "var(--app-cool)" },
   { href: "/water", label: "Rivers", desc: "Live water levels", icon: Waves, color: "var(--app-cool)" },
+  { href: "/amenities", label: "Amenities", desc: "Restrooms, Wi-Fi, charging, more", icon: MapPinned, color: "var(--app-cool)" },
 ] as const;
 
 /**
@@ -130,6 +132,7 @@ async function ExploreHubData() {
     "/markets": markets,
     "/transit": transit,
     "/water": water,
+    "/amenities": AMENITY_COUNT,
   };
   return <ExploreHub counts={counts} />;
 }

@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "name": "water_fountains",
+  "metadata": {
+    "source": "OpenStreetMap contributors, ODbL",
+    "fetched_at": "2026-05-18T12:27:23Z",
+    "feature_count": 0
+  },
+  "features": []
+}

@@ -1,0 +1,1633 @@
+{
+  "type": "FeatureCollection",
+  "name": "wifi_hotspots",
+  "metadata": {
+    "source": "OpenStreetMap contributors, ODbL",
+    "fetched_at": "2026-05-18T12:19:58Z",
+    "feature_count": 50
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4121618,
+          39.4128229
+        ]
+      },
+      "properties": {
+        "addr:floor": "G",
+        "air_conditioning": "yes",
+        "amenity": "restaurant",
+        "atm": "yes",
+        "bar": "no",
+        "brewery": "yes",
+        "check_date": "2023-10-08",
+        "delivery": "no",
+        "diet:vegan": "yes",
+        "diet:vegetarian": "yes",
+        "internet_access": "wlan",
+        "internet_access:fee": "customers",
+        "level": "0",
+        "name": "Frederick Social",
+        "opening_hours": "Mo-Tu 12:00-21:00; We-Th 12:00-22:00; Fr 12:00-23:00; Sa 11:00-23:00; Su 11:00-19:00",
+        "outdoor_seating": "yes",
+        "payment:mastercard": "yes",
+        "payment:visa": "yes",
+        "toilets": "yes",
+        "wheelchair": "yes",
+        "_osm_type": "node",
+        "_osm_id": 4017072689
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4100008,
+          39.6340542
+        ]
+      },
+      "properties": {
+        "addr:city": "Thurmont",
+        "addr:housenumber": "428",
+        "addr:postcode": "21788",
+        "addr:state": "MD",
+        "addr:street": "North Church Street",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "delivery": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-271-3270",
+        "ref": "200",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/200",
+        "_osm_type": "node",
+        "_osm_id": 7973454020
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4089,
+          39.3917474
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "5721",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Buckeystown Pike",
+        "addr:unit": "A",
+        "amenity": "fast_food",
+        "brand": "Popeyes",
+        "brand:wikidata": "Q1330910",
+        "cuisine": "chicken",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "indoor_seating": "yes",
+        "internet_access": "wlan",
+        "name": "Popeyes",
+        "official_name": "Popeyes Louisiana Kitchen",
+        "opening_hours": "Mo-Th 11:00-22:00; Fr-Sa 11:00-23:00; Su 11:00-22:00",
+        "phone": "+1 301-662-6402",
+        "takeaway": "yes",
+        "website": "https://www.popeyes.com/store-locator/store/restaurant_82403",
+        "_osm_type": "node",
+        "_osm_id": 9589840860
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3879958,
+          39.4066164
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "1300",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "East Patrick Street",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "retail",
+        "delivery": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-631-5200",
+        "ref": "249",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/249",
+        "_osm_type": "way",
+        "_osm_id": 158395098
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4111875,
+          39.6333651
+        ]
+      },
+      "properties": {
+        "addr:city": "Thurmont",
+        "addr:housenumber": "427",
+        "addr:postcode": "21788-1644",
+        "addr:state": "MD",
+        "addr:street": "North Church Street",
+        "amenity": "fast_food",
+        "brand": "Burger King",
+        "brand:wikidata": "Q177054",
+        "building": "yes",
+        "cuisine": "burger",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Burger King",
+        "opening_hours": "Mo-Th 06:00-22:00; Fr-Sa 06:00-23:00; Su 06:00-22:00",
+        "phone": "+1 301-271-1041",
+        "ref": "13265",
+        "takeaway": "yes",
+        "website": "https://www.bk.com/store-locator/store/restaurant_7744",
+        "_osm_type": "way",
+        "_osm_id": 161835930
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3489756,
+          39.3256993
+        ]
+      },
+      "properties": {
+        "addr:city": "Urbana",
+        "addr:housenumber": "3406",
+        "addr:postcode": "21704-7771",
+        "addr:state": "MD",
+        "addr:street": "Urbana Pike",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "yes",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "05:00-01:00",
+        "phone": "+1 301-874-1614",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/31463.html",
+        "_osm_type": "way",
+        "_osm_id": 162681617
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2566859,
+          39.3849641
+        ]
+      },
+      "properties": {
+        "addr:city": "New Market",
+        "addr:housenumber": "11700",
+        "addr:postcode": "21774",
+        "addr:state": "MD",
+        "addr:street": "Morning Gate Lane",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "yes",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "Mo-Sa 05:30-21:00; Su 06:00-21:00",
+        "phone": "+1 301-865-6432",
+        "ref": "Store #25046",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/25046.html",
+        "_osm_type": "way",
+        "_osm_id": 164270529
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4000897,
+          39.3827437
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "5501",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Urbana Pike",
+        "amenity": "fast_food",
+        "branch": "Frederick",
+        "brand": "Chick-fil-A",
+        "brand:wikidata": "Q491516",
+        "building": "yes",
+        "check_date": "2023-04-29",
+        "cuisine": "chicken",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "indoor_seating": "yes",
+        "internet_access": "wlan",
+        "name": "Chick-fil-A",
+        "opening_hours": "Mo-Sa 06:00-22:00; Su off",
+        "phone": "+1 301-668-5353",
+        "ref": "00721",
+        "takeaway": "yes",
+        "website": "https://www.chick-fil-a.com/locations/md/frederick",
+        "_osm_type": "way",
+        "_osm_id": 164272163
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3999988,
+          39.445734
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "7830",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "Wormans Mill Road",
+        "branch": "Frederick",
+        "brand": "Wegmans",
+        "brand:wikidata": "Q11288478",
+        "building": "yes",
+        "internet_access": "wlan",
+        "name": "Wegmans",
+        "opening_hours": "Mo-Su 06:00-00:00",
+        "phone": "+1 240-575-7300",
+        "ref": "54",
+        "shop": "supermarket",
+        "website": "https://www.wegmans.com/stores/frederick-md",
+        "_osm_type": "way",
+        "_osm_id": 165268362
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1597994,
+          39.3645708
+        ]
+      },
+      "properties": {
+        "addr:city": "Mount Airy",
+        "addr:housenumber": "400",
+        "addr:postcode": "21771",
+        "addr:state": "MD",
+        "addr:street": "Ridgeville Boulevard",
+        "amenity": "cafe",
+        "branch": "Mount Airy Shopping Center",
+        "brand": "Starbucks",
+        "brand:wikidata": "Q37158",
+        "building": "retail",
+        "cuisine": "coffee_shop",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "name": "Starbucks",
+        "official_name": "Starbucks Coffee",
+        "opening_hours": "Mo-Fr 04:30-21:00; Sa,Su 05:00-21:00",
+        "outdoor_seating": "yes",
+        "phone": "+1 301-829-6391",
+        "smoking": "no",
+        "source": "Bing",
+        "takeaway": "yes",
+        "website": "https://www.starbucks.com/store-locator/store/18180/mount-airy-shopping-center-441-e-ridgeville-blvd-mt-airy-md-217715217-us",
+        "_osm_type": "way",
+        "_osm_id": 169788713
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1591921,
+          39.3634806
+        ]
+      },
+      "properties": {
+        "addr:city": "Mount Airy",
+        "addr:housenumber": "501",
+        "addr:postcode": "21771-5251",
+        "addr:state": "MD",
+        "addr:street": "East Ridgeville Boulevard",
+        "amenity": "fast_food",
+        "brand": "Burger King",
+        "brand:wikidata": "Q177054",
+        "building": "retail",
+        "cuisine": "burger",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Burger King",
+        "opening_hours": "Mo-Fr 06:00-22:00; Sa-Su 06:30-22:00",
+        "phone": "+1 301-829-5353",
+        "ref": "11592",
+        "source": "Bing",
+        "takeaway": "yes",
+        "website": "https://www.bk.com/store-locator/store/restaurant_6646",
+        "_osm_type": "way",
+        "_osm_id": 169793353
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1638276,
+          39.3628137
+        ]
+      },
+      "properties": {
+        "addr:city": "Mount Airy",
+        "addr:housenumber": "1705",
+        "addr:postcode": "21771",
+        "addr:state": "MD",
+        "addr:street": "Ridgeside Drive",
+        "amenity": "fast_food",
+        "branch": "Ridgeside Drive",
+        "brand": "Chick-fil-A",
+        "brand:wikidata": "Q491516",
+        "building": "yes",
+        "cuisine": "chicken",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "indoor_seating": "yes",
+        "internet_access": "wlan",
+        "name": "Chick-fil-A",
+        "opening_hours": "Mo-Sa 06:00-22:00; Su off",
+        "phone": "+1 301-818-0199",
+        "ref": "04454",
+        "takeaway": "yes",
+        "website": "https://www.chick-fil-a.com/locations/md/ridgeside-drive",
+        "_osm_type": "way",
+        "_osm_id": 169924661
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4109692,
+          39.3739542
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "5203",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Buckeystown Pike",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "retail",
+        "check_date": "2023-04-29",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "05:00-25:00",
+        "opening_hours:drive_through": "24/7",
+        "phone": "+1 301-620-0339",
+        "source": "Bing",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/24606.html",
+        "_osm_type": "way",
+        "_osm_id": 170221639
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.0680091,
+          39.3499836
+        ]
+      },
+      "properties": {
+        "addr:city": "Woodbine",
+        "addr:housenumber": "702",
+        "addr:postcode": "21797",
+        "addr:state": "MD",
+        "addr:street": "Lisbon Center Drive",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "retail",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "05:00-01:00",
+        "phone": "+1 410-489-7865",
+        "ref": "Store #12463",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/12463.html",
+        "_osm_type": "way",
+        "_osm_id": 177019004
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4107304,
+          39.3790518
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "5225",
+        "addr:postcode": "21703",
+        "addr:state": "MD",
+        "addr:street": "Westview Drive",
+        "branch": "Frederick",
+        "brand": "Courtyard",
+        "brand:wikidata": "Q1053170",
+        "building": "yes",
+        "building:levels": "3",
+        "internet_access": "wlan",
+        "name": "Marriot Courtyard Frederick",
+        "official_name": "Courtyard by Marriott",
+        "opening_hours": "24/7",
+        "phone": "+1 301-631-9030",
+        "ref": "WASFD",
+        "source": "Bing",
+        "tourism": "hotel",
+        "website": "https://www.marriott.com/wasfd",
+        "_osm_type": "way",
+        "_osm_id": 178331617
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6405537,
+          39.3374934
+        ]
+      },
+      "properties": {
+        "addr:city": "Knoxville",
+        "addr:housenumber": "854",
+        "addr:postcode": "21758",
+        "addr:state": "MD",
+        "addr:street": "Jefferson Pike",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "yes",
+        "cuisine": "burger",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "24/7",
+        "opening_hours:drive_through": "24/7",
+        "outdoor_seating": "no",
+        "phone": "+1 301-834-5201",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/md/knoxville/854-jefferson-pike/12552.html",
+        "_osm_type": "way",
+        "_osm_id": 185915302
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3873864,
+          39.4064505
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "1302",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "East Patrick Street",
+        "amenity": "fast_food",
+        "brand": "Burger King",
+        "brand:wikidata": "Q177054",
+        "building": "yes",
+        "cuisine": "burger",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Burger King",
+        "opening_hours": "Mo-Fr 06:00-22:00; Sa-Su 06:30-22:00",
+        "phone": "+1 301-694-1231",
+        "ref": "12974",
+        "takeaway": "yes",
+        "website": "https://www.bk.com/store-locator/store/restaurant_7550",
+        "_osm_type": "way",
+        "_osm_id": 185918291
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6397949,
+          39.336781
+        ]
+      },
+      "properties": {
+        "addr:city": "Knoxville",
+        "addr:housenumber": "3842",
+        "addr:postcode": "21758",
+        "addr:state": "MD",
+        "addr:street": "Burkittsville Road",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "retail",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-969-0537",
+        "ref": "176",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/176",
+        "website:menu": "https://places.singleplatform.com/sheetz-371/menu",
+        "_osm_type": "way",
+        "_osm_id": 186247067
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5685608,
+          39.4988572
+        ]
+      },
+      "properties": {
+        "addr:city": "Myersville",
+        "addr:housenumber": "9620",
+        "addr:postcode": "21773",
+        "addr:state": "MD",
+        "addr:street": "Myersville Road",
+        "amenity": "fast_food",
+        "brand": "Burger King",
+        "brand:wikidata": "Q177054",
+        "building": "yes",
+        "cuisine": "burger",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Burger King",
+        "opening_hours": "Mo-Fr 06:00-22:00; Sa-Su 06:30-22:00",
+        "phone": "+1 301-293-3460",
+        "ref": "12423",
+        "takeaway": "yes",
+        "website": "https://www.bk.com/store-locator/store/restaurant_7189",
+        "_osm_type": "way",
+        "_osm_id": 186282430
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4088376,
+          39.3900388
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "7403",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Grove Road",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "retail",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "Mo-Th 05:00-22:00; Fr-Sa 05:00-23:00; Su 05:00-22:00",
+        "phone": "+1 301-694-0333",
+        "ref": "Store #5437",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/5437.html",
+        "wheelchair": "yes",
+        "_osm_type": "way",
+        "_osm_id": 200931405
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4082263,
+          39.3869501
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "5601",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "Buckeystown Pike",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "yes",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-360-5257",
+        "ref": "161",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/161",
+        "_osm_type": "way",
+        "_osm_id": 239525652
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4113783,
+          39.3701447
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "7300",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Executive Way",
+        "air_conditioning": "yes",
+        "brand": "Comfort Inn",
+        "brand:wikidata": "Q113152349",
+        "building": "yes",
+        "description": "Choice Hotels-Pet Friendly, Complimentary Breakfast",
+        "email": "sales@sukanhospitality.com",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "name": "Comfort Inn",
+        "phone": "+1 301-668-7272",
+        "ref": "MD160",
+        "rooms": "73",
+        "tourism": "hotel",
+        "website": "https://www.choicehotels.com/west-virginia/harpers-ferry/clarion-hotels",
+        "_osm_type": "way",
+        "_osm_id": 302979139
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3937387,
+          39.4462711
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "2411",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "Osprey Way",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "yes",
+        "check_date": "2023-04-28",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "05:00-23:00",
+        "opening_hours:drive_through": "Mo-Th,Su 05:00-23:00; Fr-Sa 05:00-24:00",
+        "phone": "+1 301-662-1972",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/35577.html",
+        "_osm_type": "way",
+        "_osm_id": 314011226
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4210102,
+          39.4310299
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:country": "US",
+        "addr:housenumber": "1399",
+        "addr:postcode": "21702",
+        "addr:state": "MD",
+        "addr:street": "West 7th Street",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "retail",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "24/7",
+        "phone": "+1 301-662-9044",
+        "ref": "1641",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/1641.html",
+        "_osm_type": "way",
+        "_osm_id": 319047324
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4380067,
+          39.4396904
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "2020",
+        "addr:postcode": "21702",
+        "addr:state": "MD",
+        "addr:street": "Yellow Spring Road",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:website": "https://www.mcdonalds.com/",
+        "brand:wikidata": "Q38076",
+        "building": "retail",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "Mo-Fr 05:00-23:00; Sa-Su 06:00-23:00",
+        "phone": "+1 301-682-6233",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/17101.html",
+        "_osm_type": "way",
+        "_osm_id": 328683366
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4311146,
+          39.4263189
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "1600",
+        "addr:postcode": "21702",
+        "addr:state": "MD",
+        "addr:street": "Rosemont Avenue",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "yes",
+        "delivery": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-228-2620",
+        "ref": "242",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/242",
+        "_osm_type": "way",
+        "_osm_id": 398065043
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3961298,
+          39.4446297
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "101",
+        "addr:postcode": "21701-3256",
+        "addr:state": "MD",
+        "addr:street": "Routzhan's Way",
+        "amenity": "fast_food",
+        "brand": "Burger King",
+        "brand:wikidata": "Q177054",
+        "building": "yes",
+        "cuisine": "burger",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Burger King",
+        "opening_hours": "Mo-Fr 05:30-22:00; Sa-Su 06:30-22:00",
+        "phone": "+1 240-629-3347",
+        "ref": "13071",
+        "takeaway": "yes",
+        "website": "https://www.bk.com/store-locator/store/restaurant_7615",
+        "_osm_type": "way",
+        "_osm_id": 439166891
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4301756,
+          39.407621
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "423",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "South Jefferson Street",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "yes",
+        "check_date": "2023-04-29",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "05:00-25:00",
+        "opening_hours:drive_through": "24/7",
+        "phone": "+1 301-662-2985",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/10768.html",
+        "_osm_type": "way",
+        "_osm_id": 451785314
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3843916,
+          39.4473776
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "1700 (#14)",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "Kingfisher Drive",
+        "amenity": "cafe",
+        "brand": "Starbucks",
+        "brand:wikidata": "Q37158",
+        "building": "yes",
+        "check_date": "2016-11-21",
+        "cuisine": "coffee_shop",
+        "internet_access": "wlan",
+        "name": "Starbucks",
+        "official_name": "Starbucks Coffee",
+        "phone": "+1-301-694-9001",
+        "takeaway": "yes",
+        "_osm_type": "way",
+        "_osm_id": 454977568
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4672015,
+          39.42164
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "1501",
+        "addr:postcode": "21702",
+        "addr:state": "MD",
+        "addr:street": "Garrett Drive",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "yes",
+        "check_date": "2023-04-29",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "05:00-22:00",
+        "phone": "+1 301-663-6036",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/11380.html",
+        "_osm_type": "way",
+        "_osm_id": 473673053
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.345501,
+          39.3262876
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "3363",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Urbana Pike",
+        "amenity": "fast_food",
+        "brand": "Burger King",
+        "brand:wikidata": "Q177054",
+        "building": "retail",
+        "cuisine": "burger",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Burger King",
+        "opening_hours": "Mo-Sa 06:00-24:00; Su 06:30-24:00",
+        "phone": "+1 240-341-4993",
+        "ref": "21741",
+        "takeaway": "yes",
+        "website": "https://www.bk.com/store-locator/store/restaurant_25110",
+        "_osm_type": "way",
+        "_osm_id": 555848140
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.2580165,
+          39.3856238
+        ]
+      },
+      "properties": {
+        "addr:city": "New Market",
+        "addr:housenumber": "11680",
+        "addr:postcode": "21774",
+        "addr:state": "MD",
+        "addr:street": "Old National Pike",
+        "amenity": "fast_food",
+        "brand": "Burger King",
+        "brand:wikidata": "Q177054",
+        "building": "yes",
+        "cuisine": "burger",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Burger King",
+        "opening_hours": "Mo-Th 06:00-21:30; Fr 06:00-22:00; Sa 06:30-22:00; Su 06:30-21:30",
+        "phone": "+1 301-882-4914",
+        "ref": "21130",
+        "takeaway": "yes",
+        "website": "https://www.bk.com/store-locator/store/restaurant_25109",
+        "_osm_type": "way",
+        "_osm_id": 557699540
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4409337,
+          39.4173165
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "1003",
+        "addr:postcode": "21702-3939",
+        "addr:state": "MD",
+        "addr:street": "West Patrick Street",
+        "amenity": "fast_food",
+        "brand": "Burger King",
+        "brand:wikidata": "Q177054",
+        "building": "yes",
+        "check_date": "2023-04-29",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Burger King",
+        "opening_hours": "05:30-23:00",
+        "outdoor_seating": "yes",
+        "phone": "+1 301-682-7447",
+        "ref": "1990",
+        "takeaway": "yes",
+        "website": "https://www.bk.com/store-locator/store/restaurant_1043",
+        "_osm_type": "way",
+        "_osm_id": 575367425
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4494468,
+          39.4188329
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "1275",
+        "addr:postcode": "21702",
+        "addr:state": "MD",
+        "addr:street": "West Patrick Street",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "yes",
+        "check_date": "2023-04-29",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "Mo-Th,Su 05:00-23:00; Fr-Sa 05:00-24:00",
+        "phone": "+1 240-418-3276",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/2290.html",
+        "_osm_type": "way",
+        "_osm_id": 668789373
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4063109,
+          39.3992
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "6050",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Buckeystown Pike",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "retail",
+        "delivery": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-644-2881",
+        "ref": "519",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/519",
+        "_osm_type": "way",
+        "_osm_id": 697659254
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4614511,
+          39.4201244
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "1403",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "West Patrick Street",
+        "amenity": "fast_food",
+        "brand": "Popeyes",
+        "brand:wikidata": "Q1330910",
+        "building": "yes",
+        "check_date": "2023-04-29",
+        "cuisine": "chicken",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "indoor_seating": "yes",
+        "internet_access": "wlan",
+        "name": "Popeyes",
+        "official_name": "Popeyes Louisiana Kitchen",
+        "opening_hours": "Mo-Th,Su 10:30-22:00; Fr-Sa 10:30-23:00",
+        "phone": "+1 301-620-0786",
+        "takeaway": "yes",
+        "website": "https://www.popeyes.com/store-locator/store/restaurant_83604",
+        "_osm_type": "way",
+        "_osm_id": 701175202
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3462272,
+          39.4833001
+        ]
+      },
+      "properties": {
+        "addr:city": "Walkersville",
+        "addr:housenumber": "20",
+        "addr:postcode": "21793",
+        "addr:state": "MD",
+        "addr:street": "East Frederick Street",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "yes",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "05:00-21:00",
+        "phone": "+1 301-898-3514",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/10010.html",
+        "_osm_type": "way",
+        "_osm_id": 731243508
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4153004,
+          39.4681073
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "8428",
+        "addr:postcode": "21702",
+        "addr:state": "MD",
+        "addr:street": "Opossumtown Pike",
+        "amenity": "place_of_worship",
+        "building": "church",
+        "denomination": "roman_catholic",
+        "diocese": "Baltimore",
+        "internet_access": "wlan",
+        "name": "Saint Katherine Drexel Catholic Church",
+        "phone": "+1 301-360-9581",
+        "religion": "christian",
+        "website": "https://www.saintdrexel.org/",
+        "_osm_type": "way",
+        "_osm_id": 735294125
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3497017,
+          39.3257972
+        ]
+      },
+      "properties": {
+        "addr:city": "Urbana",
+        "addr:housenumber": "3410",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Urbana Pike",
+        "addr:unit": "102",
+        "amenity": "cafe",
+        "branch": "Urbana",
+        "brand": "Starbucks",
+        "brand:wikidata": "Q37158",
+        "building": "yes",
+        "cuisine": "coffee_shop",
+        "internet_access": "wlan",
+        "name": "Starbucks",
+        "official_name": "Starbucks Coffee",
+        "opening_hours": "Mo-Th 04:30-22:00; Fr 04:30-22:30; Sa 05:30-21:30; Su 06:00-21:30",
+        "phone": "+1 301-874-6017",
+        "takeaway": "yes",
+        "website": "https://www.starbucks.com/store-locator/store/1007091/urbana-3410-urbana-pike-urbana-md-217047771-us",
+        "_osm_type": "way",
+        "_osm_id": 777561176
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.410952,
+          39.4189789
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "8",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "West 4th Street",
+        "amenity": "cafe",
+        "building": "yes",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "name": "Ibiza Cafe",
+        "outdoor_seating": "yes",
+        "website": "theibizacafe.com",
+        "_osm_type": "way",
+        "_osm_id": 780631030
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6408289,
+          39.3361667
+        ]
+      },
+      "properties": {
+        "addr:city": "Brunswick",
+        "addr:housenumber": "1501",
+        "addr:postcode": "21716",
+        "addr:state": "MD",
+        "addr:street": "Village Green Way",
+        "brand": "Holiday Inn Express & Suites",
+        "brand:wikidata": "Q5880423",
+        "building": "hotel",
+        "building:levels": "4",
+        "internet_access": "wlan",
+        "name": "Holiday Inn Express & Suites",
+        "phone": "+1 301-969-8020",
+        "rooms": "93",
+        "smoking": "no",
+        "tourism": "hotel",
+        "website": "https://ihg.com/holidayinnexpress",
+        "_osm_type": "way",
+        "_osm_id": 849974051
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1562877,
+          39.6479212
+        ]
+      },
+      "properties": {
+        "addr:city": "Taneytown",
+        "addr:country": "US",
+        "addr:housenumber": "40",
+        "addr:postcode": "21787",
+        "addr:state": "MD",
+        "addr:street": "Antrim Boulevard",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "retail",
+        "car_wash": "yes",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 410-756-6905",
+        "ref": "132",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/132",
+        "_osm_type": "way",
+        "_osm_id": 865666019
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.1344559,
+          39.5912521
+        ]
+      },
+      "properties": {
+        "addr:city": "Union Bridge",
+        "addr:country": "US",
+        "addr:housenumber": "3825",
+        "addr:postcode": "21791",
+        "addr:state": "MD",
+        "addr:street": "Bark Hill Road",
+        "amenity": "school",
+        "ele": "175",
+        "fax": "+1 410 751 3325",
+        "gnis:feature_id": "1695616",
+        "internet_access": "wlan",
+        "isced:level": "3",
+        "name": "Francis Scott Key High School",
+        "opening_hours": "Mo-Fr 07:30-14:20",
+        "operator": "Carroll County Public Schools",
+        "phone": "+1 410 751 3320",
+        "website": "https://www.carrollk12.org/schools/high/fsk",
+        "wikidata": "Q14691925",
+        "_osm_type": "way",
+        "_osm_id": 867588793
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3653865,
+          39.4645324
+        ]
+      },
+      "properties": {
+        "addr:city": "Walkersville",
+        "addr:housenumber": "8408",
+        "addr:postcode": "21793",
+        "addr:state": "MD",
+        "addr:street": "Woodsboro Pike",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "yes",
+        "car_wash": "yes",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-304-5490",
+        "ref": "210",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/210",
+        "_osm_type": "way",
+        "_osm_id": 924972404
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3873863,
+          39.4488755
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "2401",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "Monocacy Boulevard",
+        "amenity": "fast_food",
+        "branch": "Frederick North",
+        "brand": "Chick-fil-A",
+        "brand:wikidata": "Q491516",
+        "building": "yes",
+        "check_date": "2025-05-19",
+        "cuisine": "chicken",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "indoor_seating": "yes",
+        "internet_access": "wlan",
+        "name": "Chick-fil-A",
+        "opening_hours": "Mo-Sa 06:30-22:00; Su off",
+        "phone": "+1 240-529-1400",
+        "ref": "03536",
+        "takeaway": "yes",
+        "website": "https://www.chick-fil-a.com/locations/md/frederick-north",
+        "_osm_type": "way",
+        "_osm_id": 925305211
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.5673568,
+          39.5125625
+        ]
+      },
+      "properties": {
+        "addr:city": "Myersville",
+        "addr:housenumber": "8",
+        "addr:postcode": "21773",
+        "addr:state": "MD",
+        "addr:street": "Harp Place",
+        "air_conditioning": "yes",
+        "amenity": "library",
+        "building": "yes",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "name": "Myersville Community Library",
+        "operator": "Frederick County Public Libraries",
+        "operator:type": "public",
+        "phone": "+1-301-600-8350",
+        "website": "https://www.fcpl.org/branches-hours/myersville-community-library",
+        "_osm_type": "way",
+        "_osm_id": 966269518
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.4121219,
+          39.3691676
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "7301",
+        "addr:postcode": "21704",
+        "addr:state": "MD",
+        "addr:street": "Executive Way",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "retail",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-228-9905",
+        "ref": "704",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/704",
+        "_osm_type": "way",
+        "_osm_id": 1028832598
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.3530725,
+          39.3235494
+        ]
+      },
+      "properties": {
+        "addr:city": "Ijamsville",
+        "addr:housenumber": "3284",
+        "addr:postcode": "21754",
+        "addr:state": "MD",
+        "addr:street": "Bennett Creek Avenue",
+        "amenity": "fast_food",
+        "brand": "Popeyes",
+        "brand:wikidata": "Q1330910",
+        "building": "yes",
+        "cuisine": "chicken",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "indoor_seating": "yes",
+        "internet_access": "wlan",
+        "name": "Popeyes",
+        "official_name": "Popeyes Louisiana Kitchen",
+        "opening_hours": "10:00-23:00",
+        "phone": "+1 240-341-4166",
+        "takeaway": "yes",
+        "website": "https://www.popeyes.com/store-locator/store/restaurant_241599",
+        "_osm_type": "way",
+        "_osm_id": 1072728480
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.390545,
+          39.4061012
+        ]
+      },
+      "properties": {
+        "addr:city": "Frederick",
+        "addr:housenumber": "77",
+        "addr:postcode": "21701",
+        "addr:state": "MD",
+        "addr:street": "Monocacy Boulevard",
+        "amenity": "fast_food",
+        "brand": "McDonald's",
+        "brand:wikidata": "Q38076",
+        "building": "retail",
+        "cuisine": "burger",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "McDonald's",
+        "opening_hours": "05:00-23:00",
+        "phone": "+1 301-694-6155",
+        "takeaway": "yes",
+        "website": "https://www.mcdonalds.com/us/en-us/location/36761.html",
+        "_osm_type": "way",
+        "_osm_id": 1127642757
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -77.6472685,
+          39.571247
+        ]
+      },
+      "properties": {
+        "addr:city": "Boonsboro",
+        "addr:housenumber": "20723",
+        "addr:postcode": "21713",
+        "addr:state": "MD",
+        "addr:street": "National Pike",
+        "atm": "yes",
+        "brand": "Sheetz",
+        "brand:wikidata": "Q7492551",
+        "building": "yes",
+        "delivery": "yes",
+        "drive_through": "yes",
+        "internet_access": "wlan",
+        "name": "Sheetz",
+        "opening_hours": "24/7",
+        "phone": "+1 301-733-3047",
+        "ref": "209",
+        "shop": "convenience",
+        "website": "https://orders.sheetz.com/findasheetz/store/209",
+        "_osm_type": "way",
+        "_osm_id": 1188714004
+      }
+    }
+  ]
+}
