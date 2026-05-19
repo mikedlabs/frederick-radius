@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Frederick Radius",
     short_name: "Radius",
     description: "A smarter way to experience Frederick County.",
-    start_url: "/",
+    start_url: "/today",
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",
