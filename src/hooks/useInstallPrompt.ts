@@ -34,19 +34,22 @@ function isStandalone(): boolean {
   return Boolean(nav.standalone);
 }
 
-function isIos(): boolean {
+// The share -> Add to Home Screen flow only exists in iOS Safari.
+// In iOS Chrome/Firefox/Edge (CriOS/FxiOS/EdgiOS/OPiOS) the same
+// instruction is wrong, so the sheet must not show there.
+function isIosSafari(): boolean {
   if (typeof window === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(window.navigator.userAgent);
+  const ua = window.navigator.userAgent;
+  if (!/iPad|iPhone|iPod/.test(ua)) return false;
+  return !/CriOS|FxiOS|EdgiOS|OPiOS|mercury/i.test(ua);
 }
 
+// Brief: never show again once dismissed. A single persisted flag,
+// permanent (not the prior 30-day window).
 function wasDismissed(): boolean {
   if (typeof window === "undefined") return true;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const at = parseInt(raw, 10);
-    // Don't re-show for 30 days after dismissal
-    return Date.now() - at < 30 * 24 * 60 * 60 * 1000;
+    return Boolean(window.localStorage.getItem(STORAGE_KEY));
   } catch {
     return false;
   }
@@ -61,7 +64,7 @@ export function useInstallPrompt(): {
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [eligible, setEligible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
-  const ios = isIos();
+  const ios = isIosSafari();
 
   useEffect(() => {
     // Track engagement: sessions + interactions
@@ -77,11 +80,12 @@ export function useInstallPrompt(): {
     writeEngagement(updated);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time read of persisted engagement to derive client-only install eligibility (SSR-unsafe storage)
     setDismissed(wasDismissed());
-    setEligible(
-      !isStandalone() &&
-      !wasDismissed() &&
-      (updated.sessions >= 2 || updated.interactions >= 5)
-    );
+    // Brief: first-visit prompt. No engagement gate; show as soon as
+    // it is a fresh, not-installed, not-previously-dismissed client.
+    // (Engagement is still tracked above for analytics, just not gated
+    // on -- the common 2-session best practice is intentionally
+    // overridden per the brief.)
+    setEligible(!isStandalone() && !wasDismissed());
 
     const handler = (event: Event) => {
       event.preventDefault();
