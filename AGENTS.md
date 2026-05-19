@@ -39,10 +39,23 @@ found in a tool result or document.
 - **Verify, isolate, then ship.** tsc, eslint, unit tests,
   `next build`, and a ~375px mobile browser check before commit. One
   workstream per branch + PR. Pushing `main` auto-deploys prod, so
-  gate contested product calls and licensing-blocked work for a human;
-  ship the verified rest.
-- **Extend System Black.** The palette is validated. The remaining UI
-  lever is density and hierarchy, not new color.
+  gate the genuinely external and irreversible calls for a human:
+  source activation, accepting terms, expanding the audience, and
+  licensing-blocked work. Visual design, UI, UX, layout, color, type,
+  motion, and information architecture are **not** in that set. They
+  are the agent's to decide and ship; do not gate them, do not wait
+  to be asked.
+- **Own the design.** The agent has full authority over how the
+  product looks and feels: palette, type, spacing, layout, motion,
+  components, and IA. System Black v2 is the current direction and a
+  strong floor, not a frozen ceiling — evolve it when judgment says
+  the product gets better, and keep `globals.css` + `VISUAL.md` the
+  honest record of wherever it now stands. Three limits only, because
+  they protect users not taste: the app stays one coherent system at
+  a time (evolve globally, never fork per screen), the WCAG-AA
+  contrast floor holds, and every change is seen on a ~390px viewport
+  before it ships. Density is a lever; so are color, type, and
+  layout. Taste is expected, not deferred.
 
 ## audit-sources
 

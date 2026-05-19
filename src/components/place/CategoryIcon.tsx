@@ -1,5 +1,6 @@
 import {
   Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building, Church,
+  Building2,
   Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart, HeartPulse, Hotel,
   ImageIcon, Lamp, Landmark, Library, Mountain, Music, Palette, ParkingCircle,
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,
@@ -20,6 +21,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
  */
 const MAP: Record<string, LucideIcon> = {
   Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building, Church,
+  Building2,
   Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart, HeartPulse, Hotel,
   ImageIcon, Lamp, Landmark, Library, Mountain, Music, Palette, ParkingCircle,
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,

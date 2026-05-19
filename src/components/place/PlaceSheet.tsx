@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
 import { ExternalLink, Phone, Globe, Navigation, X, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import { placeActions, type PlaceAction } from "@/lib/place-actions";
+import { placeBlurb } from "@/lib/place-blurb";
 import Link from "next/link";
 import { haptic } from "@/lib/haptics";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import CategoryIcon from "./CategoryIcon";
 import OpenClosedDot from "./OpenClosedDot";
 import GoogleHours from "./GoogleHours";
 import SaveButton from "@/components/saved/SaveButton";
@@ -170,21 +172,9 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
 
       {/* Scrollable content */}
       <div className="overflow-y-auto px-5 pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)] pt-2">
-        {/* Hero photo — the real place, not a category gradient */}
-        {heroUrl && (
-          <div
-            className="-mt-1 mb-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={heroUrl}
-              alt={place.name}
-              className="aspect-[16/9] w-full object-cover"
-              loading="eager"
-            />
-          </div>
-        )}
+        {/* Hero — the real place when we have it, else the composed
+            category identity block (VISUAL.md §4: never a broken img). */}
+        <SheetHero src={heroUrl} name={place.name} category={place.category} />
 
         {/* Top — category pill, name, blurb */}
         <header className="flex items-start gap-3">
@@ -333,24 +323,22 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
           </div>
         )}
 
-        {/* Blurb */}
-        <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {place.short_blurb}
-        </p>
+        {/* Blurb — gated: a STYLE.md-clean description, else one true
+            composed sentence, never scraped fragments. */}
+        {(() => {
+          const summary = placeBlurb(place);
+          return summary ? (
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              {summary}
+            </p>
+          ) : null;
+        })()}
 
         {/* Photo strip — more of what the place actually looks like */}
         {photos.length > 1 && (
           <div className="shelf-rail -mx-1 mt-4 gap-2 px-1 pb-1">
             {photos.slice(1, 8).map((u, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={u}
-                alt={`${place.name} photo ${i + 2}`}
-                loading="lazy"
-                className="h-24 w-32 shrink-0 rounded-[var(--app-radius-md)] border object-cover"
-                style={{ borderColor: "var(--app-border)" }}
-              />
+              <StripImg key={i} src={u} alt={`${place.name} photo ${i + 2}`} />
             ))}
           </div>
         )}
@@ -387,6 +375,73 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * The sheet hero. A real photo when it loads; on failure or absence,
+ * the same composed category identity block the cards use, at the
+ * sheet's 16/9. Never a broken-image glyph. (VISUAL.md §4.)
+ */
+function SheetHero({
+  src,
+  name,
+  category,
+}: {
+  src?: string;
+  name: string;
+  category: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const color = CATEGORY_BY_SLUG[category]?.color ?? "var(--app-brand)";
+
+  if (!src || failed) {
+    return (
+      <div
+        aria-hidden
+        className="-mt-1 mb-3 grid aspect-[16/9] w-full place-items-center overflow-hidden rounded-[var(--app-radius-lg)]"
+        style={{
+          background: `radial-gradient(120% 120% at 30% 20%, ${color}2e, ${color}0a 70%)`,
+          color,
+        }}
+      >
+        <CategoryIcon slug={category} strokeWidth={1.4} className="h-16 w-16 opacity-90" style={{ color }} />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="-mt-1 mb-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
+      style={{ borderColor: "var(--app-border)" }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote place photo; plain img keeps the photo-proxy key server-side */}
+      <img
+        src={src}
+        alt={name}
+        className="aspect-[16/9] w-full object-cover"
+        loading="eager"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
+
+/** A photo-strip thumb that removes itself on load failure rather
+ *  than leaving a broken-image tile in the rail. */
+function StripImg({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- proxied/remote place photo; plain img keeps the photo-proxy key server-side
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="h-24 w-32 shrink-0 rounded-[var(--app-radius-md)] border object-cover"
+      style={{ borderColor: "var(--app-border)" }}
+    />
   );
 }
 

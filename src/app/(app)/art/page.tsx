@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { MapPin, User, Calendar } from "lucide-react";
 import { getFrederickArt, type ArtPiece } from "@/lib/integrations/fcArtTour";
 import PlacePhoto from "@/components/place/PlacePhoto";
+import CategoryIcon from "@/components/place/CategoryIcon";
 
 export const metadata: Metadata = {
   title: "Public art tour",
@@ -33,6 +34,7 @@ function ArtCard({ a }: { a: ArtPiece }) {
               alt={a.name}
               glyph={ART_GLYPH}
               color={ART_HEX}
+              slug="public-art"
               sizes="(min-width: 640px) 50vw, 100vw"
               rounded="0"
             />
@@ -41,11 +43,11 @@ function ArtCard({ a }: { a: ArtPiece }) {
               aria-hidden
               className="flex h-full w-full items-center justify-center"
               style={{
-                background: `linear-gradient(135deg, ${ART_HEX}26 0%, ${ART_HEX}10 100%)`,
+                background: `radial-gradient(120% 120% at 30% 20%, ${ART_HEX}2e, ${ART_HEX}0a 70%)`,
                 color: ART_HEX,
               }}
             >
-              <span className="text-[28px] leading-none">{ART_GLYPH}</span>
+              <CategoryIcon slug="public-art" strokeWidth={1.5} className="h-12 w-12 opacity-90" style={{ color: ART_HEX }} />
             </div>
           )}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />

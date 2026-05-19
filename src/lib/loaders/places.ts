@@ -1,5 +1,5 @@
 import { PLACES, type Place } from "@/data/places";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { CATEGORY_BY_SLUG, categorySubtree } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, type LngLat } from "@/lib/geo";
@@ -492,8 +492,14 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
     .map((p) => decoratePlace(p, ctx.origin, now));
 
   if (ctx.category) {
+    // Expand a parent ("food") to its whole subtree so a top-level
+    // category page returns everything under it, not just rows
+    // literally tagged with the parent slug.
+    const slugs = new Set(categorySubtree(ctx.category));
     results = results.filter(
-      (p) => p.category === ctx.category || (p.subcategories ?? []).includes(ctx.category!)
+      (p) =>
+        slugs.has(p.category) ||
+        (p.subcategories ?? []).some((s) => slugs.has(s)),
     );
   }
   if (ctx.municipality) {

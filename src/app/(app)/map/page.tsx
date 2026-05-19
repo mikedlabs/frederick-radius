@@ -67,14 +67,14 @@ export default async function MapPage() {
   return (
     <div className="space-y-3">
       <header className="space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+        <p className="eyebrow">
           {OPEN_PLACES.length.toLocaleString()} curated places · plus OpenStreetMap businesses
         </p>
-        <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
           Explore the map
         </h1>
-        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          Pan and zoom to anywhere in the county — everything in view lists below. Filter by category up top.
+        <p className="text-pretty text-xs" style={{ color: "var(--app-ink-3)" }}>
+          Pan and zoom anywhere in the county. Everything in view is listed below.
         </p>
       </header>
 

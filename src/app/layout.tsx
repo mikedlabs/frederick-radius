@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, IBM_Plex_Serif, IBM_Plex_Mono } from "next/font/google";
+import { Inter, Fraunces, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { cn } from "@/lib/utils";
@@ -12,10 +12,21 @@ const inter = Inter({
   display: "swap",
 });
 
-const plexSerif = IBM_Plex_Serif({
+// The editorial display face. Fraunces is a variable old-style serif
+// with an optical-size axis: at headline sizes it gets characterful
+// and confident, at small sizes it stays readable. This is the single
+// biggest lever in the new "Field Guide" identity. The CSS var name is
+// kept as --font-plex-serif so every existing serif consumer (display
+// classes, .font-serif, map popups) inherits the new face with no
+// churn — rename nothing, revalue everything.
+const display = Fraunces({
   variable: "--font-plex-serif",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  // opsz drives the optical-size character (the reason to pick
+  // Fraunces); SOFT warms the terminals a touch. Kept tasteful — WONK
+  // is intentionally left at default so it never reads gimmicky.
+  axes: ["opsz", "SOFT"],
   display: "swap",
 });
 
@@ -76,9 +87,9 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  // System Black brand: the browser chrome / status bar matches the
-  // app's dark identity in both schemes (validated premium direction).
-  themeColor: "#0A0A0A",
+  // Field Guide identity: browser chrome / status bar matches the
+  // warm editorial ink so the app frame reads as one piece.
+  themeColor: "#211C18",
 };
 
 export default function RootLayout({
@@ -91,7 +102,7 @@ export default function RootLayout({
       <body
         className={cn(
           inter.variable,
-          plexSerif.variable,
+          display.variable,
           plexMono.variable,
           "antialiased min-h-screen selection:bg-[color:var(--app-brand)] selection:text-white",
         )}

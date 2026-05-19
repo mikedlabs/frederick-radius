@@ -7,15 +7,9 @@ import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places"
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import { CATEGORIES, TOP_CATEGORIES } from "@/data/categories";
+import CategoryIcon from "@/components/place/CategoryIcon";
 
 export const revalidate = 600;
-
-// Friendly glyph per top category — same visual vocabulary as the
-// place cards, so a town reads as pictures + color, not a list.
-const TOP_GLYPH: Record<string, string> = {
-  food: "🍴", outdoors: "🌲", arts: "🎭", shopping: "🛍", wellness: "💆",
-  family: "👨‍👩‍👧", civic: "🏛", services: "🛠", lodging: "🏨", worship: "⛪",
-};
 
 export async function generateStaticParams() {
   return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
@@ -120,11 +114,11 @@ export default async function MunicipalityPage(
                 }}
               >
                 <span
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[20px]"
-                  style={{ background: `${c.color}26` }}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+                  style={{ background: `color-mix(in srgb, ${c.color} 16%, transparent)`, color: c.color }}
                   aria-hidden
                 >
-                  {TOP_GLYPH[c.slug] ?? "📍"}
+                  <CategoryIcon slug={c.slug} strokeWidth={1.9} className="h-[18px] w-[18px]" style={{ color: c.color }} />
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>

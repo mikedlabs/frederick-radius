@@ -96,6 +96,7 @@ export default function PlaceCard({
               alt={photo?.alt ?? place.name}
               glyph={glyph}
               color={color}
+              slug={place.category}
               sizes="(min-width: 640px) 50vw, 100vw"
               className="transition-transform duration-500 group-hover:scale-105"
               rounded="0"
@@ -113,7 +114,8 @@ export default function PlaceCard({
                 )}
               </div>
               <p className="mt-0.5 truncate text-xs opacity-90">
-                {cat?.name ?? place.category} · {place.short_blurb}
+                {cat?.name ?? place.category}
+                {kf ? ` · ${kf}` : ""}
               </p>
             </div>
             <div className="absolute right-2 top-2 rounded-full bg-white/85 px-1.5 py-0.5 backdrop-blur">
@@ -147,6 +149,7 @@ export default function PlaceCard({
                   alt={photo?.alt ?? place.name}
                   glyph={glyph}
                   color={color}
+                  slug={place.category}
                   sizes="244px"
                   className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.06]"
                   rounded="0"
@@ -173,7 +176,7 @@ export default function PlaceCard({
           </div>
           <div className="space-y-1 p-3.5">
             <h3
-              className="truncate text-[15px] font-semibold tracking-tight"
+              className="truncate font-serif text-[16px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               {place.name}
@@ -226,6 +229,7 @@ export default function PlaceCard({
                   alt={photo?.alt ?? place.name}
                   glyph={glyph}
                   color={color}
+                  slug={place.category}
                   sizes="50vw"
                   className="transition-transform duration-500 ease-out group-hover:scale-105"
                   rounded="0"
@@ -247,7 +251,7 @@ export default function PlaceCard({
           </div>
           <div className="space-y-0.5 px-2.5 py-2">
             <h3
-              className="truncate text-[13.5px] font-semibold tracking-tight"
+              className="truncate font-serif text-[14.5px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               {place.name}
@@ -286,6 +290,7 @@ export default function PlaceCard({
             alt={photo?.alt ?? place.name}
             glyph={glyph}
             color={color}
+            slug={place.category}
             sizes="64px"
           />
         </div>
@@ -304,7 +309,7 @@ export default function PlaceCard({
             type="button"
             onClick={openDetail}
             aria-label={`View ${place.name} details`}
-            className="truncate text-left text-[15px] font-semibold tracking-tight outline-none focus-visible:underline"
+            className="truncate text-left font-serif text-[16px] font-semibold tracking-tight outline-none focus-visible:underline"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />

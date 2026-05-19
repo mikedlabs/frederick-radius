@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Disc, Sun, Map, Calendar, Route, Bookmark } from "lucide-react";
+import { Compass, Sun, Map, Calendar, Bookmark } from "lucide-react";
 
-// Primary destinations. Per the 2026-05-17 owner decision the app
-// opens on Today (the daily landing — "/" redirects there); Radius is
-// its own destination at /radius. Search stays a top-bar action.
+// Primary destinations. Five tabs, not six: six was cramped at 390px
+// and exposed internal tools (Radius, Plan) as top-level destinations
+// while the county's actual depth (towns, categories, guides, civic)
+// had no entry at all. Explore is now that front door; Radius stays
+// the Today primary action and lives under Explore > Tools with Plan.
+// Saved moved out of the top bar so it is not duplicated. Search is a
+// top-bar action.
 const TABS = [
   { href: "/today", label: "Today", icon: Sun },
-  { href: "/radius", label: "Radius", icon: Disc },
+  { href: "/explore", label: "Explore", icon: Compass },
   { href: "/map", label: "Map", icon: Map },
   { href: "/events", label: "Events", icon: Calendar },
-  { href: "/plan", label: "Plan", icon: Route },
   { href: "/saved", label: "Saved", icon: Bookmark },
 ] as const;
 
@@ -23,7 +26,7 @@ export default function BottomNav() {
       aria-label="Primary"
       className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]/85 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="mx-auto grid max-w-screen-md grid-cols-6">
+      <ul className="mx-auto grid max-w-screen-md grid-cols-5">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href || pathname.startsWith(href + "/");

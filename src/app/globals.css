@@ -33,41 +33,45 @@
    * APP (warm civic) — Frederick brick + Catoctin green.
    * Used by /app/* routes. Daily-utility palette: paper, ink, stone.
    * ───────────────────────────────────────────────────── */
-  --app-bg: #FAFAF7;
-  --app-bg-elevated: #FFFFFF;
-  --app-bg-sunken: #F2F1EC;
-  --app-border: #E5E3DD;
-  --app-border-strong: rgba(26, 26, 26, 0.07);
+  /* ── "Field Guide" v3 — warm editorial almanac paper. Token NAMES
+   *    are unchanged from v2 on purpose: revaluing reskins all 100+
+   *    token-driven surfaces coherently with zero per-screen forks. ── */
+  --app-bg: #F7F4EC;             /* warm almanac paper */
+  --app-bg-elevated: #FFFFFF;    /* pure white cards lift off the paper */
+  --app-bg-sunken: #EEEADD;
+  --app-border: #E3DDCD;         /* warm hairline */
+  --app-border-strong: rgba(33, 28, 24, 0.10);
 
-  --app-ink: #1A1A1A;
-  --app-ink-2: #4A4A48;
-  --app-ink-3: #6A6964; /* WCAG AA: ≥4.5:1 on bg/elevated/sunken (was #7A7975 = 3.85–4.36, sub-AA for normal text) */
-  --app-ink-inverse: #FAFAF7;
+  --app-ink: #211C18;            /* warm near-black */
+  --app-ink-2: #4D453B;          /* warm secondary */
+  --app-ink-3: #685F50; /* warm meta — WCAG AA ≥4.5:1 on bg / elevated / sunken (verified) */
+  --app-ink-inverse: #F7F4EC;
 
-  --app-brand: #C4451C;          /* Frederick brick — used sparingly: brand chrome, primary CTA */
-  --app-brand-2: #1E3A2F;        /* Catoctin green */
-  --app-accent: #D9A441;         /* Harvest gold */
-  --app-cool: #2A5D8F;           /* Cool civic blue — used for: civic, transit, info, verified, save */
-  --app-cool-2: #4A7CA8;         /* Lighter cool, for hovers */
+  --app-brand: #A93A1E;          /* deep Frederick brick — brand chrome + the one primary CTA; white-on passes AA */
+  --app-brand-2: #21402F;        /* Catoctin green */
+  --app-accent: #BE862A;         /* harvest gold — accent only, deeper than v2 */
+  --app-cool: #2C5C86;           /* civic blue — civic, transit, info, verified, save */
+  --app-cool-2: #4C7CA6;         /* Lighter cool, for hovers */
 
   --app-positive: #1E6B3A;
-  --app-warning: #B26B00;
-  --app-danger: #A02929;
-  --app-info: #2A5D8F;
+  --app-warning: #A8631A;
+  --app-danger: #9E2B2B;
+  --app-info: #2C5C86;
 
-  --app-radius-sm: 6px;
-  --app-radius-md: 12px;
-  --app-radius-lg: 20px;
-  --app-radius-xl: 28px;
+  /* Sharper, more "set" radii — editorial, not bubbly. */
+  --app-radius-sm: 5px;
+  --app-radius-md: 9px;
+  --app-radius-lg: 14px;
+  --app-radius-xl: 20px;
 
-  --app-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --app-dur-fast: 160ms;
-  --app-dur-med: 240ms;
+  --app-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --app-dur-fast: 150ms;
+  --app-dur-med: 230ms;
   --app-dur-slow: 420ms;
 
-  --app-shadow-1: 0 1px 2px rgba(20, 20, 18, 0.06);
-  --app-shadow-2: 0 4px 12px rgba(20, 20, 18, 0.08);
-  --app-shadow-3: 0 12px 32px rgba(20, 20, 18, 0.12);
+  --app-shadow-1: 0 1px 2px rgba(33, 28, 24, 0.06);
+  --app-shadow-2: 0 4px 14px rgba(33, 28, 24, 0.08);
+  --app-shadow-3: 0 14px 36px rgba(33, 28, 24, 0.13);
 
   /* ─────────────────────────────────────────────────────
    * VISUAL SYSTEM v2 — tactile depth.
@@ -77,34 +81,35 @@
    * consumers; primitives use the --app-elev-* scale.
    * ───────────────────────────────────────────────────── */
   --app-elev-1:
-    0 1px 1.5px rgba(26, 26, 26, 0.05),
-    0 1px 2px rgba(26, 26, 26, 0.05);
+    0 1px 1.5px rgba(33, 28, 24, 0.05),
+    0 1px 2px rgba(33, 28, 24, 0.05);
   --app-elev-2:
-    0 1px 2px rgba(26, 26, 26, 0.05),
-    0 4px 10px -2px rgba(26, 26, 26, 0.08);
+    0 1px 2px rgba(33, 28, 24, 0.05),
+    0 5px 12px -2px rgba(33, 28, 24, 0.09);
   --app-elev-3:
-    0 2px 4px rgba(26, 26, 26, 0.05),
-    0 12px 24px -6px rgba(26, 26, 26, 0.12);
+    0 2px 4px rgba(33, 28, 24, 0.06),
+    0 14px 28px -6px rgba(33, 28, 24, 0.14);
   --app-elev-4:
-    0 4px 8px rgba(26, 26, 26, 0.06),
-    0 24px 48px -12px rgba(196, 69, 28, 0.16); /* brand-tinted ambient */
-  /* The "made" look: a 1px top inner highlight + crisp inner edge
+    0 4px 8px rgba(33, 28, 24, 0.07),
+    0 28px 56px -12px rgba(169, 58, 30, 0.18); /* brand-tinted ambient */
+  /* The "made" look: a hairline top highlight + crisp inner edge
    * (reads sharper than a 1px border on a tinted surface). */
-  --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.06);
+  --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --app-edge: inset 0 0 0 1px rgba(33, 28, 24, 0.07);
   /* Gentle overshoot for press/lift physics. */
   --app-ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --app-bg: #141413;
-    --app-bg-elevated: #1C1B1A;
-    --app-bg-sunken: #0D0D0C;
-    --app-border: #2A2A28;
-    --app-ink: #F4F2EE;
-    --app-ink-2: #BFBDB7;
-    --app-ink-3: #8A8884;
+    /* Warm "night almanac" — the same paper identity after dark. */
+    --app-bg: #17150F;
+    --app-bg-elevated: #211E16;
+    --app-bg-sunken: #100E09;
+    --app-border: #322D22;
+    --app-ink: #F3EFE3;
+    --app-ink-2: #C3BCAB;
+    --app-ink-3: #938A76;
     /* Depth reads via darker ambient + a faint white top hairline. */
     --app-elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
     --app-elev-2: 0 2px 6px rgba(0, 0, 0, 0.45);
@@ -151,6 +156,23 @@ html, body {
 body {
   background: var(--app-bg);
   color: var(--app-ink);
+  position: relative;
+}
+/* Paper grain — a barely-there fixed tooth so the warm paper reads as
+ * a made surface, not a flat fill. Very low opacity, pointer-inert,
+ * GPU-cheap (one tiled SVG). The signature "almanac" texture. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.45;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+body > * { position: relative; z-index: 1; }
+@media (prefers-color-scheme: dark) {
+  body::before { opacity: 0.6; mix-blend-mode: screen; }
 }
 
 /* Skip-link visibility */
@@ -475,28 +497,48 @@ body {
  * Display tier (serif, fluid clamp, tight optical tracking,
  * balanced wrapping) so headlines read "set", not defaulted.
  * ───────────────────────────────────────────────────── */
+/* Editorial display tier — Fraunces with optical sizing on, so the
+ * big sizes get the characterful old-style cut and small sizes stay
+ * readable. SOFT warms the terminals. The "Field Guide" voice. */
 .display-1 {
   font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 40;
   font-weight: 600;
-  font-size: clamp(2rem, 1.2rem + 4vw, 3.5rem);
-  line-height: 1.04;
-  letter-spacing: -0.02em;
+  font-size: clamp(2.35rem, 1.35rem + 4.7vw, 4rem);
+  line-height: 1.0;
+  letter-spacing: -0.022em;
   text-wrap: balance;
 }
 .display-2 {
   font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-variation-settings: "SOFT" 40;
   font-weight: 600;
-  font-size: clamp(1.5rem, 1.05rem + 2.2vw, 2.25rem);
-  line-height: 1.1;
-  letter-spacing: -0.015em;
+  font-size: clamp(1.6rem, 1.05rem + 2.5vw, 2.5rem);
+  line-height: 1.07;
+  letter-spacing: -0.018em;
   text-wrap: balance;
 }
+/* Structural label — the almanac kicker. Slightly wider tracking and
+ * a hairline weight so it reads as wayfinding, not a heading. */
 .eyebrow {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.165em;
   text-transform: uppercase;
   color: var(--app-ink-3);
+}
+/* Editorial hairline — the recurring structural rule. */
+.rule {
+  border: 0;
+  border-top: 1px solid var(--app-border);
+}
+/* Tabular instrument readout — times, distances, counts. */
+.readout {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 .text-balance { text-wrap: balance; }
 .text-pretty { text-wrap: pretty; }

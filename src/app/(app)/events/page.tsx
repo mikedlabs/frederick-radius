@@ -106,16 +106,21 @@ export default async function EventsIndexPage({
             Events
           </h1>
           <p className="mt-0.5 text-[13px] text-pretty" style={{ color: "var(--app-ink-3)" }}>
-            What&apos;s on across Frederick County — now through the season.
+            What&apos;s on across Frederick County, now through the season.
           </p>
         </div>
+        {/* A quiet utility, not the page's primary action. Browsing
+            (filters + List / Agenda / Map below) is primary; the
+            month grid is a secondary route, so it reads as a chip and
+            never stretches to a full-width brick in the flex column. */}
         <Button
           href="/events/calendar"
           size="sm"
-          className="shrink-0 rounded-full"
+          variant="secondary"
+          className="shrink-0 self-start rounded-full sm:self-auto"
           iconLeft={<CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
         >
-          Calendar
+          Month grid
         </Button>
       </header>
 

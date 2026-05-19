@@ -128,6 +128,18 @@ export function knownFor(p: PlaceLike): string | null {
   if (/^\d+\s+\S+/.test(b)) return null;
   // "Name · 123 Main St" boilerplate (no real sentence).
   if (/·\s*\d+\s+\S/.test(b) && b.split(/\s+/).length < 9) return null;
+  // Synthetic location filler: "Coffee in Frederick", "Restaurant in
+  // Brunswick", "Spanish / Tapas in Middletown". A few words ending in
+  // "in <Place>" with no real detail is not a description. It reads as
+  // redundant next to the category. Honest beats padded → drop it.
+  {
+    const words = b.replace(/\.\s*$/, "").split(/\s+/);
+    const endsInPlace = /\bin\s+[A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+){0,2}\.?\s*$/.test(b);
+    const beforeIn = b.split(/\bin\s+/i)[0]?.trim() ?? "";
+    if (endsInPlace && words.length <= 6 && beforeIn.split(/\s+/).filter(Boolean).length <= 3) {
+      return null;
+    }
+  }
   if (b.length < 16) return null;
   return b;
 }

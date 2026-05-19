@@ -9,14 +9,14 @@ export type Category = {
 };
 
 export const CATEGORIES: Category[] = [
-  { slug: "food", name: "Food & Drink", icon: "Utensils", color: "#C4451C", display_order: 10, blurb: "Restaurants, cafes, bars, breweries — all open-now aware." },
+  { slug: "food", name: "Food & Drink", icon: "Utensils", color: "#C4451C", display_order: 10, blurb: "Restaurants, cafes, bars, and breweries, all open-now aware." },
   { slug: "restaurant", name: "Restaurants", parent: "food", icon: "UtensilsCrossed", color: "#C4451C", display_order: 11, blurb: "Sit-down restaurants from quick to refined." },
   { slug: "coffee", name: "Coffee", parent: "food", icon: "Coffee", color: "#8B5A2B", display_order: 12, blurb: "Cafes, roasters, third-wave spots, and quick-stop shops." },
   { slug: "bar", name: "Bars", parent: "food", icon: "Wine", color: "#7E1F1F", display_order: 13, blurb: "Cocktail bars, pubs, dives, and tap rooms." },
   { slug: "brewery", name: "Breweries", parent: "food", icon: "Beer", color: "#D9A441", display_order: 14, blurb: "Independent local brewers, tap rooms, and beer gardens." },
   { slug: "bakery", name: "Bakeries", parent: "food", icon: "Cookie", color: "#B26B00", display_order: 15, blurb: "Pastry, bread, and the morning rituals worth the line." },
   { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#C4451C", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
-  { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#C4451C", display_order: 17, blurb: "Frederick's food trucks rotate weekly — here's where they reliably park, plus the festivals built around them." },
+  { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#C4451C", display_order: 17, blurb: "Frederick's food trucks rotate weekly. Here's where they reliably park, plus the festivals built around them." },
 
   { slug: "outdoors", name: "Parks & Trails", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, playgrounds, water, and views." },
   { slug: "park", name: "Parks", parent: "outdoors", icon: "Trees", color: "#1E6B3A", display_order: 21, blurb: "Public parks across all 12 municipalities and the county." },
@@ -33,7 +33,7 @@ export const CATEGORIES: Category[] = [
   { slug: "family", name: "Family", icon: "Baby", color: "#D9A441", display_order: 40, blurb: "Kid-friendly places, family-rated events, indoor rainy-day picks." },
   { slug: "library", name: "Libraries", parent: "family", icon: "Library", color: "#2A5D8F", display_order: 41, blurb: "County branches, story times, free wifi, and community rooms." },
 
-  { slug: "sports", name: "Sports", icon: "Activity", color: "#0F8A5F", display_order: 45, blurb: "Games to go see — Frederick Keys, Hood Blazers, and local league play." },
+  { slug: "sports", name: "Sports", icon: "Activity", color: "#0F8A5F", display_order: 45, blurb: "Games to go see: Frederick Keys, Hood Blazers, and local league play." },
 
   { slug: "shopping", name: "Shopping", icon: "ShoppingBag", color: "#B26B00", display_order: 50, blurb: "Boutique, antique, and Main Street commerce." },
   { slug: "antiques", name: "Antiques", parent: "shopping", icon: "Lamp", color: "#8B5A2B", display_order: 51, blurb: "Twelve blocks of New Market and beyond." },
@@ -59,13 +59,13 @@ export const CATEGORIES: Category[] = [
   { slug: "parking", name: "Parking", icon: "ParkingCircle", color: "#4A4A48", display_order: 96, blurb: "Garages, lots, and street parking guidance." },
 
   // Public-infrastructure amenities (mapped from OpenStreetMap tags; stable)
-  { slug: "amenities", name: "Amenities", icon: "PinCircle", color: "#2A5D8F", display_order: 100, blurb: "Restrooms, water, dog stations, benches, picnic, bike parking — out in public." },
+  { slug: "amenities", name: "Amenities", icon: "PinCircle", color: "#2A5D8F", display_order: 100, blurb: "Restrooms, water, dog stations, benches, picnic spots, and bike parking, out in public." },
   { slug: "restroom", name: "Public restrooms", parent: "amenities", icon: "DoorOpen", color: "#2A5D8F", display_order: 101, blurb: "Public restrooms in parks, libraries, and downtown." },
   { slug: "water", name: "Drinking water", parent: "amenities", icon: "Droplets", color: "#2A5D8F", display_order: 102, blurb: "Public drinking fountains and water bottle refill points." },
   { slug: "trash", name: "Trash receptacles", parent: "amenities", icon: "Trash2", color: "#4A4A48", display_order: 103, blurb: "Public trash cans (we map them where OSM has them tagged)." },
   { slug: "recycling", name: "Recycling drop-offs", parent: "amenities", icon: "Recycle", color: "#1E6B3A", display_order: 104, blurb: "Glass, plastic, paper, and yard-waste drop-offs." },
   { slug: "dog-waste", name: "Dog waste stations", parent: "amenities", icon: "PawPrint", color: "#1E6B3A", display_order: 105, blurb: "Dog-bag dispensers and waste bins." },
-  { slug: "wifi", name: "Public WiFi", parent: "amenities", icon: "Wifi", color: "#2A5D8F", display_order: 106, blurb: "Free public internet — libraries, parks, and spots that publish open WiFi." },
+  { slug: "wifi", name: "Public WiFi", parent: "amenities", icon: "Wifi", color: "#2A5D8F", display_order: 106, blurb: "Free public internet at libraries, parks, and spots that publish open WiFi." },
   { slug: "bench", name: "Benches", parent: "amenities", icon: "Armchair", color: "#7A7975", display_order: 106, blurb: "Public seating along trails and in parks." },
   { slug: "picnic", name: "Picnic areas", parent: "amenities", icon: "Utensils", color: "#1E6B3A", display_order: 107, blurb: "Picnic tables, shelters, and grilling spots." },
   { slug: "bike-parking", name: "Bike parking", parent: "amenities", icon: "Bike", color: "#2A5D8F", display_order: 108, blurb: "Bike racks and corrals." },
@@ -79,3 +79,22 @@ export const CATEGORY_BY_SLUG = Object.fromEntries(
 ) as Record<string, Category>;
 
 export const TOP_CATEGORIES = CATEGORIES.filter((c) => !c.parent);
+
+const CHILDREN_BY_PARENT = CATEGORIES.reduce<Record<string, string[]>>(
+  (m, c) => {
+    if (c.parent) (m[c.parent] ??= []).push(c.slug);
+    return m;
+  },
+  {},
+);
+
+/**
+ * A category slug plus all of its direct children. The taxonomy is a
+ * flat two levels (top → child), so one level of expansion covers it.
+ * A parent page ("Food & Drink") must return its whole subtree, not
+ * only rows literally tagged with the parent slug, or most of the
+ * dataset is unreachable by browse.
+ */
+export function categorySubtree(slug: string): string[] {
+  return [slug, ...(CHILDREN_BY_PARENT[slug] ?? [])];
+}

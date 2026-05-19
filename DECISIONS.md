@@ -2,6 +2,122 @@
 
 Structural decisions and reasoning. One entry per decision. Newest first.
 
+## 2026-05-19: Field Guide v3 — full design-language rebuild (DONE, owner directive)
+
+Directive. The owner asked for a new design, look, UI, UX, fonts, and
+style to make this a world-class, one-of-a-kind experience, every page,
+without it being messy.
+
+Method, and why it is not messy. The redesign was done at the system
+layer, not page by page: fonts, then the token set (color, type,
+space, radius, elevation, motion), then the shared primitives. Token
+names were kept identical and only their values changed, so a single
+coherent new language cascaded to 100+ token-driven surfaces at once
+with zero per-screen forks. This is the only way to redesign "every
+page" and keep the one-coherent-system guardrail.
+
+What changed. (1) Type: IBM Plex Serif is replaced by **Fraunces**, an
+optical-size editorial serif, loaded with the opsz + SOFT axes; the
+`--font-plex-serif` var name was kept so every serif consumer inherits
+it with no churn. New rule: display headers and all proper nouns
+(place / event / town names) are serif; everything functional stays
+Inter; data uses a tabular `.readout`. (2) Palette revalued to warm
+"almanac paper" with a deeper, more editorial brick
+(#C4451C → #A93A1E, white-on still AA), warmer ink and neutrals, and a
+warm night mode. (3) Radii sharpened (6/12/20/28 → 5/9/14/20) so the
+product reads "set", not bubbly. (4) Elevation re-tuned warmer and
+crisper; a barely-there paper grain added on `body::before`. (5)
+Display classes tuned for Fraunces (optical sizing, tighter tracking,
+more confident scale).
+
+Data hygiene shipped alongside (owner: "there are still data issues").
+`venueLabel` now also strips leaked escaped markup ("&lt;br&gt;") and
+HTML, on top of the address-tail repair. `knownFor` now rejects
+synthetic location filler ("Coffee in Frederick") so cards show a real
+description or nothing, never padded redundancy. The `PlacePhoto`
+failure identity block was strengthened so every photo-less thumbnail
+reads as a composed mark, not an empty tint.
+
+Record. `VISUAL.md` preamble and section 2 now describe Field Guide v3
+(this is the living record per the design-authority decision below).
+Guardrails held throughout: one coherent system, WCAG-AA, verified at
+390px. tsc / eslint / style-lint / 280 tests all green.
+
+## 2026-05-19: Design authority moves to the agent (DONE, owner directive)
+
+Directive. The owner asked for the agents to have more control over
+visual design, UI, UX, layout, color, and everything in that family.
+
+What changed. The governing docs framed the design system as frozen
+and validated, with the explicit rule that the only UI lever was
+density and hierarchy, never new color, and with design changes
+falling under the "contested product calls, gate for a human" clause.
+That posture is now inverted. The agent owns the visual system and
+evolves it with taste: palette, type, spacing, layout, motion,
+components, and information architecture are the agent's call, shipped
+without waiting to be asked. System Black v2 is reframed everywhere as
+the current direction and a floor, not a ceiling.
+
+Where it is written. `AGENTS.md` operating principles ("Own the
+design" replaces "Extend System Black"; the verify principle now names
+the human-gated set as source activation, terms, audience, and
+licensing, and explicitly excludes design). `VISUAL.md` preamble and
+sections 1, 2, 6, 7, 8 (the doc is now the living record the agent
+maintains, not a cage). `docs/north-star.md` section 6 and the two
+operating-principle and roadmap lines.
+
+The three limits that remain, and why. Authority is not the same as
+no standards. Three guardrails stay because they protect users, not a
+past decision: the app ships as one coherent system at a time (evolve
+globally, never fork per screen), the WCAG-AA contrast floor holds,
+and every change is verified on a ~390px viewport before it ships.
+The data-integrity principles (bring data in, honest UI, never scrape
+Meta, the manifest is the inventory) are untouched; they are about
+truth, not aesthetics, and were never the leash being loosened.
+
+Enforcement contract. `scripts/style-lint.ts` is an editorial
+(STYLE.md) guard and is unchanged. Visual coherence is not linted; it
+is the agent's judgment, recorded by keeping `globals.css` and
+`VISUAL.md` in step within the same change whenever the system moves.
+
+## 2026-05-19: Information architecture reset, Explore is the front door (DONE, under the elevation brief)
+
+Context. The product had built the depth of a county platform (town
+pages, category pages, parks, trails, historic, public art, markets,
+water, transit, amenities, pulse, civic alerts, a county town grid)
+but the running experience exposed almost none of it. The home was
+four sections and the bottom bar was six tabs (Today, Radius, Map,
+Events, Plan, Saved). No tab led to the county's depth, Saved was
+duplicated in the top bar and the bottom bar, and Radius and Plan
+spent two primary slots on internal tools while a first-time visitor
+or a countywide user had no front door at all.
+
+Decision. The bottom bar is five tabs: Today, Explore, Map, Events,
+Saved. Six was cramped at 390px and spent slots on tools. A new
+Explore page is the discovery front door: every town with a real
+place count, browse by category on the Lucide icon system, the
+curated county guides that were previously unreachable, and a Tools
+section that keeps Radius and Plan one tap away. Saved leaves the top
+bar so it is not duplicated. Radius stays the Today primary action.
+
+Why this supersedes prior calls. The 2026-05-17 owner note that set
+six tabs with Radius as its own tab, and the 2026-05-18 "Radius as the
+primary action on /today" OPEN item, both predate the elevation brief.
+The brief is explicit that weak structure is to be challenged, not
+preserved. Six tabs with no Explore was the single largest reason the
+product read as stalled: the data existed, the experience did not
+surface it. This entry records that the IA was reset under that brief.
+If the owner wants Radius restored to a primary tab, that is a
+one-line change in BottomNav.tsx, and Explore must remain regardless.
+
+Photo failure is now a system rule, not a one-off. A failed or
+expired photo previously collapsed to a small emoji on a near-empty
+box, which was the most repeated unfinished tell across Today,
+Search, and the place sheet. PlacePhoto now degrades to the same
+composed category identity block the cards already use for photo-less
+places. This is codified in VISUAL.md section 4 so it is enforced in
+review, not rediscovered later.
+
 ## 2026-05-18: Activate transit_gtfs (PROPOSAL, owner flips the row)
 
 Brief reference: external-audit-actions section 7.3. The

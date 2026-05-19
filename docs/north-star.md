@@ -126,11 +126,17 @@ location-aware join with zero UI or test churn.
 ## 6. Identity
 
 The **System Black** palette (base `#0A0A0A`, warm white `#F0ECE6`,
-muted civic blue, muted park green) is a validated direction — premium,
-restrained, confirmed by the founder. Extend it; do not reintroduce new
-colors. The remaining UI lever is **density and visual hierarchy**, not
-color. References: Google's utility, Apple's storytelling, Tesla's
-engineering.
+muted civic blue, muted park green) is the current direction — premium,
+restrained, a strong floor to build from. It is not a frozen ceiling.
+The agent owns the visual identity and evolves it with taste: palette,
+type, density, layout, and motion are all levers, not just density.
+The only limits are the ones that protect users, not the ones that
+protect a past decision: the app stays **one coherent system at a
+time**, the **WCAG-AA contrast floor** holds, and every change is
+**verified on a ~390px viewport**. Design is the agent's call, not a
+human-gated one. References: Google's utility, Apple's storytelling,
+Tesla's engineering. `VISUAL.md` is the living record of where the
+system stands; keep it current as the system moves.
 
 ## 7. Roadmap framing
 
@@ -143,9 +149,12 @@ Every workstream is framed as deepening the one-stop unification:
 - **Next:** activate gated sources behind their reviews (farmers
   markets, partner event feeds); the owner-submission queue (the moat);
   the civic MVP.
-- **Always deferred to a human:** contested product calls (e.g. the
-  Phase-3 homepage, the `/` home route), anything that expands an
-  audience or accepts terms, and any source activation.
+- **Always deferred to a human:** scope and routing calls (e.g. what
+  the `/` route *is* — marketing vs. app), anything that expands an
+  audience or accepts terms, and any source activation. Note: how any
+  surface *looks, flows, and is laid out* — including redesigning the
+  homepage end to end — is design, which the agent owns (§6). Only the
+  product/scope question is deferred, never the design of it.
 
 ## 8. Operating principles (the short list)
 
@@ -159,4 +168,6 @@ Every workstream is framed as deepening the one-stop unification:
    mobile browser at ~375px). Each workstream isolated on its own
    branch + PR. Push to `main` auto-deploys prod — so gate contested
    and licensing-blocked work; ship the verified rest.
-7. Extend System Black; the lever is density, not color.
+7. The agent owns and evolves the visual identity with taste. The
+   only limits are coherence, the WCAG-AA floor, and verify-on-device.
+   Design is not a human-gated contested call.

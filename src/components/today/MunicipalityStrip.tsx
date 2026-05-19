@@ -38,7 +38,7 @@ export default function MunicipalityStrip() {
               className="absolute inset-y-0 left-0 w-1"
               style={{ background: accent }}
             />
-            <span className="block truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <span className="block truncate font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
               {m.name}
             </span>
             <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>

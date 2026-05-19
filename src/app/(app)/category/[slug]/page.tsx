@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { rankPlaces } from "@/lib/loaders/places";
-import PlaceCard from "@/components/place/PlaceCard";
+import PlaceBrowser from "@/components/place/PlaceBrowser";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
 export const revalidate = 600;
@@ -34,64 +34,50 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const c = CATEGORY_BY_SLUG[slug];
   if (!c) notFound();
 
+  // Decorated, ranked county-wide. PlaceBrowser then makes it findable
+  // (sort + town + type + open-now + paged) instead of a flat wall.
   const places = rankPlaces({ category: slug, origin: FREDERICK_CENTER });
-  const subs = CATEGORIES.filter((x) => x.parent === c.slug);
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]"
-           style={{ color: c.color }}>
-          <span style={{ background: c.color }} className="inline-block h-1.5 w-1.5 rounded-full" aria-hidden />
-          Category
-        </p>
-        <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-          {c.name} in Frederick County
+    <div className="space-y-5">
+      <header className="space-y-1.5">
+        <p className="eyebrow">Category</p>
+        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+          {c.name}
         </h1>
-        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        <p
+          className="text-pretty text-[15px] leading-relaxed"
+          style={{ color: "var(--app-ink-3)" }}
+        >
           {c.blurb}
         </p>
       </header>
 
-      {subs.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            Refine
-          </h2>
-          <ul className="flex flex-wrap gap-1.5">
-            {subs.map((s) => (
-              <li key={s.slug}>
-                <Link
-                  href={`/category/${s.slug}`}
-                  className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-                >
-                  <span style={{ color: s.color }}>●</span>
-                  {s.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          {places.length} place{places.length === 1 ? "" : "s"}
-        </h2>
-        {places.length === 0 ? (
-          <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            We&apos;re still seeding this category. Submit a place you love.
+      {places.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] px-4 py-10 text-center">
+          <span
+            aria-hidden
+            className="grid h-12 w-12 place-items-center rounded-full"
+            style={{
+              background: `color-mix(in srgb, ${c.color} 14%, transparent)`,
+              color: c.color,
+            }}
+          >
+            <CategoryIcon slug={c.slug} strokeWidth={1.75} className="h-6 w-6" style={{ color: c.color }} />
+          </span>
+          <p className="font-serif text-[16px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            This guide is still being built
           </p>
-        ) : (
-          <ul className="space-y-2">
-            {places.map((p) => (
-              <li key={p.slug}><PlaceCard place={p} /></li>
-            ))}
-          </ul>
-        )}
-      </section>
+          <p className="max-w-xs text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+            We are still mapping {c.name.toLowerCase()} across the county. Check back soon.
+          </p>
+        </div>
+      ) : (
+        <PlaceBrowser
+          places={places}
+          emptyHint={`No ${c.name.toLowerCase()} match those filters. Clear them to see all ${places.length}.`}
+        />
+      )}
     </div>
   );
 }

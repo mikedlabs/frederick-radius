@@ -8,6 +8,7 @@ import TrustChip from "@/components/ui/TrustChip";
 import { Chip } from "@/components/ui/Chip";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
+import { venueLabel } from "@/lib/format/eventTime";
 
 export default function EventCard({
   event,
@@ -18,6 +19,7 @@ export default function EventCard({
 }) {
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
+  const venue = venueLabel(event.venue_name);
 
   // Date-anchored compact card. ONE date instance (the left anchor) —
   // no duplicated day number, no ~96px near-empty media box for the
@@ -56,7 +58,7 @@ export default function EventCard({
         <div className="flex min-w-0 flex-1 flex-col">
           <Link
             href={`/events/${event.slug}`}
-            className="line-clamp-2 text-[13.5px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline"
+            className="line-clamp-2 font-serif text-[14.5px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
@@ -64,7 +66,7 @@ export default function EventCard({
           </Link>
           <p className="mt-0.5 truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
             {date.time}
-            {event.venue_name ? ` · ${event.venue_name}` : ""}
+            {venue ? ` · ${venue}` : ""}
           </p>
           <div className="mt-auto flex items-center gap-1.5 pt-1.5">
             {cat && (
@@ -122,7 +124,7 @@ export default function EventCard({
         <div className="flex items-baseline gap-2">
           <Link
             href={`/events/${event.slug}`}
-            className="text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2"
+            className="font-serif text-[16px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
@@ -130,7 +132,8 @@ export default function EventCard({
           </Link>
         </div>
         <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {date.time} · {event.venue_name}
+          {date.time}
+          {venue ? ` · ${venue}` : ""}
         </p>
         <div className="mt-2 flex items-center gap-2">
           {cat && (

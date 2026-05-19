@@ -9,12 +9,15 @@ import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
+  // Shimmer of the exact shape it replaces (same height + radius) so
+  // there is no layout shift on resolve, per VISUAL.md §4. A faint
+  // centered pin signals "map" without a spinner-in-a-box.
   loading: () => (
     <div
-      className="grid h-[78vh] place-items-center rounded-[var(--app-radius-lg)] border"
-      style={{ borderColor: "var(--app-border)" }}
+      className="shimmer relative grid h-[78vh] place-items-center rounded-[var(--app-radius-lg)]"
+      aria-hidden
     >
-      <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>Loading map…</p>
+      <MapPin className="h-9 w-9 opacity-20" style={{ color: "var(--app-ink-3)" }} aria-hidden />
     </div>
   ),
 });
@@ -92,12 +95,24 @@ export default function AppMapClient({
         </div>
 
         {results.length === 0 ? (
-          <p
-            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            Pan or zoom the map — places here list below. Tap any to see details.
-          </p>
+          <div className="flex flex-col items-center gap-2 rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] px-4 py-8 text-center">
+            <span
+              aria-hidden
+              className="grid h-11 w-11 place-items-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 12%, transparent)",
+                color: "var(--app-brand)",
+              }}
+            >
+              <MapPin className="h-5 w-5" strokeWidth={1.9} aria-hidden />
+            </span>
+            <p className="font-serif text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Move the map to see places
+            </p>
+            <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+              Everything in view is listed here. Tap any place for details.
+            </p>
+          </div>
         ) : (
           <ul className="space-y-2">
             {results.map((p) => (

@@ -1,31 +1,32 @@
 /**
- * Repaint the Mapbox base style with the Frederick Radius brand.
- *
- * The interim base is a stock Mapbox dark style, which reads as a
- * generic Mapbox demo, not a designed civic product. Rather than fork a
- * style JSON (brittle, and the real custom style is the owner-only
- * Studio workflow, P2-1), we walk the loaded layers and rewrite paint
- * to the System Black brand: near-black land, warm-white restrained
- * labels, civic-blue water, muted-green parks. POI label clutter is
- * suppressed so the app's own pins are the points of interest.
+ * Repaint the base style in the Frederick Radius "Field Guide" v3
+ * palette so the map reads as the same designed civic product as the
+ * rest of the app, not a stock basemap. Rather than fork a style JSON
+ * (brittle; the real custom style is the owner-only Studio workflow,
+ * P2-1), we walk the loaded layers and rewrite paint to a warm light
+ * field-guide cartography: warm almanac-paper land, dark warm ink
+ * labels with a paper halo, civic-blue water, soft sage parks. POI
+ * label clutter is suppressed so the app's own pins are the points of
+ * interest.
  *
  * All writes are guarded: a missing layer or unsupported property is
- * skipped, so this is safe across Mapbox style updates and never throws.
+ * skipped, so this is safe across base-style updates and never throws.
  */
 import type { Map as GLMap } from "mapbox-gl";
 
-// Frederick System Black brand tokens.
-const INK0 = "#0A0A0A"; // System Black: background, land
-const SURFACE = "#121211"; // subtle lift for landuse
-const WATER = "#1B3A4B"; // muted civic blue (Carroll Creek, Monocacy)
-const PARK = "#22301F"; // muted green
-const BUILDING = "#161513"; // barely-there warm dark
-const ROAD_MINOR = "#1C1B19";
-const ROAD_MAJOR = "#2B2823";
-const ROAD_HWY = "#39342B"; // warm, the only roads with any presence
-const LABEL = "#F0ECE6"; // Warm White: primary labels
-const LABEL_2 = "#8C857A"; // muted: secondary labels
-const HALO = "#0A0A0A";
+// Field Guide v3 cartographic tokens (a warm LIGHT map — distinct
+// from the app's #F7F4EC paper so the map reads as its own surface).
+const INK0 = "#F0EBDD"; // warm field-guide paper: background, land
+const SURFACE = "#EAE3D0"; // subtle lift for landuse
+const WATER = "#B7D0DC"; // calm civic blue (Carroll Creek, Monocacy)
+const PARK = "#D6DEC0"; // soft sage green
+const BUILDING = "#E4DCC6"; // barely-there warm
+const ROAD_MINOR = "#E3DBC6";
+const ROAD_MAJOR = "#D6CDB2";
+const ROAD_HWY = "#C7BB9A"; // warm, the only roads with any presence
+const LABEL = "#2A2521"; // warm ink: primary labels
+const LABEL_2 = "#7A7059"; // muted warm: secondary labels
+const HALO = "#F2EEE3"; // paper halo so dark labels read on light land
 
 const has = (id: string, ...needles: string[]) =>
   needles.some((n) => id.includes(n));
@@ -63,10 +64,10 @@ function installRelief(map: GLMap): void {
           type: "hillshade",
           source: "fr-dem",
           paint: {
-            "hillshade-shadow-color": "#000000",
-            "hillshade-highlight-color": "#3A352B", // faint warm light
-            "hillshade-accent-color": "#0A0A0A",
-            "hillshade-exaggeration": 0.4, // relief, not a topo map
+            "hillshade-shadow-color": "#C9C0A6", // faint warm relief on paper
+            "hillshade-highlight-color": "#FBF8EE",
+            "hillshade-accent-color": "#D9D0B6",
+            "hillshade-exaggeration": 0.32, // relief, not a topo map
             "hillshade-illumination-direction": 315,
           },
         },
@@ -130,8 +131,8 @@ export function applyFrederickPalette(map: GLMap): void {
           // The Monocacy and Carroll Creek are the county's spine —
           // give them a confident, zoom-scaled presence instead of a
           // default hairline, in the brand's lighter civic blue.
-          set("line-color", "#2C5A6E");
-          set("line-opacity", 0.9);
+          set("line-color", "#5C92AC");
+          set("line-opacity", 0.95);
           set("line-width", [
             "interpolate",
             ["linear"],
