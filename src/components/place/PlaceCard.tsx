@@ -12,6 +12,7 @@ import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
 import { Star } from "lucide-react";
+import CategoryIcon from "./CategoryIcon";
 
 /**
  * "What people rave about" — only when there is a real Google rating
@@ -161,9 +162,12 @@ export default function PlaceCard({
                   color,
                 }}
               >
-                <span className="text-[56px] leading-none opacity-90 transition-transform duration-[600ms] ease-out group-hover:scale-[1.08]">
-                  {glyph}
-                </span>
+                <CategoryIcon
+                  slug={place.category}
+                  strokeWidth={1.5}
+                  className="h-14 w-14 opacity-90 transition-transform duration-[600ms] ease-out group-hover:scale-[1.08]"
+                  style={{ color }}
+                />
               </div>
             )}
           </div>
@@ -237,7 +241,7 @@ export default function PlaceCard({
                   color,
                 }}
               >
-                <span className="text-[30px] leading-none opacity-90">{glyph}</span>
+                <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-8 w-8 opacity-90" style={{ color }} />
               </div>
             )}
           </div>
@@ -291,7 +295,7 @@ export default function PlaceCard({
           className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
           style={{ background: `linear-gradient(145deg, ${color}26, ${color}0c)`, color }}
         >
-          <span className="text-[28px] leading-none opacity-90">{glyph}</span>
+          <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-7 w-7 opacity-90" style={{ color }} />
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col justify-center">
