@@ -4,6 +4,7 @@ import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
+import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -104,6 +105,7 @@ export default function RootLayout({
         <div id="main">{children}</div>
         <Plausible />
         <SpeedInsights />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
