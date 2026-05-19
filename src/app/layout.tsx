@@ -63,6 +63,12 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   formatDetection: { telephone: false, email: false, address: false },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Radius",
+  },
 };
 
 export const viewport: Viewport = {
