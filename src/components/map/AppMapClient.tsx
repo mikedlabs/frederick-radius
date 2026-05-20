@@ -39,6 +39,7 @@ export default function AppMapClient({
   amenities = [],
   trailLines = EMPTY_FC,
   transitLines = EMPTY_FC,
+  fullBleed = false,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
    *  (decoratePlace)). The client must NOT re-import the loader: it
@@ -55,6 +56,10 @@ export default function AppMapClient({
   /** Server-fetched toggleable line overlays (#3). */
   trailLines?: MapLineFC;
   transitLines?: MapLineFC;
+  /** Full-bleed canvas: the map fills the parent, no card border, no
+   *  "In view" list below. The map IS the page. The synced list lives
+   *  in a slide-up sheet inside the map area instead. */
+  fullBleed?: boolean;
 }) {
   const [inView, setInView] = useState<string[]>([]);
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
@@ -75,6 +80,33 @@ export default function AppMapClient({
         .map((p) => ({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) })),
     [inView, bySlug]
   );
+
+  // Full-bleed: the map fills the parent, the "In view" list lives
+  // inside a slide-up bottom drawer that the user can collapse to a
+  // peek. Standard mobile maps pattern (Apple Maps, Google Maps).
+  if (fullBleed) {
+    return (
+      <div className="relative h-full w-full">
+        <AppMap
+          places={places}
+          onPlacesInView={setInView}
+          focus={focus}
+          civic={civic}
+          extraAmenities={extraAmenities}
+          amenities={amenities}
+          trailLines={trailLines}
+          transitLines={transitLines}
+          fullBleed
+        />
+        <InViewDrawer
+          results={results}
+          onPick={(slug) =>
+            setFocus((f) => ({ slug, n: (f?.n ?? 0) + 1 }))
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -111,6 +143,75 @@ export default function AppMapClient({
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * InViewDrawer — slide-up bottom drawer inside the full-bleed map.
+ * Three snap states (peek / half / full) tracked client-side. Peek
+ * shows just the count + a grab handle; half + full reveal the
+ * synced "places in view" list scrollable. Same shape as Apple Maps.
+ */
+function InViewDrawer({
+  results,
+  onPick,
+}: {
+  results: PlaceCardData[];
+  onPick: (slug: string) => void;
+}) {
+  const [snap, setSnap] = useState<"peek" | "half" | "full">("peek");
+  const heights: Record<typeof snap, string> = {
+    peek: "84px",
+    half: "55%",
+    full: "82%",
+  };
+  return (
+    <div
+      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3"
+      style={{
+        height: heights[snap],
+        transition: "height 280ms var(--app-ease-spring)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() =>
+          setSnap((s) => (s === "peek" ? "half" : s === "half" ? "full" : "peek"))
+        }
+        aria-label={snap === "full" ? "Collapse list" : "Expand list"}
+        className="flex shrink-0 cursor-grab flex-col items-center justify-center gap-1 pb-2 pt-2.5"
+      >
+        <span
+          aria-hidden
+          className="h-1 w-10 rounded-full"
+          style={{ background: "rgba(0,0,0,0.18)" }}
+        />
+        <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+          {results.length === 0
+            ? "Move the map to see places"
+            : `${results.length} place${results.length === 1 ? "" : "s"} in view`}
+        </p>
+      </button>
+      {snap !== "peek" && (
+        <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
+          {results.length === 0 ? (
+            <li
+              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+            >
+              Pan or zoom — places here list above. Tap any to see details.
+            </li>
+          ) : (
+            results.map((p) => (
+              <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
+                <PlaceCard place={p} />
+              </li>
+            ))
+          )}
+        </ul>
+      )}
     </div>
   );
 }

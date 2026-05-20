@@ -54,6 +54,9 @@ type Props = {
   places: PlaceCardData[];
   osmPlaces?: OsmPlace[];
   height?: string;
+  /** Full-bleed layout: drop the rounded border, fill the parent. The
+   *  /map route uses this so the map IS the page, not a card on it. */
+  fullBleed?: boolean;
   initialCenter?: [number, number];
   initialZoom?: number;
   /** Fires on map idle with curated places currently in the viewport,
@@ -266,6 +269,7 @@ export default function AppMap({
   places,
   osmPlaces: osmFromProps,
   height = "78vh",
+  fullBleed = false,
   initialCenter = FREDERICK,
   initialZoom = 14,
   onPlacesInView,
@@ -827,8 +831,12 @@ export default function AppMap({
 
   return (
     <div
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{ borderColor: "var(--app-border)", height }}
+      className={
+        fullBleed
+          ? "relative h-full w-full overflow-hidden"
+          : "relative overflow-hidden rounded-[var(--app-radius-lg)] border"
+      }
+      style={fullBleed ? undefined : { borderColor: "var(--app-border)", height }}
     >
       {/* ── Floating in-map control deck (glass). The map renders
           behind; controls overlay it, Apple/Google-Maps style. The

@@ -11,10 +11,6 @@ import AppMapClient, { type CivicPin } from "@/components/map/AppMapClient";
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
 // P0-1: one canonical public place set, same as every other route.
-// Decorated so map pins use the enrichment-corrected coordinate
-// (the guarded Google-coord override in applyEnrichment) instead of
-// the wrong DFP-scraped geom — ~157 pins move to where the business
-// actually is.
 const OPEN_PLACES = publicPlaces().map((p) => decoratePlace(p));
 
 export const metadata: Metadata = {
@@ -28,11 +24,7 @@ export default async function MapPage() {
   const [incidents, fixit, mapillaryTrash, trailLines, transitLines] = await Promise.all([
     getChartIncidentsFrederick().catch(() => []),
     getFixItIssues(30).catch(() => []),
-    // Server-side: the secret token never reaches the client. Returns
-    // [] when no MAPILLARY_TOKEN, so this is inert in any env without it.
     fetchMapillaryTrash().catch(() => []),
-    // #3: toggleable line overlays. Graceful empty FC if a feed blips
-    // (sandbox can't reach them; Vercel can) — map stays usable.
     getFrederickTrailShapes().catch(() => EMPTY_FC),
     getFrederickTransitRouteShapes().catch(() => EMPTY_FC),
   ]);
@@ -55,37 +47,32 @@ export default async function MapPage() {
       })),
   ];
 
-  // De-duped against the SAME canonical places shown on the map:
-  // collapses the "Picnic area x8 at one overlook" clusters and drops
-  // park/playground points that just restate a green-space place. The
-  // utility amenities (restroom/Wi-Fi/EV/bike) are kept.
   const amenities = dedupeAmenities(
     allAmenities(),
     OPEN_PLACES.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
   );
 
+  // Full-bleed — escape the (app) layout's px-4 + pt-4 + the bottom
+  // safe-area padding so the map fills the viewport edge to edge. The
+  // controls float inside the map, not above it. The page header is
+  // gone: the map IS the page.
   return (
-    <div className="space-y-3">
-      <header className="space-y-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {OPEN_PLACES.length.toLocaleString()} curated places · plus OpenStreetMap businesses
-        </p>
-        <h1 className="font-serif text-[24px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Explore the map
-        </h1>
-        <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          Pan and zoom to anywhere in the county — everything in view lists below. Filter by category up top.
-        </p>
-      </header>
-
-      <AppMapClient places={OPEN_PLACES} civic={civic} extraAmenities={mapillaryTrash} amenities={amenities} trailLines={trailLines} transitLines={transitLines} />
-
-      <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-        Business data from{" "}
-        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">
-          OpenStreetMap contributors
-        </a>.
-      </p>
+    <div
+      className="-mx-4 -mt-4 relative"
+      style={{
+        marginBottom: "calc(-6rem - env(safe-area-inset-bottom, 0px))",
+        height: "calc(100dvh - 56px - env(safe-area-inset-top, 0px))",
+      }}
+    >
+      <AppMapClient
+        places={OPEN_PLACES}
+        civic={civic}
+        extraAmenities={mapillaryTrash}
+        amenities={amenities}
+        trailLines={trailLines}
+        transitLines={transitLines}
+        fullBleed
+      />
     </div>
   );
 }
