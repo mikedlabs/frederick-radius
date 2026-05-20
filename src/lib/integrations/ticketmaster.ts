@@ -86,6 +86,7 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
       source_label: "Ticketmaster",
       url: ev.url ?? "",
       is_free: typeof minPrice === "number" && minPrice === 0,
+      last_verified_at: new Date().toISOString(),
     });
   }
   return out;
