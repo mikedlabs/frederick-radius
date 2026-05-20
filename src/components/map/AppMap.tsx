@@ -351,7 +351,16 @@ export default function AppMap({
     if (!p || !map) return;
     setSelectedSlug(p.slug);
     haptic("light");
-    smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
+    // Pan to the result without zooming in — the user already chose
+    // their zoom level; we just move the camera to put the pin in
+    // view. This is the change that kills "the map keeps jumping
+    // around" on mobile.
+    map.easeTo({
+      center: [p.geom.lng, p.geom.lat],
+      duration: 600,
+      easing: CAM_EASE,
+      essential: true,
+    });
   }, [focus, places]);
 
   // Demo beacons only exist while their demo is on. Closing or switching
@@ -603,28 +612,12 @@ export default function AppMap({
     })),
   }), []);
 
-  // Only auto-fit when the user has actively narrowed to a category.
-  // On initial load (all 1,331 places, county-wide) fitting to everything
-  // zooms way out into one meaningless mega-cluster — instead we open
-  // focused on downtown (the density) and let the user explore.
-  useEffect(() => {
-    if (activeCats.size === 0) return; // keep the downtown default view
-    if (filteredPlaces.length === 0 || !mapRef.current) return;
-    const bounds = filteredPlaces.reduce(
-      (b, p) => {
-        b.min[0] = Math.min(b.min[0], p.geom.lng);
-        b.min[1] = Math.min(b.min[1], p.geom.lat);
-        b.max[0] = Math.max(b.max[0], p.geom.lng);
-        b.max[1] = Math.max(b.max[1], p.geom.lat);
-        return b;
-      },
-      { min: [180, 90], max: [-180, -90] },
-    );
-    mapRef.current.fitBounds(
-      [[bounds.min[0], bounds.min[1]], [bounds.max[0], bounds.max[1]]],
-      { padding: 56, maxZoom: 15, duration: 900, easing: CAM_EASE },
-    );
-  }, [filteredPlaces, activeCats]);
+  // Auto-fit retired. Earlier behavior fitBounds-ed the camera on every
+  // category change, which on mobile reads as the map jumping around
+  // for no reason the user asked for. The user owns the camera now:
+  // pan/zoom only changes via their explicit gesture (or Near me).
+  // The filtered set still drives which pins are visible — just not
+  // the camera position.
 
   const onClick = (e: MapMouseEvent) => {
     const feature = e.features?.[0];
