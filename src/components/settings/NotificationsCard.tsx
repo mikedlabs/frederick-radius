@@ -172,7 +172,7 @@ export default function NotificationsCard() {
         flash(json.error ? `Send failed: ${json.error}` : "Send failed.");
         return;
       }
-      flash("Test sent — check your notifications.");
+      flash("Test sent. Check your notifications.");
     } finally {
       setBusy(false);
     }
@@ -262,7 +262,7 @@ export default function NotificationsCard() {
         {support === "blocked"
           ? "Notifications are blocked at the browser level. Re-enable in your site settings to subscribe."
           : enabled
-            ? "Choose what gets through — your selections save automatically."
+            ? "Choose what gets through. Your selections save automatically."
             : "One tap to opt in. You'll only get the topics you choose."}
       </p>
 

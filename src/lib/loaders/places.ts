@@ -393,6 +393,14 @@ function openScore(status: OpenStatus): number {
  */
 export function isOperational(p: Place): boolean {
   if (isKnownClosed(p.name)) return false; // manual override of last resort
+  // Google enrichment is the SOURCE OF TRUTH for closure. DFP-scraped
+  // records hardcode is_operational: "operational" at load time so the
+  // raw Place field can lie (Serendipity Market, Brass Copper Shop,
+  // …). Read the live enrichment business_status first; only fall
+  // back to the Place field when there is no enrichment.
+  const e = ENRICHMENT[p.slug];
+  if (e?.business_status === "CLOSED_PERMANENTLY") return false;
+  if (e?.business_status === "CLOSED_TEMPORARILY") return false;
   return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
 }
 

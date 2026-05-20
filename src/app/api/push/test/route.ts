@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       },
       {
         title: "Frederick Radius",
-        body: "Test notification — everything is wired up.",
+        body: "Test notification. Everything is wired up.",
         url: "/today",
         tag: "test",
       },

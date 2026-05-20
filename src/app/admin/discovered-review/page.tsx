@@ -271,7 +271,7 @@ export default async function DiscoveredReviewPage({
               “{c.review_snippet}”
               {c.review_author && (
                 <span className="mt-1 block text-[11px] not-italic" style={{ color: "var(--app-ink-3)" }}>
-                  — {c.review_author}
+                  – {c.review_author}
                 </span>
               )}
             </blockquote>
@@ -306,7 +306,7 @@ export default async function DiscoveredReviewPage({
         </div>
       </article>
 
-      {/* Decision controls — three big buttons, one row. */}
+      {/* Decision controls. Three big buttons, one row. */}
       <form action={onDecide} className="mt-4">
         <input type="hidden" name="id" value={c.google_place_id} />
         <div className="grid grid-cols-3 gap-2">

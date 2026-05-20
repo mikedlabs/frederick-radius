@@ -32,7 +32,7 @@ export default function EventCard({
   // overlay, date badge top-left. One per group, by design.
   if (variant === "feature") {
     return (
-      <article className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]">
+      <article className="tactile tactile-feature tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative aspect-[16/10] w-full overflow-hidden">
           {hasPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo
@@ -138,21 +138,9 @@ export default function EventCard({
                   background: `radial-gradient(120% 100% at 0% 0%, ${accent}80, ${accent}20 45%, ${accent}05 75%), linear-gradient(150deg, ${accent}30, ${accent}10 60%, ${accent}28)`,
                 }}
               />
-              {/* Giant semi-transparent serif day numeral as a graphic
-                  background — turns the empty space into editorial
-                  texture, like a magazine drop cap. Different per day
-                  so a shelf of dates feels rhythmic, not repeated. */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -bottom-2 right-1 font-serif text-[90px] font-bold leading-none tabular-nums"
-                style={{
-                  color: accent,
-                  opacity: 0.18,
-                  letterSpacing: "-0.05em",
-                }}
-              >
-                {date.day}
-              </span>
+              {/* The drop-cap day numeral that used to live here was
+                  reading as the date duplicated next to the badge.
+                  Removed in favor of the diagonal grain texture alone. */}
               {/* Subtle diagonal grain so the gradient isn't perfectly
                   flat — keeps the banner from reading as a swatch. */}
               <div

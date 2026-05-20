@@ -4,7 +4,6 @@ import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero, { currentSkyTone } from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
-import WeeklyForecast from "@/components/today/WeeklyForecast";
 import SunCountdown from "@/components/today/SunCountdown";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import PulseSummary from "@/components/today/PulseSummary";
@@ -13,6 +12,8 @@ import FeaturedTonight from "@/components/today/FeaturedTonight";
 import RightNow from "@/components/today/RightNow";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import RedditPulse from "@/components/today/RedditPulse";
+import HistoryPulse from "@/components/today/HistoryPulse";
+import DecorativeDivider from "@/components/ui/DecorativeDivider";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
@@ -22,7 +23,6 @@ import StatStrip from "@/components/ui/StatStrip";
 import { allUpcoming } from "@/lib/loaders/events";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { getNwsForecast } from "@/lib/integrations/nws";
 import { PLACES } from "@/data/places";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -97,28 +97,26 @@ export default async function HomePage() {
   const upcomingRest = featuredEvent
     ? upcoming.filter((e) => e.slug !== featuredEvent.slug)
     : upcoming;
-  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const tone = currentSkyTone(now);
 
   return (
     <div className="relative space-y-6">
       <PageBloom />
 
-      {/* 1 — Civic alerts. Pinned to the very top so any active NWS
-          or NPS warning is the first thing a user sees, ahead of even
-          the weather hero. Self-hides when nothing's active so the
-          page never carries dead chrome on a quiet day. */}
-      <Suspense fallback={null}>
-        <CivicAlerts />
-      </Suspense>
-
-      {/* 2 — Sky-tinted hero. Greeting + sun countdown + weather +
-          forecast + plan card on the time-of-day gradient. */}
+      {/* 1 — Sky-tinted hero. Greeting + sun countdown + civic alert
+          (when active) + weather (now and the 7-day, on one card) +
+          plan card, layered on the time-of-day gradient. CivicAlerts
+          lives INSIDE SkyHero so an active alert reads as part of the
+          hero unit, not as a strange floating banner between the page
+          header and the sky gradient. */}
       <SkyHero className="space-y-4">
         <Suspense fallback={null}>
           <AdaptiveGreeting />
         </Suspense>
         <SunCountdown tone={tone} now={now} />
+        <Suspense fallback={null}>
+          <CivicAlerts />
+        </Suspense>
         <Suspense
           fallback={
             <div
@@ -129,9 +127,6 @@ export default async function HomePage() {
         >
           <WeatherHero />
         </Suspense>
-        {forecast?.daily && forecast.daily.length > 0 && (
-          <WeeklyForecast daily={forecast.daily} tone={tone} />
-        )}
         <PrimaryActionCard now={now} />
       </SkyHero>
 
@@ -157,9 +152,21 @@ export default async function HomePage() {
         </DismissibleSection>
       )}
 
+      <DecorativeDivider variant="wave" />
+
       {/* 7 — Photo mosaic. Six-tile real-place wall. */}
       <DismissibleSection id="photo-mosaic" title="Looks like Frederick">
         <PhotoMosaic />
+      </DismissibleSection>
+
+      <DecorativeDivider variant="sun" />
+
+      {/* 7a — Frederick County history pulse — "Did you know" card,
+          rotates daily. Connects users to the place's depth (it's
+          older than the country) instead of leaving them in only
+          "things to eat today". */}
+      <DismissibleSection id="history" title="Frederick County in 1 fact">
+        <HistoryPulse />
       </DismissibleSection>
 
       {/* 8 — Time-aware curated places (component owns its own header). */}

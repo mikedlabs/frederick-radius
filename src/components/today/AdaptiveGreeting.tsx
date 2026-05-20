@@ -47,7 +47,7 @@ function pickGreeting(hour: number, conditions: string, precip: number): string 
 }
 
 function subtitle(hour: number, conditions: string, temp?: number, precip?: number): string {
-  const temp_str = temp != null ? `${Math.round(temp)}° in town` : "";
+  const temp_str = temp != null ? `${Math.round(temp)}° in Downtown Frederick` : "";
   const cond = conditions ? conditions.toLowerCase() : "";
   if (precip != null && precip >= 40) return `${cond} · ${precip}% chance of rain`;
   if (temp_str && cond) return `${cond} · ${temp_str}`;

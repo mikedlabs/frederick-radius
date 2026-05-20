@@ -23,6 +23,113 @@ const VIBES: { value: PlanInputs["vibe"]; label: string; emoji: string }[] = [
   { value: "food", label: "Food first", emoji: "🍽️" },
 ];
 
+/** Presets — the curated combinations people actually search for.
+ *  Each one prefills the form AND auto-builds, so two taps gets you
+ *  to a plan: "Library date" → see a plan. The "Customize" section
+ *  below stays editable for power-users. */
+type Preset = {
+  id: string;
+  emoji: string;
+  label: string;
+  tagline: string;
+  audience: PlanInputs["audience"];
+  vibe: PlanInputs["vibe"];
+  hours: PlanInputs["duration_hours"];
+  start: StartMode;
+  color: string;
+};
+
+const PRESETS: Preset[] = [
+  {
+    id: "library-date",
+    emoji: "📚",
+    label: "Library date",
+    tagline: "Quiet, smart, charming.",
+    audience: "date",
+    vibe: "cultural",
+    hours: 3,
+    start: "afternoon",
+    color: "#7E2C6F",
+  },
+  {
+    id: "date-night",
+    emoji: "💞",
+    label: "Date night",
+    tagline: "Dinner. Drinks. A walk.",
+    audience: "date",
+    vibe: "easy",
+    hours: 4,
+    start: "evening",
+    color: "#C4451C",
+  },
+  {
+    id: "first-date",
+    emoji: "☕",
+    label: "First date",
+    tagline: "Coffee, walk, dessert. Two hours.",
+    audience: "date",
+    vibe: "easy",
+    hours: 2,
+    start: "afternoon",
+    color: "#8B5A2B",
+  },
+  {
+    id: "girls-night",
+    emoji: "🥂",
+    label: "Girls' night",
+    tagline: "Wine, food, and somewhere fun.",
+    audience: "friends",
+    vibe: "food",
+    hours: 4,
+    start: "evening",
+    color: "#7E1F1F",
+  },
+  {
+    id: "family-sunday",
+    emoji: "🌳",
+    label: "Family Sunday",
+    tagline: "Park, ice cream, somewhere easy.",
+    audience: "family",
+    vibe: "easy",
+    hours: 4,
+    start: "afternoon",
+    color: "#1E6B3A",
+  },
+  {
+    id: "rainy-day",
+    emoji: "🌧️",
+    label: "Rainy day",
+    tagline: "Museum, lunch, theater.",
+    audience: "solo",
+    vibe: "cultural",
+    hours: 3,
+    start: "afternoon",
+    color: "#2A5D8F",
+  },
+  {
+    id: "sunny-saturday",
+    emoji: "☀️",
+    label: "Sunny Saturday",
+    tagline: "Trail, lunch outside, winery.",
+    audience: "friends",
+    vibe: "outdoors",
+    hours: 6,
+    start: "afternoon",
+    color: "#D9A441",
+  },
+  {
+    id: "showing-friends",
+    emoji: "🧳",
+    label: "Out-of-town friends",
+    tagline: "The Frederick highlight reel.",
+    audience: "visitor",
+    vibe: "cultural",
+    hours: 6,
+    start: "afternoon",
+    color: "#2A5D8F",
+  },
+];
+
 const DURATIONS: PlanInputs["duration_hours"][] = [2, 3, 4, 6];
 type StartMode = "now" | "afternoon" | "evening";
 const STARTS: { value: StartMode; label: string; emoji: string }[] = [
@@ -109,6 +216,27 @@ export default function PlanBuilder({
    *  vibe and audience, different but valid combination of stops. */
   const onShuffle = () => onBuild(Math.floor(Math.random() * 100_000));
 
+  /** One-tap presets — set every input and immediately build. The
+   *  power user still has the form below to override; the casual user
+   *  is one tap from a plan. */
+  const onPreset = (p: Preset) => {
+    setAudience(p.audience);
+    setVibe(p.vibe);
+    setHours(p.hours);
+    setStartMode(p.start);
+    startTransition(async () => {
+      const result = await generatePlan({
+        audience: p.audience,
+        vibe: p.vibe,
+        duration_hours: p.hours,
+        start_at: startAtFor(p.start),
+        start_near: near ?? undefined,
+      });
+      setPlan(result);
+      setEditing(true);
+    });
+  };
+
   const mutate = (fn: () => Promise<Plan | null>, idx: number | null) => {
     setBusy(idx);
     startTransition(async () => {
@@ -148,7 +276,64 @@ export default function PlanBuilder({
             >
               <Wand2 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </span>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>Design your night</p>
+            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>One tap to a plan</p>
+          </div>
+
+          {/* PRESETS — the curated outings people actually search for.
+              Tap one, get a plan in 2 seconds. The Customize section
+              below stays for fine-tuning. */}
+          <div className="-mx-4 px-4 sm:-mx-5 sm:px-5">
+            <div className="shelf-rail gap-2 pb-1">
+              {PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onPreset(p)}
+                  disabled={pending}
+                  className="tactile tactile-interactive relative flex w-[160px] shrink-0 flex-col items-start gap-1 overflow-hidden rounded-[var(--app-radius-md)] p-3 text-left disabled:opacity-70"
+                  style={{
+                    background: `linear-gradient(155deg, color-mix(in srgb, ${p.color} 28%, var(--app-bg-elevated)), color-mix(in srgb, ${p.color} 8%, var(--app-bg-elevated)))`,
+                    boxShadow: `0 8px 22px -10px ${p.color}`,
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute -bottom-3 -right-3 text-[64px] leading-none"
+                    style={{ opacity: 0.18 }}
+                  >
+                    {p.emoji}
+                  </span>
+                  <span aria-hidden className="text-[20px] leading-none">{p.emoji}</span>
+                  <span
+                    className="relative font-serif text-[15px] font-semibold leading-tight tracking-tight"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {p.label}
+                  </span>
+                  <span
+                    className="relative text-[11px] leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {p.tagline}
+                  </span>
+                  <span
+                    className="relative mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em]"
+                    style={{ color: p.color }}
+                  >
+                    {p.hours}h · {p.start === "now" ? "now" : p.start}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.1em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+            <span>Or customize</span>
+            <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
           </div>
 
           <Field label="Who you're with">

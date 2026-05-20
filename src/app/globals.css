@@ -588,6 +588,68 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────
+ * tactile-feature — the "premium" hero card treatment.
+ *
+ * A 1px gradient border layered on top of the ambient elevation, so
+ * featured surfaces (FeaturedTonight, FeaturedEvent, PrimaryActionCard,
+ * QuoteOfTheDay-style pull cards) read as deliberately set rather than
+ * just "another card." The Linear/Stripe/Vercel move: the gradient
+ * border catches light along the top edge and dies off at the bottom,
+ * which the eye reads as material.
+ *
+ * Implementation: ::before pseudo-element draws the gradient ring at
+ * the border radius. The element itself keeps its background; the
+ * border is purely additive. Works on any rounded surface.
+ * ───────────────────────────────────────────────────── */
+.tactile-feature {
+  position: relative;
+  box-shadow:
+    var(--app-edge),
+    var(--app-hi),
+    var(--app-elev-3),
+    /* Soft ambient halo in section accent, falls off fast. */
+    0 12px 40px -16px color-mix(in srgb, var(--section-accent, var(--app-brand)) 60%, transparent);
+}
+.tactile-feature::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    140deg,
+    color-mix(in srgb, var(--section-accent, var(--app-brand)) 70%, transparent) 0%,
+    color-mix(in srgb, var(--section-accent, var(--app-brand)) 18%, transparent) 35%,
+    rgba(255, 255, 255, 0.04) 65%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* tactile-ring — a 1px accent-tinted ring on hover, perfect for
+ * interactive feature cards (Linear-style focus signal without taking
+ * focus). Pairs with tactile-feature on Link-wrapped cards. */
+.tactile-ring {
+  position: relative;
+  transition: box-shadow var(--app-dur-med) var(--app-ease-out);
+}
+.tactile-ring:hover,
+.tactile-ring:focus-visible {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--section-accent, var(--app-brand)) 60%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--section-accent, var(--app-brand)) 12%, transparent),
+    var(--app-elev-3);
+}
+
+/* ─────────────────────────────────────────────────────
  * VISUAL SYSTEM v2 — Layer 2: editorial type + entrance.
  * Display tier (serif, fluid clamp, tight optical tracking,
  * balanced wrapping) so headlines read "set", not defaulted.

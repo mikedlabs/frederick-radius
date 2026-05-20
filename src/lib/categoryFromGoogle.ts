@@ -168,6 +168,118 @@ const MAP: Record<string, string> = {
   electronics_store: "shopping",
   pet_store: "shopping",
   sporting_goods_store: "shopping",
+  florist: "shopping",
+  tobacco_shop: "shopping",
+  toy_store: "shopping",
+  thrift_store: "shopping",
+  home_improvement_store: "shopping",
+  building_materials_store: "shopping",
+  tire_shop: "services",
+  gas_station: "services",
+  body_art_service: "wellness", // tattoo / piercing
+  swimming_pool: "wellness",
+
+  // Audit-driven pass 2 (2026-05-20): places mislabeled as
+  // "shopping" by DFP that Google clearly types. These were the
+  // largest remaining mismatch bucket on the dataset.
+  tea_store: "coffee",
+  chocolate_shop: "bakery",
+  candy_store: "bakery",
+  cafeteria: "restaurant",
+  buffet_restaurant: "restaurant",
+  food_court: "restaurant",
+  brewpub: "brewery",
+  distillery: "brewery", // tagged via subcategory "distillery" at render
+  cidery: "brewery",
+  meadery: "brewery",
+  winery: "brewery",
+  amusement_center: "family",
+  amusement_park: "family",
+  zoo: "family",
+  aquarium: "family",
+  water_park: "family",
+  movie_rental: "family",
+  // Entertainment venues — arcades, bowling, skate parks were
+  // miscategorized as "shopping"/"bar"/"theater" because the DFP
+  // scrape used name heuristics and Google's primary_type for them
+  // wasn't in the corrector. Surfacing Spinners Pinball, Mount Airy
+  // Bowling Lanes, etc. correctly under Family / Take the kids.
+  video_arcade: "family",
+  amusement_arcade: "family",
+  bowling_alley: "family",
+  billiard_hall: "family",
+  pool_hall: "family",
+  skating_rink: "family",
+  roller_skating_rink: "family",
+  ice_skating_rink: "family",
+  miniature_golf_course: "family",
+  golf_course: "outdoors",
+  escape_room_service: "family",
+  laser_tag_center: "family",
+  trampoline_park: "family",
+  paintball_center: "family",
+  go_kart_track: "family",
+  batting_cage: "family",
+  // Outdoor recreation
+  skateboard_park: "park",
+  bicycle_store: "shopping",
+  // Live entertainment
+  comedy_club: "music",
+  karaoke_box: "music",
+  dance_hall: "music",
+  // Civic-adjacent — historical sites, cemeteries, visitor info
+  cemetery: "civic",
+  visitor_center: "civic",
+  historical_landmark: "civic",
+  historical_place: "civic",
+  monument: "civic",
+  // Music & nightlife venues
+  event_venue: "music",
+  banquet_hall: "music",
+  // Outdoors / nature
+  garden: "park",
+  marina: "park",
+  campground: "park",
+  rv_park: "park",
+  fishing_pond: "park",
+
+  // Audit-driven pass 3 (2026-05-20) — every primary_type with ≥3
+  // visible places that wasn't yet in the corrector. From a direct
+  // count of places-client.json × places-enrichment.json.
+  brewery: "brewery",
+  // Food + drink long tail
+  family_restaurant: "restaurant",
+  vietnamese_restaurant: "restaurant",
+  spanish_restaurant: "restaurant",
+  chicken_restaurant: "restaurant",
+  juice_shop: "restaurant",
+  bar_and_grill: "bar",
+  gastropub: "bar",
+  sports_bar: "bar",
+  cake_shop: "bakery",
+  coffee_roastery: "coffee",
+  catering_service: "restaurant",
+  food_store: "market",
+  // Markets / shopping nuance
+  farmers_market: "market",
+  garden_center: "shopping",
+  // Wellness expansion
+  massage_spa: "wellness",
+  sports_school: "wellness",
+  sports_club: "wellness",
+  sports_activity_location: "wellness",
+  // Family / education
+  educational_institution: "family",
+  university: "family",
+  child_care_agency: "family",
+  // Arts / venues
+  art_studio: "gallery",
+  wedding_venue: "music",
+  // Outdoors expansion
+  scenic_spot: "park",
+  athletic_field: "park",
+  nature_preserve: "park",
+  tourist_attraction: "park",
 };
 
 /**

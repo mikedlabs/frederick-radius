@@ -244,10 +244,15 @@ function saveCachedOsm(data: OsmPlace[]) {
 }
 
 const FREDERICK: [number, number] = [-77.4105, 39.4143];
-// Interim Mapbox base. The custom Frederick Radius Studio style is
-// P2-1, an owner-only manual workflow; its published style URL replaces
-// this when ready. Dark aligns with the System Black brand target.
-const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
+// Mapbox Standard: the brightest, most polished style Mapbox ships.
+// Includes 3D building extrusions by default, atmospheric sky, day/
+// night lighting that follows the user's clock, and proper street
+// labels. Switching from dark-v11 → standard is the single biggest
+// "the map looks designed" change available; the dark style read as
+// generic-nightlife-app and hid the terrain hillshading we'd added.
+// The custom Frederick Radius Studio style (P2-1) replaces this when
+// ready; until then Standard is a real-feeling map of the county.
+const STYLE_URL = "mapbox://styles/mapbox/standard";
 
 // ── Curated-vs-OSM dedupe ───────────────────────────────────────────
 // The map renders our curated set AND the live OSM layer; anything in
@@ -908,13 +913,13 @@ export default function AppMap({
               aria-expanded={filtersOpen}
               className="shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
               style={{
-                borderColor: filtersOpen || activeCats.size > 0 ? "var(--app-brand)" : "var(--app-border)",
-                color: filtersOpen || activeCats.size > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
+                borderColor: filtersOpen || activeCats.size > 0 || activeAmenityGroupCount > 0 ? "var(--app-brand)" : "var(--app-border)",
+                color: filtersOpen || activeCats.size > 0 || activeAmenityGroupCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
                 background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
                 boxShadow: "var(--app-shadow-2)",
               }}
             >
-              Layers{activeCats.size > 0 ? ` · ${activeCats.size}` : ""}
+              Layers{activeCats.size + activeAmenityGroupCount > 0 ? ` · ${activeCats.size + activeAmenityGroupCount}` : ""}
               <span aria-hidden style={{ marginLeft: 6, fontSize: 9, opacity: 0.7 }}>{filtersOpen ? "▲" : "▼"}</span>
             </button>
           </div>
@@ -1378,9 +1383,30 @@ export default function AppMap({
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={true}
+          // Hillshading: Catoctin + South Mountain run the length of
+          // Frederick County. With the DEM terrain enabled, the
+          // mountains read as terrain instead of being invisible — the
+          // single biggest "this map was made for Frederick" signal.
+          terrain={{ source: "mapbox-dem", exaggeration: 1.15 }}
+          // Atmospheric fog softens the far edges of the county view
+          // and gives the map dimensionality at low pitch.
+          fog={{
+            range: [1, 12],
+            color: "rgba(160, 175, 195, 0.5)",
+            "horizon-blend": 0.08,
+          }}
           interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons"]}
           onClick={onClick}
-          onLoad={(e) => { installCategoryMarkers(e.target); applyFrederickPalette(e.target); emitInView(); }}
+          onLoad={(e) => {
+            installCategoryMarkers(e.target);
+            // Mapbox Standard is already a designed style — applying
+            // our System Black palette over it strips the daylight
+            // colors and atmosphere that make Standard read as
+            // "designed for here." Skipped on Standard, kept on the
+            // legacy v11 styles in case we revert.
+            if (!STYLE_URL.includes("standard")) applyFrederickPalette(e.target);
+            emitInView();
+          }}
           onMoveEnd={emitInView}
           onError={(e) => {
             const msg = String(e?.error?.message ?? "");
@@ -1391,6 +1417,14 @@ export default function AppMap({
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
         >
+          {/* DEM source — required for the terrain prop to resolve. */}
+          <Source
+            id="mapbox-dem"
+            type="raster-dem"
+            url="mapbox://mapbox.mapbox-terrain-dem-v1"
+            tileSize={512}
+            maxzoom={14}
+          />
           {/* Municipality labels — no fake bbox rectangles, just point labels */}
           <Source id="muni-labels" type="geojson" data={muniLabelsGeoJson}>
             <Layer
@@ -1667,12 +1701,16 @@ export default function AppMap({
                   ["image", ["concat", "cat-", ["get", "category"]]],
                   ["image", "cat-_default"],
                 ],
+                // Bumped ~50% (2026-05-20). At the wide county view 0.32
+                // was unreadable on phones; the colored pucks were the
+                // point of the map and they were dots. Now they read as
+                // pins from zoom 11.
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  11, 0.32,
-                  14, 0.46,
-                  16, 0.62,
-                  18, 0.76,
+                  11, 0.5,
+                  14, 0.7,
+                  16, 0.9,
+                  18, 1.1,
                 ],
                 // Decluttering is done by CLUSTERING, not icon collision:
                 // with the label-heavy interim base style, collision makes

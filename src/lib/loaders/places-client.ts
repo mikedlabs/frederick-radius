@@ -13,11 +13,26 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
  * cards never read are dropped. `import type` of PlaceCardData is
  * erased, so this module pulls in zero loader code.
  */
-const CLIENT_PLACES = CLIENT_RAW as unknown as PlaceCardData[];
+const ALL_CLIENT_PLACES = CLIENT_RAW as unknown as PlaceCardData[];
+
+/** Hide places Google or our manual curation has marked closed. The
+ *  server's `isOperational` filter is the source of truth, but client
+ *  surfaces (search, saved, radius, planner) read this slim bundle
+ *  directly and were leaking permanently-closed venues into results.
+ *  Single predicate, applied at the loader so every consumer is
+ *  automatically clean. */
+function isOpen(p: PlaceCardData): boolean {
+  return p.is_operational !== "closed_permanently" && p.is_operational !== "closed_temporarily";
+}
+
+const CLIENT_PLACES = ALL_CLIENT_PLACES.filter(isOpen);
 
 const BY_SLUG: Record<string, PlaceCardData> = (() => {
   const m: Record<string, PlaceCardData> = {};
-  for (const p of CLIENT_PLACES) m[p.slug] = p;
+  // Detail lookups CAN return a closed place (its detail page should
+  // still render with a clear "Closed permanently" label) — but the
+  // discovery surfaces below only see operational rows.
+  for (const p of ALL_CLIENT_PLACES) m[p.slug] = p;
   return m;
 })();
 

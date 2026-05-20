@@ -39,7 +39,7 @@ export default function PrimaryActionCard({ now = new Date() }: { now?: Date }) 
       };
 
   return (
-    <Surface elevation={2} radius="var(--app-radius-lg)" className="p-5">
+    <Surface elevation={2} radius="var(--app-radius-lg)" className="tactile-feature p-5">
       <div className="flex items-start gap-3">
         <span
           className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-md)]"

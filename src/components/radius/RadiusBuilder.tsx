@@ -148,6 +148,11 @@ export default function RadiusBuilder({
   // Cuisine filter (food group only) + which groups are expanded.
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // `seeAll` flips the page from "category tiles only" (default —
+  // scan the buckets fast) to "every section expanded inline" (the
+  // full directory view). User-flow fix: the old default landed on
+  // a 6-section, 8-card-each wall before you could find your bucket.
+  const [seeAll, setSeeAll] = useState(false);
   const toggleExpand = (key: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -207,6 +212,10 @@ export default function RadiusBuilder({
     cuisine && facets.some((f) => f.slug === cuisine) ? cuisine : null;
 
   const farthest = inside[inside.length - 1]?.distance_m ?? 0;
+  // The actual place sitting at the edge of the current radius — gives
+  // the user a tangible "you can reach this" anchor instead of just a
+  // number. Updates live as the slider moves.
+  const edgePlace = inside[inside.length - 1] ?? null;
   // Live municipality coverage — how many distinct towns the
   // current radius reaches into. Climbs as the user widens the slider.
   const townsInside = useMemo(
@@ -214,7 +223,7 @@ export default function RadiusBuilder({
     [inside],
   );
   const formatFar = (m: number) => {
-    if (m === 0) return "—";
+    if (m === 0) return "–";
     if (m < 1000) return `${Math.round(m)} ft`;
     return `${(m / 1609).toFixed(1)} mi`;
   };
@@ -325,7 +334,7 @@ export default function RadiusBuilder({
           })}
         </div>
 
-        <div>
+        <div className="relative">
           <div className="flex items-baseline justify-between gap-2">
             <label htmlFor="minutes-slider" className="text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
               Distance
@@ -333,6 +342,32 @@ export default function RadiusBuilder({
             <span className="font-serif text-lg font-semibold tabular-nums" style={{ color: "var(--app-brand)" }}>
               {minutes} min <span className="text-[13px] font-normal" style={{ color: "var(--app-ink-3)" }}>· {formatDistance(meters)}</span>
             </span>
+          </div>
+          {/* Concentric-ring density backdrop — a quiet visual cue that
+              the radius is a real spatial concept, not just a number.
+              The ring count grows as the radius widens; the active ring
+              pulses gently to draw the eye. SVG is pointer-events-none
+              so it never blocks the slider. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            style={{ width: 220, height: 56 }}
+          >
+            <svg viewBox="0 0 220 56" className="h-full w-full" preserveAspectRatio="xMidYMid meet">
+              {[14, 26, 38, 50].map((r, i) => (
+                <ellipse
+                  key={r}
+                  cx={110}
+                  cy={28}
+                  rx={r * 2}
+                  ry={r * 0.55}
+                  fill="none"
+                  stroke="var(--app-brand)"
+                  strokeWidth={0.7}
+                  opacity={Math.max(0.04, 0.18 - i * 0.03)}
+                />
+              ))}
+            </svg>
           </div>
           <input
             id="minutes-slider"
@@ -342,13 +377,40 @@ export default function RadiusBuilder({
             step={1}
             value={minutes}
             onChange={(e) => setMinutes(Number(e.target.value))}
-            className="mt-1.5 w-full"
+            className="relative z-10 mt-1.5 w-full"
             style={{ accentColor: "var(--app-brand)" }}
           />
           <div className="mt-1 flex justify-between text-[11px]" style={{ color: "var(--app-ink-3)" }}>
             <span>3</span>
             <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
           </div>
+          {/* "What's at the edge" peek — tells the user the farthest
+              concrete place they can reach right now. Reads as a
+              tangible boundary, not an abstract distance. */}
+          {edgePlace && (
+            <div
+              className="mt-2.5 flex items-center gap-2 rounded-[var(--app-radius-md)] px-3 py-1.5 text-[11px]"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated))",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: "var(--app-brand)" }}
+              />
+              <span className="min-w-0 flex-1 truncate">
+                <span className="font-semibold uppercase tracking-[0.08em] text-[9px]" style={{ color: "var(--app-ink-3)" }}>
+                  At the edge
+                </span>{" "}
+                <span style={{ color: "var(--app-ink)" }}>{edgePlace.name}</span>
+              </span>
+              <span className="shrink-0 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {formatFar(farthest)}
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
@@ -466,10 +528,100 @@ export default function RadiusBuilder({
         )}
       </section>
 
+      {/* Category tile grid — the new landing for the lower half.
+          Compact, colorful, scannable. Tap a tile to expand JUST
+          that section inline below. Default is tiles-only; the user
+          can flip to the full directory view with "See everything". */}
+      {groups.length > 0 && (
+        <section aria-label="Categories in radius" className="space-y-3">
+          <header className="flex items-end justify-between gap-2">
+            <div>
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.12em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                Inside this radius
+              </p>
+              <h2
+                className="mt-0.5 font-serif text-[18px] font-semibold tracking-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                {inside.length} places · {groups.length} categories
+              </h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSeeAll((v) => !v)}
+              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold transition active:scale-[0.96]"
+              style={{
+                background: seeAll ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                color: seeAll ? "white" : "var(--app-ink-2)",
+                border: `1px solid ${seeAll ? "var(--app-brand)" : "var(--app-border)"}`,
+              }}
+              aria-pressed={seeAll}
+            >
+              {seeAll ? "Hide all" : "See everything"}
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${seeAll ? "rotate-180" : ""}`}
+                strokeWidth={2.25}
+                aria-hidden
+              />
+            </button>
+          </header>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {groups.map((g) => {
+              const color = CATEGORY_BY_SLUG[g.key]?.color ?? "#C4451C";
+              const isOpen = expanded.has(g.key) || seeAll;
+              return (
+                <button
+                  key={g.key}
+                  type="button"
+                  onClick={() => toggleExpand(g.key)}
+                  aria-expanded={isOpen}
+                  className="tactile tactile-interactive relative flex items-center justify-between gap-2 overflow-hidden rounded-[var(--app-radius-md)] px-3.5 py-2.5 text-left"
+                  style={{
+                    background: isOpen
+                      ? `linear-gradient(135deg, color-mix(in srgb, ${color} 32%, var(--app-bg-elevated)), color-mix(in srgb, ${color} 10%, var(--app-bg-elevated)))`
+                      : "var(--app-bg-elevated)",
+                    boxShadow: isOpen ? `0 8px 22px -10px ${color}` : undefined,
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 w-[3px]"
+                    style={{ background: color }}
+                  />
+                  <span className="relative min-w-0 flex-1 truncate">
+                    <span
+                      className="block font-serif text-[14px] font-semibold leading-tight tracking-tight"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {g.label}
+                    </span>
+                    <span
+                      className="block text-[10px] font-bold uppercase tracking-[0.08em]"
+                      style={{ color }}
+                    >
+                      {g.items.length} {g.items.length === 1 ? "place" : "places"}
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={`relative h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                    strokeWidth={2.25}
+                    style={{ color }}
+                    aria-hidden
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Every in-radius place, grouped by the real category tree —
-          nothing hidden. Each section is distance-sorted (nearest
-          first), shows a scannable peek, and expands in place. The
-          food group also gets a cuisine filter built from what is
+          rendered only for sections the user has expanded (via tap
+          on the tile above) OR when "See everything" is on. The food
+          group also gets a cuisine filter built from what is
           actually nearby. */}
       {groups.map((g) => {
         const isFood = g.key === FOOD_GROUP;
@@ -477,9 +629,10 @@ export default function RadiusBuilder({
           isFood && activeCuisine
             ? g.items.filter((p) => cuisinesOf(p).includes(activeCuisine))
             : g.items;
-        const isOpen = expanded.has(g.key);
+        const isOpen = expanded.has(g.key) || seeAll;
+        if (!isOpen) return null;
         const peek = PEEK[view];
-        const shown = isOpen ? filtered : filtered.slice(0, peek);
+        const shown = filtered;
         const overflow = filtered.length - shown.length;
         return (
           <section key={g.key} className="space-y-3">
