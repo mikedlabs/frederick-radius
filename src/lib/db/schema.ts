@@ -240,6 +240,37 @@ export const feed_snapshots = pgTable(
   }),
 );
 
+/**
+ * Web Push subscriptions — one row per (device, endpoint) pair. The
+ * `endpoint` is the URL the browser's push service gave us; it is the
+ * stable identity. `keys.p256dh` + `keys.auth` are the encryption
+ * material the web-push library needs to actually deliver a payload.
+ * `topics` is the user's per-topic subscription state.
+ *
+ * No FK to a users table by design: the app currently has no auth, so
+ * a subscription belongs to a device. When auth lands, add user_id and
+ * backfill from device_id.
+ */
+export const push_subscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    user_agent: text("user_agent"),
+    device_id: text("device_id"),
+    topics: jsonb("topics").$type<string[]>().notNull().default(sql`'[]'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+    last_seen_at: timestamp("last_seen_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    endpointIdx: uniqueIndex("push_subscriptions_endpoint_idx").on(t.endpoint),
+    deviceIdx: index("push_subscriptions_device_idx").on(t.device_id),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- CREATE EXTENSION IF NOT EXISTS pg_trgm;

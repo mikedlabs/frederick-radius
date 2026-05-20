@@ -104,7 +104,15 @@ export default async function HomePage() {
     <div className="relative space-y-6">
       <PageBloom />
 
-      {/* 1 — Sky-tinted hero. Greeting + sun countdown + weather +
+      {/* 1 — Civic alerts. Pinned to the very top so any active NWS
+          or NPS warning is the first thing a user sees, ahead of even
+          the weather hero. Self-hides when nothing's active so the
+          page never carries dead chrome on a quiet day. */}
+      <Suspense fallback={null}>
+        <CivicAlerts />
+      </Suspense>
+
+      {/* 2 — Sky-tinted hero. Greeting + sun countdown + weather +
           forecast + plan card on the time-of-day gradient. */}
       <SkyHero className="space-y-4">
         <Suspense fallback={null}>
@@ -126,11 +134,6 @@ export default async function HomePage() {
         )}
         <PrimaryActionCard now={now} />
       </SkyHero>
-
-      {/* 2 — Civic alerts. Self-hides when nothing's active. */}
-      <Suspense fallback={null}>
-        <CivicAlerts />
-      </Suspense>
 
       {/* 3 — One quiet civic line. */}
       <Suspense fallback={null}>

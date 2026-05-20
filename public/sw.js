@@ -103,3 +103,55 @@ self.addEventListener("fetch", (event) => {
 
   // Everything else: pass through (network), no caching.
 });
+
+/* ─────────────────────────────────────────────────────
+ * Web Push — opt-in notifications.
+ *
+ *   `push`              fires when the push service delivers a payload.
+ *                       We expect the server to send valid JSON; if it
+ *                       doesn't (an unauth ping, an empty test), we
+ *                       fall back to a generic title so the user still
+ *                       sees something rather than nothing.
+ *   `notificationclick` focuses an existing tab at the payload's url
+ *                       when possible (no extra tab spam); otherwise
+ *                       opens a new one.
+ * ───────────────────────────────────────────────────── */
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { title: "Frederick Radius", body: event.data ? event.data.text() : "" };
+  }
+  const title = payload.title || "Frederick Radius";
+  const body = payload.body || "";
+  const url = payload.url || "/today";
+  const options = {
+    body,
+    icon: payload.icon || "/icons/icon-192.png",
+    badge: payload.badge || "/icons/badge-72.png",
+    tag: payload.tag,
+    data: { url },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/today";
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        const target = new URL(url, self.location.origin).href;
+        // Reuse an existing tab when one is already on the right URL.
+        for (const c of clients) {
+          if (c.url === target) return c.focus();
+        }
+        // Or any open tab — push it to the URL.
+        const first = clients[0];
+        if (first && "navigate" in first) return first.navigate(url).then(() => first.focus());
+        return self.clients.openWindow(url);
+      }),
+  );
+});
