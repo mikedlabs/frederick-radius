@@ -84,7 +84,10 @@ export default function NotificationsCard() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: uint8FromBase64(pubKey),
+        // Newer TS lib narrows BufferSource to ArrayBufferView<ArrayBuffer>
+        // and rejects Uint8Array<ArrayBufferLike>. Cast as BufferSource —
+        // the value IS one at runtime; the strict generic just rejects it.
+        applicationServerKey: uint8FromBase64(pubKey) as BufferSource,
       });
       const body = {
         subscription: sub.toJSON(),
