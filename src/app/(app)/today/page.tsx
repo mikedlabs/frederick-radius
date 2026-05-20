@@ -12,6 +12,7 @@ import FeaturedTonight from "@/components/today/FeaturedTonight";
 import RightNow from "@/components/today/RightNow";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import RedditPulse from "@/components/today/RedditPulse";
+import HistoryPulse from "@/components/today/HistoryPulse";
 import DecorativeDivider from "@/components/ui/DecorativeDivider";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -161,6 +162,14 @@ export default async function HomePage() {
       </DismissibleSection>
 
       <DecorativeDivider variant="sun" />
+
+      {/* 7a — Frederick County history pulse — "Did you know" card,
+          rotates daily. Connects users to the place's depth (it's
+          older than the country) instead of leaving them in only
+          "things to eat today". */}
+      <DismissibleSection id="history" title="Frederick County in 1 fact">
+        <HistoryPulse />
+      </DismissibleSection>
 
       {/* 8 — Time-aware curated places (component owns its own header). */}
       <RightNow now={now} />
