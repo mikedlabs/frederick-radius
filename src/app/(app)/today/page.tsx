@@ -4,7 +4,6 @@ import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero, { currentSkyTone } from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
-import WeeklyForecast from "@/components/today/WeeklyForecast";
 import SunCountdown from "@/components/today/SunCountdown";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import PulseSummary from "@/components/today/PulseSummary";
@@ -13,7 +12,6 @@ import FeaturedTonight from "@/components/today/FeaturedTonight";
 import RightNow from "@/components/today/RightNow";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import RedditPulse from "@/components/today/RedditPulse";
-import QuoteOfTheDay from "@/components/today/QuoteOfTheDay";
 import DecorativeDivider from "@/components/ui/DecorativeDivider";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -24,7 +22,6 @@ import StatStrip from "@/components/ui/StatStrip";
 import { allUpcoming } from "@/lib/loaders/events";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { getNwsForecast } from "@/lib/integrations/nws";
 import { PLACES } from "@/data/places";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -99,7 +96,6 @@ export default async function HomePage() {
   const upcomingRest = featuredEvent
     ? upcoming.filter((e) => e.slug !== featuredEvent.slug)
     : upcoming;
-  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const tone = currentSkyTone(now);
 
   return (
@@ -114,8 +110,9 @@ export default async function HomePage() {
         <CivicAlerts />
       </Suspense>
 
-      {/* 2 — Sky-tinted hero. Greeting + sun countdown + weather +
-          forecast + plan card on the time-of-day gradient. */}
+      {/* 2 — Sky-tinted hero. Greeting + sun countdown + weather (now
+          and the 7-day, on one card) + plan card, layered on the
+          time-of-day gradient. */}
       <SkyHero className="space-y-4">
         <Suspense fallback={null}>
           <AdaptiveGreeting />
@@ -131,9 +128,6 @@ export default async function HomePage() {
         >
           <WeatherHero />
         </Suspense>
-        {forecast?.daily && forecast.daily.length > 0 && (
-          <WeeklyForecast daily={forecast.daily} tone={tone} />
-        )}
         <PrimaryActionCard now={now} />
       </SkyHero>
 
@@ -160,10 +154,6 @@ export default async function HomePage() {
       )}
 
       <DecorativeDivider variant="wave" />
-
-      {/* 6a — Quote of the day. One real Google review as a pull-quote,
-          rotated per day. Brings human voice into a data-heavy page. */}
-      <QuoteOfTheDay />
 
       {/* 7 — Photo mosaic. Six-tile real-place wall. */}
       <DismissibleSection id="photo-mosaic" title="Looks like Frederick">

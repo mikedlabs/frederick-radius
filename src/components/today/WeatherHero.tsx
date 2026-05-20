@@ -16,6 +16,7 @@ import {
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import WeeklyForecast from "./WeeklyForecast";
 
 /**
  * WeatherHero — the richer current-conditions module.
@@ -308,6 +309,18 @@ export default async function WeatherHero() {
                   );
                 })}
               </ul>
+            )}
+            {/* 7-day outlook — same card, hairline divider above it so
+                it reads as a continuation of the current weather row
+                rather than a detached forecast strip. The -mx-4 + -mb-4
+                lets it span edge-to-edge inside the p-4 article. */}
+            {forecast?.daily && forecast.daily.length > 0 && (
+              <div
+                className="-mx-4 -mb-4 mt-4"
+                style={{ borderTop: "1px solid var(--app-border)" }}
+              >
+                <WeeklyForecast daily={forecast.daily} tone="dark" />
+              </div>
             )}
           </>
         ) : (
