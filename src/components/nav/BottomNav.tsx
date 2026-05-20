@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Disc, Sun, Map, Calendar, Route, Bookmark } from "lucide-react";
+import { Disc, Sun, Map, Calendar } from "lucide-react";
 
-// Primary destinations. Per the 2026-05-17 owner decision the app
-// opens on Today (the daily landing — "/" redirects there); Radius is
-// its own destination at /radius. Search stays a top-bar action.
+// Primary destinations. Four tabs at the recommended mobile maximum.
+// Saved moved to the header (TopBar) as a bookmark icon; Plan absorbed
+// into Radius (the two answered the same "what's near me / what should
+// I do" intent and split the user's attention). /plan + /saved routes
+// stay alive — they're just no longer first-class tabs.
 const TABS = [
   { href: "/today", label: "Today", icon: Sun },
   { href: "/radius", label: "Radius", icon: Disc },
   { href: "/map", label: "Map", icon: Map },
   { href: "/events", label: "Events", icon: Calendar },
-  { href: "/plan", label: "Plan", icon: Route },
-  { href: "/saved", label: "Saved", icon: Bookmark },
 ] as const;
 
 export default function BottomNav() {
@@ -23,7 +23,7 @@ export default function BottomNav() {
       aria-label="Primary"
       className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="mx-auto grid max-w-screen-md grid-cols-6">
+      <ul className="mx-auto grid max-w-screen-md grid-cols-4">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href || pathname.startsWith(href + "/");

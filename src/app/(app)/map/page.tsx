@@ -89,7 +89,10 @@ export default async function MapPage({
         height: "calc(100dvh - 56px - env(safe-area-inset-top, 0px))",
       }}
     >
-      <MapIntentChips active={intent?.key} />
+      <MapIntentChips
+        active={intent?.key}
+        activeCount={intent ? places.length : undefined}
+      />
       <AppMapClient
         places={places}
         civic={civic}

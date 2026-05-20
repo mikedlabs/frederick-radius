@@ -1667,12 +1667,16 @@ export default function AppMap({
                   ["image", ["concat", "cat-", ["get", "category"]]],
                   ["image", "cat-_default"],
                 ],
+                // Bumped ~50% (2026-05-20). At the wide county view 0.32
+                // was unreadable on phones; the colored pucks were the
+                // point of the map and they were dots. Now they read as
+                // pins from zoom 11.
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  11, 0.32,
-                  14, 0.46,
-                  16, 0.62,
-                  18, 0.76,
+                  11, 0.5,
+                  14, 0.7,
+                  16, 0.9,
+                  18, 1.1,
                 ],
                 // Decluttering is done by CLUSTERING, not icon collision:
                 // with the label-heavy interim base style, collision makes

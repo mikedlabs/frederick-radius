@@ -22,13 +22,55 @@ const ICON: Record<Intent["icon"], typeof Coffee> = {
  * after the map paints. They double as visual anchors — six colors,
  * six icons, instantly readable as "what kind of places live here".
  */
-export default function MapIntentChips({ active }: { active?: string }) {
+export default function MapIntentChips({
+  active,
+  activeCount,
+}: {
+  active?: string;
+  /** Number of places matching the active intent — shown in the
+   *  prominent active banner so the filter feels REAL. */
+  activeCount?: number;
+}) {
+  const activeIntent = active ? INTENTS.find((i) => i.key === active) : null;
+  const ActiveIcon = activeIntent ? ICON[activeIntent.icon] : null;
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 top-0 z-30 px-2.5 sm:px-3"
+      className="pointer-events-none absolute inset-x-0 top-0 z-30 space-y-2 px-2.5 sm:px-3"
       style={{ paddingTop: "calc(2.5rem + env(safe-area-inset-top, 0px) + 18px)" }}
       aria-label="Filter map by intent"
     >
+      {/* Active-intent banner — only present when a filter is on. A
+          bold colored bar with the intent label, count, and a clear
+          chip on the right. This is the "the map looks different now"
+          signal that the filter is doing something real. */}
+      {activeIntent && ActiveIcon && (
+        <div
+          className="pointer-events-auto mx-auto flex w-full max-w-[680px] items-center gap-2.5 rounded-full px-3.5 py-2"
+          style={{
+            background: activeIntent.color,
+            color: "#fff",
+            boxShadow: `0 10px 30px -10px ${activeIntent.color}`,
+          }}
+        >
+          <ActiveIcon className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight">
+            {activeIntent.label}
+          </span>
+          {typeof activeCount === "number" && (
+            <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[11px] font-bold tabular-nums backdrop-blur">
+              {activeCount.toLocaleString()}
+            </span>
+          )}
+          <Link
+            href="/map"
+            aria-label="Clear filter"
+            className="-mr-1.5 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-white/22 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] backdrop-blur transition active:scale-[0.96]"
+          >
+            <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+            Clear
+          </Link>
+        </div>
+      )}
       <div
         className="pointer-events-auto mx-auto flex w-full max-w-[680px] gap-2 overflow-x-auto rounded-full p-1.5 backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={{
@@ -68,20 +110,6 @@ export default function MapIntentChips({ active }: { active?: string }) {
             </Link>
           );
         })}
-        {active && (
-          <Link
-            href="/map"
-            aria-label="Clear filter"
-            className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-tight"
-            style={{
-              background: "color-mix(in srgb, var(--app-ink) 6%, transparent)",
-              color: "var(--app-ink-2)",
-            }}
-          >
-            <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-            Clear
-          </Link>
-        )}
       </div>
     </div>
   );
