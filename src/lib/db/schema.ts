@@ -271,6 +271,31 @@ export const push_subscriptions = pgTable(
   }),
 );
 
+/**
+ * Push-fanout dedupe log. Each `(topic, dedupe_key)` is sent at most
+ * once: a cron does INSERT … ON CONFLICT DO NOTHING and only fans out
+ * to subscribers when the insert reports it created the row. This is
+ * the simplest way to make a broadcast "send once" without per-user
+ * state. Old rows are pruned after 30 days by the data-health cron.
+ */
+export const push_log = pgTable(
+  "push_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    topic: text("topic").notNull(),
+    dedupe_key: text("dedupe_key").notNull(),
+    title: text("title"),
+    body: text("body"),
+    url: text("url"),
+    sent_at: timestamp("sent_at", { withTimezone: true }).defaultNow(),
+    sent_count: integer("sent_count").notNull().default(0),
+  },
+  (t) => ({
+    topicKeyIdx: uniqueIndex("push_log_topic_key_idx").on(t.topic, t.dedupe_key),
+    sentAtIdx: index("push_log_sent_at_idx").on(t.sent_at),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- CREATE EXTENSION IF NOT EXISTS pg_trgm;
