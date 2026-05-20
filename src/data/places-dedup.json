@@ -296,5 +296,53 @@
   },
   "cellar-door-restaurant": {
     "canonical": "the-cellar-door"
+  },
+  "smoketown-brewing-brunswick-2": {
+    "canonical": "smoketown-brewing-brunswick"
+  },
+  "smoketown-brewing-brunswick": {
+    "canonical": "smoketown-brewing-brunswick"
+  },
+  "rockwell-brewery-frederick-2": {
+    "canonical": "rockwell-brewery-frederick"
+  },
+  "rockwell-brewery-frederick": {
+    "canonical": "rockwell-brewery-frederick"
+  },
+  "catoctin-breeze-vineyard-thurmont-2": {
+    "canonical": "catoctin-breeze-vineyard-thurmont"
+  },
+  "catoctin-breeze-vineyard-thurmont": {
+    "canonical": "catoctin-breeze-vineyard-thurmont"
+  },
+  "six-wicket-vineyards-myersville-2": {
+    "canonical": "six-wicket-vineyards-myersville"
+  },
+  "six-wicket-vineyards-myersville": {
+    "canonical": "six-wicket-vineyards-myersville"
+  },
+  "new-market-plains-vineyards-new-market-2": {
+    "canonical": "new-market-plains-vineyards-new-market"
+  },
+  "new-market-plains-vineyards-new-market": {
+    "canonical": "new-market-plains-vineyards-new-market"
+  },
+  "black-ankle-vineyards-mount-airy-2": {
+    "canonical": "black-ankle-vineyards-mount-airy"
+  },
+  "black-ankle-vineyards-mount-airy": {
+    "canonical": "black-ankle-vineyards-mount-airy"
+  },
+  "mazzaroth-vineyard-middletown-2": {
+    "canonical": "mazzaroth-vineyard-middletown"
+  },
+  "mazzaroth-vineyard-middletown": {
+    "canonical": "mazzaroth-vineyard-middletown"
+  },
+  "loew-vineyards-mount-airy-2": {
+    "canonical": "loew-vineyards-mount-airy"
+  },
+  "loew-vineyards-mount-airy": {
+    "canonical": "loew-vineyards-mount-airy"
   }
 }
