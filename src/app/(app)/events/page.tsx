@@ -7,6 +7,7 @@ import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
 import WeekStrip from "@/components/event/WeekStrip";
+import CategoryJumpTiles from "@/components/event/CategoryJumpTiles";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
@@ -98,6 +99,10 @@ export default async function EventsIndexPage({
     else if (Array.isArray(v) && typeof v[0] === "string") sp.set(k, v[0]);
   }
   const initialView: ViewState = parseViewState(sp);
+  // ?d=YYYY-MM-DD deep-links to a specific Eastern day. Format is
+  // validated by the regex so a garbled link can't crash the explorer.
+  const dParam = sp.get("d");
+  const initialDay = dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
 
   // Stat-strip numbers for /events — quick identity / breadth.
   const liveCount = liveCards.length;
@@ -153,7 +158,10 @@ export default async function EventsIndexPage({
       <StatStrip stats={eventStats} />
 
       {/* 7-day mini calendar — horizontal rhythm before the long list. */}
-      <WeekStrip events={allEvents} />
+      <WeekStrip events={allEvents} activeDay={initialDay} />
+
+      {/* Visual entry points to the deeper category surfaces. */}
+      <CategoryJumpTiles events={allEvents} />
 
       <EventsExplorer
         events={allEvents}
@@ -165,6 +173,7 @@ export default async function EventsIndexPage({
         weekendStartISO={friday.toISOString()}
         weekendEndISO={monday.toISOString()}
         initialView={initialView}
+        initialDay={initialDay}
       />
 
       {ingestedSeries.length > 0 && (

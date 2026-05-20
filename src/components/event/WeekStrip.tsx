@@ -38,8 +38,12 @@ function easternToday(): Date {
 
 export default function WeekStrip({
   events,
+  activeDay,
 }: {
   events: EventWithMeta[];
+  /** YYYY-MM-DD currently selected by ?d=, so the matching tile rings
+   *  brighter than today's default highlight. */
+  activeDay?: string;
 }) {
   const base = easternToday();
   const days: Array<{
@@ -97,22 +101,34 @@ export default function WeekStrip({
     <section aria-label="Next seven days" className="-mx-4 px-4">
       <div className="shelf-rail gap-2 pb-1">
         {days.map((d) => {
+          const isActive = activeDay === d.iso;
           const accent = d.isToday
             ? "var(--app-brand)"
             : d.isWeekend
               ? "var(--app-cool)"
               : "var(--app-ink-3)";
+          // Tapping the currently-active tile clears the day filter
+          // (toggle), so a user can return to the full list without
+          // hunting for a "Clear" affordance.
+          const href = isActive ? "/events" : `/events?d=${d.iso}`;
           return (
             <a
               key={d.key}
-              href={`/events?d=${d.iso}`}
+              href={href}
+              aria-pressed={isActive}
               className={`tactile tactile-interactive flex w-[64px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md)] py-2 ${
-                d.isToday ? "tactile-glow-brand" : ""
+                isActive || d.isToday ? "tactile-glow-brand" : ""
               }`}
               style={{
-                background: d.isToday
-                  ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
-                  : "var(--app-bg-elevated)",
+                background: isActive
+                  ? "color-mix(in srgb, var(--app-brand) 24%, var(--app-bg-elevated))"
+                  : d.isToday
+                    ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
+                    : "var(--app-bg-elevated)",
+                outline: isActive
+                  ? "2px solid var(--app-brand)"
+                  : undefined,
+                outlineOffset: isActive ? "1px" : undefined,
               }}
             >
               <span
@@ -123,7 +139,9 @@ export default function WeekStrip({
               </span>
               <span
                 className="font-serif text-[22px] font-semibold leading-none tabular-nums"
-                style={{ color: d.isToday ? "var(--app-brand)" : "var(--app-ink)" }}
+                style={{
+                  color: isActive || d.isToday ? "var(--app-brand)" : "var(--app-ink)",
+                }}
               >
                 {d.dom}
               </span>

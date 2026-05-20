@@ -25,6 +25,11 @@ type Props = {
   weekendEndISO: string;
   /** Deep-link view, parsed server-side so first paint matches the URL. */
   initialView?: ViewState;
+  /** Optional ?d=YYYY-MM-DD deep-link from WeekStrip — restricts the
+   *  list to a single Eastern calendar day. Coexists with the existing
+   *  time-window filter (Tonight / Weekend / This week); the day wins
+   *  when both are set. */
+  initialDay?: string;
 };
 
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
@@ -36,6 +41,17 @@ const timeToWhen = (t: TimeKey): When | undefined =>
 const whenToTime = (w?: When): TimeKey =>
   w === "today" || w === "weekend" || w === "week" ? w : "all";
 
+// One-off Eastern-day key (YYYY-MM-DD) for the day filter. Mirrors
+// the helper in WeekStrip so the explorer matches its tile keys.
+function dayKeyEastern(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
 export default function EventsExplorer({
   events,
   liveSlugs,
@@ -46,10 +62,12 @@ export default function EventsExplorer({
   weekendStartISO,
   weekendEndISO,
   initialView,
+  initialDay,
 }: Props) {
   const [cat, setCat] = useState<string | null>(initialView?.cats?.[0] ?? null);
   const [time, setTime] = useState<TimeKey>(whenToTime(initialView?.when));
   const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
+  const [day, setDay] = useState<string | null>(initialDay ?? null);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"list" | "calendar" | "map">("list");
   // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
@@ -72,14 +90,16 @@ export default function EventsExplorer({
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return events.filter((e) => {
+      // Day filter wins over time-window filters when both are set.
+      if (day && dayKeyEastern(e.starts_at) !== day) return false;
       const t = +new Date(e.starts_at);
-      if (time === "today" && !(t >= now && t < +new Date(next24ISO))) return false;
+      if (!day && time === "today" && !(t >= now && t < +new Date(next24ISO))) return false;
       if (
-        time === "weekend" &&
+        !day && time === "weekend" &&
         !(t >= +new Date(weekendStartISO) && t < +new Date(weekendEndISO))
       )
         return false;
-      if (time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
+      if (!day && time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
       if (cat && e.category !== cat) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
@@ -92,7 +112,7 @@ export default function EventsExplorer({
         return false;
       return true;
     });
-  }, [events, time, cat, town, q, freeOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [events, day, time, cat, town, q, freeOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
 
   // Group the filtered list into human horizons so the default view is
   // navigable at a glance instead of a 400-row chronological scroll.
@@ -134,19 +154,25 @@ export default function EventsExplorer({
   // effect is needed. history.replaceState, not router navigation:
   // filtering is fully client-side, so re-running the page's live-feed
   // loaders would be wasteful. Search text stays out of the URL by design.
+  // Day filter rides along as ?d= so a tap on the WeekStrip survives a
+  // share.
   useEffect(() => {
     const qs = toQuery(viewState);
-    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+    const sp = new URLSearchParams(qs);
+    if (day) sp.set("d", day);
+    const full = sp.toString();
+    const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-  }, [viewState]);
+  }, [viewState, day]);
 
   const anyFilter =
-    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly;
+    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly || day !== null;
   // Count only the panel facets (search is its own visible field).
-  const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0);
+  const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0);
   const clear = () => {
     setCat(null);
     setTown(null);
+    setDay(null);
     setTime("all");
     setQ("");
     setFreeOnly(false);
