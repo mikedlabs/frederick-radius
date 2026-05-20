@@ -921,7 +921,7 @@ export default function AppMap({
                 boxShadow: "var(--app-shadow-2)",
               }}
             >
-              Filters{activeCats.size > 0 ? ` · ${activeCats.size}` : ""}
+              Layers{activeCats.size > 0 ? ` · ${activeCats.size}` : ""}
               <span aria-hidden style={{ marginLeft: 6, fontSize: 9, opacity: 0.7 }}>{filtersOpen ? "▲" : "▼"}</span>
             </button>
           </div>
@@ -1266,19 +1266,11 @@ export default function AppMap({
             )}
           </div>
         )}
-        {unverifiedOsmCount > 0 && !osmLoading && !osmError && (
-          <button
-            type="button"
-            onClick={() => setShowUnverified((v) => !v)}
-            className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
-            style={{ color: showUnverified ? "var(--app-warning)" : "var(--app-ink-2)" }}
-            aria-pressed={showUnverified}
-            aria-label={showUnverified ? "Hide unverified businesses" : "Show all OSM businesses"}
-          >
-            <span className="inline-block h-2 w-2 rounded-full" style={{ background: showUnverified ? "var(--app-warning)" : "var(--app-ink-3)" }} />
-            {showUnverified ? "Hide unverified" : `+${unverifiedOsmCount.toLocaleString()} unverified`}
-          </button>
-        )}
+        {/* The "+N unverified" toggle is retired from the deck — it
+            exposed data we don't trust and asked the user to opt in
+            to weaker quality, which violated the editorial promise.
+            showUnverified state stays in component scope (default
+            false) so the filtering branch above still compiles. */}
 
         {/* Directions chip — distance + drive estimate + native handoff */}
         {routeInfo && (
@@ -1301,45 +1293,10 @@ export default function AppMap({
           </div>
         )}
 
-        {/* Legend — quick key so it's easy to see what you're looking at */}
-        <div className="absolute bottom-3 left-3 z-10">
-          {showLegend ? (
-            <div
-              className="w-[220px] rounded-[var(--app-radius-md)] border p-3 text-[11px] shadow-[var(--app-shadow-2)] backdrop-blur"
-              style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.94)", color: "var(--app-ink-2)" }}
-            >
-              <div className="mb-1.5 flex items-center justify-between">
-                <span className="font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>Legend</span>
-                <button type="button" onClick={() => setShowLegend(false)} aria-label="Close legend" style={{ color: "var(--app-ink-3)" }}>✕</button>
-              </div>
-              <ul className="space-y-1.5">
-                <li className="flex items-center gap-2">
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[8px]" style={{ background: "var(--app-brand)", color: "white" }}>●</span>
-                  Curated places — verified
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[8px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>○</span>
-                  Public &amp; OSM — lighter pins
-                </li>
-                <li className="flex items-center gap-2">
-                  <span aria-hidden className="inline-flex h-4 w-4 items-center justify-center"><span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--app-cool)", opacity: 0.55 }} /></span>
-                  Soft dot — more places, zoom in
-                </li>
-                <li style={{ color: "var(--app-ink-3)" }}>Tap a soft dot or pin to open it.</li>
-              </ul>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowLegend(true)}
-              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-[var(--app-shadow-1)] backdrop-blur"
-              style={{ background: "rgba(255,255,255,0.92)", color: "var(--app-ink-2)" }}
-              aria-label="Show map legend"
-            >
-              <span aria-hidden>ⓘ</span> Legend
-            </button>
-          )}
-        </div>
+        {/* Legend retired — the floating button competed with the map
+            and never carried real signal. The category color band on
+            each pin + the in-view drawer's place cards are the legend
+            now. (showLegend state kept above to avoid a wider refactor.) */}
 
         {/* Demo preview for future updates */}
         {demo && (
