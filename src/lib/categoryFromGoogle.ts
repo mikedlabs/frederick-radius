@@ -199,6 +199,34 @@ const MAP: Record<string, string> = {
   aquarium: "family",
   water_park: "family",
   movie_rental: "family",
+  // Entertainment venues — arcades, bowling, skate parks were
+  // miscategorized as "shopping"/"bar"/"theater" because the DFP
+  // scrape used name heuristics and Google's primary_type for them
+  // wasn't in the corrector. Surfacing Spinners Pinball, Mount Airy
+  // Bowling Lanes, etc. correctly under Family / Take the kids.
+  video_arcade: "family",
+  amusement_arcade: "family",
+  bowling_alley: "family",
+  billiard_hall: "family",
+  pool_hall: "family",
+  skating_rink: "family",
+  roller_skating_rink: "family",
+  ice_skating_rink: "family",
+  miniature_golf_course: "family",
+  golf_course: "outdoors",
+  escape_room_service: "family",
+  laser_tag_center: "family",
+  trampoline_park: "family",
+  paintball_center: "family",
+  go_kart_track: "family",
+  batting_cage: "family",
+  // Outdoor recreation
+  skateboard_park: "park",
+  bicycle_store: "shopping",
+  // Live entertainment
+  comedy_club: "music",
+  karaoke_box: "music",
+  dance_hall: "music",
   // Civic-adjacent — historical sites, cemeteries, visitor info
   cemetery: "civic",
   visitor_center: "civic",

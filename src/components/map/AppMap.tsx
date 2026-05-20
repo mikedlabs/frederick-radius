@@ -244,10 +244,15 @@ function saveCachedOsm(data: OsmPlace[]) {
 }
 
 const FREDERICK: [number, number] = [-77.4105, 39.4143];
-// Interim Mapbox base. The custom Frederick Radius Studio style is
-// P2-1, an owner-only manual workflow; its published style URL replaces
-// this when ready. Dark aligns with the System Black brand target.
-const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
+// Mapbox Standard: the brightest, most polished style Mapbox ships.
+// Includes 3D building extrusions by default, atmospheric sky, day/
+// night lighting that follows the user's clock, and proper street
+// labels. Switching from dark-v11 → standard is the single biggest
+// "the map looks designed" change available; the dark style read as
+// generic-nightlife-app and hid the terrain hillshading we'd added.
+// The custom Frederick Radius Studio style (P2-1) replaces this when
+// ready; until then Standard is a real-feeling map of the county.
+const STYLE_URL = "mapbox://styles/mapbox/standard";
 
 // ── Curated-vs-OSM dedupe ───────────────────────────────────────────
 // The map renders our curated set AND the live OSM layer; anything in
@@ -1392,7 +1397,16 @@ export default function AppMap({
           }}
           interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons"]}
           onClick={onClick}
-          onLoad={(e) => { installCategoryMarkers(e.target); applyFrederickPalette(e.target); emitInView(); }}
+          onLoad={(e) => {
+            installCategoryMarkers(e.target);
+            // Mapbox Standard is already a designed style — applying
+            // our System Black palette over it strips the daylight
+            // colors and atmosphere that make Standard read as
+            // "designed for here." Skipped on Standard, kept on the
+            // legacy v11 styles in case we revert.
+            if (!STYLE_URL.includes("standard")) applyFrederickPalette(e.target);
+            emitInView();
+          }}
           onMoveEnd={emitInView}
           onError={(e) => {
             const msg = String(e?.error?.message ?? "");
