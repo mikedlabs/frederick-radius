@@ -7,7 +7,7 @@ import PageBloom from "@/components/ui/PageBloom";
 export const metadata: Metadata = {
   title: "Notifications",
   description:
-    "Choose what you hear from Frederick Radius — civic alerts, saved event reminders, daily briefing.",
+    "Choose what you hear from Frederick Radius. Civic alerts, saved event reminders, daily briefing.",
 };
 
 export default function NotificationsSettingsPage() {

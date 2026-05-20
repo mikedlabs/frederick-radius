@@ -145,7 +145,7 @@ export default async function DriftReviewPage() {
                             color: "var(--app-ink-2)",
                           }}
                         >
-                          {ch.before ?? "—"}
+                          {ch.before ?? "–"}
                         </span>
                         <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-ink-3)" }} />
                         <span
@@ -155,7 +155,7 @@ export default async function DriftReviewPage() {
                             color: "var(--app-ink)",
                           }}
                         >
-                          {ch.after ?? "—"}
+                          {ch.after ?? "–"}
                         </span>
                       </div>
                       <form action={handle} className="mt-2 flex gap-2 text-[12px] font-semibold">

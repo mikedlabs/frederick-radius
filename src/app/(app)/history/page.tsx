@@ -9,7 +9,7 @@ import DecorativeDivider from "@/components/ui/DecorativeDivider";
 export const metadata: Metadata = {
   title: "History",
   description:
-    "Frederick County in moments and facts — Barbara Fritchie, Monocacy, the 1864 Ransom, Camp David, the Clustered Spires, Mt St Mary's, the C&O Canal.",
+    "Frederick County in moments and facts. Barbara Fritchie, Monocacy, the 1864 Ransom, Camp David, the Clustered Spires, Mt St Mary's, the C&O Canal.",
 };
 
 const KIND_META: Record<HistoryEntry["kind"], { label: string; icon: typeof Landmark; color: string }> = {
@@ -25,14 +25,14 @@ function formatYear(e: HistoryEntry): string | null {
 }
 
 /**
- * /history — Frederick County in moments and facts.
+ * /history. Frederick County in moments and facts.
  *
  * Layered editorial page: a hero with one rotating "did you know"
  * fact, then a topic-filter row, then the entries grouped by kind
  * (moments / people / facts). Connects residents to the place and
  * gives visitors texture beyond "things to eat".
  *
- * Pure server. Data lives in src/data/history.ts — one curated TS
+ * Pure server. Data lives in src/data/history.ts. One curated TS
  * file, no CMS, no live feed. Every entry has a real source where
  * authoritative reference exists; nothing is fabricated.
  */
@@ -44,7 +44,7 @@ export default async function HistoryPage() {
     { label: "Facts", value: HISTORY.filter((h) => h.kind === "fact").length },
   ];
 
-  // Hero "did you know" — rotates daily so a return visitor sees a
+  // Hero "did you know" – rotates daily so a return visitor sees a
   // different fact each morning. Deterministic per day; never random
   // (server-rendered, no hydration mismatch).
   const facts = HISTORY.filter((h) => h.kind === "fact");
@@ -76,7 +76,7 @@ export default async function HistoryPage() {
           The county is older than the country. Cannonballs from a foundry
           here armed the Continental Army; a 95-year-old flag-waver in town
           ended up in a Whittier poem; a battle south of the city saved
-          Washington. These are the moments and the small details — the
+          Washington. These are the moments and the small details. The
           stuff a docent might tell you walking past the marker.
         </p>
       </header>
@@ -120,7 +120,7 @@ export default async function HistoryPage() {
         )}
       </section>
 
-      {/* Topic filter — non-interactive on first ship; informational chips
+      {/* Topic filter. Non-interactive on first ship; informational chips
           so users see the topic shape of the page. A real filter is the
           next step once a search/topic state exists. */}
       <section aria-label="Topics" className="-mx-1 flex flex-wrap gap-1.5 px-1">
@@ -147,7 +147,7 @@ export default async function HistoryPage() {
 
       <DecorativeDivider variant="asterism" />
 
-      {/* Big moments — dated events, newest first. */}
+      {/* Big moments. Dated events, newest first. */}
       <section aria-label="Big moments" className="space-y-3">
         <header className="flex items-end justify-between gap-3">
           <h2

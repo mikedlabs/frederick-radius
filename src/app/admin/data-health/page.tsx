@@ -176,7 +176,7 @@ export default async function DataHealth() {
           Distribution snapshot
         </h2>
         <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          The shape of each feed&apos;s most recent batch — what
+          The shape of each feed&apos;s most recent batch. What
           anomalies are computed against.
         </p>
         {snapshots.length === 0 ? (
@@ -213,12 +213,12 @@ export default async function DataHealth() {
                   <td className="py-2 pr-3 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                     {current.top_venue
                       ? `${current.top_venue.name} · ${(current.top_venue.share * 100).toFixed(0)}%`
-                      : "—"}
+                      : "–"}
                   </td>
                   <td className="py-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                     {current.top_category
                       ? `${current.top_category.name} · ${(current.top_category.share * 100).toFixed(0)}%`
-                      : "—"}
+                      : "–"}
                   </td>
                 </tr>
               ))}
@@ -268,7 +268,7 @@ export default async function DataHealth() {
                   </td>
                   <td className="py-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                     {m.reasons.length === 0 ? (
-                      <span style={{ color: "var(--app-positive)" }}>—</span>
+                      <span style={{ color: "var(--app-positive)" }}>–</span>
                     ) : (
                       <ul className="space-y-0.5">
                         {m.reasons.map((r) => (

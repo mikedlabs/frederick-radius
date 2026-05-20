@@ -223,7 +223,7 @@ export default function RadiusBuilder({
     [inside],
   );
   const formatFar = (m: number) => {
-    if (m === 0) return "—";
+    if (m === 0) return "–";
     if (m < 1000) return `${Math.round(m)} ft`;
     return `${(m / 1609).toFixed(1)} mi`;
   };

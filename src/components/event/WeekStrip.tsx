@@ -200,7 +200,7 @@ export default function WeekStrip({
                   color: d.count > 0 ? accent : "var(--app-ink-3)",
                 }}
               >
-                {d.count > 0 ? d.count : "—"}
+                {d.count > 0 ? d.count : "–"}
               </span>
             </a>
           );

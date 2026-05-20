@@ -201,7 +201,7 @@ function InViewDrawer({
               className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              Pan or zoom — places here list above. Tap any to see details.
+              Pan or zoom. Places here list above. Tap any to see details.
             </li>
           ) : (
             results.map((p) => (

@@ -127,7 +127,7 @@ export default function SunCountdown({
     const goldenStart = new Date(today.sunset.getTime() - 30 * 60_000);
     if (now >= goldenStart) {
       icon = Sun;
-      label = "Golden hour — sunset";
+      label = "Golden hour: sunset";
       when = today.sunset;
     } else {
       icon = Sunset;
