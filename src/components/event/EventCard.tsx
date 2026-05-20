@@ -32,7 +32,7 @@ export default function EventCard({
   // overlay, date badge top-left. One per group, by design.
   if (variant === "feature") {
     return (
-      <article className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]">
+      <article className="tactile tactile-feature tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative aspect-[16/10] w-full overflow-hidden">
           {hasPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo

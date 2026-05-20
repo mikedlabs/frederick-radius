@@ -161,7 +161,7 @@ export default async function WeatherHero() {
       )}
 
       <article
-        className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
+        className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
         aria-label="Current weather and today's outlook"
       >
         {cur ? (

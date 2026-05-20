@@ -1378,6 +1378,18 @@ export default function AppMap({
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={true}
+          // Hillshading: Catoctin + South Mountain run the length of
+          // Frederick County. With the DEM terrain enabled, the
+          // mountains read as terrain instead of being invisible — the
+          // single biggest "this map was made for Frederick" signal.
+          terrain={{ source: "mapbox-dem", exaggeration: 1.15 }}
+          // Atmospheric fog softens the far edges of the county view
+          // and gives the map dimensionality at low pitch.
+          fog={{
+            range: [1, 12],
+            color: "rgba(160, 175, 195, 0.5)",
+            "horizon-blend": 0.08,
+          }}
           interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons"]}
           onClick={onClick}
           onLoad={(e) => { installCategoryMarkers(e.target); applyFrederickPalette(e.target); emitInView(); }}
@@ -1391,6 +1403,14 @@ export default function AppMap({
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
         >
+          {/* DEM source — required for the terrain prop to resolve. */}
+          <Source
+            id="mapbox-dem"
+            type="raster-dem"
+            url="mapbox://mapbox.mapbox-terrain-dem-v1"
+            tileSize={512}
+            maxzoom={14}
+          />
           {/* Municipality labels — no fake bbox rectangles, just point labels */}
           <Source id="muni-labels" type="geojson" data={muniLabelsGeoJson}>
             <Layer
