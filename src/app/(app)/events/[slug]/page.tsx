@@ -32,6 +32,7 @@ import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import TrustChip from "@/components/ui/TrustChip";
+import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
 
 export const revalidate = 300;
@@ -181,6 +182,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             {event.organizer && (
               <span>by {event.organizer}</span>
             )}
+            <FreshnessChip iso={event.last_verified_at} />
           </div>
         </div>
       </header>

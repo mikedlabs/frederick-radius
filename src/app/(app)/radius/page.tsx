@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import { radiusPlaces, decoratePlace } from "@/lib/loaders/places";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
+import PageBloom from "@/components/ui/PageBloom";
 
 // Radius now lives at /radius (Today is the home landing). Same
 // canonical public place set as every other route: deduplicated and
@@ -27,7 +28,8 @@ export const metadata: Metadata = {
 
 export default function RadiusPage() {
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5">
+      <PageBloom variant="cool" />
       <header className="space-y-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
           Signature interaction
@@ -39,6 +41,8 @@ export default function RadiusPage() {
           Frederick&apos;s defining interaction — walking from your hotel, driving from a meeting, hiking from a trailhead.
         </p>
       </header>
+      {/* RadiusBuilder owns the live "In play right now" strip — its
+          numbers reflect the active radius, not a static county total. */}
       <RadiusBuilder places={OPEN_PLACES} amenities={OPEN_AMENITIES} />
     </div>
   );

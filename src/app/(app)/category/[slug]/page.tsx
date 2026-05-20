@@ -4,6 +4,10 @@ import Link from "next/link";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { rankPlaces } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
+import PhotoMosaic from "@/components/today/PhotoMosaic";
+import PageBloom from "@/components/ui/PageBloom";
+import StatStrip from "@/components/ui/StatStrip";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
 export const revalidate = 600;
@@ -36,12 +40,24 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   const places = rankPlaces({ category: slug, origin: FREDERICK_CENTER });
   const subs = CATEGORIES.filter((x) => x.parent === c.slug);
+  const placesWithPhotos = places.filter((p) => p.google_photo_url);
+  const verifiedCount = places.filter((p) => p.is_verified).length;
+  const townsCovered = new Set(places.map((p) => p.municipality).filter(Boolean)).size;
+
+  const catStats = [
+    { label: "Places", value: places.length },
+    { label: "Verified", value: verifiedCount },
+    { label: "Towns", value: townsCovered },
+  ];
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <PageBloom variant="single" />
       <header className="space-y-2">
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]"
-           style={{ color: c.color }}>
+        <p
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]"
+          style={{ color: c.color }}
+        >
           <span style={{ background: c.color }} className="inline-block h-1.5 w-1.5 rounded-full" aria-hidden />
           Category
         </p>
@@ -52,6 +68,8 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           {c.blurb}
         </p>
       </header>
+
+      <StatStrip stats={catStats} eyebrow={`Across the county`} />
 
       {subs.length > 0 && (
         <section className="space-y-2">
@@ -75,19 +93,34 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         </section>
       )}
 
+      {/* Photo wall — six tiles from THIS category. The category
+          tile section makes the page feel like browsing a curated
+          collection, not a stacked list. */}
+      {placesWithPhotos.length >= 4 && (
+        <section className="space-y-3">
+          <SectionHeading title={`Looks like ${c.name}`} accent={c.color} />
+          <PhotoMosaic places={placesWithPhotos} />
+        </section>
+      )}
+
       <section className="space-y-3">
-        <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          {places.length} place{places.length === 1 ? "" : "s"}
-        </h2>
+        <SectionHeading
+          title={`${places.length} place${places.length === 1 ? "" : "s"}`}
+          accent={c.color}
+        />
         {places.length === 0 ? (
-          <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+          <p
+            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
             We&apos;re still seeding this category. Submit a place you love.
           </p>
         ) : (
           <ul className="space-y-2">
             {places.map((p) => (
-              <li key={p.slug}><PlaceCard place={p} /></li>
+              <li key={p.slug}>
+                <PlaceCard place={p} />
+              </li>
             ))}
           </ul>
         )}

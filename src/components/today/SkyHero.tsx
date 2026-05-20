@@ -4,7 +4,26 @@
  * so the first paint matches local Frederick time without a flash.
  */
 
-type Sky = { top: string; mid: string; bottom: string; tone: "light" | "dark" };
+export type SkyTone = "light" | "dark";
+type Sky = { top: string; mid: string; bottom: string; tone: SkyTone };
+
+/**
+ * Server-safe helper for the current Eastern-time hour's sky tone.
+ * Exposed so other components rendered alongside SkyHero (e.g.
+ * WeeklyForecast tucked into the hero region) can color-match
+ * without re-deriving the hour. Mirrors paletteForHour's tone tier.
+ */
+export function currentSkyTone(now: Date = new Date()): SkyTone {
+  const h = parseInt(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric",
+      hour12: false,
+    }).format(now),
+    10,
+  );
+  return paletteForHour(h).tone;
+}
 
 function paletteForHour(h: number): Sky {
   // Pre-dawn (3–5)

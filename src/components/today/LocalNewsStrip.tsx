@@ -23,19 +23,66 @@ function accentFor(source: string): string {
 
 /**
  * Local news desk — an editorial lead story + a scannable column of
- * the rest. Vertical, the way people actually read news (the old
- * horizontal text-card rail read thin). Multi-source, county-wide,
- * refreshed hourly. RSS carries no images, so type + a per-source
- * color spine carry it — never a fabricated thumbnail.
+ * the rest. Vertical, the way people actually read news. Multi-source,
+ * county-wide, refreshed hourly. RSS carries no images, so type + a
+ * per-source color spine carry it — never a fabricated thumbnail.
+ *
+ * Disclosure: shows the lead + 3 follow-ups by default; the rest tuck
+ * into a native <details> so the section never blows out the scroll.
+ * No client JS — the browser handles the toggle.
  */
+const PEEK = 3;
+
 export default async function LocalNewsStrip() {
   const headlines = await getLocalHeadlines();
   if (headlines.length === 0) return null;
 
   const [lead, ...rest] = headlines;
-  const list = rest.slice(0, 11);
+  const peek = rest.slice(0, PEEK);
+  const overflow = rest.slice(PEEK, 11);
   const sources = new Set(headlines.map((h) => h.source)).size;
   const leadAccent = accentFor(lead.source);
+
+  const renderRow = (h: typeof headlines[number], i: number, withTopBorder: boolean) => {
+    const accent = accentFor(h.source);
+    return (
+      <li
+        key={`${h.url}-${i}`}
+        className={withTopBorder ? "border-t" : ""}
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <a
+          href={h.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--app-bg-sunken)]"
+        >
+          <span
+            aria-hidden
+            className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+            style={{ background: accent }}
+          />
+          <span className="min-w-0 flex-1">
+            <span
+              className="line-clamp-2 text-[14px] font-semibold leading-snug"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {h.title}
+            </span>
+            <span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              <span style={{ color: accent }}>{h.source}</span> · {formatAge(h.published_at)}
+            </span>
+          </span>
+          <ArrowUpRight
+            className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+            strokeWidth={2}
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+        </a>
+      </li>
+    );
+  };
 
   return (
     <section aria-label="Local news">
@@ -79,45 +126,31 @@ export default async function LocalNewsStrip() {
           </p>
         </a>
 
-        {/* The rest — tight, scannable column */}
+        {/* The first three follow-ups — always visible. */}
         <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
-          {list.map((h, i) => {
-            const accent = accentFor(h.source);
-            return (
-              <li key={i} className={i > 0 ? "border-t" : ""} style={{ borderColor: "var(--app-border)" }}>
-                <a
-                  href={h.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--app-bg-sunken)]"
-                >
-                  <span
-                    aria-hidden
-                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
-                    style={{ background: accent }}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="line-clamp-2 text-[14px] font-semibold leading-snug"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      {h.title}
-                    </span>
-                    <span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                      <span style={{ color: accent }}>{h.source}</span> · {formatAge(h.published_at)}
-                    </span>
-                  </span>
-                  <ArrowUpRight
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-                    strokeWidth={2}
-                    style={{ color: "var(--app-ink-3)" }}
-                    aria-hidden
-                  />
-                </a>
-              </li>
-            );
-          })}
+          {peek.map((h, i) => renderRow(h, i, i > 0))}
         </ul>
+
+        {/* Overflow — tucked into a native <details>. Cheap, no
+            client JS, accessibility-friendly. */}
+        {overflow.length > 0 && (
+          <details className="group border-t" style={{ borderColor: "var(--app-border)" }}>
+            <summary
+              className="flex cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-[12px] font-semibold select-none [&::-webkit-details-marker]:hidden"
+              style={{ color: "var(--app-cool)" }}
+            >
+              <span>Show {overflow.length} more</span>
+              <ArrowUpRight
+                className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90"
+                strokeWidth={2.25}
+                aria-hidden
+              />
+            </summary>
+            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+              {overflow.map((h, i) => renderRow(h, i + PEEK, i > 0))}
+            </ul>
+          </details>
+        )}
       </div>
     </section>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock, Wand2 } from "lucide-react";
+import { Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock, Wand2, Shuffle } from "lucide-react";
 import Link from "next/link";
 import type { Plan, PlanInputs } from "@/lib/integrations/planner";
 import { generatePlan, removeStop, swapStop } from "./actions";
@@ -90,7 +90,7 @@ export default function PlanBuilder({
     );
   };
 
-  const onBuild = () => {
+  const onBuild = (seed?: number) => {
     startTransition(async () => {
       const result = await generatePlan({
         audience,
@@ -98,11 +98,16 @@ export default function PlanBuilder({
         duration_hours: hours,
         start_at: startAtFor(startMode),
         start_near: near ?? undefined,
+        seed,
       });
       setPlan(result);
       setEditing(true);
     });
   };
+
+  /** Shuffle = rebuild with a fresh random seed, same inputs. Same
+   *  vibe and audience, different but valid combination of stops. */
+  const onShuffle = () => onBuild(Math.floor(Math.random() * 100_000));
 
   const mutate = (fn: () => Promise<Plan | null>, idx: number | null) => {
     setBusy(idx);
@@ -190,19 +195,35 @@ export default function PlanBuilder({
           {geoMsg && (
             <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{geoMsg}</p>
           )}
-          <button
-            type="button"
-            onClick={onBuild}
-            disabled={pending}
-            className="tactile tactile-lift group relative mt-1 inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-[var(--app-radius-md)] px-4 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-70"
-            style={{
-              background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
-              transitionTimingFunction: "var(--app-ease-spring)",
-            }}
-          >
-            <Sparkles className={`h-4 w-4 ${building ? "animate-spin" : "transition-transform group-hover:rotate-12"}`} strokeWidth={2.25} aria-hidden />
-            {building ? "Stitching your night together…" : plan ? "Build a new plan" : "Build my evening"}
-          </button>
+          <div className="mt-1 flex gap-2">
+            <button
+              type="button"
+              onClick={() => onBuild()}
+              disabled={pending}
+              className="tactile tactile-lift group relative inline-flex flex-1 items-center justify-center gap-2 overflow-hidden rounded-[var(--app-radius-md)] px-4 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-70"
+              style={{
+                background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
+                transitionTimingFunction: "var(--app-ease-spring)",
+              }}
+            >
+              <Sparkles className={`h-4 w-4 ${building ? "animate-spin" : "transition-transform group-hover:rotate-12"}`} strokeWidth={2.25} aria-hidden />
+              {building ? "Stitching your night together…" : plan ? "Build a new plan" : "Build my evening"}
+            </button>
+            {plan && (
+              <button
+                type="button"
+                onClick={onShuffle}
+                disabled={pending}
+                aria-label="Shuffle this plan"
+                title="Same vibe, different stops"
+                className="tactile tactile-interactive inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] px-4 py-3.5 text-[13px] font-semibold disabled:opacity-70"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                <Shuffle className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} strokeWidth={2.25} aria-hidden />
+                Shuffle
+              </button>
+            )}
+          </div>
         </section>
       )}
 
@@ -301,20 +322,52 @@ export default function PlanBuilder({
                       {stop.order}
                     </span>
                     <article
-                      className="tactile tactile-interactive rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
+                      className="tactile tactile-interactive overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span
-                          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums"
-                          style={{ background: "color-mix(in srgb, var(--app-cool) 12%, transparent)", color: "var(--app-cool)" }}
-                        >
-                          <Clock className="h-3 w-3" aria-hidden /> {clock(stop.at)} · {stop.duration_min} min
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: ol.color }}>
-                          <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: ol.color }} aria-hidden />
-                          {ol.text}
-                        </span>
-                      </div>
+                      {/* Photo banner — when the stop has a real Google
+                          photo, lead with the image. Time-block + open
+                          chips overlay so the card still answers "when
+                          and is it open." */}
+                      {stop.photo_url && (
+                        <div className="relative h-32 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote photo, plain img avoids domain allowlist */}
+                          <img
+                            src={stop.photo_url}
+                            alt=""
+                            loading="lazy"
+                            className="h-full w-full object-cover"
+                          />
+                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
+                          <span
+                            className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold tabular-nums"
+                            style={{ color: "var(--app-cool)" }}
+                          >
+                            <Clock className="h-3 w-3" aria-hidden /> {clock(stop.at)} · {stop.duration_min} min
+                          </span>
+                          <span
+                            className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold"
+                            style={{ color: ol.color }}
+                          >
+                            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: ol.color }} aria-hidden />
+                            {ol.text}
+                          </span>
+                        </div>
+                      )}
+                      <div className="p-4">
+                      {!stop.photo_url && (
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span
+                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums"
+                            style={{ background: "color-mix(in srgb, var(--app-cool) 12%, transparent)", color: "var(--app-cool)" }}
+                          >
+                            <Clock className="h-3 w-3" aria-hidden /> {clock(stop.at)} · {stop.duration_min} min
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: ol.color }}>
+                            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: ol.color }} aria-hidden />
+                            {ol.text}
+                          </span>
+                        </div>
+                      )}
                       <Link href={href} className="group mt-2 block">
                         <h3 className="font-serif text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:underline" style={{ color: "var(--app-ink)" }}>
                           {name}
@@ -361,6 +414,7 @@ export default function PlanBuilder({
                             </button>
                           </>
                         )}
+                      </div>
                       </div>
                     </article>
                   </li>

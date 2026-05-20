@@ -14,6 +14,7 @@ import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import TrustChip from "@/components/ui/TrustChip";
+import FreshnessChip from "@/components/ui/FreshnessChip";
 import { placeHoursTrust } from "@/lib/trust";
 import type { ParcelContext } from "@/lib/loaders/cofParcels";
 
@@ -246,12 +247,15 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         <div className="mt-2">
           <TrustChip signal={placeHoursTrust(place.open_status)} />
         </div>
-        {place.google_verified && (
-          <p className="mt-2 inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
-            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} aria-hidden />
-            Verified by Google
-          </p>
-        )}
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {place.google_verified && (
+            <p className="inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
+              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} aria-hidden />
+              Verified by Google
+            </p>
+          )}
+          <FreshnessChip iso={place.last_verified_at} />
+        </div>
 
         {parcel && (
           <div

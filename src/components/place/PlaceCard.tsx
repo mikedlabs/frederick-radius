@@ -170,6 +170,29 @@ export default function PlaceCard({
                 />
               </div>
             )}
+            {/* Category chip — top-left, always visible. Photo-backed
+                tiles get a filled chip in the category color; the no-
+                photo block gets a soft tinted chip. The "what is this"
+                signal makes a coffee shop visibly different from a park
+                tile at a glance, even when the photo is generic. */}
+            {cat && (
+              <span
+                className="absolute left-2 top-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                style={{
+                  background: photoUrl ? color : `color-mix(in srgb, ${color} 22%, var(--app-bg-elevated))`,
+                  color: photoUrl ? "white" : color,
+                }}
+              >
+                {cat.name}
+              </span>
+            )}
+            {/* Category color band along the bottom edge of the banner
+                — the through-line that ties cards to their type. */}
+            <div
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-[3px]"
+              style={{ background: color }}
+            />
           </div>
           <div className="space-y-1 p-3.5">
             <h3
@@ -244,6 +267,11 @@ export default function PlaceCard({
                 <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-8 w-8 opacity-90" style={{ color }} />
               </div>
             )}
+            <div
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-[2px]"
+              style={{ background: color }}
+            />
           </div>
           <div className="space-y-0.5 px-2.5 py-2">
             <h3

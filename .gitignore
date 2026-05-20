@@ -53,3 +53,9 @@ next-env.d.ts
 # branch, never on main, to keep history small.
 /data/raw/
 /data/clean/
+
+# editor review state (dev-mode admin tools). Decisions persist locally
+# only — the editor commits the resulting merges manually.
+/data/discovered-decisions.json
+/data/drift-decisions.json
+/data/place-drift.json

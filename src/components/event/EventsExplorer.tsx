@@ -6,6 +6,7 @@ import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import SectionHeading from "@/components/ui/SectionHeading";
+import Sheet from "@/components/ui/Sheet";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -290,45 +291,136 @@ export default function EventsExplorer({
         </span>
       </div>
 
-      {showFilters && (
-        <div
-          id="evt-filter-panel"
-          className="tactile flex flex-wrap items-center gap-2 rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] p-2.5"
-        >
-          <div className="relative">
-            <label htmlFor="evt-cat" className="sr-only">Filter by type</label>
-            <select
-              id="evt-cat"
-              value={cat ?? ""}
-              onChange={(e) => setCat(e.target.value || null)}
-              className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+      {/* Filters bottom sheet — same wiring, app-grade presentation.
+          The deeper facets (type + town) live here so the page leads
+          with events, not controls. */}
+      <Sheet
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        title="Filter events"
+        subtitle={
+          filterCount > 0
+            ? `${filterCount} active`
+            : "Refine by type or town"
+        }
+        footer={
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => {
+                clear();
+              }}
+              className="text-[13px] font-semibold"
+              style={{ color: "var(--app-ink-3)" }}
             >
-              <option value="">All types</option>
-              {categories.map((c) => (
-                <option key={c.slug} value={c.slug}>{c.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowFilters(false)}
+              className="tactile tactile-interactive tactile-lift tactile-glow-brand rounded-full px-5 py-2 text-[13px] font-semibold text-white"
+              style={{ backgroundColor: "var(--app-brand)" }}
+            >
+              Show {filtered.length} {filtered.length === 1 ? "event" : "events"}
+            </button>
           </div>
-          <div className="relative">
-            <label htmlFor="evt-town" className="sr-only">Filter by town</label>
-            <select
-              id="evt-town"
-              value={town ?? ""}
-              onChange={(e) => setTown(e.target.value || null)}
-              className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+        }
+      >
+        <div className="space-y-5">
+          {/* Type */}
+          <div>
+            <h3
+              className="eyebrow mb-2"
+              style={{ color: "var(--app-ink-3)" }}
             >
-              <option value="">All towns</option>
-              {towns.map((t) => (
-                <option key={t.slug} value={t.slug}>{t.name}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+              Type
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setCat(null)}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
+                  cat === null ? "" : "tactile"
+                }`}
+                style={{
+                  background: cat === null ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                  color: cat === null ? "white" : "var(--app-ink-2)",
+                  transitionTimingFunction: "var(--app-ease-spring)",
+                }}
+              >
+                All types
+              </button>
+              {categories.map((c) => {
+                const on = cat === c.slug;
+                return (
+                  <button
+                    key={c.slug}
+                    type="button"
+                    onClick={() => setCat(on ? null : c.slug)}
+                    aria-pressed={on}
+                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
+                      on ? "" : "tactile"
+                    }`}
+                    style={{
+                      background: on ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                      color: on ? "white" : "var(--app-ink-2)",
+                      transitionTimingFunction: "var(--app-ease-spring)",
+                    }}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {/* Town */}
+          <div>
+            <h3
+              className="eyebrow mb-2"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Town
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setTown(null)}
+                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
+                  town === null ? "" : "tactile"
+                }`}
+                style={{
+                  background: town === null ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                  color: town === null ? "white" : "var(--app-ink-2)",
+                  transitionTimingFunction: "var(--app-ease-spring)",
+                }}
+              >
+                All towns
+              </button>
+              {towns.map((t) => {
+                const on = town === t.slug;
+                return (
+                  <button
+                    key={t.slug}
+                    type="button"
+                    onClick={() => setTown(on ? null : t.slug)}
+                    aria-pressed={on}
+                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
+                      on ? "" : "tactile"
+                    }`}
+                    style={{
+                      background: on ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                      color: on ? "white" : "var(--app-ink-2)",
+                      transitionTimingFunction: "var(--app-ease-spring)",
+                    }}
+                  >
+                    {t.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      )}
+      </Sheet>
 
       {/* Results */}
       {view === "calendar" ? (
@@ -336,61 +428,136 @@ export default function EventsExplorer({
       ) : view === "map" ? (
         <EventsMap events={mapPins} />
       ) : filtered.length === 0 ? (
-        <p
-          className="rounded-[var(--app-radius-lg)] border px-4 py-8 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        // Composed empty state — soft category-tinted block, serif line,
+        // one quiet sentence, primary action. Replaces the bare bordered
+        // text-only message.
+        <div
+          className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] px-6 py-10 text-center"
+          style={{
+            background:
+              "radial-gradient(80% 60% at 30% 20%, color-mix(in srgb, var(--section-accent, var(--app-brand)) 14%, var(--app-bg-elevated)), var(--app-bg-elevated))",
+          }}
         >
-          No events match these filters yet.
+          <span
+            aria-hidden
+            className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full"
+            style={{
+              background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 22%, var(--app-bg-elevated))",
+              color: "var(--section-accent, var(--app-brand))",
+            }}
+          >
+            <CalendarDays className="h-6 w-6" strokeWidth={1.5} />
+          </span>
+          <h3
+            className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Nothing fits these filters.
+          </h3>
+          <p
+            className="mx-auto mt-1 max-w-xs text-[13px] text-pretty"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            Try a wider time window or fewer types. The list updates as
+            soon as something matches.
+          </p>
           {anyFilter && (
-            <button type="button" onClick={clear} className="ml-1 font-semibold" style={{ color: "var(--app-brand)" }}>
+            <button
+              type="button"
+              onClick={clear}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
+              style={{
+                background: "var(--app-bg-elevated)",
+                color: "var(--section-accent, var(--app-brand))",
+              }}
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               Clear filters
             </button>
           )}
-        </p>
+        </div>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
         // a 400-row chronological scroll. Each group shows a scannable
         // peek and expands in place; nothing is hidden.
         <div className="space-y-6">
-          {horizonGroups.map((g) => {
+          {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
             const PEEK = 9;
-            const shown = isOpen ? g.events : g.events.slice(0, PEEK);
+            // Pull the first photo-backed event out of the FIRST group
+            // as a feature card. One per page — gives the index a focal
+            // point instead of a uniform stack of tiles.
+            const featureIdx =
+              groupIdx === 0 ? g.events.findIndex((e) => Boolean(e.hero_image)) : -1;
+            const feature = featureIdx >= 0 ? g.events[featureIdx] : null;
+            const rest = feature
+              ? g.events.filter((_, i) => i !== featureIdx)
+              : g.events;
+            // Mobile-first scannability: the FIRST horizon group renders
+            // as a horizontal swipeable shelf so users can graze without
+            // a long vertical scroll. Following groups stay as a vertical
+            // grid (the "browse" mode) — best of both. Hidden behind a
+            // toggle (`isOpen`) where the user wants to see everything.
+            const useShelf = groupIdx === 0 && !isOpen;
+            const shown = isOpen ? rest : rest.slice(0, PEEK);
             return (
               <section key={g.key} className="space-y-3">
-                <SectionHeading title={g.label} count={g.events.length} />
-                <div className="stagger grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                  {shown.map((e) => (
-                    <div key={e.slug} className="relative">
-                      {live.has(e.slug) && (
-                        <span
-                          className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-                          style={{ background: "var(--app-positive)", color: "white" }}
-                        >
-                          ● Live
-                        </span>
-                      )}
-                      <EventCard event={e} variant="tile" />
+                <SectionHeading
+                  title={g.label}
+                  count={g.events.length}
+                  cta={rest.length > PEEK ? (isOpen ? "Show fewer" : "Show all") : undefined}
+                  onCtaClick={
+                    rest.length > PEEK ? () => toggleGroup(g.key) : undefined
+                  }
+                />
+                {feature && (
+                  <div className="relative">
+                    {live.has(feature.slug) && (
+                      <span
+                        className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                        style={{ background: "var(--app-positive)" }}
+                      >
+                        <span className="live-dot" /> Live
+                      </span>
+                    )}
+                    <EventCard event={feature} variant="feature" />
+                  </div>
+                )}
+                {useShelf ? (
+                  <div className="-mx-4 px-4">
+                    <div className="shelf-rail stagger gap-3 pb-1">
+                      {rest.slice(0, PEEK).map((e) => (
+                        <div key={e.slug} className="relative w-[260px] shrink-0">
+                          {live.has(e.slug) && (
+                            <span
+                              className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                              style={{ background: "var(--app-positive)" }}
+                            >
+                              <span className="live-dot" /> Live
+                            </span>
+                          )}
+                          <EventCard event={e} variant="tile" />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {g.events.length > PEEK && (
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(g.key)}
-                    className="inline-flex items-center gap-1.5 text-[13px] font-semibold transition active:opacity-70"
-                    style={{ color: "var(--app-brand)" }}
-                  >
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                      strokeWidth={2.25}
-                      aria-hidden
-                    />
-                    {isOpen
-                      ? "Show fewer"
-                      : `Show all ${g.events.length} · ${g.label.toLowerCase()}`}
-                  </button>
+                  </div>
+                ) : (
+                  <div className="stagger grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                    {shown.map((e) => (
+                      <div key={e.slug} className="relative">
+                        {live.has(e.slug) && (
+                          <span
+                            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                            style={{ background: "var(--app-positive)" }}
+                          >
+                            <span className="live-dot" /> Live
+                          </span>
+                        )}
+                        <EventCard event={e} variant="tile" />
+                      </div>
+                    ))}
+                  </div>
                 )}
               </section>
             );

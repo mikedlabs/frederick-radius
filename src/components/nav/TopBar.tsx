@@ -1,13 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Search, Bookmark } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
 
+/**
+ * Auto-hide on scroll: the bar slides up out of view when the user
+ * scrolls down past a threshold and slides back in the instant they
+ * scroll up — the iOS / Mobile-Safari standard. Hides ~56px of chrome
+ * while reading and lets the user reclaim it with a small upward swipe.
+ * Always pinned at the top of the document (no flicker at top of page)
+ * and during a search overlay.
+ */
+function useHideOnScroll(disabled: boolean) {
+  const [hidden, setHidden] = useState(false);
+  const lastY = useRef(0);
+  const ticking = useRef(false);
+  useEffect(() => {
+    if (disabled) {
+      setHidden(false);
+      return;
+    }
+    const onScroll = () => {
+      if (ticking.current) return;
+      ticking.current = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const dy = y - lastY.current;
+        if (y < 80) setHidden(false);
+        else if (dy > 6) setHidden(true);
+        else if (dy < -4) setHidden(false);
+        lastY.current = y;
+        ticking.current = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [disabled]);
+  return hidden;
+}
+
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const hidden = useHideOnScroll(searchOpen);
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
@@ -33,6 +70,11 @@ export default function TopBar() {
     <>
       <header
         className="sticky top-0 z-30 border-b border-[var(--app-border)] bg-[var(--app-bg)]/85 backdrop-blur-md pt-[env(safe-area-inset-top)]"
+        style={{
+          transform: hidden ? "translateY(-100%)" : "translateY(0)",
+          transition: "transform 240ms var(--app-ease-out)",
+          willChange: "transform",
+        }}
       >
         <div className="mx-auto flex h-14 max-w-screen-md items-center gap-3 px-4">
           <Link

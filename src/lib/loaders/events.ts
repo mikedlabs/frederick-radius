@@ -59,12 +59,21 @@ export type EventWithMeta = Event & {
   municipality_name: string;
 };
 
+/**
+ * Default verification date for seed/curated rows that don't carry
+ * their own. The intent is "this season's editorial sweep" — bump
+ * this constant when the editor re-walks the seed set so the UI
+ * stops claiming stale data is fresh. Per-row dates always win.
+ */
+const SEED_VERIFIED_AT = "2026-05-14T00:00:00Z";
+
 function decorate(e: Event, origin?: LngLat): EventWithMeta {
   return {
     ...e,
     distance_m: origin ? haversineMeters(origin, e.geom) : undefined,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
+    last_verified_at: e.last_verified_at ?? SEED_VERIFIED_AT,
   };
 }
 

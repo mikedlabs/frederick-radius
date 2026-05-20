@@ -35,6 +35,13 @@ export type Event = {
   source_url?: string;
   source: "dfp" | "celebrate" | "county" | "manual" | "seed";
   is_verified: boolean;
+  /**
+   * ISO date for when this event was last editorially verified. Live
+   * rows get the feed fetch time; seed/curated rows can set their own
+   * date when an editor confirms them. If absent, the loader defaults
+   * to the seed cohort date so the UI never shows "unknown freshness."
+   */
+  last_verified_at?: string;
 };
 
 // Day 0 of the seed calendar is 2026-05-14, an Eastern civil date.

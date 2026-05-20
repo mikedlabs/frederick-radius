@@ -65,9 +65,15 @@
   --app-dur-med: 240ms;
   --app-dur-slow: 420ms;
 
-  --app-shadow-1: 0 1px 2px rgba(20, 20, 18, 0.06);
-  --app-shadow-2: 0 4px 12px rgba(20, 20, 18, 0.08);
-  --app-shadow-3: 0 12px 32px rgba(20, 20, 18, 0.12);
+  --app-shadow-1:
+    0 1px 2px rgba(20, 20, 18, 0.07),
+    0 2px 6px -1px rgba(20, 20, 18, 0.09);
+  --app-shadow-2:
+    0 1px 3px rgba(20, 20, 18, 0.08),
+    0 8px 18px -4px rgba(20, 20, 18, 0.14);
+  --app-shadow-3:
+    0 2px 6px rgba(20, 20, 18, 0.10),
+    0 18px 36px -8px rgba(20, 20, 18, 0.20);
 
   /* ─────────────────────────────────────────────────────
    * VISUAL SYSTEM v2 — tactile depth.
@@ -77,21 +83,43 @@
    * consumers; primitives use the --app-elev-* scale.
    * ───────────────────────────────────────────────────── */
   --app-elev-1:
-    0 1px 1.5px rgba(26, 26, 26, 0.05),
-    0 1px 2px rgba(26, 26, 26, 0.05);
+    0 1px 2px rgba(26, 26, 26, 0.06),
+    0 2px 6px -1px rgba(26, 26, 26, 0.09);
   --app-elev-2:
-    0 1px 2px rgba(26, 26, 26, 0.05),
-    0 4px 10px -2px rgba(26, 26, 26, 0.08);
+    0 1px 3px rgba(26, 26, 26, 0.07),
+    0 8px 18px -4px rgba(26, 26, 26, 0.14);
   --app-elev-3:
-    0 2px 4px rgba(26, 26, 26, 0.05),
-    0 12px 24px -6px rgba(26, 26, 26, 0.12);
+    0 2px 6px rgba(26, 26, 26, 0.08),
+    0 18px 36px -8px rgba(26, 26, 26, 0.20);
   --app-elev-4:
-    0 4px 8px rgba(26, 26, 26, 0.06),
-    0 24px 48px -12px rgba(196, 69, 28, 0.16); /* brand-tinted ambient */
+    0 4px 10px rgba(26, 26, 26, 0.09),
+    0 28px 56px -12px rgba(196, 69, 28, 0.22); /* brand-tinted ambient */
   /* The "made" look: a 1px top inner highlight + crisp inner edge
    * (reads sharper than a 1px border on a tinted surface). */
-  --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.7);
-  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.06);
+  --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.09);
+  /* A 1px darker bottom inner shadow — the "lip" on filled controls. */
+  --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.14);
+  /* Gloss overlay — applied as background-image on filled controls
+   * (.tactile-lift). Top-light → neutral → faint shade so a brick or
+   * blue solid catches light instead of reading as a flat block.    */
+  --app-gloss: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.04) 38%,
+    rgba(0, 0, 0, 0.10) 100%
+  );
+  /* Paper light — soft top-left radial highlight for elevated
+   * surfaces so a card reads as paper catching light, not a flat
+   * fill. Subtle by design; layered above background-color.        */
+  --app-paper: radial-gradient(
+    140% 100% at 0% 0%,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0) 60%
+  );
+  /* Brand-tinted ambient under the single primary CTA. Opt-in via
+   * .tactile-glow-brand so it never accidentally fires elsewhere.  */
+  --app-brand-glow: 0 10px 28px -6px rgba(196, 69, 28, 0.45);
   /* Gentle overshoot for press/lift physics. */
   --app-ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
@@ -106,12 +134,33 @@
     --app-ink-2: #BFBDB7;
     --app-ink-3: #8A8884;
     /* Depth reads via darker ambient + a faint white top hairline. */
-    --app-elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --app-elev-2: 0 2px 6px rgba(0, 0, 0, 0.45);
-    --app-elev-3: 0 8px 20px rgba(0, 0, 0, 0.5);
-    --app-elev-4: 0 16px 40px rgba(0, 0, 0, 0.55);
-    --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    --app-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --app-elev-1:
+      0 1px 2px rgba(0, 0, 0, 0.5),
+      0 2px 6px -1px rgba(0, 0, 0, 0.4);
+    --app-elev-2:
+      0 2px 6px rgba(0, 0, 0, 0.55),
+      0 10px 22px -4px rgba(0, 0, 0, 0.5);
+    --app-elev-3:
+      0 4px 10px rgba(0, 0, 0, 0.55),
+      0 18px 36px -8px rgba(0, 0, 0, 0.55);
+    --app-elev-4:
+      0 8px 18px rgba(0, 0, 0, 0.55),
+      0 28px 56px -12px rgba(196, 69, 28, 0.35);
+    --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    --app-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+    --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+    --app-gloss: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.02) 38%,
+      rgba(0, 0, 0, 0.18) 100%
+    );
+    --app-paper: radial-gradient(
+      140% 100% at 0% 0%,
+      rgba(255, 255, 255, 0.06) 0%,
+      rgba(255, 255, 255, 0) 60%
+    );
+    --app-brand-glow: 0 10px 28px -6px rgba(196, 69, 28, 0.55);
   }
 }
 
@@ -369,6 +418,10 @@ body {
   height: 8px;
   border-radius: 50%;
   background: currentColor;
+  /* Soft halo around the core dot so the "live" status reads as a
+   * lit element, not flat ink. Layered behind the outward pulse. */
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent),
+              0 0 10px color-mix(in srgb, currentColor 55%, transparent);
 }
 .live-dot::before {
   content: "";
@@ -381,7 +434,33 @@ body {
 }
 @keyframes live-pulse {
   0%   { transform: scale(0.6); opacity: 0.55; }
-  70%  { transform: scale(2.2); opacity: 0;    }
+  70%  { transform: scale(2.4); opacity: 0;    }
+  100% { transform: scale(2.4); opacity: 0;    }
+}
+
+/* ─────────────────────────────────────────────────────
+ * Save micro-interaction — a quick overshoot pop on the
+ * bookmark glyph + a one-shot radiating ring. The button
+ * mounts the .save-ring only for ~520ms after a fresh
+ * save, so the celebration never lingers and the steady
+ * state is calm.
+ * ───────────────────────────────────────────────────── */
+.save-pop {
+  animation: save-pop-kf 480ms var(--app-ease-spring);
+}
+@keyframes save-pop-kf {
+  0%   { transform: scale(1);    }
+  40%  { transform: scale(1.35); }
+  70%  { transform: scale(0.94); }
+  100% { transform: scale(1);    }
+}
+.save-ring {
+  animation: save-ring-kf 520ms ease-out forwards;
+  background: radial-gradient(circle, transparent 0, transparent 35%, color-mix(in srgb, var(--app-cool) 55%, transparent) 50%, transparent 75%);
+  opacity: 0;
+}
+@keyframes save-ring-kf {
+  0%   { transform: scale(0.6); opacity: 0.9; }
   100% { transform: scale(2.2); opacity: 0;    }
 }
 
@@ -444,6 +523,7 @@ body {
  * tokenized so the global reduced-motion rule neutralizes it.
  * ───────────────────────────────────────────────────── */
 .tactile {
+  background-image: var(--app-paper);
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
   transition:
     box-shadow var(--app-dur-med) var(--app-ease-out),
@@ -466,9 +546,46 @@ body {
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
   transition-duration: var(--app-dur-fast);
 }
-/* Filled controls get a subtle lighten on hover for material feel. */
-.tactile-lift:hover { filter: brightness(1.04); }
-.tactile-lift:active { filter: brightness(0.98); }
+/* Filled controls: gloss overlay + bottom inner lip + bumped ambient
+ * so a solid background reads as material, not flat. Plays well with
+ * .tactile-interactive (which controls hover translate + elevation). */
+.tactile-lift {
+  background-image: var(--app-gloss);
+  box-shadow: var(--app-edge), var(--app-hi), var(--app-lip), var(--app-elev-2);
+}
+.tactile-lift:hover {
+  filter: brightness(1.06) saturate(1.03);
+  box-shadow: var(--app-edge), var(--app-hi), var(--app-lip), var(--app-elev-3);
+}
+.tactile-lift:active {
+  filter: brightness(0.96);
+  box-shadow: var(--app-edge), var(--app-hi), var(--app-lip), var(--app-elev-1);
+}
+/* Opt-in brand-tinted ambient — for the single primary CTA on a screen. */
+.tactile-glow-brand {
+  box-shadow:
+    var(--app-edge),
+    var(--app-hi),
+    var(--app-lip),
+    var(--app-elev-2),
+    var(--app-brand-glow);
+}
+.tactile-glow-brand:hover {
+  box-shadow:
+    var(--app-edge),
+    var(--app-hi),
+    var(--app-lip),
+    var(--app-elev-3),
+    var(--app-brand-glow);
+}
+.tactile-glow-brand:active {
+  box-shadow:
+    var(--app-edge),
+    var(--app-hi),
+    var(--app-lip),
+    var(--app-elev-1),
+    var(--app-brand-glow);
+}
 
 /* ─────────────────────────────────────────────────────
  * VISUAL SYSTEM v2 — Layer 2: editorial type + entrance.

@@ -26,6 +26,12 @@ export type PlanInputs = {
   /** ISO string so the spec is serializable. Defaults to now. */
   start_at?: string;
   start_near?: LngLat;
+  /**
+   * Optional integer that nudges candidate ranking deterministically.
+   * Same inputs with a different seed yield a *different but valid*
+   * plan — the user's "Shuffle" affordance. Omitted = stable ranking.
+   */
+  seed?: number;
 };
 
 export type PlanStop = {
@@ -38,6 +44,10 @@ export type PlanStop = {
   open: "open" | "likely" | "unknown" | "closed";
   place?: Place;
   event?: Event;
+  /** A real Google place photo when enrichment supplied one. The
+   *  card renders an empty stop block when omitted — never a stock
+   *  or fabricated image. */
+  photo_url?: string;
 };
 
 export type Plan = {
@@ -134,20 +144,42 @@ function tagBonus(p: Place, vibe: PlanInputs["vibe"], audience: PlanInputs["audi
 
 type Scored = { d: PlaceCardData; score: number; distance: number };
 
+/**
+ * Deterministic 32-bit hash of a string — used by the seed jitter so
+ * the same (slug, seed) pair always nudges the same way (no surprises
+ * across re-renders). Tiny xor + multiply, intentionally unsigned.
+ */
+function hashStr(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[] {
   const slot = slotFor(now);
+  const seed = input.seed ?? 0;
   return clientPlaces()
     .map((p) => {
       const d: PlaceCardData = { ...p, distance_m: haversineMeters(origin, p.geom) };
       const distance = d.distance_m ?? haversineMeters(origin, p.geom);
       const base = categoryScore(p.category, input.vibe, slot);
       const rating = d.google_rating ? (d.google_rating - 3.5) * 1.2 : 0;
+      // Seed-driven jitter (±0.6) when a seed is set, otherwise zero.
+      // Bounded so a low-fit place can't elbow out a great one — only
+      // changes the ordering among similarly-strong candidates.
+      const jitter = seed === 0
+        ? 0
+        : ((hashStr(`${p.slug}:${seed}`) % 1000) / 1000 - 0.5) * 1.2;
       const score =
         (base +
           d.feature_score * 0.6 +
           rating +
           openWeight(d.open_status.state) +
-          tagBonus(p, input.vibe, input.audience)) /
+          tagBonus(p, input.vibe, input.audience) +
+          jitter) /
         Math.log(Math.max(2, distance / 250)); // gentle distance dampener
       return { d, score, distance };
     })
@@ -210,7 +242,7 @@ function resolve(input: PlanInputs): { origin: LngLat; now: Date } {
 
 /** Lay stops out on the clock from the start time. Pure. */
 function schedule(
-  ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string }>,
+  ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }>,
   start: Date,
 ): PlanStop[] {
   let cursor = start.getTime();
@@ -232,6 +264,7 @@ function schedule(
       open: o.openState,
       place: o.place,
       event: o.event,
+      photo_url: o.photo_url ?? o.event?.hero_image,
     };
   });
 }
@@ -263,13 +296,14 @@ export function buildPlan(input: PlanInputs): Plan {
 
   const items = routed.map((c) => ({
     place: c.d as Place,
+    photo_url: c.d.google_photo_url,
     openState: c.d.open_status.state === "closing-soon" ? ("open" as const)
       : c.d.open_status.state === "open" ? ("open" as const)
       : c.d.open_status.state === "closed" ? ("closed" as const)
       : ("unknown" as const),
     why: whyFor(c.d, input),
   }));
-  const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string }> = [...items];
+  const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }> = [...items];
   if (event) {
     ordered.push({
       event,
@@ -301,7 +335,7 @@ export function buildPlan(input: PlanInputs): Plan {
 export function reconstructPlan(spec: PlanSpec): Plan | null {
   if (spec?.v !== 1 || !Array.isArray(spec.s)) return null;
   const { origin, now } = resolve(spec.i);
-  const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string }> = [];
+  const ordered: Array<{ place?: Place; event?: Event; openState: PlanStop["open"]; why: string; photo_url?: string }> = [];
   for (const ref of spec.s) {
     if ("p" in ref) {
       const p = clientPlaceBySlug(ref.p);
@@ -309,6 +343,7 @@ export function reconstructPlan(spec: PlanSpec): Plan | null {
       const d: PlaceCardData = { ...p, distance_m: haversineMeters(origin, p.geom) };
       ordered.push({
         place: p,
+        photo_url: d.google_photo_url,
         openState: d.open_status.state === "closed" ? "closed"
           : d.open_status.state === "open" || d.open_status.state === "closing-soon" ? "open"
           : "unknown",

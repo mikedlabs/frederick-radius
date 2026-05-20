@@ -25,18 +25,18 @@ function variantOf(v: Variant): { cls: string; style: CSSProperties } {
   switch (v) {
     case "primary":
       return {
-        cls: "tactile tactile-interactive tactile-lift text-white",
-        style: { background: "var(--app-brand)" },
+        cls: "tactile tactile-interactive tactile-lift tactile-glow-brand text-white",
+        style: { backgroundColor: "var(--app-brand)" },
       };
     case "danger":
       return {
         cls: "tactile tactile-interactive tactile-lift text-white",
-        style: { background: "var(--app-danger)" },
+        style: { backgroundColor: "var(--app-danger)" },
       };
     case "secondary":
       return {
         cls: "tactile tactile-interactive",
-        style: { background: "var(--app-bg-elevated)", color: "var(--app-ink)" },
+        style: { backgroundColor: "var(--app-bg-elevated)", color: "var(--app-ink)" },
       };
     case "ghost":
       return {

@@ -6,6 +6,10 @@ import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/e
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
+import PhotoMosaic from "@/components/today/PhotoMosaic";
+import PageBloom from "@/components/ui/PageBloom";
+import StatStrip from "@/components/ui/StatStrip";
+import SectionHeading from "@/components/ui/SectionHeading";
 import { CATEGORIES, TOP_CATEGORIES } from "@/data/categories";
 
 export const revalidate = 600;
@@ -69,8 +73,17 @@ export default async function MunicipalityPage(
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n);
 
+  const placesWithPhotos = places.filter((p) => p.google_photo_url);
+  const townStats = [
+    { label: "Places", value: places.length },
+    { label: "Verified", value: verifiedCount },
+    { label: "Categories", value: categoryCounts.length },
+    { label: "Events", value: upcomingEvents.length },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <PageBloom variant="single" />
       {/* Photo hero — image-forward, the town as a place not a row */}
       <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-60">
@@ -101,6 +114,8 @@ export default async function MunicipalityPage(
       <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         {m.description}
       </p>
+
+      <StatStrip stats={townStats} eyebrow={`Across ${m.name}`} />
 
       {/* Visual category tiles — 2-up, tappable, color + glyph + count */}
       {categoryCounts.length > 0 && (
@@ -142,16 +157,10 @@ export default async function MunicipalityPage(
 
       {/* Worth your time — a 2-up PHOTO grid, not a stacked text list */}
       <section className="space-y-2.5">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Worth your time
-          </h2>
-          {places.length > 0 && (
-            <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              {places.length} places{verifiedCount > 0 ? ` · ${verifiedCount} verified` : ""}
-            </span>
-          )}
-        </div>
+        <SectionHeading
+          title="Worth your time"
+          count={places.length || undefined}
+        />
         {places.length === 0 ? (
           <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
@@ -166,22 +175,24 @@ export default async function MunicipalityPage(
         )}
       </section>
 
+      {/* Photo wall — six tiles from THIS town. The page-level
+          identity beat: a column of pictures of a real place. */}
+      {placesWithPhotos.length >= 4 && (
+        <section className="space-y-3">
+          <SectionHeading title={`Looks like ${m.name}`} />
+          <PhotoMosaic places={placesWithPhotos} />
+        </section>
+      )}
+
       {/* Upcoming — kept tight (max 4); the page is about the place,
           not an event directory. */}
       {(upcomingEvents.length > 0 || BY_TOWN_ENABLED) && (
         <section className="space-y-2.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              Upcoming in {m.name}
-            </h2>
-            <Link
-              href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
-              className="shrink-0 text-xs font-semibold tracking-tight"
-              style={{ color: "var(--app-cool)" }}
-            >
-              All events
-            </Link>
-          </div>
+          <SectionHeading
+            title={`Upcoming in ${m.name}`}
+            href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
+            cta="All events"
+          />
           {upcomingEvents.length > 0 ? (
             <ul className="space-y-2">
               {upcomingEvents.map((e) => (

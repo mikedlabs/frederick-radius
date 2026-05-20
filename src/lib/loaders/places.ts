@@ -190,7 +190,23 @@ export type PlaceEnriched = {
    *  as labelled UGC, never as our own description/SEO copy. */
   review_snippet?: string;
   review_author?: string;
+  /**
+   * ISO date marking when this row was last verified against an
+   * authoritative source. Enriched rows: the date of the Google sync
+   * batch (constant below, bumped per enrichment run). Curated-only
+   * rows: the editor's date. Used by the FreshnessChip on detail.
+   */
+  last_verified_at?: string;
 };
+
+/**
+ * Date of the most recent Google enrichment sync. Bump this constant
+ * (or wire it to the build pipeline) every time `places-enrichment.json`
+ * is regenerated so the UI's freshness chip reflects reality. Curated-
+ * only places without enrichment fall back to SEED_VERIFIED_AT below.
+ */
+const ENRICHMENT_VERIFIED_AT = "2026-05-14T00:00:00Z";
+const SEED_PLACE_VERIFIED_AT = "2026-05-14T00:00:00Z";
 
 const photoProxy = (name: string, w = 800) =>
   `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}`;
@@ -204,7 +220,7 @@ export type PlaceCardData = Place & PlaceEnriched & {
 
 function applyEnrichment(p: Place): Place & PlaceEnriched {
   const e = ENRICHMENT[p.slug];
-  if (!e) return p;
+  if (!e) return { ...p, last_verified_at: SEED_PLACE_VERIFIED_AT };
   // Google business_status overrides our seed guess — it's authoritative.
   const is_operational =
     e.business_status === "CLOSED_PERMANENTLY" ? "closed_permanently" :
@@ -262,6 +278,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     google_verified: Boolean(e.business_status && e.business_status !== "UNKNOWN"),
     review_snippet: e.review_snippet?.trim() || undefined,
     review_author: e.review_author?.trim() || undefined,
+    last_verified_at: ENRICHMENT_VERIFIED_AT,
   };
 }
 

@@ -1,22 +1,44 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import HomeWeatherStrip from "@/components/today/HomeWeatherStrip";
+import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
-import SectionHeading from "@/components/ui/SectionHeading";
-import PlaceCard from "@/components/place/PlaceCard";
+import SkyHero, { currentSkyTone } from "@/components/today/SkyHero";
+import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
+import WeeklyForecast from "@/components/today/WeeklyForecast";
+import SunCountdown from "@/components/today/SunCountdown";
+import CivicAlerts from "@/components/today/CivicAlerts";
+import PulseSummary from "@/components/today/PulseSummary";
+import LocalNewsStrip from "@/components/today/LocalNewsStrip";
+import FeaturedTonight from "@/components/today/FeaturedTonight";
+import RightNow from "@/components/today/RightNow";
+import PhotoMosaic from "@/components/today/PhotoMosaic";
+import RedditPulse from "@/components/today/RedditPulse";
+import MunicipalityStrip from "@/components/today/MunicipalityStrip";
+import DismissibleSection from "@/components/today/DismissibleSection";
+import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import EventCard from "@/components/event/EventCard";
-import { placesWithinRadius } from "@/lib/loaders/places";
+import PageBloom from "@/components/ui/PageBloom";
+import StatStrip from "@/components/ui/StatStrip";
 import { allUpcoming } from "@/lib/loaders/events";
+import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { PLACES } from "@/data/places";
+import { EVENTS } from "@/data/events";
+import { MUNICIPALITIES } from "@/data/municipalities";
 
 /**
- * The home answers exactly one question: what should I do near me
- * right now. Four sections, in order, and nothing else:
- *   1. Weather strip       — the single conditions row
- *   2. Primary action card — time-aware, one button
- *   3. Open now strip      — closest open places
- *   4. Coming up strip     — the next events
- * Discovery, browsing, and reference data live in the tabs, not here.
+ * Today — the editorial briefing.
+ *
+ * Each module is a different mode (greeting, conditions, action,
+ * urgent civic, quiet civic, editorial news, identity, editorial
+ * place, visual mosaic, discovery, agenda, local voice, geography),
+ * stacked so the page reads as a layered briefing instead of two
+ * carousels.
+ *
+ * Every section below the hero is wrapped in DismissibleSection so
+ * users hide what they don't want. Hidden sections surface in
+ * HiddenSectionsBar at the bottom for one-tap restore.
  */
 export const metadata: Metadata = {
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
@@ -24,72 +46,172 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
+function pickFeaturedPlace(now: Date): PlaceCardData | null {
+  const ranked = rankPlaces({
+    origin: FREDERICK_CENTER,
+    now,
+    preferOpen: true,
+    limit: 80,
+  });
+  const candidate = ranked
+    .filter((p) => Boolean(p.google_photo_url))
+    .filter((p) => p.open_status.state !== "closed")
+    .sort((a, b) => (b.google_rating ?? 0) - (a.google_rating ?? 0))[0];
+  return candidate ?? null;
+}
+
+/** Pick the next photo-backed marquee event for the hero card.
+ *  Photo-led entries (Alive @ Five, Sky Stage) outrank text-only
+ *  rows so the feature card always has imagery to carry. */
+function pickFeaturedEvent(now: Date) {
+  const upcoming = allUpcoming(now);
+  return (
+    upcoming.find((e) => Boolean(e.hero_image)) ??
+    upcoming[0] ??
+    null
+  );
+}
+
+const HIDDEN_LABELS: Array<{ id: string; label: string }> = [
+  { id: "stats", label: "By the numbers" },
+  { id: "featured-place", label: "Worth your evening" },
+  { id: "photo-mosaic", label: "Looks like Frederick" },
+  { id: "featured-event", label: "Don't miss" },
+  { id: "coming-up", label: "Coming up" },
+  { id: "reddit", label: "What people are saying" },
+  { id: "towns", label: "Around the county" },
+];
+
 export default async function HomePage() {
   const now = new Date();
-  const origin = FREDERICK_CENTER;
 
-  // Places and events are in-memory loaders (synchronous); the only
-  // network work on the home is the weather strip, which fetches in
-  // parallel inside its own component and streams in via Suspense.
-  const openNow = placesWithinRadius(origin, 8000, now)
-    .filter((p) => p.open_status.state !== "closed")
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-    .slice(0, 10);
-
+  const stats = [
+    { label: "Places", value: PLACES.length },
+    { label: "Events", value: EVENTS.length },
+    { label: "Towns", value: MUNICIPALITIES.length },
+  ];
+  const featuredPlace = pickFeaturedPlace(now);
+  const featuredEvent = pickFeaturedEvent(now);
   const upcoming = allUpcoming(now).slice(0, 7);
+  // Filter out the featured event so it doesn't appear twice.
+  const upcomingRest = featuredEvent
+    ? upcoming.filter((e) => e.slug !== featuredEvent.slug)
+    : upcoming;
+  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
+  const tone = currentSkyTone(now);
 
   return (
-    <div className="space-y-5">
-      {/* 1 — Weather strip */}
-      <Suspense
-        fallback={
-          <div
-            className="tactile h-[58px] rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
-            aria-hidden
-          />
-        }
-      >
-        <HomeWeatherStrip />
+    <div className="relative space-y-6">
+      <PageBloom />
+
+      {/* 1 — Sky-tinted hero. Greeting + sun countdown + weather +
+          forecast + plan card on the time-of-day gradient. */}
+      <SkyHero className="space-y-4">
+        <Suspense fallback={null}>
+          <AdaptiveGreeting />
+        </Suspense>
+        <SunCountdown tone={tone} now={now} />
+        <Suspense
+          fallback={
+            <div
+              className="tactile h-[180px] rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
+              aria-hidden
+            />
+          }
+        >
+          <WeatherHero />
+        </Suspense>
+        {forecast?.daily && forecast.daily.length > 0 && (
+          <WeeklyForecast daily={forecast.daily} tone={tone} />
+        )}
+        <PrimaryActionCard now={now} />
+      </SkyHero>
+
+      {/* 2 — Civic alerts. Self-hides when nothing's active. */}
+      <Suspense fallback={null}>
+        <CivicAlerts />
       </Suspense>
 
-      {/* 2 — Primary action card */}
-      <PrimaryActionCard now={now} />
+      {/* 3 — One quiet civic line. */}
+      <Suspense fallback={null}>
+        <PulseSummary />
+      </Suspense>
 
-      {/* 3 — Open now. SectionHeading + the shared .shelf-rail (snap
-          scroll, edge fade), rendered server-side and visible on first
-          paint: the home's core content never waits on a scroll-in
-          animation. */}
-      {openNow.length > 0 && (
-        <section className="space-y-3">
-          <SectionHeading title="Open now" href="/radius" cta="See all" />
-          <div className="-mx-4 px-4">
-            <div className="shelf-rail gap-3 pb-1">
-              {openNow.map((p) => (
-                <div key={p.slug} className="w-[280px] shrink-0">
-                  <PlaceCard place={p} variant="grid" />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+      {/* 4 — Local news desk. Has its own header + hide UX. */}
+      <Suspense fallback={null}>
+        <LocalNewsStrip />
+      </Suspense>
+
+      {/* 5 — Identity numbers. */}
+      <DismissibleSection id="stats" title="Across Frederick County">
+        <StatStrip stats={stats} />
+      </DismissibleSection>
+
+      {/* 6 — Editorial place. */}
+      {featuredPlace && (
+        <DismissibleSection id="featured-place" title="Worth your evening">
+          <FeaturedTonight place={featuredPlace} />
+        </DismissibleSection>
       )}
 
-      {/* 4 — Coming up. Last on the page; its card images are
-          lazy-loaded so it costs nothing above the fold. */}
-      {upcoming.length > 0 && (
-        <section className="space-y-3">
-          <SectionHeading title="Coming up" href="/events" cta="See all" />
+      {/* 7 — Photo mosaic. Six-tile real-place wall. */}
+      <DismissibleSection id="photo-mosaic" title="Looks like Frederick">
+        <PhotoMosaic />
+      </DismissibleSection>
+
+      {/* 8 — Time-aware curated places (component owns its own header). */}
+      <RightNow now={now} />
+
+      {/* 9 — Featured event hero — magazine card for the next photo-
+          backed event so the top of the events queue isn't just a
+          shelf tile. */}
+      {featuredEvent && (
+        <DismissibleSection id="featured-event" title="Don't miss">
+          <EventCard event={featuredEvent} variant="feature" />
+        </DismissibleSection>
+      )}
+
+      {/* 10 — Coming up shelf (the rest of the queue). */}
+      {upcomingRest.length > 0 && (
+        <DismissibleSection
+          id="coming-up"
+          title="Coming up"
+          href="/events"
+          cta="See all"
+        >
           <div className="-mx-4 px-4">
             <div className="shelf-rail gap-3 pb-1">
-              {upcoming.map((e) => (
+              {upcomingRest.map((e) => (
                 <div key={e.slug} className="w-[280px] shrink-0">
                   <EventCard event={e} variant="tile" />
                 </div>
               ))}
             </div>
           </div>
-        </section>
+        </DismissibleSection>
       )}
+
+      {/* 11 — What people are saying — the local voice signal. */}
+      <DismissibleSection id="reddit" title="What people are saying">
+        <Suspense fallback={null}>
+          <RedditPulse />
+        </Suspense>
+      </DismissibleSection>
+
+      {/* 12 — County geography. */}
+      <DismissibleSection
+        id="towns"
+        title="Around the county"
+        href="/m"
+        cta="All towns"
+      >
+        <MunicipalityStrip />
+      </DismissibleSection>
+
+      {/* Hidden sections bar — surfaces only when the user has
+          dismissed at least one section. Lets them bring any
+          section back with one tap. */}
+      <HiddenSectionsBar sections={HIDDEN_LABELS} />
     </div>
   );
 }

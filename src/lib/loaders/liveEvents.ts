@@ -44,6 +44,7 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     source: "manual",
     source_url: e.url,
     is_verified: false,
+    last_verified_at: e.last_verified_at,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
     distance_m: undefined,

@@ -205,6 +205,41 @@ export const radii = pgTable("radii", {
   created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
+/**
+ * Per-fetch distribution snapshot for each live event feed. Written
+ * once per successful pull from `feed-snapshot.ts`; the data-health
+ * dashboard reads the latest two rows per source to compute anomaly
+ * flags that survive deploys + cold starts.
+ *
+ * No FK to a `feeds` table — `source` is the string key already used
+ * in code (`"dfp"`, `"county"`, etc.). The composite index on
+ * (source, taken_at desc) is the only query pattern.
+ */
+export const feed_snapshots = pgTable(
+  "feed_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    source: text("source").notNull(),
+    taken_at: timestamp("taken_at", { withTimezone: true }).notNull(),
+    count: integer("count").notNull(),
+    free_ratio: real("free_ratio").notNull(),
+    empty_desc_ratio: real("empty_desc_ratio").notNull(),
+    /** {name, share} or null. */
+    top_venue: jsonb("top_venue").$type<{ name: string; share: number } | null>(),
+    /** {name, share} or null. */
+    top_category: jsonb("top_category").$type<{ name: string; share: number } | null>(),
+    earliest: timestamp("earliest", { withTimezone: true }),
+    latest: timestamp("latest", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    sourceTakenIdx: index("feed_snapshots_source_taken_idx").on(
+      t.source,
+      t.taken_at,
+    ),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- CREATE EXTENSION IF NOT EXISTS pg_trgm;

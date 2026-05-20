@@ -11,6 +11,11 @@ import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
 import { cutAtWordBoundary } from "@/lib/slug";
 import { isVenueStatusNonEvent } from "@/lib/event-noise";
+import {
+  validateLiveEvent,
+  resetFeedMetrics,
+} from "@/lib/integrations/event-schema";
+import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -36,6 +41,13 @@ export type LiveEvent = {
   source_label: string;
   url: string;
   is_free: boolean;
+  /**
+   * ISO date marking when this row was last pulled from its upstream
+   * source. UI surfaces it as a freshness chip ("Verified · 2d ago")
+   * so users can judge data age. For live feeds this is the fetch
+   * time; for curated rows it is the editorial verification date.
+   */
+  last_verified_at: string;
 };
 
 type Feed = {
@@ -223,6 +235,109 @@ function unescapeIcalText(s: string): string {
 }
 
 /**
+ * Split a raw feed LOCATION into a clean { venue, address }.
+ *
+ * Feeds are messy: iCal LOCATION may be `Venue\nStreet\nCity, ST ZIP`
+ * (newlines), or `Venue, Street, City, ST ZIP` (commas), or just an
+ * address with no proper venue (`12 E Church St.Frederick, MD 21701`),
+ * or a CivicEngage HTML blob with `<br>` and entities. Without this
+ * helper, the previous implementation took `location.split(",")[0]` and
+ * leaked artifacts like "Carroll Creek AmphitheaterFrederick" or showed
+ * a postal code as the venue.
+ *
+ * Strategy:
+ *   1. Decode HTML entities + tags (handles CivicEngage and any RSS).
+ *   2. Re-insert a separator at the run-together `wordCity, ST` seam
+ *      (e.g. "AmphitheaterFrederick, MD" → "Amphitheater | Frederick, MD").
+ *   3. Split on newlines OR commas to get ordered segments.
+ *   4. Treat segments matching `City, ST [ZIP]` as address tail; the
+ *      remaining first segment is the venue.
+ *   5. If the venue segment STARTS with a number, it is a street, not
+ *      a name — surface it as the venue only if no real name exists.
+ *
+ * Returns the cleaned venue string and the full normalized address.
+ */
+export function splitLocation(
+  raw: string | undefined,
+  fallback: string,
+): { venue: string; address: string } {
+  const decoded = cleanFeedText(raw ?? "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    // Re-insert a separator at the "wordCity, ST" seam. The city can
+    // be one word ("Frederick") or several ("Point of Rocks", "Mount
+    // Airy"), joined by spaces and the connectors "of" / "and". Only
+    // fires when the suffix is ", ST" so real CamelCase venue names
+    // (e.g. "McDonald's") are left alone.
+    .replace(
+      /([a-z\.])([A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|of|and))*,\s*[A-Z]{2})/g,
+      "$1\n$2",
+    )
+    .replace(/[ \t]+/g, " ")
+    .trim();
+
+  if (!decoded) return { venue: fallback, address: "" };
+
+  const segments = decoded
+    .split(/\s*[\n,]\s*/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // A "city tail" segment looks like "ST" or "ST ZIP" or "City ST ZIP".
+  const isCityTail = (s: string) => /^[A-Z]{2}\s*\d{0,5}$/.test(s);
+  // A "city-ish" segment is a single capitalized word — "Frederick",
+  // "Brunswick", "Mount Airy" — that should not be promoted as a
+  // venue. A proper venue name has more than one capitalized token
+  // ("Carroll Creek Amphitheater"), an apostrophe ("Brewer's Alley"),
+  // or a descriptor noun ("Theater", "Center", "Hall", "Park", etc.).
+  const VENUE_NOUN = /\b(Theat(re|er)|Center|Centre|Hall|Park|Stage|Library|Museum|Brewery|Tavern|Pub|Cafe|Lodge|Church|Pavilion|Amphitheat(re|er)|Plaza|Square|Market|Inn|Hotel|Field|Court|Arena|Gallery|Garden|Farm|Vineyard|Winery|Distillery|School|College)\b/i;
+  const isCityish = (s: string) =>
+    /^[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+|of|and)){0,3}$/.test(s) &&
+    !VENUE_NOUN.test(s);
+  const meaningful = segments.filter(
+    (s, i) => !(i > 0 && (isCityTail(s) || isCityish(s))),
+  );
+
+  let venue = meaningful[0] || fallback;
+  // If the first meaningful segment is itself a street (starts with a
+  // number) AND there's a second segment that looks like a proper venue
+  // name, prefer that as the venue. Otherwise the street IS the venue
+  // (more informative than the bare city name).
+  if (
+    /^\d/.test(venue) &&
+    meaningful[1] &&
+    !/^\d/.test(meaningful[1]) &&
+    !isCityish(meaningful[1])
+  ) {
+    venue = meaningful[1];
+  }
+  // Trim a trailing period left by patterns like "12 E Church St."
+  venue = venue
+    .replace(/\s+/g, " ")
+    .replace(/\.$/, "")
+    .slice(0, 120)
+    .trim() || fallback;
+
+  // Address keeps the comma-joined sequence so map/geocode hints still
+  // work; trim trailing duplicate of the venue if the city tail is bare.
+  const address = segments.join(", ");
+
+  return { venue, address };
+}
+
+/**
+ * Conservative "is this event free" heuristic. We only mark Free when
+ * the title or description explicitly says so. Previously the default
+ * was Free unless `$`, "ticket", "paid", or "cover" appeared — which
+ * over-claimed Free for nearly every event in the feed.
+ */
+function isExplicitlyFree(blob: string): boolean {
+  return /\b(free\s+admission|no\s+cover|free\s+event|admission\s+free|complimentary|free\s+to\s+attend|free\s+for\b|free\b)/i.test(
+    blob,
+  );
+}
+
+/**
  * The Frederick County CivicEngage RSS feed entity-encodes its HTML
  * markup (e.g. `&lt;strong&gt;Event date:&lt;/strong&gt; … &lt;br&gt;`),
  * so a bare `<[^>]+>` strip misses every tag and the entities surface
@@ -300,6 +415,10 @@ function parseICalEvents(text: string): ParsedVEvent[] {
 }
 
 async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+  // Reset per-source counts at the start of every pull so the admin
+  // dashboard reflects the current fetch, not lifetime aggregates.
+  resetFeedMetrics(feed.source);
+  const fetchedAt = new Date().toISOString();
   try {
     const res = await fetch(feed.url, {
       headers: {
@@ -309,13 +428,20 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       next: { revalidate: 3600 },
     });
     if (!res.ok) {
-       
-      console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
+      // 410 (Gone) and 404 (Not Found) signal the calendar was
+      // retired upstream — not an app error. Log as info so the
+      // feed can come back without a code change but the noise
+      // stays out of the error stream.
+      if (res.status === 410 || res.status === 404) {
+        console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${res.status})`);
+      } else {
+        console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
+      }
       return [];
     }
     const text = await res.text();
     if (!text.includes("BEGIN:VCALENDAR")) {
-       
+
       console.error(`[ical-live] ${feed.source}: not iCal`);
       return [];
     }
@@ -331,14 +457,14 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       const title = (item.summary ?? "").trim();
       if (!title) continue;
       const description = (item.description ?? "").trim();
-      const venue = (item.location ?? "").split(",")[0].trim() || feed.default_venue;
-      const address = item.location ?? "";
+      const { venue, address } = splitLocation(item.location, feed.default_venue);
+      const cleanedDesc = cleanFeedText(description).slice(0, 300);
       const inferredCategory = feedCategory(feed, title, description);
 
-      events.push({
+      const candidate = {
         id: item.uid ?? `${feed.source}:${dedupeKey(title, start, venue)}`,
         title,
-        description: cleanFeedText(description).slice(0, 300),
+        description: cleanedDesc,
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
         venue_name: venue,
@@ -350,28 +476,37 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
         source: feed.source,
         source_label: feed.source_label,
         url: item.url ?? feed.url,
-        is_free: !/\$|\bticket\b|\bpaid\b|\bcover\b/i.test(`${title} ${description}`),
-      });
+        is_free: isExplicitlyFree(`${title} ${cleanedDesc}`),
+        last_verified_at: fetchedAt,
+      };
+      const validated = validateLiveEvent(candidate, feed.source);
+      if (validated) events.push(validated);
     }
-     
+
     console.log(`[ical-live] ${feed.source}: parsed ${events.length} events in window`);
+    recordSnapshot(feed.source, events);
     return events;
   } catch (err) {
-     
+
     console.error(`[ical-live] ${feed.source} failed:`, err instanceof Error ? err.message : err);
     return [];
   }
 }
 
 async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
+  resetFeedMetrics(feed.source);
+  const fetchedAt = new Date().toISOString();
   try {
     const res = await fetch(feed.url, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
       next: { revalidate: 3600 },
     });
     if (!res.ok) {
-       
-      console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
+      if (res.status === 410 || res.status === 404) {
+        console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${res.status})`);
+      } else {
+        console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
+      }
       return [];
     }
     const xml = await res.text();
@@ -415,15 +550,13 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
       if (start < now || start > horizon) continue;
       if (!end || isNaN(end.getTime())) end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
 
-      const venue = pick("calendarEvent:Location")
-        .replace(/<br\s*\/?>/gi, ", ")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim() || feed.default_venue;
-      const address = venue;
+      const { venue, address } = splitLocation(
+        pick("calendarEvent:Location"),
+        feed.default_venue,
+      );
       const inferredCategory = feedCategory(feed, title, description);
 
-      events.push({
+      const candidate = {
         id: `${feed.source}:${dedupeKey(title, start, venue)}`,
         title,
         description: description.slice(0, 300),
@@ -438,14 +571,18 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
         source: feed.source,
         source_label: feed.source_label,
         url: link || feed.url,
-        is_free: !/\$|\bticket\b|\bpaid\b/i.test(`${title} ${description}`),
-      });
+        is_free: isExplicitlyFree(`${title} ${description}`),
+        last_verified_at: fetchedAt,
+      };
+      const validated = validateLiveEvent(candidate, feed.source);
+      if (validated) events.push(validated);
     }
-     
+
     console.log(`[ical-live] ${feed.source}: parsed ${events.length} RSS events in window`);
+    recordSnapshot(feed.source, events);
     return events;
   } catch (err) {
-     
+
     console.error(`[ical-live] ${feed.source} RSS failed:`, err instanceof Error ? err.message : err);
     return [];
   }

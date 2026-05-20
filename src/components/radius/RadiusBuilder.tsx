@@ -207,6 +207,17 @@ export default function RadiusBuilder({
     cuisine && facets.some((f) => f.slug === cuisine) ? cuisine : null;
 
   const farthest = inside[inside.length - 1]?.distance_m ?? 0;
+  // Live municipality coverage — how many distinct towns the
+  // current radius reaches into. Climbs as the user widens the slider.
+  const townsInside = useMemo(
+    () => new Set(inside.map((p) => p.municipality).filter(Boolean)).size,
+    [inside],
+  );
+  const formatFar = (m: number) => {
+    if (m === 0) return "—";
+    if (m < 1000) return `${Math.round(m)} ft`;
+    return `${(m / 1609).toFixed(1)} mi`;
+  };
 
   // Amenities inside the same radius — "what's within X" now genuinely
   // includes the restrooms / Wi-Fi / EV / bike / picnic / playgrounds,
@@ -341,21 +352,54 @@ export default function RadiusBuilder({
         </div>
       </section>
 
+      {/* Live stat strip — tactile module of confident tabular numbers
+          that update as the radius widens or the mode changes. Replaces
+          the static "X places inside" pill so the page makes the answer
+          to "in play right now" visible at a glance. */}
       <section
-        className="flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] px-3.5 py-2.5"
-        style={{ borderColor: "var(--app-border)" }}
+        aria-label="In play right now"
+        className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
       >
-        <p className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-          <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-brand)" }}>
-            {inside.length}
-          </strong>{" "}
-          place{inside.length === 1 ? "" : "s"} inside
-          {farthest > 0 && (
-            <span style={{ color: "var(--app-ink-3)" }}> · farthest {formatDistance(farthest)}</span>
-          )}
-        </p>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(70% 90% at 10% 0%, color-mix(in srgb, var(--app-cool) 14%, transparent), transparent 60%)",
+          }}
+        />
+        <div className="relative flex items-end justify-between gap-3">
+          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+            In play right now
+          </p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            {mode === "walk" ? "Walking" : mode === "bike" ? "Biking" : "Driving"} · {minutes} min
+          </p>
+        </div>
+        <div className="relative mt-3 grid grid-cols-3 gap-3">
+          {[
+            { label: "Places", value: inside.length.toLocaleString(), accent: "var(--app-brand)" },
+            { label: "Towns", value: townsInside.toString(), accent: "var(--app-cool)" },
+            { label: "Farthest", value: formatFar(farthest), accent: "var(--app-brand-2)" },
+          ].map((s) => (
+            <div key={s.label} className="text-center">
+              <div
+                className="font-serif text-[28px] font-semibold leading-none tracking-tight tabular-nums"
+                style={{ color: s.accent }}
+              >
+                {s.value}
+              </div>
+              <div
+                className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {s.label}
+              </div>
+            </div>
+          ))}
+        </div>
         {inside.length > 0 && (
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="relative mt-3 flex flex-wrap items-center justify-end gap-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
             {/* Sort — Nearest (default) or A–Z. */}
             <div
               role="group"

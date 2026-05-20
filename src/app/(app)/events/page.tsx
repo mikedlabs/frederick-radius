@@ -5,6 +5,8 @@ import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta }
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
+import EventCard from "@/components/event/EventCard";
+import WeekStrip from "@/components/event/WeekStrip";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
@@ -15,6 +17,8 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
+import PageBloom from "@/components/ui/PageBloom";
+import StatStrip from "@/components/ui/StatStrip";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -95,8 +99,35 @@ export default async function EventsIndexPage({
   }
   const initialView: ViewState = parseViewState(sp);
 
+  // Stat-strip numbers for /events — quick identity / breadth.
+  const liveCount = liveCards.length;
+  const seedCount = curatedUpcoming.length;
+  const eventStats = [
+    { label: "Upcoming", value: allEvents.length },
+    { label: "Towns", value: towns.length },
+    { label: "Live", value: liveCount },
+    { label: "Seeded", value: seedCount },
+  ];
+
+  // Hero feature — the next photo-backed upcoming event. Photo-led
+  // entries (Alive @ Five, Sky Stage, the curated season) carry the
+  // banner; text-only county-feed rows stay out of the hero so the
+  // top of the page always has imagery to land on.
+  const heroEvent = allEvents.find((e) => Boolean(e.hero_image)) ?? null;
+
   return (
-    <div className="space-y-7">
+    <div className="relative space-y-6">
+      <PageBloom variant="warm-cool" />
+
+      {/* Editorial event hero — full-bleed magazine card for the next
+          photo-backed event. Above the title so visitors meet imagery
+          before they meet a list. */}
+      {heroEvent && (
+        <section aria-label="Featured event">
+          <EventCard event={heroEvent} variant="feature" />
+        </section>
+      )}
+
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
@@ -118,6 +149,11 @@ export default async function EventsIndexPage({
           Calendar
         </Button>
       </header>
+
+      <StatStrip stats={eventStats} />
+
+      {/* 7-day mini calendar — horizontal rhythm before the long list. */}
+      <WeekStrip events={allEvents} />
 
       <EventsExplorer
         events={allEvents}

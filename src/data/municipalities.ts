@@ -20,7 +20,7 @@ export type Municipality = {
 export const MUNICIPALITIES: Municipality[] = [
   {
     slug: "frederick",
-    name: "Frederick",
+    name: "Downtown Frederick",
     type: "city",
     population: 80_435,
     centroid: { lng: -77.4105, lat: 39.4143 },

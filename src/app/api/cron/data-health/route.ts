@@ -1,10 +1,19 @@
 /**
- * Nightly data-health recompute. Re-runs dedup and copy scoring over the
- * current place data and reports the numbers. It reports, it does not
- * persist: serverless storage is read-only, so the committed artifacts
- * (places-dedup.json, copy-scores.json) are regenerated at build time by
- * `npm run dedup` and `npm run copy:scores`. This route is the health
- * signal for /admin/data-health and external uptime checks.
+ * Nightly data-health recompute. Two passes:
+ *
+ *   1. Place-side: re-run dedup, copy scoring, coord divergence, hours
+ *      coverage. The committed artifacts (places-dedup.json,
+ *      copy-scores.json) are regenerated at build time by `npm run
+ *      dedup` / `npm run copy:scores`; this is the report only.
+ *
+ *   2. Feed-side: hydrate the rolling snapshot buffer from Postgres,
+ *      pull every live feed, record fresh snapshots, compute anomaly
+ *      flags, and fire a Slack alert when anything trips. Then prune
+ *      snapshots older than 90 days so the table never grows
+ *      unbounded.
+ *
+ * This route is the health signal for /admin/data-health and external
+ * uptime checks. Hosted-only (Vercel cron); locally hit by hand.
  */
 import { NextResponse } from "next/server";
 import { verifyCronAuth } from "../../ingest/_auth";
@@ -14,6 +23,14 @@ import { buildDedup } from "@/lib/dedup";
 import { classifyDescription, type CopyQuality } from "@/lib/copy-quality";
 import { rankPlaces, hoursCoverage } from "@/lib/loaders/places";
 import { auditCoordDivergence, type CoordAuditPlace } from "@/lib/coord-audit";
+import { getLiveEvents } from "@/lib/integrations/ical-live";
+import {
+  getAnomalies,
+  hydrateSnapshots,
+  pruneOldSnapshots,
+} from "@/lib/integrations/feed-snapshot";
+import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
+import { sendAnomalyAlert } from "@/lib/integrations/alerts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +74,32 @@ export async function GET(request: Request) {
     200,
   );
 
+  // ─────────────────────────────────────────────────────
+  // Feed-side: hydrate, fetch, snapshot, detect, alert, prune.
+  // Each step is isolated so one slow/failing feed can't break
+  // the full health report. The cron body always returns 200.
+  // ─────────────────────────────────────────────────────
+  await hydrateSnapshots().catch((err) => {
+
+    console.error("[cron/data-health] hydrate failed:", err);
+  });
+  await getLiveEvents(60).catch((err) => {
+
+    console.error("[cron/data-health] live fetch failed:", err);
+  });
+  const anomalies = getAnomalies();
+  const validation = consumeFeedMetrics();
+  const prunedRows = await pruneOldSnapshots(90).catch((err) => {
+
+    console.error("[cron/data-health] prune failed:", err);
+    return 0;
+  });
+  // Slack post is fire-and-forget — it should never block the
+  // cron's reply. The helper itself no-ops without a webhook URL.
+  if (anomalies.length > 0) {
+    void sendAnomalyAlert(anomalies);
+  }
+
   return NextResponse.json({
     computed_at: new Date().toISOString(),
     places: PLACES.length,
@@ -68,6 +111,13 @@ export async function GET(request: Request) {
       count: coordFlags.length,
       below_gate: coordFlags.length > 0,
       flagged: coordFlags.slice(0, 25),
+    },
+    feeds: {
+      validation,
+      anomalies,
+      anomaly_count: anomalies.length,
+      pruned_old_snapshots: prunedRows,
+      alert_sent: anomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
     },
     note: "Recompute only. Commit-time scripts persist the artifacts.",
   });

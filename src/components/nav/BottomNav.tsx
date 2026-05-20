@@ -21,7 +21,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Primary"
-      className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]/85 backdrop-blur-md pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
     >
       <ul className="mx-auto grid max-w-screen-md grid-cols-6">
         {TABS.map(({ href, label, icon: Icon }) => {
@@ -31,22 +31,54 @@ export default function BottomNav() {
             <li key={href} className="flex">
               <Link
                 href={href}
-                className="flex flex-1 flex-col items-center gap-1 py-2 text-[10px] font-medium tracking-tight transition-transform active:scale-[0.94]"
+                className="group relative flex flex-1 flex-col items-center gap-0.5 px-1 pt-1.5 pb-1 text-[10px] font-semibold tracking-tight transition-transform active:scale-[0.92]"
+                style={{
+                  color: active ? "var(--app-brand)" : "var(--app-ink-3)",
+                  transitionTimingFunction: "var(--app-ease-spring)",
+                  transitionDuration: "var(--app-dur-fast)",
+                }}
                 aria-current={active ? "page" : undefined}
-                style={{ color: active ? "var(--app-brand)" : "var(--app-ink-3)" }}
               >
+                {/* Icon pill — active gets a brand-tinted background with
+                    the new tactile-glow-brand layered shadow + lip, so the
+                    selected tab visibly lifts and catches light. Inactive
+                    stays flat ink-3 and lifts on hover (desktop only). */}
                 <span
-                  className="grid h-7 w-12 place-items-center rounded-full transition-colors"
+                  className={`grid h-9 w-[52px] place-items-center rounded-full transition-all duration-200 ${
+                    active ? "tactile tactile-lift tactile-glow-brand" : ""
+                  }`}
                   style={{
                     background: active
-                      ? "color-mix(in srgb, var(--app-brand) 14%, transparent)"
+                      ? "color-mix(in srgb, var(--app-brand) 18%, var(--app-bg-elevated))"
                       : "transparent",
+                    transitionTimingFunction: "var(--app-ease-spring)",
                   }}
                   aria-hidden
                 >
-                  <Icon className="h-[19px] w-[19px]" strokeWidth={active ? 2.25 : 2} />
+                  <Icon
+                    className={`transition-transform duration-200 ${
+                      active ? "h-[20px] w-[20px]" : "h-[19px] w-[19px] group-hover:-translate-y-[1px]"
+                    }`}
+                    strokeWidth={active ? 2.5 : 2}
+                  />
                 </span>
-                <span>{label}</span>
+                <span
+                  className="transition-opacity"
+                  style={{ opacity: active ? 1 : 0.85 }}
+                >
+                  {label}
+                </span>
+                {/* Active indicator dot — small brand chip beneath the
+                    label so the selected route reads clearly even when
+                    glancing at the nav peripherally. */}
+                <span
+                  aria-hidden
+                  className="absolute bottom-[3px] left-1/2 h-[3px] w-[3px] -translate-x-1/2 rounded-full transition-opacity"
+                  style={{
+                    background: "var(--app-brand)",
+                    opacity: active ? 1 : 0,
+                  }}
+                />
               </Link>
             </li>
           );
