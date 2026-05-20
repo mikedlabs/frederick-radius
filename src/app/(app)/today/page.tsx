@@ -46,25 +46,48 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
+// "Worth your evening" must read as a destination, not whatever the
+// directory happens to have ranked highest. Birthing classes, dialysis
+// clinics, and county-permits offices all technically can hit the top
+// of the rated list — that's what the design audits flagged. Restrict
+// to categories that ARE an evening out.
+const EVENING_CATEGORIES: ReadonlySet<string> = new Set([
+  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
+  "music", "theater", "gallery", "museum",
+  "lodging", "market",
+]);
+
+// Event titles that look like internal/admin business — board meetings,
+// hearings, classes, rehearsals. Public meetings live on /events under
+// their own section; they don't carry a "Don't miss" hero card.
+const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal|board meeting|training|orientation|class|certification|breastfeeding|prenatal|birthing|info session|hr|policy)\b/i;
+
 function pickFeaturedPlace(now: Date): PlaceCardData | null {
   const ranked = rankPlaces({
     origin: FREDERICK_CENTER,
     now,
     preferOpen: true,
-    limit: 80,
+    limit: 120,
   });
   const candidate = ranked
     .filter((p) => Boolean(p.google_photo_url))
     .filter((p) => p.open_status.state !== "closed")
+    .filter((p) => EVENING_CATEGORIES.has(p.category))
+    .filter((p) => (p.google_rating ?? 0) >= 4.3)
     .sort((a, b) => (b.google_rating ?? 0) - (a.google_rating ?? 0))[0];
   return candidate ?? null;
 }
 
 /** Pick the next photo-backed marquee event for the hero card.
  *  Photo-led entries (Alive @ Five, Sky Stage) outrank text-only
- *  rows so the feature card always has imagery to carry. */
+ *  rows so the feature card always has imagery to carry — AND
+ *  exclude administrative/private-sounding rows (board meetings,
+ *  rehearsal dinners, prenatal classes) so the hero never carries
+ *  a clinical entry. */
 function pickFeaturedEvent(now: Date) {
-  const upcoming = allUpcoming(now);
+  const upcoming = allUpcoming(now).filter(
+    (e) => !NON_PUBLIC_EVENT.test(e.title ?? ""),
+  );
   return (
     upcoming.find((e) => Boolean(e.hero_image)) ??
     upcoming[0] ??

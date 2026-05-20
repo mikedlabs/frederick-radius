@@ -9,15 +9,31 @@ import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
  * captions over the photos so the imagery does the talking.
  *
  * Selection is deterministic per day (rotating by date) so a
- * repeat visit feels curated, not random. Only places with a
- * Google photo qualify — anything else would render an empty box.
+ * repeat visit feels curated, not random. Only places with a Google
+ * photo AND a photogenic category qualify — a parking deck or a
+ * county-permits office would technically have a photo but is not
+ * what "Looks like Frederick" should show.
  *
  * Pass `places` to scope the mosaic to a town or category (so a
  * `/m/middletown` page shows Middletown photos, a `/category/coffee`
  * page shows coffee photos). Default: countywide ranked pool.
  */
+
+// Visual-feed whitelist. Per the design audits: PhotoMosaic was
+// surfacing parking decks, driving schools, and county offices —
+// destroying the curated feel. Only show categories someone would
+// want a photo of.
+const PHOTOGENIC_CATEGORIES: ReadonlySet<string> = new Set([
+  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
+  "park", "trail", "outdoors", "playground",
+  "museum", "gallery", "theater", "music", "public-art",
+  "market", "lodging", "family",
+]);
+
 function pickPhotos(count: number, dayIdx: number, pool: PlaceCardData[]) {
-  const withPhotos = pool.filter((p) => p.google_photo_url);
+  const withPhotos = pool.filter(
+    (p) => p.google_photo_url && PHOTOGENIC_CATEGORIES.has(p.category),
+  );
   if (withPhotos.length === 0) return [];
   // Rotate the start cursor by day so the wall is *different*
   // photos from visit to visit, but stable within a day.
@@ -50,7 +66,7 @@ export default function PhotoMosaic({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={p.google_photo_url}
-            alt=""
+            alt={p.name}
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
           />
