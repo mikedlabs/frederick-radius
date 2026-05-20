@@ -17,6 +17,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 export type IntentKey =
   | "coffee"
   | "eat"
+  | "sip"
   | "outdoor"
   | "family"
   | "arts"
@@ -34,6 +35,7 @@ export type Intent = {
   icon:
     | "Coffee"
     | "Utensils"
+    | "Wine"
     | "Trees"
     | "Baby"
     | "Palette"
@@ -48,6 +50,11 @@ export type Intent = {
 };
 
 const COFFEE = new Set(["coffee", "bakery"]);
+// Sip & taste — wineries, breweries, distilleries, ciderworks. We
+// match on subcategories too so the Frederick County winery seed
+// (category: "brewery", subcategories: ["winery", …]) is included.
+const SIP_CATS = new Set(["brewery", "bar", "distillery"]);
+const SIP_SUBS = new Set(["winery", "meadery", "cidery", "distillery"]);
 const FOOD = new Set([
   "restaurant",
   "food",
@@ -100,6 +107,17 @@ export const INTENTS: Intent[] = [
     icon: "Utensils",
     match: (p) => FOOD.has(p.category),
     preferOpen: true,
+  },
+  {
+    key: "sip",
+    label: "Sip & taste",
+    blurb: "Wineries, breweries, distilleries, ciderworks across the county.",
+    color: "#7E1F1F",
+    icon: "Wine",
+    match: (p) =>
+      SIP_CATS.has(p.category) ||
+      (p.subcategories ?? []).some((s) => SIP_SUBS.has(s)),
+    preferOpen: false,
   },
   {
     key: "outdoor",

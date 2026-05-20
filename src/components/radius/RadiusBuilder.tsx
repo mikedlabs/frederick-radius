@@ -207,6 +207,10 @@ export default function RadiusBuilder({
     cuisine && facets.some((f) => f.slug === cuisine) ? cuisine : null;
 
   const farthest = inside[inside.length - 1]?.distance_m ?? 0;
+  // The actual place sitting at the edge of the current radius — gives
+  // the user a tangible "you can reach this" anchor instead of just a
+  // number. Updates live as the slider moves.
+  const edgePlace = inside[inside.length - 1] ?? null;
   // Live municipality coverage — how many distinct towns the
   // current radius reaches into. Climbs as the user widens the slider.
   const townsInside = useMemo(
@@ -325,7 +329,7 @@ export default function RadiusBuilder({
           })}
         </div>
 
-        <div>
+        <div className="relative">
           <div className="flex items-baseline justify-between gap-2">
             <label htmlFor="minutes-slider" className="text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
               Distance
@@ -333,6 +337,32 @@ export default function RadiusBuilder({
             <span className="font-serif text-lg font-semibold tabular-nums" style={{ color: "var(--app-brand)" }}>
               {minutes} min <span className="text-[13px] font-normal" style={{ color: "var(--app-ink-3)" }}>· {formatDistance(meters)}</span>
             </span>
+          </div>
+          {/* Concentric-ring density backdrop — a quiet visual cue that
+              the radius is a real spatial concept, not just a number.
+              The ring count grows as the radius widens; the active ring
+              pulses gently to draw the eye. SVG is pointer-events-none
+              so it never blocks the slider. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            style={{ width: 220, height: 56 }}
+          >
+            <svg viewBox="0 0 220 56" className="h-full w-full" preserveAspectRatio="xMidYMid meet">
+              {[14, 26, 38, 50].map((r, i) => (
+                <ellipse
+                  key={r}
+                  cx={110}
+                  cy={28}
+                  rx={r * 2}
+                  ry={r * 0.55}
+                  fill="none"
+                  stroke="var(--app-brand)"
+                  strokeWidth={0.7}
+                  opacity={Math.max(0.04, 0.18 - i * 0.03)}
+                />
+              ))}
+            </svg>
           </div>
           <input
             id="minutes-slider"
@@ -342,13 +372,40 @@ export default function RadiusBuilder({
             step={1}
             value={minutes}
             onChange={(e) => setMinutes(Number(e.target.value))}
-            className="mt-1.5 w-full"
+            className="relative z-10 mt-1.5 w-full"
             style={{ accentColor: "var(--app-brand)" }}
           />
           <div className="mt-1 flex justify-between text-[11px]" style={{ color: "var(--app-ink-3)" }}>
             <span>3</span>
             <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
           </div>
+          {/* "What's at the edge" peek — tells the user the farthest
+              concrete place they can reach right now. Reads as a
+              tangible boundary, not an abstract distance. */}
+          {edgePlace && (
+            <div
+              className="mt-2.5 flex items-center gap-2 rounded-[var(--app-radius-md)] px-3 py-1.5 text-[11px]"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated))",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: "var(--app-brand)" }}
+              />
+              <span className="min-w-0 flex-1 truncate">
+                <span className="font-semibold uppercase tracking-[0.08em] text-[9px]" style={{ color: "var(--app-ink-3)" }}>
+                  At the edge
+                </span>{" "}
+                <span style={{ color: "var(--app-ink)" }}>{edgePlace.name}</span>
+              </span>
+              <span className="shrink-0 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {formatFar(farthest)}
+              </span>
+            </div>
+          )}
         </div>
       </section>
 

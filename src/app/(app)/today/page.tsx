@@ -13,6 +13,8 @@ import FeaturedTonight from "@/components/today/FeaturedTonight";
 import RightNow from "@/components/today/RightNow";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import RedditPulse from "@/components/today/RedditPulse";
+import QuoteOfTheDay from "@/components/today/QuoteOfTheDay";
+import DecorativeDivider from "@/components/ui/DecorativeDivider";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
@@ -157,10 +159,18 @@ export default async function HomePage() {
         </DismissibleSection>
       )}
 
+      <DecorativeDivider variant="wave" />
+
+      {/* 6a — Quote of the day. One real Google review as a pull-quote,
+          rotated per day. Brings human voice into a data-heavy page. */}
+      <QuoteOfTheDay />
+
       {/* 7 — Photo mosaic. Six-tile real-place wall. */}
       <DismissibleSection id="photo-mosaic" title="Looks like Frederick">
         <PhotoMosaic />
       </DismissibleSection>
+
+      <DecorativeDivider variant="sun" />
 
       {/* 8 — Time-aware curated places (component owns its own header). */}
       <RightNow now={now} />

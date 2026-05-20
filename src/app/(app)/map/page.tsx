@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   Coffee,
   Utensils,
+  Wine,
   Trees,
   Baby,
   Palette,
@@ -31,6 +32,7 @@ export const revalidate = 300;
 const ICON: Record<Intent["icon"], typeof Coffee> = {
   Coffee,
   Utensils,
+  Wine,
   Trees,
   Baby,
   Palette,
