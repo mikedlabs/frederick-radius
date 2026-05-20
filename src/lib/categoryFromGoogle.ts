@@ -242,6 +242,44 @@ const MAP: Record<string, string> = {
   campground: "park",
   rv_park: "park",
   fishing_pond: "park",
+
+  // Audit-driven pass 3 (2026-05-20) — every primary_type with ≥3
+  // visible places that wasn't yet in the corrector. From a direct
+  // count of places-client.json × places-enrichment.json.
+  brewery: "brewery",
+  // Food + drink long tail
+  family_restaurant: "restaurant",
+  vietnamese_restaurant: "restaurant",
+  spanish_restaurant: "restaurant",
+  chicken_restaurant: "restaurant",
+  juice_shop: "restaurant",
+  bar_and_grill: "bar",
+  gastropub: "bar",
+  sports_bar: "bar",
+  cake_shop: "bakery",
+  coffee_roastery: "coffee",
+  catering_service: "restaurant",
+  food_store: "market",
+  // Markets / shopping nuance
+  farmers_market: "market",
+  garden_center: "shopping",
+  // Wellness expansion
+  massage_spa: "wellness",
+  sports_school: "wellness",
+  sports_club: "wellness",
+  sports_activity_location: "wellness",
+  // Family / education
+  educational_institution: "family",
+  university: "family",
+  child_care_agency: "family",
+  // Arts / venues
+  art_studio: "gallery",
+  wedding_venue: "music",
+  // Outdoors expansion
+  scenic_spot: "park",
+  athletic_field: "park",
+  nature_preserve: "park",
+  tourist_attraction: "park",
 };
 
 /**

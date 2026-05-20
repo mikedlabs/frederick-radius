@@ -60,13 +60,10 @@ function normalize(nws: NwsAlert[], nps: NpsAlert[]): UnifiedAlert[] {
       a.severity === "Extreme" ? "emergency" :
       a.severity === "Severe" ? "warning" :
       a.severity === "Moderate" ? "advisory" : "info";
-    // Dedupe with WeatherHero, which already renders an inline "View"
-    // chip for any active NWS alert. We only escalate to the top of
-    // the page when severity is "emergency" — tornado / flash flood
-    // emergencies, mandatory evacuations, etc. Routine watches and
-    // advisories stay inside the weather card so the top banner
-    // doesn't double up on routine weather warnings.
-    if (severity !== "emergency") continue;
+    // WeatherHero's inline alert chip was removed — the top
+    // CivicAlerts banner is now the single source of truth for the
+    // alert. Show every active NWS alert here with the full title +
+    // "Until 8 PM" tail + scope chip.
     const until = untilLabel(a.ends_at);
     out.push({
       source: "NWS",

@@ -144,22 +144,10 @@ export default async function WeatherHero() {
 
   return (
     <div className="space-y-2">
-      {alerts.length > 0 && (
-        <Link
-          href="/pulse"
-          className="tactile tactile-interactive flex items-center gap-2 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px] font-semibold"
-          style={{ background: "var(--app-danger)", color: "#fff" }}
-        >
-          <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
-          <span className="truncate">
-            {alerts.length === 1
-              ? alerts[0]?.event ?? "1 active weather alert"
-              : `${alerts.length} active weather alerts`}
-          </span>
-          <span className="ml-auto shrink-0 opacity-90">View</span>
-        </Link>
-      )}
-
+      {/* Inline alert chip removed — the CivicAlerts component at the
+          top of Today already shows the active NWS alert with the full
+          headline, severity color, ends-at time, and scope chip. We
+          were rendering the same Severe Thunderstorm Watch twice. */}
       <article
         className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
         aria-label="Current weather and today's outlook"
