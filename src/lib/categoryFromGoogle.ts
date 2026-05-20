@@ -168,6 +168,52 @@ const MAP: Record<string, string> = {
   electronics_store: "shopping",
   pet_store: "shopping",
   sporting_goods_store: "shopping",
+  florist: "shopping",
+  tobacco_shop: "shopping",
+  toy_store: "shopping",
+  thrift_store: "shopping",
+  home_improvement_store: "shopping",
+  building_materials_store: "shopping",
+  tire_shop: "services",
+  gas_station: "services",
+  body_art_service: "wellness", // tattoo / piercing
+  swimming_pool: "wellness",
+
+  // Audit-driven pass 2 (2026-05-20): places mislabeled as
+  // "shopping" by DFP that Google clearly types. These were the
+  // largest remaining mismatch bucket on the dataset.
+  tea_store: "coffee",
+  chocolate_shop: "bakery",
+  candy_store: "bakery",
+  cafeteria: "restaurant",
+  buffet_restaurant: "restaurant",
+  food_court: "restaurant",
+  brewpub: "brewery",
+  distillery: "brewery", // tagged via subcategory "distillery" at render
+  cidery: "brewery",
+  meadery: "brewery",
+  winery: "brewery",
+  amusement_center: "family",
+  amusement_park: "family",
+  zoo: "family",
+  aquarium: "family",
+  water_park: "family",
+  movie_rental: "family",
+  // Civic-adjacent — historical sites, cemeteries, visitor info
+  cemetery: "civic",
+  visitor_center: "civic",
+  historical_landmark: "civic",
+  historical_place: "civic",
+  monument: "civic",
+  // Music & nightlife venues
+  event_venue: "music",
+  banquet_hall: "music",
+  // Outdoors / nature
+  garden: "park",
+  marina: "park",
+  campground: "park",
+  rv_park: "park",
+  fishing_pond: "park",
 };
 
 /**

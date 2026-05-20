@@ -67,6 +67,22 @@ export const NON_DISCOVERABLE_TYPES: ReadonlySet<string> = new Set([
   "apartment_complex", // 8
   "apartment_building", // 5
   "condominium_complex", // 3
+
+  // Bare "service" — Google's catch-all type for appointment-only
+  // providers (cleaning, IT, repair-by-call). 156 in our dataset; the
+  // small share that ARE destinations (a body shop you walk into) get
+  // a more specific primaryType. Adding this hides ~129 DFP-scraped
+  // shopping-labeled service providers from discovery (2026-05-20).
+  "service",
+
+  // B2B-only types that slipped through the original audit (2026-05-20).
+  "manufacturer_representative",
+  "engineer",
+  "architecture_firm",
+  "advertising_agency",
+  "tax_preparation_service",
+  "investment_advisor",
+  "financial_planner",
 ]);
 
 /**
