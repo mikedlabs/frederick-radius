@@ -60,8 +60,13 @@ function normalize(nws: NwsAlert[], nps: NpsAlert[]): UnifiedAlert[] {
       a.severity === "Extreme" ? "emergency" :
       a.severity === "Severe" ? "warning" :
       a.severity === "Moderate" ? "advisory" : "info";
-    // Prefer "Until 8:00 PM" as the tail — it's the actionable bit;
-    // fall back to the first sentence of the headline.
+    // Dedupe with WeatherHero, which already renders an inline "View"
+    // chip for any active NWS alert. We only escalate to the top of
+    // the page when severity is "emergency" — tornado / flash flood
+    // emergencies, mandatory evacuations, etc. Routine watches and
+    // advisories stay inside the weather card so the top banner
+    // doesn't double up on routine weather warnings.
+    if (severity !== "emergency") continue;
     const until = untilLabel(a.ends_at);
     out.push({
       source: "NWS",

@@ -908,13 +908,13 @@ export default function AppMap({
               aria-expanded={filtersOpen}
               className="shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
               style={{
-                borderColor: filtersOpen || activeCats.size > 0 ? "var(--app-brand)" : "var(--app-border)",
-                color: filtersOpen || activeCats.size > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
+                borderColor: filtersOpen || activeCats.size > 0 || activeAmenityGroupCount > 0 ? "var(--app-brand)" : "var(--app-border)",
+                color: filtersOpen || activeCats.size > 0 || activeAmenityGroupCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
                 background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
                 boxShadow: "var(--app-shadow-2)",
               }}
             >
-              Layers{activeCats.size > 0 ? ` · ${activeCats.size}` : ""}
+              Layers{activeCats.size + activeAmenityGroupCount > 0 ? ` · ${activeCats.size + activeAmenityGroupCount}` : ""}
               <span aria-hidden style={{ marginLeft: 6, fontSize: 9, opacity: 0.7 }}>{filtersOpen ? "▲" : "▼"}</span>
             </button>
           </div>

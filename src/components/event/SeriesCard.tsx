@@ -12,6 +12,12 @@ function fmtDate(iso: string, allDay: boolean): string {
     : `${formatEventDate(iso)}, ${formatEventTime(iso)}`;
 }
 
+/** Caption when the date block on the left already shows the date —
+ *  we only need the time + venue, not the full date again. */
+function fmtTimeOnly(iso: string, allDay: boolean): string {
+  return allDay ? "All day" : formatEventTime(iso);
+}
+
 /**
  * One card per municipal event. If it recurs (Story Time every Friday),
  * the card shows "Every week · 11 more dates" and expands to list every
@@ -47,7 +53,7 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
             {series.title}
           </h3>
           <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-            {fmtDate(next.startsAtUtc, next.allDay)}
+            {fmtTimeOnly(next.startsAtUtc, next.allDay)}
             {series.venueName ? ` · ${series.venueName}` : ""}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
