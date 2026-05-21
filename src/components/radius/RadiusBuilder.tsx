@@ -235,6 +235,13 @@ export default function RadiusBuilder({
   const activeCuisine =
     cuisine && facets.some((f) => f.slug === cuisine) ? cuisine : null;
 
+  // Just the lng/lat slim shape RadiusMap wants for its dot layer.
+  // Memoized so the GeoJSON source isn't rebuilt on unrelated re-renders.
+  const insideDots = useMemo(
+    () => inside.map((p) => ({ lng: p.geom.lng, lat: p.geom.lat })),
+    [inside],
+  );
+
   const farthest = inside[inside.length - 1]?.distance_m ?? 0;
   // The actual place sitting at the edge of the current radius — gives
   // the user a tangible "you can reach this" anchor instead of just a
@@ -296,19 +303,77 @@ export default function RadiusBuilder({
 
   return (
     <div className="space-y-5">
-      {/* New visual hero — a real Mapbox map with the radius drawn as
-          a circle overlay on actual streets. The previous abstract SVG
-          ring read as a demo; users want to see the geography of what's
-          actually inside their reach. */}
+      {/* Big interactive county canvas — tap or drag the pin to move
+          the center, pinch/scroll to zoom. Initial view fits the whole
+          county so the page leads with the geography. In-range places
+          render as dots so the user SEES density, not just a count. */}
       <RadiusMap
         mode={mode}
-        minutes={minutes}
         meters={meters}
         center={{ lng: center.lng, lat: center.lat }}
         centerLabel={center.label}
-        edge={edgeForRing}
-        countInside={inside.length}
+        insidePlaces={insideDots}
+        onCenterChange={(next) => {
+          setMyLoc(next);
+          setMyLocLabel("Pinned point");
+        }}
       />
+
+      {/* Slim stat ribbon — mode/minutes/distance · in-range count · edge
+          place. The stat bar used to live INSIDE RadiusMap; pulling it
+          out lets the map breathe at its full height. */}
+      <section
+        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-2.5"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="text-[10px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {mode === "walk" ? "Walking" : mode === "bike" ? "Biking" : "Driving"}
+          </span>
+          <span
+            className="font-serif text-[16px] font-semibold tabular-nums"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {minutes} min
+            <span className="ml-1 text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+              · {formatDistance(meters)}
+            </span>
+          </span>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            className="text-[10px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            In range
+          </span>
+          <span
+            className="font-serif text-[16px] font-semibold tabular-nums"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {inside.length.toLocaleString()}
+            <span className="ml-1 text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+              place{inside.length === 1 ? "" : "s"}
+            </span>
+          </span>
+        </div>
+        {edgeForRing && (
+          <p
+            className="basis-full truncate border-t pt-2 text-[11.5px]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            At the edge:{" "}
+            <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
+              {edgeForRing.name}
+            </span>{" "}
+            <span className="tabular-nums">· {formatDistance(edgeForRing.distance_m)} away</span>
+          </p>
+        )}
+      </section>
 
       {/* Quick-pick chips — one tap sets BOTH mode and minutes for
           the six most-asked-for combinations. The slider + mode
@@ -351,7 +416,7 @@ export default function RadiusBuilder({
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
             >
               {myLoc && (
-                <option value={-1}>Your location</option>
+                <option value={-1}>{myLocLabel}</option>
               )}
               <optgroup label="Municipalities">
                 {PRESETS.map((p, i) =>
