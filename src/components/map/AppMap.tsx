@@ -1661,15 +1661,65 @@ export default function AppMap({
           </Source>
 
           {/*
-           * Micro-amenities — their own source, NOT clustered, and gated
-           * to street zoom (minzoom 14). Off the wide view entirely, so
-           * "everything" never means "overwhelming". Opt-in per group.
+           * Micro-amenities. Clustered so the layer scales: at the
+           * county view a downtown amenity cluster reads as one dot,
+           * unfolding into individual restroom/trash/bench icons as
+           * the user zooms in. Previously gated to minzoom 12 with no
+           * clustering, which made selected groups *invisible* at the
+           * default county view — the most common bug report. Now
+           * starts at minzoom 10 with cluster aggregation so the
+           * layer is meaningful at every zoom.
            */}
-          <Source id="amenities" type="geojson" data={amenityGeoJson}>
+          <Source
+            id="amenities"
+            type="geojson"
+            data={amenityGeoJson}
+            cluster
+            clusterRadius={48}
+            clusterMaxZoom={13}
+          >
+            {/* Cluster disc — cool civic tint, with a count label */}
+            <Layer
+              id="amenity-clusters"
+              type="circle"
+              minzoom={10}
+              filter={["has", "point_count"]}
+              paint={{
+                "circle-color": "#2A5D8F",
+                "circle-opacity": 0.5,
+                "circle-blur": 0.25,
+                "circle-radius": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  2, 8, 20, 12, 100, 16,
+                ],
+                "circle-stroke-color": "#FFFFFF",
+                "circle-stroke-width": 1,
+                "circle-stroke-opacity": 0.35,
+              }}
+            />
+            <Layer
+              id="amenity-cluster-counts"
+              type="symbol"
+              minzoom={10}
+              filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 3]]}
+              layout={{
+                "text-field": ["get", "point_count_abbreviated"],
+                "text-size": 10,
+                "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+                "text-allow-overlap": true,
+                "text-ignore-placement": true,
+              }}
+              paint={{
+                "text-color": "#FFFFFF",
+                "text-halo-color": "rgba(0,0,0,0.3)",
+                "text-halo-width": 1,
+              }}
+            />
             <Layer
               id="amenity-icons"
               type="symbol"
-              minzoom={12}
+              minzoom={11}
+              filter={["!", ["has", "point_count"]]}
               layout={{
                 "icon-image": [
                   "coalesce",
@@ -1678,17 +1728,17 @@ export default function AppMap({
                 ],
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  12, 0.26,
-                  14, 0.34,
-                  16, 0.48,
-                  18, 0.62,
+                  11, 0.22,
+                  13, 0.30,
+                  15, 0.42,
+                  17, 0.56,
                 ],
-                // Opt-in + minzoom 14 + sparse, but still collision-
-                // declutter so a dense block of bins stays readable.
+                // Collision-declutter at every zoom so dense blocks of
+                // amenity bins stay readable as you zoom in.
                 "icon-allow-overlap": false,
                 "icon-anchor": "center",
               }}
-              paint={{ "icon-opacity": 0.96 }}
+              paint={{ "icon-opacity": 0.94 }}
             />
             {/* Labels appear only when you're really close, so a dense
                 cluster of stations stays readable. */}
@@ -1839,20 +1889,21 @@ export default function AppMap({
                   ["image", ["concat", "cat-", ["get", "category"]]],
                   ["image", "cat-_default"],
                 ],
-                // Pin scale by zoom. At the very wide county view
-                // (z9–10) the pins should read as small markers
-                // (clusters carry the density signal anyway). They grow
-                // toward full size as the user zooms into a town. The
-                // previous floor at z11=0.5 left county-view pins too
-                // big and overlapping; we now start smaller at z9 and
-                // ramp up as the user closes in.
+                // Pin scale by zoom. Tuned smaller across the entire
+                // range after audit feedback that pins were eating the
+                // map at every zoom level. The county view floor drops
+                // to 0.26 (was 0.36 → 0.5 was too big at z9–10), and
+                // even at street zoom we cap at ~0.95 instead of 1.1
+                // so the user sees more before clutter kicks in.
+                // Clusters carry the density signal at the wide view.
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
-                  9, 0.36,
-                  11, 0.5,
-                  14, 0.72,
-                  16, 0.92,
-                  18, 1.1,
+                  9, 0.26,
+                  11, 0.36,
+                  13, 0.5,
+                  15, 0.72,
+                  17, 0.88,
+                  19, 0.95,
                 ],
                 // Decluttering is done by CLUSTERING, not icon collision:
                 // with the label-heavy interim base style, collision makes

@@ -98,18 +98,22 @@ export default function TopBar() {
             </span>
           </Link>
 
-          {/* Search trigger — pill button, expands to filled bar on hover */}
+          {/* Search trigger — full-width input-styled pill so the
+              header reads as "find anything" instead of three tiny
+              icons competing for attention. Fills the space between
+              the logo and the right-side chips, Apple-Maps style.
+              Tap anywhere on it opens the typeahead modal. */}
           <button
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Search places, events, towns"
-            className="ml-auto flex h-9 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
+            className="ml-2 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
-            <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            <span className="hidden sm:inline">Search</span>
+            <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+            <span className="truncate text-left">Search the county</span>
             <kbd
-              className="hidden sm:inline-block rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight"
+              className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
               ⌘K
@@ -126,7 +130,12 @@ export default function TopBar() {
             <Bookmark className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Link>
 
-          <LocationChip />
+          {/* LocationChip is hidden on the narrowest phones where the
+              search bar needs the room; surfaces from sm: up. The user
+              can still see/set location inside the search modal. */}
+          <div className="hidden sm:block">
+            <LocationChip />
+          </div>
         </div>
       </header>
 

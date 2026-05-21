@@ -8,6 +8,21 @@ import TrustChip from "@/components/ui/TrustChip";
 import { Chip } from "@/components/ui/Chip";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
+import {
+  Music, Palette, Theater, Baby, Apple, Landmark, Image as ImageIcon,
+  Utensils, Trees, ShoppingBag, Activity, Heart, Building, GraduationCap,
+  CalendarDays, BookOpen, Wine, Beer, Coffee, Sparkles,
+} from "lucide-react";
+
+// Resolve a category-icon string from src/data/categories.ts into a
+// lucide component. Used as a large ghosted watermark on no-photo
+// event tiles so a music event tile reads differently from a civic
+// one even without a photo. Defaults to CalendarDays for unmapped.
+const ICON_BY_NAME: Record<string, typeof Music> = {
+  Music, Palette, Theater, Baby, Apple, Landmark, ImageIcon,
+  Utensils, Trees, ShoppingBag, Activity, Heart, Building,
+  GraduationCap, BookOpen, Wine, Beer, Coffee, Sparkles,
+};
 
 export default function EventCard({
   event,
@@ -128,43 +143,66 @@ export default function EventCard({
             />
           ) : (
             <>
-              {/* Stronger category-tinted backdrop — three layered
-                  gradients give depth so a no-photo banner feels like
-                  a real visual object, not a flat color wash. */}
+              {/* Editorial poster fallback when no photo is available.
+                  A dramatic two-stop diagonal gradient + dot-grid
+                  texture + a large ghosted category icon, rotated 8°
+                  and parked in the lower-right. Same pattern as the
+                  Tonight rail's no-photo cards — gives every tile a
+                  distinctive identity instead of a flat color block. */}
               <div
                 aria-hidden
                 className="absolute inset-0"
                 style={{
-                  background: `radial-gradient(120% 100% at 0% 0%, ${accent}80, ${accent}20 45%, ${accent}05 75%), linear-gradient(150deg, ${accent}30, ${accent}10 60%, ${accent}28)`,
+                  background: `linear-gradient(140deg, color-mix(in srgb, ${accent} 75%, #1a1820) 0%, color-mix(in srgb, ${accent} 36%, #1a1820) 55%, color-mix(in srgb, ${accent} 8%, #1a1820) 100%)`,
                 }}
               />
-              {/* The drop-cap day numeral that used to live here was
-                  reading as the date duplicated next to the badge.
-                  Removed in favor of the diagonal grain texture alone. */}
-              {/* Subtle diagonal grain so the gradient isn't perfectly
-                  flat — keeps the banner from reading as a swatch. */}
+              {/* Dot-grid overlay — subtle paper grain, NOT diagonal
+                  stripes which were reading as a barcode at small size. */}
               <div
                 aria-hidden
                 className="absolute inset-0"
                 style={{
-                  background:
-                    "repeating-linear-gradient(135deg, transparent 0 6px, rgba(255,255,255,0.04) 6px 7px)",
+                  backgroundImage:
+                    "radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px)",
+                  backgroundSize: "10px 10px",
+                  mixBlendMode: "overlay",
                 }}
               />
+              {/* Large ghosted category icon — the visual identity. */}
+              {(() => {
+                const Icon = ICON_BY_NAME[cat?.icon ?? ""] ?? CalendarDays;
+                return (
+                  <Icon
+                    aria-hidden
+                    className="absolute -bottom-2 -right-2 h-[90px] w-[90px]"
+                    strokeWidth={1.25}
+                    style={{
+                      color: "white",
+                      opacity: 0.18,
+                      transform: "rotate(8deg)",
+                    }}
+                  />
+                );
+              })()}
             </>
           )}
           {hasPhoto && (
             <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
           )}
           {/* Date badge — top-left. Photo: white pill, category color
-              text. No photo: floats over the tinted block, category color. */}
+              text. No photo: white text directly on the now-darker
+              gradient, with a soft drop shadow so it's legible. */}
           <div
             className={
               hasPhoto
                 ? "absolute left-2.5 top-2.5 inline-flex items-baseline gap-1 rounded-[var(--app-radius-sm)] bg-white/95 px-1.5 py-0.5 leading-none shadow-[var(--app-shadow-1)]"
                 : "absolute left-3 top-3 inline-flex items-baseline gap-1 leading-none"
             }
-            style={{ color: accent }}
+            style={
+              hasPhoto
+                ? { color: accent }
+                : { color: "white", textShadow: "0 1px 2px rgba(0,0,0,0.5)" }
+            }
           >
             <span className="text-[9px] font-bold uppercase tracking-wider">
               {date.month}
@@ -173,13 +211,14 @@ export default function EventCard({
             <span className="text-[9px] font-medium opacity-80">{date.weekday}</span>
           </div>
           {/* Category chip — top-right, ALWAYS shown so users can tell
-              event type at a glance. Falls back to a generic "Civic"
-              label so county-feed rows aren't unlabeled. */}
+              event type at a glance. White-on-translucent for no-photo
+              so it reads on the dark poster gradient. */}
           <span
-            className="absolute right-2.5 top-2.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+            className="absolute right-2.5 top-2.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider backdrop-blur"
             style={{
-              background: hasPhoto ? accent : `color-mix(in srgb, ${accent} 22%, var(--app-bg-elevated))`,
-              color: hasPhoto ? "white" : accent,
+              background: hasPhoto ? accent : "rgba(255,255,255,0.20)",
+              color: "white",
+              boxShadow: hasPhoto ? "none" : "inset 0 0 0 1px rgba(255,255,255,0.22)",
             }}
           >
             {categoryLabel}
