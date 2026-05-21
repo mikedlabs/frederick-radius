@@ -6,23 +6,9 @@ import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import TrustChip from "@/components/ui/TrustChip";
 import { Chip } from "@/components/ui/Chip";
+import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
-import {
-  Music, Palette, Theater, Baby, Apple, Landmark, Image as ImageIcon,
-  Utensils, Trees, ShoppingBag, Activity, Heart, Building, GraduationCap,
-  CalendarDays, BookOpen, Wine, Beer, Coffee, Sparkles,
-} from "lucide-react";
-
-// Resolve a category-icon string from src/data/categories.ts into a
-// lucide component. Used as a large ghosted watermark on no-photo
-// event tiles so a music event tile reads differently from a civic
-// one even without a photo. Defaults to CalendarDays for unmapped.
-const ICON_BY_NAME: Record<string, typeof Music> = {
-  Music, Palette, Theater, Baby, Apple, Landmark, ImageIcon,
-  Utensils, Trees, ShoppingBag, Activity, Heart, Building,
-  GraduationCap, BookOpen, Wine, Beer, Coffee, Sparkles,
-};
 
 export default function EventCard({
   event,
@@ -58,12 +44,10 @@ export default function EventCard({
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
             />
           ) : (
-            <div
-              aria-hidden
+            <CategoryGraphic
+              category={event.category}
+              seed={event.slug}
               className="absolute inset-0"
-              style={{
-                background: `radial-gradient(120% 80% at 20% 10%, ${accent}70, transparent 60%), linear-gradient(165deg, ${accent}48, ${accent}15)`,
-              }}
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
@@ -142,49 +126,11 @@ export default function EventCard({
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             />
           ) : (
-            <>
-              {/* Editorial poster fallback when no photo is available.
-                  A dramatic two-stop diagonal gradient + dot-grid
-                  texture + a large ghosted category icon, rotated 8°
-                  and parked in the lower-right. Same pattern as the
-                  Tonight rail's no-photo cards — gives every tile a
-                  distinctive identity instead of a flat color block. */}
-              <div
-                aria-hidden
-                className="absolute inset-0"
-                style={{
-                  background: `linear-gradient(140deg, color-mix(in srgb, ${accent} 75%, #1a1820) 0%, color-mix(in srgb, ${accent} 36%, #1a1820) 55%, color-mix(in srgb, ${accent} 8%, #1a1820) 100%)`,
-                }}
-              />
-              {/* Dot-grid overlay — subtle paper grain, NOT diagonal
-                  stripes which were reading as a barcode at small size. */}
-              <div
-                aria-hidden
-                className="absolute inset-0"
-                style={{
-                  backgroundImage:
-                    "radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1px)",
-                  backgroundSize: "10px 10px",
-                  mixBlendMode: "overlay",
-                }}
-              />
-              {/* Large ghosted category icon — the visual identity. */}
-              {(() => {
-                const Icon = ICON_BY_NAME[cat?.icon ?? ""] ?? CalendarDays;
-                return (
-                  <Icon
-                    aria-hidden
-                    className="absolute -bottom-2 -right-2 h-[90px] w-[90px]"
-                    strokeWidth={1.25}
-                    style={{
-                      color: "white",
-                      opacity: 0.18,
-                      transform: "rotate(8deg)",
-                    }}
-                  />
-                );
-              })()}
-            </>
+            <CategoryGraphic
+              category={event.category}
+              seed={event.slug}
+              className="absolute inset-0"
+            />
           )}
           {hasPhoto && (
             <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
