@@ -9,12 +9,15 @@ export const metadata: Metadata = {
 export default function SavedPage() {
   return (
     <div className="space-y-5">
-      <header className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Local to this device · sync coming soon
+      {/* Header trimmed: the SavedList component carries its own
+          "Your Frederick" hero block so a second outer title would
+          stack two headings on top of each other. */}
+      <header>
+        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+          Saved · on this device
         </p>
-        <h1 className="font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Saved
+        <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+          Your list
         </h1>
       </header>
       <SavedList />
