@@ -1,37 +1,85 @@
 import type { CSSProperties } from "react";
 
 /**
- * Page-level decorative gradient blooms. Fixed behind the content so
- * every screen of a page sits on a softly tinted backdrop instead of
- * flat --app-bg. Pointer-events-none and aria-hidden so it never
- * interferes with interaction or assistive tech.
+ * PageBloom — the shader-style cinematic background that sits behind
+ * every page. Four colored "orbs" slowly drift on independent cycles
+ * (42s / 55s / 67s / 81s) with `mix-blend-mode: screen` so where they
+ * overlap they GLOW rather than stack opaquely. A subtle SVG grain
+ * texture rides on top so the surface feels organic, not flat CSS.
  *
- * Per-route tint comes from the section-accent variable set by
- * RouteAccent, so each page (Today warm, Radius cool, Plan green,
- * Events warm) is automatically theme-consistent.
+ * Pure presentation — pointer-events-none, aria-hidden, never
+ * interferes with interaction. GPU-composited transforms only, so
+ * the four animations cost essentially nothing on modern phones.
+ * Respects prefers-reduced-motion (orbs hold static).
+ *
+ * Per-page tint comes from the section-accent CSS variable set by
+ * RouteAccent on the layout, so each route (Today warm, Radius cool,
+ * Plan green, Events warm) is auto theme-consistent.
+ *
+ * The `variant` prop adjusts the *composition* of orbs, not the count:
+ *   • warm-cool  — the daily-landing default (brand + cool + accent + brand-2)
+ *   • cool       — civic / data routes (cool-leaning palette)
+ *   • single     — quieter pages (one accent + one warm)
  */
 export default function PageBloom({
   variant = "warm-cool",
   className = "",
   style,
 }: {
-  /** Composition preset. "warm-cool" is the daily-landing default;
-   *  "cool" is for civic / data pages; "single" is one bloom only. */
   variant?: "warm-cool" | "cool" | "single";
   className?: string;
   style?: CSSProperties;
 }) {
-  const bg =
-    variant === "warm-cool"
-      ? "radial-gradient(60% 40% at 8% 18%, color-mix(in srgb, var(--app-brand) 10%, transparent), transparent 70%), radial-gradient(45% 35% at 95% 38%, color-mix(in srgb, var(--app-cool) 9%, transparent), transparent 70%), radial-gradient(50% 35% at 50% 92%, color-mix(in srgb, var(--app-brand-2) 8%, transparent), transparent 70%)"
-      : variant === "cool"
-      ? "radial-gradient(55% 35% at 12% 14%, color-mix(in srgb, var(--app-cool) 12%, transparent), transparent 70%), radial-gradient(50% 35% at 92% 70%, color-mix(in srgb, var(--app-brand-2) 8%, transparent), transparent 70%)"
-      : "radial-gradient(60% 40% at 50% 0%, color-mix(in srgb, var(--section-accent, var(--app-brand)) 10%, transparent), transparent 70%)";
+  type Orb = { color: string; x: string; y: string; size: string; opacity: number };
+
+  // Sizes go up to ~90% of the viewport so orbs overlap on most
+  // screens (the overlap is where the screen-blend makes them glow).
+  // Opacities are tuned cinematically: bright enough that whitespace
+  // between cards reads as warm aurora, not flat paper, but not so
+  // hot that the eye fights the foreground content.
+  const ORBS_WARM_COOL: Orb[] = [
+    { color: "var(--app-brand)",   x: "-15%", y: "-20%", size: "85%", opacity: 0.55 },
+    { color: "var(--app-cool)",    x: "45%",  y: "-15%", size: "78%", opacity: 0.48 },
+    { color: "var(--app-accent)",  x: "20%",  y: "50%",  size: "90%", opacity: 0.40 },
+    { color: "var(--app-brand-2)", x: "55%",  y: "40%",  size: "70%", opacity: 0.45 },
+  ];
+  const ORBS_COOL: Orb[] = [
+    { color: "var(--app-cool)",    x: "-15%", y: "-20%", size: "85%", opacity: 0.55 },
+    { color: "var(--app-cool-2)",  x: "45%",  y: "-10%", size: "78%", opacity: 0.45 },
+    { color: "var(--app-brand-2)", x: "55%",  y: "50%",  size: "75%", opacity: 0.40 },
+    { color: "var(--app-accent)",  x: "-10%", y: "45%",  size: "60%", opacity: 0.30 },
+  ];
+  const ORBS_SINGLE: Orb[] = [
+    { color: "var(--section-accent, var(--app-brand))", x: "5%", y: "-15%", size: "95%", opacity: 0.45 },
+    { color: "var(--app-accent)", x: "50%", y: "45%", size: "70%", opacity: 0.32 },
+  ];
+
+  const orbs =
+    variant === "cool" ? ORBS_COOL :
+    variant === "single" ? ORBS_SINGLE :
+    ORBS_WARM_COOL;
+
   return (
     <div
       aria-hidden
-      className={`pointer-events-none fixed inset-0 -z-10 ${className}`}
-      style={{ background: bg, ...style }}
-    />
+      className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden ${className}`}
+      style={style}
+    >
+      {orbs.map((orb, i) => (
+        <div
+          key={i}
+          className={`aurora-orb aurora-orb-${(i % 4) + 1}`}
+          style={{
+            left: orb.x,
+            top: orb.y,
+            width: orb.size,
+            aspectRatio: "1 / 1",
+            background: `radial-gradient(circle at center, ${orb.color} 0%, transparent 70%)`,
+            opacity: orb.opacity,
+          }}
+        />
+      ))}
+      <div className="aurora-grain" />
+    </div>
   );
 }
