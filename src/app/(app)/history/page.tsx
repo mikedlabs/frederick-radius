@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Landmark, Calendar, Sparkles, Users, ExternalLink } from "lucide-react";
 import { HISTORY, historyTopics, type HistoryEntry } from "@/data/history";
 import PageBloom from "@/components/ui/PageBloom";
-import StatStrip from "@/components/ui/StatStrip";
 import DecorativeDivider from "@/components/ui/DecorativeDivider";
+import HistoryTimeline from "@/components/history/HistoryTimeline";
+import { eraForYear } from "@/lib/history-era";
 
 export const metadata: Metadata = {
   title: "History",
@@ -38,11 +38,9 @@ function formatYear(e: HistoryEntry): string | null {
  */
 export default async function HistoryPage() {
   const topics = historyTopics();
-  const stats = [
-    { label: "Moments", value: HISTORY.filter((h) => h.kind === "moment").length },
-    { label: "People", value: HISTORY.filter((h) => h.kind === "person").length },
-    { label: "Facts", value: HISTORY.filter((h) => h.kind === "fact").length },
-  ];
+  const momentCount = HISTORY.filter((h) => h.kind === "moment").length;
+  const personCount = HISTORY.filter((h) => h.kind === "person").length;
+  const factCount = HISTORY.filter((h) => h.kind === "fact").length;
 
   // Hero "did you know" – rotates daily so a return visitor sees a
   // different fact each morning. Deterministic per day; never random
@@ -79,9 +77,20 @@ export default async function HistoryPage() {
           Washington. These are the moments and the small details. The
           stuff a docent might tell you walking past the marker.
         </p>
+        <p
+          className="text-[11px] tabular-nums"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>{momentCount}</span> moments ·{" "}
+          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>{personCount}</span> people ·{" "}
+          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>{factCount}</span> facts
+        </p>
       </header>
 
-      <StatStrip stats={stats} />
+      {/* The timeline ribbon — instant visual identity. Tells the
+          visitor "this is a museum, not an essay" before they read a
+          word, and gives every tick a deep-link to the entry below. */}
+      <HistoryTimeline />
 
       {/* Hero: today's "did you know" fact. */}
       <section
@@ -249,12 +258,26 @@ function HistoryArticle({
   const Icon = meta.icon;
   const yearLabel = formatYear(entry);
   const isOdd = idx % 2 === 1;
+  // Era for dated entries drives a left-edge color stripe so the long
+  // moments list reads as banded by period — Founding sepia, Civil
+  // War brick red, Industrial gold, Modern blue, Contemporary green.
+  // Undated facts keep the kind color only.
+  const era = typeof entry.year === "number" ? eraForYear(entry.year) : null;
+  const stripeColor = era?.color ?? meta.color;
   return (
-    <li>
+    <li id={`h-${entry.slug}`} className="scroll-mt-24">
       <article
-        className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
+        className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4 pl-5"
         style={{ "--section-accent": meta.color } as React.CSSProperties}
       >
+        {/* Era stripe — a thin left edge in the era's color. For
+            undated entries this falls back to the kind color so all
+            cards visually feel like they belong to the same family. */}
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 w-1"
+          style={{ background: stripeColor }}
+        />
         {/* Soft accent corner bloom so the card has a hint of color
             tied to the entry kind. Opacity is low so type stays legible. */}
         <div
@@ -282,6 +305,14 @@ function HistoryArticle({
                 style={{ color: "var(--app-ink-3)" }}
               >
                 {yearLabel}
+              </span>
+            )}
+            {era && (
+              <span
+                className="text-[9px] font-bold uppercase tracking-[0.1em]"
+                style={{ color: `color-mix(in srgb, ${era.color} 70%, var(--app-ink-2))` }}
+              >
+                · {era.label}
               </span>
             )}
           </div>
