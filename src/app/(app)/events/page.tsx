@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { ExternalLink, GraduationCap, CalendarDays } from "lucide-react";
-import { Button } from "@/components/ui/Button";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
 import WeekStrip from "@/components/event/WeekStrip";
+import TonightRail from "@/components/event/TonightRail";
 import CategoryJumpTiles from "@/components/event/CategoryJumpTiles";
 import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
@@ -19,7 +19,6 @@ import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 import PageBloom from "@/components/ui/PageBloom";
-import StatStrip from "@/components/ui/StatStrip";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -104,21 +103,37 @@ export default async function EventsIndexPage({
   const dParam = sp.get("d");
   const initialDay = dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
 
-  // Stat-strip numbers for /events — quick identity / breadth.
+  // Quiet byline numbers for /events — identity at a glance, not a
+  // four-cell stat block. Live-feed count + town count is enough to
+  // earn the "the whole county is here" claim without taking up a
+  // whole module above the date rail.
   const liveCount = liveCards.length;
-  const seedCount = curatedUpcoming.length;
-  const eventStats = [
-    { label: "Upcoming", value: allEvents.length },
-    { label: "Towns", value: towns.length },
-    { label: "Live", value: liveCount },
-    { label: "Seeded", value: seedCount },
-  ];
 
   // Hero feature — the next photo-backed upcoming event. Photo-led
   // entries (Alive @ Five, Sky Stage, the curated season) carry the
   // banner; text-only county-feed rows stay out of the hero so the
   // top of the page always has imagery to land on.
   const heroEvent = allEvents.find((e) => Boolean(e.hero_image)) ?? null;
+
+  // "Tonight" rail — events starting in the next 6 hours (the next-24
+  // window if it's already past 8pm so the rail isn't empty at night).
+  // Photo-led, ordered by start time. Different from the explorer's
+  // "Tonight" lens because this is the *editorial marquee*, capped at 8.
+  const tonightEnd = new Date(now);
+  tonightEnd.setHours(tonightEnd.getHours() + 6);
+  const tonightEvents = allEvents.filter((e) => {
+    const t = +new Date(e.starts_at);
+    return t >= +now && t <= +tonightEnd;
+  });
+  // If "next 6 hours" is too thin (late night, post-evening lull), widen
+  // to "next 24 hours" so the rail still has signal to show.
+  const tonightFinal =
+    tonightEvents.length >= 3
+      ? tonightEvents
+      : allEvents.filter((e) => {
+          const t = +new Date(e.starts_at);
+          return t >= +now && t <= +start24;
+        }).slice(0, 8);
 
   return (
     <div className="relative space-y-6">
@@ -133,32 +148,67 @@ export default async function EventsIndexPage({
         </section>
       )}
 
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            Live across the county
-          </p>
-          <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-            Events
-          </h1>
-          <p className="mt-0.5 text-[13px] text-pretty" style={{ color: "var(--app-ink-3)" }}>
-            What&apos;s on across Frederick County — now through the season.
-          </p>
+      {/* Magazine masthead — one compact row. Eyebrow + serif title;
+          the month view link is a quiet inline pill, not a loud
+          full-width CTA. Byline carries the breadth claim ("112 events
+          across 7 towns") in one sentence so the StatStrip cell grid
+          can retire. */}
+      <header className="space-y-1.5">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+              Live across the county
+            </p>
+            <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+              Events
+            </h1>
+          </div>
+          <a
+            href="/events/calendar"
+            className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+            style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+          >
+            <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            Month view
+          </a>
         </div>
-        <Button
-          href="/events/calendar"
-          size="sm"
-          className="shrink-0 rounded-full"
-          iconLeft={<CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
+        <p
+          className="text-[12px] tabular-nums"
+          style={{ color: "var(--app-ink-3)" }}
         >
-          Calendar
-        </Button>
+          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            {allEvents.length}
+          </span>{" "}
+          events across{" "}
+          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            {towns.length}
+          </span>{" "}
+          towns this season
+          {liveCount > 0 && (
+            <>
+              {" · "}
+              <span
+                className="inline-flex items-center gap-1 font-semibold"
+                style={{ color: "var(--app-positive)" }}
+              >
+                <span className="live-dot" /> {liveCount} live
+              </span>
+            </>
+          )}
+        </p>
       </header>
 
-      <StatStrip stats={eventStats} />
-
-      {/* 7-day mini calendar — horizontal rhythm before the long list. */}
+      {/* The new date rail — 14 days, activity-bar density, no tile
+          borders. Replaces the boxy WeekStrip-as-tile-grid. */}
       <WeekStrip events={allEvents} activeDay={initialDay} />
+
+      {/* "Tonight at a glance" — editorial marquee of what's starting
+          in the next ~6 hours (or 24h if the evening's thin). Photo-led
+          horizontal rail; this is what people actually open /events to
+          ask. */}
+      {tonightFinal.length > 0 && (
+        <TonightRail events={tonightFinal} />
+      )}
 
       {/* Visual entry points to the deeper category surfaces. */}
       <CategoryJumpTiles events={allEvents} />
