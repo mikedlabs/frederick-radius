@@ -34,6 +34,13 @@ export type Event = {
    */
   food_trucks?: string[];
   /**
+   * Lifecycle status — scheduled (default), cancelled, or postponed.
+   * Live feeds set this from the iCal STATUS property or a title
+   * sniff; seed authors may set it by hand when an event is called
+   * off. Absent is treated as "scheduled". See src/lib/event-status.ts.
+   */
+  status?: "scheduled" | "cancelled" | "postponed";
+  /**
    * How this event's coordinates were resolved. The loader sets this
    * automatically; seed authors do not write it directly.
    *   - "venue":       inherited from a known venue (venue_place_slug

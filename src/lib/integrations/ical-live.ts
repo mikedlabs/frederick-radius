@@ -16,6 +16,7 @@ import {
   resetFeedMetrics,
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
+import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 
 // Phase 1.6: drop venue open-status entries that are not events.
 // Default ON by owner directive (2026-05-16: "ship everything"). The
@@ -41,6 +42,9 @@ export type LiveEvent = {
   source_label: string;
   url: string;
   is_free: boolean;
+  /** Lifecycle status — scheduled / cancelled / postponed. Derived
+   *  from the iCal STATUS property or a title sniff at parse time. */
+  status: EventStatus;
   /**
    * ISO date marking when this row was last pulled from its upstream
    * source. UI surfaces it as a freshness chip ("Verified · 2d ago")
@@ -378,6 +382,8 @@ type ParsedVEvent = {
   url?: string;
   start?: Date;
   end?: Date;
+  /** iCal STATUS property (CONFIRMED / TENTATIVE / CANCELLED). */
+  status?: string;
 };
 
 function parseICalEvents(text: string): ParsedVEvent[] {
@@ -408,6 +414,7 @@ function parseICalEvents(text: string): ParsedVEvent[] {
         case "URL": cur.url = value; break;
         case "DTSTART": cur.start = parseICalDate(value, params) ?? undefined; break;
         case "DTEND": cur.end = parseICalDate(value, params) ?? undefined; break;
+        case "STATUS": cur.status = value.trim(); break;
       }
     }
   }
@@ -454,8 +461,14 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       const start = item.start;
       if (!start || start < now || start > horizon) continue;
       const end = item.end ?? new Date(start.getTime() + 2 * 60 * 60 * 1000);
-      const title = (item.summary ?? "").trim();
-      if (!title) continue;
+      const rawTitle = (item.summary ?? "").trim();
+      if (!rawTitle) continue;
+      // Cancellation can arrive two ways — the iCal STATUS property or
+      // a publisher editing the title ("... - CANCELLED"). Derive the
+      // status from both, then strip a trailing marker so the title
+      // doesn't shout what the badge already says.
+      const status = deriveEventStatus(rawTitle, item.status);
+      const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
       const description = (item.description ?? "").trim();
       const { venue, address } = splitLocation(item.location, feed.default_venue);
       const cleanedDesc = cleanFeedText(description).slice(0, 300);
@@ -464,6 +477,7 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       const candidate = {
         id: item.uid ?? `${feed.source}:${dedupeKey(title, start, venue)}`,
         title,
+        status,
         description: cleanedDesc,
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
@@ -524,10 +538,13 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
         if (!r) return "";
         return r[1].replace(/<!\[CDATA\[/g, "").replace(/\]\]>/g, "").trim();
       };
-      const title = pick("title").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+      const rawTitle = pick("title").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
       const link = pick("link");
       const description = cleanFeedText(pick("description"));
-      if (!title) continue;
+      if (!rawTitle) continue;
+      // RSS carries no STATUS field, so cancellation is title-sniffed.
+      const status = deriveEventStatus(rawTitle);
+      const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
 
       // Frederick County CivicEngage uses:
       //   <calendarEvent:EventDates> May 14, 2026 </calendarEvent:EventDates>
@@ -559,6 +576,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
       const candidate = {
         id: `${feed.source}:${dedupeKey(title, start, venue)}`,
         title,
+        status,
         description: description.slice(0, 300),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
