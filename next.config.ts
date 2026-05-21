@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  experimental: {
+    // Enables Next's wiring around the browser View Transitions API
+    // so Link clicks animate between routes via the CSS defined in
+    // globals.css (vt-fade-in / vt-fade-out at the @view-transition
+    // root). No-op on browsers without VT API support.
+    viewTransition: true,
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
