@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
-import SkyHero, { currentSkyTone } from "@/components/today/SkyHero";
+import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
-import SunCountdown from "@/components/today/SunCountdown";
+import NowStrip from "@/components/today/NowStrip";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import PulseSummary from "@/components/today/PulseSummary";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
@@ -120,8 +120,6 @@ export default async function HomePage() {
   const upcomingRest = featuredEvent
     ? upcoming.filter((e) => e.slug !== featuredEvent.slug)
     : upcoming;
-  const tone = currentSkyTone(now);
-
   return (
     <div className="relative space-y-6">
       <PageBloom />
@@ -132,11 +130,20 @@ export default async function HomePage() {
           lives INSIDE SkyHero so an active alert reads as part of the
           hero unit, not as a strange floating banner between the page
           header and the sky gradient. */}
+      {/* 0 — NowStrip: the at-a-glance briefing. Stitches current
+          weather + sunset + places-open-now + closing-soon + events-
+          starting-soon into one editorial paragraph. This is the
+          differentiator card — what makes the app worth opening
+          instead of Googling. Renders ABOVE the sky hero so it's the
+          first thing the eye lands on. */}
+      <Suspense fallback={null}>
+        <NowStrip />
+      </Suspense>
+
       <SkyHero className="space-y-4">
         <Suspense fallback={null}>
           <AdaptiveGreeting />
         </Suspense>
-        <SunCountdown tone={tone} now={now} />
         <Suspense fallback={null}>
           <CivicAlerts />
         </Suspense>
