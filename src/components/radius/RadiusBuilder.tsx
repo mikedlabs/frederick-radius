@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, LayoutGrid, Rows3, ChevronDown, Navigation, ArrowDownAZ } from "lucide-react";
+import { Footprints, Bike, Car, MapPin, LayoutGrid, Rows3, ChevronDown, Navigation, ArrowDownAZ, Locate } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
+import RadiusRing from "./RadiusRing";
+import RadiusPresets from "./RadiusPresets";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle. Places arrive
 // already decorated from radius/page; only the radius-relative
@@ -161,7 +163,29 @@ export default function RadiusBuilder({
       return next;
     });
 
-  const center = PRESETS[presetIdx];
+  // "Use my location" — a custom center the user can opt into via
+  // browser geolocation. Falls through to the preset list when null.
+  // Stored only in component state (not localStorage) so a returning
+  // user always sees the preset they last picked, not a stale GPS.
+  const [myLoc, setMyLoc] = useState<{ lng: number; lat: number } | null>(null);
+  const [myLocLabel, setMyLocLabel] = useState<string>("Your location");
+  const [locating, setLocating] = useState(false);
+  const requestMyLocation = () => {
+    if (!("geolocation" in navigator)) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setMyLoc({ lng: pos.coords.longitude, lat: pos.coords.latitude });
+        setMyLocLabel("Your location");
+        setLocating(false);
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  };
+
+  const presetCenter = PRESETS[presetIdx];
+  const center = myLoc ? { ...presetCenter, label: myLocLabel, lng: myLoc.lng, lat: myLoc.lat } : presetCenter;
   const meters = minutesToMeters(mode, minutes);
 
   const inside = useMemo(() => {
@@ -216,6 +240,23 @@ export default function RadiusBuilder({
   // the user a tangible "you can reach this" anchor instead of just a
   // number. Updates live as the slider moves.
   const edgePlace = inside[inside.length - 1] ?? null;
+
+  // Edge place's compass bearing from the center, in degrees where
+  // 0° is North and angles increase clockwise. Used to position the
+  // edge dot on the RadiusRing SVG. Approximation by atan2 of the
+  // lat/lng deltas is plenty for the visual marker — we're not
+  // computing a great-circle route here, just placing a dot.
+  const edgeForRing = useMemo(() => {
+    if (!edgePlace) return null;
+    const dLat = edgePlace.geom.lat - center.lat;
+    const dLng = edgePlace.geom.lng - center.lng;
+    const bearing = (Math.atan2(dLng, dLat) * 180) / Math.PI;
+    return {
+      name: edgePlace.name,
+      distance_m: edgePlace.distance_m ?? farthest,
+      bearing: ((bearing % 360) + 360) % 360,
+    };
+  }, [edgePlace, center.lat, center.lng, farthest]);
   // Live municipality coverage — how many distinct towns the
   // current radius reaches into. Climbs as the user widens the slider.
   const townsInside = useMemo(
@@ -261,11 +302,36 @@ export default function RadiusBuilder({
 
   return (
     <div className="space-y-5">
+      {/* New visual hero — SVG distance ring with the edge place named.
+          Replaces the previous "control card first" pattern with
+          "see what your radius looks like, then refine it." */}
+      <RadiusRing
+        mode={mode}
+        minutes={minutes}
+        meters={meters}
+        centerLabel={center.label}
+        edge={edgeForRing}
+        countInside={inside.length}
+      />
+
+      {/* Quick-pick chips — one tap sets BOTH mode and minutes for
+          the six most-asked-for combinations. The slider + mode
+          buttons below still own fine control. */}
+      <RadiusPresets
+        mode={mode}
+        minutes={minutes}
+        onPick={(m, n) => {
+          setMode(m);
+          setMinutes(n);
+        }}
+      />
+
       <section className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 shadow-[var(--app-shadow-1)]"
                style={{ borderColor: "var(--app-border)" }}>
-        {/* Center — a dropdown with every municipality + landmarks.
-            Obvious, fully reachable, no hidden horizontal scroll. */}
-        <div className="flex items-center gap-2.5">
+        {/* Center — a dropdown with every municipality + landmarks
+            PLUS a "Use my location" button so the user has a real
+            custom-center path. Obvious, fully reachable. */}
+        <div className="flex items-center gap-2">
           <span
             aria-hidden
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
@@ -277,11 +343,20 @@ export default function RadiusBuilder({
             <label htmlFor="center-select" className="sr-only">Center point</label>
             <select
               id="center-select"
-              value={presetIdx}
-              onChange={(e) => setPresetIdx(Number(e.target.value))}
+              value={myLoc ? -1 : presetIdx}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (v >= 0) {
+                  setMyLoc(null);
+                  setPresetIdx(v);
+                }
+              }}
               className="w-full appearance-none rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] py-2 pl-3 pr-9 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
             >
+              {myLoc && (
+                <option value={-1}>Your location</option>
+              )}
               <optgroup label="Municipalities">
                 {PRESETS.map((p, i) =>
                   p.kind === "muni" ? (
@@ -304,6 +379,32 @@ export default function RadiusBuilder({
               aria-hidden
             />
           </div>
+          {/* Use my location — geolocation override for "what's near
+              ME right now" without picking a preset. Once set, it
+              shows in the dropdown as "Your location" and persists
+              until the user picks a different center. */}
+          <button
+            type="button"
+            onClick={requestMyLocation}
+            aria-pressed={Boolean(myLoc)}
+            aria-busy={locating || undefined}
+            title={myLoc ? "Using your location" : "Center on your location"}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94]"
+            style={{
+              borderColor: myLoc ? "var(--app-brand)" : "var(--app-border)",
+              background: myLoc
+                ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
+                : "var(--app-bg-elevated)",
+              color: myLoc ? "var(--app-brand)" : "var(--app-ink-2)",
+            }}
+          >
+            <Locate
+              className="h-4 w-4"
+              strokeWidth={myLoc ? 2.5 : 2}
+              fill={myLoc ? "currentColor" : "none"}
+              aria-hidden
+            />
+          </button>
         </div>
 
         {/* Mode + distance read as one instrument. */}
