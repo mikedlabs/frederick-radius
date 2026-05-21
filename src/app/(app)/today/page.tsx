@@ -10,35 +10,40 @@ import PulseSummary from "@/components/today/PulseSummary";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
 import FeaturedTonight from "@/components/today/FeaturedTonight";
 import RightNow from "@/components/today/RightNow";
-import PhotoMosaic from "@/components/today/PhotoMosaic";
-import RedditPulse from "@/components/today/RedditPulse";
 import HistoryPulse from "@/components/today/HistoryPulse";
-import DecorativeDivider from "@/components/ui/DecorativeDivider";
-import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
-import StatStrip from "@/components/ui/StatStrip";
 import { allUpcoming } from "@/lib/loaders/events";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { PLACES } from "@/data/places";
-import { EVENTS } from "@/data/events";
-import { MUNICIPALITIES } from "@/data/municipalities";
 
 /**
  * Today — the editorial briefing.
  *
- * Each module is a different mode (greeting, conditions, action,
- * urgent civic, quiet civic, editorial news, identity, editorial
- * place, visual mosaic, discovery, agenda, local voice, geography),
- * stacked so the page reads as a layered briefing instead of two
- * carousels.
+ * Tightened from the original 11+ stacked modules down to a 7-section
+ * spine that reads as one continuous briefing instead of a directory:
  *
- * Every section below the hero is wrapped in DismissibleSection so
- * users hide what they don't want. Hidden sections surface in
- * HiddenSectionsBar at the bottom for one-tap restore.
+ *   1. Hero          → greeting + sun + civic alert + weather + plan
+ *   2. Civic pulse   → one quiet line (PulseSummary)
+ *   3. Local newsroom→ source-first news desk
+ *   4. Worth tonight → one editorial place card
+ *   5. Right now     → time-aware curated places
+ *   6. Upcoming      → featured event hero + the rest of the queue
+ *   7. History pulse → one rotating fact
+ *
+ * What got cut (each cut intentional, with an honest reason):
+ *   • StatStrip "Across Frederick County"  — generic counts, no signal
+ *   • PhotoMosaic "Looks like Frederick"   — pretty but redundant with
+ *                                            the photo-heavy cards above
+ *   • RedditPulse                           — noisy subreddit posts;
+ *                                            users opt in if they want
+ *   • MunicipalityStrip                     — towns accessible via /m
+ *   • DecorativeDivider variants            — visual filler, not content
+ *
+ * Sections still wrap in DismissibleSection so users can hide any of
+ * the remaining ones; HiddenSectionsBar at the foot restores them.
  */
 export const metadata: Metadata = {
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
@@ -95,28 +100,23 @@ function pickFeaturedEvent(now: Date) {
   );
 }
 
+// Labels for the HiddenSectionsBar — IDs match the DismissibleSection
+// `id`s below. Sections retired from the page are also retired from
+// this list (HiddenSectionsBar only restores what still exists).
 const HIDDEN_LABELS: Array<{ id: string; label: string }> = [
-  { id: "stats", label: "By the numbers" },
   { id: "featured-place", label: "Worth your evening" },
-  { id: "photo-mosaic", label: "Looks like Frederick" },
-  { id: "featured-event", label: "Don't miss" },
-  { id: "coming-up", label: "Coming up" },
-  { id: "reddit", label: "What people are saying" },
-  { id: "towns", label: "Around the county" },
+  { id: "upcoming", label: "Upcoming events" },
+  { id: "history", label: "Did you know" },
 ];
 
 export default async function HomePage() {
   const now = new Date();
 
-  const stats = [
-    { label: "Places", value: PLACES.length },
-    { label: "Events", value: EVENTS.length },
-    { label: "Towns", value: MUNICIPALITIES.length },
-  ];
   const featuredPlace = pickFeaturedPlace(now);
   const featuredEvent = pickFeaturedEvent(now);
   const upcoming = allUpcoming(now).slice(0, 7);
-  // Filter out the featured event so it doesn't appear twice.
+  // Filter out the featured event so it doesn't appear twice in the
+  // shelf below the hero.
   const upcomingRest = featuredEvent
     ? upcoming.filter((e) => e.slug !== featuredEvent.slug)
     : upcoming;
@@ -160,97 +160,63 @@ export default async function HomePage() {
         <PrimaryActionCard now={now} />
       </SkyHero>
 
-      {/* 3 — One quiet civic line. */}
+      {/* 2 — One quiet civic line. */}
       <Suspense fallback={null}>
         <PulseSummary />
       </Suspense>
 
-      {/* 4 — Local news desk. Has its own header + hide UX. */}
+      {/* 3 — Local newsroom. Has its own header + lane structure. */}
       <Suspense fallback={null}>
         <LocalNewsStrip />
       </Suspense>
 
-      {/* 5 — Identity numbers. */}
-      <DismissibleSection id="stats" title="Across Frederick County">
-        <StatStrip stats={stats} />
-      </DismissibleSection>
-
-      {/* 6 — Editorial place. */}
+      {/* 4 — Editorial place. */}
       {featuredPlace && (
         <DismissibleSection id="featured-place" title="Worth your evening">
           <FeaturedTonight place={featuredPlace} />
         </DismissibleSection>
       )}
 
-      <DecorativeDivider variant="wave" />
-
-      {/* 7 — Photo mosaic. Six-tile real-place wall. */}
-      <DismissibleSection id="photo-mosaic" title="Looks like Frederick">
-        <PhotoMosaic />
-      </DismissibleSection>
-
-      <DecorativeDivider variant="sun" />
-
-      {/* 7a — Frederick County history pulse — "Did you know" card,
-          rotates daily. Connects users to the place's depth (it's
-          older than the country) instead of leaving them in only
-          "things to eat today". */}
-      <DismissibleSection id="history" title="Frederick County in 1 fact">
-        <HistoryPulse />
-      </DismissibleSection>
-
-      {/* 8 — Time-aware curated places (component owns its own header). */}
+      {/* 5 — Time-aware curated places (component owns its own header). */}
       <RightNow now={now} />
 
-      {/* 9 — Featured event hero — magazine card for the next photo-
-          backed event so the top of the events queue isn't just a
-          shelf tile. */}
-      {featuredEvent && (
-        <DismissibleSection id="featured-event" title="Don't miss">
-          <EventCard event={featuredEvent} variant="feature" />
-        </DismissibleSection>
-      )}
-
-      {/* 10 — Coming up shelf (the rest of the queue). */}
-      {upcomingRest.length > 0 && (
+      {/* 6 — Upcoming events. ONE section instead of two: the featured
+          photo-led card on top, then the rest of the queue as a
+          horizontal shelf. The previous two-section layout (Don't miss
+          → Coming up) double-stacked event headings; one section reads
+          tighter and tells the same story. */}
+      {(featuredEvent || upcomingRest.length > 0) && (
         <DismissibleSection
-          id="coming-up"
-          title="Coming up"
+          id="upcoming"
+          title="Upcoming"
           href="/events"
           cta="See all"
         >
-          <div className="-mx-4 px-4">
-            <div className="shelf-rail gap-3 pb-1">
-              {upcomingRest.map((e) => (
-                <div key={e.slug} className="w-[280px] shrink-0">
-                  <EventCard event={e} variant="tile" />
+          <div className="space-y-3">
+            {featuredEvent && <EventCard event={featuredEvent} variant="feature" />}
+            {upcomingRest.length > 0 && (
+              <div className="-mx-4 px-4">
+                <div className="shelf-rail gap-3 pb-1">
+                  {upcomingRest.map((e) => (
+                    <div key={e.slug} className="w-[280px] shrink-0">
+                      <EventCard event={e} variant="tile" />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
         </DismissibleSection>
       )}
 
-      {/* 11 — What people are saying — the local voice signal. */}
-      <DismissibleSection id="reddit" title="What people are saying">
-        <Suspense fallback={null}>
-          <RedditPulse />
-        </Suspense>
-      </DismissibleSection>
-
-      {/* 12 — County geography. */}
-      <DismissibleSection
-        id="towns"
-        title="Around the county"
-        href="/m"
-        cta="All towns"
-      >
-        <MunicipalityStrip />
+      {/* 7 — Frederick County in 1 fact. Rotates daily. */}
+      <DismissibleSection id="history" title="Did you know">
+        <HistoryPulse />
       </DismissibleSection>
 
       {/* Hidden sections bar — surfaces only when the user has
-          dismissed at least one section. Lets them bring any
-          section back with one tap. */}
+          dismissed at least one section. Lets them bring any section
+          back with one tap. */}
       <HiddenSectionsBar sections={HIDDEN_LABELS} />
     </div>
   );
