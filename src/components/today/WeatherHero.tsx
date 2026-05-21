@@ -16,6 +16,7 @@ import {
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { weatherVerdict } from "@/lib/weather-verdict";
 import WeeklyForecast from "./WeeklyForecast";
 
 /**
@@ -142,15 +143,48 @@ export default async function WeatherHero() {
 
   const CurIcon = cur ? ICONS[iconForShortForecast(cur.shortForecast)] : Cloud;
 
+  // Verdict — the one sentence that turns the forecast into a plan.
+  const verdict = cur
+    ? weatherVerdict({
+        temp: cur.temperature,
+        shortForecast: cur.shortForecast,
+        precipNow: precip,
+        hourly: forecast?.hourly ?? [],
+        now,
+      })
+    : null;
+  const verdictColor =
+    verdict?.tone === "rough"
+      ? "var(--app-cool)"
+      : verdict?.tone === "mixed"
+        ? "var(--app-ink-2)"
+        : "var(--app-ink)";
+
+  // Daylight remaining — more useful than a bare sunset clock for an
+  // app about getting out tonight.
+  let daylightNote: string | null = null;
+  if (sun) {
+    const msLeft = sun.sunset.getTime() - now.getTime();
+    if (msLeft > 0) {
+      const h = Math.floor(msLeft / 3_600_000);
+      const m = Math.round((msLeft % 3_600_000) / 60_000);
+      const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
+      daylightNote = `${left} of daylight · sunset ${clockLabel(sun.sunset)}`;
+    } else {
+      daylightNote = `Sunset was ${clockLabel(sun.sunset)}`;
+    }
+  }
+
   return (
     <div className="space-y-2">
       {/* Inline alert chip removed — the CivicAlerts component at the
           top of Today already shows the active NWS alert with the full
           headline, severity color, ends-at time, and scope chip. We
           were rendering the same Severe Thunderstorm Watch twice. */}
-      <article
-        className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
-        aria-label="Current weather and today's outlook"
+      <Link
+        href="/pulse"
+        aria-label="Current weather and today's outlook — open the full weather board"
+        className="tactile tactile-feature relative block overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4 transition active:scale-[0.995]"
       >
         {cur ? (
           <>
@@ -190,10 +224,20 @@ export default async function WeatherHero() {
                 </div>
                 <p
                   className="mt-0.5 truncate text-[13px]"
-                  style={{ color: "var(--app-ink-2)" }}
+                  style={{ color: "var(--app-ink-3)" }}
                 >
                   {cur.shortForecast}
                 </p>
+                {/* Verdict — the forecast turned into a plan. The
+                    editorial line, weighted to read as the takeaway. */}
+                {verdict && (
+                  <p
+                    className="mt-1 text-[13.5px] font-semibold leading-snug"
+                    style={{ color: verdictColor }}
+                  >
+                    {verdict.line}
+                  </p>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                   {cur.windSpeed && (
                     <span className="inline-flex items-center gap-1">
@@ -253,6 +297,17 @@ export default async function WeatherHero() {
                   <Sunset className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
                   {clockLabel(sun.sunset)}
                 </span>
+              </div>
+            )}
+
+            {/* Daylight remaining — the actionable read of the arc:
+                how much light is left, not just when the sun sets. */}
+            {daylightNote && (
+              <div
+                className="mt-1.5 text-[11px] font-medium tabular-nums"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {daylightNote}
               </div>
             )}
 
@@ -316,7 +371,7 @@ export default async function WeatherHero() {
             Weather is briefly unavailable.
           </p>
         )}
-      </article>
+      </Link>
     </div>
   );
 }
