@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, X, MapPin, Calendar, Tag, Building2 } from "lucide-react";
+import { Search, X, MapPin, Calendar, Tag, Building2, Clock } from "lucide-react";
 import { searchIndex, type SearchResult, type SearchResultType } from "@/lib/search/index";
 // Client-safe slim set (already decorated); NOT @/lib/loaders/places
 // which static-imports the ~12MB enrichment into the browser bundle.
@@ -10,6 +10,8 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { EVENT_BY_SLUG } from "@/data/events";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
+import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
+import { suggestionsForHour, frederickHour } from "@/lib/search-suggestions";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   place: MapPin,
@@ -54,6 +56,9 @@ export default function SearchOverlay({
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const recent = useRecentSearches();
+  const pushRecent = usePushRecentSearch();
+  const clearRecent = useClearRecentSearches();
 
   // Build results client-side from the search index
   const results = useMemo<SearchResult[]>(() => {
@@ -97,6 +102,9 @@ export default function SearchOverlay({
         const r = results[activeIdx];
         if (r) {
           e.preventDefault();
+          // Persist the query so the next time the user opens the
+          // overlay they see their last queries first.
+          if (query.trim()) pushRecent(query.trim());
           window.location.href = r.href;
         }
       }
@@ -185,7 +193,11 @@ export default function SearchOverlay({
         {/* Results */}
         <div className="max-h-[60vh] overflow-y-auto">
           {!query.trim() ? (
-            <EmptyHint />
+            <EmptyHint
+              recent={recent}
+              onPick={(s) => setQuery(s)}
+              onClearRecent={clearRecent}
+            />
           ) : results.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
               <p>No matches for <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>“{query}”</span>.</p>
@@ -273,37 +285,87 @@ function KbdHint({ label, desc }: { label: string; desc: string }) {
   );
 }
 
-function EmptyHint() {
+function EmptyHint({
+  recent,
+  onPick,
+  onClearRecent,
+}: {
+  recent: string[];
+  onPick: (s: string) => void;
+  onClearRecent: () => void;
+}) {
+  // Time-of-day-aware suggestions. The hour is read at render-time
+  // so a returning user in the evening sees evening prompts, even
+  // if their last visit was morning. Frederick is locked to Eastern.
+  const hour = frederickHour();
+  const suggestions = suggestionsForHour(hour);
+
   return (
-    <div className="px-4 py-6">
-      <p className="text-xs font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-        Try searching for
-      </p>
-      <ul className="mt-2 flex flex-wrap gap-1.5">
-        {["coffee", "brunswick", "alive at five", "live music", "weinberg", "carroll creek"].map((s) => (
-          <li key={s}>
+    <div className="space-y-5 px-4 py-5">
+      {recent.length > 0 && (
+        <div>
+          <div className="flex items-baseline justify-between">
+            <p
+              className="inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.1em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
+              Recent
+            </p>
             <button
               type="button"
-              data-suggestion={s}
-              onClick={(e) => {
-                const input = (e.currentTarget.closest("[role=dialog]") as HTMLElement)?.querySelector("input");
-                if (input) {
-                  (input as HTMLInputElement).value = s;
-                  input.dispatchEvent(new Event("input", { bubbles: true }));
-                  // input.onChange relies on React event system, so we set value + dispatch
-                  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
-                  setter?.call(input, s);
-                  input.dispatchEvent(new Event("input", { bubbles: true }));
-                }
-              }}
-              className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+              onClick={onClearRecent}
+              className="text-[10px] font-semibold uppercase tracking-[0.08em]"
+              style={{ color: "var(--app-ink-3)" }}
+              aria-label="Clear recent searches"
             >
-              {s}
+              Clear
             </button>
-          </li>
-        ))}
-      </ul>
+          </div>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {recent.map((s) => (
+              <li key={`recent-${s}`}>
+                <button
+                  type="button"
+                  onClick={() => onPick(s)}
+                  className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    color: "var(--app-ink)",
+                    background: "var(--app-bg-sunken)",
+                  }}
+                >
+                  <Clock className="h-2.5 w-2.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+                  {s}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div>
+        <p
+          className="text-xs font-medium uppercase tracking-[0.1em]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Try {hour >= 5 && hour < 11 ? "this morning" : hour < 17 ? "this afternoon" : hour < 22 ? "this evening" : "tonight"}
+        </p>
+        <ul className="mt-2 flex flex-wrap gap-1.5">
+          {suggestions.map((s) => (
+            <li key={`sugg-${s}`}>
+              <button
+                type="button"
+                onClick={() => onPick(s)}
+                className="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+              >
+                {s}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
