@@ -16,7 +16,7 @@ export default function FeaturedTonight({ place }: { place: PlaceCardData | null
   return (
     <Link
       href={`/places/${place.slug}`}
-      className="hover-lift tactile-feature group relative block overflow-hidden rounded-[var(--app-radius-xl)]"
+      className="shader-rim hover-lift tactile-feature group relative block overflow-hidden rounded-[var(--app-radius-xl)]"
       aria-label={`Featured: ${place.name}`}
     >
       <div className="relative h-60 w-full sm:h-72">

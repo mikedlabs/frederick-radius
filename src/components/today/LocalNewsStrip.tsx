@@ -97,91 +97,6 @@ function StoryRow({ h, withBorder }: { h: Decorated; withBorder: boolean }) {
 }
 
 /**
- * Lane: a labeled section for one kind of news (Gov / Press / Community).
- * Header is a horizontal rule with the lane's label + count + tagline.
- * First 4 stories visible; the rest tucked into a native <details>.
- */
-function Lane({
-  lane,
-  items,
-}: {
-  lane: NewsLane;
-  items: Decorated[];
-}) {
-  if (items.length === 0) return null;
-  const meta = LANE_META[lane];
-  const visible = items.slice(0, 4);
-  const overflow = items.slice(4);
-
-  return (
-    <section aria-label={meta.label}>
-      {/* Lane header: a rule + label + tagline, reads as newsroom signage */}
-      <header className="flex items-baseline gap-2.5 pb-2 pt-1">
-        <span
-          aria-hidden
-          className="block h-[3px] w-8 rounded-full"
-          style={{ background: meta.color }}
-        />
-        <span
-          className="text-[10.5px] font-bold uppercase tracking-[0.16em]"
-          style={{ color: meta.color }}
-        >
-          {meta.label}
-        </span>
-        <span
-          className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-          style={{
-            background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
-            color: meta.color,
-          }}
-        >
-          {items.length}
-        </span>
-        <span
-          className="ml-auto hidden truncate text-[10.5px] italic sm:inline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {meta.tagline}
-        </span>
-      </header>
-
-      <div
-        className="overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <ul>
-          {visible.map((h, i) => (
-            <StoryRow key={`${h.url}-${i}`} h={h} withBorder={i > 0} />
-          ))}
-        </ul>
-        {overflow.length > 0 && (
-          <details
-            className="group border-t"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <summary
-              className="flex cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-[12px] font-semibold select-none [&::-webkit-details-marker]:hidden"
-              style={{ color: meta.color }}
-            >
-              <span>Show {overflow.length} more from {meta.label.toLowerCase()}</span>
-              <ArrowUpRight
-                className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90"
-                strokeWidth={2.25}
-                aria-hidden
-              />
-            </summary>
-            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
-              {overflow.map((h, i) => (
-                <StoryRow key={`${h.url}-${i + 4}`} h={h} withBorder={i > 0} />
-              ))}
-            </ul>
-          </details>
-        )}
-      </div>
-    </section>
-  );
-}
-
 /**
  * Local newsroom — organized so the section reads like a newsroom, not
  * a feed dump.
@@ -252,13 +167,15 @@ export default async function LocalNewsStrip() {
         </p>
       </div>
 
-      {/* Lead story — full-width magazine card with brand stripe + pip */}
+      {/* Lead story — full-width magazine card with brand stripe + pip.
+          Shader-rim adds a slow conic-gradient stroke so the editorial
+          moment reads as alive without changing height. */}
       {lead && (
         <a
           href={lead.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative block overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.997]"
+          className="shader-rim group relative block overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.997]"
           style={{ borderColor: "var(--app-border)" }}
         >
           <span
@@ -313,13 +230,30 @@ export default async function LocalNewsStrip() {
         </a>
       )}
 
-      {/* Lanes — Government and Press first, Community last (memorials
-          shouldn't compete with civic news for the eye). */}
-      <div className="space-y-3.5">
-        <Lane lane="gov" items={filteredByLane.gov} />
-        <Lane lane="press" items={filteredByLane.press} />
-        <Lane lane="community" items={filteredByLane.community} />
-      </div>
+      {/* Compact 3-headline tail. The full 3-lane newsroom lives on
+          /news; here we just want the briefing to read as alive — top
+          story + a few more headlines + an explicit "see all" handoff,
+          not 30 rows that turn Today into a homepage of news. */}
+      {(() => {
+        const tail = [
+          ...filteredByLane.gov,
+          ...filteredByLane.press,
+          ...filteredByLane.community,
+        ].slice(0, 3);
+        if (tail.length === 0) return null;
+        return (
+          <div
+            className="overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <ul>
+              {tail.map((h, i) => (
+                <StoryRow key={`${h.url}-${i}`} h={h} withBorder={i > 0} />
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
     </section>
   );
 }
