@@ -43,10 +43,18 @@ export type DedupeRecord = {
 
 const STOP = new Set(["the", "a", "an", "llc", "inc", "co", "ltd", "company"]);
 
-/** Lowercase, &→and, strip punctuation, drop stopwords. Stable. */
+/** Lowercase, &→and, strip punctuation, drop stopwords. Stable.
+ *  Possessive apostrophes are removed (jojo's → jojos) BEFORE the
+ *  general punctuation replacement, otherwise the apostrophe would
+ *  split the token (jojo s) and a fuzzy match against the
+ *  apostrophe-less spelling (jojos) would fail. This was the visible
+ *  cause of "Jojos Restaurant Tap House" + "JoJo's Restaurant & Tap
+ *  House" both appearing in the live data. */
 export function normName(s: string): string {
   return (s || "")
     .toLowerCase()
+    .replace(/[’']s\b/g, "s") // d'arcy's → darcys, jojo's → jojos
+    .replace(/[’']/g, "") // strip remaining apostrophes
     .replace(/&/g, " and ")
     .replace(/[^a-z0-9]+/g, " ")
     .trim()
