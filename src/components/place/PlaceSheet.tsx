@@ -52,6 +52,18 @@ export default function PlaceSheet({ place, onClose }: Props) {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
+  // ESC dismisses — a baseline keyboard-accessibility expectation
+  // for any modal/dialog. Audit feedback: the sheet felt locked;
+  // hardware-key escape is one more way out.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     if (info.offset.y > 120 || info.velocity.y > 500) {
       haptic("light");
@@ -161,12 +173,29 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
 
   return (
     <>
-      {/* Drag handle */}
-      <div className="flex justify-center pt-2 pb-1" aria-hidden>
+      {/* Drag handle + explicit close.
+       *  Audit feedback: the sheet felt "locked" because the small X
+       *  in the header row was easy to miss. A labeled "Close" button
+       *  here at the top with an explicit X icon makes it obvious that
+       *  this thing dismisses. Tap target matches iOS sheet minimum
+       *  (44pt). Drag handle stays for swipe-down dismiss. */}
+      <div className="flex items-center justify-between gap-2 px-3 pt-2 pb-1">
+        <button
+          type="button"
+          onClick={() => { haptic("light"); onClose(); }}
+          aria-label="Close and return to the map"
+          className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold transition active:scale-[0.96]"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          Close
+        </button>
         <span
-          className="block h-1 w-9 rounded-full"
+          aria-hidden
+          className="block h-1 w-10 rounded-full"
           style={{ background: "var(--app-border)" }}
         />
+        <span className="w-[64px]" aria-hidden />
       </div>
 
       {/* Scrollable content */}
