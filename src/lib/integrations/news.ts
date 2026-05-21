@@ -36,12 +36,18 @@ function extract(tag: string, xml: string): string {
 }
 
 // Google appends " - The Source" to RSS titles; split it back out.
+// We're conservative: only split when the suffix looks like a publisher
+// name (≤ 80 chars after the dash, no terminal punctuation) AND there's
+// real headline before it (≥ 10 chars). Short-headline edge cases
+// where the publisher *is* the news (e.g. "Early Voting Update — City
+// of Frederick (.gov)") still get the source pulled off cleanly.
 function splitTitleSource(raw: string, fallback: string): { title: string; source: string } {
   const i = raw.lastIndexOf(" - ");
-  if (i > 20 && i > raw.length - 60) {
-    return { title: raw.slice(0, i).trim(), source: raw.slice(i + 3).trim() || fallback };
-  }
-  return { title: raw, source: fallback };
+  if (i < 10) return { title: raw, source: fallback };
+  const suffix = raw.slice(i + 3).trim();
+  if (suffix.length === 0 || suffix.length > 80) return { title: raw, source: fallback };
+  if (/[.!?]$/.test(suffix)) return { title: raw, source: fallback };
+  return { title: raw.slice(0, i).trim(), source: suffix || fallback };
 }
 
 function parseItems(xml: string): NewsHeadline[] {

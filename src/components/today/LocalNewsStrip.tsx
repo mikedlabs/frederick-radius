@@ -1,5 +1,9 @@
-import { Newspaper, ArrowUpRight, Landmark, Heart, FileText } from "lucide-react";
+import { Newspaper, ArrowUpRight, Tv, Radio, FileText, Landmark, Heart, Globe } from "lucide-react";
 import { getLocalHeadlines } from "@/lib/integrations/news";
+import { sourceMeta, LANE_META, type NewsLane, type NewsMediaType } from "@/lib/news-sources";
+
+type Headline = Awaited<ReturnType<typeof getLocalHeadlines>>[number];
+type Decorated = Headline & ReturnType<typeof sourceMeta>;
 
 function formatAge(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -12,198 +16,144 @@ function formatAge(iso: string): string {
   return `${d}d ago`;
 }
 
-type Topic = "gov" | "obit" | "press";
-
-/**
- * Classify each headline so the desk reads as ORGANIZED, not a dump
- * of every Google News result. Obituaries get their own section so
- * actionable civic news doesn't compete with funeral notices. .gov
- * sources get a Government badge so residents can see official news
- * at a glance.
- */
-function classify(h: { source: string; title: string }): Topic {
-  const s = h.source.toLowerCase();
-  const t = h.title.toLowerCase();
-  if (/obit|memorial|funeral|legacy\.com|tribute/i.test(`${s} ${t}`)) return "obit";
-  if (/\.gov|city of frederick|frederick county government|fcps|fcpl/i.test(s)) return "gov";
-  return "press";
-}
-
-const TOPIC: Record<
-  Topic,
-  { label: string; color: string; icon: typeof Newspaper }
-> = {
-  gov: { label: "Government", color: "#2A5D8F", icon: Landmark },
-  press: { label: "Press", color: "#C4451C", icon: FileText },
-  obit: { label: "Community", color: "#8A8884", icon: Heart },
+const MEDIA_ICON: Record<NewsMediaType, typeof Tv> = {
+  civic: Landmark,
+  tv: Tv,
+  radio: Radio,
+  print: FileText,
+  wire: Newspaper,
+  memorial: Heart,
+  web: Globe,
 };
 
 /**
- * Local news desk — organized so the page doesn't feel like a feed dump.
- *
- * Layout:
- *   • Lead story: the freshest non-obit, magazine-set with a topic chip.
- *   • Press + Government: the working civic news, scannable column.
- *   • Community memorials: collapsed by default — present so families
- *     can find them, but not competing with "what's happening today".
- *
- * Vertical, multi-source, refreshed hourly. RSS carries no images,
- * so per-source color + topic icon carry the visual variety. Never a
- * fabricated thumbnail.
+ * The "brand pip": colored circle with the outlet's monogram. This is
+ * the move that turns a list into a newsroom. The eye learns the marks
+ * fast, sources get visual identity instead of small grey text, and
+ * the desk reads as plural — many publishers, not one feed dump.
  */
-export default async function LocalNewsStrip() {
-  const headlines = await getLocalHeadlines();
-  if (headlines.length === 0) return null;
+function BrandPip({ meta, size = "sm" }: { meta: ReturnType<typeof sourceMeta>; size?: "sm" | "md" }) {
+  const dim = size === "md" ? "h-9 w-9 text-[11px]" : "h-7 w-7 text-[9.5px]";
+  return (
+    <span
+      aria-hidden
+      className={`grid shrink-0 place-items-center rounded-full font-bold tracking-tight ${dim}`}
+      style={{
+        background: meta.brandColor,
+        color: "#fff",
+        boxShadow: `0 1px 0 color-mix(in srgb, ${meta.brandColor} 50%, black 50%) inset, 0 1px 2px rgba(0,0,0,0.18)`,
+      }}
+    >
+      {meta.monogram}
+    </span>
+  );
+}
 
-  const typed = headlines.map((h) => ({ ...h, topic: classify(h) }));
-  const obits = typed.filter((h) => h.topic === "obit");
-  const news = typed.filter((h) => h.topic !== "obit");
-
-  if (news.length === 0 && obits.length === 0) return null;
-
-  const [lead, ...rest] = news.length > 0 ? news : typed; // graceful fallback
-  const peek = rest.slice(0, 3);
-  const overflow = rest.slice(3, 11);
-
-  const sources = new Set(typed.map((h) => h.source)).size;
-  const leadTopic = TOPIC[("topic" in lead ? lead.topic : classify(lead)) as Topic];
-
-  const renderRow = (
-    h: (typeof typed)[number],
-    i: number,
-    withTopBorder: boolean,
-  ) => {
-    const meta = TOPIC[h.topic];
-    const Icon = meta.icon;
-    return (
-      <li
-        key={`${h.url}-${i}`}
-        className={withTopBorder ? "border-t" : ""}
-        style={{ borderColor: "var(--app-border)" }}
+/**
+ * A single story row in a lane. Brand pip is the visual anchor; the
+ * headline is sans-serif at row level so the lead story's serif still
+ * reads as the editorial moment.
+ */
+function StoryRow({ h, withBorder }: { h: Decorated; withBorder: boolean }) {
+  const MediaIcon = MEDIA_ICON[h.mediaType];
+  return (
+    <li
+      className={withBorder ? "border-t" : ""}
+      style={{ borderColor: "var(--app-border)" }}
+    >
+      <a
+        href={h.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--app-bg-sunken)]"
       >
-        <a
-          href={h.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-[var(--app-bg-sunken)]"
-        >
+        <BrandPip meta={h} />
+        <span className="min-w-0 flex-1">
           <span
-            aria-hidden
-            className="mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full"
-            style={{ background: `color-mix(in srgb, ${meta.color} 18%, transparent)`, color: meta.color }}
+            className="line-clamp-2 text-[13.5px] font-semibold leading-snug"
+            style={{ color: "var(--app-ink)" }}
           >
-            <Icon className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+            {h.title}
           </span>
-          <span className="min-w-0 flex-1">
-            <span
-              className="line-clamp-2 text-[14px] font-semibold leading-snug"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {h.title}
-            </span>
-            <span
-              className="mt-0.5 block text-[11px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              <span style={{ color: meta.color }}>{h.source}</span> ·{" "}
-              {formatAge(h.published_at)}
-            </span>
-          </span>
-          <ArrowUpRight
-            className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-            strokeWidth={2}
+          <span
+            className="mt-1 flex items-center gap-1.5 text-[11px]"
             style={{ color: "var(--app-ink-3)" }}
-            aria-hidden
-          />
-        </a>
-      </li>
-    );
-  };
+          >
+            <MediaIcon className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+            <span className="truncate" style={{ color: h.brandColor }}>{h.display}</span>
+            <span aria-hidden>·</span>
+            <span className="shrink-0 tabular-nums">{formatAge(h.published_at)}</span>
+          </span>
+        </span>
+        <ArrowUpRight
+          className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+          strokeWidth={2}
+          style={{ color: "var(--app-ink-3)" }}
+          aria-hidden
+        />
+      </a>
+    </li>
+  );
+}
+
+/**
+ * Lane: a labeled section for one kind of news (Gov / Press / Community).
+ * Header is a horizontal rule with the lane's label + count + tagline.
+ * First 4 stories visible; the rest tucked into a native <details>.
+ */
+function Lane({
+  lane,
+  items,
+}: {
+  lane: NewsLane;
+  items: Decorated[];
+}) {
+  if (items.length === 0) return null;
+  const meta = LANE_META[lane];
+  const visible = items.slice(0, 4);
+  const overflow = items.slice(4);
 
   return (
-    <section aria-label="Local news" className="space-y-2.5">
-      <div className="flex items-end justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Newspaper
-            className="h-4 w-4"
-            strokeWidth={2}
-            style={{ color: "var(--app-cool)" }}
-            aria-hidden
-          />
-          <h2
-            className="font-serif text-base font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Local news
-          </h2>
-        </div>
-        <p
-          className="text-[10px] uppercase tracking-[0.1em]"
+    <section aria-label={meta.label}>
+      {/* Lane header: a rule + label + tagline, reads as newsroom signage */}
+      <header className="flex items-baseline gap-2.5 pb-2 pt-1">
+        <span
+          aria-hidden
+          className="block h-[3px] w-8 rounded-full"
+          style={{ background: meta.color }}
+        />
+        <span
+          className="text-[10.5px] font-bold uppercase tracking-[0.16em]"
+          style={{ color: meta.color }}
+        >
+          {meta.label}
+        </span>
+        <span
+          className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+          style={{
+            background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
+            color: meta.color,
+          }}
+        >
+          {items.length}
+        </span>
+        <span
+          className="ml-auto hidden truncate text-[10.5px] italic sm:inline"
           style={{ color: "var(--app-ink-3)" }}
         >
-          {news.length} stories · {sources} sources · hourly
-        </p>
-      </div>
+          {meta.tagline}
+        </span>
+      </header>
 
       <div
-        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+        className="overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
         style={{ borderColor: "var(--app-border)" }}
       >
-        {/* Lead story — magazine-set, topic-chipped */}
-        <a
-          href={lead.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group relative block px-4 py-3.5 transition active:bg-[var(--app-bg-sunken)]"
-        >
-          <span
-            aria-hidden
-            className="absolute inset-y-0 left-0 w-1"
-            style={{ background: leadTopic.color }}
-          />
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em]"
-              style={{
-                background: `color-mix(in srgb, ${leadTopic.color} 16%, transparent)`,
-                color: leadTopic.color,
-              }}
-            >
-              <leadTopic.icon className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-              {leadTopic.label}
-            </span>
-            <span
-              className="shrink-0 text-[10px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {formatAge(lead.published_at)}
-            </span>
-          </div>
-          <p
-            className="font-serif text-[18px] font-semibold leading-snug"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {lead.title}
-          </p>
-          <p
-            className="mt-1.5 text-[11px]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {lead.source}
-          </p>
-        </a>
-
-        {/* The first three follow-ups — always visible */}
-        {peek.length > 0 && (
-          <ul
-            className="border-t"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            {peek.map((h, i) => renderRow(h, i, i > 0))}
-          </ul>
-        )}
-
-        {/* Overflow — tucked into a native <details>. */}
+        <ul>
+          {visible.map((h, i) => (
+            <StoryRow key={`${h.url}-${i}`} h={h} withBorder={i > 0} />
+          ))}
+        </ul>
         {overflow.length > 0 && (
           <details
             className="group border-t"
@@ -211,68 +161,165 @@ export default async function LocalNewsStrip() {
           >
             <summary
               className="flex cursor-pointer items-center justify-between gap-2 px-4 py-2.5 text-[12px] font-semibold select-none [&::-webkit-details-marker]:hidden"
-              style={{ color: "var(--app-cool)" }}
+              style={{ color: meta.color }}
             >
-              <span>Show {overflow.length} more</span>
+              <span>Show {overflow.length} more from {meta.label.toLowerCase()}</span>
               <ArrowUpRight
                 className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90"
                 strokeWidth={2.25}
                 aria-hidden
               />
             </summary>
-            <ul
-              className="border-t"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              {overflow.map((h, i) => renderRow(h, i + 3, i > 0))}
+            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+              {overflow.map((h, i) => (
+                <StoryRow key={`${h.url}-${i + 4}`} h={h} withBorder={i > 0} />
+              ))}
             </ul>
           </details>
         )}
       </div>
+    </section>
+  );
+}
 
-      {/* Community memorials — separate card, collapsed by default.
-          They're present so families can find them; they no longer
-          compete with civic news in the main flow. */}
-      {obits.length > 0 && (
-        <details
-          className="group overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
+/**
+ * Local newsroom — organized so the section reads like a newsroom, not
+ * a feed dump.
+ *
+ * Layout, top to bottom:
+ *   • Masthead — section title, story count, source count
+ *   • Lead story — the freshest non-memorial, magazine-set with the
+ *     publisher's brand pip + colored stripe.
+ *   • Three lanes — Government, Press & Broadcast, Community. Each lane
+ *     has a header rule + label + tagline + count, then up to 4 stories
+ *     with the rest tucked into a native <details>.
+ *
+ * Every story shows the publisher's brand pip (colored circle with
+ * monogram) plus a media-type icon (tv / radio / print / wire / civic),
+ * so even without thumbnails the desk has visible plurality and
+ * provenance. RSS carries no photos; this is the right way to render
+ * that constraint as design rather than apologize for it.
+ */
+export default async function LocalNewsStrip() {
+  const headlines = await getLocalHeadlines();
+  if (headlines.length === 0) return null;
+
+  const decorated: Decorated[] = headlines.map((h) => ({ ...h, ...sourceMeta(h.source) }));
+
+  const byLane: Record<NewsLane, Decorated[]> = { gov: [], press: [], community: [] };
+  for (const h of decorated) byLane[h.lane].push(h);
+
+  // Lead story = the freshest non-memorial. Memorials never lead the
+  // desk because they're not "what's happening" in the civic sense and
+  // it cheapens the family to use them as the magazine cover.
+  const leadCandidates = decorated.filter((h) => h.mediaType !== "memorial");
+  const lead = leadCandidates[0] ?? decorated[0];
+  // Pull the lead out of its lane so it isn't shown twice in the column.
+  const leadKey = lead?.url;
+  const filteredByLane: Record<NewsLane, Decorated[]> = {
+    gov: byLane.gov.filter((h) => h.url !== leadKey),
+    press: byLane.press.filter((h) => h.url !== leadKey),
+    community: byLane.community.filter((h) => h.url !== leadKey),
+  };
+
+  const totalStories = decorated.length;
+  const uniqueSources = new Set(decorated.map((h) => h.display)).size;
+
+  return (
+    <section aria-label="Local newsroom" className="space-y-3">
+      {/* Masthead — one line on every screen, source-count first because
+          plurality is the whole story we're telling. */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <div className="flex items-center gap-2">
+          <Newspaper
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2}
+            style={{ color: "var(--app-cool)" }}
+            aria-hidden
+          />
+          <h2
+            className="font-serif text-base font-semibold tracking-tight whitespace-nowrap"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Local newsroom
+          </h2>
+        </div>
+        <p
+          className="text-[10px] uppercase tracking-[0.1em] tabular-nums whitespace-nowrap"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {uniqueSources} sources · {totalStories} stories · hourly
+        </p>
+      </div>
+
+      {/* Lead story — full-width magazine card with brand stripe + pip */}
+      {lead && (
+        <a
+          href={lead.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative block overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.997]"
           style={{ borderColor: "var(--app-border)" }}
         >
-          <summary
-            className="flex cursor-pointer items-center gap-2 px-4 py-2.5 text-[12px] font-semibold select-none [&::-webkit-details-marker]:hidden"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            <Heart
-              className="h-3.5 w-3.5 shrink-0"
-              strokeWidth={2}
-              style={{ color: TOPIC.obit.color }}
-              aria-hidden
-            />
-            <span>Community memorials</span>
-            <span
-              className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-              style={{
-                background: `color-mix(in srgb, ${TOPIC.obit.color} 18%, transparent)`,
-                color: TOPIC.obit.color,
-              }}
-            >
-              {obits.length}
-            </span>
+          <span
+            aria-hidden
+            className="absolute inset-y-0 left-0 w-1.5"
+            style={{ background: lead.brandColor }}
+          />
+          <div className="flex items-start gap-3 px-4 py-4 pl-5">
+            <BrandPip meta={lead} size="md" />
+            <div className="min-w-0 flex-1">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em]"
+                  style={{
+                    background: `color-mix(in srgb, ${LANE_META[lead.lane].color} 15%, transparent)`,
+                    color: LANE_META[lead.lane].color,
+                  }}
+                >
+                  Top story
+                </span>
+                <span
+                  className="text-[10.5px] tabular-nums"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {formatAge(lead.published_at)}
+                </span>
+              </div>
+              <p
+                className="font-serif text-[18px] font-semibold leading-snug"
+                style={{ color: "var(--app-ink)" }}
+              >
+                {lead.title}
+              </p>
+              <p
+                className="mt-2 flex items-center gap-1.5 text-[11px]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {(() => {
+                  const MediaIcon = MEDIA_ICON[lead.mediaType];
+                  return <MediaIcon className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />;
+                })()}
+                <span style={{ color: lead.brandColor, fontWeight: 600 }}>{lead.display}</span>
+              </p>
+            </div>
             <ArrowUpRight
-              className="ml-auto h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-90"
-              strokeWidth={2.25}
+              className="mt-1 h-4 w-4 shrink-0 opacity-50 transition group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+              strokeWidth={2}
               style={{ color: "var(--app-ink-3)" }}
               aria-hidden
             />
-          </summary>
-          <ul
-            className="border-t"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            {obits.slice(0, 10).map((h, i) => renderRow(h, i, i > 0))}
-          </ul>
-        </details>
+          </div>
+        </a>
       )}
+
+      {/* Lanes — Government and Press first, Community last (memorials
+          shouldn't compete with civic news for the eye). */}
+      <div className="space-y-3.5">
+        <Lane lane="gov" items={filteredByLane.gov} />
+        <Lane lane="press" items={filteredByLane.press} />
+        <Lane lane="community" items={filteredByLane.community} />
+      </div>
     </section>
   );
 }
