@@ -1,6 +1,21 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { Clock } from "lucide-react";
+import {
+  Clock, Music, Palette, Theater, Baby, Apple, Landmark, Image as ImageIcon,
+  Utensils, Trees, ShoppingBag, Activity, Heart, Building, GraduationCap,
+  CalendarDays, BookOpen, Wine, Beer, Coffee, Sparkles,
+} from "lucide-react";
+
+// Lookup for category-icon names → component. We resolve the
+// `icon` string from src/data/categories.ts (each entry lists a
+// lucide icon name as a string) to the actual component, so the
+// photo-less fallback can display the category's mark as a large
+// ghosted watermark — editorial poster feel instead of a flat block.
+const ICON_BY_NAME: Record<string, typeof Music> = {
+  Music, Palette, Theater, Baby, Apple, Landmark, ImageIcon,
+  Utensils, Trees, ShoppingBag, Activity, Heart, Building,
+  GraduationCap, BookOpen, Wine, Beer, Coffee, Sparkles,
+};
 
 /**
  * "Tonight at a glance" — the editorial marquee of what's starting
@@ -72,6 +87,10 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
             const cat = CATEGORY_BY_SLUG[e.category ?? ""];
             const accent = cat?.color ?? "var(--app-brand)";
             const photo = e.hero_image ?? null;
+            // Icon for the photo-less fallback: resolve the category's
+            // icon string to a lucide component, fall back to a generic
+            // calendar mark if the category is unknown or unmapped.
+            const CatIcon = cat ? (ICON_BY_NAME[cat.icon] ?? CalendarDays) : CalendarDays;
             return (
               <a
                 key={e.slug}
@@ -79,22 +98,60 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                 className="tactile tactile-interactive group relative block w-[220px] shrink-0 snap-start overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
                 style={{ borderColor: "var(--app-border)" }}
               >
-                {/* Photo or category-tinted gradient banner */}
+                {/* Photo or editorial poster fallback. Photo cards get
+                    a dark gradient overlay for chip legibility; photo-
+                    less cards get a category-tinted poster: two-stop
+                    diagonal gradient + a large ghosted category icon +
+                    a subtle dot-grid texture overlay. */}
                 <div
                   className="relative h-[140px] w-full overflow-hidden"
-                  style={{
-                    background: photo
-                      ? `linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55) 100%), url(${photo}) center/cover no-repeat`
-                      : `linear-gradient(155deg, color-mix(in srgb, ${accent} 45%, var(--app-bg-sunken)), color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken)))`,
-                  }}
+                  style={
+                    photo
+                      ? {
+                          background: `linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55) 100%), url(${photo}) center/cover no-repeat`,
+                        }
+                      : {
+                          background: `linear-gradient(140deg, color-mix(in srgb, ${accent} 70%, #1a1820) 0%, color-mix(in srgb, ${accent} 32%, #1a1820) 55%, color-mix(in srgb, ${accent} 8%, #1a1820) 100%)`,
+                        }
+                  }
                 >
+                  {!photo && (
+                    <>
+                      {/* Dot-grid texture — subtle, editorial. */}
+                      <span
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{
+                          backgroundImage:
+                            "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)",
+                          backgroundSize: "12px 12px",
+                          mixBlendMode: "overlay",
+                        }}
+                      />
+                      {/* Category icon as ghosted watermark — visual
+                          identity for the card without a photo. */}
+                      <CatIcon
+                        aria-hidden
+                        className="absolute -bottom-2 -right-2 h-[110px] w-[110px]"
+                        strokeWidth={1.25}
+                        style={{
+                          color: "white",
+                          opacity: 0.22,
+                          transform: "rotate(-6deg)",
+                        }}
+                      />
+                    </>
+                  )}
                   {/* Category chip */}
                   {cat && (
                     <span
                       className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] backdrop-blur"
                       style={{
-                        background: `color-mix(in srgb, ${accent} 90%, transparent)`,
+                        background: photo
+                          ? `color-mix(in srgb, ${accent} 90%, transparent)`
+                          : "rgba(255,255,255,0.18)",
                         color: "white",
+                        boxShadow: photo ? "none" : "inset 0 0 0 1px rgba(255,255,255,0.20)",
                       }}
                     >
                       {cat.name}
