@@ -16,9 +16,10 @@ import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
-import { allUpcoming, eventsLive, eventsWeekend, eventsOnDay } from "@/lib/loaders/events";
+import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 /**
  * Today — the editorial briefing.
@@ -111,42 +112,91 @@ const HIDDEN_LABELS: Array<{ id: string; label: string }> = [
   { id: "history", label: "Did you know" },
 ];
 
+/**
+ * Eastern-time calendar parts of an instant. The whole app's clock is
+ * America/New_York; building windows with server-local Date.setHours
+ * was the bug behind "tonight is 1pm" — on a UTC server setHours(16)
+ * is 16:00Z, which is ~noon Eastern, so afternoon events leaked into
+ * the Tonight slice.
+ */
+function easternParts(d: Date): { year: number; month: number; day: number; hour: number; weekday: number } {
+  const f = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", hour12: false, weekday: "short",
+  });
+  const p = Object.fromEntries(f.formatToParts(d).map((x) => [x.type, x.value]));
+  const WD: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    year: Number(p.year),
+    month: Number(p.month),
+    day: Number(p.day),
+    hour: Number(p.hour) % 24,
+    weekday: WD[p.weekday as string] ?? 0,
+  };
+}
+
+/** A UTC ISO `offsetDays` from `base`, at the given Eastern wall time. */
+function easternDayAt(base: { year: number; month: number; day: number }, offsetDays: number, hour: number, minute = 0): string {
+  // Walk the calendar day by constructing a UTC date and re-reading
+  // it — avoids month/year rollover math.
+  const walked = new Date(Date.UTC(base.year, base.month - 1, base.day + offsetDays, 12));
+  return easternWallToUtcISO(
+    walked.getUTCFullYear(),
+    walked.getUTCMonth() + 1,
+    walked.getUTCDate(),
+    hour,
+    minute,
+  );
+}
+
 // Resolve a temporal mode to a per-mode event window. Each mode has
 // its own headline so the Upcoming section reads as the answer to a
-// specific question, not as a generic feed.
+// specific question, not as a generic feed. All boundaries are
+// computed in America/New_York so a UTC production server agrees with
+// a Frederick user about what "tonight" means.
 function eventsForMode(mode: TodayTimeMode, now: Date) {
+  const nowMs = now.getTime();
+  const et = easternParts(now);
+
   if (mode === "now") {
     // Live right now OR starting in the next 90 minutes.
     const inNext90 = allUpcoming(now).filter((e) => {
-      const ms = new Date(e.starts_at).getTime() - now.getTime();
+      const ms = new Date(e.starts_at).getTime() - nowMs;
       return ms >= 0 && ms <= 90 * 60_000;
     });
     return { title: "Happening now", items: [...eventsLive(now), ...inNext90] };
   }
+
+  let title: string;
+  let startMs: number;
+  let endMs: number;
   if (mode === "tonight") {
-    // Today after 16:00 ET → tomorrow 02:30 ET. "Tonight" still
-    // means tonight at 11pm, not "yesterday."
-    const today = new Date(now);
-    today.setHours(16, 0, 0, 0);
-    const startMs = Math.max(now.getTime(), today.getTime());
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(2, 30, 0, 0);
-    const endMs = tomorrow.getTime();
-    return {
-      title: "Tonight",
-      items: allUpcoming(now).filter((e) => {
-        const ms = Date.parse(e.starts_at);
-        return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
-      }),
-    };
+    // Eastern: today 16:00 → tomorrow 02:30. Clamped to now so a
+    // late-night visit doesn't list events that already started.
+    title = "Tonight";
+    startMs = Math.max(nowMs, Date.parse(easternDayAt(et, 0, 16, 0)));
+    endMs = Date.parse(easternDayAt(et, 1, 2, 30));
+  } else if (mode === "tomorrow") {
+    // Eastern: the whole of tomorrow, 00:00 → 23:59.
+    title = "Tomorrow";
+    startMs = Date.parse(easternDayAt(et, 1, 0, 0));
+    endMs = Date.parse(easternDayAt(et, 2, 0, 0)) - 1;
+  } else {
+    // Weekend: upcoming Fri 17:00 → Mon 00:00, all Eastern. If today
+    // already is the weekend, the window is the current one.
+    title = "This weekend";
+    const daysToFri = (5 - et.weekday + 7) % 7;
+    startMs = Date.parse(easternDayAt(et, daysToFri, 17, 0));
+    endMs = Date.parse(easternDayAt(et, daysToFri + 3, 0, 0));
   }
-  if (mode === "tomorrow") {
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return { title: "Tomorrow", items: eventsOnDay(tomorrow) };
-  }
-  return { title: "This weekend", items: eventsWeekend(now) };
+  return {
+    title,
+    items: allUpcoming(now).filter((e) => {
+      const ms = Date.parse(e.starts_at);
+      return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
+    }),
+  };
 }
 
 export default async function HomePage({
