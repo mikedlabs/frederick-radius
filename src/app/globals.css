@@ -577,6 +577,14 @@ body {
   50%      { box-shadow: 0 8px 24px rgba(196, 69, 28, 0.35), 0 0 0 14px rgba(196, 69, 28, 0); }
 }
 
+/* Event-pin pulse on /map. Slower + softer than the food-truck demo so a
+ * cluster of upcoming events doesn't strobe. */
+@keyframes fr-ev-pulse {
+  0%   { transform: scale(0.7); opacity: 0.32; }
+  70%  { opacity: 0; }
+  100% { transform: scale(2.0); opacity: 0; }
+}
+
 /* ─────────────────────────────────────────────────────
  * View Transitions API — smooth cross-page navigation.
  * Supported in Chrome/Edge/Safari. No-op elsewhere.

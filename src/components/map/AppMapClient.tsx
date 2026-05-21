@@ -25,8 +25,8 @@ const AppMap = dynamic(() => import("./AppMap"), {
  * (opens the place sheet). This turns a wall of pins into something you
  * can actually browse.
  */
-export type { CivicPin, MapLineFC } from "./AppMap";
-import type { CivicPin, MapLineFC } from "./AppMap";
+export type { CivicPin, MapLineFC, EventPin } from "./AppMap";
+import type { CivicPin, MapLineFC, EventPin } from "./AppMap";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
 
@@ -39,6 +39,7 @@ export default function AppMapClient({
   amenities = [],
   trailLines = EMPTY_FC,
   transitLines = EMPTY_FC,
+  events = [],
   fullBleed = false,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -56,6 +57,10 @@ export default function AppMapClient({
   /** Server-fetched toggleable line overlays (#3). */
   trailLines?: MapLineFC;
   transitLines?: MapLineFC;
+  /** Upcoming events as photo pins — passed through to AppMap. The
+   *  /map page filters to "happening soon" server-side so this stays a
+   *  small (≤30 item) array. */
+  events?: EventPin[];
   /** Full-bleed canvas: the map fills the parent, no card border, no
    *  "In view" list below. The map IS the page. The synced list lives
    *  in a slide-up sheet inside the map area instead. */
@@ -96,6 +101,7 @@ export default function AppMapClient({
           amenities={amenities}
           trailLines={trailLines}
           transitLines={transitLines}
+          events={events}
           fullBleed
         />
         <InViewDrawer
@@ -110,7 +116,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} />
+      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} events={events} />
 
       <section className="space-y-2">
         <div className="flex items-baseline justify-between">
