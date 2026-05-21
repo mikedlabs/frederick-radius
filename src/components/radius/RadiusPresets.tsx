@@ -58,15 +58,8 @@ export default function RadiusPresets({
   onPick: (mode: TravelMode, minutes: number) => void;
 }) {
   return (
-    <section aria-label="Quick presets" className="space-y-2">
-      <p
-        className="px-1 text-[10.5px] font-bold uppercase tracking-[0.12em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Quick picks
-      </p>
-      <div className="-mx-4 px-4">
-        <div className="shelf-rail gap-2 pb-1">
+    <section aria-label="Quick presets" className="-mx-4 px-4">
+      <div className="shelf-rail gap-2 pb-1">
           {PRESETS.map((p) => {
             const Icon = MODE_ICON[p.mode] ?? Footprints;
             const color = MODE_COLOR[p.mode] ?? "var(--app-cool)";
@@ -112,8 +105,7 @@ export default function RadiusPresets({
                 </span>
               </button>
             );
-          })}
-        </div>
+        })}
       </div>
     </section>
   );

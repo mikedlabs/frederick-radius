@@ -30,19 +30,9 @@ export default function RadiusPage() {
   return (
     <div className="relative space-y-5">
       <PageBloom variant="cool" />
-      <header className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Signature interaction
-        </p>
-        <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Set a point. Set a distance. See what&apos;s inside.
-        </h1>
-        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Frederick&apos;s defining interaction — walking from your hotel, driving from a meeting, hiking from a trailhead.
-        </p>
-      </header>
-      {/* RadiusBuilder owns the live "In play right now" strip — its
-          numbers reflect the active radius, not a static county total. */}
+      {/* No page-level header — the RadiusRing IS the headline; the
+          user lands directly on the interactive tool. The page title
+          lives in metadata and the bottom-nav label. */}
       <RadiusBuilder places={OPEN_PLACES} amenities={OPEN_AMENITIES} />
     </div>
   );

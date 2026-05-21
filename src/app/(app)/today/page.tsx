@@ -4,7 +4,6 @@ import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
-import NowStrip from "@/components/today/NowStrip";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import PulseSummary from "@/components/today/PulseSummary";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
@@ -24,7 +23,8 @@ import { FREDERICK_CENTER } from "@/lib/geo";
  * Today — the editorial briefing.
  *
  * Tightened from the original 11+ stacked modules down to a 7-section
- * spine that reads as one continuous briefing instead of a directory:
+ * spine that reads as one continuous briefing — the SkyHero is the
+ * front door, no preamble card stacked above it:
  *
  *   1. Hero          → greeting + sun + civic alert + weather + plan
  *   2. Civic pulse   → one quiet line (PulseSummary)
@@ -131,16 +131,6 @@ export default async function HomePage() {
           lives INSIDE SkyHero so an active alert reads as part of the
           hero unit, not as a strange floating banner between the page
           header and the sky gradient. */}
-      {/* 0 — NowStrip: the at-a-glance briefing. Stitches current
-          weather + sunset + places-open-now + closing-soon + events-
-          starting-soon into one editorial paragraph. This is the
-          differentiator card — what makes the app worth opening
-          instead of Googling. Renders ABOVE the sky hero so it's the
-          first thing the eye lands on. */}
-      <Suspense fallback={<Skeleton.Block height={140} round="var(--app-radius-lg)" />}>
-        <NowStrip />
-      </Suspense>
-
       <SkyHero className="space-y-4">
         <Suspense fallback={<Skeleton.Block height={56} round="var(--app-radius-md)" />}>
           <AdaptiveGreeting />

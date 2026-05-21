@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, LayoutGrid, Rows3, ChevronDown, Navigation, ArrowDownAZ, Locate } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Footprints, Bike, Car, MapPin, ChevronDown, Locate } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
@@ -72,14 +72,6 @@ function groupOrder(key: string): number {
   return CATEGORY_BY_SLUG[key]?.display_order ?? 9_000;
 }
 
-type ViewMode = "grid" | "list";
-const VIEW_KEY = "fr:radius:view:v1";
-type SortMode = "near" | "az";
-const SORT_KEY = "fr:radius:sort:v1";
-// How many to show before "Show all" expands a section in place. No
-// data is hidden now — everything inside is one tap away. Distance-
-// sorted, so the initial slice is always "the nearest few".
-const PEEK: Record<ViewMode, number> = { grid: 8, list: 10 };
 const FOOD_GROUP = "food";
 
 // Local label + glyph table for the 6 curated amenity kinds, in
@@ -105,48 +97,6 @@ export default function RadiusBuilder({
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
-  // Default renders on the server; the stored preference is applied
-  // after mount (same SSR-safe pattern the app uses elsewhere). A brief
-  // default-then-preferred settle is acceptable for a view toggle.
-  const [view, setView] = useState<ViewMode>("grid");
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(VIEW_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders the default, the stored preference is applied after mount (localStorage is unavailable during SSR)
-      if (saved === "grid" || saved === "list") setView(saved);
-    } catch {
-      // localStorage unavailable (private mode, etc.) — keep default
-    }
-  }, []);
-  const chooseView = (v: ViewMode) => {
-    setView(v);
-    try {
-      localStorage.setItem(VIEW_KEY, v);
-    } catch {
-      // non-fatal
-    }
-  };
-  // Sort within each group: "near" (distance, the default — inside is
-  // already distance-sorted) or "az" (alphabetical). Same SSR-safe
-  // localStorage settle as the view toggle.
-  const [sort, setSort] = useState<SortMode>("near");
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(SORT_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders the default, the stored preference is applied after mount (localStorage is unavailable during SSR)
-      if (saved === "near" || saved === "az") setSort(saved);
-    } catch {
-      // localStorage unavailable (private mode, etc.) — keep default
-    }
-  }, []);
-  const chooseSort = (s: SortMode) => {
-    setSort(s);
-    try {
-      localStorage.setItem(SORT_KEY, s);
-    } catch {
-      // non-fatal
-    }
-  };
   // Cuisine filter (food group only) + which groups are expanded.
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -210,19 +160,15 @@ export default function RadiusBuilder({
       .map(([key, items]) => ({
         key,
         label: groupLabel(key),
-        // "near" keeps inside's distance order; "az" sorts by name.
-        items:
-          sort === "az"
-            ? [...items].sort((a, b) =>
-                a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
-              )
-            : items,
+        // Items inherit `inside`'s distance order — nearest first, which
+        // is the right default for a "what's near me" tool.
+        items,
       }))
       .sort((a, b) => {
         const d = groupOrder(a.key) - groupOrder(b.key);
         return d !== 0 ? d : b.items.length - a.items.length;
       });
-  }, [inside, sort]);
+  }, [inside]);
 
   // Cuisine facets from the food group's actual contents, so the chip
   // row only ever offers cuisines that are genuinely nearby.
@@ -257,17 +203,6 @@ export default function RadiusBuilder({
       bearing: ((bearing % 360) + 360) % 360,
     };
   }, [edgePlace, center.lat, center.lng, farthest]);
-  // Live municipality coverage — how many distinct towns the
-  // current radius reaches into. Climbs as the user widens the slider.
-  const townsInside = useMemo(
-    () => new Set(inside.map((p) => p.municipality).filter(Boolean)).size,
-    [inside],
-  );
-  const formatFar = (m: number) => {
-    if (m === 0) return "–";
-    if (m < 1000) return `${Math.round(m)} ft`;
-    return `${(m / 1609).toFixed(1)} mi`;
-  };
 
   // Amenities inside the same radius — "what's within X" now genuinely
   // includes the restrooms / Wi-Fi / EV / bike / picnic / playgrounds,
@@ -444,32 +379,6 @@ export default function RadiusBuilder({
               {minutes} min <span className="text-[13px] font-normal" style={{ color: "var(--app-ink-3)" }}>· {formatDistance(meters)}</span>
             </span>
           </div>
-          {/* Concentric-ring density backdrop — a quiet visual cue that
-              the radius is a real spatial concept, not just a number.
-              The ring count grows as the radius widens; the active ring
-              pulses gently to draw the eye. SVG is pointer-events-none
-              so it never blocks the slider. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-            style={{ width: 220, height: 56 }}
-          >
-            <svg viewBox="0 0 220 56" className="h-full w-full" preserveAspectRatio="xMidYMid meet">
-              {[14, 26, 38, 50].map((r, i) => (
-                <ellipse
-                  key={r}
-                  cx={110}
-                  cy={28}
-                  rx={r * 2}
-                  ry={r * 0.55}
-                  fill="none"
-                  stroke="var(--app-brand)"
-                  strokeWidth={0.7}
-                  opacity={Math.max(0.04, 0.18 - i * 0.03)}
-                />
-              ))}
-            </svg>
-          </div>
           <input
             id="minutes-slider"
             type="range"
@@ -485,190 +394,30 @@ export default function RadiusBuilder({
             <span>3</span>
             <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
           </div>
-          {/* "What's at the edge" peek — tells the user the farthest
-              concrete place they can reach right now. Reads as a
-              tangible boundary, not an abstract distance. */}
-          {edgePlace && (
-            <div
-              className="mt-2.5 flex items-center gap-2 rounded-[var(--app-radius-md)] px-3 py-1.5 text-[11px]"
-              style={{
-                background: "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated))",
-                color: "var(--app-ink-2)",
-              }}
-            >
-              <span
-                aria-hidden
-                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: "var(--app-brand)" }}
-              />
-              <span className="min-w-0 flex-1 truncate">
-                <span className="font-semibold uppercase tracking-[0.08em] text-[9px]" style={{ color: "var(--app-ink-3)" }}>
-                  At the edge
-                </span>{" "}
-                <span style={{ color: "var(--app-ink)" }}>{edgePlace.name}</span>
-              </span>
-              <span className="shrink-0 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                {formatFar(farthest)}
-              </span>
-            </div>
-          )}
         </div>
       </section>
 
-      {/* Live stat strip — tactile module of confident tabular numbers
-          that update as the radius widens or the mode changes. Replaces
-          the static "X places inside" pill so the page makes the answer
-          to "in play right now" visible at a glance. */}
-      <section
-        aria-label="In play right now"
-        className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(70% 90% at 10% 0%, color-mix(in srgb, var(--app-cool) 14%, transparent), transparent 60%)",
-          }}
-        />
-        <div className="relative flex items-end justify-between gap-3">
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            In play right now
-          </p>
-          <p className="text-[10px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            {mode === "walk" ? "Walking" : mode === "bike" ? "Biking" : "Driving"} · {minutes} min
-          </p>
-        </div>
-        <div className="relative mt-3 grid grid-cols-3 gap-3">
-          {[
-            { label: "Places", value: inside.length.toLocaleString(), accent: "var(--app-brand)" },
-            { label: "Towns", value: townsInside.toString(), accent: "var(--app-cool)" },
-            { label: "Farthest", value: formatFar(farthest), accent: "var(--app-brand-2)" },
-          ].map((s) => (
-            <div key={s.label} className="text-center">
-              <div
-                className="font-serif text-[28px] font-semibold leading-none tracking-tight tabular-nums"
-                style={{ color: s.accent }}
-              >
-                {s.value}
-              </div>
-              <div
-                className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {s.label}
-              </div>
-            </div>
-          ))}
-        </div>
-        {inside.length > 0 && (
-          <div className="relative mt-3 flex flex-wrap items-center justify-end gap-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-            {/* Sort — Nearest (default) or A–Z. */}
-            <div
-              role="group"
-              aria-label="Sort order"
-              className="flex items-center gap-0.5 rounded-full border p-0.5"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              {([
-                { s: "near" as const, Icon: Navigation, label: "Nearest" },
-                { s: "az" as const, Icon: ArrowDownAZ, label: "A to Z" },
-              ]).map(({ s, Icon, label }) => {
-                const active = sort === s;
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => chooseSort(s)}
-                    aria-pressed={active}
-                    aria-label={`Sort ${label}`}
-                    title={`Sort ${label}`}
-                    className="grid h-7 w-7 place-items-center rounded-full transition-colors"
-                    style={{
-                      background: active ? "var(--app-brand)" : "transparent",
-                      color: active ? "white" : "var(--app-ink-3)",
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  </button>
-                );
-              })}
-            </div>
-            {/* Density — Grid or List. */}
-            <div
-              role="group"
-              aria-label="Result density"
-              className="flex items-center gap-0.5 rounded-full border p-0.5"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              {([
-                { v: "grid" as const, Icon: LayoutGrid, label: "Grid" },
-                { v: "list" as const, Icon: Rows3, label: "List" },
-              ]).map(({ v, Icon, label }) => {
-                const active = view === v;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => chooseView(v)}
-                    aria-pressed={active}
-                    aria-label={`${label} view`}
-                    title={`${label} view`}
-                    className="grid h-7 w-7 place-items-center rounded-full transition-colors"
-                    style={{
-                      background: active ? "var(--app-brand)" : "transparent",
-                      color: active ? "white" : "var(--app-ink-3)",
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Category tile grid — the new landing for the lower half.
-          Compact, colorful, scannable. Tap a tile to expand JUST
-          that section inline below. Default is tiles-only; the user
-          can flip to the full directory view with "See everything". */}
+      {/* Category tile grid — tap a tile to expand JUST that section
+          inline below. The RadiusRing above already shows the in-range
+          count, so the header is just a single Expand-all affordance. */}
       {groups.length > 0 && (
         <section aria-label="Categories in radius" className="space-y-3">
-          <header className="flex items-end justify-between gap-2">
-            <div>
-              <p
-                className="text-[10px] font-bold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                Inside this radius
-              </p>
-              <h2
-                className="mt-0.5 font-serif text-[18px] font-semibold tracking-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {inside.length} places · {groups.length} categories
-              </h2>
-            </div>
+          <div className="flex items-center justify-end">
             <button
               type="button"
               onClick={() => setSeeAll((v) => !v)}
-              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{
-                background: seeAll ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                color: seeAll ? "white" : "var(--app-ink-2)",
-                border: `1px solid ${seeAll ? "var(--app-brand)" : "var(--app-border)"}`,
-              }}
+              className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold transition active:opacity-70"
+              style={{ color: "var(--app-brand)" }}
               aria-pressed={seeAll}
             >
-              {seeAll ? "Hide all" : "See everything"}
+              {seeAll ? "Collapse all" : "Expand all"}
               <ChevronDown
                 className={`h-3.5 w-3.5 transition-transform ${seeAll ? "rotate-180" : ""}`}
                 strokeWidth={2.25}
                 aria-hidden
               />
             </button>
-          </header>
+          </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {groups.map((g) => {
               const color = CATEGORY_BY_SLUG[g.key]?.color ?? "#C4451C";
@@ -721,20 +470,17 @@ export default function RadiusBuilder({
 
       {/* Every in-radius place, grouped by the real category tree —
           rendered only for sections the user has expanded (via tap
-          on the tile above) OR when "See everything" is on. The food
+          on the tile above) OR when "Expand all" is on. The food
           group also gets a cuisine filter built from what is
           actually nearby. */}
       {groups.map((g) => {
         const isFood = g.key === FOOD_GROUP;
-        const filtered =
+        const shown =
           isFood && activeCuisine
             ? g.items.filter((p) => cuisinesOf(p).includes(activeCuisine))
             : g.items;
         const isOpen = expanded.has(g.key) || seeAll;
         if (!isOpen) return null;
-        const peek = PEEK[view];
-        const shown = filtered;
-        const overflow = filtered.length - shown.length;
         return (
           <section key={g.key} className="space-y-3">
             <SectionHeading title={g.label} count={g.items.length} />
@@ -770,38 +516,12 @@ export default function RadiusBuilder({
               >
                 No {activeCuisine ? "matching" : ""} spots in this group inside the radius.
               </p>
-            ) : view === "grid" ? (
+            ) : (
               <div className="grid grid-cols-2 gap-3">
                 {shown.map((p) => (
                   <PlaceCard key={p.slug} place={p} variant="grid" />
                 ))}
               </div>
-            ) : (
-              <div className="space-y-2">
-                {shown.map((p) => (
-                  <PlaceCard key={p.slug} place={p} variant="row" />
-                ))}
-              </div>
-            )}
-
-            {(overflow > 0 || isOpen) && filtered.length > peek && (
-              <button
-                type="button"
-                onClick={() => toggleExpand(g.key)}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold transition active:opacity-70"
-                style={{ color: "var(--app-brand)" }}
-              >
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                  strokeWidth={2.25}
-                  aria-hidden
-                />
-                {isOpen
-                  ? `Show fewer`
-                  : `Show all ${filtered.length}${
-                      isFood && activeCuisine ? "" : ` ${g.label.toLowerCase()}`
-                    }`}
-              </button>
             )}
           </section>
         );
