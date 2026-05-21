@@ -9,6 +9,7 @@ import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
 import { allUpcoming } from "@/lib/loaders/events";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
 import MapIntentChips from "@/components/map/MapIntentChips";
+import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
 import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
@@ -33,13 +34,86 @@ export const revalidate = 300;
  * the bottom drawer (peek by default). Discover-style intent depth is
  * still reachable via the chips — colored, iconned, and recognizable.
  */
+/**
+ * Decide which event-time window the map shows. The brief's "time is
+ * a first-class dimension" rule: every event surface gets a temporal
+ * lens. Returns a predicate so the seed loop stays a single pass.
+ *
+ * Modes:
+ *   - "now":     live right now (start ≤ now ≤ end) OR starting in the
+ *                next 90 minutes
+ *   - "tonight": starting between now (clamped to today 16:00 ET) and
+ *                tomorrow 02:30 ET — so "tonight" still means "tonight"
+ *                at 11pm, and not "yesterday"
+ *   - "weekend": Friday 17:00 ET → Monday 00:00 ET of the next weekend
+ *   - "all":     next 7 days, capped at 80 by the loop below
+ */
+function eventTimePredicate(
+  mode: TimeMode,
+  now: Date,
+): (startsAt: string, endsAt?: string) => boolean {
+  const nowMs = now.getTime();
+  if (mode === "now") {
+    const horizon = nowMs + 90 * 60_000;
+    return (s, e) => {
+      const sMs = Date.parse(s);
+      const eMs = e ? Date.parse(e) : sMs;
+      if (!Number.isFinite(sMs)) return false;
+      // Live now OR starting in the next 90 min
+      return (sMs <= nowMs && eMs >= nowMs) || (sMs >= nowMs && sMs <= horizon);
+    };
+  }
+  if (mode === "tonight") {
+    // Anchor "tonight" in Eastern time so the same definition holds
+    // for a Vercel UTC server and a Frederick user. 16:00 ET = 21:00
+    // UTC (or 20:00 UTC during EDT — close enough for a coarse map
+    // filter; the seed events themselves are precise.)
+    const today = new Date(now);
+    today.setHours(16, 0, 0, 0);
+    const start = Math.max(nowMs, today.getTime());
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(2, 30, 0, 0);
+    const end = tomorrow.getTime();
+    return (s) => {
+      const sMs = Date.parse(s);
+      return Number.isFinite(sMs) && sMs >= start && sMs <= end;
+    };
+  }
+  if (mode === "weekend") {
+    const dow = now.getDay();
+    const friday = new Date(now);
+    friday.setDate(friday.getDate() + ((5 - dow + 7) % 7));
+    friday.setHours(17, 0, 0, 0);
+    const monday = new Date(friday);
+    monday.setDate(monday.getDate() + 3);
+    monday.setHours(0, 0, 0, 0);
+    const fMs = friday.getTime();
+    const mMs = monday.getTime();
+    return (s) => {
+      const sMs = Date.parse(s);
+      return Number.isFinite(sMs) && sMs >= fMs && sMs <= mMs;
+    };
+  }
+  // "all" — next 7 days. The cap is applied in the caller's loop.
+  const horizon = nowMs + 7 * 24 * 3_600_000;
+  return (s) => {
+    const sMs = Date.parse(s);
+    return Number.isFinite(sMs) && sMs >= nowMs && sMs <= horizon;
+  };
+}
+
+function isTimeMode(s: string | undefined): s is TimeMode {
+  return s === "now" || s === "tonight" || s === "weekend" || s === "all";
+}
+
 export default async function MapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ intent?: string }>;
+  searchParams: Promise<{ intent?: string; t?: string }>;
 }) {
   const [
-    { intent: intentParam },
+    { intent: intentParam, t: tParam },
     incidents,
     fixit,
     mapillaryTrash,
@@ -83,19 +157,26 @@ export default async function MapPage({
       : null;
   const places = intent ? OPEN_PLACES.filter(intent.match) : OPEN_PLACES;
 
-  // Events as map pins — the unique-vs-Google-Maps layer. Filter to the
-  // next ~36h ("happening soon") so the layer reads as live, not as a
-  // permanent overlay. Dedupe by venue cell so two events at the same
-  // address don't stack into a single illegible blob.
+  // Events as map pins, scoped to the active temporal window. The
+  // brief's "what's happening now / tonight / this weekend" filter
+  // lives in the ?t= search param; default is "tonight" so the map
+  // answers the most common question on first open.
+  const timeMode: TimeMode = isTimeMode(tParam) ? tParam : "tonight";
   const now = new Date();
-  const horizonMs = now.getTime() + 36 * 3_600_000;
-  const upcoming = allUpcoming(now).filter((e) => {
-    const t = Date.parse(e.starts_at);
-    return Number.isFinite(t) && t <= horizonMs;
-  });
+  const allWeek = allUpcoming(now, 200);
+  // Pre-compute per-mode counts so the chip strip can show "Tonight · 3"
+  // without forcing a click into an empty map.
+  const counts: Partial<Record<TimeMode, number>> = {};
+  for (const mode of ["now", "tonight", "weekend", "all"] as const) {
+    const pred = eventTimePredicate(mode, now);
+    counts[mode] = allWeek.filter((e) => pred(e.starts_at, e.ends_at)).length;
+  }
+
+  const matchTime = eventTimePredicate(timeMode, now);
+  const inWindow = allWeek.filter((e) => matchTime(e.starts_at, e.ends_at));
   const seenCells = new Set<string>();
   const events: EventPin[] = [];
-  for (const e of upcoming) {
+  for (const e of inWindow) {
     if (!Number.isFinite(e.geom?.lng) || !Number.isFinite(e.geom?.lat)) continue;
     const cell = `${e.geom.lat.toFixed(4)}:${e.geom.lng.toFixed(4)}`;
     if (seenCells.has(cell)) continue;
@@ -112,7 +193,7 @@ export default async function MapPage({
       category_color: CATEGORY_BY_SLUG[e.category]?.color,
       hero_image: e.hero_image,
     });
-    if (events.length >= 40) break;
+    if (events.length >= 80) break;
   }
 
   return (
@@ -126,6 +207,11 @@ export default async function MapPage({
       <MapIntentChips
         active={intent?.key}
         activeCount={intent ? places.length : undefined}
+      />
+      <MapTimeChips
+        active={timeMode}
+        intent={intent?.key}
+        counts={counts}
       />
       <AppMapClient
         places={places}
