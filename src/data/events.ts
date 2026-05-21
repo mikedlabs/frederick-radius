@@ -27,6 +27,13 @@ export type Event = {
   /** Know-before-you-go: admission, what to drink, what to eat on site. */
   info?: { admission?: string; drinks?: string; food?: string };
   /**
+   * Per-week food-truck lineup (just names — no addresses/menus). Used
+   * for events that rotate trucks each week, e.g. Alive @ Five. When
+   * present, the event detail page renders these as chips instead of
+   * the generic "Food vendors" line. Hand-curated; no live ingest yet.
+   */
+  food_trucks?: string[];
+  /**
    * Canonical source page for a live/aggregated event (the feed item's
    * own URL). Seed events leave this unset and link to the in-app detail
    * instead; the detail route surfaces it as an "Official page" link so
@@ -71,7 +78,11 @@ const at = (offsetDays: number, hour: number, minute = 0): string => {
  * media partner). Cross-referenced with downtownfrederick.org/aliveatfive.
  */
 function aliveAtFiveSeason(): Event[] {
-  const LINEUP: Array<{ date: string; offset: number; band: string }> = [
+  // Per-week food-truck lineup goes in the optional `trucks` field on
+  // each row. Update this list once a week as DFP announces who's at
+  // Carroll Creek; the event detail page renders them as chips. Leave
+  // the field omitted (or empty) for weeks that haven't been announced.
+  const LINEUP: Array<{ date: string; offset: number; band: string; trucks?: string[] }> = [
     { date: "2026-05-07", offset: -7,  band: "24K Event Band" },
     { date: "2026-05-14", offset: 0,   band: "The National Bohemians" },
     { date: "2026-05-21", offset: 7,   band: "Glamour Kitty" },
@@ -95,7 +106,7 @@ function aliveAtFiveSeason(): Event[] {
     { date: "2026-09-24", offset: 133, band: "Special Delivery Band" },
   ];
 
-  return LINEUP.map(({ date, offset, band }, idx) => {
+  return LINEUP.map(({ date, offset, band, trucks }, idx) => {
     const isOpener = idx === 0;
     const isFinale = idx === LINEUP.length - 1;
     const title = isOpener
@@ -135,6 +146,10 @@ function aliveAtFiveSeason(): Event[] {
       organizer: "Downtown Frederick Partnership",
       source: "dfp",
       is_verified: true,
+      // Only attach the lineup when we've actually entered it for this
+      // week. Empty/undefined → the event detail falls back to the
+      // generic "rotating food vendors" line.
+      ...(trucks && trucks.length > 0 ? { food_trucks: trucks } : {}),
     };
   });
 }

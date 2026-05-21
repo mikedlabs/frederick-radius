@@ -296,7 +296,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 </div>
               </li>
             )}
-            {event.info.food && (
+            {/* Generic food-vendors blurb. Suppressed when a specific
+                weekly truck lineup is present below — no point repeating
+                "rotating vendors" right above the actual lineup. */}
+            {event.info.food && !(event.food_trucks && event.food_trucks.length > 0) && (
               <li className="flex items-start gap-3 py-2.5" style={{ borderColor: "var(--app-border)" }}>
                 <Utensils className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
                 <div>
@@ -305,6 +308,41 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 </div>
               </li>
             )}
+          </ul>
+        </section>
+      )}
+
+      {/* Per-week food-truck lineup — currently used by Alive @ Five.
+          Renders as chips when food_trucks is populated on the event.
+          Hand-curated in src/data/events.ts (no live ingest yet). */}
+      {event.food_trucks && event.food_trucks.length > 0 && (
+        <section className="space-y-2">
+          <h2
+            className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            <Utensils
+              className="h-4 w-4"
+              strokeWidth={2}
+              style={{ color: "var(--app-brand)" }}
+              aria-hidden
+            />
+            Food trucks this week
+          </h2>
+          <ul className="flex flex-wrap gap-1.5">
+            {event.food_trucks.map((name) => (
+              <li
+                key={name}
+                className="inline-flex items-center rounded-full border px-2.5 py-1 text-[12px] font-semibold"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: "var(--app-bg-elevated)",
+                  color: "var(--app-ink-2)",
+                }}
+              >
+                {name}
+              </li>
+            ))}
           </ul>
         </section>
       )}
