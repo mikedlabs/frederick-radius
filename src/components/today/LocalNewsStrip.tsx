@@ -50,70 +50,20 @@ function BrandPip({ meta, size = "sm" }: { meta: ReturnType<typeof sourceMeta>; 
 }
 
 /**
- * A single story row in a lane. Brand pip is the visual anchor; the
- * headline is sans-serif at row level so the lead story's serif still
- * reads as the editorial moment.
- */
-function StoryRow({ h, withBorder }: { h: Decorated; withBorder: boolean }) {
-  const MediaIcon = MEDIA_ICON[h.mediaType];
-  return (
-    <li
-      className={withBorder ? "border-t" : ""}
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      <a
-        href={h.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--app-bg-sunken)]"
-      >
-        <BrandPip meta={h} />
-        <span className="min-w-0 flex-1">
-          <span
-            className="line-clamp-2 text-[13.5px] font-semibold leading-snug"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {h.title}
-          </span>
-          <span
-            className="mt-1 flex items-center gap-1.5 text-[11px]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <MediaIcon className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-            <span className="truncate" style={{ color: h.brandColor }}>{h.display}</span>
-            <span aria-hidden>·</span>
-            <span className="shrink-0 tabular-nums">{formatAge(h.published_at)}</span>
-          </span>
-        </span>
-        <ArrowUpRight
-          className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-          strokeWidth={2}
-          style={{ color: "var(--app-ink-3)" }}
-          aria-hidden
-        />
-      </a>
-    </li>
-  );
-}
-
-/**
-/**
- * Local newsroom — organized so the section reads like a newsroom, not
- * a feed dump.
+ * Local newsroom: the section reads like a newsroom, not a feed dump.
  *
  * Layout, top to bottom:
- *   • Masthead — section title, story count, source count
- *   • Lead story — the freshest non-memorial, magazine-set with the
- *     publisher's brand pip + colored stripe.
- *   • Three lanes — Government, Press & Broadcast, Community. Each lane
- *     has a header rule + label + tagline + count, then up to 4 stories
- *     with the rest tucked into a native <details>.
+ *   • Masthead: section title, source count, story count.
+ *   • Lead story: the freshest non-memorial, magazine-set with the
+ *     publisher's brand pip and a colored stripe.
+ *   • Headline shelf: up to 8 more stories as a horizontal scroll of
+ *     brand-colored cards. The full three-lane desk lives on /news.
  *
  * Every story shows the publisher's brand pip (colored circle with
  * monogram) plus a media-type icon (tv / radio / print / wire / civic),
  * so even without thumbnails the desk has visible plurality and
- * provenance. RSS carries no photos; this is the right way to render
- * that constraint as design rather than apologize for it.
+ * provenance. RSS carries no photos; this renders that constraint as
+ * design rather than apologizing for it.
  */
 export default async function LocalNewsStrip() {
   const headlines = await getLocalHeadlines();
@@ -230,27 +180,69 @@ export default async function LocalNewsStrip() {
         </a>
       )}
 
-      {/* Compact 3-headline tail. The full 3-lane newsroom lives on
-          /news; here we just want the briefing to read as alive — top
-          story + a few more headlines + an explicit "see all" handoff,
-          not 30 rows that turn Today into a homepage of news. */}
+      {/* Headline shelf — the rest of the desk as a horizontal scroll
+          of brand-colored cards, the same shelf pattern events and
+          presets use. Reads as a designed row, not a stack of plain
+          list items. Up to 8; the full 3-lane newsroom lives on /news. */}
       {(() => {
         const tail = [
           ...filteredByLane.gov,
           ...filteredByLane.press,
           ...filteredByLane.community,
-        ].slice(0, 3);
+        ].slice(0, 8);
         if (tail.length === 0) return null;
         return (
-          <div
-            className="overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)]"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <ul>
-              {tail.map((h, i) => (
-                <StoryRow key={`${h.url}-${i}`} h={h} withBorder={i > 0} />
-              ))}
-            </ul>
+          <div className="-mx-4 px-4">
+            <div className="shelf-rail gap-2.5 pb-1">
+              {tail.map((h, i) => {
+                const MediaIcon = MEDIA_ICON[h.mediaType];
+                return (
+                  <a
+                    key={`${h.url}-${i}`}
+                    href={h.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex w-[208px] shrink-0 flex-col gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.97]"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <BrandPip meta={h} />
+                      <span
+                        className="min-w-0 flex-1 truncate text-[11px] font-bold"
+                        style={{ color: h.brandColor }}
+                      >
+                        {h.display}
+                      </span>
+                      <MediaIcon
+                        className="h-3 w-3 shrink-0"
+                        strokeWidth={2.25}
+                        style={{ color: "var(--app-ink-3)" }}
+                        aria-hidden
+                      />
+                    </div>
+                    <p
+                      className="line-clamp-3 text-[13px] font-semibold leading-snug"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {h.title}
+                    </p>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                      <span
+                        aria-hidden
+                        className="block h-[3px] w-7 rounded-full"
+                        style={{ background: h.brandColor }}
+                      />
+                      <span
+                        className="text-[10px] tabular-nums"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {formatAge(h.published_at)}
+                      </span>
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
           </div>
         );
       })()}
