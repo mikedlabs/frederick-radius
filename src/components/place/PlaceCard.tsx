@@ -13,6 +13,7 @@ import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
 import { Star } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
+import SourceBadge from "./SourceBadge";
 
 /**
  * "What people rave about" — only when there is a real Google rating
@@ -195,12 +196,20 @@ export default function PlaceCard({
             />
           </div>
           <div className="space-y-1 p-3.5">
-            <h3
-              className="truncate text-[15px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {place.name}
-            </h3>
+            <div className="flex items-baseline gap-2">
+              <h3
+                className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                {place.name}
+              </h3>
+              {/* SourceBadge — surfaces trust tier (Curated / Verified
+                  / Community / Official) at the card level. Self-hides
+                  when there's no honest claim, so most rows aren't
+                  affected. Sits next to the name so the reader sees
+                  *where the data came from* without scanning. */}
+              <SourceBadge place={place} size="sm" />
+            </div>
             <p
               className="truncate text-[12px]"
               style={{ color: "var(--app-ink-3)" }}
@@ -338,6 +347,10 @@ export default function PlaceCard({
             <span className="absolute inset-0" aria-hidden />
             {place.name}
           </button>
+          {/* SourceBadge — same trust tier surfacing as the detail
+              page, set inline next to the name. Self-hides when
+              there's nothing honest to claim. */}
+          <SourceBadge place={place} size="sm" />
           {place.distance_m !== undefined && (
             <span className="ml-auto whitespace-nowrap text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
               {formatDistance(place.distance_m)}
