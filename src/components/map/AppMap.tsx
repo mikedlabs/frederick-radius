@@ -16,6 +16,10 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal } from "lucide-react";
 
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
+import { useMode } from "@/hooks/useMode";
+import { defaultsFor } from "@/lib/mode-defaults";
+import { scopeClosures } from "@/lib/mode-scope";
+import ModeSwitch from "@/components/mode/ModeSwitch";
 import Link from "next/link";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { Place } from "@/data/places";
@@ -288,10 +292,18 @@ export default function AppMap({
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const { openSheet } = usePlaceSheet();
+  // Mode-driven layer defaults. The map mounts client-side via
+  // dynamic({ ssr:false }), so the initial mode read here is the
+  // localStorage-persisted value (not the SSR fallback). When the
+  // user flips the toggle later, the effect below resets the four
+  // layer toggles to the new mode's defaults — predictable behavior
+  // beats preserving the previous session's manual toggles.
+  const { mode } = useMode();
+  const initialDefaults = useMemo(() => defaultsFor(mode), [mode]);
   const [selected, setSelected] = useState<Selected>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [hover, setHover] = useState<{ lng: number; lat: number; label: string; sub?: string } | null>(null);
-  const [activeCats, setActiveCats] = useState<Set<string>>(new Set());
+  const [activeCats, setActiveCats] = useState<Set<string>>(() => new Set(initialDefaults.categories));
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
@@ -302,7 +314,7 @@ export default function AppMap({
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [osmError, setOsmError] = useState<string | null>(null);
   const [showUnverified, setShowUnverified] = useState(false);
-  const [amenityGroups, setAmenityGroups] = useState<Set<string>>(new Set());
+  const [amenityGroups, setAmenityGroups] = useState<Set<string>>(() => new Set(initialDefaults.amenityGroups));
   const [amenityOpen, setAmenityOpen] = useState(false);
   // The category rail is heavy; collapsed by default so the in-map
   // deck stays a clean glass bar. "Filters" reveals it as a panel.
@@ -314,9 +326,28 @@ export default function AppMap({
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
-  const [showCivic, setShowCivic] = useState(false);
-  const [showTrails, setShowTrails] = useState(false);
-  const [showTransit, setShowTransit] = useState(false);
+  const [showCivic, setShowCivic] = useState(initialDefaults.civic);
+  const [showTrails, setShowTrails] = useState(initialDefaults.lineLayers.includes("trails"));
+  const [showTransit, setShowTransit] = useState(initialDefaults.lineLayers.includes("transit"));
+
+  // On mode flip (user tapped the toggle, or geo suggestion landed):
+  // reset every layer-toggle to the new mode's defaults. We deliberately
+  // do NOT preserve the prior session's manual toggles — the brief calls
+  // out predictability over preservation. The first-render guard uses
+  // a ref so the initial useState seeding above is not double-applied.
+  const isFirstModeSync = useRef(true);
+  useEffect(() => {
+    if (isFirstModeSync.current) {
+      isFirstModeSync.current = false;
+      return;
+    }
+    const d = defaultsFor(mode);
+    setActiveCats(new Set(d.categories));
+    setAmenityGroups(new Set(d.amenityGroups));
+    setShowTrails(d.lineLayers.includes("trails"));
+    setShowTransit(d.lineLayers.includes("transit"));
+    setShowCivic(d.civic);
+  }, [mode]);
 
   useEffect(() => {
     if (osmFromProps) {
@@ -784,9 +815,20 @@ export default function AppMap({
     };
   }, [userLoc, selectedPlace]);
 
+  // Mode-aware scoping for civic pins. Visitor mode keeps only
+  // major closures (Closed / Detour / Crash / Down …) and hides 311
+  // resident-reported issues entirely. Resident mode shows everything
+  // ongoing. The scoping is applied even when showCivic is on, so the
+  // user's "civic overlay" toggle never lights up visitor-irrelevant
+  // 311 dots.
+  const scopedCivic = useMemo(() => {
+    if (!showCivic) return [] as typeof civic;
+    return scopeClosures(civic, defaultsFor(mode).closureScope);
+  }, [civic, showCivic, mode]);
+
   const civicGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
-    features: (showCivic ? civic : []).map((c) => ({
+    features: scopedCivic.map((c) => ({
       type: "Feature" as const,
       properties: { kind: c.kind, label: c.label },
       geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
@@ -843,6 +885,12 @@ export default function AppMap({
           default view is a clean, premium map. ── */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-2.5 pt-2.5 sm:px-3 sm:pt-3">
         <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
+          {/* Mode switch row — always visible per the brief. One tap
+              flips Visitor↔Resident and the layer toggles below reset
+              to that mode's defaults via the useEffect above. */}
+          <div className="flex items-center justify-end">
+            <ModeSwitch />
+          </div>
           {/* Unified search deck: a single rounded-pill bar with the
               search input filling the row and two icon-only buttons
               tucked into the bar's right side. The previous three
