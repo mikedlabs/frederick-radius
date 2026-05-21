@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Crosshair, Map as MapIcon, ArrowUpRight } from "lucide-react";
+import { Crosshair, Map as MapIcon, ArrowUpRight, X } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
 import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
@@ -354,21 +354,47 @@ export default function RadiusMap({
           />
         </Marker>
         {/* Place preview popup — shows when a user taps a colored dot.
-            Tiny by design: the name + a colored badge for the category
-            + a See place link to /places/[slug]. The popup itself
-            doesn't carry a photo so the layout stays compact and any
-            slow photo load doesn't shift the map. */}
+            Mobile-friendly dismiss: closeOnClick lets a tap on the map
+            close the popup, and our own 32px close button gives a
+            reliable tap target (Mapbox's default × is ~12px and easy
+            to miss with a fingertip). */}
         {selected && (
           <Popup
             longitude={selected.lng}
             latitude={selected.lat}
             anchor="bottom"
             offset={10}
-            closeOnClick={false}
+            closeOnClick
+            closeButton={false}
             onClose={() => setSelected(null)}
-            maxWidth="240px"
+            maxWidth="280px"
           >
-            <div style={{ minWidth: 180, padding: 2 }}>
+            <div style={{ minWidth: 200, padding: "2px 28px 2px 2px", position: "relative" }}>
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  setSelected(null);
+                }}
+                aria-label="Close"
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  width: 32,
+                  height: 32,
+                  display: "grid",
+                  placeItems: "center",
+                  background: "transparent",
+                  border: "none",
+                  borderRadius: 9999,
+                  cursor: "pointer",
+                  color: "#7A7975",
+                  WebkitTapHighlightColor: "rgba(0,0,0,0.06)",
+                }}
+              >
+                <X size={16} strokeWidth={2.25} />
+              </button>
               <span
                 aria-hidden
                 style={{
