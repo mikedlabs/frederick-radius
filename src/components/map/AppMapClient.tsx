@@ -195,7 +195,21 @@ function InViewDrawer({
         </p>
       </button>
       {snap !== "peek" && (
-        <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3">
+        <ul
+          className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3"
+          style={{
+            // The drawer sits on top of the mapbox-gl canvas, which by
+            // default claims vertical pan gestures for the map camera.
+            // touch-action: pan-y reserves vertical pans for native
+            // scroll inside the list; overscroll-behavior: contain
+            // stops the bounce from chaining back to the body / map.
+            touchAction: "pan-y",
+            overscrollBehavior: "contain",
+            WebkitOverflowScrolling: "touch",
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           {results.length === 0 ? (
             <li
               className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
