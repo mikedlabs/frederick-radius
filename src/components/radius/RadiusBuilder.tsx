@@ -242,33 +242,10 @@ export default function RadiusBuilder({
     [inside],
   );
 
-  const farthest = inside[inside.length - 1]?.distance_m ?? 0;
-  // The actual place sitting at the edge of the current radius — gives
-  // the user a tangible "you can reach this" anchor instead of just a
-  // number. Updates live as the slider moves.
+  // The actual place sitting at the edge of the current radius —
+  // surfaced in the floating ribbon over the map. Updates live as the
+  // slider moves.
   const edgePlace = inside[inside.length - 1] ?? null;
-
-  // Edge place name + distance for the hero card's "At the edge"
-  // footer. Position on the map is handled by Mapbox using the real
-  // place geom, so no bearing math needed any more.
-  const edgeForRing = useMemo(() => {
-    if (!edgePlace) return null;
-    return {
-      name: edgePlace.name,
-      distance_m: edgePlace.distance_m ?? farthest,
-    };
-  }, [edgePlace, farthest]);
-  // Live municipality coverage — how many distinct towns the
-  // current radius reaches into. Climbs as the user widens the slider.
-  const townsInside = useMemo(
-    () => new Set(inside.map((p) => p.municipality).filter(Boolean)).size,
-    [inside],
-  );
-  const formatFar = (m: number) => {
-    if (m === 0) return "–";
-    if (m < 1000) return `${Math.round(m)} ft`;
-    return `${(m / 1609).toFixed(1)} mi`;
-  };
 
   // Amenities inside the same radius — "what's within X" now genuinely
   // includes the restrooms / Wi-Fi / EV / bike / picnic / playgrounds,
@@ -302,28 +279,73 @@ export default function RadiusBuilder({
   }, [insideAmenities]);
 
   return (
-    <div className="space-y-5">
-      {/* Big interactive county canvas — tap or drag the pin to move
-          the center, pinch/scroll to zoom. Initial view fits the whole
-          county so the page leads with the geography. In-range places
-          render as dots so the user SEES density, not just a count. */}
-      <RadiusMap
-        mode={mode}
-        meters={meters}
-        center={{ lng: center.lng, lat: center.lat }}
-        centerLabel={center.label}
-        insidePlaces={insideDots}
-        onCenterChange={(next) => {
-          setMyLoc(next);
-          setMyLocLabel("Pinned point");
-        }}
-      />
+    <div className="space-y-3">
+      {/* Map + floating ribbon. Wrapped in a relative container so the
+          stats can overlay the map bottom (Apple Maps pattern). The
+          previous standalone ribbon section ate ~50px and pushed the
+          slider further from the map. */}
+      <div className="relative">
+        <RadiusMap
+          mode={mode}
+          meters={meters}
+          center={{ lng: center.lng, lat: center.lat }}
+          centerLabel={center.label}
+          insidePlaces={insideDots}
+          onCenterChange={(next) => {
+            setMyLoc(next);
+            setMyLocLabel("Pinned point");
+          }}
+        />
+        {/* Floating ribbon — overlays the map's bottom edge. Same
+            information as the old standalone strip in 1/3 the page
+            height because it borrows the map's space. */}
+        <div
+          className="pointer-events-none absolute inset-x-3 bottom-3 z-20"
+          aria-hidden
+        >
+          <div
+            className="pointer-events-auto flex items-center gap-2.5 rounded-full px-3.5 py-2 text-[12px] shadow-[var(--app-shadow-2)] backdrop-blur"
+            style={{
+              background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+              border: "1px solid var(--app-border)",
+            }}
+          >
+            <span
+              className="inline-flex items-center gap-1 font-semibold tabular-nums"
+              style={{ color: "var(--app-ink)" }}
+            >
+              <span className="font-serif text-[15px]">{minutes}</span>
+              <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+                min · {formatDistance(meters)}
+              </span>
+            </span>
+            <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
+            <span
+              className="inline-flex items-center gap-1 font-semibold tabular-nums"
+              style={{ color: "var(--app-ink)" }}
+            >
+              <span className="font-serif text-[15px]">{inside.length.toLocaleString()}</span>
+              <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+                place{inside.length === 1 ? "" : "s"}
+              </span>
+            </span>
+            {edgePlace && (
+              <span
+                className="ml-auto hidden min-w-0 max-w-[40%] truncate text-[11px] sm:inline"
+                style={{ color: "var(--app-ink-3)" }}
+                title={`At the edge: ${edgePlace.name}`}
+              >
+                edge: <span style={{ color: "var(--app-ink-2)" }}>{edgePlace.name}</span>
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
-      {/* Controls land DIRECTLY below the map so the slider and the
-          radius circle are in the same viewport. Adjusting any control
-          while the map is offscreen broke the "see what you're doing"
-          loop the brief calls out. */}
-      <section className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 shadow-[var(--app-shadow-1)]"
+      {/* Compact control card — center + mode + slider in one tight
+          stack so the entire instrument fits under the map in one
+          mobile viewport. */}
+      <section className="space-y-2.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
                style={{ borderColor: "var(--app-border)" }}>
         {/* Center — a dropdown with every municipality + landmarks
             PLUS a "Use my location" button so the user has a real
@@ -432,127 +454,25 @@ export default function RadiusBuilder({
           })}
         </div>
 
-        <div className="relative">
-          <div className="flex items-baseline justify-between gap-2">
-            <label htmlFor="minutes-slider" className="text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-              Distance
-            </label>
-            <span className="font-serif text-lg font-semibold tabular-nums" style={{ color: "var(--app-brand)" }}>
-              {minutes} min <span className="text-[13px] font-normal" style={{ color: "var(--app-ink-3)" }}>· {formatDistance(meters)}</span>
-            </span>
-          </div>
-          {/* Concentric-ring density backdrop — a quiet visual cue that
-              the radius is a real spatial concept, not just a number.
-              The ring count grows as the radius widens; the active ring
-              pulses gently to draw the eye. SVG is pointer-events-none
-              so it never blocks the slider. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-            style={{ width: 220, height: 56 }}
-          >
-            <svg viewBox="0 0 220 56" className="h-full w-full" preserveAspectRatio="xMidYMid meet">
-              {[14, 26, 38, 50].map((r, i) => (
-                <ellipse
-                  key={r}
-                  cx={110}
-                  cy={28}
-                  rx={r * 2}
-                  ry={r * 0.55}
-                  fill="none"
-                  stroke="var(--app-brand)"
-                  strokeWidth={0.7}
-                  opacity={Math.max(0.04, 0.18 - i * 0.03)}
-                />
-              ))}
-            </svg>
-          </div>
+        {/* Slider — single row, inline minute display. Range labels
+            tucked below at 10px so they don't add height. */}
+        <div>
           <input
             id="minutes-slider"
+            aria-label={`${minutes} minutes`}
             type="range"
             min={3}
             max={mode === "walk" ? 30 : mode === "bike" ? 20 : 15}
             step={1}
             value={minutes}
             onChange={(e) => setMinutes(Number(e.target.value))}
-            className="relative z-10 mt-1.5 w-full"
+            className="w-full"
             style={{ accentColor: "var(--app-brand)" }}
           />
-          <div className="mt-1 flex justify-between text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            <span>3</span>
+          <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+            <span>3 min</span>
             <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
           </div>
-          {/* "What's at the edge" peek — tells the user the farthest
-              concrete place they can reach right now. Reads as a
-              tangible boundary, not an abstract distance. */}
-          {edgePlace && (
-            <div
-              className="mt-2.5 flex items-center gap-2 rounded-[var(--app-radius-md)] px-3 py-1.5 text-[11px]"
-              style={{
-                background: "color-mix(in srgb, var(--app-brand) 8%, var(--app-bg-elevated))",
-                color: "var(--app-ink-2)",
-              }}
-            >
-              <span
-                aria-hidden
-                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: "var(--app-brand)" }}
-              />
-              <span className="min-w-0 flex-1 truncate">
-                <span className="font-semibold uppercase tracking-[0.08em] text-[9px]" style={{ color: "var(--app-ink-3)" }}>
-                  At the edge
-                </span>{" "}
-                <span style={{ color: "var(--app-ink)" }}>{edgePlace.name}</span>
-              </span>
-              <span className="shrink-0 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                {formatFar(farthest)}
-              </span>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Slim stat ribbon — mode/minutes/distance · in-range count · edge
-          place. Sits below the controls now so the visible-on-mount
-          stack reads: map → controls → live stats. */}
-      <section
-        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-2.5"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="text-[10px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {mode === "walk" ? "Walking" : mode === "bike" ? "Biking" : "Driving"}
-          </span>
-          <span
-            className="font-serif text-[16px] font-semibold tabular-nums"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {minutes} min
-            <span className="ml-1 text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-              · {formatDistance(meters)}
-            </span>
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <span
-            className="text-[10px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            In range
-          </span>
-          <span
-            className="font-serif text-[16px] font-semibold tabular-nums"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {inside.length.toLocaleString()}
-            <span className="ml-1 text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-              place{inside.length === 1 ? "" : "s"}
-            </span>
-          </span>
         </div>
       </section>
 

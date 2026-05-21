@@ -28,21 +28,11 @@ export const metadata: Metadata = {
 
 export default function RadiusPage() {
   return (
-    <div className="relative space-y-5">
+    <div className="relative space-y-3">
       <PageBloom variant="cool" />
-      <header className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          Signature interaction
-        </p>
-        <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Set a point. Set a distance. See what&apos;s inside.
-        </h1>
-        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Frederick&apos;s defining interaction — walking from your hotel, driving from a meeting, hiking from a trailhead.
-        </p>
-      </header>
-      {/* RadiusBuilder owns the live "In play right now" strip — its
-          numbers reflect the active radius, not a static county total. */}
+      {/* No page-level header. On a 375x812 mobile viewport the
+          marketing prose ate ~190px and pushed the controls below
+          the fold. The map + ribbon overlay IS the headline now. */}
       <RadiusBuilder places={OPEN_PLACES} amenities={OPEN_AMENITIES} />
     </div>
   );
