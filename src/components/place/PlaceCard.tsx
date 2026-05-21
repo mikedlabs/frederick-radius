@@ -13,6 +13,7 @@ import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
 import { Star } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
+import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import SourceBadge from "./SourceBadge";
 
 /**
@@ -155,21 +156,11 @@ export default function PlaceCard({
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
               </>
             ) : (
-              <div
-                aria-hidden
-                className="flex h-full w-full items-center justify-center"
-                style={{
-                  background: `radial-gradient(120% 120% at 30% 20%, ${color}30, ${color}0a 70%)`,
-                  color,
-                }}
-              >
-                <CategoryIcon
-                  slug={place.category}
-                  strokeWidth={1.5}
-                  className="h-14 w-14 opacity-90 transition-transform duration-[600ms] ease-out group-hover:scale-[1.08]"
-                  style={{ color }}
-                />
-              </div>
+              <CategoryGraphic
+                category={place.category}
+                seed={place.slug}
+                className="absolute inset-0 transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
+              />
             )}
             {/* Category chip — top-left, always visible. Photo-backed
                 tiles get a filled chip in the category color; the no-
