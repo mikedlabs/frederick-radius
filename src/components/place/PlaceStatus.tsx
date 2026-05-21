@@ -30,21 +30,23 @@ export default function PlaceStatus({
   status: OpenStatus;
   className?: string;
 }) {
-  // The common, low-information case: no claim is the honest, calm one.
-  if (status.state === "unknown") return null;
+  // The common, low-information cases: no claim is the honest, calm
+  // one. Per the design audits, "Hours not posted · call to check"
+  // repeating on every weak card made the app feel empty, not
+  // helpful — so cards say NOTHING for unknown/unverified hours; the
+  // detail page (HoursBlock) still carries the basis text where it's
+  // actionable. The card only speaks when the answer is real ("Open
+  // until 9pm", "Closing soon", "Closed").
+  if (status.state === "unknown" || status.state === "unverified") return null;
 
   const tone =
     status.state === "open"
       ? "var(--app-positive)"
       : status.state === "closing-soon"
         ? "var(--app-warning)"
-        : status.state === "unverified"
-          ? "var(--app-ink-3)"
-          : "var(--app-ink-3)"; // closed
+        : "var(--app-ink-3)"; // closed
 
-  // "unverified" = curated hours we have not confirmed. Honest, quiet.
-  const label =
-    status.state === "unverified" ? "Likely open" : formatHoursLine(status);
+  const label = formatHoursLine(status);
 
   return (
     <span

@@ -19,6 +19,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
+import SourceBadge from "@/components/place/SourceBadge";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -204,11 +205,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
                 {"$".repeat(place.price_band)}
               </span>
             )}
-            {place.is_verified && (
-              <Chip tone="cool" className="uppercase tracking-wide">
-                ✓ Verified place
-              </Chip>
-            )}
+            <SourceBadge place={place} size="md" />
             {hoursConfirmed && (
               <span
                 className="ml-auto text-[10px] font-medium"

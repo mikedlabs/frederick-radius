@@ -89,8 +89,8 @@ export function formatHoursLine(status: OpenStatus): string {
     return `Closed · Opens ${DAY_LABEL[status.opensDay]} ${formatTime(status.opensAt)}`;
   }
   if (status.state === "closed") return "Closed";
-  if (status.state === "unverified") return "Hours not confirmed · call to check";
-  return "Hours not posted · call to check";
+  if (status.state === "unverified") return "Hours not confirmed";
+  return "Hours not posted";
 }
 
 export function formatFullHours(hours: Hours | undefined): { day: DayOfWeek; label: string; windows: HoursWindow[] }[] {
