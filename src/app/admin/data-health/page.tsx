@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PLACES } from "@/data/places";
-import { rankPlaces, hoursCoverage } from "@/lib/loaders/places";
+import { rankPlaces, hoursCoverage, getNeedsReviewPlaces } from "@/lib/loaders/places";
+import { getNeedsReviewEvents } from "@/lib/loaders/events";
+import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import { getLiveEvents } from "@/lib/integrations/ical-live";
@@ -39,6 +41,12 @@ export default async function DataHealth() {
   const anomalies = getAnomalies();
   const snapshots = getSnapshots();
   const drift = getDriftStats();
+  // Placement validation — coordinates flagged needs_review because
+  // they are missing or fall outside the county bbox. The public
+  // surfaces never render these, so this view is the only place an
+  // editor sees them.
+  const reviewPlaces = getNeedsReviewPlaces();
+  const reviewEvents = getNeedsReviewEvents();
 
   const rows: Array<[string, string, string]> = [
     ["Places (raw)", String(PLACES.length), ""],
@@ -78,6 +86,105 @@ export default async function DataHealth() {
           ))}
         </tbody>
       </table>
+
+      <section className="mt-8">
+        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          Placement (needs review)
+        </h2>
+        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          Coordinates that fall outside the Frederick County bbox
+          (lat&nbsp;{FREDERICK_COUNTY_BBOX.south}–{FREDERICK_COUNTY_BBOX.north},
+          lng&nbsp;{FREDERICK_COUNTY_BBOX.west}–{FREDERICK_COUNTY_BBOX.east})
+          or are missing entirely. These are dropped from every public
+          surface so a mispositioned marker can never reach a user.
+          Fix the source row in <code>src/data/places.ts</code> or{" "}
+          <code>src/data/events.ts</code> and the row clears next build.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div
+            className="tactile rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] p-3 text-center"
+          >
+            <div
+              className="font-serif text-[22px] font-semibold leading-none tracking-tight tabular-nums"
+              style={{ color: reviewPlaces.length > 0 ? "var(--app-warning)" : "var(--app-positive)" }}
+            >
+              {reviewPlaces.length.toLocaleString()}
+            </div>
+            <div
+              className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Places flagged
+            </div>
+          </div>
+          <div
+            className="tactile rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] p-3 text-center"
+          >
+            <div
+              className="font-serif text-[22px] font-semibold leading-none tracking-tight tabular-nums"
+              style={{ color: reviewEvents.length > 0 ? "var(--app-warning)" : "var(--app-positive)" }}
+            >
+              {reviewEvents.length.toLocaleString()}
+            </div>
+            <div
+              className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Events flagged
+            </div>
+          </div>
+        </div>
+        {(reviewPlaces.length > 0 || reviewEvents.length > 0) && (
+          <details className="mt-3">
+            <summary
+              className="cursor-pointer text-[12px] font-semibold"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Show the first {Math.min(20, reviewPlaces.length + reviewEvents.length)} rows
+            </summary>
+            <ul className="mt-2 space-y-1 text-[11px]" style={{ color: "var(--app-ink-2)" }}>
+              {reviewPlaces.slice(0, 20).map((p) => (
+                <li
+                  key={`p:${p.slug}`}
+                  className="flex justify-between border-b py-1"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <span>
+                    <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                      place
+                    </span>{" "}
+                    {p.slug}
+                  </span>
+                  <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {p.geom
+                      ? `${p.geom.lng.toFixed(4)}, ${p.geom.lat.toFixed(4)}`
+                      : "no geom"}
+                  </span>
+                </li>
+              ))}
+              {reviewEvents.slice(0, 20).map((e) => (
+                <li
+                  key={`e:${e.slug}`}
+                  className="flex justify-between border-b py-1"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <span>
+                    <span className="font-mono text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                      event
+                    </span>{" "}
+                    {e.slug}
+                  </span>
+                  <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {e.geom
+                      ? `${e.geom.lng.toFixed(4)}, ${e.geom.lat.toFixed(4)}`
+                      : "no geom"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </section>
 
       <section className="mt-8">
         <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>

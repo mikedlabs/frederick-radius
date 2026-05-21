@@ -2,7 +2,7 @@ import { PLACES, type Place } from "@/data/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
-import { haversineMeters, type LngLat } from "@/lib/geo";
+import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { isNonDiscoverable } from "@/lib/relevance";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
@@ -158,6 +158,20 @@ const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
   .map((p) => patchRecord(p, OV_PATCH))
   // Urbana geo-claim runs LAST so it composes with dedupe + overrides.
   .map(claimUrbana);
+
+// Build-time visibility into off-bbox places. Server-only so it
+// doesn't run in the browser. Same shape as the events placement
+// warning so build logs read consistently.
+if (typeof window === "undefined") {
+  const offBbox = BASE_PLACES.filter((p) => !isValidCoord(p.geom));
+  if (offBbox.length > 0) {
+    const sample = offBbox.slice(0, 5).map((p) => p.slug).join(", ");
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[placement] places: ${offBbox.length} row(s) flagged needs_review (off-bbox or missing coord). Examples: ${sample}`,
+    );
+  }
+}
 
 const BASE_BY_SLUG: Record<string, Place> = (() => {
   const byCanon: Record<string, Place> = {};
@@ -463,12 +477,28 @@ export function isSubstantive(p: Place): boolean {
  * P0-1: the ONE canonical public place set. Every non-admin surface
  * (Radius/home, Map, Search, Municipality, Saved, Sitemap, Plan) must
  * start here so users see the same reality on every route: deduplicated
- * (gated by RADIUS_DEDUPE), closed businesses removed, and the non-
- * discoverable B2B long tail quieted (gated by RADIUS_RELEVANCE). Raw
- * PLACES stays available only for admin, audits, and scripts.
+ * (gated by RADIUS_DEDUPE), closed businesses removed, the non-
+ * discoverable B2B long tail quieted (gated by RADIUS_RELEVANCE), AND
+ * coordinates validated against the county bbox so a mispositioned
+ * marker can never reach a user. Off-bbox rows surface on
+ * /admin/data-health via getNeedsReviewPlaces() so they are visible
+ * to an editor before they are invisible to the world.
  */
 export function publicPlaces(): Place[] {
-  return BASE_PLACES.filter(isOperational).filter(isDiscoverable).filter(isSubstantive);
+  return BASE_PLACES
+    .filter(isOperational)
+    .filter(isDiscoverable)
+    .filter(isSubstantive)
+    .filter((p) => isValidCoord(p.geom));
+}
+
+/**
+ * Places whose coordinate is missing or outside the Frederick County
+ * bbox. These are dropped from every public surface and listed in
+ * /admin/data-health so an editor can fix them.
+ */
+export function getNeedsReviewPlaces(): Place[] {
+  return BASE_PLACES.filter((p) => !isValidCoord(p.geom));
 }
 
 /** Public places in one municipality (canonical set, not raw). */

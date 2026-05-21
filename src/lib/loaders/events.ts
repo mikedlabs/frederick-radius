@@ -7,6 +7,11 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import {
+  partitionEvents,
+  logPlacementWarnings,
+  type Placement,
+} from "@/lib/validation/placement";
 
 /**
  * Systemic guard: never surface an event whose venue is a known-closed
@@ -33,9 +38,37 @@ function claimUrbanaEvent<T extends { geom: LngLat; municipality: string }>(e: T
     : e;
 }
 
-const EVENTS = RAW_EVENTS.filter((e) => !isKnownClosed(e.venue_name)).map(
-  claimUrbanaEvent,
-);
+// Stage 1: cheap filters that don't touch coordinates.
+const STAGE_1 = RAW_EVENTS
+  .filter((e) => !isKnownClosed(e.venue_name))
+  .map(claimUrbanaEvent);
+
+// Stage 2: validate every event's position against the county bbox.
+// Events with a venue_place_slug inherit the verified coord (placement
+// "venue"). Standalone events that pass the bbox check are "geocoded".
+// Anything else is "needs_review" and never reaches a public surface.
+const _placementPartition = partitionEvents(STAGE_1, (slug) => {
+  const p = clientPlaceBySlug(slug);
+  return p ? { lng: p.geom.lng, lat: p.geom.lat } : null;
+});
+logPlacementWarnings("events", _placementPartition.needsReview);
+
+// The canonical public set. Every other loader function in this file
+// starts here, so placement validation closes the door on bad data
+// once, at the source, instead of every read site.
+const EVENTS: ReadonlyArray<Event & { placement: Placement }> =
+  _placementPartition.public;
+
+/**
+ * Events flagged as needs_review (off-bbox, missing geom, or venue
+ * slug that didn't resolve). Read-only export for /admin/data-health
+ * so editors can fix them before they ship.
+ */
+export function getNeedsReviewEvents(): ReadonlyArray<
+  Event & { placement: "needs_review" }
+> {
+  return _placementPartition.needsReview;
+}
 
 /**
  * User-visible "by town" events view. Default ON by owner directive

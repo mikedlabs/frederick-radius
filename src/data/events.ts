@@ -34,6 +34,20 @@ export type Event = {
    */
   food_trucks?: string[];
   /**
+   * How this event's coordinates were resolved. The loader sets this
+   * automatically; seed authors do not write it directly.
+   *   - "venue":       inherited from a known venue (venue_place_slug
+   *                    resolved to a real Place with a verified geom)
+   *   - "geocoded":    standalone event with its own geom, validated
+   *                    against the county bbox
+   *   - "needs_review": geom failed the bbox check or geom is missing.
+   *                    These rows are dropped from every public surface
+   *                    and surfaced on /admin/data-health for human fix.
+   * The brief's rule: a mispositioned marker breaks trust instantly,
+   * so we never render a row we cannot vouch for the position of.
+   */
+  placement?: "venue" | "geocoded" | "needs_review";
+  /**
    * Canonical source page for a live/aggregated event (the feed item's
    * own URL). Seed events leave this unset and link to the in-app detail
    * instead; the detail route surfaces it as an "Official page" link so
