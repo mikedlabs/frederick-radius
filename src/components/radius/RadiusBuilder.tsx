@@ -5,7 +5,7 @@ import { Footprints, Bike, Car, MapPin, LayoutGrid, Rows3, ChevronDown, Navigati
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
-import RadiusRing from "./RadiusRing";
+import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle. Places arrive
@@ -241,22 +241,16 @@ export default function RadiusBuilder({
   // number. Updates live as the slider moves.
   const edgePlace = inside[inside.length - 1] ?? null;
 
-  // Edge place's compass bearing from the center, in degrees where
-  // 0° is North and angles increase clockwise. Used to position the
-  // edge dot on the RadiusRing SVG. Approximation by atan2 of the
-  // lat/lng deltas is plenty for the visual marker — we're not
-  // computing a great-circle route here, just placing a dot.
+  // Edge place name + distance for the hero card's "At the edge"
+  // footer. Position on the map is handled by Mapbox using the real
+  // place geom, so no bearing math needed any more.
   const edgeForRing = useMemo(() => {
     if (!edgePlace) return null;
-    const dLat = edgePlace.geom.lat - center.lat;
-    const dLng = edgePlace.geom.lng - center.lng;
-    const bearing = (Math.atan2(dLng, dLat) * 180) / Math.PI;
     return {
       name: edgePlace.name,
       distance_m: edgePlace.distance_m ?? farthest,
-      bearing: ((bearing % 360) + 360) % 360,
     };
-  }, [edgePlace, center.lat, center.lng, farthest]);
+  }, [edgePlace, farthest]);
   // Live municipality coverage — how many distinct towns the
   // current radius reaches into. Climbs as the user widens the slider.
   const townsInside = useMemo(
@@ -302,13 +296,15 @@ export default function RadiusBuilder({
 
   return (
     <div className="space-y-5">
-      {/* New visual hero — SVG distance ring with the edge place named.
-          Replaces the previous "control card first" pattern with
-          "see what your radius looks like, then refine it." */}
-      <RadiusRing
+      {/* New visual hero — a real Mapbox map with the radius drawn as
+          a circle overlay on actual streets. The previous abstract SVG
+          ring read as a demo; users want to see the geography of what's
+          actually inside their reach. */}
+      <RadiusMap
         mode={mode}
         minutes={minutes}
         meters={meters}
+        center={{ lng: center.lng, lat: center.lat }}
         centerLabel={center.label}
         edge={edgeForRing}
         countInside={inside.length}
