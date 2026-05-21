@@ -1,8 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Crosshair, Map as MapIcon } from "lucide-react";
+import { Crosshair, Map as MapIcon, ArrowUpRight } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
 import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
@@ -31,6 +32,7 @@ const Map = dynamic(() => import("react-map-gl/mapbox").then((m) => m.default), 
 const Source = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Source), { ssr: false });
 const Layer = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Layer), { ssr: false });
 const Marker = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Marker), { ssr: false });
+const Popup = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Popup), { ssr: false });
 
 const STYLE_URL = "mapbox://styles/mapbox/standard";
 
@@ -82,7 +84,22 @@ function radiusBounds(
   ];
 }
 
-export type InsideDot = { lng: number; lat: number };
+/**
+ * One in-range place rendered as a colored dot on the map. Carries the
+ * minimum metadata needed to color the dot by category and to surface a
+ * tap-preview popup (slug + name); no photo URL, no full place record,
+ * so the props stay light even at 500+ places.
+ */
+export type InsideDot = {
+  lng: number;
+  lat: number;
+  slug: string;
+  name: string;
+  category: string;
+  /** Category color (CATEGORY_BY_SLUG[cat]?.color). Falls back to a
+   *  neutral grey when the category isn't in the taxonomy. */
+  category_color?: string;
+};
 
 export default function RadiusMap({
   mode,
@@ -115,6 +132,15 @@ export default function RadiusMap({
   // circle a smooth follow without thrashing parent state on every
   // pointermove. Committed back via onCenterChange on dragend.
   const [drag, setDrag] = useState<{ lng: number; lat: number } | null>(null);
+  // The place a user tapped on the map — shows the preview popup. Null
+  // when no place is selected (the default).
+  const [selected, setSelected] = useState<{
+    lng: number;
+    lat: number;
+    slug: string;
+    name: string;
+    color: string;
+  } | null>(null);
 
   const effectiveCenter = drag ?? center;
 
@@ -128,7 +154,14 @@ export default function RadiusMap({
       type: "FeatureCollection",
       features: insidePlaces.map((p) => ({
         type: "Feature",
-        properties: {},
+        properties: {
+          slug: p.slug,
+          name: p.name,
+          // Falls back to a neutral grey for places that don't have a
+          // category color, so a missing taxonomy entry never breaks
+          // the whole dot layer.
+          color: p.category_color ?? "#7A828C",
+        },
         geometry: { type: "Point", coordinates: [p.lng, p.lat] },
       })),
     };
@@ -167,10 +200,43 @@ export default function RadiusMap({
     });
   };
 
-  // Single-tap on the map → move the center there. react-map-gl only
-  // fires onClick after a real click (drag/pan don't trigger it).
+  // Single-tap on the map. The brief's "place is verified, not guessed"
+  // rule applies here too — if the tap lands on a known place dot, we
+  // show its preview popup; otherwise we treat the tap as a request to
+  // move the center.
+  //
+  // react-map-gl's onClick gives us a `features` array when the layer
+  // is listed in interactiveLayerIds. Falling back to
+  // queryRenderedFeatures handles the case where features is undefined
+  // (older versions, edge cases) so the popup is always reachable.
   const handleMapClick = (e: MapMouseEvent) => {
+    const hits =
+      (e.features && e.features.length > 0
+        ? e.features
+        : e.target.queryRenderedFeatures(e.point, {
+            layers: ["radius-places-dots"],
+          })) ?? [];
+    if (hits.length > 0) {
+      const f = hits[0];
+      const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+      const props = (f.properties ?? {}) as {
+        slug?: string;
+        name?: string;
+        color?: string;
+      };
+      if (props.slug && props.name) {
+        setSelected({
+          lng: coords[0],
+          lat: coords[1],
+          slug: props.slug,
+          name: props.name,
+          color: props.color ?? "#7A828C",
+        });
+        return;
+      }
+    }
     if (!onCenterChange) return;
+    setSelected(null);
     onCenterChange({ lng: e.lngLat.lng, lat: e.lngLat.lat });
   };
 
@@ -220,24 +286,27 @@ export default function RadiusMap({
         touchPitch={false}
         attributionControl={false}
         onClick={handleMapClick}
+        interactiveLayerIds={["radius-places-dots"]}
         cursor={onCenterChange ? "crosshair" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
-        {/* In-range places as small mode-tinted dots — geographic
-            evidence of "there's a lot here" without rendering hundreds
-            of full marker buttons. Source updates every time the user
-            moves the slider or recenters. */}
+        {/* In-range places as category-colored dots — the map now reads
+            as a story at a glance: food clusters orange, parks green,
+            arts purple. Each dot is tappable; the click handler decides
+            whether the tap is a place preview or a center-set. */}
         <Source id="radius-places" type="geojson" data={placesGeoJson}>
           <Layer
             id="radius-places-dots"
             type="circle"
             paint={{
-              "circle-radius": 3.5,
-              "circle-color": accentHex,
-              "circle-opacity": 0.78,
+              // Slightly bigger than the previous 3.5px so taps land
+              // reliably on mobile, and the color story carries.
+              "circle-radius": 4.5,
+              "circle-color": ["get", "color"],
+              "circle-opacity": 0.85,
               "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 1,
-              "circle-stroke-opacity": 0.6,
+              "circle-stroke-width": 1.2,
+              "circle-stroke-opacity": 0.85,
             }}
           />
         </Source>
@@ -284,6 +353,63 @@ export default function RadiusMap({
             }}
           />
         </Marker>
+        {/* Place preview popup — shows when a user taps a colored dot.
+            Tiny by design: the name + a colored badge for the category
+            + a See place link to /places/[slug]. The popup itself
+            doesn't carry a photo so the layout stays compact and any
+            slow photo load doesn't shift the map. */}
+        {selected && (
+          <Popup
+            longitude={selected.lng}
+            latitude={selected.lat}
+            anchor="bottom"
+            offset={10}
+            closeOnClick={false}
+            onClose={() => setSelected(null)}
+            maxWidth="240px"
+          >
+            <div style={{ minWidth: 180, padding: 2 }}>
+              <span
+                aria-hidden
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 8,
+                  borderRadius: 9999,
+                  background: selected.color,
+                  marginRight: 6,
+                  verticalAlign: "middle",
+                }}
+              />
+              <strong
+                style={{
+                  fontSize: 13,
+                  color: "#1A1A1A",
+                  fontFamily: "var(--font-plex-serif)",
+                  verticalAlign: "middle",
+                }}
+              >
+                {selected.name}
+              </strong>
+              <div style={{ marginTop: 6 }}>
+                <Link
+                  href={`/places/${selected.slug}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: selected.color,
+                  }}
+                >
+                  See place
+                  <ArrowUpRight size={12} strokeWidth={2.25} />
+                </Link>
+              </div>
+            </div>
+          </Popup>
+        )}
       </Map>
 
       {/* Center label pill — names the current center without making
