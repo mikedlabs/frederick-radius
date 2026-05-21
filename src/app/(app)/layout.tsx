@@ -10,9 +10,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <PlaceSheetProvider>
       <RouteAccent>
+        {/* Inner wrapper. NO background here — the body element
+            (globals.css) already paints --app-bg, and removing the
+            duplicate lets the fixed PageBloom orbs sit visibly
+            BETWEEN the body bg and the wrapper's children. With a bg
+            on this wrapper the orbs (z:-10 fixed) were obscured. */}
         <div
           className="min-h-screen"
-          style={{ background: "var(--app-bg)", color: "var(--app-ink)" }}
+          style={{ color: "var(--app-ink)" }}
         >
           {/* Fires the optional geolocation-based mode suggestion on
               first mount. Renders nothing; the map paints with the

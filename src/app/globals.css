@@ -379,6 +379,82 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────
+ * Aurora bloom — slow-drifting gradient orbs behind the
+ * whole page, the shader-style cinematic background the
+ * north-star UI calls for. Each orb is a single radial
+ * gradient on an absolutely-positioned div, animated via
+ * CSS so the GPU compositor does the work. No shaders, no
+ * canvases, no Framer-runtime dependency — same aesthetic.
+ *
+ * Four orbs, all on independent ~30–90s cycles so the
+ * pattern never repeats and the page feels alive.
+ * mix-blend-mode: screen makes them GLOW where they meet
+ * (vs. just stacking opaquely). Respect prefers-reduced-
+ * motion: hold the orbs static instead of animating.
+ * ───────────────────────────────────────────────────── */
+@keyframes aurora-1 {
+  0%   { transform: translate3d(-6%, -4%, 0) scale(1.0); }
+  50%  { transform: translate3d(8%, 6%, 0) scale(1.12); }
+  100% { transform: translate3d(-6%, -4%, 0) scale(1.0); }
+}
+@keyframes aurora-2 {
+  0%   { transform: translate3d(5%, -3%, 0) scale(1.05); }
+  50%  { transform: translate3d(-9%, 7%, 0) scale(0.95); }
+  100% { transform: translate3d(5%, -3%, 0) scale(1.05); }
+}
+@keyframes aurora-3 {
+  0%   { transform: translate3d(-3%, 4%, 0) scale(0.95); }
+  50%  { transform: translate3d(7%, -6%, 0) scale(1.1); }
+  100% { transform: translate3d(-3%, 4%, 0) scale(0.95); }
+}
+@keyframes aurora-4 {
+  0%   { transform: translate3d(2%, 6%, 0) scale(1.05); }
+  50%  { transform: translate3d(-5%, -4%, 0) scale(0.92); }
+  100% { transform: translate3d(2%, 6%, 0) scale(1.05); }
+}
+.aurora-orb {
+  position: absolute;
+  border-radius: 50%;
+  /* Heavy blur softens the orb to "aurora glow" rather than "blob".
+     Slightly less than before so the peak color reads. */
+  filter: blur(40px);
+  will-change: transform;
+  /* No mix-blend-mode here. The parent (.pointer-events-none fixed
+     inset-0 -z-10) creates an isolated stacking context, which means
+     `screen` would only blend orbs against each other, not against the
+     body bg. Plain `opacity` works through the stacking context. */
+}
+.aurora-orb-1 { animation: aurora-1 42s ease-in-out infinite; }
+.aurora-orb-2 { animation: aurora-2 55s ease-in-out infinite; }
+.aurora-orb-3 { animation: aurora-3 67s ease-in-out infinite; }
+.aurora-orb-4 { animation: aurora-4 81s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .aurora-orb-1, .aurora-orb-2, .aurora-orb-3, .aurora-orb-4 {
+    animation: none;
+  }
+}
+
+/* Subtle SVG grain — the "shader artifact" texture that
+ * keeps the aurora from feeling like flat CSS. About 6%
+ * opacity, multiply-blended so it sits on top of the bloom
+ * without darkening real content. */
+.aurora-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: multiply;
+  /* Inline SVG noise — no extra HTTP request. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+@media (prefers-color-scheme: dark) {
+  .aurora-grain {
+    opacity: 0.05;
+    mix-blend-mode: screen;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
  * Shimmer skeleton — used by loading states.
  * ───────────────────────────────────────────────────── */
 .shimmer {
