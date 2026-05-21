@@ -254,47 +254,15 @@ export default async function HomePage({
       </SkyHero>
 
       {/* When? — the brand-defining temporal control. Pivots the
-       *  Upcoming section between Now / Tonight / Tomorrow / Weekend.
+       *  events section between Now / Tonight / Tomorrow / Weekend.
        *  Mode lives in ?t= so the view is shareable. */}
       <TimeToggle active={mode} counts={counts} />
 
-      {/* 2 — One quiet civic line. */}
-      <Suspense fallback={<Skeleton.Block height={28} round="var(--app-radius-md)" />}>
-        <PulseSummary />
-      </Suspense>
-
-      {/* 3 — Local newsroom. Has its own header + lane structure.
-       *  Skeleton shows a feature card + a few row stubs while the RSS
-       *  fan-out resolves, so the page doesn't pop in/jump. */}
-      <Suspense
-        fallback={
-          <div aria-busy="true" className="space-y-2.5">
-            <Skeleton.Block height={20} width={140} round="var(--app-radius-sm)" />
-            <Skeleton.Card withPhoto={false} />
-            <Skeleton.Row />
-            <Skeleton.Row />
-            <Skeleton.Row />
-          </div>
-        }
-      >
-        <LocalNewsStrip />
-      </Suspense>
-
-      {/* 4 — Editorial place. */}
-      {featuredPlace && (
-        <DismissibleSection id="featured-place" title="Worth your evening">
-          <FeaturedTonight place={featuredPlace} />
-        </DismissibleSection>
-      )}
-
-      {/* 5 — Time-aware curated places (component owns its own header). */}
-      <RightNow now={now} />
-
-      {/* 6 — Upcoming events. ONE section instead of two: the featured
-          photo-led card on top, then the rest of the queue as a
-          horizontal shelf. The previous two-section layout (Don't miss
-          → Coming up) double-stacked event headings; one section reads
-          tighter and tells the same story. */}
+      {/* ── PRIMARY ZONE ───────────────────────────────────────────
+          The two things a stranger opens the app to learn: what's the
+          day like (the SkyHero above) and what's happening (this). The
+          events section sits directly under the toggle so the answer
+          to "what should I do?" is the first thing below the fold. */}
       <DismissibleSection
         id="upcoming"
         title={slice.title}
@@ -335,7 +303,55 @@ export default async function HomePage({
         )}
       </DismissibleSection>
 
-      {/* 7 — Frederick County in 1 fact. Rotates daily. */}
+      {/* ── DISCOVERY ZONE ─────────────────────────────────────────
+          Everything below the divider is "browse if you want," not
+          "you must read this." Same content as before — civic pulse,
+          news, an editorial place, time-curated picks, a history fact
+          — but visually subordinate to the primary zone above so the
+          page has a clear hierarchy instead of a flat stack of
+          equal-weight headings. */}
+      <div className="flex items-center gap-3 pt-1" aria-hidden>
+        <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+        <span
+          className="text-[11px] font-bold uppercase tracking-[0.14em]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          More around Frederick
+        </span>
+        <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+      </div>
+
+      {/* One quiet civic line. */}
+      <Suspense fallback={<Skeleton.Block height={28} round="var(--app-radius-md)" />}>
+        <PulseSummary />
+      </Suspense>
+
+      {/* Local newsroom — compact briefing. */}
+      <Suspense
+        fallback={
+          <div aria-busy="true" className="space-y-2.5">
+            <Skeleton.Block height={20} width={140} round="var(--app-radius-sm)" />
+            <Skeleton.Card withPhoto={false} />
+            <Skeleton.Row />
+            <Skeleton.Row />
+            <Skeleton.Row />
+          </div>
+        }
+      >
+        <LocalNewsStrip />
+      </Suspense>
+
+      {/* Editorial place. */}
+      {featuredPlace && (
+        <DismissibleSection id="featured-place" title="Worth your evening">
+          <FeaturedTonight place={featuredPlace} />
+        </DismissibleSection>
+      )}
+
+      {/* Time-aware curated places (component owns its own header). */}
+      <RightNow now={now} />
+
+      {/* Frederick County in 1 fact. Rotates daily. */}
       <DismissibleSection id="history" title="Did you know">
         <HistoryPulse />
       </DismissibleSection>
