@@ -319,74 +319,10 @@ export default function RadiusBuilder({
         }}
       />
 
-      {/* Slim stat ribbon — mode/minutes/distance · in-range count · edge
-          place. The stat bar used to live INSIDE RadiusMap; pulling it
-          out lets the map breathe at its full height. */}
-      <section
-        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-2.5"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="text-[10px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {mode === "walk" ? "Walking" : mode === "bike" ? "Biking" : "Driving"}
-          </span>
-          <span
-            className="font-serif text-[16px] font-semibold tabular-nums"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {minutes} min
-            <span className="ml-1 text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-              · {formatDistance(meters)}
-            </span>
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <span
-            className="text-[10px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            In range
-          </span>
-          <span
-            className="font-serif text-[16px] font-semibold tabular-nums"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {inside.length.toLocaleString()}
-            <span className="ml-1 text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-              place{inside.length === 1 ? "" : "s"}
-            </span>
-          </span>
-        </div>
-        {edgeForRing && (
-          <p
-            className="basis-full truncate border-t pt-2 text-[11.5px]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            At the edge:{" "}
-            <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
-              {edgeForRing.name}
-            </span>{" "}
-            <span className="tabular-nums">· {formatDistance(edgeForRing.distance_m)} away</span>
-          </p>
-        )}
-      </section>
-
-      {/* Quick-pick chips — one tap sets BOTH mode and minutes for
-          the six most-asked-for combinations. The slider + mode
-          buttons below still own fine control. */}
-      <RadiusPresets
-        mode={mode}
-        minutes={minutes}
-        onPick={(m, n) => {
-          setMode(m);
-          setMinutes(n);
-        }}
-      />
-
+      {/* Controls land DIRECTLY below the map so the slider and the
+          radius circle are in the same viewport. Adjusting any control
+          while the map is offscreen broke the "see what you're doing"
+          loop the brief calls out. */}
       <section className="space-y-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 shadow-[var(--app-shadow-1)]"
                style={{ borderColor: "var(--app-border)" }}>
         {/* Center — a dropdown with every municipality + landmarks
@@ -576,119 +512,60 @@ export default function RadiusBuilder({
         </div>
       </section>
 
-      {/* Live stat strip — tactile module of confident tabular numbers
-          that update as the radius widens or the mode changes. Replaces
-          the static "X places inside" pill so the page makes the answer
-          to "in play right now" visible at a glance. */}
+      {/* Slim stat ribbon — mode/minutes/distance · in-range count · edge
+          place. Sits below the controls now so the visible-on-mount
+          stack reads: map → controls → live stats. */}
       <section
-        aria-label="In play right now"
-        className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-2.5"
+        style={{ borderColor: "var(--app-border)" }}
       >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(70% 90% at 10% 0%, color-mix(in srgb, var(--app-cool) 14%, transparent), transparent 60%)",
-          }}
-        />
-        <div className="relative flex items-end justify-between gap-3">
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            In play right now
-          </p>
-          <p className="text-[10px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            {mode === "walk" ? "Walking" : mode === "bike" ? "Biking" : "Driving"} · {minutes} min
-          </p>
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="text-[10px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {mode === "walk" ? "Walking" : mode === "bike" ? "Biking" : "Driving"}
+          </span>
+          <span
+            className="font-serif text-[16px] font-semibold tabular-nums"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {minutes} min
+            <span className="ml-1 text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+              · {formatDistance(meters)}
+            </span>
+          </span>
         </div>
-        <div className="relative mt-3 grid grid-cols-3 gap-3">
-          {[
-            { label: "Places", value: inside.length.toLocaleString(), accent: "var(--app-brand)" },
-            { label: "Towns", value: townsInside.toString(), accent: "var(--app-cool)" },
-            { label: "Farthest", value: formatFar(farthest), accent: "var(--app-brand-2)" },
-          ].map((s) => (
-            <div key={s.label} className="text-center">
-              <div
-                className="font-serif text-[28px] font-semibold leading-none tracking-tight tabular-nums"
-                style={{ color: s.accent }}
-              >
-                {s.value}
-              </div>
-              <div
-                className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {s.label}
-              </div>
-            </div>
-          ))}
+        <div className="ml-auto flex items-center gap-2">
+          <span
+            className="text-[10px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            In range
+          </span>
+          <span
+            className="font-serif text-[16px] font-semibold tabular-nums"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {inside.length.toLocaleString()}
+            <span className="ml-1 text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+              place{inside.length === 1 ? "" : "s"}
+            </span>
+          </span>
         </div>
-        {inside.length > 0 && (
-          <div className="relative mt-3 flex flex-wrap items-center justify-end gap-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-            {/* Sort — Nearest (default) or A–Z. */}
-            <div
-              role="group"
-              aria-label="Sort order"
-              className="flex items-center gap-0.5 rounded-full border p-0.5"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              {([
-                { s: "near" as const, Icon: Navigation, label: "Nearest" },
-                { s: "az" as const, Icon: ArrowDownAZ, label: "A to Z" },
-              ]).map(({ s, Icon, label }) => {
-                const active = sort === s;
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => chooseSort(s)}
-                    aria-pressed={active}
-                    aria-label={`Sort ${label}`}
-                    title={`Sort ${label}`}
-                    className="grid h-7 w-7 place-items-center rounded-full transition-colors"
-                    style={{
-                      background: active ? "var(--app-brand)" : "transparent",
-                      color: active ? "white" : "var(--app-ink-3)",
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  </button>
-                );
-              })}
-            </div>
-            {/* Density — Grid or List. */}
-            <div
-              role="group"
-              aria-label="Result density"
-              className="flex items-center gap-0.5 rounded-full border p-0.5"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              {([
-                { v: "grid" as const, Icon: LayoutGrid, label: "Grid" },
-                { v: "list" as const, Icon: Rows3, label: "List" },
-              ]).map(({ v, Icon, label }) => {
-                const active = view === v;
-                return (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => chooseView(v)}
-                    aria-pressed={active}
-                    aria-label={`${label} view`}
-                    title={`${label} view`}
-                    className="grid h-7 w-7 place-items-center rounded-full transition-colors"
-                    style={{
-                      background: active ? "var(--app-brand)" : "transparent",
-                      color: active ? "white" : "var(--app-ink-3)",
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </section>
+
+      {/* Quick-pick chips — one tap sets BOTH mode and minutes for
+          the six most-asked-for combinations. */}
+      <RadiusPresets
+        mode={mode}
+        minutes={minutes}
+        onPick={(m, n) => {
+          setMode(m);
+          setMinutes(n);
+        }}
+      />
 
       {/* Category tile grid — the new landing for the lower half.
           Compact, colorful, scannable. Tap a tile to expand JUST
