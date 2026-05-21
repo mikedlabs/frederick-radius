@@ -235,10 +235,20 @@ export default function RadiusBuilder({
   const activeCuisine =
     cuisine && facets.some((f) => f.slug === cuisine) ? cuisine : null;
 
-  // Just the lng/lat slim shape RadiusMap wants for its dot layer.
-  // Memoized so the GeoJSON source isn't rebuilt on unrelated re-renders.
+  // Slim shape passed to RadiusMap. Includes slug / name / category
+  // color so the map can color dots by category and surface a place
+  // preview when one is tapped — a generic mode-tinted dot was anonymous;
+  // a category-colored dot tells a story at a glance.
   const insideDots = useMemo(
-    () => inside.map((p) => ({ lng: p.geom.lng, lat: p.geom.lat })),
+    () =>
+      inside.map((p) => ({
+        lng: p.geom.lng,
+        lat: p.geom.lat,
+        slug: p.slug,
+        name: p.name,
+        category: p.category,
+        category_color: CATEGORY_BY_SLUG[p.category]?.color,
+      })),
     [inside],
   );
 
