@@ -15,7 +15,8 @@ import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
-import { allUpcoming } from "@/lib/loaders/events";
+import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
+import { allUpcoming, eventsLive, eventsWeekend, eventsOnDay } from "@/lib/loaders/events";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
@@ -110,17 +111,73 @@ const HIDDEN_LABELS: Array<{ id: string; label: string }> = [
   { id: "history", label: "Did you know" },
 ];
 
-export default async function HomePage() {
+// Resolve a temporal mode to a per-mode event window. Each mode has
+// its own headline so the Upcoming section reads as the answer to a
+// specific question, not as a generic feed.
+function eventsForMode(mode: TodayTimeMode, now: Date) {
+  if (mode === "now") {
+    // Live right now OR starting in the next 90 minutes.
+    const inNext90 = allUpcoming(now).filter((e) => {
+      const ms = new Date(e.starts_at).getTime() - now.getTime();
+      return ms >= 0 && ms <= 90 * 60_000;
+    });
+    return { title: "Happening now", items: [...eventsLive(now), ...inNext90] };
+  }
+  if (mode === "tonight") {
+    // Today after 16:00 ET → tomorrow 02:30 ET. "Tonight" still
+    // means tonight at 11pm, not "yesterday."
+    const today = new Date(now);
+    today.setHours(16, 0, 0, 0);
+    const startMs = Math.max(now.getTime(), today.getTime());
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(2, 30, 0, 0);
+    const endMs = tomorrow.getTime();
+    return {
+      title: "Tonight",
+      items: allUpcoming(now).filter((e) => {
+        const ms = Date.parse(e.starts_at);
+        return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
+      }),
+    };
+  }
+  if (mode === "tomorrow") {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return { title: "Tomorrow", items: eventsOnDay(tomorrow) };
+  }
+  return { title: "This weekend", items: eventsWeekend(now) };
+}
+
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ t?: string }>;
+}) {
+  const { t } = await searchParams;
+  const mode: TodayTimeMode = isTodayTimeMode(t) ? t : "now";
   const now = new Date();
 
   const featuredPlace = pickFeaturedPlace(now);
   const featuredEvent = pickFeaturedEvent(now);
-  const upcoming = allUpcoming(now).slice(0, 7);
+  // Per-mode event window — title + items both come from one helper
+  // so chip and rendered section never disagree.
+  const slice = eventsForMode(mode, now);
+  // Pre-compute per-mode counts so the chip strip shows "Tonight · 3"
+  // without forcing a click into an empty surface.
+  const counts: Partial<Record<TodayTimeMode, number>> = {};
+  for (const m of ["now", "tonight", "tomorrow", "weekend"] as const) {
+    counts[m] = eventsForMode(m, now).items.length;
+  }
   // Filter out the featured event so it doesn't appear twice in the
-  // shelf below the hero.
-  const upcomingRest = featuredEvent
-    ? upcoming.filter((e) => e.slug !== featuredEvent.slug)
-    : upcoming;
+  // shelf below the hero. Only show the featured hero when the active
+  // slice actually contains it.
+  const sliceItems = slice.items.slice(0, 7);
+  const heroInSlice =
+    featuredEvent && sliceItems.some((e) => e.slug === featuredEvent.slug);
+  const upcomingRest = heroInSlice
+    ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
+    : sliceItems;
   return (
     <div className="relative space-y-6">
       <PageBloom />
@@ -145,6 +202,11 @@ export default async function HomePage() {
         </Suspense>
         <PrimaryActionCard now={now} />
       </SkyHero>
+
+      {/* When? — the brand-defining temporal control. Pivots the
+       *  Upcoming section between Now / Tonight / Tomorrow / Weekend.
+       *  Mode lives in ?t= so the view is shareable. */}
+      <TimeToggle active={mode} counts={counts} />
 
       {/* 2 — One quiet civic line. */}
       <Suspense fallback={<Skeleton.Block height={28} round="var(--app-radius-md)" />}>
@@ -183,15 +245,17 @@ export default async function HomePage() {
           horizontal shelf. The previous two-section layout (Don't miss
           → Coming up) double-stacked event headings; one section reads
           tighter and tells the same story. */}
-      {(featuredEvent || upcomingRest.length > 0) && (
-        <DismissibleSection
-          id="upcoming"
-          title="Upcoming"
-          href="/events"
-          cta="See all"
-        >
+      <DismissibleSection
+        id="upcoming"
+        title={slice.title}
+        href="/events"
+        cta="See all"
+      >
+        {heroInSlice || upcomingRest.length > 0 ? (
           <div className="space-y-3">
-            {featuredEvent && <EventCard event={featuredEvent} variant="feature" />}
+            {heroInSlice && featuredEvent && (
+              <EventCard event={featuredEvent} variant="feature" />
+            )}
             {upcomingRest.length > 0 && (
               <div className="-mx-4 px-4">
                 <div className="shelf-rail gap-3 pb-1">
@@ -204,8 +268,22 @@ export default async function HomePage() {
               </div>
             )}
           </div>
-        </DismissibleSection>
-      )}
+        ) : (
+          // Empty state — the section never silently vanishes when a
+          // time slice has nothing. Quiet, with a nudge to a slice
+          // that does have events.
+          <p
+            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
+            <a href="/today?t=weekend" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+              See the weekend
+            </a>
+            .
+          </p>
+        )}
+      </DismissibleSection>
 
       {/* 7 — Frederick County in 1 fact. Rotates daily. */}
       <DismissibleSection id="history" title="Did you know">
