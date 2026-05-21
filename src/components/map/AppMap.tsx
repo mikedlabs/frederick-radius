@@ -85,6 +85,10 @@ type Props = {
    *  unchanged unless the user opts in. */
   trailLines?: MapLineFC;
   transitLines?: MapLineFC;
+  /** Upcoming events as map pins — phase 1 differentiator vs Google /
+   *  Apple Maps (they don't have local event ↔ venue joins). Already
+   *  geo-deduped and scoped to "happening soon" server-side. */
+  events?: EventPin[];
 };
 
 /** Minimal GeoJSON line FeatureCollection (decoupled from the feeds). */
@@ -99,6 +103,26 @@ export type CivicPin = {
   lng: number;
   lat: number;
   label: string;
+};
+
+/**
+ * Compact shape we render as an event pin on the map. Server-fetched on
+ * /map/page.tsx from allUpcoming() and filtered to the next 48 hours so
+ * the layer reads as "what's happening soon" instead of "all events
+ * ever." Hero image is rendered as a circular photo bubble; if absent
+ * we fall back to a category-colored badge with a calendar glyph.
+ */
+export type EventPin = {
+  slug: string;
+  title: string;
+  starts_at: string;
+  ends_at?: string;
+  venue_name: string;
+  lng: number;
+  lat: number;
+  category: string;
+  category_color?: string;
+  hero_image?: string;
 };
 
 const OSM_CACHE_KEY = "fr:osm-frederick:v1";
@@ -289,6 +313,7 @@ export default function AppMap({
   amenities = [],
   trailLines = EMPTY_LINE_FC,
   transitLines = EMPTY_LINE_FC,
+  events = [],
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   const { openSheet } = usePlaceSheet();
@@ -322,6 +347,7 @@ export default function AppMap({
   const [demo, setDemo] = useState<null | "food-truck" | "transit" | "rewards">(null);
   const [truck, setTruck] = useState<DemoFoodTruck | null>(null);
   const [pointsPlace, setPointsPlace] = useState<DemoPointsPartner | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   const [showLegend, setShowLegend] = useState(false);
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
@@ -2193,6 +2219,89 @@ export default function AppMap({
             </Popup>
           )}
 
+          {/* Event pins — the Frederick-only differentiator vs Google/
+              Apple Maps. Each event in the next 48h plotted at its venue
+              as a circular photo bubble (or category-colored badge when
+              there's no hero image). Tapping opens a popup with a link
+              to the event detail. */}
+          {events.map((e) => (
+            <Marker
+              key={`ev:${e.slug}`}
+              longitude={e.lng}
+              latitude={e.lat}
+              anchor="bottom"
+            >
+              <button
+                type="button"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  haptic("light");
+                  setSelected(null);
+                  setSelectedEvent(e);
+                }}
+                aria-label={`${e.title} at ${e.venue_name}`}
+                style={{
+                  position: "relative",
+                  display: "grid",
+                  placeItems: "center",
+                  width: 44,
+                  height: 44,
+                  padding: 0,
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    inset: 4,
+                    borderRadius: 9999,
+                    background: e.category_color || "#C4451C",
+                    opacity: 0.32,
+                    animation: "fr-ev-pulse 2.6s ease-out infinite",
+                  }}
+                />
+                <span
+                  aria-hidden
+                  style={{
+                    position: "relative",
+                    display: "grid",
+                    placeItems: "center",
+                    width: 36,
+                    height: 36,
+                    borderRadius: 9999,
+                    background: e.hero_image
+                      ? `center/cover no-repeat url("${e.hero_image}")`
+                      : e.category_color || "#C4451C",
+                    border: `2px solid #fff`,
+                    boxShadow: "var(--app-shadow-2)",
+                    color: "#fff",
+                    fontSize: 16,
+                    lineHeight: 1,
+                  }}
+                >
+                  {!e.hero_image && "\u{1F4C5}"}
+                </span>
+              </button>
+            </Marker>
+          ))}
+
+          {selectedEvent && (
+            <Popup
+              longitude={selectedEvent.lng}
+              latitude={selectedEvent.lat}
+              anchor="bottom"
+              offset={28}
+              closeOnClick={false}
+              onClose={() => setSelectedEvent(null)}
+              maxWidth="280px"
+            >
+              <EventPopup e={selectedEvent} />
+            </Popup>
+          )}
+
           {hover && !selected && (
             <Popup
               longitude={hover.lng}
@@ -2236,6 +2345,71 @@ export default function AppMap({
           <GeolocateControl position="bottom-right" trackUserLocation />
         </Map>
       </div>
+  );
+}
+
+/** Compact event card shown inside a Mapbox Popup. Plain inline styles
+ *  to match the other popup helpers in this file (PlacePopup, etc.). */
+function EventPopup({ e }: { e: EventPin }) {
+  const start = new Date(e.starts_at);
+  const now = new Date();
+  const msUntil = start.getTime() - now.getTime();
+  const within24h = msUntil > -3 * 3_600_000 && msUntil < 24 * 3_600_000;
+  const dateStr = within24h
+    ? new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(start)
+    : new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(start);
+  const color = e.category_color || "#C4451C";
+  return (
+    <div style={{ minWidth: 230, padding: 4 }}>
+      <p
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color,
+          marginBottom: 4,
+        }}
+      >
+        {dateStr}
+      </p>
+      <strong
+        style={{
+          display: "block",
+          fontSize: 15,
+          lineHeight: 1.25,
+          color: "#1A1A1A",
+          fontFamily: "var(--font-plex-serif)",
+        }}
+      >
+        {e.title}
+      </strong>
+      <p style={{ fontSize: 12, margin: "4px 0 8px", color: "#4A4A48" }}>
+        {e.venue_name}
+      </p>
+      <Link
+        href={`/events/${e.slug}`}
+        style={{
+          display: "inline-block",
+          fontSize: 12,
+          fontWeight: 700,
+          color,
+        }}
+      >
+        See event →
+      </Link>
+    </div>
   );
 }
 

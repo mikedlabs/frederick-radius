@@ -6,9 +6,11 @@ import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
-import AppMapClient, { type CivicPin } from "@/components/map/AppMapClient";
+import { allUpcoming } from "@/lib/loaders/events";
+import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
 import MapIntentChips from "@/components/map/MapIntentChips";
 import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
@@ -81,6 +83,38 @@ export default async function MapPage({
       : null;
   const places = intent ? OPEN_PLACES.filter(intent.match) : OPEN_PLACES;
 
+  // Events as map pins — the unique-vs-Google-Maps layer. Filter to the
+  // next ~36h ("happening soon") so the layer reads as live, not as a
+  // permanent overlay. Dedupe by venue cell so two events at the same
+  // address don't stack into a single illegible blob.
+  const now = new Date();
+  const horizonMs = now.getTime() + 36 * 3_600_000;
+  const upcoming = allUpcoming(now).filter((e) => {
+    const t = Date.parse(e.starts_at);
+    return Number.isFinite(t) && t <= horizonMs;
+  });
+  const seenCells = new Set<string>();
+  const events: EventPin[] = [];
+  for (const e of upcoming) {
+    if (!Number.isFinite(e.geom?.lng) || !Number.isFinite(e.geom?.lat)) continue;
+    const cell = `${e.geom.lat.toFixed(4)}:${e.geom.lng.toFixed(4)}`;
+    if (seenCells.has(cell)) continue;
+    seenCells.add(cell);
+    events.push({
+      slug: e.slug,
+      title: e.title,
+      starts_at: e.starts_at,
+      ends_at: e.ends_at,
+      venue_name: e.venue_name,
+      lng: e.geom.lng,
+      lat: e.geom.lat,
+      category: e.category,
+      category_color: CATEGORY_BY_SLUG[e.category]?.color,
+      hero_image: e.hero_image,
+    });
+    if (events.length >= 40) break;
+  }
+
   return (
     <div
       className="-mx-4 -mt-4 relative"
@@ -100,6 +134,7 @@ export default async function MapPage({
         amenities={amenities}
         trailLines={trailLines}
         transitLines={transitLines}
+        events={events}
         fullBleed
       />
     </div>
