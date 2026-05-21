@@ -34,7 +34,13 @@
    * Used by /app/* routes. Daily-utility palette: paper, ink, stone.
    * ───────────────────────────────────────────────────── */
   --app-bg: #FAFAF7;
-  --app-bg-elevated: #FFFFFF;
+  /* --app-bg-elevated is slightly translucent so the PageBloom aurora
+     orbs tint cards from behind — the "glass" effect that lets the
+     animated background read THROUGH the dense card stacks. Modals,
+     sheets, popups that need full opacity should set their bg to
+     --app-bg-elevated-solid instead. */
+  --app-bg-elevated-solid: #FFFFFF;
+  --app-bg-elevated: color-mix(in srgb, #FFFFFF 92%, transparent);
   --app-bg-sunken: #F2F1EC;
   --app-border: #E5E3DD;
   --app-border-strong: rgba(26, 26, 26, 0.07);
@@ -127,7 +133,8 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --app-bg: #141413;
-    --app-bg-elevated: #1C1B1A;
+    --app-bg-elevated-solid: #1C1B1A;
+    --app-bg-elevated: color-mix(in srgb, #1C1B1A 88%, transparent);
     --app-bg-sunken: #0D0D0C;
     --app-border: #2A2A28;
     --app-ink: #F4F2EE;
