@@ -586,6 +586,65 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────
+ * Shader rim — a slow conic-gradient stroke that rotates
+ * around a card. Use on premium editorial cards (Worth your
+ * evening, Top story, featured event hero) to give them a
+ * living border without changing height or layout. The
+ * effect is subtle by design: at default opacity it reads as
+ * "alive," not as a strobing chrome ad.
+ *
+ * Uses @property so the conic angle can be animated as a CSS
+ * variable (works in Chromium, Safari 16.4+, Firefox 128+).
+ * Falls back gracefully to a static gradient where unsupported.
+ * ───────────────────────────────────────────────────── */
+@property --shader-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.shader-rim {
+  position: relative;
+  isolation: isolate;
+}
+.shader-rim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--shader-angle),
+    var(--app-cool),
+    var(--app-brand-2),
+    var(--app-brand),
+    var(--app-cool)
+  );
+  /* Two-mask trick: keep only the 1.5px ring; the inner area
+   * is transparent so the wrapped card shows through. */
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+  animation: shader-rim-spin 7.5s linear infinite;
+  pointer-events: none;
+  opacity: 0.72;
+}
+@keyframes shader-rim-spin {
+  to {
+    --shader-angle: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shader-rim::before {
+    animation: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
  * View Transitions API — smooth cross-page navigation.
  * Supported in Chrome/Edge/Safari. No-op elsewhere.
  * ───────────────────────────────────────────────────── */
