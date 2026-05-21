@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music } from "lucide-react";
+import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music, Ban } from "lucide-react";
 import { EVENTS } from "@/data/events";
 import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
@@ -113,6 +113,8 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   };
 
   const when = formatEventWhen(event);
+  // Lifecycle status — drives the cancellation banner + a dimmed hero.
+  const eventStatus = event.status ?? "scheduled";
   // Server component: request-time clock is correct here, not impure render.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
@@ -155,6 +157,27 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         </ol>
       </nav>
 
+      {/* Cancellation banner — loud, above the hero, so a user who
+       *  came here for this event sees it's off before anything else.
+       *  Only renders when the event is not scheduled. */}
+      {eventStatus !== "scheduled" && (
+        <div
+          className="flex items-center gap-2 rounded-[var(--app-radius-md)] px-4 py-2.5 text-[13px] font-semibold"
+          style={{
+            background: eventStatus === "cancelled"
+              ? "color-mix(in srgb, var(--app-negative, #C0392B) 16%, var(--app-bg-elevated))"
+              : "color-mix(in srgb, var(--app-warning, #B8860B) 16%, var(--app-bg-elevated))",
+            color: eventStatus === "cancelled" ? "var(--app-negative, #C0392B)" : "var(--app-warning, #B8860B)",
+            border: `1px solid ${eventStatus === "cancelled" ? "var(--app-negative, #C0392B)" : "var(--app-warning, #B8860B)"}`,
+          }}
+        >
+          <Ban className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
+          {eventStatus === "cancelled"
+            ? "This event has been cancelled."
+            : "This event has been postponed — check the official page for a new date."}
+        </div>
+      )}
+
       {/* Cinematic hero. Two paths:
        *   - With hero_image: full-bleed 16:11 photo, dark legibility
        *     gradient, date pill + share/save floating on top, title +
@@ -167,7 +190,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
        * editorial moments. */}
       <header
         className="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
-        style={{ borderColor: "var(--app-border)" }}
+        style={{
+          borderColor: "var(--app-border)",
+          opacity: eventStatus === "cancelled" ? 0.85 : 1,
+        }}
       >
         {event.hero_image ? (
           <div className="relative h-64 w-full overflow-hidden sm:h-72">

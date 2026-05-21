@@ -41,6 +41,7 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     audience: [],
     is_free: e.is_free,
     organizer: e.organizer,
+    status: e.status,
     source: "manual",
     source_url: e.url,
     is_verified: false,

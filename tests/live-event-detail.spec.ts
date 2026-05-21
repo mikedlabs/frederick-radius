@@ -37,6 +37,8 @@ const sample = (over: Partial<LiveEvent> = {}): LiveEvent => ({
   source_label: "Celebrate Frederick",
   url: "https://www.celebratefrederick.com/event/123",
   is_free: true,
+  status: "scheduled",
+  last_verified_at: "2026-05-14T00:00:00.000Z",
   ...over,
 });
 

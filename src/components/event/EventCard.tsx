@@ -9,6 +9,7 @@ import { Chip } from "@/components/ui/Chip";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
+import { statusLabel } from "@/lib/event-status";
 
 export default function EventCard({
   event,
@@ -19,6 +20,14 @@ export default function EventCard({
 }) {
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
+  // Lifecycle status — a cancelled or postponed event still shows
+  // (a user looking for it needs to KNOW), but with a loud badge and
+  // a struck-through title so it can never be mistaken for "on."
+  const status = event.status ?? "scheduled";
+  const statusText = statusLabel(status);
+  const isCancelled = status === "cancelled";
+  // Badge palette: red for cancelled, amber for postponed.
+  const statusBg = isCancelled ? "var(--app-negative, #C0392B)" : "var(--app-warning, #B8860B)";
   // Accent MUST be a hex literal — used in templates like `${accent}38`
   // to compose color-with-alpha. A CSS var() fallback would produce
   // invalid CSS. Generic-category fallback uses the civic blue so
@@ -68,9 +77,17 @@ export default function EventCard({
             {categoryLabel}
           </span>
           <div className="absolute inset-x-0 bottom-0 p-4">
+            {statusText && (
+              <span
+                className="mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
+                style={{ background: statusBg }}
+              >
+                {statusText}
+              </span>
+            )}
             <Link
               href={`/events/${event.slug}`}
-              className="line-clamp-2 font-serif text-[22px] font-semibold leading-tight tracking-tight text-white outline-none focus-visible:underline"
+              className={`line-clamp-2 font-serif text-[22px] font-semibold leading-tight tracking-tight text-white outline-none focus-visible:underline ${isCancelled ? "line-through opacity-80" : ""}`}
             >
               <span className="absolute inset-0" aria-hidden />
               {event.title}
@@ -179,9 +196,17 @@ export default function EventCard({
         </div>
         {/* Body */}
         <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
+          {statusText && (
+            <span
+              className="inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-white"
+              style={{ background: statusBg }}
+            >
+              {statusText}
+            </span>
+          )}
           <Link
             href={`/events/${event.slug}`}
-            className="line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline"
+            className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
@@ -247,10 +272,18 @@ export default function EventCard({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          {statusText && (
+            <span
+              className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-white"
+              style={{ background: statusBg }}
+            >
+              {statusText}
+            </span>
+          )}
           <Link
             href={`/events/${event.slug}`}
-            className="text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2"
+            className={`text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />

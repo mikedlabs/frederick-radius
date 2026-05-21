@@ -84,6 +84,10 @@ export const liveEventSchema = z
     source_label: z.string().min(1).max(120),
     url: z.string().url(),
     is_free: z.boolean(),
+    /** Lifecycle status — derived at parse time from the iCal STATUS
+     *  property or a title sniff. Optional + defaulted so a feed that
+     *  predates this field still validates. */
+    status: z.enum(["scheduled", "cancelled", "postponed"]).default("scheduled"),
     /** When the row was pulled from its source. Server fills this. */
     last_verified_at: isoDateSchema,
   })

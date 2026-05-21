@@ -71,6 +71,7 @@ export function normalizeBandsintown(raw: unknown, artist: string): LiveEvent[] 
       source_label: "Bandsintown",
       url: ev.url ?? "",
       is_free: false,
+      status: "scheduled" as const,
       last_verified_at: new Date().toISOString(),
     });
   }
