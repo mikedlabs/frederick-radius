@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music } from "lucide-react";
 import { EVENTS } from "@/data/events";
-import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock } from "@/lib/loaders/events";
+import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
 /**
  * Event detail resolves the hand-authored static seed first
@@ -31,6 +31,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
+import EventCard from "@/components/event/EventCard";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
@@ -120,6 +121,29 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         .filter((e) => seriesKey(e) === seriesKey(event))
         .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     : [];
+
+  // "More upcoming" — events the user is likely to want to see right
+  // after this one. Same-venue future events come first (most useful
+  // context: "what else is happening at this place?"); we fall back to
+  // the next county-wide future events when the venue is quiet. The
+  // current event and any siblings from its recurring series are
+  // always excluded — series siblings are already covered by Full
+  // lineup above. allUpcoming() handles past-filtering + decoration.
+  const currentSeries = seriesKey(event);
+  const upcomingPool = allUpcoming(new Date(nowMs)).filter(
+    (e) => e.slug !== event.slug && seriesKey(e) !== currentSeries,
+  );
+  const venueKey = event.venue_place_slug ?? event.venue_name.toLowerCase();
+  const sameVenueUpcoming = upcomingPool
+    .filter((e) => {
+      const k = e.venue_place_slug ?? e.venue_name.toLowerCase();
+      return k === venueKey;
+    })
+    .slice(0, 4);
+  const moreUpcoming =
+    sameVenueUpcoming.length >= 2
+      ? { title: `More at ${event.venue_name}`, items: sameVenueUpcoming }
+      : { title: "More upcoming events", items: upcomingPool.slice(0, 6) };
 
   return (
     <div className="space-y-6">
@@ -428,6 +452,38 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               + {lineup.length - 30} more dates
             </p>
           )}
+        </section>
+      )}
+
+      {/* More upcoming events — same-venue future when there are 2+,
+          otherwise the next 6 county-wide. Sits below the Full lineup
+          and primary "Good to know" content so the user has digested
+          this event before being offered the next one. */}
+      {moreUpcoming.items.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2
+              className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              <Calendar className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+              {moreUpcoming.title}
+            </h2>
+            <Link
+              href="/events"
+              className="text-[12px] font-semibold"
+              style={{ color: "var(--app-brand)" }}
+            >
+              See all →
+            </Link>
+          </div>
+          <ul className="space-y-2">
+            {moreUpcoming.items.map((e) => (
+              <li key={e.slug}>
+                <EventCard event={e} variant="row" />
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
