@@ -645,6 +645,37 @@ body {
 }
 
 /* ─────────────────────────────────────────────────────
+ * Mapbox popup close button — the default × is ~12px,
+ * which is unreliably tiny under a fingertip. Bump it to a
+ * 32px tap target with a subtle hit area so users on mobile
+ * can actually close place / event preview cards.
+ * Applies to AppMap (/map) and RadiusMap fallback paths.
+ * ───────────────────────────────────────────────────── */
+.mapboxgl-popup-close-button {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+  color: var(--app-ink-3) !important;
+  border-radius: 9999px !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  right: 4px !important;
+  top: 4px !important;
+}
+.mapboxgl-popup-close-button:hover,
+.mapboxgl-popup-close-button:focus-visible {
+  background: color-mix(in srgb, var(--app-ink) 8%, transparent) !important;
+  color: var(--app-ink) !important;
+}
+/* Popup content needs more right padding so the bigger close
+ * button doesn't overlap the headline. */
+.mapboxgl-popup-content {
+  padding: 12px 40px 12px 12px !important;
+}
+
+/* ─────────────────────────────────────────────────────
  * View Transitions API — smooth cross-page navigation.
  * Supported in Chrome/Edge/Safari. No-op elsewhere.
  * ───────────────────────────────────────────────────── */
