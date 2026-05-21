@@ -13,6 +13,7 @@ import Map, {
 } from "react-map-gl/mapbox";
 import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal } from "lucide-react";
 
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import Link from "next/link";
@@ -842,22 +843,64 @@ export default function AppMap({
           default view is a clean, premium map. ── */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-2.5 pt-2.5 sm:px-3 sm:pt-3">
         <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
+          {/* Unified search deck: a single rounded-pill bar with the
+              search input filling the row and two icon-only buttons
+              tucked into the bar's right side. The previous three
+              floating pills (Search · Near me · Layers) read as
+              disconnected controls; this one container reads as one
+              tool. Locate-me lives at the search bar's right edge so
+              users find it where Apple Maps users expect it. Layers
+              is a separate small pill so the active-count badge still
+              has room to surface. */}
           <div className="flex items-center gap-2">
-            <div className="relative flex-1">
+            <div
+              className="relative flex flex-1 items-center overflow-hidden rounded-full border backdrop-blur"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                boxShadow: "var(--app-shadow-2)",
+              }}
+            >
+              <SearchIcon
+                aria-hidden
+                className="ml-3.5 h-4 w-4 shrink-0"
+                strokeWidth={2.25}
+                style={{ color: "var(--app-ink-3)" }}
+              />
               <input
                 type="search"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search the map"
                 aria-label="Search the map"
-                className="w-full rounded-full border px-4 py-2.5 text-sm outline-none backdrop-blur"
-                style={{
-                  borderColor: "var(--app-border)",
-                  color: "var(--app-ink)",
-                  background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
-                  boxShadow: "var(--app-shadow-2)",
-                }}
+                className="min-w-0 flex-1 bg-transparent px-2.5 py-2.5 text-sm outline-none"
+                style={{ color: "var(--app-ink)" }}
               />
+              {/* Locate-me icon button — sits at the search bar's
+                  right edge. Brand-tinted when the user has shared
+                  their location, neutral otherwise. Tap target keeps
+                  the iOS minimum (44pt) via the parent height. */}
+              <button
+                type="button"
+                onClick={goNearMe}
+                aria-label="Find places near me"
+                aria-busy={locating || undefined}
+                title={locating ? "Locating…" : "Find places near me"}
+                className="mr-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition active:scale-[0.92]"
+                style={{
+                  color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
+                  background: userLoc
+                    ? "color-mix(in srgb, var(--app-brand) 12%, transparent)"
+                    : "transparent",
+                }}
+              >
+                <NavIcon
+                  className="h-4 w-4"
+                  strokeWidth={userLoc ? 2.5 : 2}
+                  fill={userLoc ? "currentColor" : "none"}
+                  aria-hidden
+                />
+              </button>
               {searchMatches.length > 0 && (
                 <ul
                   className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
@@ -894,24 +937,11 @@ export default function AppMap({
             </div>
             <button
               type="button"
-              onClick={goNearMe}
-              aria-label="Find places near me"
-              className="shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
-              style={{
-                borderColor: userLoc ? "var(--app-brand)" : "var(--app-border)",
-                color: userLoc ? "var(--app-brand)" : "var(--app-ink-2)",
-                background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
-                boxShadow: "var(--app-shadow-2)",
-              }}
-            >
-              {locating ? "Locating…" : "Near me"}
-            </button>
-            <button
-              type="button"
               onClick={() => setFiltersOpen((v) => !v)}
               aria-pressed={filtersOpen}
               aria-expanded={filtersOpen}
-              className="shrink-0 rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
+              aria-label="Layers"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2.5 text-sm font-semibold backdrop-blur transition active:scale-[0.96]"
               style={{
                 borderColor: filtersOpen || activeCats.size > 0 || activeAmenityGroupCount > 0 ? "var(--app-brand)" : "var(--app-border)",
                 color: filtersOpen || activeCats.size > 0 || activeAmenityGroupCount > 0 ? "var(--app-brand)" : "var(--app-ink-2)",
@@ -919,8 +949,15 @@ export default function AppMap({
                 boxShadow: "var(--app-shadow-2)",
               }}
             >
-              Layers{activeCats.size + activeAmenityGroupCount > 0 ? ` · ${activeCats.size + activeAmenityGroupCount}` : ""}
-              <span aria-hidden style={{ marginLeft: 6, fontSize: 9, opacity: 0.7 }}>{filtersOpen ? "▲" : "▼"}</span>
+              <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              <span className="hidden sm:inline">Layers</span>
+              {activeCats.size + activeAmenityGroupCount > 0 && (
+                <span
+                  className="inline-flex min-w-[16px] items-center justify-center rounded-full bg-[var(--app-brand)] px-1 text-[10px] font-bold tabular-nums text-white"
+                >
+                  {activeCats.size + activeAmenityGroupCount}
+                </span>
+              )}
             </button>
           </div>
           {filtersOpen && (
