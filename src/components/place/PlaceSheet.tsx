@@ -12,10 +12,12 @@ import OpenClosedDot from "./OpenClosedDot";
 import GoogleHours from "./GoogleHours";
 import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
+import SourceBadge from "./SourceBadge";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { placeHoursTrust } from "@/lib/trust";
+import { knownFor } from "@/lib/cuisine";
 import type { ParcelContext } from "@/lib/loaders/cofParcels";
 
 /**
@@ -198,93 +200,159 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         <span className="w-[64px]" aria-hidden />
       </div>
 
-      {/* Scrollable content */}
-      <div className="overflow-y-auto px-5 pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)] pt-2">
-        {/* Hero photo — the real place, not a category gradient */}
-        {heroUrl && (
-          <div
-            className="-mt-1 mb-3 overflow-hidden rounded-[var(--app-radius-lg)] border"
-            style={{ borderColor: "var(--app-border)" }}
-          >
+      {/* Scrollable content. The hero photo extends edge-to-edge of
+       *  the sheet via negative horizontal margin, so the card reads
+       *  like a magazine cover instead of a thumbnail in a frame. */}
+      <div className="overflow-y-auto pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)]">
+        {/* Cinematic hero — full-bleed, 4:3 aspect, with a bottom
+         *  gradient that fades the photo into the sheet. The category
+         *  eyebrow + place name overlay the gradient so the first
+         *  thing the eye reads is "Brewery · Olde Mother Brewing"
+         *  on the actual place's photo, not a generic header below it.
+         *  When there is no photo, we fall back to a category-tinted
+         *  panel with the icon — still cinematic, still on-brand. */}
+        {heroUrl ? (
+          <div className="relative overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={heroUrl}
               alt={place.name}
-              className="aspect-[16/9] w-full object-cover"
+              className="aspect-[4/3] w-full object-cover"
               loading="eager"
             />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, transparent 35%, rgba(0,0,0,0.18) 60%, rgba(0,0,0,0.78) 100%)",
+              }}
+            />
+            <div className="absolute inset-x-0 bottom-0 p-5 pb-4">
+              <p
+                className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
+                style={{
+                  color: `color-mix(in srgb, ${color} 35%, white)`,
+                  textShadow: "0 1px 2px rgba(0,0,0,0.55)",
+                }}
+              >
+                {cat?.name ?? place.category}
+              </p>
+              <h2
+                className="mt-1 font-serif text-[24px] font-semibold leading-tight tracking-tight text-white"
+                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+              >
+                {place.name}
+              </h2>
+            </div>
+            {/* Save button anchored to the upper-right of the photo —
+             *  keeps the cinematic crop clean while staying tappable. */}
+            <div className="absolute right-3 top-3">
+              <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+            </div>
+          </div>
+        ) : (
+          <div className="px-5 pt-2">
+            <div
+              aria-hidden
+              className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden rounded-[var(--app-radius-lg)]"
+              style={{
+                background: `radial-gradient(140% 120% at 25% 20%, ${color}55, ${color}15 70%)`,
+                color,
+              }}
+            >
+              <MapPin className="h-16 w-16 opacity-70" strokeWidth={1.25} />
+            </div>
           </div>
         )}
 
-        {/* Top — category pill, name, blurb */}
-        <header className="flex items-start gap-3">
-          <span
-            aria-hidden
-            className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{ background: `${color}1A`, color }}
-          >
-            <MapPin className="h-4 w-4" strokeWidth={2} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
-              {cat?.name ?? place.category}
-            </p>
-            <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-              {place.name}
-            </h2>
-            <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              {place.address} · {muni?.name ?? place.municipality}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
-            <button
-              type="button"
-              aria-label="Close"
-              onClick={() => { haptic("light"); onClose(); }}
-              className="grid h-9 w-9 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              <X className="h-4 w-4" strokeWidth={1.75} />
-            </button>
-          </div>
-        </header>
+        {/* Below-hero content lives inside the standard padding. */}
+        <div className="px-5 pt-4">
+          {/* Title row only appears when there is NO photo — when a
+           *  photo exists the name is overlaid above. We still surface
+           *  the category eyebrow + name here for the photoless case
+           *  so the sheet always has a clear identity. */}
+          {!heroUrl && (
+            <header className="flex items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
+                  {cat?.name ?? place.category}
+                </p>
+                <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  {place.name}
+                </h2>
+              </div>
+              <div className="shrink-0">
+                <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+              </div>
+            </header>
+          )}
 
-        {/* Status + distance row */}
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-2)" }}>
-          <OpenClosedDot status={place.open_status} />
-          {place.google_rating !== undefined && (
-            <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
-              <span style={{ color: "var(--app-accent)" }}>★</span>
-              {place.google_rating.toFixed(1)}
-              {place.google_rating_count ? (
-                <span style={{ color: "var(--app-ink-3)" }}>({place.google_rating_count.toLocaleString()})</span>
-              ) : null}
-            </span>
-          )}
-          {place.price_band && (
-            <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
-              {"$".repeat(place.price_band)}
-            </span>
-          )}
-          {place.distance_m !== undefined && (
-            <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-              {place.distance_m < 1000 ? `${Math.round(place.distance_m)} ft` : `${(place.distance_m / 1000).toFixed(1)} km away`}
-            </span>
-          )}
-        </div>
-        <div className="mt-2">
-          <TrustChip signal={placeHoursTrust(place.open_status)} />
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-          {place.google_verified && (
-            <p className="inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
-              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} aria-hidden />
-              Verified by Google
+          {/* Address + source provenance + "known for" — three quiet
+           *  lines that establish what this place is before the data
+           *  rows below. SourceBadge gives provenance at a glance;
+           *  knownFor surfaces the curated descriptor when we have one
+           *  (cuisine, specialty), instead of leaving the eye to skim
+           *  the short_blurb cold. */}
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              {place.address}{muni ? ` · ${muni.name}` : ""}
+            </p>
+            <SourceBadge place={place} size="sm" />
+          </div>
+          {knownFor(place) && (
+            <p
+              className="mt-1.5 text-[13px] italic leading-snug"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              Known for {knownFor(place)}.
             </p>
           )}
-          <FreshnessChip iso={place.last_verified_at} />
-        </div>
+
+          {/* Status + rating + price + distance — the at-a-glance
+           *  data row. Kept compact so the next block (the trust pill
+           *  cluster) reads as a single thought. */}
+          <div className="mt-3 flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--app-ink-2)" }}>
+            <OpenClosedDot status={place.open_status} />
+            {place.google_rating !== undefined && (
+              <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
+                <span style={{ color: "var(--app-accent)" }}>★</span>
+                {place.google_rating.toFixed(1)}
+                {place.google_rating_count ? (
+                  <span style={{ color: "var(--app-ink-3)" }}>({place.google_rating_count.toLocaleString()})</span>
+                ) : null}
+              </span>
+            )}
+            {place.price_band && (
+              <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
+                {"$".repeat(place.price_band)}
+              </span>
+            )}
+            {place.distance_m !== undefined && (
+              <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {place.distance_m < 1000 ? `${Math.round(place.distance_m)} ft` : `${(place.distance_m / 1000).toFixed(1)} km away`}
+              </span>
+            )}
+          </div>
+
+          {/* Compact trust cluster — TrustChip + verified-by-Google
+           *  dot + FreshnessChip, on ONE row separated by middle dots.
+           *  The previous layout stacked three tiny rows on top of
+           *  each other; this reads as one trust statement. */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <TrustChip signal={placeHoursTrust(place.open_status)} />
+            {place.google_verified && (
+              <>
+                <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
+                  <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} aria-hidden />
+                  Verified by Google
+                </span>
+              </>
+            )}
+            <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+            <FreshnessChip iso={place.last_verified_at} />
+          </div>
 
         {parcel && (
           <div
@@ -417,6 +485,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             text={place.short_blurb}
             url={`/places/${place.slug}`}
           />
+        </div>
         </div>
       </div>
     </>
