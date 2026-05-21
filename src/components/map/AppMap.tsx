@@ -1588,23 +1588,47 @@ export default function AppMap({
                 ],
               }}
             />
-            {/* Calm core dot — no number, no hard outline. A quiet
-                cool marker that resolves into real pins as you zoom. */}
+            {/* Calm core dot — soft cool tint with a count label on
+                top for clusters of 4+. OSM is the secondary tier, so
+                its disc stays smaller and quieter than the curated
+                one above; the count just tells the user this isn't a
+                3-pin pocket but a real density. */}
             <Layer
               id="clusters"
               type="circle"
               filter={["has", "point_count"]}
               paint={{
                 "circle-color": "#2A5D8F",
-                "circle-opacity": 0.5,
-                "circle-blur": 0.3,
+                "circle-opacity": 0.55,
+                "circle-blur": 0.25,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
-                  2, 7, 50, 10, 300, 13,
+                  2, 8, 10, 11, 50, 14, 150, 17, 400, 20,
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.25,
+                "circle-stroke-opacity": 0.32,
+              }}
+            />
+            <Layer
+              id="cluster-counts"
+              type="symbol"
+              filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 4]]}
+              layout={{
+                "text-field": ["get", "point_count_abbreviated"],
+                "text-size": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  4, 9, 50, 11, 200, 12,
+                ],
+                "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+                "text-allow-overlap": true,
+                "text-ignore-placement": true,
+              }}
+              paint={{
+                "text-color": "#FFFFFF",
+                "text-halo-color": "rgba(0,0,0,0.3)",
+                "text-halo-width": 1.1,
+                "text-halo-blur": 0.4,
               }}
             />
             {/* Individual unclustered points — same icon language, smaller
@@ -1760,20 +1784,49 @@ export default function AppMap({
                     "#C4451C",
                   ],
                 ],
-                // Calm, not loud: a soft category-tinted dot, no number,
-                // no hard black ring. It reads "a place cluster, mostly
-                // <category>" at a glance and dissolves into real pins
-                // as you zoom — the de-cluttering that makes the wide
-                // view make sense.
-                "circle-opacity": 0.55,
-                "circle-blur": 0.3,
+                // Calm category tint. The count label below restores
+                // "how many places" without a hard black outline; the
+                // disk itself stays soft and the dominant-category color
+                // still reads at a glance. Wider radius scale gives
+                // dense clusters real visual weight at the county view.
+                "circle-opacity": 0.62,
+                "circle-blur": 0.25,
                 "circle-radius": [
                   "interpolate", ["linear"], ["get", "point_count"],
-                  2, 8, 50, 12, 300, 16,
+                  2, 10, 10, 14, 50, 18, 150, 22, 400, 26,
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1,
-                "circle-stroke-opacity": 0.3,
+                "circle-stroke-opacity": 0.4,
+              }}
+            />
+            {/* Count label on top of the cluster disc — small, white,
+                no halo'd pill, just numbers. The earlier "no number"
+                rule was right that big black count chips were loud;
+                but losing the count entirely meant a 12-pin cluster
+                read identical to an 80-pin one. A subtle white numeric
+                label restores the cardinality signal while keeping
+                the calm visual register. Hidden on tiny clusters (3 or
+                fewer) since the disc itself already reads as small. */}
+            <Layer
+              id="curated-cluster-counts"
+              type="symbol"
+              filter={["all", ["has", "point_count"], [">=", ["get", "point_count"], 4]]}
+              layout={{
+                "text-field": ["get", "point_count_abbreviated"],
+                "text-size": [
+                  "interpolate", ["linear"], ["get", "point_count"],
+                  4, 10, 50, 12, 200, 13,
+                ],
+                "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+                "text-allow-overlap": true,
+                "text-ignore-placement": true,
+              }}
+              paint={{
+                "text-color": "#FFFFFF",
+                "text-halo-color": "rgba(0,0,0,0.25)",
+                "text-halo-width": 1.2,
+                "text-halo-blur": 0.5,
               }}
             />
             <Layer
@@ -1786,15 +1839,19 @@ export default function AppMap({
                   ["image", ["concat", "cat-", ["get", "category"]]],
                   ["image", "cat-_default"],
                 ],
-                // Bumped ~50% (2026-05-20). At the wide county view 0.32
-                // was unreadable on phones; the colored pucks were the
-                // point of the map and they were dots. Now they read as
-                // pins from zoom 11.
+                // Pin scale by zoom. At the very wide county view
+                // (z9–10) the pins should read as small markers
+                // (clusters carry the density signal anyway). They grow
+                // toward full size as the user zooms into a town. The
+                // previous floor at z11=0.5 left county-view pins too
+                // big and overlapping; we now start smaller at z9 and
+                // ramp up as the user closes in.
                 "icon-size": [
                   "interpolate", ["linear"], ["zoom"],
+                  9, 0.36,
                   11, 0.5,
-                  14, 0.7,
-                  16, 0.9,
+                  14, 0.72,
+                  16, 0.92,
                   18, 1.1,
                 ],
                 // Decluttering is done by CLUSTERING, not icon collision:
