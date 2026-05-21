@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { isInsideFrederickCounty } from "@/lib/geo";
 
 /**
  * Visitor / Resident mode — the single presentation lens the app reads
@@ -35,28 +36,11 @@ export type Mode = "resident" | "visitor";
 /** The spec-defined default when nothing is known about the user. */
 export const DEFAULT_MODE: Mode = "visitor";
 
-/**
- * Frederick County bounding box, per the spec:
- *   south 39.32, west -77.65, north 39.72, east -77.05
- * A point inside the box is a hint the user might be a resident — we
- * suggest Resident, never auto-commit silently when the user already
- * picked something.
- */
-export const FREDERICK_COUNTY_BBOX = {
-  south: 39.32,
-  west: -77.65,
-  north: 39.72,
-  east: -77.05,
-};
-
-export function isInsideFrederickCounty(lat: number, lng: number): boolean {
-  return (
-    lat >= FREDERICK_COUNTY_BBOX.south &&
-    lat <= FREDERICK_COUNTY_BBOX.north &&
-    lng >= FREDERICK_COUNTY_BBOX.west &&
-    lng <= FREDERICK_COUNTY_BBOX.east
-  );
-}
+// Re-exported from lib/geo so the bbox lives in one place. useMode
+// uses it to nudge a geolocated user toward Resident; loaders use it
+// to drop mis-positioned rows from public surfaces.
+export { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
+export { isInsideFrederickCounty };
 
 // ── External store ────────────────────────────────────────────────
 // localStorage-mirrored snapshot via useSyncExternalStore so every
