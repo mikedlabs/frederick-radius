@@ -155,35 +155,95 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         </ol>
       </nav>
 
+      {/* Cinematic hero. Two paths:
+       *   - With hero_image: full-bleed 16:11 photo, dark legibility
+       *     gradient, date pill + share/save floating on top, title +
+       *     category eyebrow overlaid at the bottom. Same visual
+       *     language as FeaturedTonight on /today.
+       *   - Without hero_image: a richer category-tinted graphic hero
+       *     with a watermark calendar glyph + a bigger title. Still
+       *     reads as editorial, not as "missing image."
+       * Shader-rim around the whole card for parity with the Today
+       * editorial moments. */}
       <header
-        className="overflow-hidden rounded-[var(--app-radius-xl)] border"
+        className="shader-rim overflow-hidden rounded-[var(--app-radius-xl)] border"
         style={{ borderColor: "var(--app-border)" }}
       >
-        <div
-          className="flex items-center gap-4 px-6 py-8"
-          style={{ background: `linear-gradient(135deg, ${cat?.color ?? "#C4451C"}26, ${cat?.color ?? "#C4451C"}10)` }}
-        >
-          <Calendar className="h-10 w-10" strokeWidth={1.5} style={{ color: cat?.color ?? "var(--app-brand)" }} aria-hidden />
-          <p className="font-serif text-lg font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-            {when}
-          </p>
-        </div>
-        <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: cat?.color ?? "var(--app-brand)" }}>
+        {event.hero_image ? (
+          <div className="relative h-64 w-full overflow-hidden sm:h-72">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={event.hero_image}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+              loading="eager"
+            />
+            {/* Legibility gradient — dark at bottom for the title, soft
+             *  at top for the date pill. */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
+            {/* Top row: date pill + action cluster */}
+            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur"
+                style={{ background: `${cat?.color ?? "#C4451C"}D0` }}
+              >
+                <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                {when}
+              </span>
+              <div className="flex shrink-0 items-center gap-1">
+                <EventActions event={event} actions={["share"]} />
+                <SaveButton refType="event" refId={event.slug} label={event.title} />
+              </div>
+            </div>
+            {/* Bottom: category eyebrow + title */}
+            <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] opacity-85">
                 {cat?.name ?? event.category}
               </p>
-              <h1 className="mt-0.5 font-serif text-[24px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <h1 className="mt-0.5 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
                 {event.title}
               </h1>
-              <TrustChip signal={eventTrust(event)} detail className="mt-2" />
             </div>
-            <div className="flex shrink-0 items-center">
+          </div>
+        ) : (
+          <div
+            className="relative h-56 overflow-hidden sm:h-60"
+            style={{
+              background: `linear-gradient(135deg, ${cat?.color ?? "#C4451C"}40, ${cat?.color ?? "#C4451C"}0F 60%, var(--app-bg-elevated))`,
+            }}
+          >
+            {/* Watermark calendar — quietly anchors the right side. */}
+            <Calendar
+              className="pointer-events-none absolute -right-4 -top-2 h-44 w-44 opacity-15"
+              strokeWidth={1}
+              style={{ color: cat?.color ?? "var(--app-brand)" }}
+              aria-hidden
+            />
+            {/* Top-right action cluster */}
+            <div className="absolute right-3 top-3 z-10 flex shrink-0 items-center gap-1">
               <EventActions event={event} actions={["share"]} />
               <SaveButton refType="event" refId={event.slug} label={event.title} />
             </div>
+            <div className="absolute inset-x-0 bottom-0 p-5">
+              <p
+                className="text-[11px] font-medium uppercase tracking-[0.14em]"
+                style={{ color: cat?.color ?? "var(--app-brand)" }}
+              >
+                {cat?.name ?? event.category} · {when}
+              </p>
+              <h1
+                className="mt-1 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]"
+                style={{ color: "var(--app-ink)" }}
+              >
+                {event.title}
+              </h1>
+            </div>
           </div>
+        )}
+        {/* Below-the-hero metadata strip: trust + description + venue/
+         *  free/recurrence/organizer/freshness. */}
+        <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
+          <TrustChip signal={eventTrust(event)} detail />
           {desc && (
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {desc}
