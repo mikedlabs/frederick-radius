@@ -91,7 +91,11 @@ export default function RadiusMap({
   centerLabel,
   insidePlaces,
   onCenterChange,
-  height = "60vh",
+  // Tuned so the map AND the control card below it (mode toggle +
+  // slider) fit in one mobile viewport. The previous 60vh buried the
+  // slider below the fold, which broke the "see what you're doing
+  // while adjusting" loop.
+  height = "min(42vh, 360px)",
 }: {
   mode: TravelMode;
   meters: number;
