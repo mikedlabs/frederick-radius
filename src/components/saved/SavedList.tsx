@@ -13,6 +13,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
 import { Bookmark, MapPin, Sparkles } from "lucide-react";
+import Skeleton from "@/components/ui/Skeleton";
 
 type DecoratedEvent = ReturnType<typeof decorateEvent>;
 
@@ -79,13 +80,17 @@ export default function SavedList() {
   }, [items]);
 
   if (!mounted) {
+    // Pre-hydration: render skeleton rows that match the real
+    // populated state's layout, so there's no layout jump when the
+    // localStorage read resolves a moment later.
     return (
-      <p
-        className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-      >
-        Loading…
-      </p>
+      <div aria-busy="true" className="space-y-3">
+        <Skeleton.Block height={88} round="var(--app-radius-lg)" />
+        <Skeleton.Block height={56} round="var(--app-radius-md)" />
+        <Skeleton.Row />
+        <Skeleton.Row />
+        <Skeleton.Row />
+      </div>
     );
   }
 

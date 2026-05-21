@@ -15,6 +15,7 @@ import DismissibleSection from "@/components/today/DismissibleSection";
 import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
+import Skeleton from "@/components/ui/Skeleton";
 import { allUpcoming } from "@/lib/loaders/events";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -136,24 +137,19 @@ export default async function HomePage() {
           differentiator card — what makes the app worth opening
           instead of Googling. Renders ABOVE the sky hero so it's the
           first thing the eye lands on. */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<Skeleton.Block height={140} round="var(--app-radius-lg)" />}>
         <NowStrip />
       </Suspense>
 
       <SkyHero className="space-y-4">
-        <Suspense fallback={null}>
+        <Suspense fallback={<Skeleton.Block height={56} round="var(--app-radius-md)" />}>
           <AdaptiveGreeting />
         </Suspense>
         <Suspense fallback={null}>
           <CivicAlerts />
         </Suspense>
         <Suspense
-          fallback={
-            <div
-              className="tactile h-[180px] rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
-              aria-hidden
-            />
-          }
+          fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
         >
           <WeatherHero />
         </Suspense>
@@ -161,12 +157,24 @@ export default async function HomePage() {
       </SkyHero>
 
       {/* 2 — One quiet civic line. */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<Skeleton.Block height={28} round="var(--app-radius-md)" />}>
         <PulseSummary />
       </Suspense>
 
-      {/* 3 — Local newsroom. Has its own header + lane structure. */}
-      <Suspense fallback={null}>
+      {/* 3 — Local newsroom. Has its own header + lane structure.
+       *  Skeleton shows a feature card + a few row stubs while the RSS
+       *  fan-out resolves, so the page doesn't pop in/jump. */}
+      <Suspense
+        fallback={
+          <div aria-busy="true" className="space-y-2.5">
+            <Skeleton.Block height={20} width={140} round="var(--app-radius-sm)" />
+            <Skeleton.Card withPhoto={false} />
+            <Skeleton.Row />
+            <Skeleton.Row />
+            <Skeleton.Row />
+          </div>
+        }
+      >
         <LocalNewsStrip />
       </Suspense>
 
