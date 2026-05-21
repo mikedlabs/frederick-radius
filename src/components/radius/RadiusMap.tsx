@@ -1,29 +1,29 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef } from "react";
-import { Footprints, Bike, Car, Navigation } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Crosshair, Map as MapIcon } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
-import { formatDistance } from "@/lib/geo";
-import type { MapRef } from "react-map-gl/mapbox";
-// Mapbox CSS — without this, tile rendering and canvas sizing fail
-// silently (you see the canvas + overlays but no base map).
+import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
+// Mapbox CSS — without this, tile rendering and canvas sizing fail.
 import "mapbox-gl/dist/mapbox-gl.css";
 
 /**
- * RadiusMap — the new visual hero for /radius. A real Mapbox map with
- * the radius drawn as a circle overlay, replacing the abstract SVG
- * RadiusRing. Center pin + edge place name + count stat bar at the
- * bottom (same shape as the previous hero) so the page still reads as
- * "one diagram" instead of separate cards.
+ * RadiusMap — the big interactive county canvas for /radius.
  *
- * The map is dynamically imported so SSR doesn't try to render Mapbox.
- * Camera flies to fit the circle when the center / radius changes.
+ * Big differences from the first cut:
+ *  - Fills ~60vh so the page leads with the geography.
+ *  - Interactive: pan, zoom, tap-to-set-center, drag the center pin.
+ *  - Initial view fits Frederick County so "the whole county" is the
+ *    starting frame. Two floating buttons let the user fit the radius
+ *    tightly or jump back to the county view.
+ *  - In-range places render as small dots on the map so the user can
+ *    SEE how dense their reach is, not just read "518 places."
+ *  - Stat bar lives in RadiusBuilder now — this component just owns
+ *    the canvas + overlays.
  */
 
-// Dynamic-import the react-map-gl/mapbox bits so the heavy Mapbox JS
-// stays out of the SSR bundle (same pattern AppMap uses on /map).
 const Map = dynamic(() => import("react-map-gl/mapbox").then((m) => m.default), {
   ssr: false,
   loading: () => null,
@@ -34,11 +34,12 @@ const Marker = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Marker)
 
 const STYLE_URL = "mapbox://styles/mapbox/standard";
 
-const MODE_ICON: Partial<Record<TravelMode, typeof Footprints>> = {
-  walk: Footprints,
-  bike: Bike,
-  drive: Car,
-};
+// Frederick County bbox in the [W, S, E, N] form Mapbox wants for
+// fitBounds. Source: src/lib/integrations/overpass.ts (kept in sync).
+const COUNTY_BOUNDS: [[number, number], [number, number]] = [
+  [-77.700, 39.265],
+  [-77.150, 39.745],
+];
 
 const MODE_HEX: Partial<Record<TravelMode, string>> = {
   walk: "#2A5D8F",
@@ -46,9 +47,7 @@ const MODE_HEX: Partial<Record<TravelMode, string>> = {
   drive: "#C4451C",
 };
 
-/** Build a 72-step polygon approximating a circle of `meters` around
- *  `center`. Same shape AppMap's circlePolygon uses for the legacy
- *  RADIUS_M ring; copied here so this component stays self-contained. */
+/** 72-step polygon approximating a circle of `meters` around `center`. */
 function circlePolygon(
   center: { lng: number; lat: number },
   meters: number,
@@ -68,109 +67,139 @@ function circlePolygon(
   };
 }
 
-/** Bounds [west, south, east, north] padded ~25% beyond the circle so
- *  it sits inside the viewport with breathing room, not cropped at the
- *  edges. */
-function paddedBounds(
+/** Bounds for the radius circle padded ~25% so it sits inside the
+ *  viewport with breathing room when the user taps "Fit radius." */
+function radiusBounds(
   center: { lng: number; lat: number },
   meters: number,
-): [number, number, number, number] {
+): [[number, number], [number, number]] {
   const pad = meters * 1.25;
   const latR = pad / 111320;
   const lngR = pad / (111320 * Math.cos((center.lat * Math.PI) / 180));
   return [
-    center.lng - lngR,
-    center.lat - latR,
-    center.lng + lngR,
-    center.lat + latR,
+    [center.lng - lngR, center.lat - latR],
+    [center.lng + lngR, center.lat + latR],
   ];
 }
 
+export type InsideDot = { lng: number; lat: number };
+
 export default function RadiusMap({
   mode,
-  minutes,
   meters,
   center,
   centerLabel,
-  edge,
-  countInside,
+  insidePlaces,
+  onCenterChange,
+  height = "60vh",
 }: {
   mode: TravelMode;
-  minutes: number;
   meters: number;
   center: { lng: number; lat: number };
   centerLabel: string;
-  edge: { name: string; distance_m: number } | null;
-  countInside: number;
+  /** Pre-filtered to places inside the radius. Rendered as small dots
+   *  so users can see geographic density, not just read a count. */
+  insidePlaces: InsideDot[];
+  /** Fires on map tap and on center-pin drag end. Parent can opt out
+   *  (omit the prop) to keep the map view-only. */
+  onCenterChange?: (next: { lng: number; lat: number }) => void;
+  height?: string;
 }) {
-  const Icon = MODE_ICON[mode] ?? Footprints;
   const accentHex = MODE_HEX[mode] ?? "#2A5D8F";
   const mapRef = useRef<MapRef | null>(null);
+  // Live position while dragging the center pin — gives the radius
+  // circle a smooth follow without thrashing parent state on every
+  // pointermove. Committed back via onCenterChange on dragend.
+  const [drag, setDrag] = useState<{ lng: number; lat: number } | null>(null);
 
-  // The circle GeoJSON updates as the slider moves; useMemo keeps it
-  // referentially stable across renders that don't change the inputs.
+  const effectiveCenter = drag ?? center;
+
   const circle = useMemo(
-    () => circlePolygon(center, meters),
-    [center.lng, center.lat, meters],
+    () => circlePolygon(effectiveCenter, meters),
+    [effectiveCenter.lng, effectiveCenter.lat, meters],
   );
 
-  const initialBounds = useMemo(
-    () => paddedBounds(center, meters),
-    // intentionally only on mount; useEffect handles later moves
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
-  );
+  const placesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    return {
+      type: "FeatureCollection",
+      features: insidePlaces.map((p) => ({
+        type: "Feature",
+        properties: {},
+        geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+      })),
+    };
+  }, [insidePlaces]);
 
-  // Recenter + refit when center or radius change. easeTo with a calm
-  // cubic so the camera glides instead of snapping.
+  // When the parent's center changes (preset dropdown, Locate, tap),
+  // glide the camera to the new spot without changing zoom. The user's
+  // chosen zoom level is preserved. easeTo with a calm cubic.
   useEffect(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
-    const [w, s, e, n] = paddedBounds(center, meters);
-    map.fitBounds(
-      [
-        [w, s],
-        [e, n],
-      ],
-      { padding: 24, duration: 540, easing: (t) => t * (2 - t) },
-    );
-  }, [center.lng, center.lat, meters]);
+    map.easeTo({
+      center: [center.lng, center.lat],
+      duration: 480,
+      easing: (t) => t * (2 - t),
+    });
+  }, [center.lng, center.lat]);
 
-  // Fallback skeleton if Mapbox isn't configured — keeps the layout
-  // height consistent and gives an honest message instead of a blank
-  // rectangle.
+  const fitToRadius = () => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    map.fitBounds(radiusBounds(effectiveCenter, meters), {
+      padding: 48,
+      duration: 540,
+      easing: (t) => t * (2 - t),
+    });
+  };
+
+  const fitToCounty = () => {
+    const map = mapRef.current?.getMap();
+    if (!map) return;
+    map.fitBounds(COUNTY_BOUNDS, {
+      padding: 32,
+      duration: 600,
+      easing: (t) => t * (2 - t),
+    });
+  };
+
+  // Single-tap on the map → move the center there. react-map-gl only
+  // fires onClick after a real click (drag/pan don't trigger it).
+  const handleMapClick = (e: MapMouseEvent) => {
+    if (!onCenterChange) return;
+    onCenterChange({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+  };
+
+  // Live-update the visual position as the user drags the pin, then
+  // commit to the parent on dragend so we only push state changes once.
+  const onPinDrag = (e: MarkerDragEvent) => {
+    setDrag({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+  };
+  const onPinDragEnd = (e: MarkerDragEvent) => {
+    setDrag(null);
+    if (onCenterChange) {
+      onCenterChange({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+    }
+  };
+
   if (!MAPBOX_TOKEN) {
     return (
-      <RadiusFrame
-        mode={mode}
-        minutes={minutes}
-        meters={meters}
-        Icon={Icon}
-        edge={edge}
-        countInside={countInside}
-        centerLabel={centerLabel}
-        accentHex={accentHex}
+      <div
+        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)] grid place-items-center"
+        style={{ borderColor: "var(--app-border)", height }}
       >
-        <div
-          className="grid h-full w-full place-items-center text-[12px]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
+        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
           Map preview unavailable
-        </div>
-      </RadiusFrame>
+        </p>
+      </div>
     );
   }
 
   return (
-    <RadiusFrame
-      mode={mode}
-      minutes={minutes}
-      meters={meters}
-      Icon={Icon}
-      edge={edge}
-      countInside={countInside}
-      centerLabel={centerLabel}
-      accentHex={accentHex}
+    <section
+      aria-label="Radius map"
+      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
+      style={{ borderColor: "var(--app-border)", height }}
     >
       <Map
         ref={(r) => {
@@ -179,200 +208,137 @@ export default function RadiusMap({
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle={STYLE_URL}
         initialViewState={{
-          bounds: initialBounds,
-          fitBoundsOptions: { padding: 24 },
+          bounds: COUNTY_BOUNDS,
+          fitBoundsOptions: { padding: 32 },
         }}
-        interactive={false}
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}
         attributionControl={false}
+        onClick={handleMapClick}
+        cursor={onCenterChange ? "crosshair" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
+        {/* In-range places as small mode-tinted dots — geographic
+            evidence of "there's a lot here" without rendering hundreds
+            of full marker buttons. Source updates every time the user
+            moves the slider or recenters. */}
+        <Source id="radius-places" type="geojson" data={placesGeoJson}>
+          <Layer
+            id="radius-places-dots"
+            type="circle"
+            paint={{
+              "circle-radius": 3.5,
+              "circle-color": accentHex,
+              "circle-opacity": 0.78,
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 1,
+              "circle-stroke-opacity": 0.6,
+            }}
+          />
+        </Source>
+        {/* The radius itself — soft fill + crisp line. */}
         <Source id="radius-circle" type="geojson" data={circle}>
           <Layer
             id="radius-circle-fill"
             type="fill"
-            paint={{
-              "fill-color": accentHex,
-              "fill-opacity": 0.16,
-            }}
+            paint={{ "fill-color": accentHex, "fill-opacity": 0.13 }}
           />
           <Layer
             id="radius-circle-line"
             type="line"
             paint={{
               "line-color": accentHex,
-              "line-width": 2,
-              "line-opacity": 0.85,
+              "line-width": 2.5,
+              "line-opacity": 0.9,
             }}
           />
         </Source>
-        <Marker longitude={center.lng} latitude={center.lat} anchor="center">
+        {/* Draggable center pin. The visual is rendered inside the
+            Marker; Marker handles the pointer events. */}
+        <Marker
+          longitude={effectiveCenter.lng}
+          latitude={effectiveCenter.lat}
+          anchor="center"
+          draggable={Boolean(onCenterChange)}
+          onDrag={onPinDrag}
+          onDragEnd={onPinDragEnd}
+        >
           <span
             aria-hidden
             style={{
               position: "relative",
               display: "grid",
               placeItems: "center",
-              width: 18,
-              height: 18,
+              width: 22,
+              height: 22,
               borderRadius: 9999,
               background: accentHex,
               border: "3px solid #fff",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+              boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+              cursor: onCenterChange ? "grab" : "default",
             }}
           />
         </Marker>
       </Map>
-    </RadiusFrame>
-  );
-}
 
-/**
- * Static chrome around the map: the bordered card + center label pill
- * + stat bar at the bottom + edge-place footer. Same visual shape the
- * previous SVG RadiusRing established, so the page reads as a refinement
- * of the existing hero rather than a rewrite.
- */
-function RadiusFrame({
-  children,
-  mode,
-  minutes,
-  meters,
-  Icon,
-  edge,
-  countInside,
-  centerLabel,
-  accentHex,
-}: {
-  children: React.ReactNode;
-  mode: TravelMode;
-  minutes: number;
-  meters: number;
-  Icon: typeof Footprints;
-  edge: { name: string; distance_m: number } | null;
-  countInside: number;
-  centerLabel: string;
-  accentHex: string;
-}) {
-  return (
-    <section
-      aria-label="Radius preview"
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
-    >
-      {/* The map canvas itself. A fixed aspect ratio keeps the hero
-          consistent across screen sizes; map fills 100% inside. */}
-      <div
-        className="relative w-full"
-        style={{ aspectRatio: "16 / 11", background: "var(--app-bg-sunken)" }}
-      >
-        {children}
-        {/* Center label pill — overlay so the user can ground the map
-            instantly without reading the dropdown below. */}
-        <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4">
+      {/* Center label pill — names the current center without making
+          the user look at the dropdown below. */}
+      <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4">
+        <span
+          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+          style={{
+            background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",
+            color: "var(--app-ink-2)",
+            backdropFilter: "blur(6px)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          }}
+        >
+          {centerLabel}
+        </span>
+      </div>
+
+      {/* Hint for the tap interaction — quiet, only visible when an
+          onCenterChange handler is provided (i.e. user can move pins). */}
+      {onCenterChange && (
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10">
           <span
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
             style={{
               background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",
-              color: "var(--app-ink-2)",
+              color: "var(--app-ink-3)",
               backdropFilter: "blur(6px)",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
             }}
           >
-            {centerLabel}
+            Tap or drag to move pin
           </span>
         </div>
-      </div>
-      {/* Stat bar — mode icon + minutes + In range count. */}
-      <div
-        className="flex items-stretch border-t"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div className="flex flex-1 items-center gap-2.5 px-4 py-2.5">
-          <span
-            aria-hidden
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: `color-mix(in srgb, ${accentHex} 18%, transparent)`,
-              color: accentHex,
-            }}
-          >
-            <Icon className="h-4 w-4" strokeWidth={2.25} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {mode === "walk" ? "Walking" : mode === "bike" ? "Biking" : "Driving"}
-            </p>
-            <p
-              className="font-serif text-[18px] font-semibold leading-tight tabular-nums"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {minutes} min
-              <span
-                className="ml-1.5 text-[12px] font-medium"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                · {formatDistance(meters)}
-              </span>
-            </p>
-          </div>
-        </div>
-        <div
-          className="flex flex-1 items-center gap-2.5 border-l px-4 py-2.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <span
-            aria-hidden
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-              color: "var(--app-brand)",
-            }}
-          >
-            <Navigation className="h-3.5 w-3.5" strokeWidth={2.25} />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              In range
-            </p>
-            <p
-              className="font-serif text-[18px] font-semibold leading-tight tabular-nums"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {countInside.toLocaleString()}
-              <span
-                className="ml-1.5 text-[12px] font-medium"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                place{countInside === 1 ? "" : "s"}
-              </span>
-            </p>
-          </div>
-        </div>
-      </div>
-      {edge && (
-        <p
-          className="border-t px-4 py-2 text-[11.5px] truncate"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-        >
-          At the edge:{" "}
-          <span
-            className="font-semibold"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            {edge.name}
-          </span>{" "}
-          <span className="tabular-nums">· {formatDistance(edge.distance_m)} away</span>
-        </p>
       )}
+
+      {/* Camera controls — Fit radius / Show county. Right side so they
+          don't sit over the Mapbox attribution at the bottom-left. */}
+      <div className="absolute right-3 top-3 z-10 flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={fitToRadius}
+          aria-label="Fit radius"
+          title="Fit radius"
+          className="grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+        >
+          <Crosshair className="h-4 w-4" strokeWidth={2} aria-hidden />
+        </button>
+        <button
+          type="button"
+          onClick={fitToCounty}
+          aria-label="Show whole county"
+          title="Show whole county"
+          className="grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+        >
+          <MapIcon className="h-4 w-4" strokeWidth={2} aria-hidden />
+        </button>
+      </div>
     </section>
   );
 }
