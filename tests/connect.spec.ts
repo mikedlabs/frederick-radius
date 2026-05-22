@@ -53,7 +53,9 @@ describe("resolveMunicipality", () => {
 
 describe("locationLabel", () => {
   it("labels an inside point as '<Town>, MD'", () => {
-    expect(locationLabel(FREDERICK_CENTER)).toBe("Frederick, MD");
+    // The county seat was renamed "Downtown Frederick" in #58 so the
+    // label disambiguates the urban core from the broader county.
+    expect(locationLabel(FREDERICK_CENTER)).toBe("Downtown Frederick, MD");
   });
 
   it("labels a far point as the generic county label", () => {
@@ -94,7 +96,7 @@ describe("nearbyNow", () => {
   it("returns the connected shape with the resolved municipality", () => {
     expect(ctx.municipality.slug).toBe("frederick");
     expect(ctx.inside).toBe(true);
-    expect(ctx.label).toBe("Frederick, MD");
+    expect(ctx.label).toBe("Downtown Frederick, MD");
     expect(ctx.radiusM).toBeGreaterThan(0);
   });
 
