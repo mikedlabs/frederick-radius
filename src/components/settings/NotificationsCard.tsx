@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell, BellOff, Check, AlertCircle, Send } from "lucide-react";
 import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
 
-const ALL_TOPICS: PushTopic[] = ["civic-alerts", "saved-events", "daily-briefing"];
+const ALL_TOPICS: PushTopic[] = ["civic-alerts", "saved-events", "daily-briefing", "specials"];
 
 type SupportState =
   | "unknown"

@@ -4,7 +4,6 @@ import { eq, lt } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions, push_log } from "@/lib/db/schema";
 import { sendPush, configurePush } from "@/lib/push";
-import type { PushTopic } from "@/lib/push-topics";
 import type { PushPayload } from "./push";
 
 /**
@@ -24,7 +23,7 @@ import type { PushPayload } from "./push";
  * what happened.
  */
 export async function fanoutToTopic(
-  topic: PushTopic,
+  topic: string,
   dedupeKey: string,
   payload: PushPayload,
 ): Promise<{ claimed: boolean; attempted: number; sent: number; gone: number }> {
