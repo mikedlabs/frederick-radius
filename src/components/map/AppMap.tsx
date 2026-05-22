@@ -338,7 +338,6 @@ export default function AppMap({
   // geolocation, instead of the "Near me" button silently doing nothing.
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [osmError, setOsmError] = useState<string | null>(null);
-  const [showUnverified, setShowUnverified] = useState(false);
   const [amenityGroups, setAmenityGroups] = useState<Set<string>>(() => new Set(initialDefaults.amenityGroups));
   const [amenityOpen, setAmenityOpen] = useState(false);
   // The category rail is heavy; collapsed by default so the in-map
@@ -348,7 +347,6 @@ export default function AppMap({
   const [truck, setTruck] = useState<DemoFoodTruck | null>(null);
   const [pointsPlace, setPointsPlace] = useState<DemoPointsPartner | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
-  const [showLegend, setShowLegend] = useState(false);
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
@@ -520,8 +518,10 @@ export default function AppMap({
     // (these are useful but dense — would clutter the map otherwise).
     // Always filter known-closed places (VOLT, Idiom, etc.) — even from the
     // unverified opt-in view. We never want to show a closed business as open.
+    // Trusted-only: the "+N unverified" opt-in was retired — exposing
+    // weaker-quality OSM data violated the editorial promise.
     let pool = osmPlaces.filter((p) => !isKnownClosed(p.name));
-    pool = showUnverified ? pool : pool.filter(isTrustedOsm);
+    pool = pool.filter(isTrustedOsm);
     // Micro-amenities never ride the clustered business source — they get
     // their own zoom-gated layer so they declutter the wide view.
     pool = pool.filter((p) => !isAmenity(p));
@@ -554,7 +554,7 @@ export default function AppMap({
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       })),
     };
-  }, [osmPlaces, activeCats, showUnverified, osmDupesCurated]);
+  }, [osmPlaces, activeCats, osmDupesCurated]);
 
   // Which raw amenity category slugs are active, from the selected groups.
   const activeAmenityCats = useMemo(() => {
@@ -766,7 +766,6 @@ export default function AppMap({
   };
 
   const trustedOsmCount = osmPlaces.filter((p) => isTrustedOsm(p) && !isAmenity(p)).length;
-  const unverifiedOsmCount = osmPlaces.filter((p) => !isTrustedOsm(p)).length;
   // OSM amenities are flaky (live Overpass; empty in the sandbox). The
   // curated amenities.json is always present, so the Amenities tray is
   // gated on EITHER source having points — that is the fix for "I
@@ -1057,7 +1056,7 @@ export default function AppMap({
                   boxShadow: activeCats.size === 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                 }}
               >
-                All · {(places.length + (showUnverified ? osmPlaces.length : trustedOsmCount)).toLocaleString()}
+                All · {(places.length + trustedOsmCount).toLocaleString()}
               </button>
             </li>
             {amenityCount > 0 && (
@@ -1368,19 +1367,11 @@ export default function AppMap({
             ) : (
               <>
                 <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
-                {showUnverified
-                  ? `${osmPlaces.length.toLocaleString()} OSM places (incl. unverified)`
-                  : `${trustedOsmCount.toLocaleString()} verified OSM places`}
+                {trustedOsmCount.toLocaleString()} verified OSM places
               </>
             )}
           </div>
         )}
-        {/* The "+N unverified" toggle is retired from the deck — it
-            exposed data we don't trust and asked the user to opt in
-            to weaker quality, which violated the editorial promise.
-            showUnverified state stays in component scope (default
-            false) so the filtering branch above still compiles. */}
-
         {/* Directions chip — distance + drive estimate + native handoff */}
         {routeInfo && (
           <div className="absolute inset-x-0 top-3 z-20 flex justify-center px-3">
@@ -1405,7 +1396,7 @@ export default function AppMap({
         {/* Legend retired — the floating button competed with the map
             and never carried real signal. The category color band on
             each pin + the in-view drawer's place cards are the legend
-            now. (showLegend state kept above to avoid a wider refactor.) */}
+            now. */}
 
         {/* Demo preview for future updates */}
         {demo && (
