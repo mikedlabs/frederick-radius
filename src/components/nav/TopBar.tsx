@@ -15,31 +15,30 @@ import LocationChip from "./LocationChip";
  * and during a search overlay.
  */
 function useHideOnScroll(disabled: boolean) {
-  const [hidden, setHidden] = useState(false);
+  // Track only what scroll position says; the disabled override is
+  // applied at render time below so we don't cascade a setState from
+  // an effect when `disabled` flips (search overlay open / close).
+  const [scrollHidden, setScrollHidden] = useState(false);
   const lastY = useRef(0);
   const ticking = useRef(false);
   useEffect(() => {
-    if (disabled) {
-      setHidden(false);
-      return;
-    }
     const onScroll = () => {
       if (ticking.current) return;
       ticking.current = true;
       requestAnimationFrame(() => {
         const y = window.scrollY;
         const dy = y - lastY.current;
-        if (y < 80) setHidden(false);
-        else if (dy > 6) setHidden(true);
-        else if (dy < -4) setHidden(false);
+        if (y < 80) setScrollHidden(false);
+        else if (dy > 6) setScrollHidden(true);
+        else if (dy < -4) setScrollHidden(false);
         lastY.current = y;
         ticking.current = false;
       });
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, [disabled]);
-  return hidden;
+  }, []);
+  return disabled ? false : scrollHidden;
 }
 
 export default function TopBar() {

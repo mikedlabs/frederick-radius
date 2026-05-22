@@ -54,6 +54,9 @@ function relativeStart(iso: string, nowMs: number): string {
 
 export default function TonightRail({ events }: { events: EventWithMeta[] }) {
   if (events.length === 0) return null;
+  // Server component — `now` is request-scoped. The "starting soon"
+  // labels are meant to reflect the time the page rendered.
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const visible = events.slice(0, 8);
 

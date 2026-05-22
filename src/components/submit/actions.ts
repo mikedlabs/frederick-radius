@@ -35,11 +35,15 @@ export type SubmitEventInput = {
  * is wired, this writes to a "submissions" table that the /admin queue
  * displays. Once Resend is wired, this also fires a notification email to
  * the admin.
+ *
+ * The token is the capability credential — we never log it. Only the
+ * type + a small payload fingerprint so an admin can correlate.
  */
 async function persistSubmission(type: "place" | "event", payload: object): Promise<string> {
   const token = crypto.randomUUID();
-   
-  console.log("[submission]", type, token, JSON.stringify(payload));
+  const submitter =
+    (payload as { submitter_email?: string }).submitter_email ?? "unknown";
+  console.info(`[submission] ${type} from ${submitter}`);
   // Fire-and-forget admin notification when Resend is configured.
   await maybeSendAdminEmail(type, payload);
   return token;

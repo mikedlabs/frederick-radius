@@ -61,7 +61,7 @@ function sunTimes(date: Date, lat: number, lng: number) {
     let H = rising ? 360 - Math.acos(cosH) / RAD : Math.acos(cosH) / RAD;
     H = H / 15;
     const T = H + RA - 0.06571 * t - 6.622;
-    let UT = ((T - lngHour) % 24 + 24) % 24;
+    const UT = ((T - lngHour) % 24 + 24) % 24;
     // The almanac formula yields UT mod 24 — we have to choose which
     // UT day it belongs to. At Frederick's longitude (~-77°) sunset's
     // UT is ~00:30 the *next* calendar day, so a sunset UT < 12 has

@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
 
 /**
@@ -33,6 +34,13 @@ function formatAbsolute(d: Date, stale: boolean): string {
   return `${prefix} ${d.toLocaleDateString("en-US", opts)}`;
 }
 
+// No-op subscription: we just want a server/client split for `now`
+// without polling. The chip's age is rendered once per mount; the
+// label is stable enough that we don't need to tick.
+const subscribeNoop = () => () => {};
+const getClientNow = () => Date.now();
+const getServerNow = () => null;
+
 export default function FreshnessChip({
   iso,
   className = "",
@@ -40,10 +48,16 @@ export default function FreshnessChip({
   iso: string | undefined;
   className?: string;
 }) {
+  // `now` is null on the server and the real clock on the client.
+  // Using useSyncExternalStore keeps the SSR HTML free of any
+  // time-dependent content — the chip materializes after hydration.
+  const now = useSyncExternalStore(subscribeNoop, getClientNow, getServerNow);
+
   if (!iso) return null;
   const t = Date.parse(iso);
   if (Number.isNaN(t)) return null;
-  const ageMs = Date.now() - t;
+  if (now === null) return null; // SSR + pre-hydration: render nothing
+  const ageMs = now - t;
   if (ageMs < 0) return null; // future-dated; treat as no signal
   const { tier, label } = formatAge(ageMs);
   const isStale = tier === "stale";

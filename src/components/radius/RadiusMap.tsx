@@ -146,7 +146,7 @@ export default function RadiusMap({
 
   const circle = useMemo(
     () => circlePolygon(effectiveCenter, meters),
-    [effectiveCenter.lng, effectiveCenter.lat, meters],
+    [effectiveCenter, meters],
   );
 
   const placesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
