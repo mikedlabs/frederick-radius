@@ -148,7 +148,7 @@ export default function WeekStrip({
               key={d.iso}
               href={href}
               aria-pressed={isActive}
-              aria-label={`${d.monthShort} ${d.dom} — ${d.count} ${d.count === 1 ? "event" : "events"}`}
+              aria-label={`${d.monthShort} ${d.dom}, ${d.count} ${d.count === 1 ? "event" : "events"}`}
               className="group relative flex w-12 shrink-0 flex-col items-center pt-1.5 pb-1 sm:w-14"
               style={{
                 background: d.isWeekend

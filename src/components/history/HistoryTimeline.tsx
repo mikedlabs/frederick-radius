@@ -117,7 +117,7 @@ export default function HistoryTimeline() {
               key={e.slug}
               href={`#h-${e.slug}`}
               aria-label={`${e.title} (${e._y})`}
-              title={`${e.year} — ${e.title}`}
+              title={`${e.year}: ${e.title}`}
               className="group absolute"
               style={{
                 left: `${pct(e._y)}%`,
