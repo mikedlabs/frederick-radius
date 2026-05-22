@@ -28,6 +28,11 @@ export type HistoryEntry = {
   kind: HistoryKind;
   /** One short paragraph, 1-3 sentences. The way you'd say it aloud. */
   body: string;
+  /** Optional photo for the entry. Public-domain or licensed imagery
+   *  only (NPS / Library of Congress / Wikimedia Commons), with
+   *  `credit` set for attribution. Absent on most entries; the deck
+   *  falls back to its era-gradient treatment when there is no image. */
+  image?: { src: string; alt?: string; credit?: string };
   /** Where in the county this happened, for the map-related view. */
   place?: string;
   /** Optional point on the map. */

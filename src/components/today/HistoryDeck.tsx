@@ -1,35 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, Landmark, MapPin, RotateCw } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Landmark, MapPin } from "lucide-react";
 import type { HistoryEntry } from "@/data/history";
 import { eraForYear } from "@/lib/history-era";
 
 /**
  * HistoryDeck: the interactive "Did you know?" card on Today.
  *
- * The old card dropped a three-line history paragraph onto the page
- * statically. This one leads with the hook and hides the rest:
+ * Leads with the hook and hides the rest:
  *
- *   Collapsed   a big era-colored year (or a landmark glyph for an
- *               evergreen fact) plus the one-line title. Nothing else.
+ *   Collapsed   a photo (when the entry has one) plus a big era-colored
+ *               year (or a landmark glyph for an evergreen fact) and
+ *               the one-line title. Nothing else.
  *   Revealed    tap the card and the story expands underneath, with
  *               the place and a link into the full /history section.
  *
- * Two interactions make it a deck, not a poster: tap to reveal or
- * hide the story, and tap "another" to step to the next of all the
- * fact + moment entries. The accent (and the corner bloom) follows
- * the year's historical era, so the card changes hue as you move.
+ * Interactions:
+ *   - tap the hook to reveal or hide the story
+ *   - the prev / next arrows, or a left / right swipe, step through
+ *     every fact + moment entry
  *
- * Client component: it owns the `idx` + `revealed` state. The reveal
- * is a CSS-only height animation (the grid 0fr/1fr trick), so there
- * is no measuring JavaScript and no layout thrash.
+ * The accent and corner bloom follow the year's historical era, so the
+ * card changes hue as you move through time. Entries with a photo get
+ * a full-bleed banner; entries without one keep the era-gradient
+ * treatment, so the card never looks empty.
+ *
+ * Client component: it owns `idx` + `revealed` state. The reveal is a
+ * CSS-only height animation (the grid 0fr/1fr trick), no measuring JS.
  */
 
 /** Evergreen facts carry no year, so they have no era. They take the
  *  steady civic blue Today already uses for the history accent. */
 const FACT_ACCENT = "#2A5D8F";
+
+/** A swipe must travel this far horizontally, and be clearly more
+ *  horizontal than vertical, before it steps the deck. Keeps a
+ *  vertical page scroll from registering as a swipe. */
+const SWIPE_PX = 48;
 
 export default function HistoryDeck({
   facts,
@@ -44,6 +53,7 @@ export default function HistoryDeck({
     facts.length ? ((start % facts.length) + facts.length) % facts.length : 0,
   );
   const [revealed, setRevealed] = useState(false);
+  const touch = useRef<{ x: number; y: number } | null>(null);
 
   if (facts.length === 0) return null;
 
@@ -52,18 +62,39 @@ export default function HistoryDeck({
   const accent = era?.color ?? FACT_ACCENT;
   const kindLabel = era ? era.label : "Frederick fact";
 
-  function another() {
-    setIdx((i) => (i + 1) % facts.length);
+  /** Step the deck by `delta` (wraps both ways) and re-collapse. */
+  function go(delta: number) {
+    setIdx((i) => (i + delta + facts.length) % facts.length);
     setRevealed(false);
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    touch.current = { x: t.clientX, y: t.clientY };
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    const from = touch.current;
+    touch.current = null;
+    if (!from) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - from.x;
+    const dy = t.clientY - from.y;
+    // Horizontal-dominant drag past the threshold steps the deck;
+    // anything else is left to the page (vertical scroll, a tap).
+    if (Math.abs(dx) > SWIPE_PX && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      go(dx < 0 ? 1 : -1);
+    }
   }
 
   return (
     <div
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-5"
       style={{ "--section-accent": accent } as React.CSSProperties}
     >
-      {/* Corner bloom in the entry's era color. It transitions on
-          "another" so the whole card warms or cools as time moves. */}
+      {/* Corner bloom in the entry's era color. It transitions as you
+          step, so the whole card warms or cools as time moves. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 transition-[background] duration-500"
@@ -73,10 +104,34 @@ export default function HistoryDeck({
       />
 
       <div className="relative">
-        {/* Header: era / kind on the left, deck position + the
-            "another" control on the right. The section heading above
-            the card already says "Did you know", so it is not
-            repeated here. */}
+        {/* Photo banner: a full-bleed strip across the card top. Only
+            entries with a curated image get one; the rest lean on the
+            era gradient below, so the card never looks empty. */}
+        {fact.image && (
+          <div className="relative -mx-5 -mt-5 mb-4 h-40 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element -- public-domain history image; plain img avoids a domain allowlist */}
+            <img
+              src={fact.image.src}
+              alt={fact.image.alt ?? ""}
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+            <div
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-2/3"
+              style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent)" }}
+            />
+            {fact.image.credit && (
+              <span className="absolute bottom-1 right-2 text-[9px] font-medium text-white/70">
+                {fact.image.credit}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Header: era / kind on the left; the deck pager (prev,
+            position, next) on the right. The section heading above the
+            card already says "Did you know", so it is not repeated. */}
         <div className="flex items-center justify-between gap-3">
           <span
             className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
@@ -87,28 +142,37 @@ export default function HistoryDeck({
           >
             {kindLabel}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => go(-1)}
+              aria-label="Previous fact"
+              className="grid h-9 w-9 place-items-center rounded-full border outline-none transition active:scale-90 focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
+              style={{ borderColor: "var(--app-border)", color: accent }}
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2.5} aria-hidden />
+            </button>
             <span
-              className="text-[10px] font-semibold tabular-nums"
+              className="min-w-[3rem] text-center text-[10px] font-semibold tabular-nums"
               style={{ color: "var(--app-ink-3)" }}
             >
               {idx + 1} / {facts.length}
             </span>
             <button
               type="button"
-              onClick={another}
-              aria-label="Show another Frederick fact"
+              onClick={() => go(1)}
+              aria-label="Next fact"
               className="grid h-9 w-9 place-items-center rounded-full border outline-none transition active:scale-90 focus-visible:ring-2 focus-visible:ring-[var(--app-cool)]"
               style={{ borderColor: "var(--app-border)", color: accent }}
             >
-              <RotateCw className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+              <ChevronRight className="h-4 w-4" strokeWidth={2.5} aria-hidden />
             </button>
           </div>
         </div>
 
-        {/* The hook is one big tap target that toggles the story.
-            It holds only phrasing content (spans + svg) so it stays
-            a valid <button>. */}
+        {/* The hook is one big tap target that toggles the story. It
+            holds only phrasing content (spans + svg) so it stays a
+            valid <button>. */}
         <button
           type="button"
           onClick={() => setRevealed((r) => !r)}
