@@ -88,10 +88,14 @@ export default function CategoryGraphic({
   // much white the bright corner gets so two cards aren't identical.
   const brightMix = 45 + ((Math.abs(hueShift)) % 18); // 45–62%
 
+  // The root fills its card slot via `absolute inset-0`. It must NOT
+  // be `relative`: every child below is absolutely positioned, so a
+  // relative root with no height of its own collapses to 0 and the
+  // card renders blank under its scrim.
   return (
     <div
       aria-hidden={ariaHidden}
-      className={`relative overflow-hidden ${className}`}
+      className={`absolute inset-0 overflow-hidden ${className}`}
       style={{
         // Three-stop diagonal:
         //   - 0%   bright tinted corner (color + white) so the card

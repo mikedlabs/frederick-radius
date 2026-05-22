@@ -46,20 +46,6 @@ function pickGreeting(hour: number, conditions: string, precip: number): string 
   return "Frederick is quiet now — but still beautiful.";
 }
 
-function subtitle(hour: number, conditions: string, temp?: number, precip?: number): string {
-  const temp_str = temp != null ? `${Math.round(temp)}° in Downtown Frederick` : "";
-  const cond = conditions ? conditions.toLowerCase() : "";
-  if (precip != null && precip >= 40) return `${cond} · ${precip}% chance of rain`;
-  if (temp_str && cond) return `${cond} · ${temp_str}`;
-  if (temp_str) return temp_str;
-  if (cond) return cond;
-  if (hour < 6) return "the city sleeps";
-  if (hour < 12) return "morning";
-  if (hour < 17) return "afternoon";
-  if (hour < 20) return "evening";
-  return "night";
-}
-
 export default async function AdaptiveGreeting() {
   const now = new Date();
   const nyHour = parseInt(
@@ -70,13 +56,11 @@ export default async function AdaptiveGreeting() {
   const time = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).format(now);
 
   let conditions = "";
-  let temp: number | undefined;
   let precip: number | undefined;
   try {
     const forecast = await getNwsForecast(FREDERICK_CENTER);
     if (forecast?.hourly[0]) {
       conditions = forecast.hourly[0].shortForecast;
-      temp = forecast.hourly[0].temperature;
       precip = forecast.hourly[0].probabilityOfPrecipitation ?? undefined;
     }
   } catch {
@@ -84,11 +68,10 @@ export default async function AdaptiveGreeting() {
   }
 
   const headline = pickGreeting(nyHour, conditions, precip ?? 0);
-  const sub = subtitle(nyHour, conditions, temp, precip);
 
-  // Compact form for narrow phones (≤640px); full form on tablet+
-  const compactSubtitle = `${weekday} · ${time}`;
-  const fullSubtitle = `${weekday} · ${time} · ${sub}`;
+  // Day + time only. Current conditions and temperature live in the
+  // WeatherHero card directly below, so the header never repeats them.
+  const dateline = `${weekday} · ${time}`;
 
   return (
     <header className="space-y-1">
@@ -96,8 +79,7 @@ export default async function AdaptiveGreeting() {
         className="text-[10px] font-medium uppercase tracking-[0.12em] opacity-70 sm:text-[11px]"
         style={{ color: "currentColor" }}
       >
-        <span className="sm:hidden">{compactSubtitle}</span>
-        <span className="hidden sm:inline">{fullSubtitle}</span>
+        {dateline}
       </p>
       <h1
         className="font-serif text-[22px] font-semibold leading-[1.1] tracking-tight sm:text-[34px]"
@@ -105,13 +87,6 @@ export default async function AdaptiveGreeting() {
       >
         {headline}
       </h1>
-      {/* Mobile-only subtitle line for weather context that would otherwise truncate */}
-      <p
-        className="text-[11px] font-medium opacity-70 sm:hidden"
-        style={{ color: "currentColor" }}
-      >
-        {sub}
-      </p>
     </header>
   );
 }
