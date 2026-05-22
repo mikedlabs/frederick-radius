@@ -74,6 +74,7 @@ export default function AdminHome() {
           Quick actions
         </h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <ActionTile href="/admin/claims" title="Review submissions" desc="Approve place, event, and business claim submissions" />
           <ActionTile href="/submit/place" title="Submit a place" desc="Public submission form" />
           <ActionTile href="/submit/event" title="Submit an event" desc="Public submission form" />
           <ActionTile href="/map" title="Open the map" desc="Curated + OSM businesses" />
