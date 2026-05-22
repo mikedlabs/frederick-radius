@@ -3,6 +3,7 @@ import TopBar from "@/components/nav/TopBar";
 import RouteAccent from "@/components/nav/RouteAccent";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
+import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
 
@@ -24,6 +25,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               default mode immediately and quietly flips to Resident
               only when the user is inside the Frederick County bbox. */}
           <ModeBootstrap />
+          {/* Native-feeling pull-to-refresh — touch-only, fires only
+              when scrollY === 0. Reduced-motion users see no spinner. */}
+          <PullToRefresh />
           <TopBar />
           <main
             className="mx-auto max-w-screen-md px-4 pt-4"

@@ -9,7 +9,14 @@ export const metadata: Metadata = {
 
 export default function SubmitPlacePage() {
   return (
-    <div className="mx-auto max-w-screen-md px-4 py-8" style={{ background: "var(--app-bg)" }}>
+    <div
+      className="mx-auto max-w-screen-md px-4"
+      style={{
+        background: "var(--app-bg)",
+        paddingTop: "calc(2rem + env(safe-area-inset-top, 0px))",
+        paddingBottom: "calc(2rem + env(safe-area-inset-bottom, 0px))",
+      }}
+    >
       <Link href="/" className="text-xs" style={{ color: "var(--app-cool)" }}>← Back to Frederick Radius</Link>
       <header className="mt-4 space-y-2">
         <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>

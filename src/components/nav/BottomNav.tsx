@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Disc, Sun, Map, Calendar } from "lucide-react";
+import { haptic } from "@/lib/haptics";
 
 // Primary destinations. Four tabs at the recommended mobile maximum.
 // Saved moved to the header (TopBar) as a bookmark icon; Plan absorbed
@@ -31,6 +32,12 @@ export default function BottomNav() {
             <li key={href} className="flex">
               <Link
                 href={href}
+                onClick={() => {
+                  // Quiet feedback on every tab tap. Skip the haptic
+                  // when re-tapping the active tab so there's no
+                  // false "switched" signal on a no-op nav.
+                  if (!active) haptic("light");
+                }}
                 className="group relative flex flex-1 flex-col items-center gap-0.5 px-1 pt-1.5 pb-1 text-[10px] font-semibold tracking-tight transition-transform active:scale-[0.92]"
                 style={{
                   color: active ? "var(--app-brand)" : "var(--app-ink-3)",
