@@ -16,6 +16,7 @@ import {
   resetFeedMetrics,
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
+import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 
 // Phase 1.6: drop venue open-status entries that are not events.
@@ -616,7 +617,32 @@ export async function getLiveEvents(windowDays = 60): Promise<{
   sources_succeeded: string[];
   sources_failed: string[];
 }> {
-  const results = await Promise.all(FEEDS.map((f) => fetchFeed(f, windowDays).then((evts) => ({ feed: f, evts }))));
+  // iCal/RSS feeds plus Ticketmaster live-music discovery, fetched in
+  // parallel. Ticketmaster is inert ([]) without TICKETMASTER_API_KEY,
+  // so this path is unchanged until that key is set. Both yield the
+  // same LiveEvent shape, so they share the dedupe/filter/sort below.
+  const [feedResults, ticketmasterEvents] = await Promise.all([
+    Promise.all(
+      FEEDS.map((f) =>
+        fetchFeed(f, windowDays).then((evts) => ({ source: f.source, evts })),
+      ),
+    ),
+    fetchTicketmasterMusic(),
+  ]);
+
+  // Ticketmaster has no window parameter; clamp its results to the same
+  // horizon the feed fetchers honor so getLiveEvents(7) cannot surface a
+  // concert three months out.
+  const horizonMs = Date.now() + windowDays * 86_400_000;
+  const results: Array<{ source: LiveEvent["source"]; evts: LiveEvent[] }> = [
+    ...feedResults,
+    {
+      source: "ticketmaster",
+      evts: ticketmasterEvents.filter(
+        (e) => +new Date(e.starts_at) <= horizonMs,
+      ),
+    },
+  ];
 
   // Deduplicate by composite key — same title + day + time + venue across feeds
   // means the same event cross-promoted (e.g. DFP and Celebrate Frederick both
@@ -638,8 +664,8 @@ export async function getLiveEvents(windowDays = 60): Promise<{
 
   return {
     events,
-    sources_succeeded: results.filter((r) => r.evts.length > 0).map((r) => r.feed.source),
-    sources_failed: results.filter((r) => r.evts.length === 0).map((r) => r.feed.source),
+    sources_succeeded: results.filter((r) => r.evts.length > 0).map((r) => r.source),
+    sources_failed: results.filter((r) => r.evts.length === 0).map((r) => r.source),
   };
 }
 
