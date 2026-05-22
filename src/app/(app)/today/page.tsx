@@ -5,7 +5,6 @@ import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
 import CivicAlerts from "@/components/today/CivicAlerts";
-import PulseSummary from "@/components/today/PulseSummary";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
 import FeaturedTonight from "@/components/today/FeaturedTonight";
 import RightNow from "@/components/today/RightNow";
@@ -29,11 +28,11 @@ import { easternWallToUtcISO } from "@/lib/tz";
  * front door, no preamble card stacked above it:
  *
  *   1. Hero          → greeting + sun + civic alert + weather + plan
- *   2. Civic pulse   → one quiet line (PulseSummary)
- *   3. Local newsroom→ source-first news desk
- *   4. Worth tonight → one editorial place card
- *   5. Right now     → time-aware curated places
- *   6. Upcoming      → featured event hero + the rest of the queue
+ *   2. When?         → temporal toggle: Now / Tonight / Tomorrow / Weekend
+ *   3. Upcoming      → featured event hero + the rest of the queue
+ *   4. Local newsroom→ source-first news desk
+ *   5. Worth tonight → one editorial place card
+ *   6. Right now     → time-aware curated places
  *   7. History pulse → one rotating fact
  *
  * What got cut (each cut intentional, with an honest reason):
@@ -305,11 +304,11 @@ export default async function HomePage({
 
       {/* ── DISCOVERY ZONE ─────────────────────────────────────────
           Everything below the divider is "browse if you want," not
-          "you must read this." Same content as before — civic pulse,
-          news, an editorial place, time-curated picks, a history fact
-          — but visually subordinate to the primary zone above so the
-          page has a clear hierarchy instead of a flat stack of
-          equal-weight headings. */}
+          "you must read this." It gathers the news desk, an editorial
+          place, time-curated picks, and a history fact, all visually
+          subordinate to the primary zone above so the page has a
+          clear hierarchy instead of a flat stack of equal-weight
+          headings. */}
       <div className="flex items-center gap-3 pt-1" aria-hidden>
         <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
         <span
@@ -320,11 +319,6 @@ export default async function HomePage({
         </span>
         <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
       </div>
-
-      {/* One quiet civic line. */}
-      <Suspense fallback={<Skeleton.Block height={28} round="var(--app-radius-md)" />}>
-        <PulseSummary />
-      </Suspense>
 
       {/* Local newsroom — compact briefing. */}
       <Suspense
