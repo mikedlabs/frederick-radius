@@ -19,6 +19,7 @@ import type { LngLat } from "@/lib/geo";
 import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { resolveMunicipality } from "@/lib/connect";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/integrations/overpass";
+import { MUNICIPALITIES } from "@/data/municipalities";
 
 const ENDPOINT = "https://app.ticketmaster.com/discovery/v2/events.json";
 const FETCH_TIMEOUT_MS = 15_000;
@@ -51,6 +52,26 @@ function inCounty(lat: number, lng: number): boolean {
 }
 
 /**
+ * Resolve the municipality for a venue. Ticketmaster venue coordinates
+ * are coarse: a downtown venue can geocode a few miles off, far enough
+ * for resolveMunicipality() to pick the wrong town (the Weinberg Center
+ * resolved to Walkersville). The venue's editorial `city` field is more
+ * reliable, so match a municipality by name first, falling back to the
+ * coordinate resolver only when the city is unknown.
+ */
+function municipalityFor(cityName: string | undefined, geom: LngLat): string {
+  const city = (cityName ?? "").trim().toLowerCase();
+  if (city) {
+    const named = MUNICIPALITIES.find((m) => {
+      const n = m.name.toLowerCase();
+      return n === city || n.includes(city);
+    });
+    if (named) return named.slug;
+  }
+  return resolveMunicipality(geom).municipality.slug;
+}
+
+/**
  * Pure: normalize a Ticketmaster Discovery response into LiveEvent[].
  * Anything without a real start time, venue, or in-county coordinate
  * is dropped — never guessed. Exported for unit tests (no live key).
@@ -68,7 +89,7 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
     const lng = Number(v?.location?.longitude);
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || !inCounty(lat, lng)) continue;
     const geom: LngLat = { lng, lat };
-    const muni = resolveMunicipality(geom);
+    const municipality = municipalityFor(v?.city?.name, geom);
     const minPrice = ev.priceRanges?.[0]?.min;
     out.push({
       id: `tm-${ev.id}`,
@@ -79,7 +100,7 @@ export function normalizeTicketmaster(raw: unknown): LiveEvent[] {
       venue_name: v?.name ?? "Live music",
       address: v?.address?.line1 ?? "",
       geom,
-      municipality: muni.municipality.slug,
+      municipality,
       category: "music",
       organizer: v?.name ?? "Ticketmaster",
       source: "ticketmaster",

@@ -22,6 +22,7 @@ function tmEvent(over: Record<string, unknown> = {}): Record<string, unknown> {
         {
           name: "Sky Stage",
           address: { line1: "59 S Carroll St" },
+          city: { name: "Frederick" },
           // Downtown Frederick, inside the county bbox.
           location: { latitude: "39.4143", longitude: "-77.4105" },
         },
@@ -50,6 +51,23 @@ describe("normalizeTicketmaster", () => {
     const out = normalizeTicketmaster(wrap([tmEvent({ priceRanges: [{ min: 0 }] })]));
     expect(out).toHaveLength(1);
     expect(out[0].is_free).toBe(true);
+  });
+
+  it("derives municipality from the venue city, not coarse coordinates", () => {
+    // Coordinates sit on the Walkersville centroid, but the venue's
+    // editorial city is Frederick, so the city name must win.
+    const ev = tmEvent({
+      _embedded: {
+        venues: [
+          {
+            name: "Weinberg Center for the Arts",
+            city: { name: "Frederick" },
+            location: { latitude: "39.4853", longitude: "-77.3527" },
+          },
+        ],
+      },
+    });
+    expect(normalizeTicketmaster(wrap([ev]))[0].municipality).toBe("frederick");
   });
 
   it("drops an event with no start time, never fabricating one", () => {
