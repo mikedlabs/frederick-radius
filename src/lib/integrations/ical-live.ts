@@ -10,7 +10,7 @@
 import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
 import { cutAtWordBoundary } from "@/lib/slug";
-import { isVenueStatusNonEvent } from "@/lib/event-noise";
+import { isVenueStatusNonEvent, isNonPublicListing } from "@/lib/event-noise";
 import {
   validateLiveEvent,
   resetFeedMetrics,
@@ -633,7 +633,11 @@ export async function getLiveEvents(windowDays = 60): Promise<{
   }
 
   const events = [...seen.values()]
-    .filter((e) => !EVENT_NOISE_FILTER || !isVenueStatusNonEvent(e.title))
+    .filter(
+      (e) =>
+        !EVENT_NOISE_FILTER ||
+        (!isVenueStatusNonEvent(e.title) && !isNonPublicListing(e.title)),
+    )
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at));
 
   return {

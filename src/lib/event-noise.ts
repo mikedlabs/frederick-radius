@@ -56,3 +56,29 @@ export function isRoutineRecurringClass(title: string): boolean {
   if (!t) return false;
   return ROUTINE_CLASS.test(t) || ROUTINE_GOV.test(t);
 }
+
+// Private facility-reservation bookings. County pavilion and shelter
+// calendars leak these into the public feed: a baby shower or a
+// rehearsal dinner is somebody's private event, not a thing the
+// public attends. Each phrase is a two-word lock so a real public
+// event is not caught ("Baby Storytime" and "Wedding Expo" stay).
+const PRIVATE_BOOKING =
+  /\b(baby|bridal|wedding) shower\b|\brehearsal dinner\b|\bwedding reception\b|\b(birthday|retirement|graduation|anniversary|engagement) party\b|\bfamily reunion\b|\bprivate (event|party|rental|booking|function)\b/i;
+
+// Municipal service notices. Operational logistics ("Grass/Leaf
+// Curbside Pickup", trash and recycling schedules), not events.
+const SERVICE_NOTICE =
+  /\b(curbside (pickup|collection)|leaf (collection|pickup)|yard ?waste|bulk (trash|pickup|collection)|(trash|recycling|refuse|brush) collection|street sweeping)\b/i;
+
+/**
+ * True when a feed entry is a private facility booking (a baby shower,
+ * a rehearsal dinner) or a municipal service notice (curbside pickup),
+ * rather than a public event. A "what is worth your time" surface
+ * should never show these. Conservative: every pattern is a locked
+ * phrase, so a public event that merely shares a word survives.
+ */
+export function isNonPublicListing(title: string): boolean {
+  const t = (title || "").trim();
+  if (!t) return false;
+  return PRIVATE_BOOKING.test(t) || SERVICE_NOTICE.test(t);
+}
