@@ -296,6 +296,38 @@ export const push_log = pgTable(
   }),
 );
 
+/**
+ * User-submitted content awaiting review: place suggestions, event
+ * suggestions, and business-owner claims. One row per submission;
+ * `kind` selects the shape stored in `payload`, `status` drives the
+ * /admin moderation queue. `manage_token` is issued when a
+ * business_claim is approved: the no-account capability credential for
+ * the owner's management surface. No FK to a users table by design
+ * (the app has no auth) or to places (places are file-sourced);
+ * `place_slug` is the loose string key.
+ */
+export const submissions = pgTable(
+  "submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    status: text("status").notNull().default("pending"),
+    payload: jsonb("payload").notNull(),
+    place_slug: text("place_slug"),
+    submitter_name: text("submitter_name"),
+    submitter_email: text("submitter_email"),
+    manage_token: text("manage_token"),
+    review_note: text("review_note"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index("submissions_status_idx").on(t.status),
+    kindStatusIdx: index("submissions_kind_status_idx").on(t.kind, t.status),
+    manageTokenIdx: uniqueIndex("submissions_manage_token_idx").on(t.manage_token),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- CREATE EXTENSION IF NOT EXISTS pg_trgm;

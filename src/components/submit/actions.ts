@@ -1,5 +1,12 @@
 "use server";
 
+import { getDb } from "@/lib/db/client";
+import { submissions } from "@/lib/db/schema";
+import {
+  validateBusinessClaim,
+  type SubmitBusinessClaimInput,
+} from "@/lib/submissions";
+
 export type SubmitPlaceInput = {
   name: string;
   category: string;
@@ -30,26 +37,62 @@ export type SubmitEventInput = {
   submitter_name: string;
 };
 
+type SubmissionKind = "place" | "event" | "business_claim";
+
+type SubmissionMeta = {
+  submitter_name: string;
+  submitter_email: string;
+  place_slug: string | null;
+};
+
 /**
- * For now we just log to the server console + return a token. Once Neon DB
- * is wired, this writes to a "submissions" table that the /admin queue
- * displays. Once Resend is wired, this also fires a notification email to
- * the admin.
+ * Persist a submission. Writes a row to the `submissions` table when a
+ * database is configured, then logs a trace and emails the admin. The
+ * DB write is wrapped: a missing table (migration not yet applied) or an
+ * unreachable database never breaks the submit flow, it degrades to the
+ * log + email path. Returns a client-facing token.
  *
- * The token is the capability credential — we never log it. Only the
- * type + a small payload fingerprint so an admin can correlate.
+ * The token is the capability credential — we never log it. The trace
+ * line records type + submitter only so an admin can correlate without
+ * the credential leaking into log storage.
  */
-async function persistSubmission(type: "place" | "event", payload: object): Promise<string> {
+async function persistSubmission(
+  kind: SubmissionKind,
+  payload: Record<string, unknown>,
+  meta: SubmissionMeta,
+): Promise<string> {
   const token = crypto.randomUUID();
-  const submitter =
-    (payload as { submitter_email?: string }).submitter_email ?? "unknown";
-  console.info(`[submission] ${type} from ${submitter}`);
-  // Fire-and-forget admin notification when Resend is configured.
-  await maybeSendAdminEmail(type, payload);
+
+  try {
+    const db = getDb();
+    if (db) {
+      await db.insert(submissions).values({
+        kind,
+        payload,
+        place_slug: meta.place_slug,
+        submitter_name: meta.submitter_name || null,
+        submitter_email: meta.submitter_email || null,
+      });
+    }
+  } catch (err) {
+    console.error(
+      "[submission] DB write failed, kept log + email fallback:",
+      err instanceof Error ? err.message : err,
+    );
+  }
+
+  // Trace without the token — the token is the capability credential
+  // and must not land in log storage. Submitter email is enough for an
+  // admin to correlate with the DB row or the inbox notification.
+  console.info(`[submission] ${kind} from ${meta.submitter_email || "unknown"}`);
+  await maybeSendAdminEmail(kind, payload);
   return token;
 }
 
-async function maybeSendAdminEmail(type: "place" | "event", payload: object) {
+async function maybeSendAdminEmail(
+  kind: SubmissionKind,
+  payload: object,
+): Promise<void> {
   const key = process.env.RESEND_API_KEY;
   const to = process.env.ADMIN_EMAIL ?? "hello@frederickradius.app";
   if (!key) return;
@@ -63,27 +106,52 @@ async function maybeSendAdminEmail(type: "place" | "event", payload: object) {
       body: JSON.stringify({
         from: "Frederick Radius <submissions@frederickradius.app>",
         to,
-        subject: `New ${type} submission`,
+        subject: `New ${kind.replace("_", " ")} submission`,
         text: JSON.stringify(payload, null, 2),
       }),
     });
   } catch {
-    /* swallow */
+    /* swallow: the email is best-effort, the DB row is the record */
   }
 }
 
-export async function submitPlaceAction(input: SubmitPlaceInput): Promise<{ token: string }> {
+export async function submitPlaceAction(
+  input: SubmitPlaceInput,
+): Promise<{ token: string }> {
   if (!input.name || !input.category || !input.submitter_email) {
     throw new Error("Name, category, and email are required.");
   }
-  const token = await persistSubmission("place", input);
+  const token = await persistSubmission("place", input, {
+    submitter_name: input.submitter_name,
+    submitter_email: input.submitter_email,
+    place_slug: null,
+  });
   return { token };
 }
 
-export async function submitEventAction(input: SubmitEventInput): Promise<{ token: string }> {
+export async function submitEventAction(
+  input: SubmitEventInput,
+): Promise<{ token: string }> {
   if (!input.title || !input.starts_at || !input.submitter_email) {
     throw new Error("Title, start time, and email are required.");
   }
-  const token = await persistSubmission("event", input);
+  const token = await persistSubmission("event", input, {
+    submitter_name: input.submitter_name,
+    submitter_email: input.submitter_email,
+    place_slug: null,
+  });
+  return { token };
+}
+
+export async function submitBusinessClaimAction(
+  input: SubmitBusinessClaimInput,
+): Promise<{ token: string }> {
+  const error = validateBusinessClaim(input);
+  if (error) throw new Error(error);
+  const token = await persistSubmission("business_claim", input, {
+    submitter_name: input.owner_name,
+    submitter_email: input.owner_email,
+    place_slug: input.place_slug.trim() || null,
+  });
   return { token };
 }
