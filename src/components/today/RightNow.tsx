@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { rankPlaces, likelyOpenPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
-import PlaceCard from "@/components/place/PlaceCard";
+import RightNowGrid from "./RightNowGrid";
 import DismissibleSection from "./DismissibleSection";
 
 /**
@@ -104,11 +104,10 @@ export default function RightNow({
           .
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2.5">
-          {picks.map((p) => (
-            <PlaceCard key={p.slug} place={p} variant="grid" />
-          ))}
-        </div>
+        // Client-side reorder by interests (Phase D personalization).
+        // The set of picks is identical to what the server chose; only
+        // the order shifts so the user's interest-matched places lead.
+        <RightNowGrid picks={picks} />
       )}
     </DismissibleSection>
   );
