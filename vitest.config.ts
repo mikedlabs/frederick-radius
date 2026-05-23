@@ -11,7 +11,17 @@ import { fileURLToPath } from "node:url";
  */
 export default defineConfig({
   resolve: {
-    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // `server-only` is Next's guard against importing server-side
+      // code into a Client Component. It throws when imported from
+      // any non-server build. In vitest's Node environment we ARE on
+      // the server, so the guard is meaningless — alias it to a stub
+      // so integration specs can import server actions directly.
+      "server-only": fileURLToPath(
+        new URL("./tests/stubs/server-only.ts", import.meta.url),
+      ),
+    },
   },
   test: {
     environment: "node",
