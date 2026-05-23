@@ -18,7 +18,15 @@ function rec(p: Partial<DedupeRecord> & { slug: string; name: string }): DedupeR
 
 describe("normName / nameCore", () => {
   it("normalizes punctuation, case, ampersand, stopwords", () => {
-    expect(normName("The Brewer's Alley & Restaurant")).toBe("brewer s alley and restaurant");
+    // Possessive apostrophes are DELETED, not split on ("brewer's" ->
+    // "brewers"), so an apostrophe variant folds against the plain
+    // spelling. This is deliberate; see normName in src/lib/dedupe.ts.
+    expect(normName("The Brewer's Alley & Restaurant")).toBe("brewers alley and restaurant");
+  });
+  it("collapses possessive-apostrophe variants to one form", () => {
+    // The whole point: "Isabella's ..." and a scraped "Isabellas ..."
+    // must normalize identically or the duplicate never folds.
+    expect(normName("Isabella's Taverna")).toBe(normName("Isabellas Taverna"));
   });
   it("nameCore strips generic descriptors to the distinctive stem", () => {
     expect(nameCore("Clue IQ an Escape Room Experience")).toBe("clue iq escape room");
