@@ -48,6 +48,11 @@ export const HISTORY: HistoryEntry[] = [
   // ── Big moments ──
   {
     slug: "frederick-county-established",
+    image: {
+      src: "/history-photos/frederick-county-established.jpg",
+      alt: "Frederick City Hall, the 1862 Italianate brick building that served as the Frederick County Courthouse",
+      credit: "Acroterion, CC BY-SA 4.0",
+    },
     title: "Frederick County is born",
     year: 1748,
     kind: "moment",
@@ -57,6 +62,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "hessian-barracks",
+    image: {
+      src: "/history-photos/hessian-barracks.jpg",
+      alt: "The Hessian Barracks, a long two-story 1777 fieldstone military barracks with white wooden balconies, in Frederick, MD",
+      credit: "Acroterion, CC BY-SA 4.0",
+    },
     title: "The Hessian Barracks go up",
     year: 1777,
     kind: "moment",
@@ -67,6 +77,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "mount-st-marys-founded",
+    image: {
+      src: "/history-photos/mount-st-marys-founded.jpg",
+      alt: "The stone Gothic Chapel of the Immaculate Conception on the Mount St. Mary's University campus near Emmitsburg, MD",
+      credit: "Steven C. Berger, CC BY-SA 3.0",
+    },
     title: "Mount St. Mary's opens",
     year: 1808,
     kind: "moment",
@@ -79,6 +94,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "barbara-fritchie-flag",
+    image: {
+      src: "/history-photos/barbara-fritchie-flag.jpg",
+      alt: "Exterior of the Barbara Fritchie House, a brick historic house museum with a white picket fence in downtown Frederick, MD",
+      credit: "Preservation Maryland, CC BY-SA 2.0",
+    },
     title: "Barbara Fritchie's flag",
     year: 1862,
     date_label: "September 1862",
@@ -103,6 +123,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "ransom-of-frederick",
+    image: {
+      src: "/history-photos/ransom-of-frederick.jpg",
+      alt: "A row of colorful historic storefronts along North Market Street in downtown Frederick, MD",
+      credit: "Acroterion, CC BY-SA 4.0",
+    },
     title: "The $200,000 Ransom",
     year: 1864,
     date_label: "July 9, 1864",
@@ -113,6 +138,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "camp-david-established",
+    image: {
+      src: "/history-photos/camp-david-established.jpg",
+      alt: "A forest road winding through Catoctin Mountain Park, Thurmont, MD, with autumn foliage",
+      credit: "National Park Service, public domain",
+    },
     title: "Camp David is created",
     year: 1942,
     kind: "moment",
@@ -125,6 +155,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "carroll-creek-park",
+    image: {
+      src: "/history-photos/carroll-creek-park.jpg",
+      alt: "Carroll Creek Linear Park, with lily pads on the creek, a brick promenade, and a stone arch bridge in the distance",
+      credit: "Art Anderson, CC BY-SA 3.0",
+    },
     title: "Carroll Creek is reborn",
     year: 1976,
     kind: "moment",
@@ -167,6 +202,11 @@ export const HISTORY: HistoryEntry[] = [
   // ── Facts ──
   {
     slug: "clustered-spires",
+    image: {
+      src: "/history-photos/clustered-spires.jpg",
+      alt: "The clustered church spires and steeples of downtown Frederick, MD, viewed across fall foliage",
+      credit: "Acroterion, CC BY-SA 4.0",
+    },
     title: "The Clustered Spires",
     kind: "fact",
     body: "Frederick is nicknamed the City of Clustered Spires after John Greenleaf Whittier's 1864 poem about Barbara Fritchie. From any hill east of downtown you can count five church towers — the original cluster, all built before 1855.",
@@ -175,6 +215,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "schifferstadt",
+    image: {
+      src: "/history-photos/schifferstadt.jpg",
+      alt: "Schifferstadt, a 1758 German colonial stone farmhouse with one wing painted red, in Frederick, MD",
+      credit: "Pete Giove-Fourwinds, CC BY-SA 3.0",
+    },
     title: "Schifferstadt: oldest house in town",
     kind: "fact",
     body: "Joseph Brunner, an immigrant from Schifferstadt in the Rhineland, finished this stone farmhouse in 1758 — 18 years before the Declaration of Independence. It's one of the oldest surviving German colonial homes in America and still has its original square nails.",
@@ -184,6 +229,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "co-canal",
+    image: {
+      src: "/history-photos/co-canal.jpg",
+      alt: "The stone walls of Lock 30 on the Chesapeake & Ohio Canal at Brunswick, MD, surrounded by greenery",
+      credit: "Deanlaw, CC BY-SA 3.0",
+    },
     title: "The C&O Canal",
     kind: "fact",
     body: "The Chesapeake & Ohio Canal runs 184.5 miles from Georgetown to Cumberland and skirts the southern edge of Frederick County through Brunswick. Construction began in 1828 the same day the B&O Railroad broke ground a few miles away — the canal lost the race to the river.",
@@ -195,6 +245,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "new-market-antiques",
+    image: {
+      src: "/history-photos/new-market-antiques.jpg",
+      alt: "The historic Main Street of New Market, MD, with a brick storefront building and picket fences along the road",
+      credit: "Acroterion, CC BY-SA 4.0",
+    },
     title: "Antiques Capital of Maryland",
     kind: "fact",
     body: "The town of New Market — population about 600 — was officially designated the Antiques Capital of Maryland by the General Assembly in 1985. Its single Main Street has packed nearly 40 antique shops into less than a mile.",
@@ -204,6 +259,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "brunswick-railroad",
+    image: {
+      src: "/history-photos/brunswick-railroad.jpg",
+      alt: "The Brunswick, MD rail yard with multiple tracks, CSX locomotives, and freight cars",
+      credit: "David Wilson, CC BY 2.0",
+    },
     title: "Brunswick: a railroad town",
     kind: "fact",
     body: "In the 1890s the Brunswick rail yard was the largest east of the Mississippi — over a mile of track, 13,000 cars handled daily. The town built itself around the railroad, and the Brunswick Heritage Museum still tells its story with the original B&O dispatcher's tower.",
@@ -213,6 +273,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "national-pike",
+    image: {
+      src: "/history-photos/national-pike.jpg",
+      alt: "The historic single-arch stone Casselman River Bridge, built for the National Road, in Maryland",
+      credit: "Cbaile19, CC0 1.0",
+    },
     title: "The National Pike",
     kind: "fact",
     body: "What is now US Route 40 was originally the National Road, the first federally funded highway in the country (1811–1837). It connected Cumberland, Maryland to Wheeling, West Virginia and ran straight through Frederick. The route follows roughly the same path today.",
@@ -220,6 +285,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "catoctin-mountain-park",
+    image: {
+      src: "/history-photos/catoctin-mountain-park.jpg",
+      alt: "The Chimney Rock vista at Catoctin Mountain Park, MD, with boulders overlooking a forested mountain valley",
+      credit: "Vegemighty, CC0 1.0",
+    },
     title: "Catoctin Mountain Park",
     kind: "fact",
     body: "One of the few US national parks created from CCC reforestation work in the 1930s — the mountain had been clear-cut for charcoal to feed the Catoctin Furnace iron works (which made cannonballs for the Continental Army). The Civilian Conservation Corps planted the trees you walk under today.",
@@ -231,6 +301,11 @@ export const HISTORY: HistoryEntry[] = [
   },
   {
     slug: "nci-frederick",
+    image: {
+      src: "/history-photos/nci-frederick.jpg",
+      alt: "The U.S. Army Fort Detrick Nallin Farm Gate entrance sign in Frederick, MD",
+      credit: "Clem Gaines / U.S. Army, public domain",
+    },
     title: "NCI Frederick: cancer research",
     kind: "fact",
     body: "The National Cancer Institute's only federally owned research campus is on Fort Detrick in Frederick. Over 2,000 scientists work here — much of the early HIV/AIDS research and the cryo-EM facility that helped sequence the SARS-CoV-2 spike protein were done on this campus.",
