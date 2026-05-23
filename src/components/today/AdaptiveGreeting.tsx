@@ -1,52 +1,67 @@
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { readModeFromCookie, type Mode } from "@/hooks/useMode";
 import HomeMuniChip from "./HomeMuniChip";
 import InterestsChip from "./InterestsChip";
 import PersonalGreetingLine from "./PersonalGreetingLine";
 
-function pickGreeting(hour: number, conditions: string, precip: number): string {
-  // Honest weather: NWS shortForecast like "Isolated Rain Showers" or
-  // "Slight Chance Rain" describes a POSSIBILITY, not active rain, and
-  // precip is a percent chance — not "it's raining". Telling someone to
-  // "duck inside" on a dry 30%-chance day is the app lying. Only call it
-  // wet when conditions name active precip WITHOUT a hedge, or the
-  // chance is genuinely high.
+/**
+ * Time- and weather-aware headline, flavored by the user's chosen
+ * lens (Visitor or Resident). Mode is read from a server cookie
+ * mirrored by useMode.write(), so the headline lands in the right
+ * voice on the first paint — no client-side flash from generic to
+ * personalized. Defaults to the Visitor voice when no mode is set,
+ * which is the welcoming, orientation-friendly tone the brief calls
+ * for as the first-impression default.
+ *
+ * The honest-weather logic is preserved: NWS hedged forecasts ("a
+ * slight chance of rain") never get a "duck inside" line, because
+ * the app shouldn't ask someone to change their plan over a 30%
+ * possibility.
+ */
+function pickGreeting(
+  hour: number,
+  conditions: string,
+  precip: number,
+  mode: Mode,
+): string {
   const hedged = /chance|slight|isolated|scattered|patchy|areas of|possible|partly|a few/i.test(conditions);
   const activeWet = /\b(rain|showers?|thunderstorms?|storms?|snow|sleet|drizzle)\b/i.test(conditions) && !hedged;
   const wet = activeWet || precip >= 65;
   const fog = /fog|mist|haze/i.test(conditions);
   const sunny = /sun|clear|fair/i.test(conditions);
   const cloudy = /cloud|overcast/i.test(conditions);
+  const isVisitor = mode === "visitor";
 
   if (hour >= 5 && hour < 8) {
-    if (wet) return "Wet start in Frederick.";
-    if (sunny) return "Catch the sunrise — Frederick is glowing.";
-    return "Good morning, Frederick.";
+    if (wet) return isVisitor ? "Wet start. Find a window seat." : "Wet morning, slow start.";
+    if (sunny) return isVisitor ? "Catch the sunrise. Frederick is glowing." : "First light. Bring coffee.";
+    return isVisitor ? "Good morning, Frederick." : "Morning. The county's up.";
   }
   if (hour >= 8 && hour < 12) {
-    if (wet) return "Cozy morning — the museum is calling.";
-    if (sunny) return "Bright morning in Frederick.";
-    if (cloudy) return "Soft morning in Frederick.";
-    return "Good morning.";
+    if (wet) return isVisitor ? "Cozy morning. The museum is calling." : "Rain. Indoor day.";
+    if (sunny) return isVisitor ? "Bright morning in Frederick." : "Clear morning. Get out early.";
+    if (cloudy) return isVisitor ? "Soft morning in Frederick." : "Overcast morning. Mellow start.";
+    return isVisitor ? "Good morning. What's open?" : "Morning. Same time, fresh week.";
   }
   if (hour >= 12 && hour < 17) {
-    if (wet) return "Rainy afternoon — duck inside somewhere good.";
-    if (sunny) return "Perfect afternoon. What's the plan?";
-    if (cloudy) return "Mild afternoon in Frederick.";
-    return "Good afternoon.";
+    if (wet) return isVisitor ? "Rainy afternoon. Duck inside somewhere good." : "Wet afternoon. Hide indoors.";
+    if (sunny) return isVisitor ? "Perfect afternoon. What's the plan?" : "Sun's out. Use it.";
+    if (cloudy) return isVisitor ? "Mild afternoon in Frederick." : "Quiet afternoon.";
+    return isVisitor ? "Good afternoon." : "Midday check.";
   }
   if (hour >= 17 && hour < 20) {
-    if (wet) return "Wet evening — there's a bar with your name on it.";
-    if (sunny) return "Golden hour. Window seat or rooftop?";
-    return "Good to see you in Frederick.";
+    if (wet) return isVisitor ? "Wet evening. There's a bar with your name on it." : "Wet evening. Pick a tap room.";
+    if (sunny) return isVisitor ? "Golden hour. Window seat or rooftop?" : "Golden hour. You know the spots.";
+    return isVisitor ? "Good to see you in Frederick." : "Evening. What's the move?";
   }
   if (hour >= 20 && hour < 23) {
-    if (fog) return "Foggy night — Carroll Creek looks like a film set.";
-    if (wet) return "Rainy night, warm rooms.";
-    return "Frederick after dark.";
+    if (fog) return isVisitor ? "Foggy night. Carroll Creek looks like a film set." : "Fog rolling in. Easy lights.";
+    if (wet) return isVisitor ? "Rainy night, warm rooms." : "Rain, lamps, late drink.";
+    return isVisitor ? "Frederick after dark." : "Late tonight. Still open?";
   }
-  // 23–4
-  return "Frederick is quiet now — but still beautiful.";
+  // 23 - 4 (overnight)
+  return isVisitor ? "Frederick is quiet now. Still beautiful." : "Late hours. The county sleeps light.";
 }
 
 export default async function AdaptiveGreeting() {
@@ -70,7 +85,11 @@ export default async function AdaptiveGreeting() {
     // graceful: fall through to time-only greeting
   }
 
-  const headline = pickGreeting(nyHour, conditions, precip ?? 0);
+  // Mode comes from a cookie mirrored by useMode's write() so the
+  // headline lands in the right voice on the first paint. Defaults
+  // to Visitor when unset — the welcoming, orientation-friendly tone.
+  const mode = await readModeFromCookie();
+  const headline = pickGreeting(nyHour, conditions, precip ?? 0, mode);
 
   // Day + time only. Current conditions and temperature live in the
   // WeatherHero card directly below, so the header never repeats them.

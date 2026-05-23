@@ -71,6 +71,12 @@ function write(mode: Mode) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(STORAGE_KEY, mode);
+    // Mirror to a cookie so the server can read the mode for
+    // SSR-rendered surfaces that want to flavor copy without a
+    // hydration flash (e.g. AdaptiveGreeting's mode-aware headline).
+    // Same one-year horizon as the fr_onboarded marker; not a security
+    // boundary, just a "what lens did this device pick" hint.
+    document.cookie = `fr_mode=${mode}; path=/; max-age=31536000; samesite=lax`;
   } catch {
     /* ignore */
   }
@@ -193,11 +199,34 @@ export function suggestModeFromLocation(opts: {
  * Test / dev utility: clear the persisted mode AND the "already
  * suggested" flag so the next load behaves like first-run.
  */
+/**
+ * Read the mode from the request cookie. Server-only — uses
+ * `next/headers`. Returns DEFAULT_MODE when the cookie isn't set,
+ * so the call site never has to handle "what's the default". The
+ * cookie is written by `write()` whenever a user picks or toggles
+ * mode on the client.
+ */
+export async function readModeFromCookie(): Promise<Mode> {
+  if (typeof window !== "undefined") return cached; // safety: never call from client
+  try {
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    const v = store.get("fr_mode")?.value;
+    if (v === "resident" || v === "visitor") return v;
+  } catch {
+    /* cookies unavailable (e.g. during static render) — fall through */
+  }
+  return DEFAULT_MODE;
+}
+
 export function resetModeState(): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(STORAGE_KEY);
     window.localStorage.removeItem(SUGGEST_KEY);
+    // Also clear the mirror cookie so the server stops biasing copy
+    // toward a mode the device no longer claims.
+    document.cookie = "fr_mode=; path=/; max-age=0; samesite=lax";
   } catch {
     /* ignore */
   }
