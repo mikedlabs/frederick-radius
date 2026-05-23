@@ -150,6 +150,23 @@ export default function RadiusBuilder({
   // Cuisine filter (food group only) + which groups are expanded.
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Onboarding handoff: pre-expand the group sections matching the
+  // interests the user picked on /welcome step 3. Group keys are the
+  // top-level category slug (e.g. "food", "outdoors", "arts"), which
+  // is exactly what we stored in fr:interests:v1. Same SSR-safe
+  // settle as the view + sort hydration above.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("fr:interests:v1");
+      if (!raw) return;
+      const interests = JSON.parse(raw);
+      if (!Array.isArray(interests) || interests.length === 0) return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders an empty Set; the stored interests open matching sections after mount
+      setExpanded(new Set(interests.filter((s) => typeof s === "string")));
+    } catch {
+      // localStorage unavailable or JSON garbled — keep default
+    }
+  }, []);
   // `seeAll` flips the page from "category tiles only" (default —
   // scan the buckets fast) to "every section expanded inline" (the
   // full directory view). User-flow fix: the old default landed on
