@@ -245,6 +245,7 @@ function kindLabel(kind: string): string {
   if (kind === "business_claim") return "Business claim";
   if (kind === "place") return "Place";
   if (kind === "event") return "Event";
+  if (kind === "special") return "Special";
   return kind;
 }
 

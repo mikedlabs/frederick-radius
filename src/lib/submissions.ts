@@ -34,3 +34,34 @@ export function validateBusinessClaim(
   }
   return null;
 }
+
+/**
+ * An owner-posted update from the business management surface: a
+ * special (a deal or promo, no hard date) or an event (dated). Both
+ * land in the `submissions` table for moderation, like every other
+ * submission.
+ */
+export type OwnerPostInput = {
+  kind: "special" | "event";
+  title: string;
+  details: string;
+  /** ISO datetime for an event; "" for a special. */
+  starts_at: string;
+  /** Optional link: a menu, a ticket page, more info. */
+  link: string;
+};
+
+/**
+ * Validate an owner post. Returns an error message, or null when the
+ * input is good. Pure: shared by the client form and the server action.
+ */
+export function validateOwnerPost(input: OwnerPostInput): string | null {
+  if (input.kind !== "special" && input.kind !== "event") {
+    return "Choose a special or an event.";
+  }
+  if (!input.title.trim()) return "A title is required.";
+  if (input.kind === "event" && !input.starts_at.trim()) {
+    return "An event needs a date and time.";
+  }
+  return null;
+}
