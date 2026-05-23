@@ -1,14 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * P0-5 minimal admin access gate.
+ * Edge middleware: two independent gates.
  *
- * This is the roadmap's sanctioned interim gate, NOT the full Auth.js /
- * ADMIN_EMAILS direction. It fails CLOSED: if ADMIN_USER / ADMIN_PASSWORD
- * are not configured, /admin is unreachable for everyone, so anonymous
- * users can never load admin pages. Set both env vars (Vercel project
- * settings + .env.local for local) to enable access. Zero dependencies,
- * edge-safe (Web `atob`, no Node Buffer/crypto), instant rollback.
+ * 1. Onboarding nudge. A first-time visitor of the entry routes (/ and
+ *    /today) with no `fr_onboarded` cookie is sent to /welcome once.
+ *    Cookie-based because middleware cannot read localStorage; only the
+ *    two entry routes are gated, so deep links are never blocked.
+ *
+ * 2. P0-5 admin access gate: Basic Auth on /admin. The roadmap's
+ *    sanctioned interim gate, NOT the full Auth.js direction. It fails
+ *    CLOSED: if ADMIN_USER / ADMIN_PASSWORD are not configured, /admin
+ *    is unreachable for everyone. Set both env vars (Vercel project
+ *    settings + .env.local for local) to enable access. Zero
+ *    dependencies, edge-safe (Web `atob`, no Node Buffer/crypto).
  */
 function unauthorized(): NextResponse {
   return new NextResponse("Authentication required.", {
@@ -21,6 +26,21 @@ function unauthorized(): NextResponse {
 }
 
 export function middleware(req: NextRequest): NextResponse {
+  const { pathname } = req.nextUrl;
+
+  // Gate 1: onboarding nudge for the two entry routes. A visitor with
+  // no `fr_onboarded` cookie sees /welcome once; everyone else passes.
+  if (pathname === "/" || pathname === "/today") {
+    if (!req.cookies.get("fr_onboarded")) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/welcome";
+      url.search = "";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
+  // Gate 2: admin Basic Auth (everything below).
   const user = process.env.ADMIN_USER;
   const pass = process.env.ADMIN_PASSWORD;
   if (!user || !pass) return unauthorized();
@@ -45,5 +65,5 @@ export function middleware(req: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  matcher: ["/admin", "/admin/:path*", "/", "/today"],
 };
