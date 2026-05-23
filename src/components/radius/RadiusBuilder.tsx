@@ -7,10 +7,13 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
-// TYPE ONLY: importing the loader at runtime drags the ~12MB
-// places-enrichment.json into the client bundle. Places arrive
-// already decorated from radius/page; only the radius-relative
-// distance is computed here.
+// Read the same slim, pre-decorated set the rest of the app uses on
+// the client. The previous shape (places passed in via props from
+// radius/page) inlined ~4MB of redundant JSON into the SSR HTML for
+// every cold visit — the bundle ALREADY ships places-client.json, so
+// the server payload was a pure duplicate. clientPlaces() returns
+// the same canonical operational set, decorated, cached as a const.
+import { clientPlaces } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 // TYPE ONLY: the points arrive as a server prop (radius/page →
 // allAmenities()), so this client component never imports the loader
@@ -96,12 +99,15 @@ const AMENITY_META: { kind: AmenityKind; label: string; glyph: string }[] = [
 ];
 
 export default function RadiusBuilder({
-  places,
   amenities = [],
 }: {
-  places: PlaceCardData[];
   amenities?: Amenity[];
 }) {
+  // Places source: client-bundled, slim, already-decorated. Reading
+  // here instead of taking via props removes ~4MB from /radius's SSR
+  // HTML payload — the data was ALREADY on the client; the prop was
+  // duplicating it as a serialized RSC payload. (Pre-2026-05-23.)
+  const places: PlaceCardData[] = clientPlaces();
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);

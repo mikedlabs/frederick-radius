@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
+    "perf": "tsx --tsconfig tsconfig.json scripts/lighthouse-audit.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:node": "node --import tsx --test tests/*.test.ts",
