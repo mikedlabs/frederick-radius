@@ -8,13 +8,15 @@ import {
   CloudLightning,
   CloudFog,
   Wind,
-  AlertTriangle,
   Droplets,
   Sunrise,
   Sunset,
 } from "lucide-react";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
-import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
+// NWS alerts are rendered separately by CivicAlerts (promoted to the
+// very top of /today in PR #100). We deliberately don't refetch them
+// here — that was a duplicate fetch leftover from the earlier inline-
+// alert design.
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import WeeklyForecast from "./WeeklyForecast";
@@ -113,10 +115,7 @@ function clockLabel(d: Date): string {
 }
 
 export default async function WeatherHero() {
-  const [forecast, alerts] = await Promise.all([
-    getNwsForecast(FREDERICK_CENTER).catch(() => null),
-    getNwsAlerts().catch(() => []),
-  ]);
+  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
 
   const cur = forecast?.hourly?.[0] ?? null;
   const next6 = forecast?.hourly?.slice(1, 7) ?? [];

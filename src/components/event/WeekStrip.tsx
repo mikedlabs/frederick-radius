@@ -147,7 +147,10 @@ export default function WeekStrip({
             <a
               key={d.iso}
               href={href}
-              aria-pressed={isActive}
+              // aria-current is the right attribute for nav-style day
+              // pickers; aria-pressed is for toggles (buttons), and
+              // screen readers ignore it on anchors anyway.
+              aria-current={isActive ? "date" : undefined}
               aria-label={`${d.monthShort} ${d.dom}, ${d.count} ${d.count === 1 ? "event" : "events"}`}
               className="group relative flex w-12 shrink-0 flex-col items-center pt-1.5 pb-1 sm:w-14"
               style={{

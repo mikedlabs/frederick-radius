@@ -153,7 +153,10 @@ export default function SearchOverlay({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, results, activeIdx, onClose]);
+    // pushRecent + query are read inside the handler when Enter is
+    // pressed — without them, a stale closure can persist the previous
+    // query string after the user edits the input and hits Enter.
+  }, [open, results, activeIdx, onClose, pushRecent, query]);
 
   // Reset active index when query changes
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reset highlight to the top result whenever the query changes

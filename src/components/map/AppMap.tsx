@@ -670,6 +670,11 @@ export default function AppMap({
     return scopeClosures(civic, defaultsFor(mode).closureScope);
   }, [civic, showCivic, mode]);
 
+  // Depends on scopedCivic directly (which itself folds in civic +
+  // showCivic + mode). The previous deps array `[civic, showCivic]`
+  // missed `mode`, so flipping Visitor↔Resident could leave the
+  // GeoJSON pointing at the previous scoping until the next civic
+  // update landed.
   const civicGeoJson = useMemo(() => ({
     type: "FeatureCollection" as const,
     features: scopedCivic.map((c) => ({
@@ -677,7 +682,7 @@ export default function AppMap({
       properties: { kind: c.kind, label: c.label },
       geometry: { type: "Point" as const, coordinates: [c.lng, c.lat] },
     })),
-  }), [civic, showCivic]);
+  }), [scopedCivic]);
 
   const goNearMe = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
