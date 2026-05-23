@@ -1,6 +1,7 @@
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { readModeFromCookie, type Mode } from "@/hooks/useMode";
+import { readModeFromCookie } from "@/lib/mode-server";
+import type { Mode } from "@/hooks/useMode";
 import HomeMuniChip from "./HomeMuniChip";
 import InterestsChip from "./InterestsChip";
 import PersonalGreetingLine from "./PersonalGreetingLine";

@@ -4,7 +4,13 @@ import { useSyncExternalStore } from "react";
 import { type PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import FeaturedTonight from "./FeaturedTonight";
-import { getInterests } from "@/lib/personalize";
+import { getInterestsSet } from "@/lib/personalize";
+
+// Reference-stable empty set for the server snapshot. Reusing the same
+// object on every call is what useSyncExternalStore requires; allocating
+// a new Set per snapshot is what tipped this component into the
+// "Maximum update depth exceeded" loop.
+const EMPTY_INTERESTS = new Set<string>();
 
 /**
  * FeaturedTonightPicker — client-side selector that picks the best
@@ -39,8 +45,8 @@ export default function FeaturedTonightPicker({
 }) {
   const interests = useSyncExternalStore(
     subscribeNoop,
-    () => new Set(getInterests()),
-    () => new Set<string>(),
+    getInterestsSet,
+    () => EMPTY_INTERESTS,
   );
 
   if (candidates.length === 0) return null;

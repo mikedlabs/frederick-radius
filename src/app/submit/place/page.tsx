@@ -3,7 +3,10 @@ import Link from "next/link";
 import SubmitPlaceForm from "@/components/submit/SubmitPlaceForm";
 
 export const metadata: Metadata = {
-  title: "Submit a place · Frederick Radius",
+  // The root layout already wraps page titles with " · Frederick Radius"
+  // via metadata.title.template — including it here would double-suffix
+  // ("Submit a place · Frederick Radius · Frederick Radius").
+  title: "Submit a place",
   description: "Know a Frederick County place we're missing? Send it our way — we'll verify and add it.",
 };
 

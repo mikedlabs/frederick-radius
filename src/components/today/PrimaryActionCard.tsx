@@ -1,7 +1,7 @@
 import { Navigation, CalendarClock, ArrowRight } from "lucide-react";
 import { Surface } from "@/components/ui/Surface";
 import { Button } from "@/components/ui/Button";
-import { readModeFromCookie } from "@/hooks/useMode";
+import { readModeFromCookie } from "@/lib/mode-server";
 
 /**
  * The home's single primary action. One headline, one subhead, one
