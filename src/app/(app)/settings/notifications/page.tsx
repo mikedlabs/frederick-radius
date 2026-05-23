@@ -16,12 +16,12 @@ export default function NotificationsSettingsPage() {
       <PageBloom variant="cool" />
       <header className="space-y-2">
         <Link
-          href="/saved"
+          href="/settings"
           className="inline-flex items-center gap-1 text-[12px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Back
+          Back to Settings
         </Link>
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           Settings
