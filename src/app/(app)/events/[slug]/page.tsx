@@ -174,7 +174,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <Ban className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />
           {eventStatus === "cancelled"
             ? "This event has been cancelled."
-            : "This event has been postponed — check the official page for a new date."}
+            : "This event has been postponed. Check the official page for a new date."}
         </div>
       )}
 
