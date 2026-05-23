@@ -45,6 +45,7 @@
   "dependencies": {
     "@sentry/nextjs": "^10.53.1",
     "@types/leaflet": "^1.9.21",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",

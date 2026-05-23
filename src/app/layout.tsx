@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, IBM_Plex_Serif, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
@@ -103,7 +104,13 @@ export default function RootLayout({
           Skip to content
         </a>
         <div id="main">{children}</div>
+        {/* Two complementary analytics layers:
+            - Plausible (self-hosted feel; product metrics, no IP storage)
+            - Vercel Analytics + Speed Insights (Pro-tier; real-user web
+              vitals + traffic per route, which Plausible doesn't surface)
+            Both are GDPR-safe / cookieless. */}
         <Plausible />
+        <Analytics />
         <SpeedInsights />
         <ServiceWorkerRegister />
       </body>
