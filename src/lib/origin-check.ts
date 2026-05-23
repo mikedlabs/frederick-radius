@@ -58,3 +58,86 @@ export function isSameOriginRequest(req: Request): boolean {
   if (PROJECT_PREVIEW_HOST.test(candidate)) return true;
   return false;
 }
+
+/**
+ * Per-IP rate limiter backed by Vercel KV (Upstash Redis under the
+ * hood). Returns true when the request is OVER the limit and should
+ * be rejected; false otherwise.
+ *
+ * Graceful fallback: when `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+ * are not set, this is a NO-OP that always allows the request — so
+ * pre-KV deploys still work, and the origin-check guard above
+ * remains the only defense. Adding the Vercel KV integration in the
+ * dashboard auto-injects the env vars and this guard lights up.
+ *
+ * Uses Upstash's REST API directly (a single fetch with INCR + EXPIRE)
+ * to avoid adding the `@upstash/redis` SDK as a dependency. Each
+ * `bucket` key gets its own counter — pass different bucket names per
+ * route family so e.g. /api/place-photo doesn't share a budget with
+ * /api/discover/nearby.
+ *
+ *   const limited = await isRateLimited(req, "place-photo", 60, 60);
+ *   if (limited) return new Response("Too Many Requests", { status: 429 });
+ *
+ * The first call sets the key with TTL=window; subsequent calls in
+ * the same window just INCR. When the value exceeds `max`, return true.
+ */
+export async function isRateLimited(
+  req: Request,
+  bucket: string,
+  max: number,
+  windowSec: number,
+): Promise<boolean> {
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+  if (!url || !token) return false; // KV not configured — no-op
+
+  const ip = clientIp(req);
+  if (!ip) return false; // no IP to bucket against — let it through
+
+  const key = `rl:${bucket}:${ip}`;
+  try {
+    // Pipeline INCR + EXPIRE so we hit Upstash once and atomically
+    // set the TTL on the first request in a window.
+    const res = await fetch(`${url}/pipeline`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify([
+        ["INCR", key],
+        ["EXPIRE", key, String(windowSec), "NX"],
+      ]),
+      // Don't keep the connection waiting forever; if KV is slow,
+      // fail open rather than block the user.
+      signal: AbortSignal.timeout(750),
+    });
+    if (!res.ok) return false; // KV error — fail open
+    const data = (await res.json()) as Array<{ result?: number }>;
+    const count = data[0]?.result ?? 0;
+    return count > max;
+  } catch {
+    // Network error, timeout, JSON parse error — fail open. We'd
+    // rather serve a legit user than block them on a transient KV blip.
+    return false;
+  }
+}
+
+/**
+ * Best-effort client IP extraction. Vercel sets `x-forwarded-for` (the
+ * first entry is the original client) and `x-real-ip` (the immediate
+ * peer). On localhost both will be empty — we return null and the
+ * rate limiter treats that as "no IP to bucket against" and lets the
+ * request through.
+ */
+function clientIp(req: Request): string | null {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const first = xff.split(",")[0]?.trim();
+    if (first) return first;
+  }
+  const real = req.headers.get("x-real-ip");
+  if (real) return real.trim();
+  return null;
+}
