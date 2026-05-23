@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Search, Bookmark } from "lucide-react";
+import { Search, Bookmark, Settings as SettingsIcon } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
 
@@ -127,6 +127,19 @@ export default function TopBar() {
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <Bookmark className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          </Link>
+
+          {/* Settings — hidden on the narrowest phones (next to
+              LocationChip below). Mobile users reach Settings via the
+              /saved page; on sm+ it sits one tap away from any route. */}
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            title="Settings"
+            className="hidden h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] sm:grid"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            <SettingsIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Link>
 
           {/* LocationChip is hidden on the narrowest phones where the
