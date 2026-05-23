@@ -1,13 +1,23 @@
 import { Navigation, CalendarClock, ArrowRight } from "lucide-react";
 import { Surface } from "@/components/ui/Surface";
 import { Button } from "@/components/ui/Button";
+import { readModeFromCookie } from "@/hooks/useMode";
 
 /**
  * The home's single primary action. One headline, one subhead, one
- * button, time-aware on local (America/New_York) hour: before 4pm the
- * job is "what is open near me" -> /radius; from 4pm on it shifts to
- * "plan my evening" -> /plan. Built only from Surface + Button + the
- * display type token.
+ * button. Two axes drive the copy:
+ *
+ *   - Time of day (America/New_York hour): before 4pm the job is
+ *     "what is open near me" → /radius; from 4pm on it's "plan my
+ *     evening" → /tonight.
+ *   - Mode (Visitor / Resident): Visitor reads warmer + more
+ *     orientation-friendly; Resident reads more familiar + concise.
+ *     Mode comes from the same cookie AdaptiveGreeting uses so both
+ *     surfaces speak in the same voice on the first paint.
+ *
+ * Built on Surface + Button + the display type token. Pure server
+ * component — the cookie read makes Today dynamic-per-request, which
+ * was already the case via the NWS forecast fetch.
  */
 function etHour(now: Date): number {
   return parseInt(
@@ -20,20 +30,27 @@ function etHour(now: Date): number {
   );
 }
 
-export default function PrimaryActionCard({ now = new Date() }: { now?: Date }) {
+export default async function PrimaryActionCard({ now = new Date() }: { now?: Date }) {
   const evening = etHour(now) >= 16;
+  const mode = await readModeFromCookie();
+  const visitor = mode === "visitor";
+
   const copy = evening
     ? {
-        headline: "Plan tonight in one tap",
-        subhead: "Dinner, drinks, then somewhere to land late. All walkable.",
-        cta: "See tonight's plan",
+        headline: visitor ? "Plan tonight in one tap" : "Tonight, walkable",
+        subhead: visitor
+          ? "Dinner, drinks, then somewhere to land late. All walkable."
+          : "Dinner, drinks, late spot. Routed by foot.",
+        cta: visitor ? "See tonight's plan" : "Tonight's plan",
         href: "/tonight",
         Icon: CalendarClock,
       }
     : {
-        headline: "What is open near you",
-        subhead: "Coffee, food, parks, and trails open within your radius right now.",
-        cta: "Open near me",
+        headline: visitor ? "What is open near you" : "What's open right now",
+        subhead: visitor
+          ? "Coffee, food, parks, and trails open within your radius right now."
+          : "Coffee, food, parks, trails. Open-now filtered.",
+        cta: visitor ? "Open near me" : "Show me",
         href: "/radius",
         Icon: Navigation,
       };
