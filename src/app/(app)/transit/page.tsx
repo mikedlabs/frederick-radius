@@ -3,6 +3,12 @@ import { Bus, ArrowRight, MapPin } from "lucide-react";
 import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 
 export const metadata: Metadata = {
+  // Orphan-by-design: this surface has real content but no
+  // internal links from primary nav. Keep it reachable by direct
+  // URL while telling crawlers not to compete it against the
+  // focused surfaces in /sitemap. Reversible if the route is
+  // promoted back into nav.
+  robots: { index: false, follow: true },
   title: "Transit",
   description:
     "Every TransIT Frederick County bus route — where it goes, on one screen.",

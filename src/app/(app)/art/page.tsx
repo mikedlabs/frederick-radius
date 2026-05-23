@@ -4,6 +4,12 @@ import { getFrederickArt, type ArtPiece } from "@/lib/integrations/fcArtTour";
 import PlacePhoto from "@/components/place/PlacePhoto";
 
 export const metadata: Metadata = {
+  // Orphan-by-design: this surface has real content but no
+  // internal links from primary nav. Keep it reachable by direct
+  // URL while telling crawlers not to compete it against the
+  // focused surfaces in /sitemap. Reversible if the route is
+  // promoted back into nav.
+  robots: { index: false, follow: true },
   title: "Public art tour",
   description:
     "A self-guided tour of Frederick's public murals and sculptures. Live from Frederick County GIS.",
