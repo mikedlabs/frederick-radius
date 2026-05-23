@@ -361,22 +361,34 @@ export default async function HomePage({
         <HistoryPulse />
       </DismissibleSection>
 
-      {/* A quiet door to /discover — the editorial "hidden gems"
-          surface that lives outside the Today spine. Single inline
-          link, not a card; the page that follows does the heavy lift. */}
-      <p
-        className="pt-2 text-center text-[12px]"
+      {/* Quiet footer doors. /discover surfaces editorial picks;
+          /about is the thesis page — the answer to "what is this
+          app, really" that a curious first-time visitor will ask. */}
+      <div
+        className="space-y-1 pt-2 text-center text-[12px]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        <a
-          href="/discover"
-          className="font-semibold hover:underline"
-          style={{ color: "var(--app-brand)" }}
-        >
-          Hidden Frederick →
-        </a>{" "}
-        a daily sweep of lesser-known places.
-      </p>
+        <p>
+          <a
+            href="/discover"
+            className="font-semibold hover:underline"
+            style={{ color: "var(--app-brand)" }}
+          >
+            Hidden Frederick →
+          </a>{" "}
+          a daily sweep of lesser-known places.
+        </p>
+        <p>
+          <a
+            href="/about"
+            className="font-semibold hover:underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            About Frederick Radius →
+          </a>{" "}
+          what we do and what we won&apos;t.
+        </p>
+      </div>
 
       {/* Hidden sections bar — surfaces only when the user has
           dismissed at least one section. Lets them bring any section
