@@ -13,6 +13,7 @@
  */
 import { NextRequest } from "next/server";
 import { photoUrl } from "@/lib/integrations/google-places";
+import { isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 // Cache the proxied image aggressively — photos rarely change.
@@ -62,6 +63,15 @@ function placeholderResponse(name: string, w: number, reason: string): Response 
 }
 
 export async function GET(req: NextRequest) {
+  // Abuse guard: this route hits Google Places API on every miss. A
+  // foreign Referer / Origin almost certainly means scraping or
+  // hotlinking, both of which directly cost us money. Block early.
+  // Server-to-server fetches (no headers) are still allowed; the real
+  // per-IP rate limiting lives in Vercel Firewall rules.
+  if (!isSameOriginRequest(req)) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
   const name = req.nextUrl.searchParams.get("name");
   const w = Math.min(1600, Math.max(80, parseInt(req.nextUrl.searchParams.get("w") || "800", 10)));
 

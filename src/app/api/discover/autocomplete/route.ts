@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { autocomplete } from "@/lib/integrations/google-autocomplete";
+import { isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,11 @@ const Schema = z.object({
 });
 
 export async function GET(req: Request) {
+  // Paid upstream — block hotlinking. Vercel Firewall handles the
+  // per-IP rate limit on top of this.
+  if (!isSameOriginRequest(req)) {
+    return new NextResponse("Forbidden", { status: 403 });
+  }
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     return NextResponse.json(
       { ok: false, status: 503, message: "GOOGLE_PLACES_API_KEY not configured" },

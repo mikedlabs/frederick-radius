@@ -7,11 +7,16 @@
 import { NextRequest } from "next/server";
 import { travelTimes } from "@/lib/integrations/google-routes";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 export const revalidate = 3600;
 
 export async function GET(req: NextRequest) {
+  // Paid upstream (Google Routes) — block hotlinking.
+  if (!isSameOriginRequest(req)) {
+    return new Response("Forbidden", { status: 403 });
+  }
   const lat = parseFloat(req.nextUrl.searchParams.get("lat") || "");
   const lng = parseFloat(req.nextUrl.searchParams.get("lng") || "");
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
