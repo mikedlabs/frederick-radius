@@ -225,6 +225,61 @@ body {
   border-radius: 4px;
 }
 
+/* Range slider thumb — sized to the Apple HIG / Material Design 44pt
+   minimum touch target so the /radius distance slider is usable with
+   a thumb on mobile. Visible part is 18 px (the brand-tinted disk);
+   the surrounding hit area extends to 44 px via a transparent
+   border-box trick that doesn't change the visual size. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  /* Ensures the larger thumb has room to render without clipping. */
+  height: 44px;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: color-mix(in srgb, var(--app-ink-3) 35%, transparent);
+  border-radius: 999px;
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: color-mix(in srgb, var(--app-ink-3) 35%, transparent);
+  border-radius: 999px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  /* 44 px outer tap target, 18 px visible thumb via a transparent
+     border that the browser includes in the hit area. */
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  border: 13px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-ink) 18%, transparent),
+              0 2px 6px rgba(0, 0, 0, 0.18);
+  /* Vertically center the small visible thumb against the 4 px track. */
+  margin-top: -7px;
+  cursor: pointer;
+  transition: transform 120ms var(--app-ease-spring);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--app-brand);
+  border: 13px solid transparent;
+  background-clip: padding-box;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-ink) 18%, transparent),
+              0 2px 6px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 120ms var(--app-ease-spring);
+}
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.18); }
+input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
+
 /* Scrollbar — minimal */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
