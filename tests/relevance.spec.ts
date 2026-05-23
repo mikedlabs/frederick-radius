@@ -10,6 +10,10 @@ describe("isNonDiscoverable", () => {
     expect(isNonDiscoverable("accounting")).toBe(true);
     expect(isNonDiscoverable("consultant")).toBe(true);
     expect(isNonDiscoverable("finance")).toBe(true);
+    // Google's bare "service" catch-all — appointment-only providers
+    // (cleaning, IT, repair-by-call). Walk-in destinations get a more
+    // specific primaryType, so we hide the bare label. (2026-05-20)
+    expect(isNonDiscoverable("service")).toBe(true);
   });
 
   it("hides trades, freight, and residential buildings", () => {
@@ -43,7 +47,6 @@ describe("isNonDiscoverable", () => {
   });
 
   it("KEEPS vague or missing types — never guess a place away", () => {
-    expect(isNonDiscoverable("service")).toBe(false); // 142 of these — too vague
     expect(isNonDiscoverable("store")).toBe(false);
     expect(isNonDiscoverable("premise")).toBe(false);
     expect(isNonDiscoverable("point_of_interest")).toBe(false);
