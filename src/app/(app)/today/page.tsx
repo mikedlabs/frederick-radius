@@ -6,7 +6,7 @@ import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
-import FeaturedTonight from "@/components/today/FeaturedTonight";
+import FeaturedTonightPicker from "@/components/today/FeaturedTonightPicker";
 import RightNow from "@/components/today/RightNow";
 import HistoryPulse from "@/components/today/HistoryPulse";
 import DismissibleSection from "@/components/today/DismissibleSection";
@@ -69,20 +69,28 @@ const EVENING_CATEGORIES: ReadonlySet<string> = new Set([
 // their own section; they don't carry a "Don't miss" hero card.
 const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal|board meeting|training|orientation|class|certification|breastfeeding|prenatal|birthing|info session|hr|policy)\b/i;
 
-function pickFeaturedPlace(now: Date): PlaceCardData | null {
+/**
+ * Pick the top 5 featured-tonight candidates — the server's shortlist
+ * for the editorial place card. The first one is the unconditional
+ * best; the rest exist so a client wrapper can prefer a candidate
+ * whose category umbrella matches a user's onboarding interest
+ * (Phase D personalization). Returns an empty array when no place
+ * meets the bar, which the page treats as "no card".
+ */
+function pickFeaturedCandidates(now: Date): PlaceCardData[] {
   const ranked = rankPlaces({
     origin: FREDERICK_CENTER,
     now,
     preferOpen: true,
     limit: 120,
   });
-  const candidate = ranked
+  return ranked
     .filter((p) => Boolean(p.google_photo_url))
     .filter((p) => p.open_status.state !== "closed")
     .filter((p) => EVENING_CATEGORIES.has(p.category))
     .filter((p) => (p.google_rating ?? 0) >= 4.3)
-    .sort((a, b) => (b.google_rating ?? 0) - (a.google_rating ?? 0))[0];
-  return candidate ?? null;
+    .sort((a, b) => (b.google_rating ?? 0) - (a.google_rating ?? 0))
+    .slice(0, 5);
 }
 
 /** Pick the next photo-backed marquee event for the hero card.
@@ -207,7 +215,7 @@ export default async function HomePage({
   const mode: TodayTimeMode = isTodayTimeMode(t) ? t : "now";
   const now = new Date();
 
-  const featuredPlace = pickFeaturedPlace(now);
+  const featuredCandidates = pickFeaturedCandidates(now);
   const featuredEvent = pickFeaturedEvent(now);
   // Per-mode event window — title + items both come from one helper
   // so chip and rendered section never disagree.
@@ -335,10 +343,13 @@ export default async function HomePage({
         <LocalNewsStrip />
       </Suspense>
 
-      {/* Editorial place. */}
-      {featuredPlace && (
+      {/* Editorial place. The picker is client-side so it can prefer a
+          candidate matching the user's interests (Phase D) while the
+          server-rendered first candidate is the same magazine pick
+          for everyone if no interests are set. */}
+      {featuredCandidates.length > 0 && (
         <DismissibleSection id="featured-place" title="Worth your evening">
-          <FeaturedTonight place={featuredPlace} />
+          <FeaturedTonightPicker candidates={featuredCandidates} />
         </DismissibleSection>
       )}
 
