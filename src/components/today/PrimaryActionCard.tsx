@@ -24,10 +24,10 @@ export default function PrimaryActionCard({ now = new Date() }: { now?: Date }) 
   const evening = etHour(now) >= 16;
   const copy = evening
     ? {
-        headline: "Plan your evening",
-        subhead: "Build a route from what is on around Frederick tonight.",
-        cta: "Plan my evening",
-        href: "/plan",
+        headline: "Plan tonight in one tap",
+        subhead: "Dinner, drinks, then somewhere to land late — all walkable.",
+        cta: "See tonight's plan",
+        href: "/tonight",
         Icon: CalendarClock,
       }
     : {
