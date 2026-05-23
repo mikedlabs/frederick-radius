@@ -5,6 +5,12 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { ExternalLink, MapPin, Wine, Beer, Sparkles, Apple } from "lucide-react";
 
 export const metadata: Metadata = {
+  // Orphan-by-design: this surface has real content but no
+  // internal links from primary nav. Keep it reachable by direct
+  // URL while telling crawlers not to compete it against the
+  // focused surfaces in /sitemap. Reversible if the route is
+  // promoted back into nav.
+  robots: { index: false, follow: true },
   title: "Frederick Beverage Trail",
   description: "26 wineries, breweries, distilleries, cideries, and meaderies across Frederick County, MD — Maryland's craft beverage capital.",
   openGraph: {

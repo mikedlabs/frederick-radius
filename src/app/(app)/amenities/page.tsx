@@ -5,6 +5,12 @@ import { Surface } from "@/components/ui/Surface";
 import { Chip } from "@/components/ui/Chip";
 
 export const metadata: Metadata = {
+  // Orphan-by-design: this surface has real content but no
+  // internal links from primary nav. Keep it reachable by direct
+  // URL while telling crawlers not to compete it against the
+  // focused surfaces in /sitemap. Reversible if the route is
+  // promoted back into nav.
+  robots: { index: false, follow: true },
   title: "Amenities",
   description:
     "Public restrooms, free Wi-Fi, EV charging, bike parking, picnic spots and playgrounds across Frederick County.",

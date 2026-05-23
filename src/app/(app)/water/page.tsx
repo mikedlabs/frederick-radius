@@ -3,6 +3,12 @@ import { Waves, Gauge, Activity, MapPin, ExternalLink, AlertTriangle } from "luc
 import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
 
 export const metadata: Metadata = {
+  // Orphan-by-design: this surface has real content but no
+  // internal links from primary nav. Keep it reachable by direct
+  // URL while telling crawlers not to compete it against the
+  // focused surfaces in /sitemap. Reversible if the route is
+  // promoted back into nav.
+  robots: { index: false, follow: true },
   title: "Rivers & streams",
   description:
     "Live USGS gauge readings for Frederick County rivers and streams — gage height and streamflow, updated every 15 minutes.",

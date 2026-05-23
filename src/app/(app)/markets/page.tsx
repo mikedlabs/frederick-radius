@@ -11,6 +11,12 @@ import {
 } from "@/lib/integrations/mdFarmersMarkets";
 
 export const metadata: Metadata = {
+  // Orphan-by-design: this surface has real content but no
+  // internal links from primary nav. Keep it reachable by direct
+  // URL while telling crawlers not to compete it against the
+  // focused surfaces in /sitemap. Reversible if the route is
+  // promoted back into nav.
+  robots: { index: false, follow: true },
   title: "Farmers markets",
   description:
     "Every farmers and farm market across Frederick County, by town.",
