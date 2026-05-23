@@ -157,7 +157,7 @@ export default function DiscoverPage() {
               <li key={p.slug}>
                 <Link
                   href={`/places/${p.slug}`}
-                  aria-label={`${p.name} — ${cat?.name ?? p.category}`}
+                  aria-label={`${p.name}, ${cat?.name ?? p.category}`}
                   className="tactile tactile-interactive group relative block aspect-[4/5] overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
                   style={{ borderColor: "var(--app-border)" }}
                 >

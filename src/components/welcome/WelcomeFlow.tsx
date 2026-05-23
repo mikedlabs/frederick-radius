@@ -168,7 +168,7 @@ export default function WelcomeFlow() {
               What are you into?
             </h1>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Pick a few — we&apos;ll bias the Today page toward what you care
+              Pick a few. We&apos;ll bias the Today page toward what you care
               about. Tap any to toggle.
             </p>
           </>
@@ -228,7 +228,7 @@ export default function WelcomeFlow() {
                 className="mt-0.5 block text-[13px] leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                The default — no anchor, show me everything across the
+                The default. No anchor, show me everything across the
                 13 municipalities.
               </span>
             </span>

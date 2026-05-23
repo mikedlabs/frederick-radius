@@ -122,6 +122,11 @@ export default function RadiusBuilder({
   // Default renders on the server; the stored preference is applied
   // after mount (same SSR-safe pattern the app uses elsewhere). A brief
   // default-then-preferred settle is acceptable for a view toggle.
+  // View + sort: state is hydrated from localStorage on mount, but no
+  // UI control changes them right now (toggles were retired in an
+  // earlier compaction). The reads are still consumed in render so
+  // a returning user keeps their last-chosen layout. If the toggles
+  // come back, restore the persist wrappers — git history has them.
   const [view, setView] = useState<ViewMode>("grid");
   useEffect(() => {
     try {
@@ -132,17 +137,6 @@ export default function RadiusBuilder({
       // localStorage unavailable (private mode, etc.) — keep default
     }
   }, []);
-  const chooseView = (v: ViewMode) => {
-    setView(v);
-    try {
-      localStorage.setItem(VIEW_KEY, v);
-    } catch {
-      // non-fatal
-    }
-  };
-  // Sort within each group: "near" (distance, the default — inside is
-  // already distance-sorted) or "az" (alphabetical). Same SSR-safe
-  // localStorage settle as the view toggle.
   const [sort, setSort] = useState<SortMode>("near");
   useEffect(() => {
     try {
@@ -153,14 +147,6 @@ export default function RadiusBuilder({
       // localStorage unavailable (private mode, etc.) — keep default
     }
   }, []);
-  const chooseSort = (s: SortMode) => {
-    setSort(s);
-    try {
-      localStorage.setItem(SORT_KEY, s);
-    } catch {
-      // non-fatal
-    }
-  };
   // Cuisine filter (food group only) + which groups are expanded.
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
