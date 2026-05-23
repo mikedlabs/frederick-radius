@@ -14,7 +14,12 @@ import { search, type SearchHit } from "@/lib/search";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
-export type SearchResultType = "place" | "event" | "category" | "municipality";
+export type SearchResultType =
+  | "place"
+  | "event"
+  | "category"
+  | "municipality"
+  | "action";
 
 export type SearchResult = {
   type: SearchResultType;
@@ -25,6 +30,84 @@ export type SearchResult = {
   /** Compact category/municipality hint for badges. */
   badge?: string;
 };
+
+/**
+ * Quick-action results — top-level navigation that surfaces in the
+ * search overlay when the user types intent words rather than a place
+ * name. Same shape as a regular result so the overlay can render them
+ * in the same list; the leading "action:" id prefix lets the trust
+ * resolver skip them cleanly.
+ *
+ * Each row carries the keywords that should trip it: a substring match
+ * against the lowercase query. Keywords are kept short and recognizable
+ * — typing "tonight" or "plan" should both find the Plan-a-Night door.
+ */
+type QuickAction = {
+  id: string;
+  title: string;
+  subtitle: string;
+  href: string;
+  keywords: readonly string[];
+};
+
+const QUICK_ACTIONS: readonly QuickAction[] = [
+  {
+    id: "action:tonight",
+    title: "Plan tonight",
+    subtitle: "Dinner, drinks, then somewhere to land late.",
+    href: "/tonight",
+    keywords: ["tonight", "plan", "evening", "night", "dinner", "drinks", "date"],
+  },
+  {
+    id: "action:discover",
+    title: "Hidden Frederick",
+    subtitle: "A daily sweep of lesser-known places.",
+    href: "/discover",
+    keywords: ["discover", "hidden", "gem", "gems", "new", "explore"],
+  },
+  {
+    id: "action:radius",
+    title: "What's near me",
+    subtitle: "Set a point and a distance.",
+    href: "/radius",
+    keywords: ["near", "nearby", "radius", "around", "close", "walking"],
+  },
+  {
+    id: "action:events",
+    title: "Browse all events",
+    subtitle: "Live, upcoming, by category, by town.",
+    href: "/events",
+    keywords: ["events", "what's on", "calendar", "happening", "concerts", "shows"],
+  },
+  {
+    id: "action:map",
+    title: "Open the map",
+    subtitle: "Everything visible at a glance.",
+    href: "/map",
+    keywords: ["map", "where", "view"],
+  },
+  {
+    id: "action:settings",
+    title: "Settings",
+    subtitle: "Persona, your spot, interests, notifications.",
+    href: "/settings",
+    keywords: ["settings", "preferences", "account", "profile", "personalize"],
+  },
+];
+
+function matchQuickActions(query: string): SearchResult[] {
+  const q = query.toLowerCase().trim();
+  if (!q) return [];
+  return QUICK_ACTIONS.filter((a) =>
+    a.keywords.some((k) => k.startsWith(q) || q.startsWith(k) || k.includes(q)),
+  ).map((a) => ({
+    type: "action" as const,
+    id: a.id,
+    title: a.title,
+    subtitle: a.subtitle,
+    href: a.href,
+  }));
+}
 
 function hitToResult(h: SearchHit): SearchResult {
   if (h.type === "place") {
@@ -72,5 +155,11 @@ function hitToResult(h: SearchHit): SearchResult {
 }
 
 export function searchIndex(query: string, limit = 12): SearchResult[] {
-  return search(query, limit).map(hitToResult);
+  // Quick actions lead the list — when a user types "tonight" they
+  // probably want the /tonight surface itself, not a place named
+  // Tonight Foo. They're cheap to compute (a few keyword checks) and
+  // capped at the head; the rest of the limit goes to real ranked hits.
+  const actions = matchQuickActions(query).slice(0, 2);
+  const hits = search(query, Math.max(1, limit - actions.length)).map(hitToResult);
+  return [...actions, ...hits];
 }

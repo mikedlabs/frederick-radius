@@ -25,7 +25,7 @@ export default function PrimaryActionCard({ now = new Date() }: { now?: Date }) 
   const copy = evening
     ? {
         headline: "Plan tonight in one tap",
-        subhead: "Dinner, drinks, then somewhere to land late — all walkable.",
+        subhead: "Dinner, drinks, then somewhere to land late. All walkable.",
         cta: "See tonight's plan",
         href: "/tonight",
         Icon: CalendarClock,

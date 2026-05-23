@@ -105,9 +105,28 @@ export default function RadiusBuilder({
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
+  // Onboarding handoff: if the user picked a home municipality on
+  // /welcome, jump to that preset on first paint instead of MUNI_PRESETS[0].
+  // SSR-safe: server renders index 0, client overrides after mount.
+  useEffect(() => {
+    try {
+      const homeMuni = localStorage.getItem("fr:home-muni:v1");
+      if (!homeMuni) return;
+      const idx = PRESETS.findIndex((p) => p.slug === `m-${homeMuni}`);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders preset 0; the stored home-muni overrides after mount
+      if (idx > -1) setPresetIdx(idx);
+    } catch {
+      // localStorage unavailable — keep the default
+    }
+  }, []);
   // Default renders on the server; the stored preference is applied
   // after mount (same SSR-safe pattern the app uses elsewhere). A brief
   // default-then-preferred settle is acceptable for a view toggle.
+  // View + sort: state is hydrated from localStorage on mount, but no
+  // UI control changes them right now (toggles were retired in an
+  // earlier compaction). The reads are still consumed in render so
+  // a returning user keeps their last-chosen layout. If the toggles
+  // come back, restore the persist wrappers — git history has them.
   const [view, setView] = useState<ViewMode>("grid");
   useEffect(() => {
     try {
@@ -118,17 +137,6 @@ export default function RadiusBuilder({
       // localStorage unavailable (private mode, etc.) — keep default
     }
   }, []);
-  const chooseView = (v: ViewMode) => {
-    setView(v);
-    try {
-      localStorage.setItem(VIEW_KEY, v);
-    } catch {
-      // non-fatal
-    }
-  };
-  // Sort within each group: "near" (distance, the default — inside is
-  // already distance-sorted) or "az" (alphabetical). Same SSR-safe
-  // localStorage settle as the view toggle.
   const [sort, setSort] = useState<SortMode>("near");
   useEffect(() => {
     try {
@@ -139,17 +147,26 @@ export default function RadiusBuilder({
       // localStorage unavailable (private mode, etc.) — keep default
     }
   }, []);
-  const chooseSort = (s: SortMode) => {
-    setSort(s);
-    try {
-      localStorage.setItem(SORT_KEY, s);
-    } catch {
-      // non-fatal
-    }
-  };
   // Cuisine filter (food group only) + which groups are expanded.
   const [cuisine, setCuisine] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Onboarding handoff: pre-expand the group sections matching the
+  // interests the user picked on /welcome step 3. Group keys are the
+  // top-level category slug (e.g. "food", "outdoors", "arts"), which
+  // is exactly what we stored in fr:interests:v1. Same SSR-safe
+  // settle as the view + sort hydration above.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("fr:interests:v1");
+      if (!raw) return;
+      const interests = JSON.parse(raw);
+      if (!Array.isArray(interests) || interests.length === 0) return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders an empty Set; the stored interests open matching sections after mount
+      setExpanded(new Set(interests.filter((s) => typeof s === "string")));
+    } catch {
+      // localStorage unavailable or JSON garbled — keep default
+    }
+  }, []);
   // `seeAll` flips the page from "category tiles only" (default —
   // scan the buckets fast) to "every section expanded inline" (the
   // full directory view). User-flow fix: the old default landed on
