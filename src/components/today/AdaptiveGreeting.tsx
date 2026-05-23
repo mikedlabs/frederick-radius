@@ -2,6 +2,7 @@ import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import HomeMuniChip from "./HomeMuniChip";
 import InterestsChip from "./InterestsChip";
+import PersonalGreetingLine from "./PersonalGreetingLine";
 
 function pickGreeting(hour: number, conditions: string, precip: number): string {
   // Honest weather: NWS shortForecast like "Isolated Rain Showers" or
@@ -83,6 +84,13 @@ export default async function AdaptiveGreeting() {
       >
         {dateline}
       </p>
+      {/* Personal soft headline. Renders only when the user picked a
+          home municipality in /welcome — establishes context as
+          "Tonight in Brunswick" before the weather-aware main line
+          carries the mood. Server snapshot is empty, so the eyebrow +
+          main headline still read cleanly while the personal line
+          hydrates in. */}
+      <PersonalGreetingLine />
       <h1
         className="font-serif text-[22px] font-semibold leading-[1.1] tracking-tight sm:text-[34px]"
         style={{ color: "currentColor", textWrap: "balance" } as React.CSSProperties}
