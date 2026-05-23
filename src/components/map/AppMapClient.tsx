@@ -25,8 +25,8 @@ const AppMap = dynamic(() => import("./AppMap"), {
  * (opens the place sheet). This turns a wall of pins into something you
  * can actually browse.
  */
-export type { CivicPin, MapLineFC, EventPin } from "./AppMap";
-import type { CivicPin, MapLineFC, EventPin } from "./AppMap";
+export type { CivicPin, MapLineFC, EventPin } from "./types";
+import type { CivicPin, MapLineFC, EventPin } from "./types";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import type { Amenity } from "@/lib/loaders/amenities";
 

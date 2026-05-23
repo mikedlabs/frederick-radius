@@ -11,7 +11,7 @@ import Map, {
   type MapRef,
   type MapMouseEvent,
 } from "react-map-gl/mapbox";
-import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+import type { GeoJSONSource } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal } from "lucide-react";
 
@@ -20,9 +20,7 @@ import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
 import ModeSwitch from "@/components/mode/ModeSwitch";
-import Link from "next/link";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
-import type { Place } from "@/data/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
@@ -49,6 +47,43 @@ import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarker
 import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
 import { DEMO_POINTS_PARTNERS, type DemoPointsPartner } from "@/data/radius-points-demo";
 import { RADIUS_COIN } from "@/data/city-data-engine";
+
+// Types, constants, and popup components were carved off into siblings
+// to keep this file focused on state + effects + layout. No behavior
+// change in this PR; later refactors can lift the bottom-deck JSX and
+// the pin/cluster layers out the same way.
+import {
+  EMPTY_LINE_FC,
+  type CivicPin,
+  type EventPin,
+  type MapLineFC,
+  type Selected,
+} from "./types";
+import {
+  AMENITY_GROUPS,
+  AMENITY_KIND_TO_CAT,
+  CAM_EASE,
+  CHIP_GLYPH,
+  DUPE_K,
+  EMPTY_FC,
+  FREDERICK,
+  RADIUS_M,
+  STYLE_URL,
+  circlePolygon,
+  dupeCellKey,
+  isAmenity,
+  isTrustedOsm,
+  loadCachedOsm,
+  saveCachedOsm,
+  smoothFocus,
+} from "./constants";
+import {
+  EventPopup,
+  FoodTruckPopup,
+  OsmPopup,
+  PlacePopup,
+  PointsPartnerPopup,
+} from "./popups";
 
 // Preview-only map demo layers (Food Trucks / Radius Points / Live
 // Transit) render sample data, not real coverage. OFF in production;
@@ -90,214 +125,6 @@ type Props = {
    *  geo-deduped and scoped to "happening soon" server-side. */
   events?: EventPin[];
 };
-
-/** Minimal GeoJSON line FeatureCollection (decoupled from the feeds). */
-export type MapLineFC = {
-  type: "FeatureCollection";
-  features: Array<{ type: "Feature"; geometry: unknown; properties: Record<string, unknown> }>;
-};
-const EMPTY_LINE_FC: MapLineFC = { type: "FeatureCollection", features: [] };
-
-export type CivicPin = {
-  kind: "traffic" | "issue";
-  lng: number;
-  lat: number;
-  label: string;
-};
-
-/**
- * Compact shape we render as an event pin on the map. Server-fetched on
- * /map/page.tsx from allUpcoming() and filtered to the next 48 hours so
- * the layer reads as "what's happening soon" instead of "all events
- * ever." Hero image is rendered as a circular photo bubble; if absent
- * we fall back to a category-colored badge with a calendar glyph.
- */
-export type EventPin = {
-  slug: string;
-  title: string;
-  starts_at: string;
-  ends_at?: string;
-  venue_name: string;
-  lng: number;
-  lat: number;
-  category: string;
-  category_color?: string;
-  hero_image?: string;
-};
-
-const OSM_CACHE_KEY = "fr:osm-frederick:v1";
-const OSM_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Categories we trust OSM for — these tend not to disappear or change.
- * Restaurants, bars, shops are NOT in this set because OSM data for
- * commercial businesses is notoriously stale (places stay tagged years
- * after they close). We only surface those when the user explicitly opts in.
- */
-const OSM_TRUSTED_CATEGORIES = new Set<string>([
-  // Public spaces / civic infra
-  "park", "trail", "playground",
-  "library",
-  "public-safety", // fire stations, police
-  "government",
-  "civic",
-  "transit",
-  "museum",
-  "public-art",
-  "parking",
-  // Public amenities (don't go stale — trash cans, benches, restrooms don't "close")
-  "restroom", "water", "trash", "recycling", "dog-waste",
-  "bench", "picnic", "bike-parking", "bike-repair",
-  "defibrillator", "shelter", "wifi", "ev-charging",
-]);
-
-const AMENITY_CATEGORIES = new Set<string>([
-  "restroom", "water", "trash", "recycling", "dog-waste",
-  "bench", "picnic", "bike-parking", "bike-repair",
-  "defibrillator", "shelter", "wifi", "ev-charging",
-  // A playground is an amenity people look for, not a business — it
-  // rides the amenity tray/layer, not the place cluster.
-  "playground",
-]);
-
-/**
- * Curated amenities.json uses underscored kinds; the map's marker
- * and grouping language is the hyphenated category slug (what
- * bucketOf / the cat- puck images understand). One small bridge so
- * the 442 curated points render with the right icon and land in the
- * right tray group.
- */
-const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
-  restroom: "restroom",
-  ev_charging: "ev-charging",
-  wifi: "wifi",
-  bike_parking: "bike-parking",
-  picnic: "picnic",
-  playground: "playground",
-};
-
-/**
- * Grouped amenity picker — the "what do you need?" tray. One tap reveals
- * exactly one kind of ground-truth amenity instead of a single bundled
- * dump. Combined with zoom-gating (these only render past street zoom),
- * this is how the map shows everything without overwhelming.
- */
-const AMENITY_GROUPS: { key: string; label: string; glyph: string; cats: string[] }[] = [
-  { key: "restroom", label: "Restrooms", glyph: "\u{1F6BB}", cats: ["restroom"] },
-  { key: "water", label: "Water", glyph: "\u{1F4A7}", cats: ["water"] },
-  { key: "trash", label: "Trash", glyph: "\u{1F5D1}", cats: ["trash", "recycling"] },
-  { key: "dog", label: "Dog stations", glyph: "\u{1F43E}", cats: ["dog-waste"] },
-  { key: "wifi", label: "Wifi", glyph: "\u{1F4F6}", cats: ["wifi"] },
-  { key: "ev", label: "EV charging", glyph: "\u{26A1}", cats: ["ev-charging"] },
-  { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
-  { key: "seating", label: "Sit & picnic", glyph: "\u{1FA91}", cats: ["bench", "picnic"] },
-  { key: "play", label: "Playgrounds", glyph: "\u{1F6DD}", cats: ["playground"] },
-  { key: "safety", label: "AED & shelter", glyph: "\u{2795}", cats: ["defibrillator", "shelter"] },
-];
-
-const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
-
-// Glyphs for the filter chips, matching the map marker language.
-const CHIP_GLYPH: Record<string, string> = {
-  food: "\u{1F37D}", outdoors: "\u{1F333}", arts: "\u{1F3A8}", family: "\u{1F46A}",
-  shopping: "\u{1F6CD}", wellness: "\u{1F49A}", civic: "\u{1F3DB}", services: "\u{1F527}",
-  lodging: "\u{1F3E8}", transit: "\u{1F68C}", parking: "\u{1F17F}", amenities: "\u{1F6BB}",
-  music: "\u{1F3B5}", brewery: "\u{1F37A}",
-};
-
-const RADIUS_M = 1609; // 1 mile — the "Radius" ring
-
-function circlePolygon(center: LngLat, meters: number, steps = 72): GeoJSON.Feature<GeoJSON.Polygon> {
-  const ring: [number, number][] = [];
-  const latR = meters / 111320;
-  const lngR = meters / (111320 * Math.cos((center.lat * Math.PI) / 180));
-  for (let i = 0; i <= steps; i++) {
-    const a = (i / steps) * 2 * Math.PI;
-    ring.push([center.lng + lngR * Math.cos(a), center.lat + latR * Math.sin(a)]);
-  }
-  return { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } };
-}
-
-// Camera easing shared by every programmatic move so zooming feels
-// calm and consistent — never the hard jump that read as "erratic".
-// easeInOutCubic: slow start, slow stop, no snap.
-const CAM_EASE = (t: number) =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-
-/**
- * Gentle recenter + zoom. The old code flew straight to z15.5 from
- * wherever you were — a county-wide view punching to street level in
- * one motion is exactly the jolt the owner flagged. This clamps the
- * zoom change to a small step toward a sensible focus level and eases
- * it, so tapping a result or a search hit glides instead of snapping.
- */
-function smoothFocus(
-  map: MapboxMap,
-  center: [number, number],
-  opts?: { minZoom?: number; maxStep?: number },
-) {
-  const cur = map.getZoom();
-  const want = Math.max(cur, opts?.minZoom ?? 14.5);
-  const zoom = Math.min(want, cur + (opts?.maxStep ?? 2.2));
-  map.easeTo({ center, zoom, duration: 900, easing: CAM_EASE, essential: true });
-}
-
-function isTrustedOsm(p: OsmPlace): boolean {
-  return OSM_TRUSTED_CATEGORIES.has(p.category_slug);
-}
-
-function isAmenity(p: OsmPlace): boolean {
-  return AMENITY_CATEGORIES.has(p.category_slug);
-}
-
-function loadCachedOsm(): OsmPlace[] | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(OSM_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as { at: number; data: OsmPlace[] };
-    if (Date.now() - parsed.at > OSM_CACHE_TTL_MS) return null;
-    return parsed.data;
-  } catch {
-    return null;
-  }
-}
-
-function saveCachedOsm(data: OsmPlace[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.setItem(OSM_CACHE_KEY, JSON.stringify({ at: Date.now(), data }));
-  } catch {
-    // sessionStorage might be full; ignore
-  }
-}
-
-const FREDERICK: [number, number] = [-77.4105, 39.4143];
-// Mapbox Standard: the brightest, most polished style Mapbox ships.
-// Includes 3D building extrusions by default, atmospheric sky, day/
-// night lighting that follows the user's clock, and proper street
-// labels. Switching from dark-v11 → standard is the single biggest
-// "the map looks designed" change available; the dark style read as
-// generic-nightlife-app and hid the terrain hillshading we'd added.
-// The custom Frederick Radius Studio style (P2-1) replaces this when
-// ready; until then Standard is a real-feeling map of the county.
-const STYLE_URL = "mapbox://styles/mapbox/standard";
-
-// ── Curated-vs-OSM dedupe ───────────────────────────────────────────
-// The map renders our curated set AND the live OSM layer; anything in
-// both used to show twice. This now defers to the ONE shared rule
-// (src/lib/dedupe.ts) — same safelist, same name logic as the loader
-// — so an OSM "Baker Park" folds into the curated one while an OSM
-// "Carroll Creek Parking Deck" is never wrongly merged into the park.
-// ~300 m cells so a ±1 neighborhood always spans the 250 m rule.
-const DUPE_K = 370;
-function dupeCellKey(lat: number, lng: number): string {
-  return `${Math.round(lat * DUPE_K)},${Math.round(lng * DUPE_K)}`;
-}
-
-type SelectedOsm = OsmPlace & { _kind: "osm" };
-type SelectedPlace = Place & { _kind: "place" };
-type Selected = SelectedOsm | SelectedPlace | null;
 
 export default function AppMap({
   places,
@@ -2339,238 +2166,3 @@ export default function AppMap({
   );
 }
 
-/** Compact event card shown inside a Mapbox Popup. Plain inline styles
- *  to match the other popup helpers in this file (PlacePopup, etc.). */
-function EventPopup({ e }: { e: EventPin }) {
-  const start = new Date(e.starts_at);
-  const now = new Date();
-  const msUntil = start.getTime() - now.getTime();
-  const within24h = msUntil > -3 * 3_600_000 && msUntil < 24 * 3_600_000;
-  const dateStr = within24h
-    ? new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/New_York",
-        weekday: "short",
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(start)
-    : new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/New_York",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(start);
-  const color = e.category_color || "#C4451C";
-  return (
-    <div style={{ minWidth: 230, padding: 4 }}>
-      <p
-        style={{
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color,
-          marginBottom: 4,
-        }}
-      >
-        {dateStr}
-      </p>
-      <strong
-        style={{
-          display: "block",
-          fontSize: 15,
-          lineHeight: 1.25,
-          color: "#1A1A1A",
-          fontFamily: "var(--font-plex-serif)",
-        }}
-      >
-        {e.title}
-      </strong>
-      <p style={{ fontSize: 12, margin: "4px 0 8px", color: "#4A4A48" }}>
-        {e.venue_name}
-      </p>
-      <Link
-        href={`/events/${e.slug}`}
-        style={{
-          display: "inline-block",
-          fontSize: 12,
-          fontWeight: 700,
-          color,
-        }}
-      >
-        See event →
-      </Link>
-    </div>
-  );
-}
-
-function PointsPartnerPopup({ p }: { p: DemoPointsPartner }) {
-  return (
-    <div style={{ minWidth: 220, padding: 4 }}>
-      <p style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-        textTransform: "uppercase", color: "#B8860B", marginBottom: 4,
-      }}>
-        Radius Points · Preview
-      </p>
-      <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
-        {p.name}
-      </strong>
-      <p style={{ fontSize: 12, margin: "4px 0 8px", color: "#4A4A48" }}>{p.kind}</p>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 6, fontSize: 12,
-        color: "#7A5A12", background: "#F7EACB", borderRadius: 8,
-        padding: "6px 8px", marginBottom: 10,
-      }}>
-        <span aria-hidden>{"\u{2B50}"}</span>
-        {p.earnLine}
-      </div>
-      <button
-        type="button"
-        disabled
-        style={{
-          width: "100%", padding: "8px 10px", borderRadius: 8,
-          border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)",
-          color: "var(--app-ink-3)", fontSize: 12, fontWeight: 600, cursor: "not-allowed",
-        }}
-      >
-        Join Radius Points (coming soon)
-      </button>
-      <p style={{ fontSize: 10, color: "#9A9892", margin: "6px 0 0", lineHeight: 1.4 }}>
-        Radius Points is a preview. There is no account, signup, or payment yet. These partners are sample data.
-      </p>
-    </div>
-  );
-}
-
-function FoodTruckPopup({ t }: { t: DemoFoodTruck }) {
-  return (
-    <div style={{ minWidth: 220, padding: 4 }}>
-      <p style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-        textTransform: "uppercase", color: "#C4451C", marginBottom: 4,
-      }}>
-        Food truck · Preview
-      </p>
-      <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
-        {t.name}
-      </strong>
-      <p style={{ fontSize: 12, margin: "4px 0 8px", color: "#4A4A48" }}>{t.cuisine}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: "#7A7975", marginBottom: 8 }}>
-        <span>Parked at {t.spot}</span>
-        <span>Here until {t.hereUntil}</span>
-      </div>
-      <ul style={{ listStyle: "none", margin: "0 0 10px", padding: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-        {t.menu.map((m) => (
-          <li key={m} style={{ fontSize: 12, color: "#4A4A48", display: "flex", gap: 6 }}>
-            <span aria-hidden style={{ color: "#C4451C" }}>·</span>{m}
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        disabled
-        style={{
-          width: "100%", padding: "8px 10px", borderRadius: 8,
-          border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)",
-          color: "var(--app-ink-3)", fontSize: 12, fontWeight: 600, cursor: "not-allowed",
-        }}
-      >
-        Order ahead (coming soon)
-      </button>
-      <p style={{ fontSize: 10, color: "#9A9892", margin: "6px 0 0", lineHeight: 1.4 }}>
-        Order ahead is a preview and is not connected yet. These trucks are sample data.
-      </p>
-    </div>
-  );
-}
-
-function PlacePopup({ p }: { p: SelectedPlace }) {
-  const cat = CATEGORY_BY_SLUG[p.category];
-  return (
-    <div style={{ minWidth: 200, padding: 4 }}>
-      <p style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-        textTransform: "uppercase", color: cat?.color ?? "#C4451C", marginBottom: 4,
-      }}>
-        {cat?.name ?? p.category}
-      </p>
-      <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
-        {p.name}
-      </strong>
-      <p style={{ fontSize: 12, margin: "6px 0", color: "#4A4A48", lineHeight: 1.45 }}>
-        {p.short_blurb}
-      </p>
-      <Link
-        href={`/places/${p.slug}`}
-        style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand)" }}
-      >
-        Open page →
-      </Link>
-    </div>
-  );
-}
-
-function OsmPopup({ p }: { p: SelectedOsm }) {
-  const cat = CATEGORY_BY_SLUG[p.category_slug];
-  return (
-    <div style={{ minWidth: 200, padding: 4 }}>
-      <p style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-        textTransform: "uppercase", color: cat?.color ?? "#7A7975", marginBottom: 4,
-      }}>
-        {cat?.name ?? p.category_slug}
-      </p>
-      <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
-        {p.name}
-      </strong>
-      <p style={{
-        marginTop: 4, fontSize: 10, fontWeight: 600,
-        textTransform: "uppercase", letterSpacing: "0.06em",
-        color: "var(--app-warning)",
-      }}>
-        ⚠ Unverified · from OpenStreetMap · may be closed or stale
-      </p>
-      {p.cuisine && (
-        <p style={{ fontSize: 11, marginTop: 4, color: "#7A7975", textTransform: "capitalize" }}>
-          {p.cuisine.replace(/_/g, " ").replace(/;/g, ", ")}
-        </p>
-      )}
-      {(p.address || p.city) && (
-        <p style={{ fontSize: 12, margin: "6px 0 4px", color: "#4A4A48", lineHeight: 1.4 }}>
-          {[p.address, p.city].filter(Boolean).join(", ")}
-        </p>
-      )}
-      {p.opening_hours && (
-        <p style={{ fontSize: 11, color: "#7A7975", marginBottom: 4 }}>
-          {p.opening_hours}
-        </p>
-      )}
-      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-        {p.phone && (
-          <a href={`tel:${p.phone}`} style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 600 }}>
-            Call
-          </a>
-        )}
-        {p.website && (
-          <a
-            href={p.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ fontSize: 11, color: "var(--app-cool)", fontWeight: 600 }}
-          >
-            Website ↗
-          </a>
-        )}
-        <a
-          href={`https://www.openstreetmap.org/${p.osm_id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ fontSize: 10, color: "#7A7975", marginLeft: "auto" }}
-        >
-          OSM
-        </a>
-      </div>
-    </div>
-  );
-}
