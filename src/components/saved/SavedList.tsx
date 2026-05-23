@@ -331,8 +331,8 @@ function EmptyState() {
           </p>
           <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
             Tap the bookmark on any place or event to pin it here. The list is
-            yours, for things you've been meaning to try, dates worth a return
-            visit, or a list to send a friend who's coming through town.
+            yours, for things you&apos;ve been meaning to try, dates worth a return
+            visit, or a list to send a friend who&apos;s coming through town.
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             <Link
@@ -348,7 +348,7 @@ function EmptyState() {
               className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             >
-              See what's on
+              See what&apos;s on
             </Link>
           </div>
         </div>

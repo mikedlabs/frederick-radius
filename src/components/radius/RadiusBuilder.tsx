@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, LayoutGrid, Rows3, ChevronDown, Navigation, ArrowDownAZ, Locate } from "lucide-react";
+import { Footprints, Bike, Car, MapPin, ChevronDown, Locate } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";

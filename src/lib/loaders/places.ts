@@ -166,7 +166,7 @@ if (typeof window === "undefined") {
   const offBbox = BASE_PLACES.filter((p) => !isValidCoord(p.geom));
   if (offBbox.length > 0) {
     const sample = offBbox.slice(0, 5).map((p) => p.slug).join(", ");
-    // eslint-disable-next-line no-console
+     
     console.warn(
       `[placement] places: ${offBbox.length} row(s) flagged needs_review (off-bbox or missing coord). Examples: ${sample}`,
     );

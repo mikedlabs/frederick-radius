@@ -44,8 +44,9 @@ export default async function HistoryPage() {
 
   // Hero "did you know" – rotates daily so a return visitor sees a
   // different fact each morning. Deterministic per day; never random
-  // (server-rendered, no hydration mismatch).
+  // (async server component, request-scoped, no hydration mismatch).
   const facts = HISTORY.filter((h) => h.kind === "fact");
+  // eslint-disable-next-line react-hooks/purity
   const dayIdx = Math.floor(Date.now() / 86_400_000);
   const heroFact = facts[((dayIdx % facts.length) + facts.length) % facts.length];
 
@@ -107,7 +108,7 @@ export default async function HistoryPage() {
             }}
           >
             <Sparkles className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-            Today's Fact
+            Today&apos;s Fact
           </span>
         </div>
         <h2

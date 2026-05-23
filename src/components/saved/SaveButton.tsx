@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useIsSaved, useToggleSave, useMounted } from "@/hooks/useSaved";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
@@ -20,17 +20,19 @@ export default function SaveButton({
   // Track a brief "celebration" window after a fresh save so we can
   // overshoot-pop the icon and radiate a one-shot ring. The flag is
   // reset by an animation-end timer; the actual saved-state is the
-  // source of truth.
+  // source of truth. We use the "set state during render based on
+  // prop change" pattern so we never cascade setState from an effect.
   const [celebrate, setCelebrate] = useState(false);
-  const prevSaved = useRef(isSaved);
+  const [prev, setPrev] = useState(isSaved);
+  if (isSaved !== prev) {
+    setPrev(isSaved);
+    if (!prev && isSaved) setCelebrate(true);
+  }
   useEffect(() => {
-    if (!prevSaved.current && isSaved) {
-      setCelebrate(true);
-      const t = window.setTimeout(() => setCelebrate(false), 520);
-      return () => window.clearTimeout(t);
-    }
-    prevSaved.current = isSaved;
-  }, [isSaved]);
+    if (!celebrate) return;
+    const t = window.setTimeout(() => setCelebrate(false), 520);
+    return () => window.clearTimeout(t);
+  }, [celebrate]);
 
   if (!mounted) {
     return (

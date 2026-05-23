@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ExternalLink, GraduationCap, CalendarDays } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
@@ -163,14 +164,14 @@ export default async function EventsIndexPage({
               Events
             </h1>
           </div>
-          <a
+          <Link
             href="/events/calendar"
             className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
             style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
           >
             <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             Month view
-          </a>
+          </Link>
         </div>
         <p
           className="text-[12px] tabular-nums"

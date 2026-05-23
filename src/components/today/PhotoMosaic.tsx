@@ -51,6 +51,9 @@ export default function PhotoMosaic({
   count?: number;
 } = {}) {
   const pool = places ?? rankPlaces({ limit: 800 });
+  // Daily rotation seed. Server component, no hydration risk — the
+  // request-scoped impurity is the feature: "today's six photos".
+  // eslint-disable-next-line react-hooks/purity
   const dayIdx = Math.floor(Date.now() / 86_400_000);
   const tiles = pickPhotos(count, dayIdx, pool);
   if (tiles.length === 0) return null;

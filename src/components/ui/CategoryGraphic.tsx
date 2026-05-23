@@ -1,6 +1,6 @@
 import {
   Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building,
-  Calendar, Church, Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart,
+  Church, Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart,
   HeartPulse, Hotel, Image as ImageIcon, Lamp, Landmark, Library,
   Mountain, Music, Palette, ParkingCircle, PawPrint, Pill,
   Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater, ToyBrick,

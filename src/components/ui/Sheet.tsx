@@ -43,9 +43,17 @@ export default function Sheet({
   const panelRef = useRef<HTMLDivElement | null>(null);
   const dragStartY = useRef<number | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
+  // Mirror the drag state into render-reactive state so the transition
+  // suppress (snap-follow vs spring-back) doesn't depend on reading
+  // a ref during render — refs aren't reactive.
+  const [dragging, setDragging] = useState(false);
 
+  // Two-phase open/close animation. The setStates here ARE the
+  // intent — they drive a 280ms slide-in/out then unmount. Not a
+  // cascade in the React docs sense; the rule is overcautious here.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMounted(true);
       const id = requestAnimationFrame(() => setEntered(true));
       return () => cancelAnimationFrame(id);
@@ -82,6 +90,7 @@ export default function Sheet({
   // is 80px or 25% of the panel height, whichever is smaller.
   const onTouchStart: React.TouchEventHandler = (e) => {
     dragStartY.current = e.touches[0].clientY;
+    setDragging(true);
   };
   const onTouchMove: React.TouchEventHandler = (e) => {
     if (dragStartY.current == null) return;
@@ -92,6 +101,7 @@ export default function Sheet({
     const dy = dragOffset;
     const threshold = Math.min(80, (panelRef.current?.offsetHeight ?? 600) * 0.25);
     dragStartY.current = null;
+    setDragging(false);
     setDragOffset(0);
     if (dy > threshold) onClose();
   };
@@ -129,7 +139,7 @@ export default function Sheet({
           transform: entered
             ? `translateY(${dragOffset}px)`
             : "translateY(100%)",
-          transition: dragStartY.current
+          transition: dragging
             ? "none"
             : "transform 280ms var(--app-ease-spring)",
           willChange: "transform",

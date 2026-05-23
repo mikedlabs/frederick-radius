@@ -67,7 +67,7 @@ export default async function DriftReviewPage() {
           {stats.last_sweep_at
             ? `Sweep ran ${new Date(stats.last_sweep_at).toLocaleString()}.`
             : "No sweep on disk yet."}
-          {" "}Accept what's true now, reject what's noise. Decisions persist to <code>data/drift-decisions.json</code>; the canonical files are not touched.
+          {" "}Accept what&apos;s true now, reject what&apos;s noise. Decisions persist to <code>data/drift-decisions.json</code>; the canonical files are not touched.
         </p>
       </header>
 
