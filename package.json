@@ -39,7 +39,8 @@
     "pipeline:fetch": "tsx --tsconfig tsconfig.json pipeline/fetch_all.ts",
     "pipeline:freshness": "tsx --tsconfig tsconfig.json pipeline/freshness_check.ts",
     "build:amenities": "tsx --tsconfig tsconfig.json scripts/build-amenities.ts",
-    "build:client-places": "tsx --tsconfig tsconfig.json scripts/build-client-places.ts"
+    "build:client-places": "tsx --tsconfig tsconfig.json scripts/build-client-places.ts",
+    "optimize:images": "tsx --tsconfig tsconfig.json scripts/optimize-images.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.53.1",
