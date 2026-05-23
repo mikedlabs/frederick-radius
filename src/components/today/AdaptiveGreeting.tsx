@@ -1,5 +1,6 @@
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import HomeMuniChip from "./HomeMuniChip";
 
 function pickGreeting(hour: number, conditions: string, precip: number): string {
   // Honest weather: NWS shortForecast like "Isolated Rain Showers" or
@@ -87,6 +88,10 @@ export default async function AdaptiveGreeting() {
       >
         {headline}
       </h1>
+      {/* Quiet personalization signal: a small chip showing the user's
+          home municipality (from /welcome's Phase D step 2). Renders
+          nothing if the user skipped that step or no muni resolves. */}
+      <HomeMuniChip />
     </header>
   );
 }

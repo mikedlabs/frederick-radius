@@ -105,6 +105,20 @@ export default function RadiusBuilder({
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
+  // Onboarding handoff: if the user picked a home municipality on
+  // /welcome, jump to that preset on first paint instead of MUNI_PRESETS[0].
+  // SSR-safe: server renders index 0, client overrides after mount.
+  useEffect(() => {
+    try {
+      const homeMuni = localStorage.getItem("fr:home-muni:v1");
+      if (!homeMuni) return;
+      const idx = PRESETS.findIndex((p) => p.slug === `m-${homeMuni}`);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders preset 0; the stored home-muni overrides after mount
+      if (idx > -1) setPresetIdx(idx);
+    } catch {
+      // localStorage unavailable — keep the default
+    }
+  }, []);
   // Default renders on the server; the stored preference is applied
   // after mount (same SSR-safe pattern the app uses elsewhere). A brief
   // default-then-preferred settle is acceptable for a view toggle.
