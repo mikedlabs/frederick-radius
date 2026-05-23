@@ -109,13 +109,22 @@ export default function HistoryDeck({
             era gradient below, so the card never looks empty. */}
         {fact.image && (
           <div className="relative -mx-5 -mt-5 mb-4 h-40 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element -- public-domain history image; plain img avoids a domain allowlist */}
-            <img
-              src={fact.image.src}
-              alt={fact.image.alt ?? ""}
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
+            {/* WebP source first, JPEG fallback. The .webp siblings are
+                emitted by `npm run optimize:images`. Modern browsers
+                pick the smaller .webp (~30% smaller on this set); older
+                ones fall back to the JPEG without a flash. */}
+            <picture>
+              <source
+                srcSet={fact.image.src.replace(/\.jpe?g$/i, ".webp")}
+                type="image/webp"
+              />
+              <img
+                src={fact.image.src}
+                alt={fact.image.alt ?? ""}
+                loading="lazy"
+                className="h-full w-full object-cover"
+              />
+            </picture>
             <div
               aria-hidden
               className="absolute inset-x-0 bottom-0 h-2/3"
