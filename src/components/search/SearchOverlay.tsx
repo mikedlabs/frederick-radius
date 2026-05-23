@@ -2,23 +2,64 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, X, MapPin, Calendar, Tag, Building2, Clock } from "lucide-react";
+import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles } from "lucide-react";
 import { searchIndex, type SearchResult, type SearchResultType } from "@/lib/search/index";
 // Client-safe slim set (already decorated); NOT @/lib/loaders/places
 // which static-imports the ~12MB enrichment into the browser bundle.
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { EVENT_BY_SLUG } from "@/data/events";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
 import { suggestionsForHour, frederickHour } from "@/lib/search-suggestions";
+import { getHomeMuni } from "@/lib/personalize";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   place: MapPin,
   event: Calendar,
   category: Tag,
   municipality: Building2,
+  action: ArrowRight,
 };
+
+/**
+ * Wrap each occurrence of `needle` in the haystack with a <mark> span.
+ * Case-insensitive; preserves the original casing of the haystack so
+ * "Volt" still reads "Volt" with the matched portion highlighted.
+ * Renders the rest as plain text fragments so React keeps it stable.
+ */
+function highlight(haystack: string, needle: string): React.ReactNode {
+  const q = needle.trim();
+  if (!q) return haystack;
+  const lower = haystack.toLowerCase();
+  const lq = q.toLowerCase();
+  const parts: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+  while (i < haystack.length) {
+    const at = lower.indexOf(lq, i);
+    if (at < 0) {
+      parts.push(haystack.slice(i));
+      break;
+    }
+    if (at > i) parts.push(haystack.slice(i, at));
+    parts.push(
+      <mark
+        key={key++}
+        className="rounded-sm px-0.5"
+        style={{
+          background: "color-mix(in srgb, var(--app-brand) 22%, transparent)",
+          color: "var(--app-ink)",
+        }}
+      >
+        {haystack.slice(at, at + q.length)}
+      </mark>,
+    );
+    i = at + q.length;
+  }
+  return parts;
+}
 
 /**
  * Same trust signal the rest of the app shows, resolved from the
@@ -43,6 +84,7 @@ const COLOR_BY_TYPE: Record<SearchResultType, string> = {
   event: "var(--app-accent)",
   category: "var(--app-cool)",
   municipality: "var(--app-positive)",
+  action: "var(--app-cool)",
 };
 
 export default function SearchOverlay({
@@ -230,7 +272,7 @@ export default function SearchOverlay({
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                          {r.title}
+                          {r.type === "action" ? r.title : highlight(r.title, query)}
                         </p>
                         <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                           {r.subtitle}
@@ -300,8 +342,66 @@ function EmptyHint({
   const hour = frederickHour();
   const suggestions = suggestionsForHour(hour);
 
+  // Personalized quick-start tiles. /tonight + /discover are universal,
+  // and /m/<home-muni> appears only when the user has set one. Each
+  // tile is a real destination, not a query — tapping closes the
+  // overlay and navigates.
+  const homeMuni = getHomeMuni();
+  const homeMuniName = homeMuni ? MUNICIPALITY_BY_SLUG[homeMuni]?.name : null;
+  const quickStart: Array<{ href: string; title: string; subtitle: string; Icon: typeof Sparkles }> = [
+    { href: "/tonight", title: "Plan tonight", subtitle: "One-tap 3-stop evening", Icon: Sparkles },
+    { href: "/discover", title: "Hidden Frederick", subtitle: "12 lesser-known places, daily", Icon: Sparkles },
+    ...(homeMuniName && homeMuni
+      ? [{ href: `/m/${homeMuni}`, title: homeMuniName, subtitle: "Your spot", Icon: MapPin }]
+      : []),
+  ];
+
   return (
     <div className="space-y-5 px-4 py-5">
+      {/* Quick-start tiles — visible above recents so a fresh visitor
+          sees high-value destinations first. Personalized to the home
+          muni when set. */}
+      <div>
+        <p
+          className="text-xs font-medium uppercase tracking-[0.1em]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Quick start
+        </p>
+        <ul className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-3">
+          {quickStart.map((q) => (
+            <li key={q.href}>
+              <Link
+                href={q.href}
+                className="group flex items-center gap-2.5 rounded-xl border p-2.5 transition active:scale-[0.99]"
+                style={{
+                  borderColor: "var(--app-border)",
+                  background: "var(--app-bg-elevated)",
+                }}
+              >
+                <span
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-lg"
+                  style={{
+                    background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
+                    color: "var(--app-cool)",
+                  }}
+                >
+                  <q.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                    {q.title}
+                  </span>
+                  <span className="block truncate text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+                    {q.subtitle}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {recent.length > 0 && (
         <div>
           <div className="flex items-baseline justify-between">
