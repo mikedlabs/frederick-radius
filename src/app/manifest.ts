@@ -19,7 +19,9 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
     shortcuts: [
-      { name: "Today", url: "/", short_name: "Today" },
+      // URLs match start_url ("/today") and the four primary BottomNav
+      // tabs. Mismatches here would PWA-install with broken jump targets.
+      { name: "Today", url: "/today", short_name: "Today" },
       { name: "Map", url: "/map", short_name: "Map" },
       { name: "Events", url: "/events", short_name: "Events" },
       { name: "Radius", url: "/radius", short_name: "Radius" },

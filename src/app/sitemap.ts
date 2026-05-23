@@ -10,11 +10,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   const top: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${BASE}/`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/today`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/radius`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
-    { url: `${BASE}/saved`, lastModified: now, changeFrequency: "weekly", priority: 0.4 },
+    { url: `${BASE}/history`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    // /saved is user-state, not content; intentionally excluded from
+    // the sitemap. /submit, /welcome, /settings are forms/onboarding,
+    // disallowed in robots.ts so they don't need a sitemap entry either.
   ];
   const places = publicPlaces().map((p) => ({
     url: `${BASE}/places/${p.slug}`,
