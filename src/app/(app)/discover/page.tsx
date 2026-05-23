@@ -150,9 +150,13 @@ export default function DiscoverPage() {
           className="grid grid-cols-2 gap-3 sm:grid-cols-3"
           aria-label={`${gems.length} hidden gems for today`}
         >
-          {gems.map((p) => {
+          {gems.map((p, i) => {
             const cat = CATEGORY_BY_SLUG[p.category];
             const accent = cat?.color ?? "var(--app-brand)";
+            // Above-the-fold tiles (the first row, ~2 on mobile / 3 on
+            // sm+) get eager + fetchPriority=high so the LCP candidate
+            // downloads ahead of the lazy-loaded ones below the fold.
+            const aboveFold = i < 3;
             return (
               <li key={p.slug}>
                 <Link
@@ -165,7 +169,8 @@ export default function DiscoverPage() {
                   <img
                     src={p.google_photo_url}
                     alt=""
-                    loading="lazy"
+                    loading={aboveFold ? "eager" : "lazy"}
+                    fetchPriority={i === 0 ? "high" : aboveFold ? "auto" : "low"}
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                   />
                   {/* Legibility gradient — bottom-weighted for the

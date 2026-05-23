@@ -203,6 +203,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
               alt=""
               className="absolute inset-0 h-full w-full object-cover"
               loading="eager"
+              fetchPriority="high"
             />
             {/* Legibility gradient — dark at bottom for the title, soft
              *  at top for the date pill. */}

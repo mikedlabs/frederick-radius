@@ -219,6 +219,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
               alt={place.name}
               className="aspect-[4/3] w-full object-cover"
               loading="eager"
+              fetchPriority="high"
             />
             <div
               aria-hidden
