@@ -6,7 +6,9 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
 
 export const metadata: Metadata = {
-  title: "Admin · Frederick Radius",
+  // Root layout's metadata.title.template adds " · Frederick Radius";
+  // including it here would double-suffix.
+  title: "Admin",
   robots: { index: false, follow: false },
 };
 

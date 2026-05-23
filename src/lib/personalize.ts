@@ -56,28 +56,72 @@ export function setHomeMuni(slug: string | null): void {
   }
 }
 
+// Reference-stable empty array. Returned when there are no interests
+// AND on the server. Same identity every call so React's
+// `useSyncExternalStore` doesn't see a "store change" between renders.
+const EMPTY_INTERESTS: readonly string[] = Object.freeze<string[]>([]);
+
+// Memoize the parsed array by the raw localStorage value. Two reads
+// with the same raw string return the SAME array reference — required
+// by `useSyncExternalStore`. The previous version returned a new array
+// per call, which made React think the store had changed every render
+// and tipped FeaturedTonightPicker / RightNowGrid into the
+// "Maximum update depth exceeded" infinite loop.
+let interestsCache: { raw: string; arr: string[] } | null = null;
+const EMPTY_INTERESTS_SET: ReadonlySet<string> = Object.freeze(new Set<string>());
+let interestsSetCache: { arr: readonly string[]; set: Set<string> } | null = null;
+
 export function getInterests(): string[] {
   const ls = safeStorage();
-  if (!ls) return [];
+  if (!ls) return EMPTY_INTERESTS as string[];
   try {
     const raw = ls.getItem(INTERESTS_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      interestsCache = null;
+      return EMPTY_INTERESTS as string[];
+    }
+    if (interestsCache && interestsCache.raw === raw) return interestsCache.arr;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed)
+    const arr = Array.isArray(parsed)
       ? parsed.filter((s): s is string => typeof s === "string")
       : [];
+    interestsCache = { raw, arr };
+    return arr;
   } catch {
-    return [];
+    return EMPTY_INTERESTS as string[];
   }
+}
+
+/**
+ * Returns the interests as a Set with a stable reference (same Set
+ * across calls when the underlying data hasn't changed). Use this
+ * instead of `new Set(getInterests())` inside `useSyncExternalStore`
+ * getSnapshots — building a new Set per render is what caused the
+ * FeaturedTonightPicker infinite-loop in dev.
+ */
+export function getInterestsSet(): Set<string> {
+  const arr = getInterests();
+  if (arr.length === 0) return EMPTY_INTERESTS_SET as Set<string>;
+  if (interestsSetCache && interestsSetCache.arr === arr) return interestsSetCache.set;
+  const set = new Set(arr);
+  interestsSetCache = { arr, set };
+  return set;
 }
 
 export function setInterests(slugs: string[]): void {
   const ls = safeStorage();
-  if (!ls) return;
+  if (!ls) {
+    interestsCache = null;
+    interestsSetCache = null;
+    return;
+  }
   try {
     const clean = Array.from(new Set(slugs.filter((s) => typeof s === "string")));
     if (clean.length === 0) ls.removeItem(INTERESTS_KEY);
     else ls.setItem(INTERESTS_KEY, JSON.stringify(clean));
+    // Invalidate memo so the next getInterests() picks up the change.
+    interestsCache = null;
+    interestsSetCache = null;
   } catch {
     // ignore
   }

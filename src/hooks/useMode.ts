@@ -195,30 +195,15 @@ export function suggestModeFromLocation(opts: {
   );
 }
 
+// `readModeFromCookie` moved to `src/lib/mode-server.ts` — Next.js's
+// RSC compiler forbids Server Components from calling functions
+// exported by a "use client" module (this file). Server callers should
+// `import { readModeFromCookie } from "@/lib/mode-server"`.
+
 /**
  * Test / dev utility: clear the persisted mode AND the "already
  * suggested" flag so the next load behaves like first-run.
  */
-/**
- * Read the mode from the request cookie. Server-only — uses
- * `next/headers`. Returns DEFAULT_MODE when the cookie isn't set,
- * so the call site never has to handle "what's the default". The
- * cookie is written by `write()` whenever a user picks or toggles
- * mode on the client.
- */
-export async function readModeFromCookie(): Promise<Mode> {
-  if (typeof window !== "undefined") return cached; // safety: never call from client
-  try {
-    const { cookies } = await import("next/headers");
-    const store = await cookies();
-    const v = store.get("fr_mode")?.value;
-    if (v === "resident" || v === "visitor") return v;
-  } catch {
-    /* cookies unavailable (e.g. during static render) — fall through */
-  }
-  return DEFAULT_MODE;
-}
-
 export function resetModeState(): void {
   if (typeof window === "undefined") return;
   try {

@@ -5,6 +5,11 @@ import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { getInterests } from "@/lib/personalize";
 
+// Reference-stable empty array for the server snapshot — same identity
+// every call so useSyncExternalStore doesn't think the store changed
+// between renders.
+const EMPTY_SLUGS: string[] = [];
+
 /**
  * InterestsChip — a small companion to HomeMuniChip that surfaces the
  * second Phase D pick (umbrella categories the user said they care
@@ -49,8 +54,8 @@ function summarize(slugs: string[]): string {
 export default function InterestsChip() {
   const slugs = useSyncExternalStore(
     subscribeNoop,
-    () => getInterests(),
-    () => [] as string[],
+    getInterests,
+    () => EMPTY_SLUGS,
   );
   if (slugs.length === 0) return null;
   const summary = summarize(slugs);

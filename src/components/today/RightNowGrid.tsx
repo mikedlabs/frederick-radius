@@ -4,7 +4,13 @@ import { useSyncExternalStore } from "react";
 import { type PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import PlaceCard from "@/components/place/PlaceCard";
-import { getInterests } from "@/lib/personalize";
+import { getInterestsSet } from "@/lib/personalize";
+
+// Reference-stable empty set for the server snapshot — `useSyncExternalStore`
+// requires the same identity per call when the underlying data hasn't
+// changed (`new Set<string>()` per render is what tipped this into the
+// "Maximum update depth exceeded" loop).
+const EMPTY_INTERESTS = new Set<string>();
 
 /**
  * RightNowGrid — client wrapper for the RightNow rail's place grid.
@@ -53,8 +59,8 @@ function reorderByInterests(
 export default function RightNowGrid({ picks }: { picks: PlaceCardData[] }) {
   const interests = useSyncExternalStore(
     subscribeNoop,
-    () => new Set(getInterests()),
-    () => new Set<string>(),
+    getInterestsSet,
+    () => EMPTY_INTERESTS,
   );
   const ordered = reorderByInterests(picks, interests);
 
