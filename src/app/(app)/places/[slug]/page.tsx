@@ -12,6 +12,7 @@ import GoogleHours from "@/components/place/GoogleHours";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import SaveButton from "@/components/saved/SaveButton";
+import FollowButton from "@/components/place/FollowButton";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
@@ -178,7 +179,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
                 {place.address} · {place.municipality_name}
               </p>
             </div>
-            <SaveButton refType="place" refId={place.slug} label={place.name} />
+            <div className="flex shrink-0 items-center gap-2">
+              <FollowButton slug={place.slug} name={place.name} />
+              <SaveButton refType="place" refId={place.slug} label={place.name} />
+            </div>
           </div>
           {desc && (
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
