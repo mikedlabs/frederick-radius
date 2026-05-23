@@ -1081,6 +1081,35 @@ sources:
       promoted on social. Query by venue/city; needs a free app id at
       activation. Pairs with songkick for coverage redundancy.
 
+  - id: ticketmaster
+    name: Ticketmaster Discovery API
+    owner: Ticketmaster / Live Nation
+    url: https://app.ticketmaster.com/discovery/v2/events.json
+    endpoint_type: rest_json
+    format: json
+    refresh_cadence: hourly
+    license: Ticketmaster Discovery API terms, requires API key, attribution required
+    contact: https://developer.ticketmaster.com
+    status: scaffold
+    last_validated: null
+    last_success: null
+    schema_file: null
+    transform_file: src/lib/integrations/ticketmaster.ts
+    notes: |
+      Live runtime integration, not a daily-worker source (same posture
+      as google_places and mapillary_objects). fetchTicketmasterMusic()
+      is wired into getLiveEvents() in src/lib/integrations/ical-live.ts,
+      so a real classification=Music geo search for Frederick County
+      drops straight into the live-events spine, the explorer, and the
+      map event pins. The owner is the activation: gated entirely on
+      TICKETMASTER_API_KEY (a free key from developer.ticketmaster.com,
+      server-only). Absent the key, fetchTicketmasterMusic() returns []
+      and this is fully inert, so it is safe to ship before the key is
+      set. status stays non-active so the worker never fetches it; this
+      is a request-time integration, not a pipeline source. schema_file
+      stays null by design: the normalizer in ticketmaster.ts is the
+      transform, covered by tests/ticketmaster.spec.ts.
+
   - id: songkick
     name: Songkick — Concerts & Venues
     owner: Songkick
