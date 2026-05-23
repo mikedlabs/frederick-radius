@@ -86,7 +86,6 @@ export default function PreferencesPanel() {
     // use; the rule's overcautious for pure-hydration loads.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMuni(getHomeMuni());
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInterestsState(new Set(getInterests()));
   }, []);
 
