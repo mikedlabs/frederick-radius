@@ -29,6 +29,7 @@ import {
   hydrateSnapshots,
   pruneOldSnapshots,
 } from "@/lib/integrations/feed-snapshot";
+import { prunePushLog } from "@/lib/push-fanout";
 import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import { sendAnomalyAlert } from "@/lib/integrations/alerts";
 
@@ -94,6 +95,13 @@ export async function GET(request: Request) {
     console.error("[cron/data-health] prune failed:", err);
     return 0;
   });
+  // push_log is append-only — every civic-alert fanout writes a row
+  // for dedupe. Same 90d retention as feed_snapshots: any re-publish
+  // window we care about fits well within that.
+  const prunedPushRows = await prunePushLog(90).catch((err) => {
+    console.error("[cron/data-health] push_log prune failed:", err);
+    return 0;
+  });
   // Slack post is fire-and-forget — it should never block the
   // cron's reply. The helper itself no-ops without a webhook URL.
   if (anomalies.length > 0) {
@@ -117,6 +125,7 @@ export async function GET(request: Request) {
       anomalies,
       anomaly_count: anomalies.length,
       pruned_old_snapshots: prunedRows,
+      pruned_push_log: prunedPushRows,
       alert_sent: anomalies.length > 0 && Boolean(process.env.SLACK_WEBHOOK_URL),
     },
     note: "Recompute only. Commit-time scripts persist the artifacts.",

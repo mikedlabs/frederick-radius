@@ -1,6 +1,6 @@
 import "server-only";
 import { sql } from "drizzle-orm";
-import { eq } from "drizzle-orm";
+import { eq, lt } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { push_subscriptions, push_log } from "@/lib/db/schema";
 import { sendPush, configurePush } from "@/lib/push";
@@ -94,4 +94,34 @@ export async function fanoutToTopic(
   }
 
   return { claimed: true, attempted: rows.length, sent, gone };
+}
+
+/**
+ * Prune push_log rows older than `days`. The table is append-only
+ * for dedupe — every fanout attempt writes one row — so without
+ * a periodic prune it would grow unbounded over the life of the app.
+ *
+ * Same retention shape as `pruneOldSnapshots`: 90 days covers any
+ * realistic re-publish window for civic alerts (the longest-lived
+ * dedupe key, since NWS alerts can sit active for days), and keeps
+ * the table small. Returns the count deleted so the cron can
+ * report it. No-op when DB unavailable.
+ */
+export async function prunePushLog(days: number): Promise<number> {
+  const db = getDb();
+  if (!db) return 0;
+  const cutoff = new Date(Date.now() - days * 86_400_000);
+  try {
+    const deleted = await db
+      .delete(push_log)
+      .where(lt(push_log.sent_at, cutoff))
+      .returning({ id: push_log.id });
+    return deleted.length;
+  } catch (err) {
+    console.error(
+      "[push-fanout] prune failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return 0;
+  }
 }
