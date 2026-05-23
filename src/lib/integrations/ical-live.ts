@@ -230,6 +230,43 @@ function parseICalDate(value: string, params: Record<string, string>): Date | nu
   return new Date(easternWallToUtcISO(+Y, +Mo, +D, +H, +Mi, +S));
 }
 
+const MONTHS: Record<string, number> = {
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+  july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+};
+
+/**
+ * Parse a Frederick County CivicEngage feed date ("May 14, 2026") plus
+ * an optional clock time ("5:30 PM") into the correct UTC instant.
+ *
+ * The feed publishes Eastern wall-clock times with no zone marker. A
+ * bare `new Date("May 14, 2026 5:30 PM")` reads them in the server's
+ * local zone (UTC in production), so every county event rendered four
+ * hours early: a 5:30 PM hearing showed as 1:30 PM. This resolves the
+ * wall time through America/New_York instead, the same way the iCal
+ * path does. A date with no time anchors at midday so it cannot slip
+ * to the wrong calendar day.
+ */
+export function parseCountyDateTime(dateStr: string, timeStr?: string): Date | null {
+  const dm = /^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$/.exec(dateStr.trim());
+  if (!dm) return null;
+  const month = MONTHS[dm[1].toLowerCase()];
+  if (!month) return null;
+  const day = Number(dm[2]);
+  const year = Number(dm[3]);
+  let hour = 12;
+  let minute = 0;
+  if (timeStr) {
+    const tm = /(\d{1,2}):(\d{2})\s*([AaPp])[Mm]/.exec(timeStr.trim());
+    if (tm) {
+      hour = Number(tm[1]) % 12;
+      if (/[Pp]/.test(tm[3])) hour += 12;
+      minute = Number(tm[2]);
+    }
+  }
+  return new Date(easternWallToUtcISO(year, month, day, hour, minute));
+}
+
 function unescapeIcalText(s: string): string {
   return s
     .replace(/\\n/gi, "\n")
@@ -557,10 +594,10 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
       if (eventDate && eventTimes) {
         const timeMatch = eventTimes.match(/^(\d{1,2}:\d{2}\s*[APap][Mm])\s*-\s*(\d{1,2}:\d{2}\s*[APap][Mm])/);
         if (timeMatch) {
-          start = new Date(`${eventDate} ${timeMatch[1]}`);
-          end = new Date(`${eventDate} ${timeMatch[2]}`);
+          start = parseCountyDateTime(eventDate, timeMatch[1]);
+          end = parseCountyDateTime(eventDate, timeMatch[2]);
         } else {
-          start = new Date(eventDate);
+          start = parseCountyDateTime(eventDate);
         }
       }
       if (!start || isNaN(start.getTime())) continue;
