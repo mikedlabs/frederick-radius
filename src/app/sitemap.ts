@@ -15,6 +15,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/radius`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/history`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${BASE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${BASE}/discover`, lastModified: now, changeFrequency: "daily", priority: 0.6 },
+    { url: `${BASE}/tonight`, lastModified: now, changeFrequency: "daily", priority: 0.6 },
     // /saved is user-state, not content; intentionally excluded from
     // the sitemap. /submit, /welcome, /settings are forms/onboarding,
     // disallowed in robots.ts so they don't need a sitemap entry either.
