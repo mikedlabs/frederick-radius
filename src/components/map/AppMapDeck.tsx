@@ -347,14 +347,18 @@ export default function AppMapDeck({
                   border: `1px solid ${showCivic ? "var(--app-warning)" : "var(--app-border)"}`,
                   boxShadow: showCivic ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                 }}
-                title="Live traffic incidents and county 311 reports"
+                title="Live traffic incidents and county-published issue reports (311)"
               >
                 <span
                   aria-hidden
                   className="inline-block h-2 w-2 rounded-full"
                   style={{ background: showCivic ? "white" : "var(--app-warning)" }}
                 />
-                Traffic &amp; 311
+                {/* "Roads & alerts" replaces "Traffic & 311". 311 is
+                    civic-tech jargon most users don't know; the new
+                    label says what the layer actually shows (road
+                    incidents + county-published issues). */}
+                Roads &amp; alerts
               </button>
             </li>
           )}

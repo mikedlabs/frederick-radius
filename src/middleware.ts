@@ -28,12 +28,25 @@ function unauthorized(): NextResponse {
 export function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
 
-  // Gate 1: onboarding nudge for the two entry routes. A visitor with
-  // no `fr_onboarded` cookie sees /welcome once; everyone else passes.
+  // Gate 1: onboarding nudge for the two entry routes. A first-time
+  // visitor (no `fr_onboarded` cookie) lands on a different surface
+  // depending on which entry they used:
+  //
+  //   /        → /about    (cold visit, no context. Let them read what
+  //                         the app IS before being asked to tune it.
+  //                         /about's primary CTA goes to /welcome.)
+  //   /today   → /welcome  (a direct link or a returning prompt that
+  //                         lost its cookie. They already meant to
+  //                         start using the app, so jump them into
+  //                         persona-pick, not the marketing page.)
+  //
+  // Returning users (cookie present) pass through to whichever
+  // entry they hit. This split is the "let the app make its case
+  // before asking for setup" move from the stranger-clarity pass.
   if (pathname === "/" || pathname === "/today") {
     if (!req.cookies.get("fr_onboarded")) {
       const url = req.nextUrl.clone();
-      url.pathname = "/welcome";
+      url.pathname = pathname === "/" ? "/about" : "/welcome";
       url.search = "";
       return NextResponse.redirect(url);
     }

@@ -41,8 +41,16 @@ export default function MunicipalityStrip() {
             <span className="block truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
               {m.name}
             </span>
-            <span className="block text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              {m.count > 0 ? `${m.count} ${m.count === 1 ? "place" : "places"}` : m.type}
+            {/* The hero_blurb already lives on each municipality
+                (used on /m/[slug] and search results). Surfacing it
+                here makes the strip read as editorial rather than
+                a list of names. Falls back to the place count if a
+                town doesn't have a blurb yet. */}
+            <span
+              className="block truncate text-[11px] leading-snug"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {m.hero_blurb || (m.count > 0 ? `${m.count} ${m.count === 1 ? "place" : "places"}` : m.type)}
             </span>
           </Link>
         );
