@@ -1,5 +1,5 @@
+import dynamic from "next/dynamic";
 import { HISTORY } from "@/data/history";
-import HistoryDeck from "./HistoryDeck";
 
 /**
  * HistoryPulse: the data layer for Today's "Did you know?" section.
@@ -11,7 +11,16 @@ import HistoryDeck from "./HistoryDeck";
  * This stays a server component on purpose: the daily index is
  * computed once on the server, so the client card hydrates from a
  * fixed prop with no date-driven mismatch.
+ *
+ * HistoryDeck is the heaviest below-the-fold client component on
+ * /today (288 lines with swipe/state logic). Loading it via dynamic()
+ * code-splits its JS into its own chunk so the initial /today bundle
+ * doesn't carry it. Server still renders the markup (ssr stays on by
+ * default) so the section is in the SSR HTML and reads correctly to
+ * crawlers and screen readers.
  */
+const HistoryDeck = dynamic(() => import("./HistoryDeck"));
+
 export default function HistoryPulse() {
   const facts = HISTORY.filter((h) => h.kind === "fact" || h.kind === "moment");
   if (facts.length === 0) return null;
