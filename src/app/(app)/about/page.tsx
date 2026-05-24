@@ -9,6 +9,8 @@ import {
   Store,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
+import MunicipalityStrip from "@/components/today/MunicipalityStrip";
+import CountyOverviewLazy from "@/components/muni/CountyOverviewLazy";
 
 /**
  * /about — the thesis page.
@@ -91,6 +93,28 @@ export default function AboutPage() {
           </Link>
         </div>
       </header>
+
+      {/* COUNTY OVERVIEW — the spatial answer to "what is this?".
+          We talk about covering 12 municipalities; this proves it
+          visually. The lazy-loaded Mapbox view fits to the county
+          bbox, drops a pin on each town, links each pin to /m/[slug].
+          No nav controls, no layer chrome — one look, one tap. */}
+      <section className="space-y-3">
+        <h2
+          className="font-serif text-[15px] font-semibold tracking-tight"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          The whole county, not just downtown.
+        </h2>
+        <CountyOverviewLazy />
+        {/* Strip below the map: same 12 towns as editorial tiles so
+            the page reads as spatial-then-textual, and each town
+            surfaces a "live this week" chip when there's anything on. */}
+        <MunicipalityStrip />
+        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          Tap any town to see its places and what&apos;s on this week.
+        </p>
+      </section>
 
       {/* WHY IT EXISTS — the thesis */}
       <section
