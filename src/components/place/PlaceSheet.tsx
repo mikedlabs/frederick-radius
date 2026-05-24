@@ -487,6 +487,30 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             url={`/places/${place.slug}`}
           />
         </div>
+
+        {/* Suggest an edit — a quiet escape valve for stale data. The
+            "report what's wrong" affordance was the one real missing
+            piece from the latest audit; users had no in-product way to
+            flag bad hours or a closed business short of clicking out
+            to email manually. The subject line carries the slug so the
+            inbox reply doesn't have to ask which place. */}
+        <p
+          className="mt-3 text-center text-[11px]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          See something wrong?{" "}
+          <a
+            href={`mailto:hello@frederickradius.app?subject=${encodeURIComponent(
+              `Suggest an edit: ${place.name} (${place.slug})`,
+            )}&body=${encodeURIComponent(
+              `What I noticed about ${place.name}:\n\n\n(Optional) where I saw it: `,
+            )}`}
+            className="underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Tell us
+          </a>
+        </p>
         </div>
       </div>
     </>

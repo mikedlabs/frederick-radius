@@ -67,6 +67,29 @@ export default function AboutPage() {
           time. Built locally, kept honest, designed for the way you
           actually use a phone.
         </p>
+
+        {/* Primary CTA. Lives here because middleware now sends a
+            not-yet-onboarded visitor to /about first; without a clear
+            next step the page is a brochure, not a doorway. The
+            secondary link is for the small subset of first-time
+            visitors who want the persona-tuning step. */}
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Link
+            href="/welcome"
+            className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold"
+            style={{ background: "var(--app-brand)", color: "white" }}
+          >
+            Open the field guide
+            <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+          </Link>
+          <Link
+            href="/trust"
+            className="text-[13px] font-medium hover:underline"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            How we know what we know
+          </Link>
+        </div>
       </header>
 
       {/* WHY IT EXISTS — the thesis */}

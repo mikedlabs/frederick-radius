@@ -28,11 +28,17 @@ function tierFor(place: PlaceCardData): Tier | null {
   return null;
 }
 
-const META: Record<Tier, { label: string; color: string; icon: typeof CheckCircle2 }> = {
-  curated:   { label: "Curated",   color: "#C4451C", icon: Sparkles },
-  verified:  { label: "Verified",  color: "#1E6B3A", icon: CheckCircle2 },
-  community: { label: "Community", color: "#2A5D8F", icon: Users },
-  official:  { label: "Official",  color: "#7E2C6F", icon: Database },
+const META: Record<Tier, { label: string; color: string; icon: typeof CheckCircle2; tooltip: string }> = {
+  // Tooltip copy answers the stranger question "what does this badge
+  // actually mean?" in plain language. The badge label itself stays
+  // short (chip width) but the title attribute gives the explanation
+  // a hovering desktop user or a curious tap-and-hold mobile user
+  // can read. Previously the title was just "Source: Curated" which
+  // tells you nothing if you don't already know what curated means.
+  curated:   { label: "Curated",   color: "#C4451C", icon: Sparkles,      tooltip: "We picked this one ourselves." },
+  verified:  { label: "Verified",  color: "#1E6B3A", icon: CheckCircle2,  tooltip: "Maintained by the owner. Hours and details come straight from them." },
+  community: { label: "Community", color: "#2A5D8F", icon: Users,         tooltip: "Submitted by a local or pulled from a community feed. Reliable but not directly verified." },
+  official:  { label: "Official",  color: "#7E2C6F", icon: Database,      tooltip: "From an official county or government feed." },
 };
 
 export default function SourceBadge({
@@ -58,7 +64,7 @@ export default function SourceBadge({
         background: `color-mix(in srgb, ${meta.color} 14%, transparent)`,
         color: meta.color,
       }}
-      title={`Source: ${meta.label}`}
+      title={meta.tooltip}
     >
       <Icon
         className={isSm ? "h-2.5 w-2.5" : "h-3 w-3"}
