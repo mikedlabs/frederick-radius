@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Compass,
@@ -73,20 +72,31 @@ const INTEREST_OPTIONS: Array<{ slug: string; label: string; Icon: typeof Utensi
 ];
 
 export default function WelcomeFlow() {
-  const router = useRouter();
   const { setMode } = useMode();
 
   const [step, setStep] = useState<Step>(1);
   const [chosenMuni, setChosenMuni] = useState<string | null>(null);
   const [chosenInterests, setChosenInterests] = useState<Set<string>>(new Set());
 
+  // Hard navigation (window.location.assign) rather than router.replace.
+  // Reason: middleware reads the fr_onboarded cookie on every /today
+  // request. A client-side router.replace can race the just-written
+  // document.cookie on some Safari versions / cache states — the RSC
+  // fetch goes out without the cookie, middleware bounces /today back
+  // to /welcome, and the user appears stuck at step 3 ("Done" and
+  // "Skip the rest" both look dead). A full-page assign guarantees
+  // the cookie is on the request.
+  function goToToday(): void {
+    window.location.assign("/today");
+  }
+
   const finish = useCallback(() => {
     haptic("success");
     setHomeMuni(chosenMuni);
     setInterests([...chosenInterests]);
     markOnboarded();
-    router.replace("/today");
-  }, [chosenMuni, chosenInterests, router]);
+    goToToday();
+  }, [chosenMuni, chosenInterests]);
 
   const skip = useCallback(() => {
     haptic("light");
@@ -95,8 +105,8 @@ export default function WelcomeFlow() {
     setHomeMuni(chosenMuni);
     setInterests([...chosenInterests]);
     markOnboarded();
-    router.replace("/today");
-  }, [chosenMuni, chosenInterests, router]);
+    goToToday();
+  }, [chosenMuni, chosenInterests]);
 
   const choosePersona = useCallback(
     (mode: Mode) => {
