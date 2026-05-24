@@ -179,10 +179,15 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
   let startMs: number;
   let endMs: number;
   if (mode === "tonight") {
-    // Eastern: today 16:00 → tomorrow 02:30. Clamped to now so a
+    // Eastern: today 17:00 → tomorrow 02:30. Clamped to now so a
     // late-night visit doesn't list events that already started.
+    //
+    // Bumped from 16:00 to 17:00 in the stranger-clarity pass: a 4:15
+    // PM matinee is technically "tonight" by clock, but a user who
+    // taps "Tonight" at 4:05 PM expects evening plans, not late
+    // afternoon — the chip should match the intent, not the clock.
     title = "Tonight";
-    startMs = Math.max(nowMs, Date.parse(easternDayAt(et, 0, 16, 0)));
+    startMs = Math.max(nowMs, Date.parse(easternDayAt(et, 0, 17, 0)));
     endMs = Date.parse(easternDayAt(et, 1, 2, 30));
   } else if (mode === "tomorrow") {
     // Eastern: the whole of tomorrow, 00:00 → 23:59.

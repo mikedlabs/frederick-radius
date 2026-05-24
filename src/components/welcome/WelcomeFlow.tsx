@@ -141,7 +141,19 @@ export default function WelcomeFlow() {
 
         {step === 1 && (
           <>
-            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight">
+            {/* Value-prop line, deliberately placed BEFORE the persona
+                question so a stranger landing here understands what the
+                app is in their first three seconds, not after they've
+                guessed at a setup form. The H1 question that follows
+                only makes sense once they know what they're tuning. */}
+            <p
+              className="font-serif text-[18px] leading-snug"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              Find what&apos;s open, what&apos;s happening, and what&apos;s worth your
+              time in Frederick County.
+            </p>
+            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight pt-1">
               What brings you to Frederick?
             </h1>
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>

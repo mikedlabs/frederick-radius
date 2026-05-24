@@ -3,8 +3,8 @@ import {
   Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart, HeartPulse, Hotel,
   ImageIcon, Lamp, Landmark, Library, Mountain, Music, Palette, ParkingCircle,
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,
-  ToyBrick, Train, Trees, Truck, Utensils, UtensilsCrossed, Vote, Wifi, Wine,
-  Wrench, MapPin,
+  ToyBrick, Train, Trees, Truck, Users, Utensils, UtensilsCrossed, Vote,
+  Wifi, Wine, Wrench, MapPin,
   type LucideIcon,
 } from "lucide-react";
 import type { CSSProperties } from "react";
@@ -23,8 +23,8 @@ const MAP: Record<string, LucideIcon> = {
   Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart, HeartPulse, Hotel,
   ImageIcon, Lamp, Landmark, Library, Mountain, Music, Palette, ParkingCircle,
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,
-  ToyBrick, Train, Trees, Truck, Utensils, UtensilsCrossed, Vote, Wifi, Wine,
-  Wrench,
+  ToyBrick, Train, Trees, Truck, Users, Utensils, UtensilsCrossed, Vote,
+  Wifi, Wine, Wrench,
   // Long-tail names declared in categories.ts that are not 1:1 Lucide
   // exports resolve to a sensible vector rather than a broken import.
   PinCircle: MapPin,
