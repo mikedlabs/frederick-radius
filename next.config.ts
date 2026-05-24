@@ -13,6 +13,19 @@ const nextConfig: NextConfig = {
     // root). No-op on browsers without VT API support.
     viewTransition: true,
   },
+  // Skew Protection (Vercel Pro): when we deploy a new build while a
+  // user has an old tab open, Vercel routes that user's requests to
+  // the OLD deployment's serverless functions for the rest of their
+  // session — so a server action whose route ID changed in the new
+  // build still resolves. Without this, the stale client gets a silent
+  // 404 / hydration mismatch the user can't recover from without a
+  // hard reload.
+  //
+  // The mechanism: Next embeds this `deploymentId` in every page
+  // request, and Vercel's edge uses it to pin the request to that
+  // deployment. `VERCEL_DEPLOYMENT_ID` is auto-set per build by
+  // Vercel; undefined locally, so this is a no-op in dev.
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },

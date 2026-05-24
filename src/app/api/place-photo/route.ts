@@ -13,7 +13,7 @@
  */
 import { NextRequest } from "next/server";
 import { photoUrl } from "@/lib/integrations/google-places";
-import { isSameOriginRequest } from "@/lib/origin-check";
+import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 // Cache the proxied image aggressively — photos rarely change.
@@ -66,10 +66,16 @@ export async function GET(req: NextRequest) {
   // Abuse guard: this route hits Google Places API on every miss. A
   // foreign Referer / Origin almost certainly means scraping or
   // hotlinking, both of which directly cost us money. Block early.
-  // Server-to-server fetches (no headers) are still allowed; the real
-  // per-IP rate limiting lives in Vercel Firewall rules.
+  // Server-to-server fetches (no headers) are still allowed.
   if (!isSameOriginRequest(req)) {
     return new Response("Forbidden", { status: 403 });
+  }
+  // Per-IP rate limit: 120 photos/minute is generous (a full
+  // viewport of cards is ~6–12 photos, a few page loads is far
+  // under). Anyone past 120/min is scraping. No-op when KV isn't
+  // configured (see isRateLimited docs).
+  if (await isRateLimited(req, "place-photo", 120, 60)) {
+    return new Response("Too Many Requests", { status: 429 });
   }
 
   const name = req.nextUrl.searchParams.get("name");

@@ -19,7 +19,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { searchNearby, FREDERICK_CENTER } from "@/lib/integrations/google-nearby";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { isSameOriginRequest } from "@/lib/origin-check";
+import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 
@@ -40,6 +40,11 @@ export async function GET(req: Request) {
   // per-IP rate limit on top of this.
   if (!isSameOriginRequest(req)) {
     return new NextResponse("Forbidden", { status: 403 });
+  }
+  // searchNearby is a much heavier Google API call than autocomplete;
+  // 30/min is plenty for normal browsing and stops scrapers cold.
+  if (await isRateLimited(req, "discover-nearby", 30, 60)) {
+    return new NextResponse("Too Many Requests", { status: 429 });
   }
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     return NextResponse.json(

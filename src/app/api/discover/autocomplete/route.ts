@@ -9,7 +9,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { autocomplete } from "@/lib/integrations/google-autocomplete";
-import { isSameOriginRequest } from "@/lib/origin-check";
+import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 
 export const runtime = "nodejs";
 
@@ -22,6 +22,11 @@ export async function GET(req: Request) {
   // per-IP rate limit on top of this.
   if (!isSameOriginRequest(req)) {
     return new NextResponse("Forbidden", { status: 403 });
+  }
+  // Autocomplete fires on every keystroke (debounced client-side),
+  // so the per-IP budget is higher than the nearby search.
+  if (await isRateLimited(req, "discover-autocomplete", 60, 60)) {
+    return new NextResponse("Too Many Requests", { status: 429 });
   }
   if (!process.env.GOOGLE_PLACES_API_KEY) {
     return NextResponse.json(
