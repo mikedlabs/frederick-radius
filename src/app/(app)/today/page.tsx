@@ -1,20 +1,31 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
-import FeaturedTonightPicker from "@/components/today/FeaturedTonightPicker";
 import RightNow from "@/components/today/RightNow";
 import HistoryPulse from "@/components/today/HistoryPulse";
 import DismissibleSection from "@/components/today/DismissibleSection";
-import HiddenSectionsBar from "@/components/today/HiddenSectionsBar";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
+
+// Code-split the below-the-fold client components so their JS doesn't
+// land in the initial /today bundle. ssr stays on (default) so the
+// HTML still includes the section for crawlers + non-JS readers.
+// HiddenSectionsBar only renders for users who've dismissed something,
+// so 99% of visits never need its bytes at all.
+const FeaturedTonightPicker = dynamic(
+  () => import("@/components/today/FeaturedTonightPicker"),
+);
+const HiddenSectionsBar = dynamic(
+  () => import("@/components/today/HiddenSectionsBar"),
+);
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -316,21 +327,19 @@ export default async function HomePage({
       </DismissibleSection>
 
       {/* ── DISCOVERY ZONE ─────────────────────────────────────────
-          Everything below the divider is "browse if you want," not
-          "you must read this." It gathers the news desk, an editorial
-          place, time-curated picks, and a history fact, all visually
-          subordinate to the primary zone above so the page has a
-          clear hierarchy instead of a flat stack of equal-weight
-          headings. */}
-      <div className="flex items-center gap-3 pt-1" aria-hidden>
-        <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+          Everything below this label is "browse if you want," not
+          "you must read this." Quieter divider treatment than before:
+          a single small centered label with no horizontal rules, so
+          the section headings (font-serif text-xl) below remain the
+          visually dominant element and the divider doesn't compete
+          with them. */}
+      <div className="pt-2 text-center" aria-hidden>
         <span
-          className="text-[11px] font-bold uppercase tracking-[0.14em]"
+          className="text-[10px] font-medium uppercase tracking-[0.2em]"
           style={{ color: "var(--app-ink-3)" }}
         >
           More around Frederick
         </span>
-        <span className="h-px flex-1" style={{ background: "var(--app-border)" }} />
       </div>
 
       {/* Local newsroom — compact briefing. */}
