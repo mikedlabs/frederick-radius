@@ -129,14 +129,20 @@ export default function TopBar() {
             <Bookmark className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Link>
 
-          {/* Settings — hidden on the narrowest phones (next to
-              LocationChip below). Mobile users reach Settings via the
-              /saved page; on sm+ it sits one tap away from any route. */}
+          {/* Settings — visible at all viewports. The original
+              design hid this on mobile and routed mobile users via
+              the /saved page (which has its own Settings link), but
+              that's a non-obvious two-tap path no real user will
+              discover. Settings is the only surface that lets you
+              change persona, home muni, interests, and notifications,
+              so it has to be one tap from anywhere. LocationChip
+              stays mobile-hidden because the search modal carries
+              the same affordance. */}
           <Link
             href="/settings"
             aria-label="Settings"
             title="Settings"
-            className="hidden h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)] sm:grid"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <SettingsIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
