@@ -21,7 +21,12 @@ function inferCategory(title: string, description: string): string {
   for (const { slug, words } of CATEGORY_KEYWORDS) {
     if (words.some((w) => text.includes(w))) return slug;
   }
-  return "arts";
+  // Honest catch-all rather than "arts": an event whose title doesn't
+  // match any keyword bucket is almost always a community gathering
+  // (fundraiser, holiday lighting, pancake breakfast, neighborhood
+  // cleanup), not an art event. The "community" category exists in
+  // src/data/categories.ts for exactly this fallback.
+  return "community";
 }
 
 function slugify(s: string, extra?: string): string {
@@ -144,7 +149,11 @@ export async function ingestICal({
           venue_name,
           address: address || "",
           municipality_slug,
-          category_slug: cat?.slug ?? "arts",
+          // Fallback was "arts", which silently mislabeled every keyword-
+// less event (pancake breakfast, fundraiser, holiday tradition)
+// as Arts & Culture. The new fallback is the honest catch-all
+// declared in src/data/categories.ts.
+category_slug: cat?.slug ?? "community",
           lng: defaultVenueLatLng.lng,
           lat: defaultVenueLatLng.lat,
           audience: [],
@@ -162,7 +171,11 @@ export async function ingestICal({
             title, description: description || title,
             starts_at: starts, ends_at: ends,
             venue_name, address: address || "",
-            municipality_slug, category_slug: cat?.slug ?? "arts",
+            municipality_slug, // Fallback was "arts", which silently mislabeled every keyword-
+// less event (pancake breakfast, fundraiser, holiday tradition)
+// as Arts & Culture. The new fallback is the honest catch-all
+// declared in src/data/categories.ts.
+category_slug: cat?.slug ?? "community",
             source_fetched_at: new Date(),
             ticket_url: e.url ?? null,
             updated_at: new Date(),

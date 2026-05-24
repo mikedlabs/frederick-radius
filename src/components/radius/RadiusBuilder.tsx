@@ -348,8 +348,12 @@ export default function RadiusBuilder({
               style={{ color: "var(--app-ink)" }}
             >
               <span className="font-serif text-[15px]">{minutes}</span>
+              {/* "min walk" / "min bike" / "min drive" — the verb is
+                  what makes the time interval mean something. Without
+                  it, "10 min" reads as ambient and the user has to
+                  infer the mode from elsewhere. */}
               <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                min · {formatDistance(meters)}
+                min {mode} · {formatDistance(meters)}
               </span>
             </span>
             <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
@@ -358,8 +362,11 @@ export default function RadiusBuilder({
               style={{ color: "var(--app-ink)" }}
             >
               <span className="font-serif text-[15px]">{inside.length.toLocaleString()}</span>
+              {/* "places in radius" rather than just "places" — answers
+                  the stranger's "of what?" without forcing them to
+                  trace back to the page name. */}
               <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                place{inside.length === 1 ? "" : "s"}
+                place{inside.length === 1 ? "" : "s"} in radius
               </span>
             </span>
             {edgePlace && (

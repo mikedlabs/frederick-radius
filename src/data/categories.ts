@@ -49,6 +49,13 @@ export const CATEGORIES: Category[] = [
   { slug: "voting", name: "Voting", parent: "civic", icon: "Vote", color: "#2A5D8F", display_order: 73, blurb: "Election day and early voting centers." },
   { slug: "worship", name: "Churches & Worship", parent: "civic", icon: "Church", color: "#5B3A8F", display_order: 74, blurb: "Churches, temples, and houses of worship across the county." },
 
+  // The honest catch-all for events that don't fit a sharper bucket —
+  // fundraisers, neighborhood gatherings, holiday lighting walks,
+  // pancake breakfasts, the everyday community life of the county.
+  // Used as the fallback in src/lib/ingest/ical.ts so uncategorized
+  // events stop silently being labelled as "Arts & Culture."
+  { slug: "community", name: "Community", icon: "Users", color: "#8B6F4E", display_order: 75, blurb: "Civic gatherings, fundraisers, holiday traditions, and neighborhood events." },
+
   { slug: "services", name: "Services", icon: "Wrench", color: "#4A4A48", display_order: 80, blurb: "Pharmacy, hardware, post, and other practical needs." },
   { slug: "pharmacy", name: "Pharmacies", parent: "services", icon: "Pill", color: "#1E6B3A", display_order: 81, blurb: "Independent and chain pharmacies." },
   { slug: "hardware", name: "Hardware", parent: "services", icon: "Hammer", color: "#4A4A48", display_order: 82, blurb: "Hardware, lumber, and home supply." },

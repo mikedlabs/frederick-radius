@@ -78,7 +78,10 @@ const FEEDS: FeedSpec[] = [
     default_venue: "City of Frederick",
     default_geom: { lng: -77.4109, lat: 39.4137 },
     default_municipality: "frederick",
-    default_category: "arts",
+    // Celebrate Frederick runs festivals + city events, not strictly
+    // arts. "Community" lets keyword-less items land honestly while
+    // the inference path still tags real arts events as "arts".
+    default_category: "community",
   },
   {
     source: "county",
@@ -88,7 +91,13 @@ const FEEDS: FeedSpec[] = [
     default_venue: "Frederick County",
     default_geom: { lng: -77.4109, lat: 39.4143 },
     default_municipality: "frederick",
-    default_category: "civic",
+    // Source-based defaulting was the bug: a Hood College "Spring
+    // Family Day" or a county "Pancake Breakfast" doesn't become
+    // civic just because the feed is municipal. The keyword inference
+    // (CATEGORY_KEYWORDS above) still catches genuinely civic-titled
+    // entries; everything else falls through to the honest "community"
+    // catch-all.
+    default_category: "community",
   },
   {
     // Hood College public Trumba calendar (license: public calendar,
@@ -104,7 +113,13 @@ const FEEDS: FeedSpec[] = [
     default_venue: "Hood College",
     default_geom: { lng: -77.3997, lat: 39.4246 },
     default_municipality: "frederick",
-    default_category: "civic",
+    // Source-based defaulting was the bug: a Hood College "Spring
+    // Family Day" or a county "Pancake Breakfast" doesn't become
+    // civic just because the feed is municipal. The keyword inference
+    // (CATEGORY_KEYWORDS above) still catches genuinely civic-titled
+    // entries; everything else falls through to the honest "community"
+    // catch-all.
+    default_category: "community",
   },
 ];
 
