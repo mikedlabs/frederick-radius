@@ -33,7 +33,7 @@ export default function EventCard({
   // invalid CSS. Generic-category fallback uses the civic blue so
   // county / civic-affairs items read as the quiet-utility category
   // they are, instead of borrowing the brand brick.
-  const accent: string = cat?.color ?? "#2A5D8F";
+  const accent: string = cat?.color ?? "#2F5470";
   const hasPhoto = Boolean(event.hero_image);
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Civic");
 

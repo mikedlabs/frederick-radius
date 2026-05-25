@@ -5,7 +5,7 @@ import { eventsInMunicipality } from "@/lib/loaders/events";
 
 // A deterministic System-Black accent per town so the grid reads as
 // distinct tiles, not one grey list.
-const ACCENTS = ["#C4451C", "#2A5D8F", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
+const ACCENTS = ["#A8462C", "#2F5470", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
 function accentFor(slug: string): string {
   let h = 0;
   for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;

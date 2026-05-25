@@ -30,36 +30,44 @@
   --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
 
   /* ─────────────────────────────────────────────────────
-   * APP (warm civic) — Frederick brick + Catoctin green.
-   * Used by /app/* routes. Daily-utility palette: paper, ink, stone.
+   * APP (warm civic) — Brand Book No. 01 (May 2026).
+   * Frederick brick + Catoctin green + Carroll Creek slate +
+   * almanac gold. Paper-cream ground; warm ink. Daily-utility
+   * palette tuned to read as a printed field guide, not a SaaS
+   * dashboard.
    * ───────────────────────────────────────────────────── */
-  --app-bg: #FAFAF7;
+  --app-bedrock: #0A0A0A;        /* the obsidian ground — dark surfaces */
+  --app-paper: #F4EFE6;           /* warm almanac cream */
+  --app-paper-2: #ECE5D5;         /* slightly deeper paper */
+
+  --app-bg: #F4EFE6;              /* paper-cream (was #FAFAF7) */
   /* --app-bg-elevated is slightly translucent so the PageBloom aurora
      orbs tint cards from behind — the "glass" effect that lets the
      animated background read THROUGH the dense card stacks. Modals,
      sheets, popups that need full opacity should set their bg to
      --app-bg-elevated-solid instead. */
-  --app-bg-elevated-solid: #FFFFFF;
-  --app-bg-elevated: color-mix(in srgb, #FFFFFF 92%, transparent);
-  --app-bg-sunken: #F2F1EC;
-  --app-border: #E5E3DD;
-  --app-border-strong: rgba(26, 26, 26, 0.07);
+  --app-bg-elevated-solid: #FBF8F1;
+  --app-bg-elevated: color-mix(in srgb, #FBF8F1 92%, transparent);
+  --app-bg-sunken: #ECE5D5;       /* paper-2 (was #F2F1EC) */
+  --app-border: #D9D2C3;          /* warmer hairline (was #E5E3DD) */
+  --app-border-strong: rgba(26, 24, 21, 0.09);
 
-  --app-ink: #1A1A1A;
-  --app-ink-2: #4A4A48;
-  --app-ink-3: #6A6964; /* WCAG AA: ≥4.5:1 on bg/elevated/sunken (was #7A7975 = 3.85–4.36, sub-AA for normal text) */
-  --app-ink-inverse: #FAFAF7;
+  --app-ink: #1A1815;             /* warm ink (was #1A1A1A) */
+  --app-ink-2: #4A4844;
+  --app-ink-3: #6A6862;           /* WCAG AA: ≥4.5:1 on the new warmer bg/sunken */
+  --app-ink-inverse: #F4EFE6;     /* paper cream on dark */
 
-  --app-brand: #C4451C;          /* Frederick brick — used sparingly: brand chrome, primary CTA */
-  --app-brand-2: #1E3A2F;        /* Catoctin green */
-  --app-accent: #D9A441;         /* Harvest gold */
-  --app-cool: #2A5D8F;           /* Cool civic blue — used for: civic, transit, info, verified, save */
-  --app-cool-2: #4A7CA8;         /* Lighter cool, for hovers */
+  --app-brand: #A8462C;           /* Frederick brick (was #C4451C) */
+  --app-brand-2: #2E3B2C;         /* Catoctin green (was #1E3A2F) */
+  --app-accent: #C99632;          /* almanac gold (was #D9A441) */
+  --app-cool: #2F5470;            /* Carroll Creek slate (was #2A5D8F) */
+  --app-cool-2: #4A7090;          /* lighter cool, for hovers */
+  --app-sage: #859076;            /* topo-line sage — light nature accent */
 
   --app-positive: #1E6B3A;
   --app-warning: #B26B00;
   --app-danger: #A02929;
-  --app-info: #2A5D8F;
+  --app-info: #2F5470;
 
   --app-radius-sm: 6px;
   --app-radius-md: 12px;
@@ -99,7 +107,7 @@
     0 18px 36px -8px rgba(26, 26, 26, 0.20);
   --app-elev-4:
     0 4px 10px rgba(26, 26, 26, 0.09),
-    0 28px 56px -12px rgba(196, 69, 28, 0.22); /* brand-tinted ambient */
+    0 28px 56px -12px rgba(168, 70, 44, 0.22); /* brand-tinted ambient */
   /* The "made" look: a 1px top inner highlight + crisp inner edge
    * (reads sharper than a 1px border on a tinted surface). */
   --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.85);
@@ -117,29 +125,35 @@
   );
   /* Paper light — soft top-left radial highlight for elevated
    * surfaces so a card reads as paper catching light, not a flat
-   * fill. Subtle by design; layered above background-color.        */
-  --app-paper: radial-gradient(
+   * fill. Subtle by design; layered above background-color.
+   * (Renamed from --app-paper, which now holds the Brand Book
+   * cream hex; this is the gradient *effect*.)                    */
+  --app-paper-light: radial-gradient(
     140% 100% at 0% 0%,
     rgba(255, 255, 255, 0.55) 0%,
     rgba(255, 255, 255, 0) 60%
   );
   /* Brand-tinted ambient under the single primary CTA. Opt-in via
    * .tactile-glow-brand so it never accidentally fires elsewhere.  */
-  --app-brand-glow: 0 10px 28px -6px rgba(196, 69, 28, 0.45);
+  --app-brand-glow: 0 10px 28px -6px rgba(168, 70, 44, 0.45);
   /* Gentle overshoot for press/lift physics. */
   --app-ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --app-bg: #141413;
-    --app-bg-elevated-solid: #1C1B1A;
-    --app-bg-elevated: color-mix(in srgb, #1C1B1A 88%, transparent);
-    --app-bg-sunken: #0D0D0C;
-    --app-border: #2A2A28;
-    --app-ink: #F4F2EE;
-    --app-ink-2: #BFBDB7;
-    --app-ink-3: #8A8884;
+    /* Dark mode reads as ink-on-paper inverted: warmer dark surfaces,
+       paper-cream ink. Brand Book No. 01 — same brick / Catoctin /
+       Carroll Creek / almanac gold accents carry over. */
+    --app-bg: #14130F;
+    --app-bg-elevated-solid: #1C1A16;
+    --app-bg-elevated: color-mix(in srgb, #1C1A16 88%, transparent);
+    --app-bg-sunken: #0D0C0A;
+    --app-border: #2A2823;       /* warm hairline-dark */
+    --app-border-strong: rgba(244, 239, 230, 0.10);
+    --app-ink: #F4EFE6;          /* paper cream */
+    --app-ink-2: #BFBAB1;
+    --app-ink-3: #8A8780;
     /* Depth reads via darker ambient + a faint white top hairline. */
     --app-elev-1:
       0 1px 2px rgba(0, 0, 0, 0.5),
@@ -152,7 +166,7 @@
       0 18px 36px -8px rgba(0, 0, 0, 0.55);
     --app-elev-4:
       0 8px 18px rgba(0, 0, 0, 0.55),
-      0 28px 56px -12px rgba(196, 69, 28, 0.35);
+      0 28px 56px -12px rgba(168, 70, 44, 0.35);
     --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.09);
     --app-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
     --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.5);
@@ -162,12 +176,12 @@
       rgba(255, 255, 255, 0.02) 38%,
       rgba(0, 0, 0, 0.18) 100%
     );
-    --app-paper: radial-gradient(
+    --app-paper-light: radial-gradient(
       140% 100% at 0% 0%,
       rgba(255, 255, 255, 0.06) 0%,
       rgba(255, 255, 255, 0) 60%
     );
-    --app-brand-glow: 0 10px 28px -6px rgba(196, 69, 28, 0.55);
+    --app-brand-glow: 0 10px 28px -6px rgba(168, 70, 44, 0.55);
   }
 }
 
@@ -192,13 +206,13 @@
   --color-glass-bg: var(--glass-bg);
   --color-glass-highlight: var(--glass-highlight);
 
-  --font-sans: var(--font-inter, ui-sans-serif, system-ui, sans-serif);
-  --font-serif: var(--font-plex-serif, ui-serif, Georgia, serif);
-  --font-mono: var(--font-plex-mono, ui-monospace, monospace);
+  --font-sans: var(--font-sans-base, ui-sans-serif, system-ui, sans-serif);
+  --font-serif: var(--font-display, ui-serif, Georgia, serif);
+  --font-mono: var(--font-mono-base, ui-monospace, monospace);
 }
 
 html, body {
-  font-family: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans-base), ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -328,8 +342,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .shelf-rail { scroll-behavior: auto; }
 }
 
-.font-serif { font-family: var(--font-plex-serif), ui-serif, Georgia, serif; }
-.font-mono { font-family: var(--font-plex-mono), ui-monospace, monospace; }
+.font-serif { font-family: var(--font-display), ui-serif, Georgia, serif; }
+.font-mono { font-family: var(--font-mono-base), ui-monospace, monospace; }
 
 /* MapLibre popup polish */
 .maplibregl-popup-content {
@@ -628,8 +642,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   animation: fab-breath 3.6s cubic-bezier(0.22, 1, 0.36, 1) infinite;
 }
 @keyframes fab-breath {
-  0%, 100% { box-shadow: 0 8px 24px rgba(196, 69, 28, 0.35), 0 0 0 0 rgba(196, 69, 28, 0.4); }
-  50%      { box-shadow: 0 8px 24px rgba(196, 69, 28, 0.35), 0 0 0 14px rgba(196, 69, 28, 0); }
+  0%, 100% { box-shadow: 0 8px 24px rgba(168, 70, 44, 0.35), 0 0 0 0 rgba(168, 70, 44, 0.4); }
+  50%      { box-shadow: 0 8px 24px rgba(168, 70, 44, 0.35), 0 0 0 14px rgba(168, 70, 44, 0); }
 }
 
 /* Event-pin pulse on /map. Slower + softer than the food-truck demo so a
@@ -766,7 +780,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * tokenized so the global reduced-motion rule neutralizes it.
  * ───────────────────────────────────────────────────── */
 .tactile {
-  background-image: var(--app-paper);
+  background-image: var(--app-paper-light);
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
   transition:
     box-shadow var(--app-dur-med) var(--app-ease-out),
@@ -898,7 +912,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * balanced wrapping) so headlines read "set", not defaulted.
  * ───────────────────────────────────────────────────── */
 .display-1 {
-  font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
   font-weight: 600;
   font-size: clamp(2rem, 1.2rem + 4vw, 3.5rem);
   line-height: 1.04;
@@ -906,7 +920,7 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   text-wrap: balance;
 }
 .display-2 {
-  font-family: var(--font-plex-serif), ui-serif, Georgia, serif;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
   font-weight: 600;
   font-size: clamp(1.5rem, 1.05rem + 2.2vw, 2.25rem);
   line-height: 1.1;

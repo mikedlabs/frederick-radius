@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 // The National Register changes very rarely; revalidate weekly.
 export const revalidate = 604800;
 
-const BRICK = "var(--app-brand, #C4451C)";
+const BRICK = "var(--app-brand, #A8462C)";
 
 function PlaceRow({ h }: { h: HistoricPlace }) {
   const meta = [h.category || null, h.listedYear ? `Listed ${h.listedYear}` : null].filter(
@@ -38,7 +38,7 @@ function PlaceRow({ h }: { h: HistoricPlace }) {
       >
         <span
           className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-brand, #C4451C) 16%, transparent)" }}
+          style={{ background: "color-mix(in srgb, var(--app-brand, #A8462C) 16%, transparent)" }}
           aria-hidden
         >
           <Landmark className="h-4 w-4" strokeWidth={2} style={{ color: BRICK }} />

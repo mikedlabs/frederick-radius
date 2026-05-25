@@ -9,7 +9,7 @@ import { iconForShortForecast, type NwsHourly } from "@/lib/integrations/nws";
 
 const ICONS = { Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind } as const;
 const ICON_TINT: Record<keyof typeof ICONS, string> = {
-  Sun: "#E8A33D", CloudSun: "#D9A441", Cloud: "#8A8884", CloudRain: "#2A5D8F",
+  Sun: "#E8A33D", CloudSun: "#C99632", Cloud: "#8A8884", CloudRain: "#2F5470",
   CloudSnow: "#7CA8D8", CloudLightning: "#7E2C6F", CloudFog: "#9A9690", Wind: "#4A7CA8",
 };
 
@@ -84,7 +84,7 @@ export default function WeeklyForecast({
   const ink3 = tone === "dark" ? "rgba(255,255,255,0.55)" : "rgba(26,26,26,0.42)";
   const panel = tone === "dark" ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.45)";
   const hairline = tone === "dark" ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)";
-  const cool = tone === "dark" ? "#9CC4E8" : "#2A5D8F";
+  const cool = tone === "dark" ? "#9CC4E8" : "#2F5470";
 
   return (
     <div

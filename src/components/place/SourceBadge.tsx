@@ -35,9 +35,9 @@ const META: Record<Tier, { label: string; color: string; icon: typeof CheckCircl
   // a hovering desktop user or a curious tap-and-hold mobile user
   // can read. Previously the title was just "Source: Curated" which
   // tells you nothing if you don't already know what curated means.
-  curated:   { label: "Hand-picked", color: "#C4451C", icon: Sparkles,    tooltip: "We picked this one ourselves." },
+  curated:   { label: "Hand-picked", color: "#A8462C", icon: Sparkles,    tooltip: "We picked this one ourselves." },
   verified:  { label: "Verified",  color: "#1E6B3A", icon: CheckCircle2,  tooltip: "Maintained by the owner. Hours and details come straight from them." },
-  community: { label: "Community", color: "#2A5D8F", icon: Users,         tooltip: "Submitted by a local or pulled from a community feed. Reliable but not directly verified." },
+  community: { label: "Community", color: "#2F5470", icon: Users,         tooltip: "Submitted by a local or pulled from a community feed. Reliable but not directly verified." },
   official:  { label: "Official",  color: "#7E2C6F", icon: Database,      tooltip: "From an official county or government feed." },
 };
 

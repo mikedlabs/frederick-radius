@@ -13,9 +13,9 @@ export const metadata: Metadata = {
 };
 
 const KIND_META: Record<HistoryEntry["kind"], { label: string; icon: typeof Landmark; color: string }> = {
-  moment: { label: "Moment", icon: Calendar, color: "#C4451C" },
+  moment: { label: "Moment", icon: Calendar, color: "#A8462C" },
   person: { label: "Person", icon: Users, color: "#7E2C6F" },
-  fact: { label: "Did you know", icon: Sparkles, color: "#2A5D8F" },
+  fact: { label: "Did you know", icon: Sparkles, color: "#2F5470" },
 };
 
 function formatYear(e: HistoryEntry): string | null {
