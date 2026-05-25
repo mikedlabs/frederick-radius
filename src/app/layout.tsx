@@ -106,9 +106,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  // System Black brand: the browser chrome / status bar matches the
-  // app's dark identity in both schemes (validated premium direction).
-  themeColor: "#0A0A0A",
+  // Brand Book No. 01: paper-cream is the canonical ground. The mobile
+  // browser chrome / status bar tints to match the app's warm-paper
+  // identity instead of the prior System-Black dark. Dark mode is
+  // opt-in (html.dark class) and ships when we wire a user toggle.
+  themeColor: "#F4EFE6",
 };
 
 export default function RootLayout({
