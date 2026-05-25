@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useIsSaved, useToggleSave, useMounted } from "@/hooks/useSaved";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { toast } from "sonner";
 
 export default function SaveButton({
   refType,
@@ -56,6 +57,19 @@ export default function SaveButton({
         e.stopPropagation();
         haptic(isSaved ? "light" : "medium");
         toggle();
+        // Sonner toast — quiet, brand-aligned acknowledgement so the
+        // user sees something happen even if the bookmark animation
+        // is missed at a glance. Undo action mirrors the toggle so
+        // a mistaken save is one tap to reverse.
+        if (isSaved) {
+          toast(`Removed from saved`, {
+            action: { label: "Undo", onClick: () => toggle() },
+          });
+        } else {
+          toast.success(`Saved · ${label.replace(/^Save\s+/, "")}`, {
+            action: { label: "Undo", onClick: () => toggle() },
+          });
+        }
       }}
       aria-pressed={isSaved}
       aria-label={isSaved ? `Unsave ${label}` : `Save ${label}`}

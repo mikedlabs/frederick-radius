@@ -8,6 +8,7 @@ import {
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { Toaster } from "sonner";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
@@ -141,6 +142,27 @@ export default function RootLayout({
             - Vercel Analytics + Speed Insights (Pro-tier; real-user web
               vitals + traffic per route, which Plausible doesn't surface)
             Both are GDPR-safe / cookieless. */}
+        {/* Brand-aligned toaster — paper-cream surface, warm-dark
+            ink, sits just above the bottom nav so toasts don't
+            overlap the tab bar. Sonner handles enter/exit physics +
+            queueing; this is the single instance per app shell. */}
+        <Toaster
+          position="bottom-center"
+          offset="calc(env(safe-area-inset-bottom, 0px) + 80px)"
+          toastOptions={{
+            style: {
+              background: "var(--app-bg-elevated)",
+              border: "1px solid var(--app-border)",
+              color: "var(--app-ink)",
+              boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
+              fontFamily: "var(--font-sans)",
+              fontSize: "13px",
+              borderRadius: "var(--app-radius-md)",
+            },
+            className: "fr-toast",
+          }}
+          duration={3000}
+        />
         <Plausible />
         <Analytics />
         <SpeedInsights />
