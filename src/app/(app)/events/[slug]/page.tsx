@@ -212,7 +212,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur"
-                style={{ background: `${cat?.color ?? "#C4451C"}D0` }}
+                style={{ background: `${cat?.color ?? "#A8462C"}D0` }}
               >
                 <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
                 {when}
@@ -236,7 +236,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           <div
             className="relative h-56 overflow-hidden sm:h-60"
             style={{
-              background: `linear-gradient(135deg, ${cat?.color ?? "#C4451C"}40, ${cat?.color ?? "#C4451C"}0F 60%, var(--app-bg-elevated))`,
+              background: `linear-gradient(135deg, ${cat?.color ?? "#A8462C"}40, ${cat?.color ?? "#A8462C"}0F 60%, var(--app-bg-elevated))`,
             }}
           >
             {/* Watermark calendar — quietly anchors the right side. */}
@@ -486,7 +486,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                   className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5 transition"
                   style={{
                     borderColor: isCurrent ? (cat?.color ?? "var(--app-brand)") : "var(--app-border)",
-                    background: isCurrent ? `${cat?.color ?? "#C4451C"}14` : "var(--app-bg-elevated)",
+                    background: isCurrent ? `${cat?.color ?? "#A8462C"}14` : "var(--app-bg-elevated)",
                     opacity: isPast && !isCurrent ? 0.5 : 1,
                   }}
                 >

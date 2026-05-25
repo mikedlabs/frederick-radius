@@ -20,7 +20,7 @@ type Tone =
 
 const TONE: Record<Tone, string> = {
   neutral: "var(--app-ink-3)",
-  brand: "var(--app-brand, #C4451C)",
+  brand: "var(--app-brand, #A8462C)",
   cool: "var(--app-cool)",
   positive: "var(--app-positive, #1E6B3A)",
   warning: "var(--app-warning)",

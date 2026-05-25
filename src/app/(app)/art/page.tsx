@@ -20,7 +20,7 @@ export const revalidate = 604800;
 
 // PlacePhoto's fallback math expects a hex color (it appends an alpha
 // byte). Harvest gold = the app's --app-accent token value.
-const ART_HEX = "#D9A441";
+const ART_HEX = "#C99632";
 const ART_GLYPH = "\u{1F3A8}"; // artist palette
 
 function ArtCard({ a }: { a: ArtPiece }) {

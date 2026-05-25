@@ -44,9 +44,9 @@ const COUNTY_BOUNDS: [[number, number], [number, number]] = [
 ];
 
 const MODE_HEX: Partial<Record<TravelMode, string>> = {
-  walk: "#2A5D8F",
+  walk: "#2F5470",
   bike: "#3B7A52",
-  drive: "#C4451C",
+  drive: "#A8462C",
 };
 
 /** 72-step polygon approximating a circle of `meters` around `center`. */
@@ -133,7 +133,7 @@ export default function RadiusMap({
   onCenterChange?: (next: { lng: number; lat: number }) => void;
   height?: string;
 }) {
-  const accentHex = MODE_HEX[mode] ?? "#2A5D8F";
+  const accentHex = MODE_HEX[mode] ?? "#2F5470";
   const mapRef = useRef<MapRef | null>(null);
   // Live position while dragging the center pin — gives the radius
   // circle a smooth follow without thrashing parent state on every

@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   // we don't try to bake open-status into the card here. The card has
   // to read true a day from now.
   let blurb: string | null = null;
-  let accent = "#C4451C";
+  let accent = "#A8462C";
 
   if (type === "place") {
     const p = PLACE_BY_SLUG[slug];

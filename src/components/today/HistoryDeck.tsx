@@ -33,7 +33,7 @@ import { eraForYear } from "@/lib/history-era";
 
 /** Evergreen facts carry no year, so they have no era. They take the
  *  steady civic blue Today already uses for the history accent. */
-const FACT_ACCENT = "#2A5D8F";
+const FACT_ACCENT = "#2F5470";
 
 /** A swipe must travel this far horizontally, and be clearly more
  *  horizontal than vertical, before it steps the deck. Keeps a

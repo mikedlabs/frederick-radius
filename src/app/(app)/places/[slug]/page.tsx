@@ -314,7 +314,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <h2 className="eyebrow">
           Location
         </h2>
-        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "#C4451C"} />
+        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "#A8462C"} />
         <div className="flex items-start gap-2 rounded-[var(--app-radius-md)] tactile bg-[var(--app-bg-elevated)] p-3 text-sm">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <div>

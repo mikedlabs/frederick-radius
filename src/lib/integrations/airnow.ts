@@ -5,7 +5,7 @@ const AIRNOW_BASE = "https://www.airnowapi.org/aq/observation/latLong/current";
 export type AqiCategory =
   | { id: 1; name: "Good"; color: "#1E6B3A" }
   | { id: 2; name: "Moderate"; color: "#B26B00" }
-  | { id: 3; name: "Unhealthy for Sensitive Groups"; color: "#C4451C" }
+  | { id: 3; name: "Unhealthy for Sensitive Groups"; color: "#A8462C" }
   | { id: 4; name: "Unhealthy"; color: "#A02929" }
   | { id: 5; name: "Very Unhealthy"; color: "#7E1F1F" }
   | { id: 6; name: "Hazardous"; color: "#5B0000" };
@@ -28,7 +28,7 @@ type AirNowResp = Array<{
 }>;
 
 const COLORS: Record<number, string> = {
-  1: "#1E6B3A", 2: "#B26B00", 3: "#C4451C", 4: "#A02929", 5: "#7E1F1F", 6: "#5B0000",
+  1: "#1E6B3A", 2: "#B26B00", 3: "#A8462C", 4: "#A02929", 5: "#7E1F1F", 6: "#5B0000",
 };
 
 export async function getAirQuality(point: LngLat): Promise<AqiObservation[] | null> {

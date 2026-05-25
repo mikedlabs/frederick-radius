@@ -56,10 +56,10 @@ const INTEREST_OPTIONS: Array<{
   Icon: typeof Utensils;
   color: string;
 }> = [
-  { slug: "food", label: "Food & Drink", Icon: Utensils, color: "#C4451C" },
+  { slug: "food", label: "Food & Drink", Icon: Utensils, color: "#A8462C" },
   { slug: "outdoors", label: "Parks & Trails", Icon: Trees, color: "#1E6B3A" },
   { slug: "arts", label: "Arts & Culture", Icon: Palette, color: "#7E2C6F" },
-  { slug: "family", label: "Family", Icon: Baby, color: "#D9A441" },
+  { slug: "family", label: "Family", Icon: Baby, color: "#C99632" },
   { slug: "sports", label: "Sports", Icon: Activity, color: "#0F8A5F" },
   { slug: "shopping", label: "Shopping", Icon: ShoppingBag, color: "#B26B00" },
   { slug: "wellness", label: "Wellness", Icon: Heart, color: "#A02929" },

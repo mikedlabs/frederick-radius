@@ -705,7 +705,7 @@ export default function RadiusBuilder({
           </header>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {groups.map((g) => {
-              const color = CATEGORY_BY_SLUG[g.key]?.color ?? "#C4451C";
+              const color = CATEGORY_BY_SLUG[g.key]?.color ?? "#A8462C";
               const isOpen = expanded.has(g.key) || seeAll;
               return (
                 <button

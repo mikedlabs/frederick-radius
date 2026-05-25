@@ -37,7 +37,7 @@ export default function PlaceHero({
   aspectRatio = "16/10", size = "hero", priority = false, photoSrc,
 }: Props) {
   const cat = CATEGORY_BY_SLUG[category];
-  const color = cat?.color ?? "#C4451C";
+  const color = cat?.color ?? "#A8462C";
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
   const glyph = GLYPH[category] ?? "📍";
