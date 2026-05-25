@@ -33,7 +33,7 @@ export default function TrailPage() {
     <div className="space-y-7">
       <header className="space-y-2">
         <p className="text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {BEVERAGE_TRAIL.length} stops · curated · awaiting Google-Places verification
+          {BEVERAGE_TRAIL.length} stops · picked by hand · awaiting Google-Places verification
         </p>
         <h1 className="font-serif text-[28px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           The Frederick Beverage Trail
@@ -106,7 +106,7 @@ export default function TrailPage() {
 
       <footer className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-4 text-[12px] leading-relaxed"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-        Trails are curated from our directory. Spot a closure or a missing stop? <a href="/submit/place" style={{ color: "var(--app-cool)" }} className="underline">Send us the fix</a>.
+        Trails are drawn from our directory by hand. Spot a closure or a missing stop? <a href="/submit/place" style={{ color: "var(--app-cool)" }} className="underline">Send us the fix</a>.
       </footer>
     </div>
   );
