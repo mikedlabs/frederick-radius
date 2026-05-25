@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Compass, MapPin } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
+import IconStamp from "@/components/ui/IconStamp";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import { publicPlaces } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -29,27 +31,6 @@ export const metadata: Metadata = {
   title: "All places",
   description:
     "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services — the directory.",
-};
-
-// Simple emoji glyph per top-level category. Matches the visual
-// vocabulary the per-town page already uses, so a stranger sees the
-// same pictures across surfaces.
-const TOP_GLYPH: Record<string, string> = {
-  food: "🍴",
-  outdoors: "🌲",
-  arts: "🎭",
-  family: "👨‍👩‍👧",
-  sports: "🏟",
-  shopping: "🛍",
-  wellness: "💆",
-  civic: "🏛",
-  community: "👥",
-  services: "🛠",
-  lodging: "🏨",
-  transit: "🚆",
-  parking: "🅿",
-  amenities: "📍",
-  worship: "⛪",
 };
 
 export default function PlacesIndexPage() {
@@ -195,15 +176,13 @@ export default function PlacesIndexPage() {
                   borderColor: "var(--app-border)",
                 }}
               >
-                <span
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[18px]"
-                  style={{
-                    background: `color-mix(in srgb, ${c.color} 16%, transparent)`,
-                  }}
-                  aria-hidden
-                >
-                  {TOP_GLYPH[c.slug] ?? "📍"}
-                </span>
+                <IconStamp accent={c.color} size="md">
+                  <CategoryIcon
+                    slug={c.slug}
+                    strokeWidth={1.75}
+                    className="h-[18px] w-[18px]"
+                  />
+                </IconStamp>
                 <span className="min-w-0 flex-1">
                   <span
                     className="block truncate text-[13px] font-semibold"
