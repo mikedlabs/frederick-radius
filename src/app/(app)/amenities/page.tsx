@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { Bath, Wifi, Zap, Bike, Trees, Baby, MapPin } from "lucide-react";
+import {
+  Bath, Wifi, Zap, Bike, Trees, Baby, MapPin,
+  Trash2, Armchair, PawPrint, Mailbox, Package, PackageOpen,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { amenitiesByKind, type AmenityKind } from "@/lib/loaders/amenities";
 import { Surface } from "@/components/ui/Surface";
 import { Chip } from "@/components/ui/Chip";
@@ -27,6 +31,19 @@ const ICON: Record<AmenityKind, typeof Bath> = {
   picnic: Trees,
   playground: Baby,
 };
+
+// Mapping-these-next — categories we want on the map but OpenStreetMap
+// under-maps them, so the next layer is crowdsourced. Listed honestly
+// as a gap, not dressed up as a feature. See STYLE.md §3 "Honest about
+// gaps" and §17 ("On the list, not on the map yet").
+const MAPPING_NEXT: { key: string; label: string; icon: LucideIcon; hint: string }[] = [
+  { key: "trash",    label: "Trash cans",       icon: Trash2,     hint: "Public bins, downtown + parks" },
+  { key: "benches",  label: "Benches",          icon: Armchair,   hint: "Sit-and-rest spots county-wide" },
+  { key: "dog-bags", label: "Dog bag stations", icon: PawPrint,   hint: "Pickup bag dispensers on trails" },
+  { key: "mailbox",  label: "Mailboxes",        icon: Mailbox,    hint: "USPS blue collection boxes" },
+  { key: "ups",      label: "UPS drop-off",     icon: Package,    hint: "Authorized UPS Access Points" },
+  { key: "fedex",    label: "FedEx drop-off",   icon: PackageOpen, hint: "FedEx OnSite + drop-off boxes" },
+];
 
 export default function AmenitiesPage() {
   const groups = amenitiesByKind();
@@ -112,10 +129,55 @@ export default function AmenitiesPage() {
             );
           })}
 
+          {/* Mapping these next — the honest gap. OSM under-maps these
+              categories, so the next amenity layer will be crowdsourced.
+              No fake counts, no list of fabricated points; just the
+              shape of what's coming and an open door to help. */}
+          <section className="space-y-2 pt-2">
+            <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              Mapping these next.
+            </h2>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              OpenStreetMap under-maps them. The next layer is crowdsourced — point us at one and we&apos;ll put it on the map.
+            </p>
+            <ul
+              className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+              aria-label="Amenity categories planned next"
+            >
+              {MAPPING_NEXT.map((c) => {
+                const Icon = c.icon;
+                return (
+                  <li
+                    key={c.key}
+                    className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] border border-dashed px-3 py-2.5"
+                    style={{ borderColor: "var(--app-border)" }}
+                  >
+                    <span
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
+                      style={{ background: "var(--app-bg-sunken)" }}
+                      aria-hidden
+                    >
+                      <Icon className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                        {c.label}
+                      </span>
+                      <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                        {c.hint}
+                      </span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="px-1 pt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              Seen one? <a href="/submit/place" style={{ color: "var(--app-cool)" }} className="underline">Tell us where</a>.
+            </p>
+          </section>
+
           <p className="px-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            Amenity data &copy; OpenStreetMap contributors, ODbL. Some
-            categories (water fountains, benches) are under-mapped in
-            OSM: a future crowdsource layer.
+            Amenity data &copy; OpenStreetMap contributors, ODbL.
           </p>
         </>
       )}
