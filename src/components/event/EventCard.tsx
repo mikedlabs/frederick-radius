@@ -7,6 +7,8 @@ import EventActions from "@/components/event/EventActions";
 import TrustChip from "@/components/ui/TrustChip";
 import { Chip } from "@/components/ui/Chip";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
+import { ReasonChipRow } from "@/components/ui/ReasonChip";
+import { eventReasons } from "@/lib/event-reasons";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
@@ -216,20 +218,30 @@ export default function EventCard({
             <span style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
             {event.venue_name ? <> · {event.venue_name}</> : null}
           </p>
-          <div className="mt-auto flex items-center gap-1.5 pt-1 text-[10.5px]">
-            {event.is_free && (
-              <span className="font-semibold" style={{ color: "var(--app-positive)" }}>
-                Free
-              </span>
-            )}
-            {event.price_text && !event.is_free && (
-              <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
-            )}
-            {event.distance_m !== undefined && (
-              <span className="ml-auto tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                {formatDistance(event.distance_m)}
-              </span>
-            )}
+          {/* Reason chips — "Tonight · Free · 5 min walk" — decision
+              context the master UI brief asks for. Derived from
+              fields the loader already produces, capped at 3 per card.
+              Falls back to the legacy price / distance row only if
+              the producer returns nothing (rare). */}
+          <div className="mt-auto pt-1">
+            {(() => {
+              const reasons = eventReasons(event);
+              if (reasons.length > 0) {
+                return <ReasonChipRow reasons={reasons} />;
+              }
+              return (
+                <div className="flex items-center gap-1.5 text-[10.5px]">
+                  {event.price_text && !event.is_free && (
+                    <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
+                  )}
+                  {event.distance_m !== undefined && (
+                    <span className="ml-auto tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                      {formatDistance(event.distance_m)}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       </article>
