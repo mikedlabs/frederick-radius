@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { rankPlaces } from "@/lib/loaders/places";
-import PlaceCard from "@/components/place/PlaceCard";
+import PlaceList from "@/components/place/PlaceList";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
 import StatStrip from "@/components/ui/StatStrip";
@@ -103,27 +103,18 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         </section>
       )}
 
+      {/* Browse — PlaceList lets the visitor flip between a 2-up
+          photo grid (visual) and a dense list (scannable). Category
+          pages default to list because users land here intent-driven
+          ("show me all the breweries") and want to compare; their
+          preference persists across surfaces via localStorage. */}
       <section className="space-y-3">
-        <SectionHeading
-          title={`${places.length} place${places.length === 1 ? "" : "s"}`}
-          accent={c.color}
+        <SectionHeading title={`Browse`} accent={c.color} />
+        <PlaceList
+          places={places}
+          initialLayout="list"
+          emptyMessage="We're still seeding this category. Submit a place you love."
         />
-        {places.length === 0 ? (
-          <p
-            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            We&apos;re still seeding this category. Submit a place you love.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {places.map((p) => (
-              <li key={p.slug}>
-                <PlaceCard place={p} />
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
     </div>
   );

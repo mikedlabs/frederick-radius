@@ -2,16 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Disc, Sun, Map, Calendar } from "lucide-react";
+import { Disc, Sun, Map, Calendar, BookOpen } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 
-// Primary destinations. Four tabs at the recommended mobile maximum.
-// Saved moved to the header (TopBar) as a bookmark icon; Plan absorbed
-// into Radius (the two answered the same "what's near me / what should
-// I do" intent and split the user's attention). /plan + /saved routes
-// stay alive — they're just no longer first-class tabs.
+// Primary destinations. Five tabs — added /places (the directory)
+// because there was no top-down browsing entry point: a stranger
+// could land on /today (curated rails) or /map (visual) but had no
+// way to see the directory's breadth by category × town without
+// already knowing what they wanted.
+// Saved moved to the header (TopBar) as a bookmark icon; Plan
+// absorbed into Radius (the two answered the same intent and split
+// attention). /plan + /saved routes stay alive — just not tabs.
 const TABS = [
   { href: "/today", label: "Today", icon: Sun },
+  { href: "/places", label: "Places", icon: BookOpen },
   { href: "/radius", label: "Radius", icon: Disc },
   { href: "/map", label: "Map", icon: Map },
   { href: "/events", label: "Events", icon: Calendar },
@@ -24,7 +28,7 @@ export default function BottomNav() {
       aria-label="Primary"
       className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
     >
-      <ul className="mx-auto grid max-w-screen-md grid-cols-4">
+      <ul className="mx-auto grid max-w-screen-md grid-cols-5">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href || pathname.startsWith(href + "/");

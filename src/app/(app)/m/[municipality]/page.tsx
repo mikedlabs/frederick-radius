@@ -4,7 +4,7 @@ import Link from "next/link";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
-import PlaceCard from "@/components/place/PlaceCard";
+import PlaceList from "@/components/place/PlaceList";
 import EventCard from "@/components/event/EventCard";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
@@ -155,24 +155,17 @@ export default async function MunicipalityPage(
         </section>
       )}
 
-      {/* Worth your time — a 2-up PHOTO grid, not a stacked text list */}
+      {/* Worth your time — PlaceList lets the visitor flip between
+          a 2-up photo grid (visual browsing) and a dense list (fast
+          scanning). Town page defaults to grid; the user's choice
+          persists across surfaces via localStorage. */}
       <section className="space-y-2.5">
-        <SectionHeading
-          title="Worth your time"
-          count={places.length || undefined}
+        <SectionHeading title="Worth your time" />
+        <PlaceList
+          places={places.slice(0, 12)}
+          initialLayout="grid"
+          emptyMessage={`We're still seeding places for ${m.name}. Check back soon, or submit a place you love.`}
         />
-        {places.length === 0 ? (
-          <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
-            We&apos;re still seeding places for {m.name}. Check back soon, or submit a place you love.
-          </p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2.5">
-            {places.slice(0, 12).map((p) => (
-              <PlaceCard key={p.slug} place={p} variant="grid" />
-            ))}
-          </div>
-        )}
       </section>
 
       {/* Photo wall — six tiles from THIS town. The page-level
