@@ -179,15 +179,21 @@ export function saveCachedOsm(data: OsmPlace[]) {
 
 export const FREDERICK: [number, number] = [-77.4105, 39.4143];
 
-// Mapbox Standard: the brightest, most polished style Mapbox ships.
-// Includes 3D building extrusions by default, atmospheric sky, day/
-// night lighting that follows the user's clock, and proper street
-// labels. Switching from dark-v11 → standard is the single biggest
-// "the map looks designed" change available; the dark style read as
-// generic-nightlife-app and hid the terrain hillshading we'd added.
-// The custom Frederick Radius Studio style (P2-1) replaces this when
-// ready; until then Standard is a real-feeling map of the county.
-export const STYLE_URL = "mapbox://styles/mapbox/standard";
+// Base style chosen so applyFrederickPalette() can do its thing.
+// dark-v11 is a simple legacy style with predictable layer naming —
+// the System-Black palette in applyFrederickPalette walks every
+// layer and rewrites paint, which works cleanly on dark-v11 but is
+// largely no-op on Standard (Standard's layer IDs don't match the
+// palette's substring rules + Standard's own atmospheric sky fights
+// the override). We tried dark-v11 RAW once and it read as generic
+// nightlife app — the palette is what turns it into Frederick.
+// Pairs with the dark app shell, makes the Monocacy + Carroll Creek
+// pop in civic blue, and lets the Catoctin hillshade register.
+//
+// The custom Frederick Radius Mapbox Studio style (P2-1) replaces
+// this when designed; until then dark-v11 + palette is the "designed
+// for here" path that costs no dashboard work.
+export const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 
 // ── Curated-vs-OSM dedupe ───────────────────────────────────────────
 // The map renders our curated set AND the live OSM layer; anything in
