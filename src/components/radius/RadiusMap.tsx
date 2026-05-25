@@ -107,6 +107,7 @@ export default function RadiusMap({
   center,
   centerLabel,
   insidePlaces,
+  reachable,
   onCenterChange,
   // Tuned so the map AND the control card below it (mode toggle +
   // slider) fit in one mobile viewport. The previous 60vh buried the
@@ -121,6 +122,12 @@ export default function RadiusMap({
   /** Pre-filtered to places inside the radius. Rendered as small dots
    *  so users can see geographic density, not just read a count. */
   insidePlaces: InsideDot[];
+  /** Mapbox Isochrone polygon for the "real reachable" area. When
+   *  present, replaces the circle so the user sees what they can
+   *  ACTUALLY reach by walking/biking/driving on real streets.
+   *  Null while loading or on upstream failure → circle stays as
+   *  the visible fallback. */
+  reachable?: GeoJSON.FeatureCollection | null;
   /** Fires on map tap and on center-pin drag end. Parent can opt out
    *  (omit the prop) to keep the map view-only. */
   onCenterChange?: (next: { lng: number; lat: number }) => void;
@@ -310,23 +317,53 @@ export default function RadiusMap({
             }}
           />
         </Source>
-        {/* The radius itself — soft fill + crisp line. */}
-        <Source id="radius-circle" type="geojson" data={circle}>
-          <Layer
-            id="radius-circle-fill"
-            type="fill"
-            paint={{ "fill-color": accentHex, "fill-opacity": 0.13 }}
-          />
-          <Layer
-            id="radius-circle-line"
-            type="line"
-            paint={{
-              "line-color": accentHex,
-              "line-width": 2.5,
-              "line-opacity": 0.9,
-            }}
-          />
-        </Source>
+        {/* The radius itself.
+         *
+         *  When the Mapbox Isochrone polygon is loaded, that's what
+         *  renders — the REAL reachable area, accounting for streets,
+         *  one-ways, creeks, and hills. While it's loading or after
+         *  an upstream failure, we render the straight-line circle as
+         *  a quiet fallback so the map never looks broken.
+         *
+         *  Both layers use the same accent color so the visual
+         *  identity is consistent — only the SHAPE changes when the
+         *  isochrone arrives. */}
+        {reachable && reachable.features.length > 0 ? (
+          <Source id="radius-isochrone" type="geojson" data={reachable}>
+            <Layer
+              id="radius-isochrone-fill"
+              type="fill"
+              paint={{ "fill-color": accentHex, "fill-opacity": 0.18 }}
+            />
+            <Layer
+              id="radius-isochrone-line"
+              type="line"
+              paint={{
+                "line-color": accentHex,
+                "line-width": 2.5,
+                "line-opacity": 0.92,
+              }}
+            />
+          </Source>
+        ) : (
+          <Source id="radius-circle" type="geojson" data={circle}>
+            <Layer
+              id="radius-circle-fill"
+              type="fill"
+              paint={{ "fill-color": accentHex, "fill-opacity": 0.10 }}
+            />
+            <Layer
+              id="radius-circle-line"
+              type="line"
+              paint={{
+                "line-color": accentHex,
+                "line-width": 2,
+                "line-opacity": 0.55,
+                "line-dasharray": [2, 2],
+              }}
+            />
+          </Source>
+        )}
         {/* Draggable center pin. The visual is rendered inside the
             Marker; Marker handles the pointer events. */}
         <Marker

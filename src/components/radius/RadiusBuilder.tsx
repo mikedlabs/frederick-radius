@@ -86,6 +86,64 @@ const MODE_VERB: Record<TravelMode, string> = {
   distance: "reach",
 };
 
+// ── Reachable-radius helpers ─────────────────────────────────────
+// Tiny self-contained point-in-polygon so we don't pull in @turf for
+// a 12-line ray-casting algorithm. Inputs are [lng,lat] tuples to
+// match GeoJSON's coordinate ordering.
+
+/**
+ * Flatten a Mapbox Isochrone FeatureCollection into a list of raw
+ * polygon rings (one per polygon — outer ring only; isochrone
+ * polygons don't have holes in practice). Handles both Polygon and
+ * MultiPolygon geometries so a fractured reachable area still works.
+ */
+function collectPolygons(fc: GeoJSON.FeatureCollection): number[][][] {
+  const out: number[][][] = [];
+  for (const f of fc.features) {
+    const g = f.geometry;
+    if (!g) continue;
+    if (g.type === "Polygon") {
+      if (g.coordinates[0]) out.push(g.coordinates[0] as number[][]);
+    } else if (g.type === "MultiPolygon") {
+      for (const poly of g.coordinates) {
+        if (poly[0]) out.push(poly[0] as number[][]);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Ray-casting point-in-polygon. Returns true if [lng,lat] lies inside
+ * the polygon ring. Standard horizontal-ray odd-crossing test.
+ */
+function pointInPolygon(pt: [number, number], ring: number[][]): boolean {
+  const x = pt[0];
+  const y = pt[1];
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0];
+    const yi = ring[i][1];
+    const xj = ring[j][0];
+    const yj = ring[j][1];
+    // Edge crosses the horizontal ray at y if endpoints are on
+    // opposite sides AND the intersection x is to the right of the
+    // test point. Toggling `inside` on each crossing gives the
+    // odd-rule winding count.
+    const intersect =
+      yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function pointInAnyPolygon(pt: [number, number], polys: number[][][]): boolean {
+  for (const ring of polys) {
+    if (pointInPolygon(pt, ring)) return true;
+  }
+  return false;
+}
+
 /**
  * Oxford-comma list. "a, b, and c" — used by the sentence-form summary
  * so the headline reads as plain English instead of a UI label.
@@ -233,12 +291,48 @@ export default function RadiusBuilder({
   const center = myLoc ? { ...presetCenter, label: myLocLabel, lng: myLoc.lng, lat: myLoc.lat } : presetCenter;
   const meters = minutesToMeters(mode, minutes);
 
+  // Reachable Radius: the real isochrone polygon from Mapbox. Tells us
+  // what's ACTUALLY within N minutes by walking/biking/driving on real
+  // streets — not the straight-line circle, which lies whenever there's
+  // a creek, a hill, a one-way, or a railroad in the way. Fetched as a
+  // GeoJSON FeatureCollection from /api/isochrone, which proxies + caches
+  // the Mapbox Isochrone API. While loading or on error, isochrone is
+  // null and we fall back to the haversine circle filter below.
+  const [isochrone, setIsochrone] = useState<GeoJSON.FeatureCollection | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setIsochrone(null);
+    const params = new URLSearchParams({
+      lng: String(center.lng),
+      lat: String(center.lat),
+      mode,
+      minutes: String(minutes),
+    });
+    fetch(`/api/isochrone?${params.toString()}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled) return;
+        if (d?.ok && d.geojson) setIsochrone(d.geojson);
+      })
+      .catch(() => { /* keep null — falls back to circle */ });
+    return () => { cancelled = true; };
+  }, [center.lng, center.lat, mode, minutes]);
+
   const inside = useMemo(() => {
-    return places
-      .map((p) => ({ ...p, distance_m: haversineMeters({ lng: center.lng, lat: center.lat }, p.geom) }))
-      .filter((p) => (p.distance_m ?? Infinity) <= meters)
-      .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
-  }, [places, center.lng, center.lat, meters]);
+    // When the isochrone is loaded, filter by ACTUAL reachability
+    // (point-in-polygon). Otherwise fall back to haversine distance
+    // so the page always shows something useful even mid-fetch or on
+    // upstream failure.
+    const withDistance = places.map((p) => ({
+      ...p,
+      distance_m: haversineMeters({ lng: center.lng, lat: center.lat }, p.geom),
+    }));
+    const polys = isochrone ? collectPolygons(isochrone) : null;
+    const filtered = polys && polys.length > 0
+      ? withDistance.filter((p) => pointInAnyPolygon([p.geom.lng, p.geom.lat], polys))
+      : withDistance.filter((p) => (p.distance_m ?? Infinity) <= meters);
+    return filtered.sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
+  }, [places, center.lng, center.lat, meters, isochrone]);
 
   // Complete, taxonomy-driven grouping: every in-radius place lands in
   // exactly one group, ordered by the category tree. Σ group counts ===
@@ -346,6 +440,7 @@ export default function RadiusBuilder({
           center={{ lng: center.lng, lat: center.lat }}
           centerLabel={center.label}
           insidePlaces={insideDots}
+          reachable={isochrone}
           onCenterChange={(next) => {
             setMyLoc(next);
             setMyLocLabel("Pinned point");
