@@ -933,28 +933,25 @@ export default function AppMap({
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={true}
-          // Hillshading: Catoctin + South Mountain run the length of
-          // Frederick County. With the DEM terrain enabled, the
-          // mountains read as terrain instead of being invisible — the
-          // single biggest "this map was made for Frederick" signal.
-          terrain={{ source: "mapbox-dem", exaggeration: 1.15 }}
-          // Atmospheric fog softens the far edges of the county view
-          // and gives the map dimensionality at low pitch.
-          fog={{
-            range: [1, 12],
-            color: "rgba(160, 175, 195, 0.5)",
-            "horizon-blend": 0.08,
-          }}
+          // The terrain/fog combo we previously had assumed Standard's
+          // built-in mapbox-dem source. On dark-v11 that source isn't
+          // included, so terrain silently no-ops; applyFrederickPalette
+          // installs its OWN raster-dem source (fr-dem) and a hillshade
+          // LAYER that paints relief over the Catoctin + South Mountain
+          // ridges. The result reads as terrain-aware without the cost
+          // of a 3D mesh, and keeps wayfinding crisp at every zoom.
           interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
-            // Mapbox Standard is already a designed style — applying
-            // our System Black palette over it strips the daylight
-            // colors and atmosphere that make Standard read as
-            // "designed for here." Skipped on Standard, kept on the
-            // legacy v11 styles in case we revert.
-            if (!STYLE_URL.includes("standard")) applyFrederickPalette(e.target);
+            // System Black palette: rewrites the dark-v11 base into
+            // the Frederick Radius design — warm-dark land, civic
+            // blue water, suppressed POI clutter (our own pins are
+            // the points of interest), warm hillshade across the
+            // Catoctin + South Mountain ridges. The whole repaint
+            // is the difference between "Mapbox dark style" and
+            // "Frederick Radius map."
+            applyFrederickPalette(e.target);
             emitInView();
           }}
           onMoveEnd={emitInView}

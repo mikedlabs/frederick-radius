@@ -7,6 +7,7 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
+import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 /**
@@ -64,6 +65,7 @@ export default function CountyOverview({
         // requires the logo to remain visible when using their tiles,
         // and the default control sits compact in the bottom-right.
         style={{ width: "100%", height: "100%" }}
+        onLoad={(e) => applyFrederickPalette(e.target)}
       >
         {MUNICIPALITIES.map((m) => {
           const isSeat = m.slug === "frederick";
