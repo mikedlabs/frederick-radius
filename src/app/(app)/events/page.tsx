@@ -5,6 +5,7 @@ import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta }
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
+import EventsCompartmented from "@/components/event/EventsCompartmented";
 import EventCard from "@/components/event/EventCard";
 import WeekStrip from "@/components/event/WeekStrip";
 import TonightRail from "@/components/event/TonightRail";
@@ -90,6 +91,12 @@ export default async function EventsIndexPage({
   const monday = new Date(friday);
   monday.setDate(monday.getDate() + 3);
   monday.setHours(0, 0, 0, 0);
+
+  // 7 days from now — used by the "Next 7 days" compartment so it
+  // reads as "after this weekend, through next week" instead of the
+  // calendar-month-out tail.
+  const weekEnd = new Date(now);
+  weekEnd.setDate(weekEnd.getDate() + 7);
 
   // Parse the deep-link view server-side so the explorer's first paint
   // already reflects it (no post-mount setState, no hydration mismatch).
@@ -214,18 +221,62 @@ export default async function EventsIndexPage({
       {/* Visual entry points to the deeper category surfaces. */}
       <CategoryJumpTiles events={allEvents} />
 
-      <EventsExplorer
+      {/* Compartmented rooms — what replaces the long single-list
+          view. Each section is four tiles, a count, and a "See all"
+          link that deep-links into the EventsExplorer's filtered
+          view. The brief from the owner: "I get lost in long lists.
+          Give me rooms to walk into." This is those rooms. */}
+      <EventsCompartmented
         events={allEvents}
-        liveSlugs={liveSlugs}
-        categories={categories}
-        towns={towns}
         nowISO={now.toISOString()}
-        next24ISO={start24.toISOString()}
+        tomorrowEndISO={start24.toISOString()}
         weekendStartISO={friday.toISOString()}
         weekendEndISO={monday.toISOString()}
-        initialView={initialView}
-        initialDay={initialDay}
+        weekEndISO={weekEnd.toISOString()}
       />
+
+      {/* Full filter explorer — kept for the "I know what I want,
+          let me filter" case, but no longer the page's primary view.
+          Reads as the power-user tool below the rooms. */}
+      <details className="group rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
+        <summary
+          className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-[var(--app-bg-sunken)]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          <span>
+            <span
+              className="block text-[11px] font-medium uppercase tracking-[0.14em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Power view
+            </span>
+            <span className="font-serif text-base font-semibold tracking-tight">
+              Browse all events with filters
+            </span>
+          </span>
+          <span
+            className="text-[18px] transition-transform group-open:rotate-45"
+            aria-hidden
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            +
+          </span>
+        </summary>
+        <div className="border-t px-2 pt-4 pb-3" style={{ borderColor: "var(--app-border)" }}>
+          <EventsExplorer
+            events={allEvents}
+            liveSlugs={liveSlugs}
+            categories={categories}
+            towns={towns}
+            nowISO={now.toISOString()}
+            next24ISO={start24.toISOString()}
+            weekendStartISO={friday.toISOString()}
+            weekendEndISO={monday.toISOString()}
+            initialView={initialView}
+            initialDay={initialDay}
+          />
+        </div>
+      </details>
 
       {ingestedSeries.length > 0 && (
         <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
