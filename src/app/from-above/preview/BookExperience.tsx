@@ -313,19 +313,22 @@ function SwipeDeck({
           }}
           className="absolute inset-0 grid place-items-center will-change-transform"
         >
+          {/* object-fit: contain — preserves the portrait aspect of
+              the source photos. cover would crop top/bottom to fill
+              the viewport on landscape/desktop, making vertical
+              photographs read as landscape strips. contain letterboxes
+              the photo against the black canvas, which keeps the
+              "book held in front of you" metaphor on every viewport.
+              The photos directory is intentionally portrait-only
+              (build script filters at source) so this never produces
+              awkward sideways letterboxing. */}
           <div className="relative h-full w-full">
-            {/* object-fit: cover for full-bleed cinematic feel. Some
-                extracted photos carry residual page-margin whitespace
-                from the print layout; cover crops that out at the cost
-                of a small amount of photo edge — acceptable for a
-                magazine-style swipe deck where dramatic framing beats
-                edge fidelity. */}
             <Image
               src={photo.src}
               alt={`${chapter.label} · Downtown Frederick from above`}
               fill
               sizes="100vw"
-              style={{ objectFit: "cover", objectPosition: "center" }}
+              style={{ objectFit: "contain", objectPosition: "center" }}
               priority
             />
           </div>

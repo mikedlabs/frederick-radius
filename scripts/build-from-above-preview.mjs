@@ -22,7 +22,13 @@ const OUT = "public/from-above";
 const SIZES = [800, 1200, 1600];
 const MIN_LONG_EDGE = 1400; // skip tiny page elements / quote pages
 const MIN_RATIO = 0.55;     // skip very narrow trims (page numbers, captions)
-const MAX_RATIO = 2.4;      // skip super-wide bands (page chrome strips)
+// Portrait-only: book preview is vertical-by-design. The print PDF has
+// the occasional landscape spread, but on a phone-first swipe deck
+// landscape photos either get cropped to feel landscape (object-fit:
+// cover) or letterbox with huge black bars (object-fit: contain) —
+// neither reads. Enforce portrait at the source so the manifest can
+// never sneak a landscape in on a re-run.
+const MAX_RATIO = 0.95;
 // Pages we know are front matter (title, dedication, narrative, ToC,
 // section openers with quotes) and shouldn't make the digital cut.
 // Pages 1-12 are this book's front matter; the photography starts ~p-013.
