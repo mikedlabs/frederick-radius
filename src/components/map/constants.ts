@@ -191,9 +191,11 @@ export const FREDERICK: [number, number] = [-77.4105, 39.4143];
 // pop in civic blue, and lets the Catoctin hillshade register.
 //
 // The custom Frederick Radius Mapbox Studio style (P2-1) replaces
-// this when designed; until then dark-v11 + palette is the "designed
-// for here" path that costs no dashboard work.
-export const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
+// this when designed; until then light-v11 + applyFrederickPalette
+// is the "designed for here" path that costs no dashboard work.
+// Switched from dark-v11 (System Black era) to light-v11 in PR 7+:
+// the rest of the brand is paper-cream, so the map should be too.
+export const STYLE_URL = "mapbox://styles/mapbox/light-v11";
 
 // ── Curated-vs-OSM dedupe ───────────────────────────────────────────
 // The map renders our curated set AND the live OSM layer; anything in

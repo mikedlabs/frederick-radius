@@ -1,31 +1,34 @@
 /**
  * Repaint the Mapbox base style with the Frederick Radius brand.
  *
- * The interim base is a stock Mapbox dark style, which reads as a
- * generic Mapbox demo, not a designed civic product. Rather than fork a
- * style JSON (brittle, and the real custom style is the owner-only
- * Studio workflow, P2-1), we walk the loaded layers and rewrite paint
- * to the System Black brand: near-black land, warm-white restrained
- * labels, civic-blue water, muted-green parks. POI label clutter is
- * suppressed so the app's own pins are the points of interest.
+ * The base is Mapbox's stock light-v11. Rather than fork a style JSON
+ * (brittle, and the real custom style is the owner-only Studio
+ * workflow, P2-1), we walk the loaded layers and rewrite paint to
+ * Brand Book No. 01: paper-cream land, hairline-tan roads, Carroll
+ * Creek slate water, sage parks, warm-ink labels. POI label clutter
+ * is suppressed so the app's own pins are the points of interest.
  *
  * All writes are guarded: a missing layer or unsupported property is
  * skipped, so this is safe across Mapbox style updates and never throws.
  */
 import type { Map as GLMap } from "mapbox-gl";
 
-// Frederick System Black brand tokens.
-const INK0 = "#0A0A0A"; // System Black: background, land
-const SURFACE = "#121211"; // subtle lift for landuse
-const WATER = "#1B3A4B"; // muted civic blue (Carroll Creek, Monocacy)
-const PARK = "#22301F"; // muted green
-const BUILDING = "#161513"; // barely-there warm dark
-const ROAD_MINOR = "#1C1B19";
-const ROAD_MAJOR = "#2B2823";
-const ROAD_HWY = "#39342B"; // warm, the only roads with any presence
-const LABEL = "#F0ECE6"; // Warm White: primary labels
-const LABEL_2 = "#8C857A"; // muted: secondary labels
-const HALO = "#0A0A0A";
+// Brand Book No. 01 — paper-mode map tokens. Tracks the app palette
+// (--app-paper, --app-cool, --app-sage, --app-ink, --app-border)
+// but as literal hexes so we can pass them to Mapbox paint props
+// (which don't resolve CSS variables).
+const PAPER = "#F4EFE6"; // --app-paper: land background
+const PAPER_2 = "#ECE5D5"; // --app-paper-2: subtle lift for landuse
+const WATER = "#7FA4BB"; // soft Carroll Creek slate (lighter than --app-cool for light bg)
+const WATER_LINE = "#5C8AA8"; // stronger creek/river lines, --app-cool-2 family
+const PARK = "#C9D6BB"; // sage-tinted park green (--app-sage at 60% over paper)
+const BUILDING = "#DDD3BF"; // warm building card
+const ROAD_MINOR = "#D9D2C3"; // --app-border hairline
+const ROAD_MAJOR = "#C2B8A0"; // a step darker, warm road
+const ROAD_HWY = "#A89A7C"; // warm taupe highway
+const LABEL = "#1A1815"; // --app-ink: warm-dark primary label
+const LABEL_2 = "#6A6862"; // --app-ink-3: secondary label
+const HALO = "#F4EFE6"; // paper halo around dark text
 
 const has = (id: string, ...needles: string[]) =>
   needles.some((n) => id.includes(n));
@@ -63,10 +66,14 @@ function installRelief(map: GLMap): void {
           type: "hillshade",
           source: "fr-dem",
           paint: {
-            "hillshade-shadow-color": "#000000",
-            "hillshade-highlight-color": "#3A352B", // faint warm light
-            "hillshade-accent-color": "#0A0A0A",
-            "hillshade-exaggeration": 0.4, // relief, not a topo map
+            // Paper-mode hillshade: warm taupe shadow on the ridges,
+            // paper-cream highlight on the sunny side. Subtle enough
+            // that the relief reads as topographic texture, never as
+            // dark blotches on the cream ground.
+            "hillshade-shadow-color": "#B4A998",
+            "hillshade-highlight-color": "#FBF8F1",
+            "hillshade-accent-color": "#D9D2C3",
+            "hillshade-exaggeration": 0.3,
             "hillshade-illumination-direction": 315,
           },
         },
@@ -102,7 +109,7 @@ export function applyFrederickPalette(map: GLMap): void {
       };
 
       if (layer.type === "background") {
-        set("background-color", INK0);
+        set("background-color", PAPER);
         continue;
       }
 
@@ -112,16 +119,16 @@ export function applyFrederickPalette(map: GLMap): void {
           set("fill-color", PARK);
         else if (has(id, "building")) {
           set("fill-color", BUILDING);
-          set("fill-opacity", 0.6);
+          set("fill-opacity", 0.7);
         } else if (has(id, "landuse", "landcover", "land-structure"))
-          set("fill-color", SURFACE);
-        else set("fill-color", INK0);
+          set("fill-color", PAPER_2);
+        else set("fill-color", PAPER);
         continue;
       }
 
       if (layer.type === "fill-extrusion") {
         set("fill-extrusion-color", BUILDING);
-        set("fill-extrusion-opacity", 0.5);
+        set("fill-extrusion-opacity", 0.55);
         continue;
       }
 
@@ -129,8 +136,9 @@ export function applyFrederickPalette(map: GLMap): void {
         if (has(id, "water", "waterway", "river", "canal", "stream")) {
           // The Monocacy and Carroll Creek are the county's spine —
           // give them a confident, zoom-scaled presence instead of a
-          // default hairline, in the brand's lighter civic blue.
-          set("line-color", "#2C5A6E");
+          // default hairline, in Carroll Creek slate that reads
+          // against the paper-cream ground.
+          set("line-color", WATER_LINE);
           set("line-opacity", 0.9);
           set("line-width", [
             "interpolate",
@@ -159,8 +167,11 @@ export function applyFrederickPalette(map: GLMap): void {
         }
         const primary = has(id, "settlement", "place", "state", "country", "country-label");
         set("text-color", primary ? LABEL : LABEL_2);
+        // Paper halo around warm-ink text — gives small road labels
+        // and town names a soft printed-paper outline so they hold
+        // up against the topographic hillshade behind them.
         set("text-halo-color", HALO);
-        set("text-halo-width", 1.1);
+        set("text-halo-width", 1.2);
         if (has(id, "water-point", "water-line", "natural"))
           set("text-color", LABEL_2);
       }
