@@ -17,7 +17,7 @@ import SourceBadge from "./SourceBadge";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
-import { placeHoursTrust } from "@/lib/trust";
+import { placeHoursTrust, formatChecked } from "@/lib/trust";
 import { knownFor } from "@/lib/cuisine";
 import type { ParcelContext } from "@/lib/loaders/cofParcels";
 
@@ -501,28 +501,41 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
           />
         </div>
 
-        {/* Suggest an edit — a quiet escape valve for stale data. The
-            "report what's wrong" affordance was the one real missing
-            piece from the latest audit; users had no in-product way to
-            flag bad hours or a closed business short of clicking out
-            to email manually. The subject line carries the slug so the
-            inbox reply doesn't have to ask which place. */}
+        {/* Trust footer: a tiny "Updated …" pulse + a "see something
+            wrong" escape valve, on the same line. The freshness line
+            is the audit-asked "tiny proof point inside the workflow"
+            — strangers don't read /trust before they read a place
+            card, so the card has to prove itself. formatChecked()
+            renders Updated today / yesterday / N days ago / on Mon 12
+            and returns null when there's no timestamp, so the line
+            silently goes away on places we can't honestly date. */}
         <p
-          className="mt-3 text-center text-[11px]"
+          className="mt-3 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-[11px]"
           style={{ color: "var(--app-ink-3)" }}
         >
-          See something wrong?{" "}
-          <a
-            href={`mailto:hello@frederickradius.app?subject=${encodeURIComponent(
-              `Suggest an edit: ${place.name} (${place.slug})`,
-            )}&body=${encodeURIComponent(
-              `What I noticed about ${place.name}:\n\n\n(Optional) where I saw it: `,
-            )}`}
-            className="underline"
-            style={{ color: "var(--app-cool)" }}
-          >
-            Tell us
-          </a>
+          {(() => {
+            const checked = formatChecked(place.updated_at);
+            return checked ? (
+              <>
+                <span>{checked}</span>
+                <span aria-hidden>·</span>
+              </>
+            ) : null;
+          })()}
+          <span>
+            See something wrong?{" "}
+            <a
+              href={`mailto:hello@frederickradius.app?subject=${encodeURIComponent(
+                `Suggest an edit: ${place.name} (${place.slug})`,
+              )}&body=${encodeURIComponent(
+                `What I noticed about ${place.name}:\n\n\n(Optional) where I saw it: `,
+              )}`}
+              className="underline"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Tell us
+            </a>
+          </span>
         </p>
         </div>
       </div>

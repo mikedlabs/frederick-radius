@@ -20,6 +20,12 @@ export async function GET(request: Request) {
 
   let title = "Frederick Radius";
   let kicker = "A smarter way to experience Frederick County";
+  // `blurb` is the editorial one-liner shown below the title on place
+  // and municipality cards. Stable per-record (not time-bound), so it
+  // survives OG-image edge caching without going stale — which is why
+  // we don't try to bake open-status into the card here. The card has
+  // to read true a day from now.
+  let blurb: string | null = null;
   let accent = "#C4451C";
 
   if (type === "place") {
@@ -27,6 +33,7 @@ export async function GET(request: Request) {
     if (p) {
       title = p.name;
       kicker = `${CATEGORY_BY_SLUG[p.category]?.name ?? p.category} · ${p.city}, MD`;
+      blurb = p.short_blurb || null;
       accent = CATEGORY_BY_SLUG[p.category]?.color ?? accent;
     }
   } else if (type === "event") {
@@ -41,6 +48,7 @@ export async function GET(request: Request) {
     if (m) {
       title = m.name;
       kicker = `Frederick County, Maryland · pop. ${m.population.toLocaleString()}`;
+      blurb = m.hero_blurb || null;
     }
   } else if (type === "category") {
     const c = CATEGORY_BY_SLUG[slug];
@@ -122,6 +130,22 @@ export async function GET(request: Request) {
           >
             {title}
           </div>
+          {/* Editorial one-liner — answers the audit's "object state /
+              one useful reason" ask without baking time-of-day into a
+              cached image. Stable per-record, so it reads true a day
+              from now. */}
+          {blurb && (
+            <div
+              style={{
+                fontSize: 32,
+                color: "#4A4A48",
+                lineHeight: 1.25,
+                maxWidth: 900,
+              }}
+            >
+              {blurb.length > 110 ? blurb.slice(0, 107) + "…" : blurb}
+            </div>
+          )}
         </div>
         <div
           style={{
