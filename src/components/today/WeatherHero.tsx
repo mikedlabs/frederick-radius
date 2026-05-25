@@ -159,6 +159,22 @@ export default async function WeatherHero() {
         ? "var(--app-ink-2)"
         : "var(--app-ink)";
 
+  // Brand-palette wash. The card lifts from flat paper to a quiet
+  // gradient that carries a brand cue tied to the forecast — almanac
+  // gold for a good day, Carroll Creek slate for a rough one, sage
+  // for the in-between, paper-2 as the default. All tinted at 7-10%
+  // over the paper-cream background so the card stays readable and
+  // doesn't fight any content on top.
+  const accentToken =
+    verdict?.tone === "rough"
+      ? "var(--app-cool)"
+      : verdict?.tone === "mixed"
+        ? "var(--app-sage)"
+        : verdict?.tone === "good"
+          ? "var(--app-accent)"
+          : "var(--app-paper-2)";
+  const heroBg = `linear-gradient(155deg, var(--app-bg-elevated) 0%, color-mix(in srgb, ${accentToken} 9%, var(--app-bg-elevated)) 100%)`;
+
   // Daylight remaining — more useful than a bare sunset clock for an
   // app about getting out tonight.
   let daylightNote: string | null = null;
@@ -183,7 +199,8 @@ export default async function WeatherHero() {
       <Link
         href="/pulse"
         aria-label="Current weather and today's outlook — open the full weather board"
-        className="tactile tactile-feature relative block overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4 transition active:scale-[0.995]"
+        className="tactile tactile-feature relative block overflow-hidden rounded-[var(--app-radius-lg)] p-4 transition active:scale-[0.995]"
+        style={{ background: heroBg }}
       >
         {cur ? (
           <>

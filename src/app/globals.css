@@ -939,6 +939,58 @@ html.dark .shimmer::after {
 .text-balance { text-wrap: balance; }
 .text-pretty { text-wrap: pretty; }
 
+/* ─────────────────────────────────────────────────────
+ * Brand Book No. 01 — paper textures.
+ * Two decorative backgrounds the brand book defines for
+ * surfaces that should read as printed paper, not flat CSS.
+ *
+ * .topo-bg     — concentric elliptical sage rings, like the
+ *                contour lines on a USGS topographic map.
+ *                Wires --app-sage into actual use; subtle
+ *                enough to layer behind text.
+ * .grid-paper  — quiet ink-tinted grid, like the back of a
+ *                field notebook page. Good for forms and
+ *                editorial inserts.
+ *
+ * Both stack additively over whatever background-color the
+ * element has, so a card stays paper-cream and gets the
+ * texture on top.
+ * ───────────────────────────────────────────────────── */
+.topo-bg {
+  background-image:
+    radial-gradient(
+      ellipse 40% 30% at 30% 40%,
+      transparent 49%,
+      color-mix(in srgb, var(--app-sage) 15%, transparent) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      ellipse 38% 28% at 30% 40%,
+      transparent 49%,
+      color-mix(in srgb, var(--app-sage) 12%, transparent) 50%,
+      transparent 51%
+    ),
+    radial-gradient(
+      ellipse 35% 25% at 30% 40%,
+      transparent 49%,
+      color-mix(in srgb, var(--app-sage) 10%, transparent) 50%,
+      transparent 51%
+    );
+}
+.grid-paper {
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--app-ink) 4%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--app-ink) 4%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 24px 24px;
+}
+
 /* Entrance: stagger children on first paint. CSS-only and SSR-safe —
  * content is visible by default; ONLY the first render animates (via
  * @starting-style, same proven pattern as .fade-up). The global
