@@ -59,6 +59,22 @@ export async function GET(request: Request) {
     }
   }
 
+  // OG card palette — Brand Book No. 01 (May 2026): paper cream
+  // ground, warm ink, almanac brick, hairline rule, ink-2 mid-grey
+  // for kicker + footer. Serif fallback stack so the social card
+  // reads as field-guide print, not SaaS dashboard. Newsreader +
+  // Instrument Serif aren't loaded here yet — that needs woff2
+  // bundling (follow-up). For now the fallback serif chain renders
+  // a respectable system serif on Vercel's @vercel/og runtime.
+  const PAPER = "#F4EFE6";
+  const PAPER_2 = "#ECE5D5";
+  const INK = "#1A1815";
+  const INK_2 = "#4A4844";
+  const INK_3 = "#6A6862";
+  const HAIRLINE = "#D9D2C3";
+  const SERIF = "Newsreader, 'Iowan Old Style', Georgia, 'Times New Roman', serif";
+  const ITALIC = "'Instrument Serif', Newsreader, Georgia, serif";
+
   return new ImageResponse(
     (
       <div
@@ -69,11 +85,11 @@ export async function GET(request: Request) {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 80,
-          background:
-            "linear-gradient(135deg, #FAFAF7 0%, #F2F1EC 100%)",
-          fontFamily: "system-ui",
+          background: `linear-gradient(135deg, ${PAPER} 0%, ${PAPER_2} 100%)`,
+          fontFamily: SERIF,
         }}
       >
+        {/* Masthead — wordmark + brick dot */}
         <div
           style={{
             display: "flex",
@@ -101,29 +117,35 @@ export async function GET(request: Request) {
                 width: 12,
                 height: 12,
                 borderRadius: 999,
-                background: "white",
+                background: PAPER,
               }}
             />
           </div>
           Frederick Radius
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          {/* Kicker — mono-ish editorial eyebrow, widely tracked
+              and uppercased. The Brand Book uses Public Sans / mono
+              here, but on the OG card the all-caps tracked treatment
+              reads as field-guide kicker regardless of fallback. */}
           <div
             style={{
               fontSize: 24,
-              color: "#7A7975",
-              letterSpacing: 1,
+              color: INK_3,
+              letterSpacing: 3,
               textTransform: "uppercase",
               fontWeight: 500,
             }}
           >
             {kicker}
           </div>
+          {/* Title — serif display, the page's editorial weight. */}
           <div
             style={{
+              fontFamily: SERIF,
               fontSize: 88,
               fontWeight: 700,
-              color: "#1A1A1A",
+              color: INK,
               letterSpacing: -2,
               lineHeight: 1,
             }}
@@ -133,12 +155,15 @@ export async function GET(request: Request) {
           {/* Editorial one-liner — answers the audit's "object state /
               one useful reason" ask without baking time-of-day into a
               cached image. Stable per-record, so it reads true a day
-              from now. */}
+              from now. Set in Instrument Serif italic — the Brand
+              Book voice for taglines + pull-quotes. */}
           {blurb && (
             <div
               style={{
+                fontFamily: ITALIC,
+                fontStyle: "italic",
                 fontSize: 32,
-                color: "#4A4A48",
+                color: INK_2,
                 lineHeight: 1.25,
                 maxWidth: 900,
               }}
@@ -147,19 +172,29 @@ export async function GET(request: Request) {
             </div>
           )}
         </div>
+        {/* Footer — hairline rule + domain + type chip */}
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-end",
-            fontSize: 22,
-            color: "#4A4A48",
+            flexDirection: "column",
+            gap: 12,
           }}
         >
-          <div>frederickradius.app</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#7A7975" }}>
-            <span style={{ width: 8, height: 8, borderRadius: 999, background: accent }} />
-            {type === "place" ? "Place" : type === "event" ? "Event" : type === "municipality" ? "Town" : type === "category" ? "Category" : "Local discovery"}
+          <div style={{ width: "100%", height: 1, background: HAIRLINE }} />
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-end",
+              fontSize: 22,
+              color: INK_2,
+            }}
+          >
+            <div>frederickradius.app</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: INK_3 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 999, background: accent }} />
+              {type === "place" ? "Place" : type === "event" ? "Event" : type === "municipality" ? "Town" : type === "category" ? "Category" : "Local discovery"}
+            </div>
           </div>
         </div>
       </div>
