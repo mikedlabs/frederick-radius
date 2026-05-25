@@ -335,7 +335,7 @@ export default function AppMap({
     // Commercial businesses (restaurants/shops/bars) only show when user opts in.
     // Amenities (restrooms, water, trash, dog stations) only show when user opts in
     // (these are useful but dense — would clutter the map otherwise).
-    // Always filter known-closed places (VOLT, Idiom, etc.) — even from the
+    // Always filter known-closed places (manual denylist) — even from the
     // unverified opt-in view. We never want to show a closed business as open.
     // Trusted-only: the "+N unverified" opt-in was retired — exposing
     // weaker-quality OSM data violated the editorial promise.

@@ -26,7 +26,7 @@ const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
 /**
  * Wrap each occurrence of `needle` in the haystack with a <mark> span.
  * Case-insensitive; preserves the original casing of the haystack so
- * "Volt" still reads "Volt" with the matched portion highlighted.
+ * "Tabù" still reads "Tabù" with the matched portion highlighted.
  * Renders the rest as plain text fragments so React keeps it stable.
  */
 function highlight(haystack: string, needle: string): React.ReactNode {

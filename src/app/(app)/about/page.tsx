@@ -169,12 +169,13 @@ export default function AboutPage() {
           className="mt-2 text-[14px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Google Maps knows where Volt is. It doesn&apos;t know
-          there&apos;s an Alive @ Five food-truck Friday on Carroll
-          Creek, or that the brewery on a side street in Brunswick
-          beats the one downtown. The county website lists meetings,
-          not Saturday plans. We sit in the gap: a hyperlocal field
-          guide tuned for one place, by people who live here.
+          Google Maps knows where every restaurant on Market Street
+          is. It doesn&apos;t know there&apos;s an Alive @ Five
+          food-truck Friday on Carroll Creek, or that the brewery on
+          a side street in Brunswick beats the one downtown. The
+          county website lists meetings, not Saturday plans. We sit
+          in the gap: a hyperlocal field guide tuned for one place,
+          by people who live here.
         </p>
       </section>
 
