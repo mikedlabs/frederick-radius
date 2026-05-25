@@ -222,8 +222,13 @@ export type PlaceEnriched = {
 const ENRICHMENT_VERIFIED_AT = "2026-05-14T00:00:00Z";
 const SEED_PLACE_VERIFIED_AT = "2026-05-14T00:00:00Z";
 
-const photoProxy = (name: string, w = 800) =>
-  `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}`;
+// Slug is optional but recommended: when included, the photo route uses
+// it to render a richer fallback placeholder (place initials + category
+// color) on the days Google rotates the underlying photo reference and
+// the upstream fetch fails. Without the slug, the placeholder degrades
+// to a generic gradient.
+const photoProxy = (name: string, w = 800, slug?: string) =>
+  `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}${slug ? `&slug=${encodeURIComponent(slug)}` : ""}`;
 
 export type PlaceCardData = Place & PlaceEnriched & {
   open_status: OpenStatus;
@@ -284,8 +289,8 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     // If Google gave us hours, we consider hours verified.
     hours_verified: e.has_hours ? true : p.hours_verified,
     is_verified: e.business_status === "OPERATIONAL" ? true : p.is_verified,
-    google_photo_url: photos[0] ? photoProxy(photos[0], 800) : undefined,
-    google_photos: photos.map((n) => photoProxy(n, 800)),
+    google_photo_url: photos[0] ? photoProxy(photos[0], 800, p.slug) : undefined,
+    google_photos: photos.map((n) => photoProxy(n, 800, p.slug)),
     google_rating: e.rating,
     google_rating_count: e.user_rating_count,
     google_hours: e.weekday_hours,

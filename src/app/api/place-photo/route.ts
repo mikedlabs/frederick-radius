@@ -14,12 +14,31 @@
 import { NextRequest } from "next/server";
 import { photoUrl } from "@/lib/integrations/google-places";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
+import { PLACE_BY_SLUG } from "@/data/places";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 export const runtime = "nodejs";
 // Cache the proxied image aggressively — photos rarely change.
 export const revalidate = 604800; // 7 days
 
 const VALID_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
+const VALID_SLUG = /^[a-z0-9-]+$/;
+
+/**
+ * Pull display initials from a place name. "Brewers Alley" → "BA";
+ * "Sumittra Thai Cuisine" → "ST"; single-word "Volt" → "VO". Anything
+ * already two characters or shorter stays as-is. Drops parens / dashes
+ * / business filler.
+ */
+function initialsOf(name: string): string {
+  const words = name
+    .replace(/[(),'.&]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 0 && !/^(the|of|and|at|in|on)$/i.test(w));
+  if (words.length === 0) return "FR";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
 
 /**
  * SVG placeholder served when upstream fails. Returning a real image
@@ -28,16 +47,42 @@ const VALID_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
  * gradient tile. This is what we want for hero/marquee photos where a
  * single 502 used to leave a glaring gap.
  *
- * The hash of the resource name picks a stable hue so two cards on
- * the same screen don't both fall back to the same color.
+ * When the caller passes a place slug, we render a RICHER fallback:
+ * place initials in big serif type on a category-colored gradient. A
+ * lot more like a "this is a real place we just don't have a photo
+ * for right now" tile than the old generic gradient circle. Falls
+ * back to the hash-colored gradient when no slug or no place match,
+ * so the function is always safe to call.
  */
-function placeholderSvg(name: string, w: number): string {
+function placeholderSvg(name: string, w: number, slug?: string): string {
+  const aspect = 4 / 3;
+  const hgt = Math.round(w / aspect);
+
+  // Rich path: known slug → use the place's name + category color
+  const place = slug ? PLACE_BY_SLUG[slug] : undefined;
+  if (place) {
+    const cat = CATEGORY_BY_SLUG[place.category];
+    const accent = cat?.color ?? "#C4451C";
+    const ini = initialsOf(place.name);
+    const fontSize = Math.round(hgt * 0.42);
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="${accent}" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="${accent}" stop-opacity="0.18"/>
+    </linearGradient>
+  </defs>
+  <rect width="${w}" height="${hgt}" fill="#1A1815"/>
+  <rect width="${w}" height="${hgt}" fill="url(#g)"/>
+  <text x="${w / 2}" y="${hgt / 2}" text-anchor="middle" dominant-baseline="central" font-family="Georgia, 'Times New Roman', serif" font-weight="600" font-size="${fontSize}" fill="${accent}" fill-opacity="0.88" letter-spacing="${Math.round(fontSize * 0.04)}">${ini}</text>
+</svg>`;
+  }
+
+  // Generic gradient fallback (no slug or unknown slug).
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
   const hue = Math.abs(h) % 360;
   const h2 = (hue + 30) % 360;
-  const aspect = 4 / 3;
-  const hgt = Math.round(w / aspect);
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}" preserveAspectRatio="xMidYMid slice">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -50,8 +95,8 @@ function placeholderSvg(name: string, w: number): string {
 </svg>`;
 }
 
-function placeholderResponse(name: string, w: number, reason: string): Response {
-  return new Response(placeholderSvg(name, w), {
+function placeholderResponse(name: string, w: number, reason: string, slug?: string): Response {
+  return new Response(placeholderSvg(name, w, slug), {
     status: 200,
     headers: {
       "Content-Type": "image/svg+xml",
@@ -80,6 +125,11 @@ export async function GET(req: NextRequest) {
 
   const name = req.nextUrl.searchParams.get("name");
   const w = Math.min(1600, Math.max(80, parseInt(req.nextUrl.searchParams.get("w") || "800", 10)));
+  const rawSlug = req.nextUrl.searchParams.get("slug") || undefined;
+  // Defense in depth: even though the loader-generated URLs always
+  // contain a clean slug, we validate before using to look the place
+  // up in PLACE_BY_SLUG.
+  const slug = rawSlug && VALID_SLUG.test(rawSlug) ? rawSlug : undefined;
 
   if (!name || !VALID_NAME.test(name)) {
     return new Response("Bad photo name", { status: 400 });
@@ -89,7 +139,7 @@ export async function GET(req: NextRequest) {
   if (!url) {
     // Key not configured — degrade to a gradient placeholder so the
     // page still renders coherently in dev / on misconfigured deploys.
-    return placeholderResponse(name, w, "no-key");
+    return placeholderResponse(name, w, "no-key", slug);
   }
 
   try {
@@ -101,7 +151,7 @@ export async function GET(req: NextRequest) {
     if (!upstream.ok || !upstream.body) {
       // Upstream 4xx/5xx (rotated photo reference, throttled, etc.) —
       // serve the placeholder so the image element doesn't break.
-      return placeholderResponse(name, w, `upstream-${upstream.status}`);
+      return placeholderResponse(name, w, `upstream-${upstream.status}`, slug);
     }
     return new Response(upstream.body, {
       status: 200,
@@ -111,6 +161,6 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch {
-    return placeholderResponse(name, w, "fetch-error");
+    return placeholderResponse(name, w, "fetch-error", slug);
   }
 }

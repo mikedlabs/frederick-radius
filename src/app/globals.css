@@ -702,32 +702,39 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 /* ─────────────────────────────────────────────────────
  * Mapbox popup close button — the default × is ~12px,
  * which is unreliably tiny under a fingertip. Bump it to a
- * 32px tap target with a subtle hit area so users on mobile
- * can actually close place / event preview cards.
+ * 44px tap target (Apple HIG minimum) with a circular hit
+ * area + subtle background so users on mobile can actually
+ * find AND close place / event preview cards.
+ * Combined with closeOnClick={true} on the popup, this is
+ * three ways out: tap the X, tap outside, swipe down (when
+ * the place sheet opens behind a marker tap).
  * Applies to AppMap (/map) and RadiusMap fallback paths.
  * ───────────────────────────────────────────────────── */
 .mapboxgl-popup-close-button {
-  width: 32px !important;
-  height: 32px !important;
-  font-size: 20px !important;
+  width: 44px !important;
+  height: 44px !important;
+  font-size: 24px !important;
   line-height: 1 !important;
-  color: var(--app-ink-3) !important;
+  color: var(--app-ink-2) !important;
+  background: color-mix(in srgb, var(--app-bg-elevated) 92%, transparent) !important;
   border-radius: 9999px !important;
   display: grid !important;
   place-items: center !important;
   padding: 0 !important;
-  right: 4px !important;
-  top: 4px !important;
+  right: 6px !important;
+  top: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  font-weight: 500;
 }
 .mapboxgl-popup-close-button:hover,
 .mapboxgl-popup-close-button:focus-visible {
-  background: color-mix(in srgb, var(--app-ink) 8%, transparent) !important;
+  background: color-mix(in srgb, var(--app-ink) 14%, var(--app-bg-elevated)) !important;
   color: var(--app-ink) !important;
 }
 /* Popup content needs more right padding so the bigger close
  * button doesn't overlap the headline. */
 .mapboxgl-popup-content {
-  padding: 12px 40px 12px 12px !important;
+  padding: 14px 56px 14px 14px !important;
 }
 
 /* ─────────────────────────────────────────────────────
