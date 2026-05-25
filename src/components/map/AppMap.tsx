@@ -455,7 +455,7 @@ export default function AppMap({
         slug: p.slug,
         name: p.name,
         category: p.category,
-        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C",
+        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#A8462C",
         bucket: bucketOf(p.category),
         // Draw order within the curated tier: verified places first so
         // the strongest pins win the spot when icons stack.
@@ -473,7 +473,7 @@ export default function AppMap({
       features: p
         ? [{
             type: "Feature" as const,
-            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#C4451C" },
+            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#A8462C" },
             geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
           }]
         : [],
@@ -831,12 +831,12 @@ export default function AppMap({
               className="inline-flex max-w-full items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold shadow-[var(--app-shadow-2)] backdrop-blur"
               style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)", color: "var(--app-ink-2)" }}
             >
-              <span aria-hidden style={{ color: "#2A5D8F" }}>→</span>
+              <span aria-hidden style={{ color: "#2F5470" }}>→</span>
               <span className="truncate">{routeInfo.name}</span>
               <span style={{ color: "var(--app-ink-3)" }}>
                 {routeInfo.dist} · ~{routeInfo.drive} min drive
               </span>
-              <span style={{ color: "#2A5D8F" }}>Directions ↗</span>
+              <span style={{ color: "#2F5470" }}>Directions ↗</span>
             </a>
           </div>
         )}
@@ -1004,7 +1004,7 @@ export default function AppMap({
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "var(--app-cool, #2A5D8F)",
+                "line-color": "var(--app-cool, #2F5470)",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 14, 3, 17, 5],
                 "line-opacity": 0.75,
               }}
@@ -1041,7 +1041,7 @@ export default function AppMap({
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": "#2A5D8F",
+                "circle-color": "#2F5470",
                 "circle-opacity": 0.14,
                 "circle-blur": 1,
                 "circle-radius": [
@@ -1060,7 +1060,7 @@ export default function AppMap({
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": "#2A5D8F",
+                "circle-color": "#2F5470",
                 "circle-opacity": 0.55,
                 "circle-blur": 0.25,
                 "circle-radius": [
@@ -1147,7 +1147,7 @@ export default function AppMap({
               minzoom={10}
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": "#2A5D8F",
+                "circle-color": "#2F5470",
                 "circle-opacity": 0.5,
                 "circle-blur": 0.25,
                 "circle-radius": [
@@ -1257,13 +1257,13 @@ export default function AppMap({
                   ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
                   [
                     "case",
-                    ["==", ["var", "mx"], 0], "#C4451C",
+                    ["==", ["var", "mx"], 0], "#A8462C",
                     ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
                     ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
                     ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
                     ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
                     ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
-                    "#C4451C",
+                    "#A8462C",
                   ],
                 ],
                 "circle-opacity": 0.18,
@@ -1287,13 +1287,13 @@ export default function AppMap({
                   ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
                   [
                     "case",
-                    ["==", ["var", "mx"], 0], "#C4451C",
+                    ["==", ["var", "mx"], 0], "#A8462C",
                     ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
                     ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
                     ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
                     ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
                     ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
-                    "#C4451C",
+                    "#A8462C",
                   ],
                 ],
                 // Calm category tint. The count label below restores
@@ -1438,14 +1438,14 @@ export default function AppMap({
               id="ring-fill"
               type="fill"
               beforeId="curated-clusters"
-              paint={{ "fill-color": "#C4451C", "fill-opacity": 0.07 }}
+              paint={{ "fill-color": "#A8462C", "fill-opacity": 0.07 }}
             />
             <Layer
               id="ring-line"
               type="line"
               beforeId="curated-clusters"
               paint={{
-                "line-color": "#C4451C",
+                "line-color": "#A8462C",
                 "line-width": 2,
                 "line-opacity": 0.55,
                 "line-dasharray": [2, 2],
@@ -1456,14 +1456,14 @@ export default function AppMap({
             <Layer
               id="dot-halo"
               type="circle"
-              paint={{ "circle-radius": 13, "circle-color": "#2A5D8F", "circle-opacity": 0.22 }}
+              paint={{ "circle-radius": 13, "circle-color": "#2F5470", "circle-opacity": 0.22 }}
             />
             <Layer
               id="dot-core"
               type="circle"
               paint={{
                 "circle-radius": 5,
-                "circle-color": "#2A5D8F",
+                "circle-color": "#2F5470",
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 2,
               }}
@@ -1476,7 +1476,7 @@ export default function AppMap({
               beforeId="curated-clusters"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "#2A5D8F",
+                "line-color": "#2F5470",
                 "line-width": 3.5,
                 "line-opacity": 0.75,
                 "line-dasharray": [0.5, 1.6],
@@ -1491,7 +1491,7 @@ export default function AppMap({
               type="circle"
               paint={{
                 "circle-radius": 9,
-                "circle-color": ["match", ["get", "kind"], "traffic", "#D9A441", "#2A5D8F"],
+                "circle-color": ["match", ["get", "kind"], "traffic", "#C99632", "#2F5470"],
                 "circle-opacity": 0.22,
               }}
             />
@@ -1500,7 +1500,7 @@ export default function AppMap({
               type="circle"
               paint={{
                 "circle-radius": 5,
-                "circle-color": ["match", ["get", "kind"], "traffic", "#D9A441", "#2A5D8F"],
+                "circle-color": ["match", ["get", "kind"], "traffic", "#C99632", "#2F5470"],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1.8,
               }}
@@ -1539,7 +1539,7 @@ export default function AppMap({
                       position: "absolute",
                       inset: 0,
                       borderRadius: 9999,
-                      background: "#C4451C",
+                      background: "#A8462C",
                       opacity: 0.5,
                       animation: "fr-ft-pulse 2.2s ease-out infinite",
                     }}
@@ -1554,7 +1554,7 @@ export default function AppMap({
                       height: 28,
                       borderRadius: 9999,
                       background: "#fff",
-                      border: "1.5px solid #C4451C",
+                      border: "1.5px solid #A8462C",
                       boxShadow: "var(--app-shadow-2)",
                       fontSize: 15,
                       lineHeight: 1,
@@ -1614,7 +1614,7 @@ export default function AppMap({
                       position: "absolute",
                       inset: 0,
                       borderRadius: 9999,
-                      background: "#D9A441",
+                      background: "#C99632",
                       opacity: 0.5,
                       animation: "fr-rp-pulse 2.2s ease-out infinite",
                     }}
@@ -1629,7 +1629,7 @@ export default function AppMap({
                       height: 28,
                       borderRadius: 9999,
                       background: "#fff",
-                      border: "1.5px solid #D9A441",
+                      border: "1.5px solid #C99632",
                       boxShadow: "var(--app-shadow-2)",
                       fontSize: 15,
                       lineHeight: 1,
@@ -1694,7 +1694,7 @@ export default function AppMap({
                     position: "absolute",
                     inset: 4,
                     borderRadius: 9999,
-                    background: e.category_color || "#C4451C",
+                    background: e.category_color || "#A8462C",
                     opacity: 0.32,
                     animation: "fr-ev-pulse 2.6s ease-out infinite",
                   }}
@@ -1710,7 +1710,7 @@ export default function AppMap({
                     borderRadius: 9999,
                     background: e.hero_image
                       ? `center/cover no-repeat url("${e.hero_image}")`
-                      : e.category_color || "#C4451C",
+                      : e.category_color || "#A8462C",
                     border: `2px solid #fff`,
                     boxShadow: "var(--app-shadow-2)",
                     color: "#fff",

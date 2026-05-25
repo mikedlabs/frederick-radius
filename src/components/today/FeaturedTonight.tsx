@@ -34,7 +34,7 @@ export default function FeaturedTonight({ place }: { place: PlaceCardData | null
         <div className="absolute inset-x-0 top-0 flex items-start justify-between p-4">
           <span
             className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur"
-            style={{ background: `${cat?.color ?? "#C4451C"}D0` }}
+            style={{ background: `${cat?.color ?? "#A8462C"}D0` }}
           >
             Featured tonight
           </span>

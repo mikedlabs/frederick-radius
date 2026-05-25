@@ -52,7 +52,7 @@ const KNOWN: Array<[string, SourceMeta]> = [
   ],
   [
     "frederick county government",
-    { lane: "gov", mediaType: "civic", brandColor: "#2A5D8F", display: "Frederick County Gov.", monogram: "FC" },
+    { lane: "gov", mediaType: "civic", brandColor: "#2F5470", display: "Frederick County Gov.", monogram: "FC" },
   ],
   [
     "fcps",
@@ -74,11 +74,11 @@ const KNOWN: Array<[string, SourceMeta]> = [
   // ── Print / news outlets ──────────────────────────────────────────
   [
     "frederick news-post",
-    { lane: "press", mediaType: "print", brandColor: "#C4451C", display: "Frederick News-Post", monogram: "FN" },
+    { lane: "press", mediaType: "print", brandColor: "#A8462C", display: "Frederick News-Post", monogram: "FN" },
   ],
   [
     "fredericknewspost",
-    { lane: "press", mediaType: "print", brandColor: "#C4451C", display: "Frederick News-Post", monogram: "FN" },
+    { lane: "press", mediaType: "print", brandColor: "#A8462C", display: "Frederick News-Post", monogram: "FN" },
   ],
   [
     "baltimore sun",
@@ -179,7 +179,7 @@ const KNOWN: Array<[string, SourceMeta]> = [
 ];
 
 const PRESS_FALLBACK_COLOR = "#6F6A63";
-const GOV_FALLBACK_COLOR = "#2A5D8F";
+const GOV_FALLBACK_COLOR = "#2F5470";
 
 const STOPWORDS = new Set([
   "the", "a", "an", "of", "and", "or", "for", "in", "on", "at", "to", "by",
@@ -241,12 +241,12 @@ export const LANE_META: Record<
   gov: {
     label: "Government",
     tagline: "Official county, city, school, and law-enforcement releases.",
-    color: "#2A5D8F",
+    color: "#2F5470",
   },
   press: {
     label: "Press & Broadcast",
     tagline: "Newsrooms, TV stations, radio, and wires covering Frederick County.",
-    color: "#C4451C",
+    color: "#A8462C",
   },
   community: {
     label: "Community",

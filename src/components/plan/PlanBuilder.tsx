@@ -60,7 +60,7 @@ const PRESETS: Preset[] = [
     vibe: "easy",
     hours: 4,
     start: "evening",
-    color: "#C4451C",
+    color: "#A8462C",
   },
   {
     id: "first-date",
@@ -104,7 +104,7 @@ const PRESETS: Preset[] = [
     vibe: "cultural",
     hours: 3,
     start: "afternoon",
-    color: "#2A5D8F",
+    color: "#2F5470",
   },
   {
     id: "sunny-saturday",
@@ -115,7 +115,7 @@ const PRESETS: Preset[] = [
     vibe: "outdoors",
     hours: 6,
     start: "afternoon",
-    color: "#D9A441",
+    color: "#C99632",
   },
   {
     id: "showing-friends",
@@ -126,7 +126,7 @@ const PRESETS: Preset[] = [
     vibe: "cultural",
     hours: 6,
     start: "afternoon",
-    color: "#2A5D8F",
+    color: "#2F5470",
   },
 ];
 
