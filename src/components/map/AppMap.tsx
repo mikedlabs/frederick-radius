@@ -1572,7 +1572,7 @@ export default function AppMap({
               latitude={truck.lat}
               anchor="bottom"
               offset={22}
-              closeOnClick={false}
+              closeOnClick={true}
               onClose={() => setTruck(null)}
               maxWidth="280px"
             >
@@ -1647,7 +1647,7 @@ export default function AppMap({
               latitude={pointsPlace.lat}
               anchor="bottom"
               offset={22}
-              closeOnClick={false}
+              closeOnClick={true}
               onClose={() => setPointsPlace(null)}
               maxWidth="280px"
             >
@@ -1730,7 +1730,7 @@ export default function AppMap({
               latitude={selectedEvent.lat}
               anchor="bottom"
               offset={28}
-              closeOnClick={false}
+              closeOnClick={true}
               onClose={() => setSelectedEvent(null)}
               maxWidth="280px"
             >
@@ -1765,7 +1765,7 @@ export default function AppMap({
               latitude={selected._kind === "place" ? selected.geom.lat : selected.lat}
               anchor="bottom"
               offset={14}
-              closeOnClick={false}
+              closeOnClick={true}
               onClose={() => setSelected(null)}
               maxWidth="300px"
             >
