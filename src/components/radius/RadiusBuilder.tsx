@@ -75,6 +75,28 @@ function groupOrder(key: string): number {
   return CATEGORY_BY_SLUG[key]?.display_order ?? 9_000;
 }
 
+// "Walk", "Bike ride", "Drive" → the verb-noun form you say in
+// conversation, which reads more naturally in the sentence-form
+// headline than "walk/bike/drive" alone. "distance" (the raw-radius
+// mode) gets a fallback that still reads sane in the same sentence.
+const MODE_VERB: Record<TravelMode, string> = {
+  walk: "walk",
+  bike: "bike ride",
+  drive: "drive",
+  distance: "reach",
+};
+
+/**
+ * Oxford-comma list. "a, b, and c" — used by the sentence-form summary
+ * so the headline reads as plain English instead of a UI label.
+ */
+function formatList(items: string[]): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
 type ViewMode = "grid" | "list";
 const VIEW_KEY = "fr:radius:view:v1";
 type SortMode = "near" | "az";
@@ -373,9 +395,9 @@ export default function RadiusBuilder({
               <span
                 className="ml-auto hidden min-w-0 max-w-[40%] truncate text-[11px] sm:inline"
                 style={{ color: "var(--app-ink-3)" }}
-                title={`At the edge: ${edgePlace.name}`}
+                title={`Farthest point in this radius: ${edgePlace.name}`}
               >
-                edge: <span style={{ color: "var(--app-ink-2)" }}>{edgePlace.name}</span>
+                farthest: <span style={{ color: "var(--app-ink-2)" }}>{edgePlace.name}</span>
               </span>
             )}
           </div>
@@ -530,11 +552,16 @@ export default function RadiusBuilder({
       {/* Category tile grid — the new landing for the lower half.
           Compact, colorful, scannable. Tap a tile to expand JUST
           that section inline below. Default is tiles-only; the user
-          can flip to the full directory view with "See everything". */}
+          can flip to the full directory view with "See everything".
+          Headline is sentence-form ("You're within a 10-minute walk of
+          food, parks, and arts.") so the page reads as an ANSWER, not
+          a numeric count. The count moves below as the secondary line.
+          Implicitly responds to a quick-pick tap too: the sentence
+          rewrites the moment mode/minutes change. */}
       {groups.length > 0 && (
         <section aria-label="Categories in radius" className="space-y-3">
           <header className="flex items-end justify-between gap-2">
-            <div>
+            <div className="min-w-0 flex-1">
               <p
                 className="text-[10px] font-bold uppercase tracking-[0.12em]"
                 style={{ color: "var(--app-ink-3)" }}
@@ -542,11 +569,25 @@ export default function RadiusBuilder({
                 Inside this radius
               </p>
               <h2
-                className="mt-0.5 font-serif text-[18px] font-semibold tracking-tight"
+                className="mt-0.5 font-serif text-[18px] font-semibold leading-snug tracking-tight"
                 style={{ color: "var(--app-ink)" }}
               >
-                {inside.length} places · {groups.length} categories
+                {(() => {
+                  const tops = groups
+                    .slice(0, 4)
+                    .map((g) => g.label.toLowerCase());
+                  if (tops.length === 0) {
+                    return `${inside.length} place${inside.length === 1 ? "" : "s"} within this radius.`;
+                  }
+                  return `You're within a ${minutes}-minute ${MODE_VERB[mode]} of ${formatList(tops)}.`;
+                })()}
               </h2>
+              <p
+                className="mt-1 text-[11px] tabular-nums"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {inside.length.toLocaleString()} place{inside.length === 1 ? "" : "s"} · {groups.length} categor{groups.length === 1 ? "y" : "ies"}
+              </p>
             </div>
             <button
               type="button"

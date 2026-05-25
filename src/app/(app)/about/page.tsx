@@ -81,7 +81,7 @@ export default function AboutPage() {
             className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[14px] font-semibold"
             style={{ background: "var(--app-brand)", color: "white" }}
           >
-            Open the field guide
+            See what&apos;s useful today
             <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
           </Link>
           <Link
