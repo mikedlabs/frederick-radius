@@ -59,3 +59,4 @@ next-env.d.ts
 /data/discovered-decisions.json
 /data/drift-decisions.json
 /data/place-drift.json
+scripts/find-duplicates-report.json
