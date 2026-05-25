@@ -127,14 +127,31 @@ export default function EventsCompartmented({
 
   return (
     <div className="space-y-7">
-      {buckets.map((b) => {
+      {buckets.map((b, idx) => {
         const Icon = b.icon;
+        // Alternating section grounds — paper (default) and paper-2
+        // (deeper) — so each room reads as physically distinct from
+        // the next. The user's feedback: "areas need to be defined
+        // more." A subtle 6% tint swing is enough to read as a room
+        // change without losing the cream paper feel.
+        const onPaper2 = idx % 2 === 1;
         return (
-          <section key={b.key} className="space-y-2.5" aria-label={b.title}>
-            {/* Section header — left-aligned, brick-color icon stamp,
+          <section
+            key={b.key}
+            className="relative rounded-[var(--app-radius-lg)] border p-4"
+            aria-label={b.title}
+            style={{
+              borderColor: "var(--app-border)",
+              background: onPaper2
+                ? "var(--app-bg-sunken)"
+                : "var(--app-bg-elevated)",
+              boxShadow: onPaper2 ? "none" : "var(--app-edge), var(--app-hi), var(--app-elev-1)",
+            }}
+          >
+            {/* Section header — left-aligned, brick-stamped icon,
                 serif title, blurb under it, "See all (n) →" on the
                 right. Reads as a chapter heading, not a list label. */}
-            <div className="flex items-end justify-between gap-3">
+            <div className="mb-3 flex items-end justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <span
                   aria-hidden
