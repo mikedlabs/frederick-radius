@@ -156,6 +156,18 @@ export default function RadiusMap({
     [effectiveCenter, meters],
   );
 
+  // Single, stable source for the reachable area. The DATA flips
+  // between the real Mapbox isochrone (when loaded) and the circle
+  // fallback (mid-fetch / on upstream failure), but the source ID
+  // stays the same — Mapbox throws "source id changed" if you swap
+  // <Source id=...> between renders, since it ties WebGL state to
+  // the id. Same Source + swapped FeatureCollection = no error.
+  const usingIsochrone = Boolean(reachable && reachable.features.length > 0);
+  const reachData = useMemo<GeoJSON.FeatureCollection>(() => {
+    if (usingIsochrone && reachable) return reachable;
+    return { type: "FeatureCollection", features: [circle] };
+  }, [usingIsochrone, reachable, circle]);
+
   const placesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     return {
       type: "FeatureCollection",
@@ -317,53 +329,35 @@ export default function RadiusMap({
             }}
           />
         </Source>
-        {/* The radius itself.
+        {/* The reachable area.
          *
-         *  When the Mapbox Isochrone polygon is loaded, that's what
-         *  renders — the REAL reachable area, accounting for streets,
-         *  one-ways, creeks, and hills. While it's loading or after
-         *  an upstream failure, we render the straight-line circle as
-         *  a quiet fallback so the map never looks broken.
-         *
-         *  Both layers use the same accent color so the visual
-         *  identity is consistent — only the SHAPE changes when the
-         *  isochrone arrives. */}
-        {reachable && reachable.features.length > 0 ? (
-          <Source id="radius-isochrone" type="geojson" data={reachable}>
-            <Layer
-              id="radius-isochrone-fill"
-              type="fill"
-              paint={{ "fill-color": accentHex, "fill-opacity": 0.18 }}
-            />
-            <Layer
-              id="radius-isochrone-line"
-              type="line"
-              paint={{
-                "line-color": accentHex,
-                "line-width": 2.5,
-                "line-opacity": 0.92,
-              }}
-            />
-          </Source>
-        ) : (
-          <Source id="radius-circle" type="geojson" data={circle}>
-            <Layer
-              id="radius-circle-fill"
-              type="fill"
-              paint={{ "fill-color": accentHex, "fill-opacity": 0.10 }}
-            />
-            <Layer
-              id="radius-circle-line"
-              type="line"
-              paint={{
-                "line-color": accentHex,
-                "line-width": 2,
-                "line-opacity": 0.55,
-                "line-dasharray": [2, 2],
-              }}
-            />
-          </Source>
-        )}
+         *  One Source with a stable id ("radius-reach") — see the
+         *  `reachData` comment above for why. The DATA is the real
+         *  isochrone polygon when loaded, the circle fallback
+         *  otherwise. Layer paint props vary by `usingIsochrone` so
+         *  the user can SEE when the truth has arrived: brighter
+         *  fill + crisper line for the isochrone, quiet fade for the
+         *  circle fallback. Same accent color throughout — only the
+         *  shape and contrast change. */}
+        <Source id="radius-reach" type="geojson" data={reachData}>
+          <Layer
+            id="radius-reach-fill"
+            type="fill"
+            paint={{
+              "fill-color": accentHex,
+              "fill-opacity": usingIsochrone ? 0.18 : 0.10,
+            }}
+          />
+          <Layer
+            id="radius-reach-line"
+            type="line"
+            paint={{
+              "line-color": accentHex,
+              "line-width": usingIsochrone ? 2.5 : 2,
+              "line-opacity": usingIsochrone ? 0.92 : 0.55,
+            }}
+          />
+        </Source>
         {/* Draggable center pin. The visual is rendered inside the
             Marker; Marker handles the pointer events. */}
         <Marker
