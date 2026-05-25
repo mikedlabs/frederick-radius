@@ -22,8 +22,8 @@ export const metadata: Metadata = {
 
 const KINDS: { kind: TrailStop["kind"]; label: string; icon: typeof Wine; color: string }[] = [
   { kind: "winery", label: "Wineries", icon: Wine, color: "#7E2C6F" },
-  { kind: "brewery", label: "Breweries", icon: Beer, color: "#D9A441" },
-  { kind: "distillery", label: "Distilleries", icon: Sparkles, color: "#C4451C" },
+  { kind: "brewery", label: "Breweries", icon: Beer, color: "#C99632" },
+  { kind: "distillery", label: "Distilleries", icon: Sparkles, color: "#A8462C" },
   { kind: "cidery", label: "Cideries", icon: Apple, color: "#1E6B3A" },
   { kind: "meadery", label: "Meaderies", icon: Wine, color: "#B26B00" },
 ];

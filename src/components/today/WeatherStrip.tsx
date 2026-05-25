@@ -22,9 +22,9 @@ const ICONS = {
 // Per-condition icon tint so the strip isn't all one brand color.
 const ICON_TINT: Record<keyof typeof ICONS, string> = {
   Sun: "#E8A33D",
-  CloudSun: "#D9A441",
+  CloudSun: "#C99632",
   Cloud: "#8A8884",
-  CloudRain: "#2A5D8F",
+  CloudRain: "#2F5470",
   CloudSnow: "#7CA8D8",
   CloudLightning: "#7E2C6F",
   CloudFog: "#9A9690",

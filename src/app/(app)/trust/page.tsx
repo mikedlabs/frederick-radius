@@ -263,7 +263,7 @@ const BADGES: Array<{
 }> = [
   {
     label: "Curated",
-    color: "#C4451C",
+    color: "#A8462C",
     icon: Sparkles,
     body: "We picked this one ourselves. Vetted by hand, blurb written by a person, not auto-filled.",
   },
@@ -275,7 +275,7 @@ const BADGES: Array<{
   },
   {
     label: "Community",
-    color: "#2A5D8F",
+    color: "#2F5470",
     icon: Users,
     body: "Submitted by a local or pulled from a public community feed. Reliable but not directly verified by us.",
   },

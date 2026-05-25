@@ -44,10 +44,10 @@ function ParkRow({ p }: { p: Park }) {
       >
         <span
           className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-brand-2, #1E3A2F) 16%, transparent)" }}
+          style={{ background: "color-mix(in srgb, var(--app-brand-2, #2E3B2C) 16%, transparent)" }}
           aria-hidden
         >
-          <Trees className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2, #1E3A2F)" }} />
+          <Trees className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2, #2E3B2C)" }} />
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -147,7 +147,7 @@ export default async function ParksPage() {
       ) : (
         <>
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-brand-2, #1E3A2F)" }}>
+            <strong className="font-serif text-base font-semibold" style={{ color: "var(--app-brand-2, #2E3B2C)" }}>
               {parks.length}
             </strong>{" "}
             parks across {groups.length} {groups.length === 1 ? "area" : "areas"}

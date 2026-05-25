@@ -99,9 +99,9 @@ export function placeActions(p: Place): PlaceAction[] {
   // Order / delivery — food categories
   if (FOOD_CATS.has(p.category)) {
     if (p.order_url) {
-      actions.push({ key: "order", label: "Order", href: p.order_url, external: true, icon: "order", accent: "#C4451C" });
+      actions.push({ key: "order", label: "Order", href: p.order_url, external: true, icon: "order", accent: "#A8462C" });
     } else if (p.doordash_url) {
-      actions.push({ key: "order", label: "DoorDash", href: p.doordash_url, external: true, icon: "order", accent: "#C4451C" });
+      actions.push({ key: "order", label: "DoorDash", href: p.doordash_url, external: true, icon: "order", accent: "#A8462C" });
     } else {
       actions.push({
         key: "order",
@@ -109,7 +109,7 @@ export function placeActions(p: Place): PlaceAction[] {
         href: `https://www.doordash.com/search/store/${q(nameCity)}`,
         external: true,
         icon: "order",
-        accent: "#C4451C",
+        accent: "#A8462C",
       });
     }
     if (p.menu_url) {

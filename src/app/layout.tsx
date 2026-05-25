@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, IBM_Plex_Serif, IBM_Plex_Mono } from "next/font/google";
+import {
+  Newsreader,
+  Instrument_Serif,
+  Public_Sans,
+  JetBrains_Mono,
+} from "next/font/google";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
@@ -7,23 +12,47 @@ import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 
-const inter = Inter({
-  variable: "--font-inter",
+/**
+ * Brand Book No. 01 — Voice Guide v1 typography (May 2026).
+ * Newsreader for display + body display, Instrument Serif as the
+ * italic-only voice (taglines, pull-quotes), Public Sans as the
+ * working sans, JetBrains Mono for metadata + tabular numerics.
+ *
+ * Variable names are kept generic (sans-base / display / italic /
+ * mono-base) so downstream tokens (--font-sans / --font-serif /
+ * --font-mono in globals.css) stay stable if we swap typefaces
+ * again.
+ */
+const sans = Public_Sans({
+  variable: "--font-sans-base",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const plexSerif = IBM_Plex_Serif({
-  variable: "--font-plex-serif",
+const display = Newsreader({
+  variable: "--font-display",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const plexMono = IBM_Plex_Mono({
-  variable: "--font-plex-mono",
+const italicDisplay = Instrument_Serif({
+  variable: "--font-italic",
   subsets: ["latin"],
-  weight: ["400", "500"],
+  // Instrument Serif ships a single weight (400). Italic style is the
+  // signature use — taglines, pull-quotes, the "field guide" feel.
+  weight: "400",
+  style: ["normal", "italic"],
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
+  variable: "--font-mono-base",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -91,9 +120,10 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={cn(
-          inter.variable,
-          plexSerif.variable,
-          plexMono.variable,
+          sans.variable,
+          display.variable,
+          italicDisplay.variable,
+          mono.variable,
           "antialiased min-h-screen selection:bg-[color:var(--app-brand)] selection:text-white",
         )}
       >

@@ -12,7 +12,7 @@
 import type { Map as GLMap } from "mapbox-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
-const DEFAULT_COLOR = "#C4451C";
+const DEFAULT_COLOR = "#A8462C";
 
 type Bucket =
   | "food" | "brewery" | "wine" | "bar" | "coffee" | "bakery"
@@ -65,15 +65,15 @@ export function bucketOf(slug: string): Bucket {
 
 /** Cluster tint per macro bucket — a glance tells you what an area is. */
 export const BUCKET_COLOR: Record<Bucket, string> = {
-  food: "#C4451C", brewery: "#D9A441", wine: "#6E2233", bar: "#7E1F1F",
+  food: "#A8462C", brewery: "#C99632", wine: "#6E2233", bar: "#7E1F1F",
   coffee: "#8B5A2B", bakery: "#C9852B", music: "#9B3F8A",
   outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#B26B00",
-  library: "#2A5D8F", shopping: "#B26B00", wellness: "#A02929",
-  civic: "#2A5D8F", services: "#4A4A48", lodging: "#5B3A8F",
-  transit: "#2A5D8F", parking: "#4A4A48",
-  restroom: "#2A5D8F", water: "#2A5D8F", trash: "#4A4A48", recycle: "#1E6B3A",
+  library: "#2F5470", shopping: "#B26B00", wellness: "#A02929",
+  civic: "#2F5470", services: "#4A4A48", lodging: "#5B3A8F",
+  transit: "#2F5470", parking: "#4A4A48",
+  restroom: "#2F5470", water: "#2F5470", trash: "#4A4A48", recycle: "#1E6B3A",
   dogwaste: "#1E6B3A", bench: "#4A4A48", bike: "#1E6B3A", aed: "#A02929",
-  shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#2A5D8F", ev: "#1E6B3A",
+  shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#2F5470", ev: "#1E6B3A",
   publicart: "#9B3F8A",
   pin: "#7A7975",
 };

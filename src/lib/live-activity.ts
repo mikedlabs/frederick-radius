@@ -71,7 +71,7 @@ export function buildActivities({
       title: e.title,
       subtitle: `Happening at ${e.venue_name}`,
       href: `/events/${e.slug}`,
-      accent: "#C4451C",
+      accent: "#A8462C",
       icon: "music",
     });
   }
@@ -87,7 +87,7 @@ export function buildActivities({
         title: `${weather.shortForecast} ahead`,
         subtitle: `${precip}% chance · plan indoor options`,
         href: "/",
-        accent: "#2A5D8F",
+        accent: "#2F5470",
         icon: "rain",
       });
     }
@@ -119,7 +119,7 @@ export function buildActivities({
         title: e.title,
         subtitle: `${e.venue_name} · in ${minutesUntil} min`,
         href: `/events/${e.slug}`,
-        accent: "#D9A441",
+        accent: "#C99632",
         icon: "sparkles",
       });
       break;
