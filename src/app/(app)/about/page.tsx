@@ -108,9 +108,21 @@ export default function AboutPage() {
         >
           The bet
         </p>
+        {/* Set in Instrument Serif italic — Brand Book No. 01's
+            italic-display voice for taglines and pull-quotes. Sized
+            up a notch from the working serif so the quote reads
+            with editorial weight. Falls back to Newsreader / Georgia
+            if --font-italic isn't loaded (transitional, until the
+            tokens-typography PR lands). */}
         <blockquote
-          className="font-serif text-[22px] font-medium italic leading-snug tracking-tight text-pretty sm:text-[24px]"
-          style={{ color: "var(--app-ink)" }}
+          className="text-[26px] leading-snug tracking-tight text-pretty sm:text-[30px]"
+          style={{
+            color: "var(--app-ink)",
+            fontFamily:
+              "var(--font-italic, 'Instrument Serif', 'Iowan Old Style', Georgia, serif)",
+            fontStyle: "italic",
+            fontWeight: 400,
+          }}
         >
           A county-scoped app, when it&apos;s honest and actually local,
           beats a national app pretending to know your town.
