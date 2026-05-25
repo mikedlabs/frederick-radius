@@ -54,6 +54,25 @@ const DISTINCT = new Set([
   "home2", "homewood", "hampton", "fairfield", "courtyard", "marriott", "hilton",
 ]);
 
+// "Low-information" CATEGORY words. They describe what KIND of place
+// something is, not which one. Stripped from coreTokens so that two
+// distinct salons sharing the word "salon" don't get scored as a
+// shared core. Two SoulCycle locations sharing "soulcycle" still do.
+// Kept separate from DISTINCT because a category word being missing
+// from one side is NOT a conflict signal — it's just unmeasured info.
+const CATEGORY_WORDS = new Set([
+  "salon", "spa", "wellness", "yoga", "pilates", "fitness", "gym",
+  "studio", "school", "academy", "training",
+  "church", "ministry", "ministries", "fellowship", "congregation",
+  "temple", "mosque", "synagogue", "lodge", "club", "association",
+  "society", "foundation",
+  "boutique", "barber", "nails", "beauty",
+  "restaurant", "cafe", "café", "bistro", "diner", "eatery", "tavern",
+  "pub", "grill", "kitchen", "bar", "pizzeria",
+  "service", "services", "consulting", "consultants",
+  "medical", "dental", "therapy", "acupuncture", "chiropractic",
+]);
+
 function norm(s: string): string {
   return (s || "")
     .toLowerCase()
@@ -69,7 +88,14 @@ function tokens(s: string): string[] {
 }
 
 function coreTokens(s: string): string[] {
-  return tokens(s).filter((t) => !DISTINCT.has(t));
+  // Core = name tokens minus DISTINCT (sub-feature words) minus
+  // CATEGORY_WORDS (low-info "what kind of place" words). What's
+  // left is the actual identifying brand/proper-noun stem —
+  // "maxwells" instead of "maxwells kitchen", "smoketown" instead
+  // of "smoketown brewing", "starbucks" instead of "starbucks
+  // coffee company". Two records that share a core token after
+  // this filter are sharing a real identifier, not a category.
+  return tokens(s).filter((t) => !DISTINCT.has(t) && !CATEGORY_WORDS.has(t));
 }
 
 function jaccard(a: Set<string>, b: Set<string>): number {
@@ -115,8 +141,18 @@ type Pair = {
 
 function classify(p: Omit<Pair, "confidence">): Pair["confidence"] {
   if (p.conflict) return "LOW";
-  if (p.coreOverlap >= 2 && p.meters <= 60) return "HIGH";
+  // HIGH: very confident, safe to auto-merge.
+  //   - ≥ 2 shared core tokens + same building (≤ 60 m) + jaccard ≥ 0.4
+  //   - OR very high name match (jaccard ≥ 0.75) + close (≤ 100 m)
+  // MEDIUM: needs human review — looks like same place but signals
+  //   could be coincidental.
+  //   - Same building + 1 shared core token + jaccard ≥ 0.25
+  //     (catches Maxwell's Kitchen / Maxwell's Burgers & Shakes —
+  //     same brand stem only, but at identical coordinates)
+  //   - Or 0.6+ jaccard within 300 m
+  if (p.coreOverlap >= 2 && p.meters <= 60 && p.jaccard >= 0.4) return "HIGH";
   if (p.jaccard >= 0.75 && p.meters <= 100) return "HIGH";
+  if (p.meters <= 25 && p.coreOverlap >= 1 && p.jaccard >= 0.25) return "MEDIUM";
   if (p.jaccard >= 0.6 && p.meters <= 300) return "MEDIUM";
   return "LOW";
 }
@@ -142,9 +178,17 @@ function main() {
       const A = new Set(a.tok);
       const B = new Set(b.tok);
       const sim = jaccard(A, B);
-      if (sim < 0.6) continue;
       const d =
         a.geom && b.geom ? haversineMeters(a.geom, b.geom) : Number.POSITIVE_INFINITY;
+      // Admission gate: needs a meaningful overlap signal. We
+      // *consider* a pair if its name overlap is at least loose
+      // (jaccard ≥ 0.25) AND it's in the same town within 500 m.
+      // The classifier below decides confidence tier. Pairs at
+      // 0 m with totally different names (jaccard < 0.25, e.g.
+      // salon + laundromat sharing a centroid fallback) are dropped
+      // before they even reach scoring — that was the false-positive
+      // explosion when the gate was geographic-only.
+      if (sim < 0.25) continue;
       if (d > 500) continue;
       const coreA = new Set(a.core);
       const coreB = new Set(b.core);
