@@ -98,7 +98,10 @@ type Finding = {
 const B = "(?<![\\w-])";
 const A = "(?![\\w-])";
 
-const EM_DASH = /—/; // U+2014. " — " spaced form is the same code point.
+// Em dash: NOT banned. STYLE.md (Voice Guide v1) §"Hard rules" #2 now
+// reads "Em dashes — used freely." The previous ban was reversed in the
+// Brand Book No. 01 alignment; em dashes carry observational weight
+// without slowing the line down.
 
 const BANNED: Array<{ rule: string; re: RegExp; allow?: RegExp }> = [
   { rule: "craft", re: new RegExp(`${B}craft(?:ed|ing|s)?${A}`, "i") },
@@ -122,15 +125,28 @@ const BANNED: Array<{ rule: string; re: RegExp; allow?: RegExp }> = [
     // Brief 4.4: allow "destination" in a transit-route context.
     allow: /\b(transit|route|bus|gtfs|headsign|bound|inbound|outbound|trip|stop)\b/i,
   },
+  // Brand Book No. 01 additions (May 2026). New banned words from the
+  // STYLE.md Voice Guide v1 list. Selective subset — focused on
+  // marketing-speak unlikely to false-positive in technical English.
+  { rule: "unlock", re: new RegExp(`${B}unlock${A}`, "i") },
+  { rule: "heart of", re: /\bheart of\b/i },
+  { rule: "disrupt", re: new RegExp(`${B}disrupt${A}`, "i") },
+  { rule: "seamless", re: new RegExp(`${B}seamless(?:ly)?${A}`, "i") },
+  { rule: "delight", re: new RegExp(`${B}delight(?:ful|ed|s)?${A}`, "i") },
+  { rule: "game-changing", re: /\bgame[- ]chang(?:er|ing)\b/i },
+  { rule: "leverage", re: new RegExp(`${B}leverag(?:e|es|ing|ed)${A}`, "i") },
+  { rule: "robust", re: new RegExp(`${B}robust${A}`, "i") },
+  { rule: "holistic", re: new RegExp(`${B}holistic${A}`, "i") },
+  { rule: "ecosystem", re: new RegExp(`${B}ecosystem${A}`, "i") },
+  { rule: "bucket list", re: /\bbucket list\b/i },
+  { rule: "unforgettable", re: new RegExp(`${B}unforgettable${A}`, "i") },
+  { rule: "tucked away", re: /\btucked away\b/i },
+  { rule: "one-stop shop", re: /\bone[- ]stop[- ]shop\b/i },
 ];
 
 function scanText(raw: string): Array<{ rule: string; snippet: string }> {
   const hits: Array<{ rule: string; snippet: string }> = [];
   const text = raw;
-  if (EM_DASH.test(text)) {
-    const i = text.search(EM_DASH);
-    hits.push({ rule: "em-dash", snippet: context(text, i, 1) });
-  }
   for (const { rule, re, allow } of BANNED) {
     const m = re.exec(text);
     if (!m) continue;
