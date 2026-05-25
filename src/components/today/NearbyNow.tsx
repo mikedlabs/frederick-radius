@@ -160,7 +160,7 @@ export default function NearbyNow() {
               className="text-[10px] font-medium uppercase tracking-[0.1em]"
               style={{ color: "var(--app-ink-3)" }}
             >
-              {ctx.municipality.name} · explore the town
+              {ctx.municipality.name} · see the town
             </Link>
           </span>
         </span>

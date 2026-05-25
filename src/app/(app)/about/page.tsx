@@ -94,6 +94,29 @@ export default function AboutPage() {
         </div>
       </header>
 
+      {/* THE BET — the one sentence the whole guide flows from.
+          Voice Guide v1 §01. Pulled out of body copy and given a
+          quiet pull-quote treatment so it reads as the page's spine,
+          not a buried line in a thesis paragraph. */}
+      <figure
+        className="relative my-2 border-l-2 pl-5"
+        style={{ borderColor: "var(--app-brand)" }}
+      >
+        <p
+          className="eyebrow mb-2"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          The bet
+        </p>
+        <blockquote
+          className="font-serif text-[22px] font-medium italic leading-snug tracking-tight text-pretty sm:text-[24px]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          A county-scoped app, when it&apos;s honest and actually local,
+          beats a national app pretending to know your town.
+        </blockquote>
+      </figure>
+
       {/* COUNTY OVERVIEW — the spatial answer to "what is this?".
           We talk about covering 12 municipalities; this proves it
           visually. The lazy-loaded Mapbox view fits to the county
@@ -140,14 +163,6 @@ export default function AboutPage() {
           beats the one downtown. The county website lists meetings,
           not Saturday plans. We sit in the gap: a hyperlocal field
           guide tuned for one place, by people who live here.
-        </p>
-        <p
-          className="mt-3 text-[14px] leading-relaxed text-pretty"
-          style={{ color: "var(--app-ink-2)" }}
-        >
-          The bet: a county-scoped app, when it&apos;s honest and
-          actually local, beats a national app pretending to know
-          your town.
         </p>
       </section>
 

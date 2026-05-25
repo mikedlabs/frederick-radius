@@ -76,7 +76,7 @@ export default function TrustPage() {
           style={{ color: "var(--app-ink-2)" }}
         >
           <li>
-            <strong style={{ color: "var(--app-ink)" }}>Our curated set.</strong>{" "}
+            <strong style={{ color: "var(--app-ink)" }}>Our hand-picked set.</strong>{" "}
             1,700+ Frederick County places we vetted by hand. The Saturday-only
             bakery, the trail nobody talks about, the brewery that beats the
             one downtown.
@@ -262,7 +262,7 @@ const BADGES: Array<{
   body: string;
 }> = [
   {
-    label: "Curated",
+    label: "Hand-picked",
     color: "#C4451C",
     icon: Sparkles,
     body: "We picked this one ourselves. Vetted by hand, blurb written by a person, not auto-filled.",

@@ -89,7 +89,7 @@ export default function RightNow({
       id="right-now"
       title={slot.title}
       href="/map"
-      cta="Explore"
+      cta="See all"
       meta={picks.length > 0 ? "Open or likely open across the county right now" : undefined}
     >
       {picks.length === 0 ? (

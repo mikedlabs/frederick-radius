@@ -27,7 +27,7 @@ export default async function PlanPage({
           Itinerary builder · real places, nothing invented
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          {shared ? "A plan to explore." : "Plan my evening."}
+          {shared ? "A plan, ready to run." : "Plan my evening."}
         </h1>
         <p className="text-[15px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
           {shared ? (
