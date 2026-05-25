@@ -106,7 +106,7 @@ export default function PlaceSheet({ place, onClose }: Props) {
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={handleDragEnd}
             style={{ y }}
-            className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-hidden rounded-t-[24px] border-t bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+            className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col overflow-hidden rounded-t-[24px] border-t bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
           >
             <PlaceSheetContent place={place} onClose={() => setOpen(false)} />
           </motion.div>
@@ -201,10 +201,14 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         <span className="w-[64px]" aria-hidden />
       </div>
 
-      {/* Scrollable content. The hero photo extends edge-to-edge of
-       *  the sheet via negative horizontal margin, so the card reads
-       *  like a magazine cover instead of a thumbnail in a frame. */}
-      <div className="overflow-y-auto pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)]">
+      {/* Scrollable content. The outer motion.div is flex-col with
+       *  max-h-[85vh] + overflow-hidden, so this inner panel is
+       *  flex-1 + min-h-0 — that's the standard flex idiom for
+       *  letting a child be the actual scroll region. Before this,
+       *  the inner had `overflow-y-auto` but no height constraint,
+       *  so content past the cap just got clipped — users couldn't
+       *  reach the bottom details. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)]">
         {/* Cinematic hero — full-bleed, 4:3 aspect, with a bottom
          *  gradient that fades the photo into the sheet. The category
          *  eyebrow + place name overlay the gradient so the first
