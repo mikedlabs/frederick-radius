@@ -121,7 +121,7 @@ export default async function MunicipalityPage(
       {categoryCounts.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            Explore {m.name}
+            Around {m.name}
           </h2>
           <div className="grid grid-cols-2 gap-2">
             {categoryCounts.map(({ c, n }) => (

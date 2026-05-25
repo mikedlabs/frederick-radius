@@ -38,7 +38,7 @@ const SOURCE_BASIS: Record<EventTrustInput["source"], string> = {
   celebrate: "From Celebrate Frederick",
   county: "From the Frederick County calendar",
   manual: "Aggregated from a live feed",
-  seed: "Curated by Frederick Radius",
+  seed: "Picked by Frederick Radius",
 };
 
 /** Trust for an event, from its provenance and verification flag. */
@@ -47,7 +47,7 @@ export function eventTrust(e: EventTrustInput): TrustSignal {
     return { level: "verified", label: "Verified", basis: "Verified by Frederick Radius" };
   }
   if (e.source === "seed") {
-    return { level: "verified", label: "Curated", basis: SOURCE_BASIS.seed };
+    return { level: "verified", label: "Hand-picked", basis: SOURCE_BASIS.seed };
   }
   if (e.source === "dfp" || e.source === "celebrate" || e.source === "county") {
     return { level: "official", label: "Official", basis: SOURCE_BASIS[e.source] };

@@ -65,7 +65,7 @@ export default function NotFound() {
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Or explore the radius
+          Or open the radius
         </Link>
       </div>
     </main>

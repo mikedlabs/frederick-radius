@@ -182,7 +182,7 @@ export default function TodayTabs({
       count: openNow.length,
       href: "/map?filter=open-now",
       hrefLabel: "See all open",
-      meta: <span>Open now, or likely open by curated hours</span>,
+      meta: <span>Open now, or likely open by listed hours</span>,
       empty: "",
       content: openNowContent,
     },

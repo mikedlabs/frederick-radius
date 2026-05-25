@@ -372,7 +372,7 @@ function EmptyState() {
               className="ml-auto text-[10px] italic"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Curated · not yours yet
+              Hand-picked · not yours yet
             </span>
           </header>
           <ul className="space-y-2">
