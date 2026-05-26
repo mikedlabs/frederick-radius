@@ -143,7 +143,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   };
 
   return (
-    <div className="space-y-6 stagger">
+    <div className="space-y-6 reveal-up">
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
           <li><Link href="/" className="hover:underline">Today</Link></li>

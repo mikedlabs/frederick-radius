@@ -482,7 +482,7 @@ export default function PlanBuilder({
               </p>
             </div>
           ) : (
-            <ol className="stagger relative space-y-3 pl-9">
+            <ol className="reveal-up relative space-y-3 pl-9">
               <span
                 className="absolute bottom-4 left-[15px] top-4 w-[2px] rounded-full"
                 style={{ background: "linear-gradient(var(--app-brand), var(--app-cool))", opacity: 0.55 }}

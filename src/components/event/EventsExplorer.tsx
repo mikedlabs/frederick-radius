@@ -569,7 +569,7 @@ export default function EventsExplorer({
                 )}
                 {useShelf ? (
                   <div className="-mx-4 px-4">
-                    <div className="shelf-rail stagger gap-3 pb-1">
+                    <div className="shelf-rail reveal-up gap-3 pb-1">
                       {rest.slice(0, PEEK).map((e) => (
                         <div key={e.slug} className="relative w-[260px] shrink-0">
                           {live.has(e.slug) && (
@@ -586,7 +586,7 @@ export default function EventsExplorer({
                     </div>
                   </div>
                 ) : (
-                  <div className="stagger grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="reveal-up grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                     {shown.map((e) => (
                       <div key={e.slug} className="relative">
                         {live.has(e.slug) && (

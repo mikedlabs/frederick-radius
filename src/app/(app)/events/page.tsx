@@ -297,7 +297,7 @@ export default async function EventsIndexPage({
             </h2>
             <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>{hood.length} upcoming</span>
           </div>
-          <ul className="stagger space-y-2">
+          <ul className="reveal-up space-y-2">
             {hood.map((e) => (
               <li key={e.id}>
                 <a
