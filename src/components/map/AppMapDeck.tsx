@@ -2,6 +2,7 @@
 
 import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal } from "lucide-react";
 import ModeSwitch from "@/components/mode/ModeSwitch";
+import BottomDrawer from "@/components/ui/BottomDrawer";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { LngLat } from "@/lib/geo";
@@ -235,15 +236,19 @@ export default function AppMapDeck({
             )}
           </button>
         </div>
-        {filtersOpen && (
-          <div
-            className="max-h-[44vh] overflow-y-auto rounded-[var(--app-radius-md)] border p-2.5 backdrop-blur"
-            style={{
-              borderColor: "var(--app-border)",
-              background: "color-mix(in srgb, var(--app-bg-elevated) 90%, transparent)",
-              boxShadow: "var(--app-shadow-3)",
-            }}
-          >
+      </div>
+      {/* Layers drawer — slides up from the bottom (Vaul). On mobile
+          this reads as the native map app pattern; on desktop the
+          drawer caps at 90vh and still feels like a focused tool tray.
+          Owned state stays in AppMap.tsx so deep-links and intent
+          chips can open it programmatically. */}
+      <BottomDrawer
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        title="Layers"
+        subtitle="Choose what to show on the map"
+      >
+        <div className="px-4 pt-3">
         <ul className="flex flex-wrap items-center gap-2 py-0.5">
           <li>
             <button
@@ -517,9 +522,8 @@ export default function AppMapDeck({
             </p>
           </div>
         )}
-          </div>
-        )}
-      </div>
+        </div>
+      </BottomDrawer>
     </div>
   );
 }
