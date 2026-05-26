@@ -1014,6 +1014,81 @@ html.dark .shimmer::after {
 .stagger > *:nth-child(n + 7) { transition-delay: 340ms; }
 
 /* ─────────────────────────────────────────────────────
+ * .reveal-up — opt-in entrance animation for lists of cards.
+ * Children fade + lift on mount with a staggered cascade so
+ * a shelf of 4-8 items reads as a swept reveal rather than a
+ * pop-in. CSS-only; uses @starting-style so it fires once on
+ * mount and never on prop changes or re-renders.
+ *
+ * Usage:
+ *   <ul className="reveal-up">
+ *     <li>…</li>     // delay 0ms
+ *     <li>…</li>     // delay 50ms
+ *     <li>…</li>     // delay 100ms
+ *     …
+ *   </ul>
+ *
+ * Pairs naturally with the .stagger class above (which uses
+ * @starting-style + opacity-only). reveal-up adds the 6px lift
+ * and a tighter 50ms step that reads as decisive instead of
+ * languid.
+ * ───────────────────────────────────────────────────── */
+.reveal-up > * {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 360ms var(--app-ease-out),
+    transform 360ms var(--app-ease-out);
+}
+@starting-style {
+  .reveal-up > * { opacity: 0; transform: translateY(8px); }
+}
+.reveal-up > *:nth-child(1) { transition-delay: 0ms; }
+.reveal-up > *:nth-child(2) { transition-delay: 50ms; }
+.reveal-up > *:nth-child(3) { transition-delay: 100ms; }
+.reveal-up > *:nth-child(4) { transition-delay: 150ms; }
+.reveal-up > *:nth-child(5) { transition-delay: 200ms; }
+.reveal-up > *:nth-child(6) { transition-delay: 250ms; }
+.reveal-up > *:nth-child(7) { transition-delay: 300ms; }
+.reveal-up > *:nth-child(8) { transition-delay: 350ms; }
+.reveal-up > *:nth-child(n + 9) { transition-delay: 400ms; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal-up > * { transition: none; }
+  @starting-style { .reveal-up > * { opacity: 1; transform: none; } }
+}
+
+/* ─────────────────────────────────────────────────────
+ * .shimmer — brand-tinted loading skeleton sweep.
+ * Replaces the inert grey blocks with a warm paper-cream
+ * gradient that sweeps left-to-right on a 1.6s cycle so the
+ * loading state reads as intentional, not empty.
+ * ───────────────────────────────────────────────────── */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--app-bg-sunken);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    color-mix(in srgb, var(--app-paper) 75%, transparent) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: shimmerSweep 1.6s ease-in-out infinite;
+}
+@keyframes shimmerSweep {
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after { animation: none; opacity: 0.4; }
+}
+
+/* ─────────────────────────────────────────────────────
  * Command palette (cmdk) — global ⌘K jump bar.
  * Brand-aligned shell: paper-cream surface, hairline border,
  * tactile elevation. Sits above the bottom nav (z-50) and

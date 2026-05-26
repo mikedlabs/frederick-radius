@@ -164,7 +164,7 @@ export default function PlacesIndexPage() {
           By category
         </h2>
         <ul
-          className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+          className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-3"
           aria-label="Browse places by category"
         >
           {catCounts.map((c) => (
@@ -216,7 +216,7 @@ export default function PlacesIndexPage() {
           By town
         </h2>
         <ul
-          className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+          className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-3"
           aria-label="Browse places by town"
         >
           {townCounts.map((m) => (

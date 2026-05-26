@@ -76,7 +76,7 @@ export default function MoodTiles() {
       >
         In the mood for
       </h2>
-      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <ul className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-4">
         {MOODS.map((m) => {
           const Icon = m.icon;
           return (
