@@ -53,11 +53,39 @@ const _placementPartition = partitionEvents(STAGE_1, (slug) => {
 });
 logPlacementWarnings("events", _placementPartition.needsReview);
 
-// The canonical public set. Every other loader function in this file
-// starts here, so placement validation closes the door on bad data
-// once, at the source, instead of every read site.
-const EVENTS: ReadonlyArray<Event & { placement: Placement }> =
+// The canonical placement-validated set. Every other loader function in
+// this file starts from one of two derived sets so the filtering
+// discipline is enforced ONCE, not per call site.
+const EVENTS_ALL: ReadonlyArray<Event & { placement: Placement }> =
   _placementPartition.public;
+
+/**
+ * What counts as "civic noise" — board meetings, council sessions,
+ * public hearings, planning commission. These are real events that a
+ * tiny audience (commission watchers, civic-engagement folks) wants to
+ * see, but for everyone else they're noise that buries the brewery
+ * night under "Frederick County Board of Education Meeting".
+ *
+ * The ingest pipeline already tags these as category="civic" via
+ * the keyword-matchers in ical-live.ts and ingest/ical.ts. We just
+ * gate them at the read path so the DEFAULT public surfaces (/today,
+ * /events, /map, calendar, by-town pages) hide them, and pages that
+ * specifically want civic data opt in.
+ */
+const CIVIC_CATEGORIES = new Set(["civic"]);
+function isCivic(e: Pick<Event, "category">): boolean {
+  return CIVIC_CATEGORIES.has(e.category);
+}
+
+// PUBLIC events — civic stripped. This is what every "what's happening"
+// surface reads. Strictly fewer events than EVENTS_ALL.
+const EVENTS: ReadonlyArray<Event & { placement: Placement }> =
+  EVENTS_ALL.filter((e) => !isCivic(e));
+
+// Civic-only set, for the opt-in /civic lens (or any future
+// commission-tracking surface). Same shape, just the inverse filter.
+const EVENTS_CIVIC: ReadonlyArray<Event & { placement: Placement }> =
+  EVENTS_ALL.filter((e) => isCivic(e));
 
 /**
  * Events flagged as needs_review (off-bbox, missing geom, or venue
@@ -269,6 +297,28 @@ export function allUpcoming(now: Date = new Date(), limit?: number): EventWithMe
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
   return limit ? out.slice(0, limit) : out;
+}
+
+/**
+ * Civic-only upcoming events — board meetings, public hearings,
+ * planning commissions. Opt-in counterpart to allUpcoming(). Used by
+ * the dedicated "Civic" lens / future /civic surface. Default views
+ * never call this — they call allUpcoming() which has civic stripped.
+ */
+export function civicUpcoming(now: Date = new Date(), limit?: number): EventWithMeta[] {
+  const out = EVENTS_CIVIC
+    .filter((e) => new Date(e.ends_at) >= now)
+    .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
+    .map((e) => decorate(e));
+  return limit ? out.slice(0, limit) : out;
+}
+
+/** Identify a civic event by category. Exported so consumers that
+ *  merge live-feed events with the curated set (e.g. /events) can apply
+ *  the same filter to feed-sourced rows — those bypass the EVENTS
+ *  read path entirely. */
+export function isCivicEvent(e: Pick<Event, "category">): boolean {
+  return isCivic(e);
 }
 
 export function formatEventWhen(e: Event): string {
