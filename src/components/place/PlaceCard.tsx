@@ -15,6 +15,8 @@ import { Star } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import SourceBadge from "./SourceBadge";
+import { ReasonChipRow } from "@/components/ui/ReasonChip";
+import { placeReasons } from "@/lib/place-reasons";
 
 /**
  * "What people rave about" — only when there is a real Google rating
@@ -289,14 +291,27 @@ export default function PlaceCard({
                 <> · {formatDistance(place.distance_m)}</>
               )}
             </p>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <PlaceStatus status={place.open_status} className="!text-[11px]" />
-              <Rave
-                rating={place.google_rating}
-                count={place.google_rating_count}
-                className="!text-[11px]"
-              />
-            </div>
+            {/* Reason chips — "Open now · 4 min walk · Verified" —
+                the decision context the brief asks for. Derived from
+                fields the loader already produces, capped at 3 per
+                card. Falls back to the old status/rating row if the
+                chip producer returns nothing (e.g. a place with no
+                open_status, no distance, and no recent verify). */}
+            {(() => {
+              const reasons = placeReasons(place);
+              return reasons.length > 0 ? (
+                <ReasonChipRow reasons={reasons} className="pt-0.5" />
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <PlaceStatus status={place.open_status} className="!text-[11px]" />
+                  <Rave
+                    rating={place.google_rating}
+                    count={place.google_rating_count}
+                    className="!text-[11px]"
+                  />
+                </div>
+              );
+            })()}
           </div>
         </button>
       </article>
