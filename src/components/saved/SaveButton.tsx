@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useIsSaved, useToggleSave, useMounted } from "@/hooks/useSaved";
+import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/useSaved";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -18,6 +18,11 @@ export default function SaveButton({
   const mounted = useMounted();
   const isSaved = useIsSaved(refType, refId);
   const toggle = useToggleSave(refType, refId);
+  // Pre-toggle total. Used to detect the user's first save ever —
+  // when totalBefore is 0 AND the user is about to save, the next
+  // tap is the moment that promotes a stranger into someone who has
+  // started keeping a list. Marked with editorial copy below.
+  const totalBefore = useSavedList().length;
   // Track a brief "celebration" window after a fresh save so we can
   // overshoot-pop the icon and radiate a one-shot ring. The flag is
   // reset by an animation-end timer; the actual saved-state is the
@@ -63,6 +68,15 @@ export default function SaveButton({
         // a mistaken save is one tap to reverse.
         if (isSaved) {
           toast(`Removed from saved`, {
+            action: { label: "Undo", onClick: () => toggle() },
+          });
+        } else if (totalBefore === 0) {
+          // First save ever — moment worth marking. Editorial copy
+          // instead of the routine acknowledgement, plus a longer
+          // dwell so the user has time to read what just happened.
+          toast.success("Saved your first one", {
+            description: "Build the list you'd send a friend.",
+            duration: 5000,
             action: { label: "Undo", onClick: () => toggle() },
           });
         } else {

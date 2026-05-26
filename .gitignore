@@ -63,3 +63,6 @@ scripts/find-duplicates-report.json
 # Lighthouse / perf audit snapshots: local-only, do not commit
 .perf/
 scripts/.lighthouse/
+# Lighthouse / perf audit snapshots: local-only, do not commit
+.perf/
+scripts/.lighthouse/
