@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import {
   Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind,
-  ChevronDown, Droplets,
+  Droplets,
 } from "lucide-react";
 import { iconForShortForecast, type NwsHourly } from "@/lib/integrations/nws";
 
 const ICONS = { Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind } as const;
-const ICON_TINT: Record<keyof typeof ICONS, string> = {
+const ICON_TINT_LIGHT: Record<keyof typeof ICONS, string> = {
   Sun: "#E8A33D", CloudSun: "#C99632", Cloud: "#8A8884", CloudRain: "#2F5470",
   CloudSnow: "#7CA8D8", CloudLightning: "#7E2C6F", CloudFog: "#9A9690", Wind: "#4A7CA8",
+};
+const ICON_TINT_DARK: Record<keyof typeof ICONS, string> = {
+  Sun: "#F2B854", CloudSun: "#E8A33D", Cloud: "#BFBAB1", CloudRain: "#9CC4E8",
+  CloudSnow: "#B6D2EC", CloudLightning: "#B47AAB", CloudFog: "#BFBAB1", Wind: "#82A8C8",
 };
 
 function dayKey(iso: string): string {
@@ -62,20 +65,29 @@ function groupDays(daily: NwsHourly[]): Day[] {
 }
 
 /**
- * The 7-day outlook, rendered as a frosted sub-panel of the weather
- * card. Brings the new weather-hero design language down to the week:
+ * The 7-day outlook, redesigned as a vertical row layout.
  *
- *   - Always-visible 7-cell strip: weekday label, animated reveal
- *     glyph, hi temperature.
- *   - Hi-temperature SVG curve spanning the strip, drawn-on with the
- *     same stroke-dashoffset transition as the hourly chart (.wx-curve)
- *     so the two read as one weather system.
- *   - Tiny precip dot under any day with >=20% chance.
- *   - Tap header to expand: per-day detail rows below (short forecast +
- *     hi/lo + precip badge).
+ * Previous design was an SVG hi-temp curve with absolutely-positioned
+ * day cells tracking the curve's xFor() math. The cells got cramped
+ * and overlapped at narrow viewports; the strip became hard to scan
+ * at a glance. (The brand-y curve was nice but cost legibility.)
  *
- * `tone` is the parent card's light/dark tone so the type sits
- * legibly on the same gradient as the hourly strip.
+ * New design — seven full-width rows, scannable in one downward
+ * sweep. Each row carries:
+ *
+ *   [weekday] [glyph]  [hi-lo gradient bar]  [hi°]  [precip pill if ≥30%]
+ *
+ * The hi-lo bar is a horizontal track positioned relative to the
+ * week's overall hi/lo range — visually shows where this day's
+ * temperature sits in context. Today's row gets a brand-tinted
+ * background so it pops as "you are here."
+ *
+ * Honest about clipping: with 7 fixed-height rows there is no
+ * absolute positioning, no SVG math, no responsive cleverness to
+ * break — every row reads at every width.
+ *
+ * `tone` (light | dark) is the parent card's tone so type sits
+ * legibly on the same gradient as the hourly chart.
  */
 export default function WeeklyForecast({
   daily,
@@ -84,242 +96,151 @@ export default function WeeklyForecast({
   daily: NwsHourly[];
   tone: "light" | "dark";
 }) {
-  const [open, setOpen] = useState(false);
   const days = groupDays(daily);
   if (days.length === 0) return null;
 
-  const ink = tone === "dark" ? "#FFFFFF" : "#1A1A1A";
-  const ink2 = tone === "dark" ? "rgba(255,255,255,0.78)" : "rgba(26,26,26,0.62)";
-  const ink3 = tone === "dark" ? "rgba(255,255,255,0.55)" : "rgba(26,26,26,0.42)";
+  const ink = tone === "dark" ? "#FFFFFF" : "var(--app-ink)";
+  const ink2 = tone === "dark" ? "rgba(255,255,255,0.78)" : "var(--app-ink-2)";
+  const ink3 = tone === "dark" ? "rgba(255,255,255,0.55)" : "var(--app-ink-3)";
   const panel = tone === "dark" ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.45)";
-  const hairline = tone === "dark" ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)";
-  const cool = tone === "dark" ? "#9CC4E8" : "#2F5470";
-  const brand = tone === "dark" ? "#E8A33D" : "#A8462C";
-  const fill = tone === "dark"
-    ? "color-mix(in srgb, #E8A33D 24%, transparent)"
-    : "color-mix(in srgb, #A8462C 18%, transparent)";
+  const hairline = tone === "dark" ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.07)";
+  const cool = tone === "dark" ? "#9CC4E8" : "var(--app-cool)";
+  const brand = tone === "dark" ? "#E8A33D" : "var(--app-brand)";
+  const todayBg = tone === "dark"
+    ? "color-mix(in srgb, #E8A33D 12%, transparent)"
+    : "color-mix(in srgb, var(--app-brand) 8%, transparent)";
+  const tints = tone === "dark" ? ICON_TINT_DARK : ICON_TINT_LIGHT;
 
-  // Build the SVG strip geometry — same xFor/yFor pattern as the
-  // hourly chart so the visual language stays consistent across
-  // the weather card. Hi temperatures define the curve; lows are
-  // shown as numerals only.
-  const W = 350;
-  const H = 70;
-  const PAD_X = 14;
-  const PAD_TOP = 8;
-  const PAD_BOTTOM = 30; // breathing room for the day-label row
-  const n = days.length;
-  const step = (W - 2 * PAD_X) / Math.max(1, n - 1);
-
-  const tempsWithValues = days.map((d) => d.hi).filter((v): v is number => v != null);
-  let tMin = tempsWithValues.length ? Math.min(...tempsWithValues) : 50;
-  let tMax = tempsWithValues.length ? Math.max(...tempsWithValues) : 75;
-  if (tMin === tMax) { tMin -= 2; tMax += 2; }
-  tMin = Math.floor(tMin - 2);
-  tMax = Math.ceil(tMax + 2);
-
-  const xFor = (i: number) => PAD_X + i * step;
-  const yFor = (t: number) => {
-    const usable = H - PAD_TOP - PAD_BOTTOM;
-    const ratio = (t - tMin) / (tMax - tMin);
-    return PAD_TOP + (1 - ratio) * usable;
-  };
-
-  // Build the line + fill paths, falling through nulls (rare for the
-  // NWS 14-period set but defensive).
-  const points: Array<{ x: number; y: number } | null> = days.map((d, i) =>
-    d.hi != null ? { x: xFor(i), y: yFor(d.hi) } : null,
-  );
-  const valid = points.filter((p): p is { x: number; y: number } => p != null);
-  const linePath = valid
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
-    .join(" ");
-  const fillPath = valid.length >= 2
-    ? linePath
-      + ` L ${valid[valid.length - 1].x.toFixed(1)} ${(H - PAD_BOTTOM).toFixed(1)}`
-      + ` L ${valid[0].x.toFixed(1)} ${(H - PAD_BOTTOM).toFixed(1)} Z`
-    : "";
-
-  // Today index — the first day labeled "Today" wins.
-  const todayIdx = days.findIndex((d) => d.label === "Today");
+  // Compute the week's overall hi/lo so each row's bar is positioned
+  // relative to a stable reference, not just its own day.
+  const allHi = days.map((d) => d.hi).filter((v): v is number => v != null);
+  const allLo = days.map((d) => d.lo).filter((v): v is number => v != null);
+  const weekMax = allHi.length ? Math.max(...allHi) : 0;
+  const weekMin = allLo.length ? Math.min(...allLo) : 0;
+  const weekSpan = Math.max(1, weekMax - weekMin); // guard /0
 
   return (
     <div
       className="mt-px"
       style={{ background: panel, backdropFilter: "blur(2px)" }}
     >
-      {/* Always-visible 7-day strip: SVG hi-temp curve over a row of
-          day cells. The whole strip sits under a single tap target so
-          the expand affordance covers the full width. */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-label={open ? "Collapse 7-day outlook" : "Expand 7-day outlook"}
-        className="block w-full text-left transition active:scale-[0.997]"
-      >
-        <div className="flex items-center justify-between gap-3 px-4 pt-2.5">
-          <span className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: ink2 }}>
-            7-day outlook
-          </span>
-          <span className="flex items-center gap-1.5 text-[10px] tabular-nums" style={{ color: ink3 }}>
-            <span>{tMin}° – {tMax}°</span>
-            <ChevronDown
-              className="h-3 w-3 transition-transform"
-              strokeWidth={2.5}
-              style={{ color: ink3, transform: open ? "rotate(180deg)" : "none" }}
-              aria-hidden
-            />
-          </span>
-        </div>
+      <header className="flex items-baseline justify-between gap-3 px-4 pt-2.5 pb-1">
+        <span
+          className="text-[10px] font-bold uppercase tracking-[0.14em]"
+          style={{ color: ink2 }}
+        >
+          7-day outlook
+        </span>
+        <span
+          className="text-[10px] tabular-nums"
+          style={{ color: ink3 }}
+        >
+          {weekMin}° – {weekMax}°
+        </span>
+      </header>
 
-        <div className="relative px-4 pb-2">
-          <svg
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            className="block w-full"
-            style={{ height: H }}
-            aria-hidden
-          >
-            <defs>
-              <linearGradient id="wf-fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={brand} stopOpacity={tone === "dark" ? 0.4 : 0.32} />
-                <stop offset="100%" stopColor={brand} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            {fillPath && <path d={fillPath} fill="url(#wf-fill)" className="wx-curve-fill" />}
-            {linePath && (
-              <path
-                d={linePath}
-                fill="none"
-                stroke={brand}
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="wx-curve"
-              />
-            )}
-            {/* Dots at each day's hi point. Today's dot is a touch
-             *  larger with a paper-cream outline so the "you are here"
-             *  anchor matches the hourly chart — static dot only, no
-             *  expanding ring (which was reading as alarmy). */}
-            {points.map((p, i) => {
-              if (!p) return null;
-              const isToday = i === todayIdx;
-              return (
-                <circle
-                  key={`pt-${i}`}
-                  cx={p.x}
-                  cy={p.y}
-                  r={isToday ? 4 : 2.5}
-                  fill={isToday ? brand : fill}
-                  stroke={isToday ? "var(--app-bg-elevated-solid)" : brand}
-                  strokeWidth={isToday ? 2 : 1.2}
-                />
-              );
-            })}
-            {/* Precip dot row — sits in the bottom margin under each
-                day with >=20% precip chance. */}
-            {days.map((d, i) =>
-              d.precip >= 20 ? (
-                <circle
-                  key={`pp-${i}`}
-                  cx={xFor(i)}
-                  cy={H - PAD_BOTTOM + 14}
-                  r={Math.min(3.5, 1.5 + d.precip / 28)}
-                  fill={cool}
-                />
-              ) : null,
-            )}
-          </svg>
+      <ul className="px-2 pb-2">
+        {days.map((d) => {
+          const isToday = d.label === "Today";
+          const k = iconForShortForecast(d.short);
+          const Icon = ICONS[k];
+          const iconColor = tone === "dark" ? "#fff" : tints[k];
 
-          {/* Day labels — absolutely positioned to track xFor() math. */}
-          <div className="relative mt-1 h-7">
-            {days.map((d, i) => {
-              const leftPct = ((xFor(i) / W) * 100).toFixed(2);
-              const isToday = i === todayIdx;
-              const k = iconForShortForecast(d.short);
-              const Icon = ICONS[k];
-              return (
-                <div
-                  key={`lbl-${i}`}
-                  className="wx-hour-cell absolute -translate-x-1/2 flex flex-col items-center gap-0.5"
+          // Position of THIS day's bar within the week's range, 0–100%.
+          // hi → end of the bar; lo → start. If lo is missing (rare —
+          // last day's night period may not exist yet), use hi-5 as a
+          // synthetic low so the bar still has visible length.
+          const hi = d.hi ?? d.lo ?? weekMax;
+          const lo = d.lo ?? (hi - 5);
+          const leftPct = ((Math.min(hi, lo) - weekMin) / weekSpan) * 100;
+          const widthPct = (Math.abs(hi - lo) / weekSpan) * 100;
+
+          return (
+            <li
+              key={d.key}
+              className="grid items-center gap-2 rounded-[10px] px-2.5 py-2"
+              style={{
+                gridTemplateColumns: "44px 22px 1fr 42px 36px",
+                background: isToday ? todayBg : "transparent",
+                borderTop: `1px solid ${hairline}`,
+              }}
+            >
+              {/* Weekday */}
+              <span
+                className="text-[12.5px] font-semibold tracking-tight"
+                style={{ color: isToday ? brand : ink }}
+              >
+                {d.label}
+              </span>
+
+              {/* Glyph */}
+              <span aria-hidden className="flex justify-center">
+                <Icon
+                  className="h-[18px] w-[18px]"
+                  strokeWidth={1.75}
+                  style={{ color: iconColor }}
+                />
+              </span>
+
+              {/* Hi-lo gradient bar — visualizes where this day's
+                  temperature range sits inside the week's overall
+                  range. The track is a faint hairline; the filled
+                  segment is a cool→warm gradient that signals "lows
+                  are cool, highs are warm" at a glance. */}
+              <div
+                className="relative h-1.5 rounded-full"
+                style={{ background: hairline }}
+                aria-hidden
+              >
+                <span
+                  className="absolute top-0 h-full rounded-full"
                   style={{
                     left: `${leftPct}%`,
-                    animationDelay: `${0.4 + i * 0.06}s`,
+                    width: `${widthPct}%`,
+                    background: `linear-gradient(90deg, ${cool}, ${brand})`,
+                    boxShadow: isToday
+                      ? `0 0 0 1.5px color-mix(in srgb, ${brand} 35%, transparent)`
+                      : "none",
                   }}
-                >
-                  <Icon
-                    className="h-3 w-3"
-                    strokeWidth={2}
-                    style={{ color: isToday ? brand : ink3 }}
-                    aria-hidden
-                  />
-                  <span
-                    className="text-[9.5px] font-semibold tabular-nums tracking-tight"
-                    style={{ color: isToday ? ink : ink2 }}
-                  >
-                    {d.label}
-                  </span>
-                  <span
-                    className="text-[10px] font-bold tabular-nums leading-none"
-                    style={{ color: isToday ? brand : ink }}
-                  >
-                    {d.hi != null ? `${d.hi}°` : "–"}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </button>
-
-      {/* Expanded detail — full short forecast + hi/lo + precip for
-          users who want the textual outlook. */}
-      {open && (
-        <ul style={{ borderTop: `1px solid ${hairline}` }}>
-          {days.map((d) => {
-            const k = iconForShortForecast(d.short);
-            const Icon = ICONS[k];
-            return (
-              <li
-                key={d.key}
-                className="flex items-center gap-3 px-4 py-2"
-                style={{ borderTop: `1px solid ${hairline}` }}
-              >
-                <span className="w-9 shrink-0 text-[12px] font-semibold" style={{ color: ink }}>
-                  {d.label}
-                </span>
-                <Icon
-                  className="h-4 w-4 shrink-0"
-                  strokeWidth={1.75}
-                  style={{ color: tone === "dark" ? "#fff" : ICON_TINT[k] }}
-                  aria-hidden
                 />
-                <span className="min-w-0 flex-1 truncate text-[11px]" style={{ color: ink2 }}>
-                  {d.short}
-                </span>
-                {d.precip > 15 && (
-                  <span className="inline-flex shrink-0 items-center gap-0.5 text-[10px] tabular-nums" style={{ color: cool }}>
-                    <Droplets className="h-3 w-3" strokeWidth={2} aria-hidden />
+              </div>
+
+              {/* Hi temperature — primary read for each row */}
+              <span
+                className="text-right text-[13.5px] font-semibold tabular-nums leading-none"
+                style={{ color: isToday ? brand : ink }}
+              >
+                {d.hi != null ? `${d.hi}°` : "—"}
+              </span>
+
+              {/* Precip pill — only renders for days with ≥30% rain.
+                  The slot is reserved (36px) so columns line up even
+                  when the pill is absent. */}
+              <span className="flex justify-end">
+                {d.precip >= 30 ? (
+                  <span
+                    className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[9.5px] font-semibold tabular-nums"
+                    style={{
+                      background: `color-mix(in srgb, ${cool} 16%, transparent)`,
+                      color: cool,
+                    }}
+                  >
+                    <Droplets className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
                     {d.precip}%
                   </span>
-                )}
-                <span className="w-14 shrink-0 text-right text-[12px] font-semibold tabular-nums" style={{ color: ink }}>
-                  {d.hi != null ? `${d.hi}°` : "–"}
-                  <span style={{ color: ink3 }}> {d.lo != null ? `${d.lo}°` : "–"}</span>
-                </span>
-              </li>
-            );
-          })}
-          <li
-            className="px-4 py-1.5 text-[9px] uppercase tracking-[0.1em]"
-            style={{ color: ink3, borderTop: `1px solid ${hairline}` }}
-          >
-            National Weather Service · Frederick
-          </li>
-        </ul>
-      )}
+                ) : null}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <p
+        className="px-4 pb-2 text-[9.5px] uppercase tracking-[0.12em]"
+        style={{ color: ink3 }}
+      >
+        National Weather Service · Frederick
+      </p>
     </div>
   );
 }
