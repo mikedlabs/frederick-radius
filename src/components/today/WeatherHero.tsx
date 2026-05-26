@@ -1,12 +1,5 @@
 import Link from "next/link";
 import {
-  Sun,
-  CloudSun,
-  Cloud,
-  CloudRain,
-  CloudSnow,
-  CloudLightning,
-  CloudFog,
   Wind,
   Droplets,
   Sunrise,
@@ -20,6 +13,8 @@ import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { weatherVerdict } from "@/lib/weather-verdict";
 import WeeklyForecast from "./WeeklyForecast";
+import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
+import WeatherHourlyChart from "./WeatherHourlyChart";
 
 /**
  * WeatherHero — the richer current-conditions module.
@@ -33,17 +28,6 @@ import WeeklyForecast from "./WeeklyForecast";
  * Replaces HomeWeatherStrip on the Today hero. The /pulse page still
  * owns the deep weather view; this is the at-a-glance read.
  */
-
-const ICONS = {
-  Sun,
-  CloudSun,
-  Cloud,
-  CloudRain,
-  CloudSnow,
-  CloudLightning,
-  CloudFog,
-  Wind,
-} as const;
 
 const FREDERICK_LAT = 39.4143;
 const FREDERICK_LNG = -77.4105;
@@ -96,16 +80,6 @@ function sunTimes(date: Date, lat: number, lng: number) {
   return { sunrise, sunset };
 }
 
-function hourLabel(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-  })
-    .format(new Date(iso))
-    .toLowerCase()
-    .replace(" ", "");
-}
-
 function clockLabel(d: Date): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
@@ -118,7 +92,10 @@ export default async function WeatherHero() {
   const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
 
   const cur = forecast?.hourly?.[0] ?? null;
-  const next6 = forecast?.hourly?.slice(1, 7) ?? [];
+  // 12-hour chart — the NWS API caps us at 12 periods anyway, so this
+  // is the full hourly outlook. The chart is space-efficient enough
+  // to show all of them legibly without scroll.
+  const next12 = forecast?.hourly?.slice(0, 12) ?? [];
   // Today's high/low — the first "isDaytime: true" daily period is
   // today's high (or tomorrow's if we're already past sunset; the
   // NWS API rolls over after dark). Same heuristic for low.
@@ -140,7 +117,7 @@ export default async function WeatherHero() {
     sunProgress = Math.max(0, Math.min(1, (t - a) / (b - a)));
   }
 
-  const CurIcon = cur ? ICONS[iconForShortForecast(cur.shortForecast)] : Cloud;
+  const curVariant: SkyVariant = cur ? iconForShortForecast(cur.shortForecast) : "Cloud";
 
   // Verdict — the one sentence that turns the forecast into a plan.
   const verdict = cur
@@ -199,19 +176,17 @@ export default async function WeatherHero() {
       <Link
         href="/pulse"
         aria-label="Current weather and today's outlook — open the full weather board"
-        className="tactile tactile-feature relative block overflow-hidden rounded-[var(--app-radius-lg)] p-4 transition active:scale-[0.995]"
+        className="wx-hero tactile tactile-feature relative block overflow-hidden rounded-[var(--app-radius-lg)] p-4 transition active:scale-[0.995]"
         style={{ background: heroBg }}
       >
         {cur ? (
           <>
-            {/* Top row: big temp + icon + H/L + meta chips. */}
+            {/* Top row: big temp + animated sky glyph + H/L + meta chips.
+                The sky glyph replaces a flat Lucide icon — rays rotate,
+                clouds drift, rain falls, snow drifts. Pure CSS, respects
+                prefers-reduced-motion. */}
             <div className="flex items-start gap-3">
-              <CurIcon
-                className="h-12 w-12 shrink-0"
-                strokeWidth={1.5}
-                style={{ color: "var(--app-cool)" }}
-                aria-hidden
-              />
+              <AnimatedSkyGlyph variant={curVariant} size={56} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
                   <p
@@ -327,48 +302,11 @@ export default async function WeatherHero() {
               </div>
             )}
 
-            {/* Next 6 hours — wider strip than before; uses tabular nums. */}
-            {next6.length > 0 && (
-              <ul className="mt-3 flex items-end justify-between gap-1">
-                {next6.map((h) => {
-                  const Hi = ICONS[iconForShortForecast(h.shortForecast)];
-                  const hp = h.probabilityOfPrecipitation ?? 0;
-                  return (
-                    <li
-                      key={h.startTime}
-                      className="flex w-10 flex-col items-center gap-0.5"
-                    >
-                      <span
-                        className="text-[9px] font-semibold uppercase"
-                        style={{ color: "var(--app-ink-3)" }}
-                      >
-                        {hourLabel(h.startTime)}
-                      </span>
-                      <Hi
-                        className="h-4 w-4"
-                        strokeWidth={2}
-                        style={{ color: "var(--app-ink-2)" }}
-                        aria-hidden
-                      />
-                      <span
-                        className="text-[12px] font-semibold tabular-nums"
-                        style={{ color: "var(--app-ink)" }}
-                      >
-                        {h.temperature}&deg;
-                      </span>
-                      {hp >= 30 && (
-                        <span
-                          className="text-[8px] tabular-nums"
-                          style={{ color: "var(--app-cool)" }}
-                        >
-                          {hp}%
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            {/* Next 12 hours — animated SVG temperature curve with
+                per-hour glyphs + precip bars. Replaces the previous
+                6-icon strip. The curve draws on from left to right,
+                bars rise from the baseline, the "now" dot pulses. */}
+            {next12.length > 0 && <WeatherHourlyChart hours={next12} />}
             {/* 7-day outlook — same card, hairline divider above it so
                 it reads as a continuation of the current weather row
                 rather than a detached forecast strip. The -mx-4 + -mb-4

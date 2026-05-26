@@ -1186,3 +1186,204 @@ html.dark .shimmer::after {
   background: var(--app-bg-elevated);
   color: var(--app-ink-2);
 }
+
+/* ─────────────────────────────────────────────────────
+ * Sky glyph — animated weather illustration.
+ * Pure CSS, server-renderable, prefers-reduced-motion aware.
+ * Each variant gets its own slow loop so the card has life
+ * without becoming visual noise.
+ * ───────────────────────────────────────────────────── */
+.sky-glyph {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.sky-glyph > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+/* Sun rays rotate one full turn every 24s — slow enough to feel
+ * like ambient daylight, fast enough to catch the eye on dwell. */
+.sky-rays {
+  transform-origin: 50% 50%;
+  animation: skyRaysSpin 24s linear infinite;
+}
+@keyframes skyRaysSpin {
+  to { transform: rotate(360deg); }
+}
+/* Sun core breathes — a 6s expand/contract so the light feels alive. */
+.sky-core {
+  animation: skyCorePulse 6s ease-in-out infinite;
+}
+@keyframes skyCorePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.06); opacity: 0.94; }
+}
+/* Cloud drifts horizontally on a 10s cycle. The small CloudSun
+ * cloud uses the same animation but smaller amplitude. */
+.sky-cloud {
+  animation: skyCloudDrift 10s ease-in-out infinite;
+}
+.sky-cloud--small {
+  animation: skyCloudDriftSmall 8s ease-in-out infinite;
+}
+@keyframes skyCloudDrift {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3%); }
+}
+@keyframes skyCloudDriftSmall {
+  0%, 100% { transform: translateX(-3%); }
+  50% { transform: translateX(2%); }
+}
+/* Rain droplets fall on a 1.4s cycle, staggered via inline delays. */
+.sky-drop {
+  animation: skyDropFall 1.4s ease-in infinite;
+  transform-origin: center;
+  opacity: 0;
+}
+@keyframes skyDropFall {
+  0% { transform: translateY(-10px); opacity: 0; }
+  20% { opacity: 0.9; }
+  90% { opacity: 0.9; }
+  100% { transform: translateY(14px); opacity: 0; }
+}
+/* Snowflakes drift down + rotate gently, staggered. */
+.sky-flake {
+  animation: skyFlakeFall 4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+@keyframes skyFlakeFall {
+  0% { transform: translate(0, -10px) rotate(0deg); opacity: 0; }
+  20% { opacity: 0.95; }
+  90% { opacity: 0.95; }
+  100% { transform: translate(2px, 14px) rotate(80deg); opacity: 0; }
+}
+/* Bolt flashes — a short visible window in a 4s cycle. */
+.sky-bolt {
+  animation: skyBoltFlash 4s ease-in-out infinite;
+}
+@keyframes skyBoltFlash {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  6% { opacity: 1; transform: scale(1.04); }
+  12% { opacity: 0.5; }
+  18% { opacity: 1; }
+  24% { opacity: 0.4; transform: scale(1); }
+}
+/* Fog lines breathe in/out of view on a long cycle. */
+.sky-fog-line {
+  animation: skyFogBreathe 3.5s ease-in-out infinite;
+  opacity: 0.7;
+}
+@keyframes skyFogBreathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.9; }
+}
+/* Wind curves sweep right-to-left on a slow 2.5s cycle. */
+.sky-wind-line {
+  animation: skyWindSweep 2.5s ease-in-out infinite;
+  stroke-dasharray: 80;
+  stroke-dashoffset: 80;
+}
+@keyframes skyWindSweep {
+  0% { stroke-dashoffset: 80; opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { stroke-dashoffset: -80; opacity: 0; }
+}
+
+/* Honor the OS reduced-motion preference — all sky animations
+ * pause and the illustration becomes a single still frame. */
+@media (prefers-reduced-motion: reduce) {
+  .sky-rays,
+  .sky-core,
+  .sky-cloud,
+  .sky-cloud--small,
+  .sky-drop,
+  .sky-flake,
+  .sky-bolt,
+  .sky-fog-line,
+  .sky-wind-line {
+    animation: none !important;
+  }
+  .sky-drop,
+  .sky-flake { opacity: 0.9; }
+  .sky-wind-line { stroke-dashoffset: 0; opacity: 1; }
+}
+
+/* ─────────────────────────────────────────────────────
+ * Weather hourly chart — animated temperature curve.
+ * The polyline draws-on from left to right on first paint
+ * via a stroke-dashoffset transition. The current-hour dot
+ * pulses gently to anchor the "you are here" read.
+ * ───────────────────────────────────────────────────── */
+.wx-curve {
+  stroke-dasharray: 800;
+  stroke-dashoffset: 800;
+  animation: wxCurveDraw 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
+}
+@keyframes wxCurveDraw {
+  to { stroke-dashoffset: 0; }
+}
+.wx-curve-fill {
+  opacity: 0;
+  animation: wxCurveFade 0.8s ease-out 1.2s forwards;
+}
+@keyframes wxCurveFade {
+  to { opacity: 1; }
+}
+.wx-now-dot {
+  animation: wxNowPulse 2.4s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes wxNowPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.25); opacity: 0.7; }
+}
+.wx-now-ring {
+  animation: wxNowRing 2.4s ease-out infinite;
+  transform-origin: center;
+}
+@keyframes wxNowRing {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.wx-bar {
+  transform-origin: bottom;
+  animation: wxBarGrow 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform: scaleY(0);
+}
+@keyframes wxBarGrow {
+  to { transform: scaleY(1); }
+}
+.wx-hour-cell {
+  opacity: 0;
+  animation: wxHourReveal 0.4s ease-out forwards;
+}
+@keyframes wxHourReveal {
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx-curve { stroke-dashoffset: 0; animation: none; }
+  .wx-curve-fill { opacity: 1; animation: none; }
+  .wx-now-dot { animation: none; }
+  .wx-now-ring { display: none; }
+  .wx-bar { transform: scaleY(1); animation: none; }
+  .wx-hour-cell { opacity: 1; animation: none; }
+}
+
+/* Weather hero — soft entrance on first paint. Uses @starting-style
+ * so the lift fires once on mount, then never again on prop changes. */
+.wx-hero {
+  transition: opacity 480ms var(--app-ease-out), transform 480ms var(--app-ease-out);
+}
+@starting-style {
+  .wx-hero { opacity: 0; transform: translateY(6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx-hero { transition: none; }
+}
