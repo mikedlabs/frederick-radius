@@ -11,7 +11,7 @@ import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 // here — that was a duplicate fetch leftover from the earlier inline-
 // alert design.
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { weatherVerdict } from "@/lib/weather-verdict";
+import { weatherVerdict, nextWeatherChange } from "@/lib/weather-verdict";
 import WeeklyForecast from "./WeeklyForecast";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import WeatherHourlyChart from "./WeatherHourlyChart";
@@ -129,6 +129,13 @@ export default async function WeatherHero() {
         now,
       })
     : null;
+
+  // Next change — Mercury Weather's editorial-second-line move.
+  // Verdict is the mood; this is the heads-up. "Warming to 80° by
+  // 4 PM" / "Rain starting around 5 PM" / "Steady through evening."
+  const nextChange = cur && forecast?.hourly
+    ? nextWeatherChange({ hourly: forecast.hourly, now })
+    : null;
   const verdictColor =
     verdict?.tone === "rough"
       ? "var(--app-cool)"
@@ -168,16 +175,26 @@ export default async function WeatherHero() {
   }
 
   return (
-    <div className="space-y-2">
+    <article
+      className="wx-hero tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] p-4"
+      style={{ background: heroBg }}
+    >
       {/* Inline alert chip removed — the CivicAlerts component at the
           top of Today already shows the active NWS alert with the full
           headline, severity color, ends-at time, and scope chip. We
           were rendering the same Severe Thunderstorm Watch twice. */}
+      {/*
+        The hero is split: the "summary" top half is a Link to /pulse
+        (the deep weather page), and the hourly chart + 7-day live
+        outside that link so their interactive controls (tab buttons,
+        show/hide toggle) don't have to fight a parent navigation
+        intent. Putting buttons inside an <a> is invalid HTML and
+        gives the user a janky double-action on every tap.
+       */}
       <Link
         href="/pulse"
         aria-label="Current weather and today's outlook — open the full weather board"
-        className="wx-hero tactile tactile-feature relative block overflow-hidden rounded-[var(--app-radius-lg)] p-4 transition active:scale-[0.995]"
-        style={{ background: heroBg }}
+        className="block transition active:scale-[0.995]"
       >
         {cur ? (
           <>
@@ -227,6 +244,17 @@ export default async function WeatherHero() {
                     style={{ color: verdictColor }}
                   >
                     {verdict.line}
+                  </p>
+                )}
+                {/* Next change — the specific time-stamped heads-up
+                    below the editorial mood. Italic serif so it
+                    reads as a quiet annotation, not a second headline. */}
+                {nextChange && (
+                  <p
+                    className="mt-0.5 font-serif text-[12.5px] italic leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {nextChange}
                   </p>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -301,24 +329,6 @@ export default async function WeatherHero() {
                 {daylightNote}
               </div>
             )}
-
-            {/* Next 12 hours — animated SVG temperature curve with
-                per-hour glyphs + precip bars. Replaces the previous
-                6-icon strip. The curve draws on from left to right,
-                bars rise from the baseline, the "now" dot pulses. */}
-            {next12.length > 0 && <WeatherHourlyChart hours={next12} />}
-            {/* 7-day outlook — same card, hairline divider above it so
-                it reads as a continuation of the current weather row
-                rather than a detached forecast strip. The -mx-4 + -mb-4
-                lets it span edge-to-edge inside the p-4 article. */}
-            {forecast?.daily && forecast.daily.length > 0 && (
-              <div
-                className="-mx-4 -mb-4 mt-4"
-                style={{ borderTop: "1px solid var(--app-border)" }}
-              >
-                <WeeklyForecast daily={forecast.daily} tone="dark" />
-              </div>
-            )}
           </>
         ) : (
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
@@ -326,6 +336,20 @@ export default async function WeatherHero() {
           </p>
         )}
       </Link>
-    </div>
+
+      {/* Hourly + weekly — interactive surfaces, NOT nested in the
+          /pulse link. The hourly rail's tab buttons and the weekly
+          show/hide toggle would otherwise double-fire navigation on
+          every tap. */}
+      {cur && next12.length > 0 && <WeatherHourlyChart hours={next12} />}
+      {cur && forecast?.daily && forecast.daily.length > 0 && (
+        <div
+          className="-mx-4 -mb-4 mt-3"
+          style={{ borderTop: "1px solid var(--app-border)" }}
+        >
+          <WeeklyForecast daily={forecast.daily} />
+        </div>
+      )}
+    </article>
   );
 }

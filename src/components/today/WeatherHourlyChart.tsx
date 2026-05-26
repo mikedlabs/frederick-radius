@@ -1,3 +1,6 @@
+"use client";
+
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Sun,
   CloudSun,
@@ -6,7 +9,8 @@ import {
   CloudSnow,
   CloudLightning,
   CloudFog,
-  Wind,
+  Wind as WindIcon,
+  Droplets,
 } from "lucide-react";
 import { iconForShortForecast, type NwsHourly } from "@/lib/integrations/nws";
 
@@ -18,26 +22,52 @@ const ICONS = {
   CloudSnow,
   CloudLightning,
   CloudFog,
-  Wind,
+  Wind: WindIcon,
 } as const;
 
+const TINT: Record<keyof typeof ICONS, string> = {
+  Sun: "#E8A33D",
+  CloudSun: "#C99632",
+  Cloud: "#8A8884",
+  CloudRain: "#2F5470",
+  CloudSnow: "#7CA8D8",
+  CloudLightning: "#7E2C6F",
+  CloudFog: "#9A9690",
+  Wind: "#4A7CA8",
+};
+
 /**
- * WeatherHourlyChart — the visual replacement for the old 6-icon row.
+ * WeatherHourlyChart — Weathergraph-style single-strip chart.
  *
- * Renders an animated SVG temperature curve across all 12 NWS-provided
- * hourly periods. Beneath the curve: hour labels, per-hour weather
- * glyphs, and precipitation bars whose height scales with %-chance.
- * The curve draws-on from left to right on mount; the bars grow up
- * from the baseline staggered; the current-hour dot pulses to anchor
- * "you are here".
+ * Replaces the previous candle-rail (12 tiles) with a single
+ * continuous chart that combines four layers in one timeline:
  *
- * All animation is CSS keyframes in globals.css (.wx-* selectors) so
- * the component stays server-rendered and ships zero client JS.
+ *   - Daylight backing: per-hour isDaytime gradient (warm-cream
+ *     during day, cool-cream at night) so the chart itself reads
+ *     "where we are in the day" without numbers.
+ *   - Temperature curve: a smooth slate→brick gradient stroke, with
+ *     the day's Hi and Lo labels floating directly on the curve
+ *     (NYT/FT "direct labels on lines" — no legend, no axis).
+ *   - Precip bars: slate columns at the baseline for any hour with
+ *     ≥20% rain probability. Subtle by default, louder past 50%.
+ *   - Scrub indicator: a vertical hairline + a brand dot that
+ *     follows the user's finger / mouse across the chart.
+ *
+ * Interaction: drag a finger across the chart (or tap an hour) to
+ * scrub through the 12-hour window. The detail card below updates
+ * with the touched hour's conditions, wind, and clock label. No
+ * snap; the scrub feels analog. A "Now"-marker triangle sits
+ * pinned to hour 0 as the anchor.
+ *
+ * Owner ask (verbatim): "add some sort of motion control so the
+ * user can can see it if they wanna touch it. Make it a little bit
+ * more interactive so it doesn't have to take up so much space,
+ * but it looks pretty when you reveal different parts of the
+ * weather." The scrub is the motion control; one strip is the
+ * compactness; the layered backing is the pretty.
  */
 
 type Props = {
-  /** NWS hourly periods, starting at "now". 12 entries expected;
-   *  fewer is fine — the chart scales to the count. */
   hours: NwsHourly[];
 };
 
@@ -51,57 +81,119 @@ function hourLabel(iso: string): string {
     .replace(" ", "");
 }
 
+function fullClockLabel(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
 export default function WeatherHourlyChart({ hours }: Props) {
-  if (hours.length === 0) return null;
+  const [activeIdx, setActiveIdx] = useState<number>(0);
+  const railRef = useRef<HTMLDivElement | null>(null);
 
-  // SVG geometry. The viewBox is 12 columns × 100 units tall; we
-  // letterbox the temperature line into the top 60u so there's
-  // breathing room below for the per-hour glyph row.
-  const W = 360;
-  const H = 80;
-  const PAD_X = 14;
-  const PAD_TOP = 8;
-  const PAD_BOTTOM = 26; // reserved for the precip-bar band
-  const n = hours.length;
-  const step = (W - 2 * PAD_X) / Math.max(1, n - 1);
+  // SVG geometry — generous viewBox lets the curve breathe and the
+  // floating labels sit above the peak / below the trough without
+  // running into the day/night backing.
+  const geo = useMemo(() => {
+    if (hours.length === 0) return null;
+    const W = 360;
+    const H = 110;
+    const PAD_X = 14;
+    const PAD_TOP = 24; // room for the floating Hi label
+    const PAD_BOTTOM = 26; // room for hour labels + precip bars
+    const n = hours.length;
+    const temps = hours.map((h) => h.temperature);
+    let tMin = Math.min(...temps);
+    let tMax = Math.max(...temps);
+    if (tMin === tMax) {
+      tMin -= 1;
+      tMax += 1;
+    }
+    const usableH = H - PAD_TOP - PAD_BOTTOM;
+    const xFor = (i: number) => PAD_X + ((W - 2 * PAD_X) * i) / Math.max(1, n - 1);
+    const yFor = (t: number) =>
+      PAD_TOP + usableH * (1 - (t - tMin) / Math.max(1, tMax - tMin));
 
-  // Domain: clamp to actual min/max with a 1° padding so the curve
-  // never hugs the top or bottom edge of the chart.
-  const temps = hours.map((h) => h.temperature);
-  let tMin = Math.min(...temps);
-  let tMax = Math.max(...temps);
-  if (tMin === tMax) {
-    tMin -= 1;
-    tMax += 1;
-  }
-  tMin = Math.floor(tMin - 1);
-  tMax = Math.ceil(tMax + 1);
+    // Catmull-Rom → cubic Bezier for a smooth curve through the
+    // 12 points. Reads as a weather phenomenon, not a polyline.
+    const pts = temps.map((t, i) => [xFor(i), yFor(t)] as const);
+    let d = `M ${pts[0][0]} ${pts[0][1]}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] ?? pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] ?? p2;
+      const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`;
+    }
+    const fill = `${d} L ${pts[pts.length - 1][0]} ${H - PAD_BOTTOM} L ${pts[0][0]} ${H - PAD_BOTTOM} Z`;
 
-  const yFor = (t: number) => {
-    const usable = H - PAD_TOP - PAD_BOTTOM;
-    const ratio = (t - tMin) / (tMax - tMin);
-    return PAD_TOP + (1 - ratio) * usable;
-  };
-  const xFor = (i: number) => PAD_X + i * step;
+    // Hi / Lo anchor indices for the floating labels.
+    let hiIdx = 0;
+    let loIdx = 0;
+    for (let i = 1; i < temps.length; i++) {
+      if (temps[i] > temps[hiIdx]) hiIdx = i;
+      if (temps[i] < temps[loIdx]) loIdx = i;
+    }
 
-  // Polyline path through the points + a closed fill area below it.
-  const linePath = temps
-    .map((t, i) => `${i === 0 ? "M" : "L"} ${xFor(i).toFixed(1)} ${yFor(t).toFixed(1)}`)
-    .join(" ");
-  const fillPath =
-    linePath +
-    ` L ${xFor(n - 1).toFixed(1)} ${(H - PAD_BOTTOM).toFixed(1)}` +
-    ` L ${xFor(0).toFixed(1)} ${(H - PAD_BOTTOM).toFixed(1)} Z`;
+    // Daylight stops for the background gradient — one stop per
+    // hour, transitioning between warm (day) and cool (night) cream
+    // tints. Each stop offset is the hour's x position as %.
+    const dayStops = hours.map((h, i) => ({
+      offset: ((xFor(i) - PAD_X) / (W - 2 * PAD_X)) * 100,
+      color: h.isDaytime
+        ? "color-mix(in srgb, var(--app-accent) 14%, var(--app-bg-elevated-solid))"
+        : "color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-elevated-solid))",
+    }));
 
-  // Index of the current hour — first entry from the NWS API IS the
-  // current hour, so the marker sits on i=0. Drawn on top of the
-  // curve as a pulsing dot + radiating ring.
-  const nowIdx = 0;
+    return {
+      W, H, PAD_X, PAD_TOP, PAD_BOTTOM, n, xFor, yFor, d, fill,
+      tMin, tMax, hiIdx, loIdx, dayStops,
+    };
+  }, [hours]);
+
+  // Map an event's x coordinate inside the chart to an hour index.
+  const idxFromEvent = useCallback(
+    (clientX: number): number | null => {
+      const el = railRef.current;
+      if (!el || !geo) return null;
+      const rect = el.getBoundingClientRect();
+      const relativeX = clientX - rect.left;
+      const xInView = (relativeX / rect.width) * geo.W;
+      const usable = geo.W - 2 * geo.PAD_X;
+      const ratio = Math.max(0, Math.min(1, (xInView - geo.PAD_X) / usable));
+      return Math.round(ratio * (geo.n - 1));
+    },
+    [geo],
+  );
+
+  const handlePointer = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Only react to actual presses/drags, not idle moves over the chart.
+      if (e.buttons === 0 && e.type !== "pointerdown") return;
+      const idx = idxFromEvent(e.clientX);
+      if (idx != null && idx !== activeIdx) setActiveIdx(idx);
+    },
+    [idxFromEvent, activeIdx],
+  );
+
+  if (!geo || hours.length === 0) return null;
+
+  const active = hours[activeIdx];
+  const ActiveIcon = ICONS[iconForShortForecast(active.shortForecast)];
+  const activePct = active.probabilityOfPrecipitation ?? 0;
+  const ax = geo.xFor(activeIdx);
 
   return (
     <section
-      aria-label="Next 12 hours"
-      className="wx-chart -mx-4 mt-3 overflow-hidden border-t pt-3"
+      aria-label={`Next ${hours.length} hours`}
+      className="-mx-4 mt-3 border-t pt-2.5"
       style={{ borderColor: "var(--app-border)" }}
     >
       <div className="mb-1.5 flex items-baseline justify-between px-4">
@@ -115,138 +207,270 @@ export default function WeatherHourlyChart({ hours }: Props) {
           className="text-[10px] tabular-nums"
           style={{ color: "var(--app-ink-3)" }}
         >
-          {tMin}° – {tMax}°
+          {geo.tMin}° – {geo.tMax}°
         </span>
       </div>
 
-      <div className="relative px-4">
+      <div
+        ref={railRef}
+        className="relative cursor-pointer touch-pan-y select-none px-4"
+        role="slider"
+        aria-label="Scrub through the next 12 hours"
+        aria-valuemin={0}
+        aria-valuemax={hours.length - 1}
+        aria-valuenow={activeIdx}
+        onPointerDown={(e) => {
+          (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+          handlePointer(e);
+        }}
+        onPointerMove={handlePointer}
+        onPointerUp={(e) => {
+          (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+        }}
+      >
         <svg
-          viewBox={`0 0 ${W} ${H}`}
+          viewBox={`0 0 ${geo.W} ${geo.H}`}
           preserveAspectRatio="none"
           className="block w-full"
-          style={{ height: H }}
+          style={{ height: geo.H }}
           aria-hidden
         >
           <defs>
-            {/* Curve fill — accent-tinted gradient that fades to
-             *  paper at the chart baseline so the area read isn't
-             *  a hard block of color. */}
-            <linearGradient id="wx-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--app-accent)" stopOpacity={0.32} />
-              <stop offset="100%" stopColor="var(--app-accent)" stopOpacity={0} />
+            {/* Daylight gradient — warm cream during isDaytime hours,
+             *  cool cream at night. The chart itself shows you where
+             *  the sun is. */}
+            <linearGradient
+              id="wx-daylight"
+              x1={geo.PAD_X}
+              y1={0}
+              x2={geo.W - geo.PAD_X}
+              y2={0}
+              gradientUnits="userSpaceOnUse"
+            >
+              {geo.dayStops.map((s, i) => (
+                <stop key={i} offset={`${s.offset.toFixed(2)}%`} stopColor={s.color} />
+              ))}
             </linearGradient>
-            {/* Precip bar — Carroll Creek slate. */}
+            {/* Temp-curve fill — fades from accent tint to nothing.
+             *  Reads as the "weight" of the day's heat. */}
+            <linearGradient id="wx-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--app-brand)" stopOpacity={0.18} />
+              <stop offset="100%" stopColor="var(--app-brand)" stopOpacity={0} />
+            </linearGradient>
+            {/* Temp-curve stroke — slate at the low end, brick at the
+             *  high end. The line itself encodes value. */}
+            <linearGradient
+              id="wx-line"
+              x1={geo.PAD_X}
+              y1={geo.PAD_TOP}
+              x2={geo.PAD_X}
+              y2={geo.H - geo.PAD_BOTTOM}
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop offset="0%" stopColor="var(--app-brand)" />
+              <stop offset="100%" stopColor="var(--app-cool)" />
+            </linearGradient>
+            {/* Precip bar gradient — slate fading at top so the bars
+             *  feel weather-y, not bar-chart-y. */}
             <linearGradient id="wx-precip" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--app-cool)" stopOpacity={0.9} />
-              <stop offset="100%" stopColor="var(--app-cool)" stopOpacity={0.55} />
+              <stop offset="0%" stopColor="var(--app-cool)" stopOpacity={0.55} />
+              <stop offset="100%" stopColor="var(--app-cool)" stopOpacity={0.9} />
             </linearGradient>
           </defs>
 
-          {/* Filled area beneath the line. Fade in after the line
-           *  finishes drawing for a clean reveal. */}
-          <path d={fillPath} fill="url(#wx-fill)" className="wx-curve-fill" />
+          {/* Daylight backing — single rect filled with the per-hour
+           *  stop gradient. */}
+          <rect
+            x={geo.PAD_X}
+            y={geo.PAD_TOP - 4}
+            width={geo.W - 2 * geo.PAD_X}
+            height={geo.H - geo.PAD_TOP - geo.PAD_BOTTOM + 8}
+            fill="url(#wx-daylight)"
+            rx={8}
+          />
 
-          {/* Precip bars — one per hour, scaled by % chance. Each
-           *  bar sits in a 22u-tall band at the bottom of the chart
-           *  so it can't push into the temp curve. */}
+          {/* Precip bars at the baseline. */}
           {hours.map((h, i) => {
-            const pct = Math.max(0, Math.min(100, h.probabilityOfPrecipitation ?? 0));
-            if (pct < 5) return null;
-            const barH = (pct / 100) * 20;
-            const cx = xFor(i);
+            const pct = h.probabilityOfPrecipitation ?? 0;
+            if (pct < 20) return null;
+            const barH = Math.max(2, (pct / 100) * 18);
+            const cx = geo.xFor(i);
             return (
               <rect
                 key={`bar-${i}`}
-                x={cx - 5}
-                y={H - PAD_BOTTOM + 4 + (20 - barH)}
-                width={10}
+                x={cx - 4}
+                y={geo.H - geo.PAD_BOTTOM - barH + 4}
+                width={8}
                 height={barH}
-                rx={2}
+                rx={1.5}
                 fill="url(#wx-precip)"
-                className="wx-bar"
-                style={{ animationDelay: `${0.6 + i * 0.04}s` }}
+                opacity={Math.min(1, 0.4 + pct / 150)}
               />
             );
           })}
 
-          {/* The temperature line — drawn on via stroke-dashoffset. */}
+          {/* Temp curve — area + line. */}
+          <path d={geo.fill} fill="url(#wx-fill)" />
           <path
-            d={linePath}
+            d={geo.d}
             fill="none"
-            stroke="var(--app-brand)"
+            stroke="url(#wx-line)"
             strokeWidth={2.25}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="wx-curve"
           />
 
-          {/* Now marker — a single static dot with a paper-cream
-           *  outline so it reads as "you are here" without the
-           *  expanding-ring effect that was reading as alarmy. */}
+          {/* Hi/Lo direct labels — both float ABOVE their points so
+           *  they form a clean "ribbon of values" along the top of
+           *  the curve without colliding with the precip bars or the
+           *  bottom tick labels. Horizontal text-anchor flips at the
+           *  chart edges so the label stays inside the box. */}
+          {(() => {
+            const labelAt = (idx: number, color: string) => {
+              const x = geo.xFor(idx);
+              const y = geo.yFor(hours[idx].temperature);
+              // Anchor end/start at the edges so the text reads inside
+              // the chart, not chopped off at the viewBox boundary.
+              const anchor =
+                idx === 0 ? "start" : idx === geo.n - 1 ? "end" : "middle";
+              const dx = idx === 0 ? 2 : idx === geo.n - 1 ? -2 : 0;
+              return (
+                <text
+                  key={`label-${idx}`}
+                  x={x + dx}
+                  y={Math.max(geo.PAD_TOP - 4, y - 8)}
+                  textAnchor={anchor}
+                  fill={color}
+                  fontWeight={600}
+                  fontSize={11}
+                >
+                  {hours[idx].temperature}°
+                </text>
+              );
+            };
+            // Skip the Lo label if it sits on the same hour as Hi (a
+            // perfectly flat curve, very rare) — one label is enough.
+            return (
+              <>
+                {labelAt(geo.hiIdx, "var(--app-brand)")}
+                {geo.loIdx !== geo.hiIdx && labelAt(geo.loIdx, "var(--app-cool)")}
+              </>
+            );
+          })()}
+
+          {/* Now marker — small triangle pinned to hour 0 so the
+           *  reader knows where the present sits in the strip. */}
+          <polygon
+            points={`${geo.xFor(0) - 4},${geo.H - geo.PAD_BOTTOM + 6} ${geo.xFor(0) + 4},${geo.H - geo.PAD_BOTTOM + 6} ${geo.xFor(0)},${geo.H - geo.PAD_BOTTOM + 1}`}
+            fill="var(--app-brand)"
+          />
+
+          {/* Scrub indicator — vertical hairline + brand dot at the
+           *  selected hour. */}
+          <line
+            x1={ax}
+            y1={geo.PAD_TOP - 2}
+            x2={ax}
+            y2={geo.H - geo.PAD_BOTTOM + 2}
+            stroke="var(--app-brand)"
+            strokeOpacity={activeIdx === 0 ? 0.4 : 0.7}
+            strokeWidth={1.25}
+            strokeDasharray={activeIdx === 0 ? "2 3" : "0"}
+          />
           <circle
-            cx={xFor(nowIdx)}
-            cy={yFor(temps[nowIdx])}
+            cx={ax}
+            cy={geo.yFor(hours[activeIdx].temperature)}
             r={4}
             fill="var(--app-brand)"
             stroke="var(--app-bg-elevated-solid)"
             strokeWidth={2}
           />
-        </svg>
 
-        {/* Hour cells — temp + glyph + hour for each tick. Absolutely
-         *  positioned so they align with the SVG's xFor() math. The
-         *  temperature is the primary read (top), the glyph adds
-         *  conditions, and the hour anchors it in time. Apple Weather
-         *  uses the same stacking. */}
-        <div className="relative mt-1 h-12">
-          {hours.map((h, i) => {
-            const Hi = ICONS[iconForShortForecast(h.shortForecast)];
-            const pct = h.probabilityOfPrecipitation ?? 0;
-            // Translate the SVG xFor() value (in viewBox units, 0..W)
-            // to a CSS left % so the cells track the curve regardless
-            // of card width.
-            const leftPct = ((xFor(i) / W) * 100).toFixed(2);
-            const isNow = i === nowIdx;
-            return (
-              <div
-                key={`cell-${i}`}
-                className="wx-hour-cell absolute -translate-x-1/2 flex flex-col items-center gap-0.5"
-                style={{
-                  left: `${leftPct}%`,
-                  animationDelay: `${0.4 + i * 0.04}s`,
-                }}
-              >
-                <span
-                  className="text-[11px] font-semibold tabular-nums leading-none"
-                  style={{ color: isNow ? "var(--app-brand)" : "var(--app-ink)" }}
-                >
-                  {h.temperature}°
-                </span>
-                <Hi
-                  className="h-3 w-3"
-                  strokeWidth={2}
-                  style={{ color: isNow ? "var(--app-brand)" : "var(--app-ink-3)" }}
-                  aria-hidden
-                />
-                <span
-                  className="text-[9px] font-semibold tabular-nums leading-none"
-                  style={{ color: isNow ? "var(--app-ink)" : "var(--app-ink-3)" }}
-                >
-                  {hourLabel(h.startTime)}
-                </span>
-                {pct >= 30 && (
-                  <span
-                    className="text-[8px] font-semibold tabular-nums leading-none"
-                    style={{ color: "var(--app-cool)" }}
-                  >
-                    {pct}%
-                  </span>
-                )}
-              </div>
-            );
-          })}
+          {/* Hour tick labels — only first, midpoint, and last to
+           *  keep the chart calm. The scrub-detail card fills in the
+           *  exact hour the user is examining. */}
+          {[0, Math.floor(hours.length / 2), hours.length - 1].map((i) => (
+            <text
+              key={`tick-${i}`}
+              x={geo.xFor(i)}
+              y={geo.H - 6}
+              textAnchor="middle"
+              fontSize={9.5}
+              fill="var(--app-ink-3)"
+              style={{ fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}
+            >
+              {i === 0 ? "Now" : hourLabel(hours[i].startTime)}
+            </text>
+          ))}
+        </svg>
+      </div>
+
+      {/* Detail card — updates as the user scrubs. Same paper-cream
+       *  tone as the parent so it reads as a connected surface. */}
+      <div
+        className="wx-detail mx-4 mt-2 flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+        style={{
+          background: "color-mix(in srgb, var(--app-brand) 4%, var(--app-bg-elevated))",
+          borderColor: "var(--app-border)",
+        }}
+        aria-live="polite"
+      >
+        <ActiveIcon
+          className="h-7 w-7 shrink-0"
+          strokeWidth={1.75}
+          style={{ color: TINT[iconForShortForecast(active.shortForecast)] }}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-1.5">
+            <span
+              className="text-[13px] font-semibold leading-none"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {activeIdx === 0 ? "Now" : fullClockLabel(active.startTime)}
+            </span>
+            <span
+              className="text-[13px] font-semibold tabular-nums leading-none"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              · {active.temperature}°
+            </span>
+          </div>
+          <p
+            className="mt-1 truncate text-[11.5px] leading-snug"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {active.shortForecast}
+          </p>
+        </div>
+        <div
+          className="flex shrink-0 items-center gap-2 text-[10.5px]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {active.windSpeed ? (
+            <span className="inline-flex items-center gap-0.5">
+              <WindIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              {active.windSpeed}
+            </span>
+          ) : null}
+          {activePct >= 10 ? (
+            <span
+              className="inline-flex items-center gap-0.5 font-semibold"
+              style={{ color: activePct >= 50 ? "var(--app-cool)" : undefined }}
+            >
+              <Droplets className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              {activePct}%
+            </span>
+          ) : null}
         </div>
       </div>
+
+      <p
+        className="mt-1.5 px-4 text-center text-[9.5px] uppercase tracking-[0.1em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        Drag to scrub · the dot is the hour you&apos;re reading
+      </p>
     </section>
   );
 }
