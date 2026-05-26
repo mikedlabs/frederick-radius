@@ -15,9 +15,11 @@ import type { CSSProperties, ReactNode } from "react";
  */
 const ROUTE_ACCENTS: Record<string, string> = {
   "/now": "var(--app-brand)",     // warm — daily landing
-  "/radius": "var(--app-cool)",   // civic blue — folds into /map but
-                                  // keep until that PR lands
-  "/map": "var(--app-cool)",      // civic blue
+  "/browse": "var(--app-cool)",   // civic blue — the spatial tab
+  "/radius": "var(--app-cool)",   // still routable; deep links survive
+  "/map": "var(--app-cool)",      // legacy — 301'd to /browse but
+                                  // included so a stale link's pre-
+                                  // redirect render still tints right
   "/events": "var(--app-brand)",  // warm — culture
   "/plan": "var(--app-brand-2)",  // catoctin green — outdoors-leaning
   "/saved": "var(--app-cool)",    // civic blue

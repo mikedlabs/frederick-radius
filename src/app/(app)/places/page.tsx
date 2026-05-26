@@ -85,7 +85,7 @@ export default function PlacesIndexPage() {
           for the "what's near me right now" answer. */}
       <div className="grid grid-cols-2 gap-2">
         <Link
-          href="/map"
+          href="/browse"
           className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-4 py-3 transition"
           style={{ borderColor: "var(--app-border)" }}
         >

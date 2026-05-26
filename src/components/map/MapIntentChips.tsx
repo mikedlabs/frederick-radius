@@ -62,7 +62,7 @@ export default function MapIntentChips({
             </span>
           )}
           <Link
-            href="/map"
+            href="/browse"
             aria-label="Clear filter"
             className="-mr-1.5 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-white/22 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] backdrop-blur transition active:scale-[0.96]"
           >
@@ -79,7 +79,7 @@ export default function MapIntentChips({
         }}
       >
         <Link
-          href="/map"
+          href="/browse"
           aria-current={!active ? "page" : undefined}
           className="shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] transition active:scale-[0.97]"
           style={{
