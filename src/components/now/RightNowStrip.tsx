@@ -30,50 +30,112 @@ import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
  * — better to show two cards than to fake the third.
  */
 
-// Curated categories that read as "destination tonight," not as
-// "errand I have to run." Filters the open-now place pick.
-const NIGHT_OUT_CATS = new Set([
+/**
+ * Category sets tuned per daypart. The previous implementation used a
+ * single "night-out" set for every card, which made the home page
+ * hide parks/trails entirely and pick the same theater venue over
+ * and over. Now the candidate set shifts with the time of day so
+ * parks surface during daylight, restaurants surface around mealtimes,
+ * and the museum/theater set holds the weekend bet.
+ */
+const DAYTIME_OUTDOOR_CATS = new Set([
+  "park", "trail", "outdoors", "playground", "market",
+]);
+const DAYTIME_MIXED_CATS = new Set([
+  "coffee", "bakery", "restaurant", "park", "trail", "museum", "gallery",
+  "market", "outdoors",
+]);
+const EVENING_OUT_CATS = new Set([
+  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
+  "music", "theater", "gallery", "museum",
+]);
+const WEEKEND_BET_CATS = new Set([
+  // A broader set than the old "night-out only" so a Saturday hike,
+  // a Sunday farmers market, or a Friday brewery all qualify.
   "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
   "music", "theater", "gallery", "museum", "market",
+  "park", "trail", "outdoors", "playground",
 ]);
 
+/** Pick the right candidate set for the current Eastern-time hour.
+ *  Returns the category set used for the "Open right now" card. */
+function openNowCats(hour: number): Set<string> {
+  if (hour < 10) return DAYTIME_MIXED_CATS;   // morning: coffee, bakery, parks
+  if (hour < 16) return DAYTIME_OUTDOOR_CATS; // midday: parks, trails, markets
+  return EVENING_OUT_CATS;                    // 4pm+: dinner / drinks / culture
+}
+
+/** Eastern hour 0–23 — same TZ discipline as elsewhere in the app. */
+function easternHour(d: Date): number {
+  return parseInt(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      hour: "numeric",
+      hour12: false,
+    }).format(d),
+    10,
+  ) % 24;
+}
+
+/** YYYY-MM-DD in Eastern — used as a rotation seed so the weekend pick
+ *  changes by day instead of being the same theater for a week. */
+function easternDayKey(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(d);
+}
+
+/** Stable hash of a string → 32-bit int. Used for deterministic
+ *  daily rotation among top-N candidates. */
+function seedHash(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
 function openNowPick(now: Date, origin: LngLat): PlaceCardData | null {
-  const ranked = rankPlaces({
-    origin,
-    now,
-    preferOpen: true,
-    limit: 60,
-  });
+  const ranked = rankPlaces({ origin, now, preferOpen: true, limit: 80 });
+  const cats = openNowCats(easternHour(now));
   const candidates = ranked.filter(
     (p) =>
       p.open_status.state === "open" &&
-      NIGHT_OUT_CATS.has(p.category) &&
-      (p.google_rating ?? 0) >= 4.2,
+      cats.has(p.category) &&
+      (p.google_rating ?? 0) >= 4.0,
   );
-  return candidates[0] ?? null;
+  // Rotate among the top 5 daily so a user reloading mid-day doesn't
+  // get the same coffee shop every time.
+  const top = candidates.slice(0, 5);
+  if (top.length === 0) return null;
+  const seed = seedHash(easternDayKey(now) + ":open");
+  return top[seed % top.length];
 }
 
 function startingSoonPick(now: Date): EventWithMeta | null {
   // Anything starting in the next 24 hours. eventsNext24h already
-  // sorts by start time and excludes civic-meeting noise via the
-  // central filter we set up in cut #1.
+  // sorts by start time and excludes civic-meeting noise.
   const upcoming = eventsNext24h(now);
   return upcoming.find((e) => Boolean(e.hero_image)) ?? upcoming[0] ?? null;
 }
 
 function weekendBetPick(now: Date, origin: LngLat): PlaceCardData | null {
-  // Editorial pick for the upcoming weekend: top-rated, photo-backed,
-  // night-out category. Doesn't care about open-RIGHT-NOW because the
-  // user is reading this with the weekend in mind.
+  // Broader candidate set (parks, trails, markets included) +
+  // daily rotation. Was the source of the "same Endangered Species
+  // Theatre Project every visit" issue.
   const ranked = rankPlaces({ origin, now, limit: 200 });
   const candidates = ranked.filter(
     (p) =>
       Boolean(p.google_photo_url) &&
-      NIGHT_OUT_CATS.has(p.category) &&
-      (p.google_rating ?? 0) >= 4.5 &&
+      WEEKEND_BET_CATS.has(p.category) &&
+      (p.google_rating ?? 0) >= 4.4 &&
       p.open_status.state !== "closed",
   );
-  return candidates[0] ?? null;
+  const top = candidates.slice(0, 10);
+  if (top.length === 0) return null;
+  // Mix the day key with the slug to bias diversity — a venue that
+  // happened to be top yesterday is unlikely to win today.
+  const seed = seedHash(easternDayKey(now) + ":weekend");
+  return top[seed % top.length];
 }
 
 function timeUntil(dateIso: string, now: Date): string {
