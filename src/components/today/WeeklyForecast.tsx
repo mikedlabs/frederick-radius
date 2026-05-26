@@ -173,6 +173,69 @@ export default function WeeklyForecast({
         </span>
       </button>
 
+      {/* Ribbon-in-a-ribbon — Apple Weather's hi-lo bar adapted as a
+          collapsed-peek visual. The full-width track is the week's
+          range; each day's hi-lo sits inside it as a slate→brick
+          segment; weekday labels below each segment. Today's segment
+          gets a brand outline. The peek now SHOWS the story instead
+          of summarizing it in numbers; expanding gives the per-row
+          detail when wanted. Hidden while expanded — that's the row
+          list's job. */}
+      {!expanded && (
+        <div className="px-4 pb-2.5" aria-hidden>
+          <div
+            className="relative h-3 w-full rounded-full"
+            style={{
+              background: "color-mix(in srgb, var(--app-ink-3) 12%, transparent)",
+            }}
+          >
+            {days.map((d) => {
+              const hi = d.hi ?? d.lo ?? weekMax;
+              const lo = d.lo ?? hi - 5;
+              const left = ((Math.min(hi, lo) - weekMin) / weekSpan) * 100;
+              const width = (Math.abs(hi - lo) / weekSpan) * 100;
+              const isToday = d.label === "Today";
+              return (
+                <span
+                  key={`peek-${d.key}`}
+                  className="absolute top-0 h-full rounded-full"
+                  style={{
+                    left: `${left}%`,
+                    width: `${Math.max(2, width)}%`,
+                    background:
+                      "linear-gradient(90deg, var(--app-cool), var(--app-brand))",
+                    boxShadow: isToday
+                      ? "0 0 0 1.5px color-mix(in srgb, var(--app-brand) 50%, transparent)"
+                      : "none",
+                    opacity: isToday ? 1 : 0.78,
+                  }}
+                />
+              );
+            })}
+          </div>
+          <ul
+            className="mt-1 grid text-[9.5px] font-semibold uppercase tracking-[0.06em]"
+            style={{
+              gridTemplateColumns: `repeat(${days.length}, 1fr)`,
+              color: "var(--app-ink-3)",
+            }}
+          >
+            {days.map((d) => (
+              <li
+                key={`peek-label-${d.key}`}
+                className="text-center"
+                style={{
+                  color:
+                    d.label === "Today" ? "var(--app-brand)" : undefined,
+                }}
+              >
+                {d.label === "Today" ? "Today" : d.label.slice(0, 1)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {expanded && (
         <ul
           id="wx-week-list"

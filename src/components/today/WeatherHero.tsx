@@ -11,7 +11,7 @@ import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 // here — that was a duplicate fetch leftover from the earlier inline-
 // alert design.
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { weatherVerdict } from "@/lib/weather-verdict";
+import { weatherVerdict, nextWeatherChange } from "@/lib/weather-verdict";
 import WeeklyForecast from "./WeeklyForecast";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import WeatherHourlyChart from "./WeatherHourlyChart";
@@ -129,6 +129,13 @@ export default async function WeatherHero() {
         now,
       })
     : null;
+
+  // Next change — Mercury Weather's editorial-second-line move.
+  // Verdict is the mood; this is the heads-up. "Warming to 80° by
+  // 4 PM" / "Rain starting around 5 PM" / "Steady through evening."
+  const nextChange = cur && forecast?.hourly
+    ? nextWeatherChange({ hourly: forecast.hourly, now })
+    : null;
   const verdictColor =
     verdict?.tone === "rough"
       ? "var(--app-cool)"
@@ -237,6 +244,17 @@ export default async function WeatherHero() {
                     style={{ color: verdictColor }}
                   >
                     {verdict.line}
+                  </p>
+                )}
+                {/* Next change — the specific time-stamped heads-up
+                    below the editorial mood. Italic serif so it
+                    reads as a quiet annotation, not a second headline. */}
+                {nextChange && (
+                  <p
+                    className="mt-0.5 font-serif text-[12.5px] italic leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {nextChange}
                   </p>
                 )}
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
