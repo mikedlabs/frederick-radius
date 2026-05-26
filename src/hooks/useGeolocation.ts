@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { resolveMunicipality, locationLabel } from "@/lib/connect";
+// A2.6: import the lightweight point → muni utilities from lib/location,
+// NOT lib/connect. Importing from lib/connect drags in places-client.json
+// because lib/connect has a top-level import for the nearbyNow join.
+import { resolveMunicipality, locationLabel } from "@/lib/location";
 
 export type GeoPosition = {
   lng: number;
