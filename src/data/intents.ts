@@ -17,7 +17,8 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 export type IntentKey =
   | "coffee"
   | "eat"
-  | "sip"
+  | "wineries"
+  | "breweries"
   | "outdoor"
   | "family"
   | "arts"
@@ -36,6 +37,7 @@ export type Intent = {
     | "Coffee"
     | "Utensils"
     | "Wine"
+    | "Beer"
     | "Trees"
     | "Baby"
     | "Palette"
@@ -50,11 +52,23 @@ export type Intent = {
 };
 
 const COFFEE = new Set(["coffee", "bakery"]);
-// Sip & taste — wineries, breweries, distilleries, ciderworks. We
-// match on subcategories too so the Frederick County winery seed
-// (category: "brewery", subcategories: ["winery", …]) is included.
-const SIP_CATS = new Set(["brewery", "bar", "distillery"]);
-const SIP_SUBS = new Set(["winery", "meadery", "cidery", "distillery"]);
+// Wineries vs Breweries — these are two of Frederick County's most
+// recognizable identity beats (the Maryland Wine Trail runs through
+// the county; the Frederick Beer Trail covers the city). Historically
+// both lived under "brewery" in the curated set because Google's
+// primary_type pipeline collapses winery/meadery/cidery/distillery
+// into one bucket. The MATCHERS below split them back out for the UI
+// without touching the underlying category — by name regex and
+// subcategory tags.
+const WINERY_SUBS = new Set(["winery", "meadery", "cidery"]);
+const WINERY_NAME_RE = /winer|vineyard|cellar|meader|ciderworks?/i;
+const isWinery = (p: PlaceCardData): boolean =>
+  (p.subcategories ?? []).some((s) => WINERY_SUBS.has(s)) ||
+  WINERY_NAME_RE.test(p.name);
+// Distilleries are spirit-forward — closer to a brewery experience
+// than a winery one, so they ride the breweries chip.
+const BREWERY_CATS = new Set(["brewery"]);
+const BREWERY_SUBS = new Set(["distillery"]);
 const FOOD = new Set([
   "restaurant",
   "food",
@@ -109,14 +123,27 @@ export const INTENTS: Intent[] = [
     preferOpen: true,
   },
   {
-    key: "sip",
-    label: "Sip & taste",
-    blurb: "Wineries, breweries, distilleries, ciderworks across the county.",
+    key: "wineries",
+    label: "Wineries",
+    blurb:
+      "The 16 wineries, vineyards, meaderies, and ciderworks across the Maryland Wine Trail.",
     color: "#7E1F1F",
     icon: "Wine",
+    match: (p) => isWinery(p),
+    preferOpen: false,
+  },
+  {
+    key: "breweries",
+    label: "Breweries",
+    blurb:
+      "Frederick's craft beer scene — brewpubs, taprooms, and distilleries.",
+    color: "#C99632",
+    icon: "Beer",
     match: (p) =>
-      SIP_CATS.has(p.category) ||
-      (p.subcategories ?? []).some((s) => SIP_SUBS.has(s)),
+      // A brewery is anything in the brewery category that ISN'T a
+      // winery (those have their own chip above), plus distilleries.
+      (BREWERY_CATS.has(p.category) && !isWinery(p)) ||
+      (p.subcategories ?? []).some((s) => BREWERY_SUBS.has(s)),
     preferOpen: false,
   },
   {
