@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Wind, Droplets, Sunset } from "lucide-react";
+import { Wind, Droplets, Sunset, Sunrise } from "lucide-react";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 // NWS alerts are rendered separately by CivicAlerts (promoted to the
 // very top of /today in PR #100). We deliberately don't refetch them
@@ -178,47 +178,79 @@ export default async function WeatherHero() {
           </div>
         </div>
 
-        {/* STATS ROW — four single-line readings, monospaced numerics,
-            consistent icon weight. Wraps gracefully on a 380px viewport
-            (two-up rows) instead of cramming a single overflowing line. */}
+        {/* STATS ROW — four readings, always rendered so the grid is
+            a stable 2x2 on mobile and a clean 4-up on tablet+. Missing
+            data shows an em-dash placeholder; a 0% rain chance shows
+            as "0%" (still useful — it answers "is rain on the table?"
+            with a clear no). The Sun tile flips between sunset and
+            tomorrow's sunrise depending on whether the user is reading
+            before or after dusk, so the label is always the NEXT sun
+            event, never a stale one. */}
         <dl
           className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] tabular-nums sm:grid-cols-4"
           style={{ color: "var(--app-ink-3)" }}
         >
-          {(high !== undefined || low !== undefined) && (
-            <Stat
-              label="High / Low"
-              value={
+          <Stat
+            label="High / Low"
+            value={
+              high !== undefined || low !== undefined ? (
                 <>
                   {high !== undefined ? `${high}°` : "—"}
                   <span className="opacity-50">{" / "}</span>
                   {low !== undefined ? `${low}°` : "—"}
                 </>
-              }
-            />
-          )}
-          {cur.windSpeed && (
-            <Stat
-              icon={<Wind className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
-              label="Wind"
-              value={`${cur.windSpeed}${cur.windDirection ? ` ${cur.windDirection}` : ""}`}
-            />
-          )}
-          {precip > 0 && (
-            <Stat
-              icon={<Droplets className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
-              label="Rain"
-              value={`${precip}%`}
-              valueColor={precip >= 50 ? "var(--app-cool)" : undefined}
-            />
-          )}
-          {sun && (
-            <Stat
-              icon={<Sunset className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
-              label="Sunset"
-              value={clockLabel(sun.sunset)}
-            />
-          )}
+              ) : (
+                "—"
+              )
+            }
+          />
+          <Stat
+            icon={<Wind className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+            label="Wind"
+            value={
+              cur.windSpeed
+                ? `${cur.windSpeed}${cur.windDirection ? ` ${cur.windDirection}` : ""}`
+                : "—"
+            }
+          />
+          <Stat
+            icon={<Droplets className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+            label="Rain"
+            value={`${precip}%`}
+            valueColor={precip >= 50 ? "var(--app-cool)" : undefined}
+          />
+          {(() => {
+            // Show whichever sun event is NEXT — sunset before dusk,
+            // tomorrow's sunrise after. Reading "Sunset 8:23p" at 10pm
+            // is stale; "Sunrise 6:42a" is the actionable answer.
+            if (!sun) {
+              return <Stat icon={<Sunset className="h-3 w-3" strokeWidth={2.25} aria-hidden />} label="Sunset" value="—" />;
+            }
+            if (now < sun.sunset) {
+              return (
+                <Stat
+                  icon={<Sunset className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+                  label="Sunset"
+                  value={clockLabel(sun.sunset)}
+                />
+              );
+            }
+            const tomorrow = sunTimes(
+              new Date(now.getTime() + 86_400_000),
+              FREDERICK_LAT,
+              FREDERICK_LNG,
+            );
+            if (!tomorrow) {
+              return <Stat icon={<Sunrise className="h-3 w-3" strokeWidth={2.25} aria-hidden />} label="Sunrise" value="—" />;
+            }
+            return (
+              <Stat
+                icon={<Sunrise className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+                label="Sunrise"
+                value={clockLabel(tomorrow.sunrise)}
+              />
+            );
+          })()}
         </dl>
       </Link>
 
