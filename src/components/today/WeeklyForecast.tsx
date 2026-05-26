@@ -63,10 +63,19 @@ function groupDays(daily: NwsHourly[]): Day[] {
 
 /**
  * The 7-day outlook, rendered as a frosted sub-panel of the weather
- * card (NOT a detached card). `tone` is the parent card's light/dark
- * tone so the type sits legibly on the same gradient as the hourly
- * strip — one cohesive weather module, not an afterthought. Collapsed
- * by default it shows a four-day glance; tap to expand the full week.
+ * card. Brings the new weather-hero design language down to the week:
+ *
+ *   - Always-visible 7-cell strip: weekday label, animated reveal
+ *     glyph, hi temperature.
+ *   - Hi-temperature SVG curve spanning the strip, drawn-on with the
+ *     same stroke-dashoffset transition as the hourly chart (.wx-curve)
+ *     so the two read as one weather system.
+ *   - Tiny precip dot under any day with >=20% chance.
+ *   - Tap header to expand: per-day detail rows below (short forecast +
+ *     hi/lo + precip badge).
+ *
+ * `tone` is the parent card's light/dark tone so the type sits
+ * legibly on the same gradient as the hourly strip.
  */
 export default function WeeklyForecast({
   daily,
@@ -85,49 +94,198 @@ export default function WeeklyForecast({
   const panel = tone === "dark" ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.45)";
   const hairline = tone === "dark" ? "rgba(255,255,255,0.14)" : "rgba(0,0,0,0.08)";
   const cool = tone === "dark" ? "#9CC4E8" : "#2F5470";
+  const brand = tone === "dark" ? "#E8A33D" : "#A8462C";
+  const fill = tone === "dark"
+    ? "color-mix(in srgb, #E8A33D 24%, transparent)"
+    : "color-mix(in srgb, #A8462C 18%, transparent)";
+
+  // Build the SVG strip geometry — same xFor/yFor pattern as the
+  // hourly chart so the visual language stays consistent across
+  // the weather card. Hi temperatures define the curve; lows are
+  // shown as numerals only.
+  const W = 350;
+  const H = 70;
+  const PAD_X = 14;
+  const PAD_TOP = 8;
+  const PAD_BOTTOM = 30; // breathing room for the day-label row
+  const n = days.length;
+  const step = (W - 2 * PAD_X) / Math.max(1, n - 1);
+
+  const tempsWithValues = days.map((d) => d.hi).filter((v): v is number => v != null);
+  let tMin = tempsWithValues.length ? Math.min(...tempsWithValues) : 50;
+  let tMax = tempsWithValues.length ? Math.max(...tempsWithValues) : 75;
+  if (tMin === tMax) { tMin -= 2; tMax += 2; }
+  tMin = Math.floor(tMin - 2);
+  tMax = Math.ceil(tMax + 2);
+
+  const xFor = (i: number) => PAD_X + i * step;
+  const yFor = (t: number) => {
+    const usable = H - PAD_TOP - PAD_BOTTOM;
+    const ratio = (t - tMin) / (tMax - tMin);
+    return PAD_TOP + (1 - ratio) * usable;
+  };
+
+  // Build the line + fill paths, falling through nulls (rare for the
+  // NWS 14-period set but defensive).
+  const points: Array<{ x: number; y: number } | null> = days.map((d, i) =>
+    d.hi != null ? { x: xFor(i), y: yFor(d.hi) } : null,
+  );
+  const valid = points.filter((p): p is { x: number; y: number } => p != null);
+  const linePath = valid
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+    .join(" ");
+  const fillPath = valid.length >= 2
+    ? linePath
+      + ` L ${valid[valid.length - 1].x.toFixed(1)} ${(H - PAD_BOTTOM).toFixed(1)}`
+      + ` L ${valid[0].x.toFixed(1)} ${(H - PAD_BOTTOM).toFixed(1)} Z`
+    : "";
+
+  // Today index — the first day labeled "Today" wins.
+  const todayIdx = days.findIndex((d) => d.label === "Today");
 
   return (
     <div
       className="mt-px"
       style={{ background: panel, backdropFilter: "blur(2px)" }}
     >
+      {/* Always-visible 7-day strip: SVG hi-temp curve over a row of
+          day cells. The whole strip sits under a single tap target so
+          the expand affordance covers the full width. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-[12px] font-semibold transition active:scale-[0.99]"
-        style={{ color: ink }}
+        aria-label={open ? "Collapse 7-day outlook" : "Expand 7-day outlook"}
+        className="block w-full text-left transition active:scale-[0.997]"
       >
-        <span className="flex min-w-0 items-center gap-2.5">
-          <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: ink2 }}>
-            7-day
+        <div className="flex items-center justify-between gap-3 px-4 pt-2.5">
+          <span className="text-[9px] font-bold uppercase tracking-[0.14em]" style={{ color: ink2 }}>
+            7-day outlook
           </span>
-          {!open && (
-            <span className="flex min-w-0 items-center gap-2.5 overflow-hidden" style={{ color: ink3 }}>
-              {days.slice(1, 5).map((d) => {
-                const k = iconForShortForecast(d.short);
-                const Icon = ICONS[k];
-                return (
-                  <span key={d.key} className="inline-flex shrink-0 items-center gap-1">
-                    <span className="text-[10px] font-medium">{d.label}</span>
-                    <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                    <span className="text-[10px] font-semibold tabular-nums" style={{ color: ink2 }}>
-                      {d.hi != null ? `${d.hi}°` : "–"}
-                    </span>
+          <span className="flex items-center gap-1.5 text-[10px] tabular-nums" style={{ color: ink3 }}>
+            <span>{tMin}° – {tMax}°</span>
+            <ChevronDown
+              className="h-3 w-3 transition-transform"
+              strokeWidth={2.5}
+              style={{ color: ink3, transform: open ? "rotate(180deg)" : "none" }}
+              aria-hidden
+            />
+          </span>
+        </div>
+
+        <div className="relative px-4 pb-2">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            className="block w-full"
+            style={{ height: H }}
+            aria-hidden
+          >
+            <defs>
+              <linearGradient id="wf-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={brand} stopOpacity={tone === "dark" ? 0.4 : 0.32} />
+                <stop offset="100%" stopColor={brand} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            {fillPath && <path d={fillPath} fill="url(#wf-fill)" className="wx-curve-fill" />}
+            {linePath && (
+              <path
+                d={linePath}
+                fill="none"
+                stroke={brand}
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="wx-curve"
+              />
+            )}
+            {/* Dots at each day's hi point. Today's is the pulse dot
+                so the "you are here" anchor matches the hourly chart. */}
+            {points.map((p, i) => {
+              if (!p) return null;
+              const isToday = i === todayIdx;
+              return (
+                <g key={`pt-${i}`}>
+                  {isToday && (
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={6}
+                      fill={brand}
+                      opacity={0.35}
+                      className="wx-now-ring"
+                    />
+                  )}
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={isToday ? 3.5 : 2.5}
+                    fill={isToday ? brand : fill}
+                    stroke={isToday ? "var(--app-bg-elevated-solid)" : brand}
+                    strokeWidth={isToday ? 1.5 : 1.2}
+                    className={isToday ? "wx-now-dot" : ""}
+                  />
+                </g>
+              );
+            })}
+            {/* Precip dot row — sits in the bottom margin under each
+                day with >=20% precip chance. */}
+            {days.map((d, i) =>
+              d.precip >= 20 ? (
+                <circle
+                  key={`pp-${i}`}
+                  cx={xFor(i)}
+                  cy={H - PAD_BOTTOM + 14}
+                  r={Math.min(3.5, 1.5 + d.precip / 28)}
+                  fill={cool}
+                />
+              ) : null,
+            )}
+          </svg>
+
+          {/* Day labels — absolutely positioned to track xFor() math. */}
+          <div className="relative mt-1 h-7">
+            {days.map((d, i) => {
+              const leftPct = ((xFor(i) / W) * 100).toFixed(2);
+              const isToday = i === todayIdx;
+              const k = iconForShortForecast(d.short);
+              const Icon = ICONS[k];
+              return (
+                <div
+                  key={`lbl-${i}`}
+                  className="wx-hour-cell absolute -translate-x-1/2 flex flex-col items-center gap-0.5"
+                  style={{
+                    left: `${leftPct}%`,
+                    animationDelay: `${0.4 + i * 0.06}s`,
+                  }}
+                >
+                  <Icon
+                    className="h-3 w-3"
+                    strokeWidth={2}
+                    style={{ color: isToday ? brand : ink3 }}
+                    aria-hidden
+                  />
+                  <span
+                    className="text-[9.5px] font-semibold tabular-nums tracking-tight"
+                    style={{ color: isToday ? ink : ink2 }}
+                  >
+                    {d.label}
                   </span>
-                );
-              })}
-            </span>
-          )}
-        </span>
-        <ChevronDown
-          className="h-3.5 w-3.5 shrink-0 transition-transform"
-          strokeWidth={2.5}
-          style={{ color: ink3, transform: open ? "rotate(180deg)" : "none" }}
-          aria-hidden
-        />
+                  <span
+                    className="text-[10px] font-bold tabular-nums leading-none"
+                    style={{ color: isToday ? brand : ink }}
+                  >
+                    {d.hi != null ? `${d.hi}°` : "–"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </button>
 
+      {/* Expanded detail — full short forecast + hi/lo + precip for
+          users who want the textual outlook. */}
       {open && (
         <ul style={{ borderTop: `1px solid ${hairline}` }}>
           {days.map((d) => {
