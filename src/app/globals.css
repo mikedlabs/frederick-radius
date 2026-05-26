@@ -512,6 +512,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .aurora-orb-1, .aurora-orb-2, .aurora-orb-3, .aurora-orb-4 {
     animation: none;
   }
+  /* SkyHero gradient drift, save-button celebration pop + ring, and
+     the floating-action breath — all continuous or near-continuous
+     motion that a reduced-motion user has asked us to skip. The
+     elements still render in their default state; only the loop is
+     cut. The save flow still confirms via the Sonner toast, so the
+     user doesn't lose the feedback. */
+  .sky-hero::before { animation: none; }
+  .save-pop { animation: none; }
+  .save-ring { animation: none; opacity: 0; }
+  .fab-breath { animation: none; }
 }
 
 /* Subtle SVG grain — the "shader artifact" texture that
