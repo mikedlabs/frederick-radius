@@ -9,6 +9,7 @@ import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import LocalNewsStrip from "@/components/today/LocalNewsStrip";
 import RightNow from "@/components/today/RightNow";
+import MoodTiles from "@/components/today/MoodTiles";
 import HistoryPulse from "@/components/today/HistoryPulse";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
@@ -281,6 +282,12 @@ export default async function HomePage({
        *  events section between Now / Tonight / Tomorrow / Weekend.
        *  Mode lives in ?t= so the view is shareable. */}
       <TimeToggle active={mode} counts={counts} />
+
+      {/* In the mood for — 4-up affordance tiles (Coffee / Outdoors /
+       *  Eat / With kids) that deep-link into /radius with the right
+       *  category pre-filtered. The brief's "answer 'what should I do
+       *  right now?' before the calendar of events" pattern. */}
+      <MoodTiles />
 
       {/* ── PRIMARY ZONE ───────────────────────────────────────────
           The two things a stranger opens the app to learn: what's the
