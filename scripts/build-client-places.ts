@@ -1,14 +1,21 @@
 /**
  * Build src/data/places-client.json — a SLIM, already-decorated public
- * place set for CLIENT use (Search, Saved).
+ * place set for CLIENT use (Search, Saved, Map, ⌘K palette).
  *
  * Why: client components must never import @/lib/loaders/places — it
  * static-imports the ~12MB places-enrichment.json and webpack bundles
  * that into the browser (a 13MB chunk that hangs the page). This
  * pre-decorates server-side and drops the heavy per-place arrays the
  * cards/search never read (google_photos[], google_hours[],
- * review_snippet/author — those are place-detail only). Re-runnable:
- * `npm run build:client-places`.
+ * review_snippet/author — those are place-detail only).
+ *
+ * CRITICAL: This output reflects the dedup state at build time.
+ * If you edit places-dedup.json (or run gen:dedup), this script
+ * MUST be re-run — otherwise the client surfaces (map, search,
+ * saved) will show the orphaned duplicate slugs that the server
+ * loader correctly drops. Symptom: same place listed twice on the
+ * map even though /places/[slug] only resolves to one. Always
+ * regenerate with: `npm run build:client-places`.
  */
 import { writeFileSync } from "node:fs";
 import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
