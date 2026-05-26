@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDateBlock } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import TrustChip from "@/components/ui/TrustChip";
@@ -46,13 +48,15 @@ export default function EventCard({
     return (
       <article className="tactile tactile-feature tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative aspect-[16/10] w-full overflow-hidden">
-          {hasPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo
-            <img
+          {hasPhoto && event.hero_image ? (
+            <Image
               src={event.hero_image}
               alt=""
-              loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
+              fill
+              sizes="(max-width: 720px) 100vw, 720px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
             />
           ) : (
             <CategoryGraphic
@@ -136,13 +140,15 @@ export default function EventCard({
         {/* Banner — photo, or category-tinted gradient with the date in
             big serif. Same height in both modes so the grid stays aligned. */}
         <div className="relative h-[112px] w-full overflow-hidden">
-          {hasPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo
-            <img
+          {hasPhoto && event.hero_image ? (
+            <Image
               src={event.hero_image}
               alt=""
-              loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+              fill
+              sizes="(max-width: 720px) 50vw, 360px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             />
           ) : (
             <CategoryGraphic
@@ -256,12 +262,14 @@ export default function EventCard({
       >
         {event.hero_image ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo; plain img avoids a domain allowlist for the key-safe proxy */}
-            <img
+            <Image
               src={event.hero_image}
               alt=""
-              loading="lazy"
-              className="h-full w-full object-cover"
+              fill
+              sizes="64px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 flex items-baseline justify-center gap-1 px-1 pb-1 text-white">

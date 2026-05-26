@@ -1,7 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight, Star } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * Full-bleed photo hero card — the single most compelling place right now.
@@ -20,13 +22,18 @@ export default function FeaturedTonight({ place }: { place: PlaceCardData | null
       aria-label={`Featured: ${place.name}`}
     >
       <div className="relative h-60 w-full sm:h-72">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={place.google_photo_url}
-          alt={cat?.name ? `${place.name} — ${cat.name}` : place.name}
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-          loading="eager"
-        />
+        {place.google_photo_url && (
+          <Image
+            src={place.google_photo_url}
+            alt={cat?.name ? `${place.name} ${cat.name}` : place.name}
+            fill
+            priority
+            sizes="(max-width: 720px) 100vw, 720px"
+            placeholder="blur"
+            blurDataURL={PAPER_CREAM_BLUR}
+            className="object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+        )}
         {/* Legibility gradient */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/10" />
 

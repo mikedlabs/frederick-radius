@@ -6,7 +6,9 @@ import {
   Wand2, Shuffle, ChevronDown, Plus, ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import type { Plan, PlanInputs } from "@/lib/integrations/planner";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { generatePlan, removeStop, swapStop } from "./actions";
 import { formatDistance } from "@/lib/geo";
 import BottomDrawer from "@/components/ui/BottomDrawer";
@@ -806,12 +808,14 @@ function Stop({
       <article className="tactile tactile-interactive overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]">
         {stop.photo_url && (
           <div className="relative h-36 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
-            {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote photo, plain img avoids domain allowlist */}
-            <img
+            <Image
               src={stop.photo_url}
               alt=""
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+              fill
+              sizes="(max-width: 720px) 100vw, 720px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover transition-transform duration-300 hover:scale-105"
             />
             <div
               className="pointer-events-none absolute inset-0"

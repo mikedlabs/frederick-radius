@@ -2,6 +2,7 @@ import Image from "next/image";
 import { photoForCategory, unsplashUrl } from "@/lib/photos";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 type Props = {
   slug: string;
@@ -78,6 +79,15 @@ export default function PlaceHero({
         <rect width="600" height="400" fill={`url(#r-${slug})`} />
       </svg>
 
+      {/* The hero photo runs through Vercel's image optimizer so
+       *  every device gets a WebP at its true pixel size instead of
+       *  a 800x downloaded 12MB JPEG. `unoptimized` was set to skip
+       *  the optimizer, which was the cause of the 14s LCP on
+       *  /places/[slug]. The source is the same-origin /api/place-
+       *  photo proxy, which already strips the API key.
+       *
+       *  `placeholder="blur"` with a paper-cream data URL keeps the
+       *  hero from popping in cold; the load reads as a calm fade. */}
       <Image
         src={src}
         alt={alt}
@@ -85,8 +95,9 @@ export default function PlaceHero({
         height={height}
         priority={priority}
         sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
+        placeholder="blur"
+        blurDataURL={PAPER_CREAM_BLUR}
         className="absolute inset-0 h-full w-full object-cover"
-        unoptimized
       />
 
       {/* Soft gradient darkening at bottom for text legibility */}
