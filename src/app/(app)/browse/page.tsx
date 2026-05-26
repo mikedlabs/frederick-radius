@@ -20,7 +20,7 @@ const OPEN_PLACES = publicPlaces().map((p) => decoratePlace(p));
 export const metadata: Metadata = {
   title: "Map · Frederick County",
   description:
-    "The full panable map of Frederick County. Filter by what you're doing. Coffee, food, outdoors, family, arts, civic, sip & taste.",
+    "The full panable map of Frederick County. Filter by what you're doing. Coffee, food, wineries, breweries, outdoors, family, arts, civic.",
 };
 
 export const revalidate = 300;

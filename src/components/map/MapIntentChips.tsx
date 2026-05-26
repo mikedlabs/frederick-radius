@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Coffee, Utensils, Wine, Trees, Baby, Palette, Landmark, X } from "lucide-react";
+import { Coffee, Utensils, Wine, Beer, Trees, Baby, Palette, Landmark, X } from "lucide-react";
 import { INTENTS, type Intent } from "@/data/intents";
 
 const ICON: Record<Intent["icon"], typeof Coffee> = {
   Coffee,
   Utensils,
   Wine,
+  Beer,
   Trees,
   Baby,
   Palette,
@@ -65,6 +66,7 @@ export default function MapIntentChips({
             href="/browse"
             aria-label="Clear filter"
             className="-mr-1.5 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-white/22 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] backdrop-blur transition active:scale-[0.96]"
+            prefetch={false}
           >
             <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
             Clear
@@ -92,10 +94,20 @@ export default function MapIntentChips({
         {INTENTS.map((intent) => {
           const Icon = ICON[intent.icon];
           const isActive = active === intent.key;
+          // Chip label: prefer the full label when it's one word so
+          // "Wineries" / "Breweries" / "Coffee" don't get chopped, but
+          // collapse multi-word labels to their first word so a chip
+          // never wraps. "Eat & drink" → "Eat", "Get outside" → "Get",
+          // "Take the kids" → "Take", "Arts & culture" → "Arts",
+          // "Civic services" → "Civic". Wineries + Breweries now show
+          // by name, which was the whole point of splitting them out.
+          const chipLabel = /^\S+$/.test(intent.label)
+            ? intent.label
+            : intent.label.split(" ")[0];
           return (
             <Link
               key={intent.key}
-              href={`/map?intent=${intent.key}`}
+              href={`/browse?intent=${intent.key}`}
               aria-current={isActive ? "page" : undefined}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
               style={{
@@ -106,7 +118,7 @@ export default function MapIntentChips({
               }}
             >
               <Icon className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              {intent.label.split(" ")[0]}
+              {chipLabel}
             </Link>
           );
         })}
