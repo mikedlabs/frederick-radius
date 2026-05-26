@@ -35,15 +35,15 @@ export function middleware(req: NextRequest): NextResponse {
   //   /        → /about    (cold visit, no context. Let them read what
   //                         the app IS before being asked to tune it.
   //                         /about's primary CTA goes to /welcome.)
-  //   /today   → /welcome  (a direct link or a returning prompt that
+  //   /now     → /welcome  (a direct link or a returning prompt that
   //                         lost its cookie. They already meant to
   //                         start using the app, so jump them into
   //                         persona-pick, not the marketing page.)
   //
   // Returning users (cookie present) pass through to whichever
-  // entry they hit. This split is the "let the app make its case
-  // before asking for setup" move from the stranger-clarity pass.
-  if (pathname === "/" || pathname === "/today") {
+  // entry they hit. Legacy /today URLs are caught by next.config.ts
+  // and 301'd to /now before this middleware sees them.
+  if (pathname === "/" || pathname === "/now") {
     if (!req.cookies.get("fr_onboarded")) {
       const url = req.nextUrl.clone();
       url.pathname = pathname === "/" ? "/about" : "/welcome";
@@ -78,5 +78,5 @@ export function middleware(req: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/", "/today"],
+  matcher: ["/admin", "/admin/:path*", "/", "/now"],
 };

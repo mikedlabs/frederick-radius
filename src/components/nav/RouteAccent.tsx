@@ -14,8 +14,9 @@ import type { CSSProperties, ReactNode } from "react";
  * the single primary CTA per screen — that stays brick everywhere).
  */
 const ROUTE_ACCENTS: Record<string, string> = {
-  "/today": "var(--app-brand)",   // warm — daily landing
-  "/radius": "var(--app-cool)",   // civic blue — the signature interaction
+  "/now": "var(--app-brand)",     // warm — daily landing
+  "/radius": "var(--app-cool)",   // civic blue — folds into /map but
+                                  // keep until that PR lands
   "/map": "var(--app-cool)",      // civic blue
   "/events": "var(--app-brand)",  // warm — culture
   "/plan": "var(--app-brand-2)",  // catoctin green — outdoors-leaning
@@ -28,20 +29,16 @@ const ROUTE_ACCENTS: Record<string, string> = {
   "/trail": "var(--app-brand-2)",
   "/water": "var(--app-cool)",
   "/transit": "var(--app-cool)",
-  "/art": "#7E2C6F",              // arts purple
-  "/historic": "var(--app-accent)", // harvest gold — heritage
-  "/markets": "var(--app-accent)",
-  "/amenities": "var(--app-ink-2)",
   "/category": "var(--app-cool)",
 };
 
 export default function RouteAccent({ children }: { children: ReactNode }) {
-  const path = usePathname() ?? "/today";
+  const path = usePathname() ?? "/now";
   // Match by longest prefix so /events/[slug] still resolves to /events.
   const matched =
     Object.keys(ROUTE_ACCENTS)
       .sort((a, b) => b.length - a.length)
-      .find((p) => path === p || path.startsWith(p + "/")) ?? "/today";
+      .find((p) => path === p || path.startsWith(p + "/")) ?? "/now";
   const accent = ROUTE_ACCENTS[matched];
   return (
     <div

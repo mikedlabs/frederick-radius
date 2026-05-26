@@ -29,7 +29,7 @@ export default function SettingsPage() {
       <PageBloom variant="cool" />
       <header className="space-y-2">
         <Link
-          href="/today"
+          href="/now"
           className="inline-flex items-center gap-1 text-[12px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >

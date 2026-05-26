@@ -345,15 +345,17 @@ function EmptyHint({
   const hour = frederickHour();
   const suggestions = suggestionsForHour(hour);
 
-  // Personalized quick-start tiles. /tonight + /discover are universal,
-  // and /m/<home-muni> appears only when the user has set one. Each
-  // tile is a real destination, not a query — tapping closes the
-  // overlay and navigates.
+  // Personalized quick-start tiles. The previous /tonight and
+  // /discover entries were duplicate paths to /now's content —
+  // retired in the structural cuts. We point straight at /now with
+  // a lens, plus /m/<home-muni> when set. Each tile is a real
+  // destination, not a query — tapping closes the overlay and
+  // navigates.
   const homeMuni = getHomeMuni();
   const homeMuniName = homeMuni ? MUNICIPALITY_BY_SLUG[homeMuni]?.name : null;
   const quickStart: Array<{ href: string; title: string; subtitle: string; Icon: typeof Sparkles }> = [
-    { href: "/tonight", title: "Plan tonight", subtitle: "One-tap 3-stop evening", Icon: Sparkles },
-    { href: "/discover", title: "Hidden Frederick", subtitle: "12 lesser-known places, daily", Icon: Sparkles },
+    { href: "/now?t=tonight", title: "Plan tonight", subtitle: "What's happening this evening", Icon: Sparkles },
+    { href: "/events", title: "All events", subtitle: "Tonight, weekend, this week", Icon: Sparkles },
     ...(homeMuniName && homeMuni
       ? [{ href: `/m/${homeMuni}`, title: homeMuniName, subtitle: "Your spot", Icon: MapPin }]
       : []),

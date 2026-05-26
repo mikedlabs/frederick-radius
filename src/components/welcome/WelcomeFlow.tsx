@@ -82,12 +82,12 @@ export default function WelcomeFlow() {
   // Reason: middleware reads the fr_onboarded cookie on every /today
   // request. A client-side router.replace can race the just-written
   // document.cookie on some Safari versions / cache states — the RSC
-  // fetch goes out without the cookie, middleware bounces /today back
+  // fetch goes out without the cookie, middleware bounces /now back
   // to /welcome, and the user appears stuck at step 3 ("Done" and
   // "Skip the rest" both look dead). A full-page assign guarantees
   // the cookie is on the request.
   function goToToday(): void {
-    window.location.assign("/today");
+    window.location.assign("/now");
   }
 
   const finish = useCallback(() => {

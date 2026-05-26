@@ -34,6 +34,23 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "upload.wikimedia.org" },
     ],
   },
+  // Permanent route consolidation — duplicate editorial pages and
+  // legacy /today URL fold into their canonical homes. Preserves
+  // crawler equity and any bookmarks pointing at the old paths.
+  // Update destinations here if a category slug ever renames.
+  async redirects() {
+    return [
+      // Editorial micro-pages → canonical category surfaces.
+      { source: "/tonight", destination: "/now?t=tonight", permanent: true },
+      { source: "/markets", destination: "/category/market", permanent: true },
+      { source: "/historic", destination: "/category/museum", permanent: true },
+      { source: "/art", destination: "/category/arts", permanent: true },
+      { source: "/amenities", destination: "/map", permanent: true },
+      { source: "/discover", destination: "/now", permanent: true },
+      // /today renamed to /now (the home page is about NOW, not "today").
+      { source: "/today", destination: "/now", permanent: true },
+    ];
+  },
 };
 
 // MVP wrap: runtime error capture only. Source-map upload is disabled

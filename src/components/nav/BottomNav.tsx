@@ -14,7 +14,7 @@ import { haptic } from "@/lib/haptics";
 // absorbed into Radius (the two answered the same intent and split
 // attention). /plan + /saved routes stay alive — just not tabs.
 const TABS = [
-  { href: "/today", label: "Today", icon: Sun },
+  { href: "/now", label: "Now", icon: Sun },
   { href: "/places", label: "Places", icon: BookOpen },
   // Per the master UI brief: route stays /radius (a product mechanic
   // name), the visible label is "Near Me" (a user need name). The
