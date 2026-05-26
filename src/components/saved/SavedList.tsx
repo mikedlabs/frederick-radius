@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted } from "@/hooks/useSaved";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
-// Client-safe: slim pre-decorated set, NOT @/lib/loaders/places
-// (that static-imports the ~12MB enrichment into the browser).
-import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+// A2.8: SavedList no longer static-imports clientPlaceBySlug, so
+// /saved's client bundle no longer ships places-client.json (~2MB).
+// Place data is hydrated via /api/places/by-slugs on mount.
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG } from "@/data/events";
 import PlaceCard from "@/components/place/PlaceCard";
@@ -50,10 +50,65 @@ export default function SavedList() {
   const recentSlugs = useRecentPlaces();
   const clearRecent = useClearRecentPlaces();
 
+  // Union of every slug this component might need: saved bookmarks,
+  // recently viewed, and the empty-state seeds. We hand the whole set
+  // to /api/places/by-slugs in a single request and hydrate from the
+  // returned map. slugsKey is a primitive string so React's effect
+  // identity check is reference-stable across renders.
+  const { slugsToFetch, slugsKey } = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of items) if (i.type === "place") set.add(i.id);
+    for (const s of recentSlugs) set.add(s);
+    for (const s of EMPTY_SEEDS) set.add(s.slug);
+    const slugsToFetch = Array.from(set);
+    return { slugsToFetch, slugsKey: slugsToFetch.join(",") };
+  }, [items, recentSlugs]);
+
+  // null = not yet fetched (or pre-mount); empty Map = fetched with no
+  // matches. Distinguishing the two lets the render gate show a
+  // skeleton ONLY while the request is in flight, not when the user
+  // genuinely has nothing saved.
+  const [placesBySlug, setPlacesBySlug] = useState<Map<string, PlaceCardData> | null>(null);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (slugsToFetch.length === 0) {
+      setPlacesBySlug(new Map());
+      return;
+    }
+    const ctrl = new AbortController();
+    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(slugsKey)}`, {
+      signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { places: PlaceCardData[] }) => {
+        const m = new Map<string, PlaceCardData>();
+        for (const p of data.places) m.set(p.slug, p);
+        setPlacesBySlug(m);
+      })
+      .catch((err) => {
+        // AbortError = navigated/unmounted; ignore. Anything else,
+        // collapse to an empty map so the UI keeps rendering rather
+        // than spinning forever.
+        if (err && err.name !== "AbortError") {
+          setPlacesBySlug(new Map());
+        }
+      });
+    return () => ctrl.abort();
+  }, [mounted, slugsKey, slugsToFetch.length]);
+
   const { places, events, byCategory, townTally } = useMemo(() => {
+    if (!placesBySlug) {
+      return {
+        places: [] as PlaceCardData[],
+        events: [] as ReturnType<typeof decorateEvent>[],
+        byCategory: new Map<string, PlaceCardData[]>(),
+        townTally: new Map<string, number>(),
+      };
+    }
     const places = items
       .filter((i) => i.type === "place")
-      .map((i) => ({ ref: i, place: clientPlaceBySlug(i.id) }))
+      .map((i) => ({ ref: i, place: placesBySlug.get(i.id) }))
       .filter((x): x is { ref: typeof x.ref; place: PlaceCardData } => Boolean(x.place))
       .sort((a, b) => +new Date(b.ref.saved_at) - +new Date(a.ref.saved_at))
       .map((x) => x.place);
@@ -84,7 +139,7 @@ export default function SavedList() {
     }
 
     return { places, events, byCategory, townTally };
-  }, [items]);
+  }, [items, placesBySlug]);
 
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
@@ -94,21 +149,22 @@ export default function SavedList() {
     [items],
   );
   const recentPlaces = useMemo<PlaceCardData[]>(() => {
-    if (!recentSlugs.length) return [];
+    if (!placesBySlug || !recentSlugs.length) return [];
     const out: PlaceCardData[] = [];
     for (const slug of recentSlugs) {
       if (savedSlugs.has(slug)) continue;
-      const p = clientPlaceBySlug(slug);
+      const p = placesBySlug.get(slug);
       if (p) out.push(p);
       if (out.length >= 6) break;
     }
     return out;
-  }, [recentSlugs, savedSlugs]);
+  }, [recentSlugs, savedSlugs, placesBySlug]);
 
-  if (!mounted) {
-    // Pre-hydration: render skeleton rows that match the real
-    // populated state's layout, so there's no layout jump when the
-    // localStorage read resolves a moment later.
+  // Show the skeleton in two cases: before the device-local items
+  // resolve (mounted=false) AND while the /api/places/by-slugs round
+  // trip is in flight. Both windows are short; the matched layout
+  // avoids any jump when content arrives.
+  if (!mounted || placesBySlug === null) {
     return (
       <div aria-busy="true" className="space-y-3">
         <Skeleton.Block height={88} round="var(--app-radius-lg)" />
@@ -120,7 +176,7 @@ export default function SavedList() {
     );
   }
 
-  if (items.length === 0) return <EmptyState />;
+  if (items.length === 0) return <EmptyState placesBySlug={placesBySlug} />;
 
   // Cluster signal: if ≥3 places are in one town, suggest a route.
   const dominantTown = [...townTally.entries()]
@@ -366,9 +422,9 @@ function summarySentence(placeN: number, eventN: number, townN: number): string 
  * tap to learn about. Each seed has a one-sentence "why" so the
  * empty page reads as editorial, not as a debug placeholder.
  */
-function EmptyState() {
+function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData> }) {
   const seeds = EMPTY_SEEDS
-    .map((s) => ({ ...s, place: clientPlaceBySlug(s.slug) }))
+    .map((s) => ({ ...s, place: placesBySlug.get(s.slug) }))
     .filter((s): s is typeof s & { place: PlaceCardData } => Boolean(s.place));
 
   return (
