@@ -45,7 +45,10 @@ const nextConfig: NextConfig = {
       { source: "/markets", destination: "/category/market", permanent: true },
       { source: "/historic", destination: "/category/museum", permanent: true },
       { source: "/art", destination: "/category/arts", permanent: true },
-      { source: "/amenities", destination: "/map", permanent: true },
+      // /amenities used to redirect to /map — now it's a real editorial
+      // page showing what amenity data we actually have (live counts)
+      // plus the wishlist of what's coming (trash cans, dog bags,
+      // benches, mailboxes, FedEx/UPS drop-offs).
       { source: "/discover", destination: "/now", permanent: true },
       // /today renamed to /now (the home page is about NOW, not "today").
       { source: "/today", destination: "/now", permanent: true },
