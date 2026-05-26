@@ -27,11 +27,39 @@ const TABS = [
 
 export default function BottomNav() {
   const pathname = usePathname();
+  // Index of the active tab. Used to position the sliding indicator
+  // bar at the top of the nav; falls back to 0 so the bar still has
+  // a home even on routes that aren't a primary tab (e.g. /saved,
+  // /settings, /about) — it just stays parked under "Today" until the
+  // user moves.
+  const activeIdx = Math.max(
+    0,
+    TABS.findIndex(
+      (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
+    ),
+  );
   return (
     <nav
       aria-label="Primary"
       className="fixed bottom-0 inset-x-0 z-40 border-t border-[var(--app-border)] bg-[var(--app-bg-elevated)]/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
     >
+      {/* Sliding indicator bar — a thin brand-tinted strip that slides
+          horizontally between tabs as the route changes. Uses CSS
+          transform (not left/width) so it animates on the compositor.
+          A subtle glow underneath gives the bar a soft halo that
+          tracks with it. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-0 top-0 z-10 h-[2.5px] origin-left rounded-b-full"
+        style={{
+          width: `${100 / TABS.length}%`,
+          background:
+            "linear-gradient(90deg, transparent 0%, var(--app-brand) 18%, var(--app-brand) 82%, transparent 100%)",
+          transform: `translateX(${activeIdx * 100}%)`,
+          transition: "transform 320ms var(--app-ease-spring)",
+          boxShadow: "0 4px 12px -2px color-mix(in srgb, var(--app-brand) 45%, transparent)",
+        }}
+      />
       <ul className="mx-auto grid max-w-screen-md grid-cols-5">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active =

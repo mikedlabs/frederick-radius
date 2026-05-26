@@ -307,7 +307,7 @@ export default async function HomePage({
             )}
             {upcomingRest.length > 0 && (
               <div className="-mx-4 px-4">
-                <div className="shelf-rail gap-3 pb-1">
+                <div className="reveal-up shelf-rail gap-3 pb-1">
                   {upcomingRest.map((e) => (
                     <div key={e.slug} className="w-[280px] shrink-0">
                       <EventCard event={e} variant="tile" />
