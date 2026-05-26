@@ -52,7 +52,21 @@ export function setHomeMuni(slug: string | null): void {
     if (slug === null || slug === "") ls.removeItem(HOME_MUNI_KEY);
     else ls.setItem(HOME_MUNI_KEY, slug);
   } catch {
-    // localStorage may be full / disabled — fail silent
+    // localStorage may be full or disabled. Fail silent.
+  }
+  // Mirror to a cookie so server components can rank from the user's
+  // home town. The cookie is the only way a server-rendered page
+  // (e.g. /category/[slug] under C2) can read this preference.
+  // SameSite=lax so navigations carry it; 1-year max-age.
+  if (typeof document === "undefined") return;
+  try {
+    if (slug === null || slug === "") {
+      document.cookie = "fr_home_muni=; path=/; max-age=0; samesite=lax";
+    } else {
+      document.cookie = `fr_home_muni=${encodeURIComponent(slug)}; path=/; max-age=31536000; samesite=lax`;
+    }
+  } catch {
+    // document.cookie can throw on locked-down setups. Fail silent.
   }
 }
 
