@@ -99,7 +99,14 @@ function pickFeaturedCandidates(now: Date): PlaceCardData[] {
   });
   return ranked
     .filter((p) => Boolean(p.google_photo_url))
-    .filter((p) => p.open_status.state !== "closed")
+    // Tightened from "not closed" → "actually open right now". The old
+    // filter let through unknown/no_hours places that could be just as
+    // closed as the ones we rejected; on a card that says "Worth your
+    // evening" that lie burns user trust the first time they walk to a
+    // dark door. If nothing is open + photo-backed + evening-category
+    // + highly rated right now, render no card at all — the page
+    // already handles the empty case gracefully.
+    .filter((p) => p.open_status.state === "open")
     .filter((p) => EVENING_CATEGORIES.has(p.category))
     .filter((p) => (p.google_rating ?? 0) >= 4.3)
     .sort((a, b) => (b.google_rating ?? 0) - (a.google_rating ?? 0))
@@ -111,10 +118,21 @@ function pickFeaturedCandidates(now: Date): PlaceCardData[] {
  *  rows so the feature card always has imagery to carry — AND
  *  exclude administrative/private-sounding rows (board meetings,
  *  rehearsal dinners, prenatal classes) so the hero never carries
- *  a clinical entry. */
+ *  a clinical entry.
+ *
+ *  Window-bounded to the next 72 hours. The old version had no upper
+ *  bound, which is how an event two months out kept landing as the
+ *  /today hero — a page that promises "today" shouldn't lead with
+ *  something the user can't physically attend for weeks. If nothing
+ *  photo-backed AND non-administrative is happening in the next 3
+ *  days, we'd rather show no hero than lie about freshness. */
+const FEATURED_EVENT_WINDOW_HOURS = 72;
 function pickFeaturedEvent(now: Date) {
+  const windowEnd = now.getTime() + FEATURED_EVENT_WINDOW_HOURS * 3_600_000;
   const upcoming = allUpcoming(now).filter(
-    (e) => !NON_PUBLIC_EVENT.test(e.title ?? ""),
+    (e) =>
+      !NON_PUBLIC_EVENT.test(e.title ?? "") &&
+      Date.parse(e.starts_at) <= windowEnd,
   );
   return (
     upcoming.find((e) => Boolean(e.hero_image)) ??
@@ -230,20 +248,32 @@ export default async function HomePage({
   searchParams: Promise<{ t?: string }>;
 }) {
   const { t } = await searchParams;
-  const mode: TodayTimeMode = isTodayTimeMode(t) ? t : "now";
   const now = new Date();
 
   const featuredCandidates = pickFeaturedCandidates(now);
   const featuredEvent = pickFeaturedEvent(now);
-  // Per-mode event window — title + items both come from one helper
-  // so chip and rendered section never disagree.
-  const slice = eventsForMode(mode, now);
   // Pre-compute per-mode counts so the chip strip shows "Tonight · 3"
-  // without forcing a click into an empty surface.
+  // without forcing a click into an empty surface — AND so the default
+  // mode picker below can land on a window that actually has events.
   const counts: Partial<Record<TodayTimeMode, number>> = {};
   for (const m of ["now", "tonight", "tomorrow", "weekend"] as const) {
     counts[m] = eventsForMode(m, now).items.length;
   }
+  // Default mode: previously hard-wired to "now" which is empty most
+  // of the day. Now we pick the first populated window in priority
+  // order Now → Tonight → Tomorrow → Weekend. The user can still tap
+  // any chip; this just stops the page from opening on an empty list
+  // when something is happening one chip over.
+  function pickDefaultMode(): TodayTimeMode {
+    if ((counts.now ?? 0) > 0) return "now";
+    if ((counts.tonight ?? 0) > 0) return "tonight";
+    if ((counts.tomorrow ?? 0) > 0) return "tomorrow";
+    return "weekend";
+  }
+  const mode: TodayTimeMode = isTodayTimeMode(t) ? t : pickDefaultMode();
+  // Per-mode event window — title + items both come from one helper
+  // so chip and rendered section never disagree.
+  const slice = eventsForMode(mode, now);
   // Filter out the featured event so it doesn't appear twice in the
   // shelf below the hero. Only show the featured hero when the active
   // slice actually contains it.
