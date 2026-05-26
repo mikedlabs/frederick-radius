@@ -55,7 +55,6 @@ export const metadata: Metadata = {
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
 };
 
-export const revalidate = 60;
 
 // Event titles that look like internal/admin business — board meetings,
 // hearings, classes, rehearsals. Public meetings live on /events under
@@ -250,13 +249,27 @@ export default async function HomePage({
         <PrimaryActionCard now={now} />
       </SkyHero>
 
-      {/* RightNowStrip — three direct answers to the questions a
+      {/* RightNowStrip: three direct answers to the questions a
        *  stranger opens the app to ask: what's open near me, what's
        *  starting soon, what's worth this weekend. Each card is a
-       *  full-width tap target into the canonical detail page. Sits
-       *  right under the hero so the briefing's primary surface is
-       *  three answers, not three rails. */}
-      <RightNowStrip now={now} />
+       *  full-width tap target into the canonical detail page.
+       *
+       *  Wrapped in Suspense so PPR streams the static shell of the
+       *  page (hero, MoodTiles, time toggle) immediately while the
+       *  ranked picks resolve from the cached helpers in src/lib/
+       *  now-picks.ts. */}
+      <Suspense
+        fallback={
+          <div className="space-y-2" aria-busy="true">
+            <Skeleton.Block height={20} round="var(--app-radius-sm)" />
+            <Skeleton.Block height={96} round="var(--app-radius-md)" />
+            <Skeleton.Block height={96} round="var(--app-radius-md)" />
+            <Skeleton.Block height={96} round="var(--app-radius-md)" />
+          </div>
+        }
+      >
+        <RightNowStrip now={now} />
+      </Suspense>
 
       {/* In the mood for — 4-up affordance tiles (Coffee / Outdoors /
        *  Eat / With kids) that deep-link into the category page with

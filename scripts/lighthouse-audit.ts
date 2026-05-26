@@ -1,29 +1,42 @@
 /**
  * Lighthouse audit runner.
  *
- *   npm run perf            → audits the default URL set against http://localhost:3000
- *   npm run perf -- --url=… → override the base URL
+ *   npm run perf
+ *     audits the default URL set against http://localhost:3000
+ *
+ *   npm run perf -- --url=https://frederickradius.app --label=baseline
+ *     overrides the base URL and names the snapshot
+ *
+ *   npm run perf -- --label=after-a1
+ *     same default base, named snapshot for before/after comparison
  *
  * Assumes a server is already running at the base URL. The script
- * doesn't start `npm start` itself because that's flaky to manage from
- * a child process — run the build + start in another shell, then this.
+ * does not start npm start itself because that is flaky to manage
+ * from a child process. Run the build + start in another shell,
+ * then run this.
  *
  * Output:
- *   - scripts/.lighthouse/*.report.json     full JSON reports (one per URL)
- *   - scripts/.lighthouse/summary.md        markdown table of scores + key metrics
+ *   .perf/<isoDate>-<label>/*.report.json  full JSON reports
+ *   .perf/<isoDate>-<label>/summary.md     markdown table
  *
  * What we capture per page:
- *   - Performance, Accessibility, Best Practices, SEO scores (0–100)
- *   - FCP, LCP, CLS, TBT, Speed Index (Core Web Vitals + cousins)
+ *   Performance, Accessibility, Best Practices, SEO scores (0 to 100)
+ *   FCP, LCP, CLS, TBT, Speed Index, TTFB
  *
- * Throttling: emulated mobile (Lighthouse default — 4× CPU, slow 4G).
- * That's the experience that matters; desktop scores hide real problems.
+ * Real INP comes from production users via Vercel Speed Insights
+ * (wired in src/app/layout.tsx). This script is for synthetic lab
+ * measurement so the team can iterate without waiting for field data.
+ * TBT is the closest lab proxy for INP.
+ *
+ * Throttling: emulated mobile (Lighthouse default, 4x CPU, slow 4G).
+ * That is the experience that matters; desktop scores hide real
+ * problems.
  */
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-type Args = { base: string; urls: string[] };
+type Args = { base: string; urls: string[]; label: string };
 
 function parseArgs(): Args {
   const argv = process.argv.slice(2);
@@ -31,19 +44,24 @@ function parseArgs(): Args {
   const base = baseFlag
     ? baseFlag.slice("--url=".length).replace(/\/$/, "")
     : "http://localhost:3000";
+  const labelFlag = argv.find((a) => a.startsWith("--label="));
+  const label = labelFlag ? labelFlag.slice("--label=".length) : "snapshot";
 
-  // The set is intentionally narrow — 6 routes that span the visual /
-  // computational range. Keeping it small means a full pass is < 4 min;
-  // add more URLs sparingly.
+  // The set is intentionally narrow. Five routes that span the visual
+  // and computational range of the app. Keeping it small means a full
+  // pass is under 4 minutes. Add more URLs sparingly.
+  //
+  // Routes follow the post-overhaul IA: /now (was /today), /browse
+  // (was /map), /events, /radius, plus a representative place detail.
+  // /discover was retired and 301s to /now.
   const urls = [
-    "/today",
-    "/map",
+    "/now",
+    "/browse",
     "/events",
     "/radius",
-    "/discover",
     "/places/carroll-creek-linear-park-frederick",
   ];
-  return { base, urls };
+  return { base, urls, label };
 }
 
 type Score = {
@@ -57,6 +75,7 @@ type Score = {
   cls: number | null;
   tbt_ms: number | null;
   si_ms: number | null;
+  ttfb_ms: number | null;
   error?: string;
 };
 
@@ -111,7 +130,7 @@ function runOne(base: string, path: string, outDir: string): Score {
 
   if (result.status !== 0) {
     const stderr = (result.stderr ?? "").slice(-400);
-    return { url, perf: null, a11y: null, bp: null, seo: null, fcp_ms: null, lcp_ms: null, cls: null, tbt_ms: null, si_ms: null, error: stderr };
+    return { url, perf: null, a11y: null, bp: null, seo: null, fcp_ms: null, lcp_ms: null, cls: null, tbt_ms: null, si_ms: null, ttfb_ms: null, error: stderr };
   }
 
   try {
@@ -130,62 +149,70 @@ function runOne(base: string, path: string, outDir: string): Score {
       cls: j.audits["cumulative-layout-shift"]?.numericValue ?? null,
       tbt_ms: j.audits["total-blocking-time"]?.numericValue ?? null,
       si_ms: j.audits["speed-index"]?.numericValue ?? null,
+      ttfb_ms: j.audits["server-response-time"]?.numericValue ?? null,
     };
   } catch (e) {
-    return { url, perf: null, a11y: null, bp: null, seo: null, fcp_ms: null, lcp_ms: null, cls: null, tbt_ms: null, si_ms: null, error: String(e) };
+    return { url, perf: null, a11y: null, bp: null, seo: null, fcp_ms: null, lcp_ms: null, cls: null, tbt_ms: null, si_ms: null, ttfb_ms: null, error: String(e) };
   }
 }
 
-function summarize(scores: Score[]): string {
+function summarize(scores: Score[], label: string, base: string): string {
   const lines: string[] = [];
-  lines.push(`# Lighthouse audit — ${new Date().toISOString()}\n`);
-  lines.push(
-    `| Page | Perf | A11y | Best | SEO | LCP | CLS | TBT | FCP |`,
-  );
-  lines.push(
-    `|---|---|---|---|---|---|---|---|---|`,
-  );
+  lines.push(`# Lighthouse audit: ${label}`);
+  lines.push("");
+  lines.push(`Run at ${new Date().toISOString()}`);
+  lines.push(`Base: ${base}`);
+  lines.push("");
+  lines.push(`| Page | Perf | A11y | Best | SEO | TTFB | LCP | CLS | TBT | FCP |`);
+  lines.push(`|---|---|---|---|---|---|---|---|---|---|`);
   for (const s of scores) {
-    const label = s.url.replace(/^https?:\/\/[^/]+/, "");
+    const routeLabel = s.url.replace(/^https?:\/\/[^/]+/, "");
     if (s.error) {
-      lines.push(`| \`${label}\` | ❌ | — | — | — | — | — | — | — |`);
+      lines.push(`| \`${routeLabel}\` | error | error | error | error | error | error | error | error | error |`);
       continue;
     }
     lines.push(
-      `| \`${label}\` | ${emoji(s.perf)} ${pct(s.perf)} | ${emoji(s.a11y)} ${pct(s.a11y)} | ${emoji(s.bp)} ${pct(s.bp)} | ${emoji(s.seo)} ${pct(s.seo)} | ${ms(s.lcp_ms)} | ${num(s.cls)} | ${ms(s.tbt_ms)} | ${ms(s.fcp_ms)} |`,
+      `| \`${routeLabel}\` | ${emoji(s.perf)} ${pct(s.perf)} | ${emoji(s.a11y)} ${pct(s.a11y)} | ${emoji(s.bp)} ${pct(s.bp)} | ${emoji(s.seo)} ${pct(s.seo)} | ${ms(s.ttfb_ms)} | ${ms(s.lcp_ms)} | ${num(s.cls)} | ${ms(s.tbt_ms)} | ${ms(s.fcp_ms)} |`,
     );
   }
   lines.push("");
-  lines.push("Targets to clear: Perf ≥ 90, A11y ≥ 95, BP ≥ 95, SEO ≥ 95.");
-  lines.push("LCP < 2.5s, CLS < 0.1, TBT < 200ms.");
+  lines.push("Targets: Perf >= 90, A11y >= 95, BP >= 95, SEO >= 95.");
+  lines.push("LCP < 2.5s, CLS < 0.1, TBT < 200ms, TTFB < 200ms.");
   lines.push("");
   const errors = scores.filter((s) => s.error);
   if (errors.length > 0) {
-    lines.push("## Failures\n");
+    lines.push("## Failures");
+    lines.push("");
     for (const e of errors) {
       lines.push(`- \`${e.url}\``);
-      lines.push(`\n\`\`\``);
+      lines.push("");
+      lines.push("```");
       lines.push((e.error ?? "").trim());
-      lines.push("```\n");
+      lines.push("```");
+      lines.push("");
     }
   }
   return lines.join("\n");
 }
 
-const { base, urls } = parseArgs();
-const outDir = resolve(__dirname, ".lighthouse");
+const { base, urls, label } = parseArgs();
+// Snapshots write to .perf/<isoDate>-<label>/ at the repo root so
+// before/after runs do not overwrite each other and so the script
+// agrees with the gitignore entry in repo root (`.perf/`).
+const isoDate = new Date().toISOString().replace(/[:.]/g, "-");
+const outDir = resolve(process.cwd(), ".perf", `${isoDate}-${label}`);
 if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 
-console.log(`Lighthouse audit against ${base}`);
-console.log(`Reports → ${outDir}`);
+console.log(`Lighthouse audit "${label}" against ${base}`);
+console.log(`Reports -> ${outDir}`);
 const scores: Score[] = [];
 for (const path of urls) {
   scores.push(runOne(base, path, outDir));
 }
 
-const md = summarize(scores);
+const md = summarize(scores, label, base);
 const summaryPath = join(outDir, "summary.md");
 writeFileSync(summaryPath, md);
 
 console.log(`\n${md}`);
-console.log(`\nSaved → ${summaryPath}`);
+console.log(`\nSaved -> ${summaryPath}`);

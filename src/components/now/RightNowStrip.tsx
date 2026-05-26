@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { Clock, Calendar, Sparkles, ArrowRight } from "lucide-react";
-import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
+import { type PlaceCardData } from "@/lib/loaders/places";
 import { eventsNext24h, type EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+import {
+  dayPartOf,
+  easternDayKey,
+  getOpenNowCandidates,
+  getWeekendBetCandidates,
+  tenMinBucket,
+} from "@/lib/now-picks";
 
 /**
  * RightNowStrip — three direct answers to the questions a stranger
@@ -31,62 +38,14 @@ import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
  */
 
 /**
- * Category sets tuned per daypart. The previous implementation used a
- * single "night-out" set for every card, which made the home page
- * hide parks/trails entirely and pick the same theater venue over
- * and over. Now the candidate set shifts with the time of day so
- * parks surface during daylight, restaurants surface around mealtimes,
- * and the museum/theater set holds the weekend bet.
+ * The expensive ranking work moved into src/lib/now-picks.ts behind
+ * 'use cache' helpers. Those helpers return the filtered candidate
+ * list keyed on a 10-minute bucket (open-now) or the day key (weekend
+ * bet). The pick logic below reads cached candidates and applies the
+ * daily rotation, which is cheap.
  */
-const DAYTIME_OUTDOOR_CATS = new Set([
-  "park", "trail", "outdoors", "playground", "market",
-]);
-const DAYTIME_MIXED_CATS = new Set([
-  "coffee", "bakery", "restaurant", "park", "trail", "museum", "gallery",
-  "market", "outdoors",
-]);
-const EVENING_OUT_CATS = new Set([
-  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
-  "music", "theater", "gallery", "museum",
-]);
-const WEEKEND_BET_CATS = new Set([
-  // A broader set than the old "night-out only" so a Saturday hike,
-  // a Sunday farmers market, or a Friday brewery all qualify.
-  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
-  "music", "theater", "gallery", "museum", "market",
-  "park", "trail", "outdoors", "playground",
-]);
 
-/** Pick the right candidate set for the current Eastern-time hour.
- *  Returns the category set used for the "Open right now" card. */
-function openNowCats(hour: number): Set<string> {
-  if (hour < 10) return DAYTIME_MIXED_CATS;   // morning: coffee, bakery, parks
-  if (hour < 16) return DAYTIME_OUTDOOR_CATS; // midday: parks, trails, markets
-  return EVENING_OUT_CATS;                    // 4pm+: dinner / drinks / culture
-}
-
-/** Eastern hour 0–23 — same TZ discipline as elsewhere in the app. */
-function easternHour(d: Date): number {
-  return parseInt(
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/New_York",
-      hour: "numeric",
-      hour12: false,
-    }).format(d),
-    10,
-  ) % 24;
-}
-
-/** YYYY-MM-DD in Eastern — used as a rotation seed so the weekend pick
- *  changes by day instead of being the same theater for a week. */
-function easternDayKey(d: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(d);
-}
-
-/** Stable hash of a string → 32-bit int. Used for deterministic
+/** Stable hash of a string to a 32-bit int. Used for deterministic
  *  daily rotation among top-N candidates. */
 function seedHash(s: string): number {
   let h = 5381;
@@ -94,17 +53,18 @@ function seedHash(s: string): number {
   return Math.abs(h);
 }
 
-function openNowPick(now: Date, origin: LngLat): PlaceCardData | null {
-  const ranked = rankPlaces({ origin, now, preferOpen: true, limit: 80 });
-  const cats = openNowCats(easternHour(now));
-  const candidates = ranked.filter(
-    (p) =>
-      p.open_status.state === "open" &&
-      cats.has(p.category) &&
-      (p.google_rating ?? 0) >= 4.0,
+/** Stable string handle for an origin LngLat. Rounded to ~110m so a
+ *  slight GPS drift does not bust the candidate cache. */
+function originKeyOf(o: LngLat): string {
+  return `${o.lng.toFixed(3)}|${o.lat.toFixed(3)}`;
+}
+
+async function openNowPick(now: Date, origin: LngLat): Promise<PlaceCardData | null> {
+  const candidates = await getOpenNowCandidates(
+    dayPartOf(now),
+    tenMinBucket(now),
+    originKeyOf(origin),
   );
-  // Rotate among the top 5 daily so a user reloading mid-day doesn't
-  // get the same coffee shop every time.
   const top = candidates.slice(0, 5);
   if (top.length === 0) return null;
   const seed = seedHash(easternDayKey(now) + ":open");
@@ -113,26 +73,21 @@ function openNowPick(now: Date, origin: LngLat): PlaceCardData | null {
 
 function startingSoonPick(now: Date): EventWithMeta | null {
   // Anything starting in the next 24 hours. eventsNext24h already
-  // sorts by start time and excludes civic-meeting noise.
+  // sorts by start time and excludes civic-meeting noise. Left at
+  // request time: the events loader is fast and the result depends
+  // on `now` at the minute level.
   const upcoming = eventsNext24h(now);
   return upcoming.find((e) => Boolean(e.hero_image)) ?? upcoming[0] ?? null;
 }
 
-function weekendBetPick(now: Date, origin: LngLat): PlaceCardData | null {
-  // Broader candidate set (parks, trails, markets included) +
-  // daily rotation. Was the source of the "same Endangered Species
-  // Theatre Project every visit" issue.
-  const ranked = rankPlaces({ origin, now, limit: 200 });
-  const candidates = ranked.filter(
-    (p) =>
-      Boolean(p.google_photo_url) &&
-      WEEKEND_BET_CATS.has(p.category) &&
-      (p.google_rating ?? 0) >= 4.4 &&
-      p.open_status.state !== "closed",
+async function weekendBetPick(now: Date, origin: LngLat): Promise<PlaceCardData | null> {
+  const candidates = await getWeekendBetCandidates(
+    easternDayKey(now),
+    originKeyOf(origin),
   );
   const top = candidates.slice(0, 10);
   if (top.length === 0) return null;
-  // Mix the day key with the slug to bias diversity — a venue that
+  // Mix the day key with the slug to bias diversity. A venue that
   // happened to be top yesterday is unlikely to win today.
   const seed = seedHash(easternDayKey(now) + ":weekend");
   return top[seed % top.length];
@@ -165,16 +120,22 @@ function openUntilLabel(p: PlaceCardData): string | null {
   }
 }
 
-export default function RightNowStrip({
+export default async function RightNowStrip({
   now = new Date(),
   origin = FREDERICK_CENTER,
 }: {
   now?: Date;
   origin?: LngLat;
 }) {
-  const open = openNowPick(now, origin);
+  // Two of the three picks resolve to a cached candidate list and a
+  // cheap rotation pick. The starting-soon event read stays at
+  // request time. Resolved in parallel so the cached helpers warm in
+  // parallel under PPR streaming.
+  const [open, weekend] = await Promise.all([
+    openNowPick(now, origin),
+    weekendBetPick(now, origin),
+  ]);
   const soon = startingSoonPick(now);
-  const weekend = weekendBetPick(now, origin);
 
   // If every pick is empty (a brand new install with no data, or an
   // edge case), don't render an empty section at all — the /now spine
