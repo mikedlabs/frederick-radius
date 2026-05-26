@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
-// Owner decision (2026-05-17): the app opens on Today, not Radius.
-// Today is the daily landing — what's happening now and what's
-// coming up. Radius is its own destination at /radius (and a nav
-// tab). Old "/" bookmarks / the PWA entry land on Today.
+// Owner decision (2026-05-17): the app opens on Now (formerly Today),
+// not Radius. Now is the daily landing — weather, what's open,
+// what's happening right now, what's coming up next. Old "/" bookmarks
+// and the PWA entry land on /now.
 export default function Home() {
-  redirect("/today");
+  redirect("/now");
 }

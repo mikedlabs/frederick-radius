@@ -41,8 +41,8 @@ export default async function PrimaryActionCard({ now = new Date() }: { now?: Da
         subhead: visitor
           ? "Dinner, drinks, then somewhere to land late. All walkable."
           : "Dinner, drinks, late spot. Routed by foot.",
-        cta: visitor ? "See tonight's plan" : "Tonight's plan",
-        href: "/tonight",
+        cta: visitor ? "See tonight" : "Tonight",
+        href: "/events?lens=tonight",
         Icon: CalendarClock,
       }
     : {

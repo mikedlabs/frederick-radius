@@ -57,7 +57,7 @@ const TOWNS: { slug: string; name: string }[] = [
 ];
 
 const ROUTES: { href: string; label: string; description: string; icon: typeof Home }[] = [
-  { href: "/today", label: "Today", description: "Right-now strip + happenings", icon: Home },
+  { href: "/now", label: "Now", description: "Weather + what's open + what's happening", icon: Home },
   { href: "/map", label: "Map", description: "Pan the county, filter by layer", icon: Compass },
   { href: "/radius", label: "Radius", description: "What's reachable from a point", icon: MapPin },
   { href: "/events", label: "Events", description: "Tonight, weekend, this week", icon: Calendar },

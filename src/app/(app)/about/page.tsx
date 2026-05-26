@@ -41,12 +41,12 @@ export default function AboutPage() {
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
-          href="/today"
+          href="/now"
           className="inline-flex items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Today
+          Back to Now
         </Link>
       </nav>
 

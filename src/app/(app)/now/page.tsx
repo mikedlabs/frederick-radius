@@ -2,31 +2,25 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import WeatherHero from "@/components/today/WeatherHero";
-import FromAboveTile from "@/components/today/FromAboveTile";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
 import CivicAlerts from "@/components/today/CivicAlerts";
-import LocalNewsStrip from "@/components/today/LocalNewsStrip";
-import RightNow from "@/components/today/RightNow";
 import MoodTiles from "@/components/today/MoodTiles";
-import HistoryPulse from "@/components/today/HistoryPulse";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 
-// Code-split the below-the-fold client components so their JS doesn't
-// land in the initial /today bundle. ssr stays on (default) so the
-// HTML still includes the section for crawlers + non-JS readers.
-// HiddenSectionsBar only renders for users who've dismissed something,
-// so 99% of visits never need its bytes at all.
+// FeaturedTonightPicker stays code-split — it's the one editorial
+// place card kept for now under the events shelf. RightNow,
+// LocalNewsStrip, HistoryPulse, FromAboveTile, HiddenSectionsBar
+// all retired in the structural cuts. Anything that survives is
+// because it earns its place against the briefing-discipline rule:
+// /now is an answer, not a magazine.
 const FeaturedTonightPicker = dynamic(
   () => import("@/components/today/FeaturedTonightPicker"),
-);
-const HiddenSectionsBar = dynamic(
-  () => import("@/components/today/HiddenSectionsBar"),
 );
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
@@ -34,31 +28,39 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
 
 /**
- * Today — the editorial briefing.
+ * Now — the daily briefing.
  *
- * Tightened from the original 11+ stacked modules down to a 7-section
- * spine that reads as one continuous briefing — the SkyHero is the
- * front door, no preamble card stacked above it:
+ * Strict 5-section spine (down from 7 in the previous pass, 11 before
+ * that). Every section answers a question; nothing decorative.
  *
  *   1. Hero          → greeting + sun + civic alert + weather + plan
- *   2. When?         → temporal toggle: Now / Tonight / Tomorrow / Weekend
- *   3. Upcoming      → featured event hero + the rest of the queue
- *   4. Local newsroom→ source-first news desk
- *   5. Worth tonight → one editorial place card
- *   6. Right now     → time-aware curated places
- *   7. History pulse → one rotating fact
+ *   2. MoodTiles     → "in the mood for" 4-up affordance row
+ *   3. When?         → temporal toggle: Now / Tonight / Tomorrow / Weekend
+ *   4. Upcoming      → featured event hero + the queue (mode-scoped)
+ *   5. Worth tonight → one editorial place card (kept under review;
+ *                      retires if RightNowStrip covers it)
  *
- * What got cut (each cut intentional, with an honest reason):
+ * What got cut in this push:
+ *   • LocalNewsStrip   — news belongs on its own surface, not the briefing
+ *   • RightNow         — time-aware places overlap MoodTiles and the
+ *                        upcoming events shelf
+ *   • HistoryPulse     — editorial filler; one rotating fact ≠ daily utility
+ *   • FromAboveTile    — the photography book has its own home
+ *   • HiddenSectionsBar — managing hidden sections is a feature for a page
+ *                        that has too many; a page with 5 sections doesn't
+ *   • The /discover crosslink + "More around Frederick" divider
+ *   • Hidden Frederick footer doors
+ *
+ * What got cut in prior passes (preserved here for archeology):
  *   • StatStrip "Across Frederick County"  — generic counts, no signal
- *   • PhotoMosaic "Looks like Frederick"   — pretty but redundant with
- *                                            the photo-heavy cards above
- *   • RedditPulse                           — noisy subreddit posts;
- *                                            users opt in if they want
- *   • MunicipalityStrip                     — towns accessible via /m
- *   • DecorativeDivider variants            — visual filler, not content
+ *   • PhotoMosaic "Looks like Frederick"   — pretty but redundant
+ *   • RedditPulse                          — noisy subreddit posts
+ *   • MunicipalityStrip                    — towns reachable via /m
+ *   • DecorativeDivider variants           — visual filler
  *
- * Sections still wrap in DismissibleSection so users can hide any of
- * the remaining ones; HiddenSectionsBar at the foot restores them.
+ * Push 2 will replace the FeaturedTonightPicker with a proper
+ * RightNowStrip — three direct answers (open now / starting soon /
+ * weekend bet). At that point the editorial picker block retires too.
  */
 export const metadata: Metadata = {
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
@@ -140,15 +142,6 @@ function pickFeaturedEvent(now: Date) {
     null
   );
 }
-
-// Labels for the HiddenSectionsBar — IDs match the DismissibleSection
-// `id`s below. Sections retired from the page are also retired from
-// this list (HiddenSectionsBar only restores what still exists).
-const HIDDEN_LABELS: Array<{ id: string; label: string }> = [
-  { id: "featured-place", label: "Worth your evening" },
-  { id: "upcoming", label: "Upcoming events" },
-  { id: "history", label: "Did you know" },
-];
 
 /**
  * Eastern-time calendar parts of an instant. The whole app's clock is
@@ -356,7 +349,7 @@ export default async function HomePage({
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
-            <a href="/today?t=weekend" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+            <a href="/now?t=weekend" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
               See the weekend
             </a>
             .
@@ -364,94 +357,17 @@ export default async function HomePage({
         )}
       </DismissibleSection>
 
-      {/* ── DISCOVERY ZONE ─────────────────────────────────────────
-          Everything below this label is "browse if you want," not
-          "you must read this." Quieter divider treatment than before:
-          a single small centered label with no horizontal rules, so
-          the section headings (font-serif text-xl) below remain the
-          visually dominant element and the divider doesn't compete
-          with them. */}
-      <div className="pt-2 text-center" aria-hidden>
-        <span
-          className="text-[10px] font-medium uppercase tracking-[0.2em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          More around Frederick
-        </span>
-      </div>
-
-      {/* Local newsroom — compact briefing. */}
-      <Suspense
-        fallback={
-          <div aria-busy="true" className="space-y-2.5">
-            <Skeleton.Block height={20} width={140} round="var(--app-radius-sm)" />
-            <Skeleton.Card withPhoto={false} />
-            <Skeleton.Row />
-            <Skeleton.Row />
-            <Skeleton.Row />
-          </div>
-        }
-      >
-        <LocalNewsStrip />
-      </Suspense>
-
-      {/* Editorial place. The picker is client-side so it can prefer a
-          candidate matching the user's interests (Phase D) while the
-          server-rendered first candidate is the same magazine pick
-          for everyone if no interests are set. */}
+      {/* Editorial place — kept for now as the one "look at this one"
+          card after the events shelf. The picker prefers a candidate
+          matching the user's interests; falls back to the server's
+          editorial pick. Cut signal: if this still feels redundant
+          with the events shelf after RightNowStrip ships in Push 2,
+          retire it. */}
       {featuredCandidates.length > 0 && (
         <DismissibleSection id="featured-place" title="Worth your evening">
           <FeaturedTonightPicker candidates={featuredCandidates} />
         </DismissibleSection>
       )}
-
-      {/* Time-aware curated places (component owns its own header). */}
-      <RightNow now={now} />
-
-      {/* Frederick County in 1 fact. Rotates daily. */}
-      <DismissibleSection id="history" title="Did you know">
-        <HistoryPulse />
-      </DismissibleSection>
-
-      {/* From Above — the photography book lives here. Quiet brand
-          moment that earns its place at the bottom of Today: a daily
-          visitor who's scrolled past the utility tier sees the book
-          we built, with one tap into the full preview experience. */}
-      <FromAboveTile />
-
-      {/* Quiet footer doors. /discover surfaces editorial picks;
-          /about is the thesis page — the answer to "what is this
-          app, really" that a curious first-time visitor will ask. */}
-      <div
-        className="space-y-1 pt-2 text-center text-[12px]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        <p>
-          <a
-            href="/discover"
-            className="font-semibold hover:underline"
-            style={{ color: "var(--app-brand)" }}
-          >
-            Hidden Frederick →
-          </a>{" "}
-          a daily sweep of lesser-known places.
-        </p>
-        <p>
-          <a
-            href="/about"
-            className="font-semibold hover:underline"
-            style={{ color: "var(--app-cool)" }}
-          >
-            About Frederick Radius →
-          </a>{" "}
-          what we do and what we won&apos;t.
-        </p>
-      </div>
-
-      {/* Hidden sections bar — surfaces only when the user has
-          dismissed at least one section. Lets them bring any section
-          back with one tap. */}
-      <HiddenSectionsBar sections={HIDDEN_LABELS} />
     </div>
   );
 }
