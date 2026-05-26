@@ -84,7 +84,35 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
         </span>
       </header>
 
-      <div className="-mx-4 px-4">
+      {/* Horizontal-scroll affordance — a soft paper-cream gradient
+          fading in from the right edge with a chevron pinned on top
+          tells the user "there's more this way." The whole overlay is
+          pointer-events-none so it never blocks taps on the cards
+          underneath. Visible only when there are more cards than fit
+          (3+ on a phone, 5+ on tablet). */}
+      <div className="relative -mx-4 px-4">
+        {visible.length > 2 && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-16 items-center justify-end pr-2 [@media(hover:hover)]:flex"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--app-bg) 60%, transparent) 50%, var(--app-bg) 100%)",
+            }}
+          >
+            <span
+              className="grid h-7 w-7 place-items-center rounded-full"
+              style={{
+                background: "var(--app-bg-elevated)",
+                boxShadow: "var(--app-edge), var(--app-hi)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <CalendarDays className="hidden" aria-hidden />
+              <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>→</span>
+            </span>
+          </div>
+        )}
         <div className="shelf-rail gap-2.5 pb-1 snap-x snap-mandatory">
           {visible.map((e) => {
             const cat = CATEGORY_BY_SLUG[e.category ?? ""];

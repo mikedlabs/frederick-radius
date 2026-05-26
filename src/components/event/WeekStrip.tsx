@@ -123,15 +123,16 @@ export default function WeekStrip({
   const maxCount = Math.max(1, ...days.map((d) => d.count));
 
   return (
-    <section aria-label="Next two weeks" className="-mx-4 px-4">
-      {/* The rail itself: continuous, scrubbable, photo-less. No tile
-          borders — each column is a thin vertical stack. */}
+    <section aria-label="Next two weeks" className="relative -mx-4 px-4">
+      {/* Simplified rail — owner feedback was the bars + count
+          numbers below each date read as visual noise. Each day is
+          now just three things: day-of-week letter, the numeral in
+          a soft pill, and a single colored dot under it if there's
+          any event (sized + colored by activity level, dominant
+          category). Quiet days have no dot at all — honest empty. */}
       <div className="shelf-rail gap-0 pb-1">
         {days.map((d, i) => {
           const isActive = activeDay === d.iso;
-          // Bar height = event count, capped at BAR_MAX_PX. Empty days
-          // still show a tiny floor (2px) so the rail keeps its rhythm.
-          const barH = d.count === 0 ? BAR_FLOOR_PX : Math.max(BAR_FLOOR_PX, Math.round((d.count / maxCount) * BAR_MAX_PX));
           const href = isActive ? "/events" : `/events?d=${d.iso}`;
           const pillBg = isActive
             ? "var(--app-brand)"
@@ -143,19 +144,20 @@ export default function WeekStrip({
             : d.isToday
               ? "inset 0 0 0 1.5px var(--app-brand)"
               : "none";
+          // Activity dot — three sizes: light (1-2), medium (3-5),
+          // heavy (6+). One small dot reads as the day's pulse without
+          // demanding the eye linger on a numeric count.
+          const dotSize = d.count === 0 ? 0 : d.count >= 6 ? 8 : d.count >= 3 ? 6 : 4;
           return (
             <a
               key={d.iso}
               href={href}
-              // aria-current is the right attribute for nav-style day
-              // pickers; aria-pressed is for toggles (buttons), and
-              // screen readers ignore it on anchors anyway.
               aria-current={isActive ? "date" : undefined}
               aria-label={`${d.monthShort} ${d.dom}, ${d.count} ${d.count === 1 ? "event" : "events"}`}
-              className="group relative flex w-12 shrink-0 flex-col items-center pt-1.5 pb-1 sm:w-14"
+              className="group relative flex w-12 shrink-0 flex-col items-center pt-1.5 pb-2 sm:w-14"
               style={{
                 background: d.isWeekend
-                  ? "color-mix(in srgb, var(--app-cool) 6%, transparent)"
+                  ? "color-mix(in srgb, var(--app-cool) 5%, transparent)"
                   : "transparent",
               }}
             >
@@ -187,34 +189,26 @@ export default function WeekStrip({
               >
                 {d.dom}
               </span>
-              {/* activity bar — vertical, height = count, color = dominant
-                  category. Quiet days nearly disappear; festival days
-                  punch through. */}
+              {/* Activity dot — single sized circle, color from the
+                  day's dominant category. Empty days reserve the same
+                  spatial slot (height: 8px) so the rail rhythm holds
+                  but show nothing in it. */}
               <span
                 aria-hidden
-                className="mt-2 block w-1 rounded-full transition-[height]"
-                style={{
-                  height: `${barH}px`,
-                  background: d.count === 0 ? "var(--app-border)" : d.barColor,
-                  opacity: d.count === 0 ? 0.55 : 1,
-                }}
-              />
-              <span
-                className="mt-1 text-[10px] tabular-nums"
-                style={{
-                  color:
-                    d.count === 0
-                      ? "var(--app-ink-3)"
-                      : isActive
-                        ? "var(--app-brand)"
-                        : "var(--app-ink-2)",
-                  fontWeight: d.count > 0 ? 700 : 400,
-                }}
+                className="mt-2 grid h-2 items-center"
               >
-                {d.count === 0 ? "–" : d.count}
+                {d.count > 0 && (
+                  <span
+                    className="block rounded-full"
+                    style={{
+                      width: `${dotSize}px`,
+                      height: `${dotSize}px`,
+                      background: d.barColor,
+                    }}
+                  />
+                )}
               </span>
-              {/* Hairline separator between weeks, anchored to Sun→Mon
-                  transitions for that subtle calendar-rhythm read. */}
+              {/* Hairline separator between weeks. */}
               {i > 0 && i % 7 === 0 && (
                 <span
                   aria-hidden
@@ -225,6 +219,29 @@ export default function WeekStrip({
             </a>
           );
         })}
+      </div>
+      {/* Right-edge scroll affordance — same paper-fade + chevron
+          pattern as the Tonight rail, so the user always sees
+          "there's more this way." Visible only when there are more
+          days than fit on screen (always true at 14 days × 12 px). */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 hidden w-14 items-center justify-end pr-2 [@media(hover:hover)]:flex"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--app-bg) 60%, transparent) 50%, var(--app-bg) 100%)",
+        }}
+      >
+        <span
+          className="grid h-7 w-7 place-items-center rounded-full"
+          style={{
+            background: "var(--app-bg-elevated)",
+            boxShadow: "var(--app-edge), var(--app-hi)",
+            color: "var(--app-ink-2)",
+          }}
+        >
+          <span style={{ fontSize: 14, lineHeight: 1 }}>→</span>
+        </span>
       </div>
     </section>
   );
