@@ -13,6 +13,8 @@
 import { search, type SearchHit } from "@/lib/search";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
+import type { PlaceCardData } from "@/lib/loaders/places";
 
 export type SearchResultType =
   | "place"
@@ -29,6 +31,12 @@ export type SearchResult = {
   href: string;
   /** Compact category/municipality hint for badges. */
   badge?: string;
+  /**
+   * Optional trust signal attached server-side so SearchOverlay does
+   * NOT have to call clientPlaceBySlug / EVENT_BY_SLUG client-side to
+   * resolve it. Only set for place + event results.
+   */
+  trust?: TrustSignal;
 };
 
 /**
@@ -111,7 +119,10 @@ function matchQuickActions(query: string): SearchResult[] {
 
 function hitToResult(h: SearchHit): SearchResult {
   if (h.type === "place") {
-    const p = h.place;
+    // SearchHit.place is typed as Place but populated from clientPlaces()
+    // which returns PlaceCardData (Place + open_status). Cast so we can
+    // read open_status without widening the SearchHit type.
+    const p = h.place as PlaceCardData;
     const cat = CATEGORY_BY_SLUG[p.category];
     const muni = MUNICIPALITY_BY_SLUG[p.municipality];
     return {
@@ -121,6 +132,7 @@ function hitToResult(h: SearchHit): SearchResult {
       subtitle: `${cat?.name ?? p.category} · ${muni?.name ?? p.municipality}`,
       href: `/places/${p.slug}`,
       badge: cat?.name,
+      trust: p.open_status ? placeHoursTrust(p.open_status) : undefined,
     };
   }
   if (h.type === "event") {
@@ -132,6 +144,7 @@ function hitToResult(h: SearchHit): SearchResult {
       subtitle: `${e.venue_name} · ${new Date(e.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" })}`,
       href: `/events/${e.slug}`,
       badge: e.category,
+      trust: eventTrust(e),
     };
   }
   if (h.type === "category") {

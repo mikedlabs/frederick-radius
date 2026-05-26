@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles } from "lucide-react";
-import { searchIndex, type SearchResult, type SearchResultType } from "@/lib/search/index";
-// Client-safe slim set (already decorated); NOT @/lib/loaders/places
-// which static-imports the ~12MB enrichment into the browser bundle.
-import { clientPlaceBySlug } from "@/lib/loaders/places-client";
-import { EVENT_BY_SLUG } from "@/data/events";
+import type { SearchResult, SearchResultType } from "@/lib/search/index";
+// A2.5: SearchOverlay no longer static-imports lib/search.ts (and its
+// transitive places-client.json ~2MB blob) into every page's client
+// bundle. It now fetches /api/search with a 150ms debounce and an
+// AbortController so an out-of-order request can't overwrite a newer
+// result. Trust signals are populated server-side on each result so
+// the overlay doesn't need clientPlaceBySlug / EVENT_BY_SLUG either.
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
 import { suggestionsForHour, frederickHour } from "@/lib/search-suggestions";
@@ -61,24 +62,6 @@ function highlight(haystack: string, needle: string): React.ReactNode {
   return parts;
 }
 
-/**
- * Same trust signal the rest of the app shows, resolved from the
- * lightweight search index. Places go through the P0-1 canonical
- * resolver so a closed/folded slug never carries a stale signal;
- * categories and municipalities have no provenance, so no chip.
- */
-function resultTrust(r: SearchResult): TrustSignal | null {
-  if (r.type === "place") {
-    const p = clientPlaceBySlug(r.id.replace(/^place:/, ""));
-    return p ? placeHoursTrust(p.open_status) : null;
-  }
-  if (r.type === "event") {
-    const e = EVENT_BY_SLUG[r.id.replace(/^event:/, "")];
-    return e ? eventTrust(e) : null;
-  }
-  return null;
-}
-
 const COLOR_BY_TYPE: Record<SearchResultType, string> = {
   place: "var(--app-brand)",
   event: "var(--app-accent)",
@@ -95,6 +78,7 @@ export default function SearchOverlay({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -102,10 +86,39 @@ export default function SearchOverlay({
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
 
-  // Build results client-side from the search index
-  const results = useMemo<SearchResult[]>(() => {
-    if (!query.trim()) return [];
-    return searchIndex(query, 12);
+  // Debounced fetch against /api/search. 150ms feels instant on a fast
+  // typer but still coalesces 3-4 keystrokes into a single round trip.
+  // AbortController prevents out-of-order responses from clobbering
+  // newer ones — without it, a slow "co" can land after a fast "coffee"
+  // and replace the right answer with the wrong one.
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(q)}&limit=12`, {
+        signal: ctrl.signal,
+      })
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then((data: { results: SearchResult[] }) => {
+          setResults(data.results ?? []);
+        })
+        .catch((err) => {
+          // AbortError is expected when the user keeps typing — never
+          // surface it. Other errors collapse to "no results" so the
+          // overlay still feels responsive even if the API is down.
+          if (err && err.name !== "AbortError") {
+            setResults([]);
+          }
+        });
+    }, 150);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
   }, [query]);
 
   // Focus the input when overlay opens
@@ -254,7 +267,7 @@ export default function SearchOverlay({
                 const Icon = ICON_BY_TYPE[r.type];
                 const color = COLOR_BY_TYPE[r.type];
                 const active = i === activeIdx;
-                const trust = resultTrust(r);
+                const trust = r.trust ?? null;
                 return (
                   <li key={r.id} role="option" aria-selected={active} data-idx={i}>
                     <Link
