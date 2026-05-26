@@ -15,8 +15,14 @@ const IMAGE_CACHE = `${CACHE_VERSION}-img`;
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
+  // A5: do NOT call skipWaiting() here. We want a freshly deployed SW
+  // to enter the "waiting" state so ServiceWorkerRegister can prompt
+  // the user with an update toast. The user (or closing all tabs)
+  // triggers activation via the SKIP_WAITING message below. This
+  // avoids surprise mid-session worker swaps that can interleave
+  // with in-flight requests.
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((c) => c.add(OFFLINE_URL)).then(() => self.skipWaiting()),
+    caches.open(STATIC_CACHE).then((c) => c.add(OFFLINE_URL)),
   );
 });
 
