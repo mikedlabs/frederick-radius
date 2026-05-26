@@ -36,8 +36,19 @@ export default function DismissibleSection({
   if (mounted && hidden) return null;
 
   return (
-    <section className="space-y-3">
-      <header className="flex items-baseline justify-between gap-3">
+    <section
+      className="relative rounded-[var(--app-radius-lg)] border p-4"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+        boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
+      }}
+    >
+      {/* Card-bounded section per the brief: "areas need to be
+          defined more." The hairline + inner-shadow treatment marks
+          each section as a discrete room a visitor can walk into,
+          not another stack on a long page. */}
+      <header className="mb-3 flex items-baseline justify-between gap-3">
         <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           {title}
         </h2>
@@ -64,7 +75,7 @@ export default function DismissibleSection({
         </div>
       </header>
       {meta && (
-        <p className="-mt-1.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
+        <p className="-mt-2 mb-3 text-xs" style={{ color: "var(--app-ink-3)" }}>
           {meta}
         </p>
       )}
