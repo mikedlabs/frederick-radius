@@ -5,6 +5,8 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
 import PlaceList from "@/components/place/PlaceList";
+import IconStamp from "@/components/ui/IconStamp";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import EventCard from "@/components/event/EventCard";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
@@ -13,13 +15,6 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import { CATEGORIES, TOP_CATEGORIES } from "@/data/categories";
 
 export const revalidate = 600;
-
-// Friendly glyph per top category — same visual vocabulary as the
-// place cards, so a town reads as pictures + color, not a list.
-const TOP_GLYPH: Record<string, string> = {
-  food: "🍴", outdoors: "🌲", arts: "🎭", shopping: "🛍", wellness: "💆",
-  family: "👨‍👩‍👧", civic: "🏛", services: "🛠", lodging: "🏨", worship: "⛪",
-};
 
 export async function generateStaticParams() {
   return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
@@ -134,13 +129,13 @@ export default async function MunicipalityPage(
                   background: `linear-gradient(135deg, ${c.color}1f, ${c.color}08)`,
                 }}
               >
-                <span
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[20px]"
-                  style={{ background: `${c.color}26` }}
-                  aria-hidden
-                >
-                  {TOP_GLYPH[c.slug] ?? "📍"}
-                </span>
+                <IconStamp accent={c.color} size="md">
+                  <CategoryIcon
+                    slug={c.slug}
+                    strokeWidth={1.75}
+                    className="h-[18px] w-[18px]"
+                  />
+                </IconStamp>
                 <span className="min-w-0">
                   <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                     {c.name}

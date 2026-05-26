@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import WeatherHero from "@/components/today/WeatherHero";
+import FromAboveTile from "@/components/today/FromAboveTile";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
@@ -374,6 +375,12 @@ export default async function HomePage({
       <DismissibleSection id="history" title="Did you know">
         <HistoryPulse />
       </DismissibleSection>
+
+      {/* From Above — the photography book lives here. Quiet brand
+          moment that earns its place at the bottom of Today: a daily
+          visitor who's scrolled past the utility tier sees the book
+          we built, with one tap into the full preview experience. */}
+      <FromAboveTile />
 
       {/* Quiet footer doors. /discover surfaces editorial picks;
           /about is the thesis page — the answer to "what is this
