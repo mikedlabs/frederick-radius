@@ -6,6 +6,7 @@ import InstallPrompt from "@/components/pwa/InstallPrompt";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
+import CommandPalette from "@/components/cmdk/CommandPalette";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -39,6 +40,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </main>
           <BottomNav />
           <InstallPrompt />
+          {/* Global ⌘K / Ctrl+K palette — jumps to pages, categories,
+              towns, and places without leaving the keyboard. Mounted
+              at the layout root so it works on every (app) route. */}
+          <CommandPalette />
         </div>
       </RouteAccent>
     </PlaceSheetProvider>

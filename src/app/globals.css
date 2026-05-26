@@ -1012,3 +1012,177 @@ html.dark .shimmer::after {
 .stagger > *:nth-child(5) { transition-delay: 240ms; }
 .stagger > *:nth-child(6) { transition-delay: 290ms; }
 .stagger > *:nth-child(n + 7) { transition-delay: 340ms; }
+
+/* ─────────────────────────────────────────────────────
+ * Command palette (cmdk) — global ⌘K jump bar.
+ * Brand-aligned shell: paper-cream surface, hairline border,
+ * tactile elevation. Sits above the bottom nav (z-50) and
+ * fades the page beneath it.
+ *
+ * cmdk renders Command.Dialog as a Radix Dialog under the
+ * hood, so the .cmdk-root selector targets the portal root
+ * styled here, and the .cmdk-shell is the chrome that wraps
+ * the input + results list.
+ * ───────────────────────────────────────────────────── */
+.cmdk-root {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(48px, 12vh, 120px) 12px 12px;
+  background: rgba(10, 8, 4, 0.45);
+  animation: cmdkFade 140ms ease-out;
+}
+@keyframes cmdkFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.cmdk-shell {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 640px);
+  background: var(--app-bg-elevated);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  box-shadow: var(--app-elev-3), var(--app-edge), var(--app-hi);
+  overflow: hidden;
+  animation: cmdkSlide 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes cmdkSlide {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.cmdk-input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--app-border);
+}
+.cmdk-input-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--app-ink-3);
+  flex-shrink: 0;
+}
+.cmdk-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--app-ink);
+}
+.cmdk-input::placeholder {
+  color: var(--app-ink-3);
+}
+.cmdk-kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 3px 6px;
+  border: 1px solid var(--app-border);
+  border-radius: 4px;
+  color: var(--app-ink-3);
+  background: var(--app-bg-sunken);
+}
+.cmdk-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+  overscroll-behavior: contain;
+}
+.cmdk-empty {
+  padding: 28px 14px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--app-ink-3);
+}
+.cmdk-group [cmdk-group-heading] {
+  padding: 10px 10px 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-ink-3);
+}
+.cmdk-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--app-radius-sm);
+  cursor: pointer;
+  transition: background-color 80ms ease;
+}
+.cmdk-item[data-selected="true"] {
+  background: color-mix(in srgb, var(--app-brand) 10%, transparent);
+}
+.cmdk-item-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--app-ink-2);
+  flex-shrink: 0;
+}
+.cmdk-item-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.cmdk-item-title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--app-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmdk-item-sub {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--app-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmdk-item-trail {
+  width: 12px;
+  height: 12px;
+  color: var(--app-ink-3);
+  opacity: 0;
+  flex-shrink: 0;
+}
+.cmdk-item[data-selected="true"] .cmdk-item-trail {
+  opacity: 0.7;
+}
+.cmdk-footer {
+  display: flex;
+  gap: 18px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--app-border);
+  background: var(--app-bg-sunken);
+  font-size: 10px;
+  color: var(--app-ink-3);
+}
+.cmdk-kbd-inline {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  margin: 0 3px;
+  border: 1px solid var(--app-border);
+  border-radius: 3px;
+  background: var(--app-bg-elevated);
+  color: var(--app-ink-2);
+}
