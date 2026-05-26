@@ -12,6 +12,8 @@
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
+import RidgeLine from "./RidgeLine";
+
 export type SkyTone = "light" | "dark";
 type Sky = { top: string; mid: string; bottom: string; tone: SkyTone };
 
@@ -161,6 +163,12 @@ export default async function SkyHero({
       data-sky-mood={mood}
     >
       {children}
+      {/* Stylized Catoctin + Sugarloaf horizon at the bottom of the
+          hero. Replaces (and improves on) the flat linear fade-to-bg
+          that .sky-hero::after was doing — a recognizably Frederick
+          silhouette in place of a generic gradient. Decorative only;
+          aria-hidden inside the component. */}
+      <RidgeLine />
     </section>
   );
 }
