@@ -17,6 +17,7 @@ import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import SourceBadge from "./SourceBadge";
 import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { placeReasons } from "@/lib/place-reasons";
+import { BeenHereIndicator } from "./BeenHereIndicator";
 
 /**
  * "What people rave about" — only when there is a real Google rating
@@ -118,6 +119,7 @@ export default function PlaceCard({
               </div>
               <p className="mt-0.5 truncate text-xs opacity-90">
                 {cat?.name ?? place.category} · {place.short_blurb}
+                <BeenHereIndicator slug={place.slug} />
               </p>
             </div>
             <div className="absolute right-2 top-2 rounded-full bg-white/85 px-1.5 py-0.5 backdrop-blur">
@@ -211,6 +213,7 @@ export default function PlaceCard({
               {place.distance_m !== undefined && (
                 <> · {formatDistance(place.distance_m)}</>
               )}
+              <BeenHereIndicator slug={place.slug} />
             </p>
             {/* Reason chips on the tile variant — same producer as the
                 grid variant. Falls back to the legacy status+rating
@@ -300,6 +303,7 @@ export default function PlaceCard({
               {place.distance_m !== undefined && (
                 <> · {formatDistance(place.distance_m)}</>
               )}
+              <BeenHereIndicator slug={place.slug} />
             </p>
             {/* Reason chips — "Open now · 4 min walk · Verified" —
                 the decision context the brief asks for. Derived from
@@ -376,6 +380,7 @@ export default function PlaceCard({
         <p className="mt-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {cat?.name ?? place.category}
           {kf && <> · {kf}</>}
+          <BeenHereIndicator slug={place.slug} />
         </p>
         {!compact && (() => {
           // Reason chips on the row variant — same producer as grid +
