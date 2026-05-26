@@ -70,7 +70,7 @@ export const metadata: Metadata = {
   description:
     "Find what's nearby, happening, open, and worth your time across every town and community in Frederick County, Maryland. Places, events, parks, parking, civic services — one app.",
   applicationName: "Frederick Radius",
-  authors: [{ name: "MAD Productions" }],
+  authors: [{ name: "Michael DeMattia" }],
   generator: "Next.js",
   keywords: [
     "Frederick County", "Frederick MD", "Downtown Frederick",

@@ -145,4 +145,6 @@ Closed places never surface. Three guards:
 
 ## License
 
-Proprietary — © MAD Productions. All rights reserved.
+Proprietary — © Michael DeMattia. All rights reserved.
+
+Made in Frederick, MD by Michael DeMattia, a downtown Frederick resident.

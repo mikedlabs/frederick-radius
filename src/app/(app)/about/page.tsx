@@ -49,8 +49,8 @@ export default async function AboutPage() {
       </nav>
 
       {/* Seasonal hero photograph — a real photo of Frederick from the
-          MAD Productions seasons collection, picked by current season
-          with daily rotation. Frames "the pocket compass for Frederick
+          owner's seasons collection, picked by current season with
+          daily rotation. Frames "the pocket compass for Frederick
           County" line with a real sense of place before the pitch. */}
       <div
         className="relative -mx-4 overflow-hidden rounded-[var(--app-radius-lg)] sm:mx-0"
@@ -112,17 +112,14 @@ export default async function AboutPage() {
           Not a tourism brochure. Not a generic directory. Not a civic dashboard. A daily-use tool that turns this county&apos;s data into actual decisions — what to do, where to go, when to leave.
         </p>
         <p>
-          Made in Frederick by{" "}
-          <a
-            href="https://madproductions.io"
-            className="font-semibold underline-offset-2 hover:underline"
+          Made in Frederick, MD by{" "}
+          <span
+            className="font-semibold"
             style={{ color: "var(--app-cool)" }}
-            target="_blank"
-            rel="noopener noreferrer"
           >
-            MAD Productions
-          </a>
-          .
+            Michael DeMattia
+          </span>
+          , a downtown Frederick resident.
         </p>
       </section>
 
