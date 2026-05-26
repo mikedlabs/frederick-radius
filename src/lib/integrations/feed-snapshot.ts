@@ -120,6 +120,11 @@ export function recordSnapshot(source: string, rows: SnapshotRow[]): void {
   void persistSnapshot(source, snap);
 }
 
+/** Sources we've already warned about in this process. Without this,
+ *  a missing table or other persistent error floods the dev console
+ *  on every feed fetch — once per minute per source. */
+const warnedSources = new Set<string>();
+
 async function persistSnapshot(source: string, snap: Snapshot): Promise<void> {
   const db = getDb();
   if (!db) return;
@@ -136,8 +141,22 @@ async function persistSnapshot(source: string, snap: Snapshot): Promise<void> {
       latest: snap.latest ? new Date(snap.latest) : null,
     });
   } catch (err) {
-
-    console.error(`[feed-snapshot] persist failed (${source}):`, err instanceof Error ? err.message : err);
+    // Telemetry-only write. A failure here doesn't affect the
+    // request path. We deliberately:
+    //   1. Downgrade to console.warn so Next.js dev overlay doesn't
+    //      render this as a red "Console Error" box. Production
+    //      observability (Sentry) still picks it up via its own
+    //      error capture if configured.
+    //   2. Only log ONCE per source per process, so a missing table
+    //      or persistent connection failure doesn't fill the console
+    //      with one row per fetch.
+    if (!warnedSources.has(source)) {
+      warnedSources.add(source);
+      console.warn(
+        `[feed-snapshot] persist failed (${source}) — telemetry only; further failures from this source suppressed:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
 }
 
@@ -208,8 +227,10 @@ export async function hydrateSnapshots(): Promise<void> {
     }
     hydratedAt = Date.now();
   } catch (err) {
-
-    console.error("[feed-snapshot] hydrate failed:", err instanceof Error ? err.message : err);
+    // Telemetry-only read. Hydration failure means the dashboard
+    // shows in-memory window only — non-fatal. Warn (not error) so
+    // dev console stays clean.
+    console.warn("[feed-snapshot] hydrate failed (telemetry only):", err instanceof Error ? err.message : err);
   }
 }
 
@@ -237,8 +258,10 @@ export async function pruneOldSnapshots(days: number): Promise<number> {
       .returning({ id: feed_snapshots.id });
     return deleted.length;
   } catch (err) {
-
-    console.error("[feed-snapshot] prune failed:", err instanceof Error ? err.message : err);
+    // Prune is best-effort. Failure just means stale rows accumulate
+    // until the next successful run. Warn-level so the dev console
+    // stays clean.
+    console.warn("[feed-snapshot] prune failed (telemetry only):", err instanceof Error ? err.message : err);
     return 0;
   }
 }

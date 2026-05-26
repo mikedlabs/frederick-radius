@@ -13,6 +13,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
+import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 
 /**
  * Brand Book No. 01 — Voice Guide v1 typography (May 2026).
@@ -186,6 +187,11 @@ export default function RootLayout({
         <Analytics />
         <SpeedInsights />
         <ServiceWorkerRegister />
+        {/* Swallows clipboard NotAllowedError rejections that browser
+            extensions throw inside our window context, so the dev
+            overlay doesn't render them as red Console Errors. Our own
+            clipboard call sites have their own try/catch. */}
+        <ExtensionNoiseFilter />
       </body>
     </html>
   );
