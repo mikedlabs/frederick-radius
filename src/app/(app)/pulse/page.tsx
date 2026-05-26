@@ -1,22 +1,51 @@
 /**
  * Live Pulse — the one-screen civic snapshot for Frederick County.
  *
- * This is the page that replaces opening four separate government /
- * utility websites (MDOT CHART, FirstEnergy, FCPS, FCG FixIT). Every
- * feed is fetched server-side, normalized, and rendered IN-APP. The
- * only outbound links are small "source" attributions — the data
- * itself lives here.
+ * Mobile-first redesign. The previous version stacked seven dashboard
+ * cards in a flat row regardless of state — even when nothing was
+ * happening, the user scrolled through five "no active incidents"
+ * cards before finding their answer. That's a directory of feeds,
+ * not a live pulse.
+ *
+ * New architecture:
+ *
+ *   1. Hero — one editorial line whose verb changes with state:
+ *      "All clear across the county", "3 situations across the
+ *      county", "Heads-up across the county". A pulsing live dot
+ *      (sage when calm, brick when active) makes it obviously live.
+ *
+ *   2. Status grid — 2×3 mobile, 3×2 tablet+, six tiles (Traffic,
+ *      Power, Schools, 311, Safety, Police). Each tile shows icon,
+ *      label, ONE big serif number, and a one-word status. The
+ *      tile background tints with its accent color when active so
+ *      the grid reads as a heat-map of where attention is needed.
+ *      Tiles anchor-link to their sections below; Police opens the
+ *      external CFS map.
+ *
+ *   3. Active sections — only sections with current data render
+ *      below. Each card carries its accent color as a left-edge
+ *      band, a serif title, a count chip, the rows, and a quiet
+ *      source attribution at the bottom. No more empty cards.
+ *
+ *   4. Footer — last-updated line + disclaimer + the full source
+ *      list with timestamps, so the data trail is honest.
+ *
+ * Every feed is fetched server-side, normalized, and rendered IN-
+ * APP. The only outbound links are small "source" attributions —
+ * the data itself lives here.
  */
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   Activity, Construction, Zap, School, AlertTriangle, Siren,
-  CheckCircle2, ExternalLink, MapPin, Clock,
+  CheckCircle2, ExternalLink, MapPin, Clock, ChevronRight,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
 import { getFcpsAlerts } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
+import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -42,6 +71,15 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function nowClock(): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(new Date());
+}
+
 export default async function PulsePage() {
   const [incidents, outages, fcps, fixit, safety] = await Promise.all([
     getChartIncidentsFrederick(),
@@ -56,12 +94,32 @@ export default async function PulsePage() {
     (a, b) => sevRank[a.severity] - sevRank[b.severity]
   );
   const schoolAlerts = fcps.filter((a) => a.status !== "unknown");
-  const allClear =
-    safety.length === 0 &&
-    traffic.length === 0 &&
-    outages.total_out < 25 &&
-    schoolAlerts.length === 0 &&
-    fixit.length === 0;
+
+  // Power outages are "active" only when 25+ customers are out — below
+  // that threshold the data is noise (a single transformer trip).
+  const outagesActive = outages.total_out >= 25;
+  const outagesCount = outagesActive ? outages.munis.length || 1 : 0;
+
+  const totals = {
+    safety: safety.length,
+    traffic: traffic.length,
+    power: outagesCount,
+    schools: schoolAlerts.length,
+    fixit: fixit.length,
+  };
+  const totalActive =
+    totals.safety + totals.traffic + totals.power + totals.schools + totals.fixit;
+  const allClear = totalActive === 0;
+
+  // Hero copy varies with state. The verb is the read.
+  const heroLine = allClear
+    ? "All clear across the county"
+    : totalActive === 1
+      ? "1 situation across the county"
+      : `${totalActive} situations across the county`;
+  const heroSub = allClear
+    ? "No active traffic, outages, school alerts, or open hotspots right now."
+    : "Traffic, power, schools, and citizen reports — combined from four county and state feeds.";
 
   const pct =
     outages.total_served > 0
@@ -69,37 +127,127 @@ export default async function PulsePage() {
       : "0";
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2">
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          <Activity className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-          Live Pulse · Frederick County
-        </p>
-        <h1 className="font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          What&apos;s happening right now
-        </h1>
-        <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>
-          Traffic, power, schools, and citizen 311 reports — combined from four
-          county and state feeds, refreshed every couple of minutes.
-        </p>
+    <div className="relative space-y-6 pb-4">
+      <PageBloom variant={allClear ? "warm-cool" : "single"} />
+
+      {/* ── Hero ───────────────────────────────────────────────── */}
+      {/* The hero is a card-with-edge-tint when there's active data,
+          so the page itself signals "something is up" before the user
+          reads the headline. Calm states keep the standard paper-cream
+          look so the page doesn't yell at users on quiet days. */}
+      <header
+        className="relative -mx-4 overflow-hidden border-b sm:mx-0 sm:rounded-[var(--app-radius-lg)] sm:border"
+        style={{
+          borderColor: "var(--app-border)",
+          background: allClear
+            ? "var(--app-bg-elevated)"
+            : "linear-gradient(155deg, color-mix(in srgb, var(--app-danger) 7%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 70%)",
+        }}
+      >
+        {/* Top accent bar — sage when all clear, danger when active. */}
+        <span
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-[3px]"
+          style={{
+            background: allClear ? "var(--app-positive)" : "var(--app-danger)",
+            opacity: allClear ? 0.6 : 1,
+          }}
+        />
+        <div className="space-y-2.5 px-4 py-5 sm:px-5">
+          <p
+            className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <span
+              aria-hidden
+              className="pulse-dot inline-block h-2 w-2 rounded-full"
+              style={{
+                background: allClear ? "var(--app-positive)" : "var(--app-danger)",
+              }}
+            />
+            Live Pulse · Frederick County
+          </p>
+          <h1
+            className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {heroLine}
+          </h1>
+          <p
+            className="text-[14px] leading-relaxed"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {heroSub}
+          </p>
+          <p
+            className="flex items-center gap-1.5 pt-0.5 text-[11px] tabular-nums"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
+            Refreshed {nowClock()} · auto-updates every couple of minutes
+          </p>
+        </div>
       </header>
 
-      {allClear && (
-        <div
-          className="flex items-center gap-3 rounded-[var(--app-radius-lg)] border p-4"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-        >
-          <CheckCircle2 className="h-6 w-6 shrink-0" strokeWidth={2} style={{ color: "var(--app-positive)" }} aria-hidden />
-          <div>
-            <p className="text-sm font-semibold" style={{ color: "var(--app-ink)" }}>All clear across the county</p>
-            <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-              No major traffic, outages, school alerts, or open 311 hot spots right now.
-            </p>
-          </div>
-        </div>
-      )}
+      {/* ── Status tile grid ───────────────────────────────────── */}
+      <section
+        aria-label="At-a-glance county status"
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3"
+      >
+        <StatusTile
+          href="#safety"
+          icon={Siren}
+          label="Fire & rescue"
+          count={totals.safety}
+          activeCopy={totals.safety === 1 ? "Active call" : "Active calls"}
+          accent="var(--app-danger)"
+          show={safety.length > 0}
+        />
+        <StatusTile
+          href="#traffic"
+          icon={Construction}
+          label="Traffic"
+          count={totals.traffic}
+          activeCopy={totals.traffic === 1 ? "Incident" : "Incidents"}
+          accent="var(--app-warning)"
+        />
+        <StatusTile
+          href="#power"
+          icon={Zap}
+          label="Power"
+          count={outagesActive ? outages.total_out : 0}
+          activeCopy={outagesActive ? "Customers out" : "Customers out"}
+          formatNumber={outagesActive}
+          accent="var(--app-danger)"
+        />
+        <StatusTile
+          href="#schools"
+          icon={School}
+          label="Schools"
+          count={totals.schools}
+          activeCopy={totals.schools === 1 ? "Alert" : "Alerts"}
+          accent="var(--app-warning)"
+        />
+        <StatusTile
+          href="#fixit"
+          icon={AlertTriangle}
+          label="311 reports"
+          count={totals.fixit}
+          activeCopy={totals.fixit === 1 ? "Open report" : "Open reports"}
+          accent="var(--app-cool)"
+        />
+        <StatusTile
+          href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
+          external
+          icon={Siren}
+          label="Police"
+          accent="var(--app-cool)"
+          subtitle="Daily CFS map"
+        />
+      </section>
 
-      {/* ── Public safety (PulsePoint scanner) ── */}
+      {/* ── Active sections only ──────────────────────────────── */}
+      {/* Safety — public fire & rescue scanner */}
       {safety.length > 0 && (
         <DashSection
           id="safety"
@@ -108,9 +256,8 @@ export default async function PulsePage() {
           count={safety.length}
           accent="var(--app-danger)"
           source={{ label: "PulsePoint", href: "https://web.pulsepoint.org/" }}
-          empty="No active fire or rescue calls."
         >
-          {safety.map((s) => (
+          {safety.slice(0, 12).map((s) => (
             <Row
               key={s.id}
               tone="danger"
@@ -121,26 +268,200 @@ export default async function PulsePage() {
         </DashSection>
       )}
 
-      {/* ── Police calls for service ──
-          Frederick PD's CFS data is a CommunityCrimeMap (LexisNexis)
-          embed with no public feed/API — so we link to the official
-          map honestly rather than scrape or fabricate it. The
-          disclaimer is the one the City/PD itself requires. */}
+      {/* Traffic */}
+      {traffic.length > 0 && (
+        <DashSection
+          id="traffic"
+          icon={Construction}
+          title="Traffic & roadwork"
+          count={traffic.length}
+          accent="var(--app-warning)"
+          source={{ label: "MDOT CHART", href: "https://chart.maryland.gov/" }}
+        >
+          {traffic.slice(0, 12).map((i) => (
+            <Row
+              key={i.id}
+              tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
+              title={`${i.road}${i.direction ? ` ${i.direction}` : ""} — ${i.type}`}
+              body={i.description}
+              meta={[
+                i.location,
+                i.lanes_affected,
+                i.expected_end
+                  ? `Clears ~${new Date(i.expected_end).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric" })}`
+                  : undefined,
+              ]}
+            />
+          ))}
+        </DashSection>
+      )}
+
+      {/* Power */}
+      {outagesActive && (
+        <DashSection
+          id="power"
+          icon={Zap}
+          title="Power outages"
+          count={outagesCount}
+          accent="var(--app-danger)"
+          source={{ label: "FirstEnergy / Potomac Edison", href: "https://outages-mdwv.firstenergycorp.com/" }}
+        >
+          <div
+            className="mb-1 flex items-baseline gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+            style={{
+              borderColor: "var(--app-border)",
+              background: "color-mix(in srgb, var(--app-danger) 6%, var(--app-bg-elevated))",
+            }}
+          >
+            <span
+              className="font-serif text-[28px] font-semibold leading-none tabular-nums"
+              style={{ color: "var(--app-danger)" }}
+            >
+              {outages.total_out.toLocaleString()}
+            </span>
+            <span className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              customers without power
+              <br />
+              {pct}% of {outages.total_served.toLocaleString()} served
+            </span>
+          </div>
+          {outages.munis.map((m) => (
+            <Row
+              key={m.area}
+              tone={m.customers_out > 500 ? "danger" : "warning"}
+              title={m.area}
+              body={`${m.customers_out.toLocaleString()} out of ${m.customers_served.toLocaleString()} (${m.percentage.toFixed(1)}%)`}
+            />
+          ))}
+        </DashSection>
+      )}
+
+      {/* Schools */}
+      {schoolAlerts.length > 0 && (
+        <DashSection
+          id="schools"
+          icon={School}
+          title="Schools (FCPS)"
+          count={schoolAlerts.length}
+          accent="var(--app-warning)"
+          source={{ label: "FCPS RSS", href: "https://www.fcps.org/" }}
+        >
+          {schoolAlerts.map((a) => (
+            <Row
+              key={a.id}
+              tone={a.status === "closed" ? "danger" : a.status === "open" ? "muted" : "warning"}
+              title={
+                a.status === "closed" ? "Schools closed"
+                  : a.status === "delayed" ? "Delayed opening"
+                  : a.status === "early_dismissal" ? "Early dismissal"
+                  : "Update"
+              }
+              body={a.title}
+              meta={[timeAgo(a.published_at)]}
+            />
+          ))}
+        </DashSection>
+      )}
+
+      {/* 311 */}
+      {fixit.length > 0 && (
+        <DashSection
+          id="fixit"
+          icon={AlertTriangle}
+          title="Citizen 311 reports"
+          count={fixit.length}
+          accent="var(--app-cool)"
+          source={{ label: "FCG FixIT · SeeClickFix", href: "https://www.frederickcountymd.gov/8235/FCG-FixIT" }}
+        >
+          {fixit.slice(0, 10).map((i) => (
+            <Row
+              key={i.id}
+              tone={i.status === "closed" ? "muted" : "cool"}
+              title={i.summary}
+              // SeeClickFix often sets `summary` and `category` to the
+              // same string ("Roadway Tree Maintenance"). Only render
+              // body when it actually adds information.
+              body={
+                i.category && i.category !== i.summary ? i.category : undefined
+              }
+              meta={[i.address, timeAgo(i.reported_at), i.status]}
+            />
+          ))}
+        </DashSection>
+      )}
+
+      {/* All-clear card — only renders when literally every feed is
+          quiet. Celebratory, not just empty. Catoctin-green wash
+          keeps it on-brand without resorting to a generic
+          green-checkmark UI. */}
+      {allClear && (
+        <section
+          aria-label="All clear"
+          className="rounded-[var(--app-radius-lg)] border p-5 text-center"
+          style={{
+            borderColor: "color-mix(in srgb, var(--app-positive) 30%, transparent)",
+            background:
+              "linear-gradient(155deg, color-mix(in srgb, var(--app-positive) 6%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 100%)",
+          }}
+        >
+          <CheckCircle2
+            className="mx-auto h-10 w-10"
+            strokeWidth={1.5}
+            style={{ color: "var(--app-positive)" }}
+            aria-hidden
+          />
+          <p
+            className="mt-3 font-serif text-[20px] font-semibold leading-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Quiet across the board.
+          </p>
+          <p
+            className="mt-1.5 text-[13px] leading-relaxed"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            All five feeds report nothing major right now. Page updates
+            automatically when that changes.
+          </p>
+        </section>
+      )}
+
+      {/* Police — kept as a quiet card with its required disclaimer.
+          Not part of the active-sections loop because there's no
+          feed to count from. */}
       <section
         id="police"
-        className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
+        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+        }}
       >
-        <div className="flex items-center gap-2 border-b px-4 py-2.5" style={{ borderColor: "var(--app-border)" }}>
-          <Siren className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-          <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <div
+          className="flex items-center gap-2.5 border-b px-4 py-2.5"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <span
+            aria-hidden
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+            style={{
+              background: "color-mix(in srgb, var(--app-cool) 10%, transparent)",
+              color: "var(--app-cool)",
+            }}
+          >
+            <Siren className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </span>
+          <h2
+            className="font-serif text-[16px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
             Police calls for service
           </h2>
         </div>
         <div className="space-y-2.5 px-4 py-3">
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             Frederick PD publishes the prior day&apos;s calls for service
-            from its CAD system, updated daily, on an official map. You
+            from its CAD system on an official map, updated daily. You
             can browse it and subscribe to alerts for your area there.
           </p>
           <a
@@ -161,123 +482,185 @@ export default async function PulsePage() {
         </div>
       </section>
 
-      {/* ── Traffic ── */}
-      <DashSection
-        id="traffic"
-        icon={Construction}
-        title="Traffic & roadwork"
-        count={traffic.length}
-        accent="var(--app-warning)"
-        source={{ label: "MDOT CHART", href: "https://chart.maryland.gov/" }}
-        empty="No active incidents on Frederick County roads."
+      {/* Footer — disclaimer + sources at a glance */}
+      <footer
+        className="space-y-3 rounded-[var(--app-radius-md)] border p-4 text-[11px]"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-sunken)",
+          color: "var(--app-ink-3)",
+        }}
       >
-        {traffic.slice(0, 12).map((i) => (
-          <Row
-            key={i.id}
-            tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
-            title={`${i.road}${i.direction ? ` ${i.direction}` : ""} — ${i.type}`}
-            body={i.description}
-            meta={[
-              i.location,
-              i.lanes_affected,
-              i.expected_end ? `Clears ~${new Date(i.expected_end).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric" })}` : undefined,
-            ]}
-          />
-        ))}
-      </DashSection>
-
-      {/* ── Power ── */}
-      <DashSection
-        id="power"
-        icon={Zap}
-        title="Power outages"
-        count={outages.total_out > 25 ? outages.munis.length || 1 : 0}
-        accent="var(--app-danger)"
-        source={{ label: "FirstEnergy / Potomac Edison", href: "https://outages-mdwv.firstenergycorp.com/" }}
-        empty="No significant outages — fewer than 25 customers affected county-wide."
-      >
-        {outages.total_out > 25 && (
-          <>
-            <div
-              className="mb-2 flex items-baseline gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
-              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-            >
-              <span className="font-serif text-2xl font-semibold tabular-nums" style={{ color: "var(--app-danger)" }}>
-                {outages.total_out.toLocaleString()}
-              </span>
-              <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-                customers without power · {pct}% of {outages.total_served.toLocaleString()} served
-              </span>
-            </div>
-            {outages.munis.map((m) => (
-              <Row
-                key={m.area}
-                tone={m.customers_out > 500 ? "danger" : "warning"}
-                title={m.area}
-                body={`${m.customers_out.toLocaleString()} out of ${m.customers_served.toLocaleString()} (${m.percentage.toFixed(1)}%)`}
-              />
-            ))}
-          </>
-        )}
-      </DashSection>
-
-      {/* ── Schools ── */}
-      <DashSection
-        id="schools"
-        icon={School}
-        title="Schools (FCPS)"
-        count={schoolAlerts.length}
-        accent="var(--app-warning)"
-        source={{ label: "FCPS RSS", href: "https://www.fcps.org/" }}
-        empty="Frederick County Public Schools on a normal schedule."
-      >
-        {schoolAlerts.map((a) => (
-          <Row
-            key={a.id}
-            tone={a.status === "closed" ? "danger" : a.status === "open" ? "muted" : "warning"}
-            title={
-              a.status === "closed" ? "Schools closed"
-                : a.status === "delayed" ? "Delayed opening"
-                : a.status === "early_dismissal" ? "Early dismissal"
-                : "Update"
-            }
-            body={a.title}
-            meta={[timeAgo(a.published_at)]}
-          />
-        ))}
-      </DashSection>
-
-      {/* ── 311 ── */}
-      <DashSection
-        id="311"
-        icon={AlertTriangle}
-        title="Citizen 311 reports"
-        count={fixit.length}
-        accent="var(--app-cool)"
-        source={{ label: "FCG FixIT · SeeClickFix", href: "https://www.frederickcountymd.gov/8235/FCG-FixIT" }}
-        empty="No recent open 311 reports nearby."
-      >
-        {fixit.map((i) => (
-          <Row
-            key={i.id}
-            tone={i.status === "closed" ? "muted" : "cool"}
-            title={i.summary}
-            body={i.category}
-            meta={[i.address, timeAgo(i.reported_at), i.status]}
-          />
-        ))}
-      </DashSection>
-
-      <p className="pt-2 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Informational only — not a substitute for 911 or official emergency
-        broadcasts. Source feeds are linked per section.
-      </p>
+        <p className="leading-relaxed">
+          Informational only — not a substitute for 911 or official
+          emergency broadcasts.
+        </p>
+        <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          <SourceLine label="Fire & rescue" source="PulsePoint" href="https://web.pulsepoint.org/" />
+          <SourceLine label="Traffic" source="MDOT CHART" href="https://chart.maryland.gov/" />
+          <SourceLine label="Power" source="FirstEnergy" href="https://outages-mdwv.firstenergycorp.com/" />
+          <SourceLine label="Schools" source="FCPS RSS" href="https://www.fcps.org/" />
+          <SourceLine label="311 reports" source="FCG FixIT · SeeClickFix" href="https://www.frederickcountymd.gov/8235/FCG-FixIT" />
+          <SourceLine label="Police" source="Frederick PD" href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map" />
+        </div>
+      </footer>
     </div>
   );
 }
 
+/* ─────────────────────────────────────────────────────────────
+ * Components
+ * ───────────────────────────────────────────────────────────── */
+
+function StatusTile({
+  href,
+  external,
+  icon: Icon,
+  label,
+  count,
+  activeCopy,
+  accent,
+  subtitle,
+  show,
+  formatNumber,
+}: {
+  href: string;
+  external?: boolean;
+  icon: typeof Activity;
+  label: string;
+  count?: number;
+  activeCopy?: string;
+  accent: string;
+  subtitle?: string;
+  /** Force the tile to render even with count=0 (used for police). */
+  show?: boolean;
+  /** Use compact thousands formatting for big numbers like 1.2K. */
+  formatNumber?: boolean;
+}) {
+  const isActive = (count ?? 0) > 0 || show === true;
+  // Tiles tint with their accent color when active so the grid reads
+  // as a heat-map. Paper-cream + faint accent stripe when calm.
+  const bg = isActive
+    ? `linear-gradient(155deg, color-mix(in srgb, ${accent} 11%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 100%)`
+    : "var(--app-bg-elevated)";
+  const borderColor = isActive
+    ? `color-mix(in srgb, ${accent} 28%, var(--app-border))`
+    : "var(--app-border)";
+  const displayCount =
+    count == null
+      ? null
+      : formatNumber && count >= 1000
+        ? `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}K`
+        : count.toLocaleString();
+  // Wrap in correct element for internal vs external link.
+  const Inner = (
+    <div
+      className="group relative flex h-full flex-col gap-1 overflow-hidden rounded-[var(--app-radius-lg)] border p-3.5 transition active:scale-[0.985]"
+      style={{ background: bg, borderColor }}
+    >
+      {/* Top accent stripe — louder when active, hairline when calm.
+          Lives on the top edge so it reads at a glance even in a tile
+          you haven't focused on. */}
+      <span
+        aria-hidden
+        className="absolute inset-x-3.5 top-0 h-0.5 rounded-full"
+        style={{
+          background: accent,
+          opacity: isActive ? 1 : 0.18,
+        }}
+      />
+      <div className="flex items-center justify-between gap-1">
+        <span
+          className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+          style={{
+            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+            color: accent,
+          }}
+          aria-hidden
+        >
+          <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+        </span>
+        {!external && (count ?? 0) > 0 && (
+          <ChevronRight
+            className="h-3.5 w-3.5"
+            strokeWidth={2.25}
+            style={{ color: accent }}
+            aria-hidden
+          />
+        )}
+        {external && (
+          <ExternalLink
+            className="h-3 w-3"
+            strokeWidth={2.25}
+            style={{ color: accent }}
+            aria-hidden
+          />
+        )}
+      </div>
+      <p
+        className="text-[10.5px] font-bold uppercase tracking-[0.08em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        {label}
+      </p>
+      {displayCount != null ? (
+        <p className="flex items-baseline gap-1.5">
+          <span
+            className="font-serif text-[26px] font-semibold leading-none tabular-nums"
+            style={{ color: isActive ? accent : "var(--app-ink-2)" }}
+          >
+            {(count ?? 0) === 0 ? "0" : displayCount}
+          </span>
+          {(count ?? 0) === 0 && (
+            <span
+              className="text-[11px] font-semibold"
+              style={{ color: "var(--app-positive)" }}
+            >
+              · clear
+            </span>
+          )}
+        </p>
+      ) : (
+        <p
+          className="font-serif text-[18px] font-semibold leading-tight"
+          style={{ color: accent }}
+        >
+          View →
+        </p>
+      )}
+      <p
+        className="text-[11px] leading-snug"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        {subtitle ??
+          ((count ?? 0) === 0
+            ? "No issues right now"
+            : activeCopy)}
+      </p>
+    </div>
+  );
+  if (external) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${label} — open external map`}
+        className="block h-full"
+      >
+        {Inner}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} aria-label={`${label} section`} className="block h-full">
+      {Inner}
+    </Link>
+  );
+}
+
 function DashSection({
-  id, icon: Icon, title, count, accent, source, empty, children,
+  id, icon: Icon, title, count, accent, source, children,
 }: {
   id: string;
   icon: typeof Activity;
@@ -285,47 +668,57 @@ function DashSection({
   count: number;
   accent: string;
   source: { label: string; href: string };
-  empty: string;
   children: React.ReactNode;
 }) {
-  const hasItems = Array.isArray(children)
-    ? children.some(Boolean)
-    : Boolean(children);
   return (
     <section
       id={id}
-      className="scroll-mt-20 space-y-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
+      className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+        // Left-edge accent band — the section's identity color reads
+        // even when the user has scrolled past the title.
+        borderLeftWidth: 3,
+        borderLeftColor: accent,
+      }}
     >
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="inline-flex items-center gap-2 font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          <Icon className="h-4 w-4" strokeWidth={2} style={{ color: accent }} aria-hidden />
+      <header
+        className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <h2
+          className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          <span
+            aria-hidden
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+            style={{
+              background: `color-mix(in srgb, ${accent} 13%, transparent)`,
+              color: accent,
+            }}
+          >
+            <Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </span>
           {title}
         </h2>
-        {count > 0 && (
-          <span
-            className="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
-            style={{ background: `${accent}1A`, color: accent }}
-          >
-            {count}
-          </span>
-        )}
-      </div>
-
-      {hasItems ? (
-        <div className="space-y-1.5">{children}</div>
-      ) : (
-        <p className="flex items-center gap-2 py-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
-          <CheckCircle2 className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-positive)" }} aria-hidden />
-          {empty}
-        </p>
-      )}
-
+        <span
+          className="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
+          style={{
+            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+            color: accent,
+          }}
+        >
+          {count}
+        </span>
+      </header>
+      <div className="space-y-1.5 px-4 py-3">{children}</div>
       <a
         href={source.href}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 pt-1 text-[10px] uppercase tracking-wide"
+        className="inline-flex items-center gap-1 px-4 pb-3 pt-1 text-[10px] uppercase tracking-wide"
         style={{ color: "var(--app-ink-3)" }}
       >
         Source: {source.label}
@@ -352,20 +745,38 @@ function Row({
   return (
     <div
       className="flex items-start gap-2.5 rounded-[var(--app-radius-md)] border px-3 py-2.5"
-      style={{ borderColor: "var(--app-border)" }}
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-sunken)",
+      }}
     >
-      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dot }} aria-hidden />
+      {/* Vertical severity bar — taller than the previous dot so the
+          tone is felt without reading the text. */}
+      <span
+        className="mt-0.5 h-full min-h-[1.75rem] w-[3px] shrink-0 rounded-full"
+        style={{ background: dot }}
+        aria-hidden
+      />
       <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+        <p
+          className="text-[13px] font-semibold leading-snug"
+          style={{ color: "var(--app-ink)" }}
+        >
           {title}
         </p>
         {body && (
-          <p className="mt-0.5 line-clamp-2 text-xs leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          <p
+            className="mt-0.5 line-clamp-2 text-[12px] leading-snug"
+            style={{ color: "var(--app-ink-2)" }}
+          >
             {body}
           </p>
         )}
         {metas.length > 0 && (
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+          <p
+            className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
             {metas.map((m, i) => (
               <span key={i} className="inline-flex items-center gap-1">
                 {i === 0 && <MapPin className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />}
@@ -377,5 +788,37 @@ function Row({
         )}
       </div>
     </div>
+  );
+}
+
+function SourceLine({
+  label,
+  source,
+  href,
+}: {
+  label: string;
+  source: string;
+  href: string;
+}) {
+  return (
+    <p className="flex items-center gap-1.5">
+      <span
+        className="font-semibold uppercase tracking-[0.06em]"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        {label}
+      </span>
+      <span>·</span>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+        style={{ color: "var(--app-cool)" }}
+      >
+        {source}
+        <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
+      </a>
+    </p>
   );
 }
