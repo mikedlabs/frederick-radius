@@ -1,75 +1,57 @@
 import Link from "next/link";
 import { Coffee, Trees, UtensilsCrossed, Baby } from "lucide-react";
+import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 
 /**
  * MoodTiles — a 4-up affordance row that answers "what do you want
- * right now?" with one tap into a pre-filtered Radius view.
+ * right now?" with one tap into the spatial view.
  *
- * Per master UI brief §1 (Today rebuild): a stranger landing on /today
- * is rarely deciding from a blank slate. They're already in one of a
- * few moods — coffee, outdoors, food, with-the-kids — and want a fast
- * path into the spatial answer ("what's near me / open / walkable?")
- * rather than reading a calendar of events.
+ * Per master UI brief §1 (Today rebuild) and C1 in the polish push:
+ * a stranger landing on /now is rarely deciding from a blank slate.
+ * They are already in one of a few moods (coffee, outdoors, food,
+ * with the kids) and want a fast path into the spatial answer
+ * ("what is near me / open / walkable") rather than reading a
+ * calendar of events.
  *
- * Each tile deep-links to /radius with a category pre-filter so the
- * Radius builder lands on the right scope without the user having to
- * configure it. Mode (walk/bike/drive) is left at the user's saved
- * default — we don't override their personal cadence.
+ * What changed in C1
+ * - Each tile now deep-links to /browse with the matching intent
+ *   pre-selected. The previous version pointed at /category/[slug],
+ *   which lands the user on a list instead of the field guide's
+ *   spatial surface. The /browse intent chip already exists; this
+ *   ties the home page into it.
+ * - The hardcoded MOODS array is gone. Color and matching are read
+ *   from src/data/intents.ts so there is one source of truth across
+ *   MoodTiles, MapIntentChips, /browse, and the search overlay.
+ *   Only the friendly label and nudge live here, because they are a
+ *   UI concern, not data.
  *
- * Visual model: paper-cream tile, hairline border, category-tinted
- * icon stamp, two-line label (mood + nudge). The tinted stamp is the
- * only color signal so the row stays calm against the Sky hero above.
+ * Visual model unchanged: paper-cream tile, hairline border,
+ * category-tinted icon stamp, two-line label.
  */
 
 type Mood = {
-  /** Display label — the mood name in the user's voice. */
+  /** Intent key used to filter /browse. Drives color + match logic. */
+  intentKey: IntentKey;
+  /** Display label in the user's voice. */
   label: string;
-  /** Second line — the why or the promise. Keep under 30 chars. */
+  /** Second line: the why or the promise. Under 30 chars. */
   nudge: string;
   /** Lucide icon for the tinted stamp. */
   icon: typeof Coffee;
-  /** Radius pre-filter href. Includes &q= to seed the search hint. */
-  href: string;
-  /** Stamp tint — pulled from the brand category palette. */
-  color: string;
 };
 
 const MOODS: Mood[] = [
-  {
-    label: "Coffee",
-    nudge: "Roasters + cafes",
-    icon: Coffee,
-    color: "#8B5A2B", // coffee brown (matches CHIP_GLYPH coffee)
-    href: "/category/coffee",
-  },
-  {
-    label: "Outdoors",
-    nudge: "Parks, trails, water",
-    icon: Trees,
-    color: "#1E6B3A", // outdoors green (top-level category)
-    href: "/category/outdoors",
-  },
-  {
-    label: "Eat",
-    nudge: "Restaurants + breweries",
-    icon: UtensilsCrossed,
-    color: "#A8462C", // Frederick brick (food category)
-    href: "/category/food",
-  },
-  {
-    label: "With kids",
-    nudge: "Family-friendly",
-    icon: Baby,
-    color: "#C99632", // almanac gold (family category)
-    href: "/category/family",
-  },
+  { intentKey: "coffee",  label: "Coffee",    nudge: "Roasters and cafes",        icon: Coffee },
+  { intentKey: "outdoor", label: "Outdoors",  nudge: "Parks, trails, water",      icon: Trees },
+  { intentKey: "eat",     label: "Eat",       nudge: "Restaurants and breweries", icon: UtensilsCrossed },
+  { intentKey: "family",  label: "With kids", nudge: "Family-friendly",           icon: Baby },
 ];
 
 export default function MoodTiles() {
   return (
     <section aria-label="Quick moods">
-      {/* Two-line eyebrow so a stranger knows what the tile row is for.
-          Quiet — it never competes with the section headings below. */}
+      {/* Two-line eyebrow so a stranger knows what the row is for.
+          Quiet so it never competes with the section headings below. */}
       <h2
         className="eyebrow mb-2.5"
         style={{ color: "var(--app-ink-3)" }}
@@ -79,10 +61,13 @@ export default function MoodTiles() {
       <ul className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-4">
         {MOODS.map((m) => {
           const Icon = m.icon;
+          // Color comes from the canonical intent definition so a
+          // future palette change in one place propagates everywhere.
+          const color = INTENT_BY_KEY[m.intentKey]?.color ?? "var(--app-brand)";
           return (
-            <li key={m.label}>
+            <li key={m.intentKey}>
               <Link
-                href={m.href}
+                href={`/browse?intent=${m.intentKey}`}
                 className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition"
                 style={{
                   borderColor: "var(--app-border)",
@@ -92,14 +77,14 @@ export default function MoodTiles() {
                 <span
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
                   style={{
-                    background: `color-mix(in srgb, ${m.color} 14%, transparent)`,
+                    background: `color-mix(in srgb, ${color} 14%, transparent)`,
                   }}
                   aria-hidden
                 >
                   <Icon
                     className="h-[18px] w-[18px]"
                     strokeWidth={2}
-                    style={{ color: m.color }}
+                    style={{ color }}
                   />
                 </span>
                 <span className="min-w-0 flex-1">
