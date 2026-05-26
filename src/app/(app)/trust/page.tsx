@@ -249,7 +249,7 @@ export default function TrustPage() {
         className="pt-2 text-center text-[11px]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        Built by MAD Productions, in Frederick.
+        Made in Frederick, MD by Michael DeMattia, a downtown Frederick resident.
       </p>
     </div>
   );
