@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles } from "lucide-react";
-import { searchIndex, type SearchResult, type SearchResultType } from "@/lib/search/index";
-// Client-safe slim set (already decorated); NOT @/lib/loaders/places
-// which static-imports the ~12MB enrichment into the browser bundle.
-import { clientPlaceBySlug } from "@/lib/loaders/places-client";
-import { EVENT_BY_SLUG } from "@/data/events";
+// SearchResult is a type-only import from a dedicated types module so
+// this client component does not pull in lib/search/index or its
+// place-data deps. The actual ranking happens server-side via /api/
+// search.
+import type { SearchResult, SearchResultType } from "@/lib/search/types";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
 import { suggestionsForHour, frederickHour } from "@/lib/search-suggestions";
@@ -62,21 +61,13 @@ function highlight(haystack: string, needle: string): React.ReactNode {
 }
 
 /**
- * Same trust signal the rest of the app shows, resolved from the
- * lightweight search index. Places go through the P0-1 canonical
- * resolver so a closed/folded slug never carries a stale signal;
- * categories and municipalities have no provenance, so no chip.
+ * Trust signal is now pre-computed server-side and arrives on the
+ * SearchResult itself (see /api/search). This keeps the overlay's
+ * client bundle free of clientPlaceBySlug / EVENT_BY_SLUG, which used
+ * to drag the slim place set onto every page that mounts TopBar.
  */
-function resultTrust(r: SearchResult): TrustSignal | null {
-  if (r.type === "place") {
-    const p = clientPlaceBySlug(r.id.replace(/^place:/, ""));
-    return p ? placeHoursTrust(p.open_status) : null;
-  }
-  if (r.type === "event") {
-    const e = EVENT_BY_SLUG[r.id.replace(/^event:/, "")];
-    return e ? eventTrust(e) : null;
-  }
-  return null;
+function resultTrust(r: SearchResult) {
+  return r.trust ?? null;
 }
 
 const COLOR_BY_TYPE: Record<SearchResultType, string> = {
@@ -102,10 +93,34 @@ export default function SearchOverlay({
   const pushRecent = usePushRecentSearch();
   const clearRecent = useClearRecentSearches();
 
-  // Build results client-side from the search index
-  const results = useMemo<SearchResult[]>(() => {
-    if (!query.trim()) return [];
-    return searchIndex(query, 12);
+  // Results come from /api/search now, which runs the ranking on the
+  // server. This is what keeps the ~2.1MB slim place set off the
+  // client bundle. A 120ms debounce keeps the cost reasonable on
+  // every keystroke; AbortController kills in-flight fetches when
+  // the user keeps typing.
+  const [results, setResults] = useState<SearchResult[]>([]);
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setResults([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = window.setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(q)}&limit=12`, {
+        signal: ctrl.signal,
+      })
+        .then((r) => (r.ok ? r.json() : { results: [] }))
+        .then((j: { results?: SearchResult[] }) => setResults(j.results ?? []))
+        .catch(() => {
+          // Aborted or offline; do nothing. The previous results stay
+          // on-screen until the next successful fetch lands.
+        });
+    }, 120);
+    return () => {
+      window.clearTimeout(t);
+      ctrl.abort();
+    };
   }, [query]);
 
   // Focus the input when overlay opens

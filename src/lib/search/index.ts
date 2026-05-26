@@ -13,23 +13,14 @@
 import { search, type SearchHit } from "@/lib/search";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-
-export type SearchResultType =
-  | "place"
-  | "event"
-  | "category"
-  | "municipality"
-  | "action";
-
-export type SearchResult = {
-  type: SearchResultType;
-  id: string;
-  title: string;
-  subtitle: string;
-  href: string;
-  /** Compact category/municipality hint for badges. */
-  badge?: string;
-};
+import { placeHoursTrust, eventTrust } from "@/lib/trust";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import { EVENT_BY_SLUG } from "@/data/events";
+// Types live in a separate file so client components can import them
+// without pulling clientPlaceBySlug (which static-imports the slim
+// places-client.json) into the client bundle.
+export type { SearchResult, SearchResultType } from "./types";
+import type { SearchResult } from "./types";
 
 /**
  * Quick-action results — top-level navigation that surfaces in the
@@ -114,6 +105,11 @@ function hitToResult(h: SearchHit): SearchResult {
     const p = h.place;
     const cat = CATEGORY_BY_SLUG[p.category];
     const muni = MUNICIPALITY_BY_SLUG[p.municipality];
+    // Pre-compute the trust signal here so the API/server caller
+    // ships it on the wire and the client never needs to lift
+    // clientPlaceBySlug to render the badge.
+    const decorated = clientPlaceBySlug(p.slug);
+    const trust = decorated ? placeHoursTrust(decorated.open_status) : null;
     return {
       type: "place",
       id: `place:${p.slug}`,
@@ -121,10 +117,12 @@ function hitToResult(h: SearchHit): SearchResult {
       subtitle: `${cat?.name ?? p.category} · ${muni?.name ?? p.municipality}`,
       href: `/places/${p.slug}`,
       badge: cat?.name,
+      trust,
     };
   }
   if (h.type === "event") {
     const e = h.event;
+    const seed = EVENT_BY_SLUG[e.slug];
     return {
       type: "event",
       id: `event:${e.slug}`,
@@ -132,6 +130,7 @@ function hitToResult(h: SearchHit): SearchResult {
       subtitle: `${e.venue_name} · ${new Date(e.starts_at).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" })}`,
       href: `/events/${e.slug}`,
       badge: e.category,
+      trust: seed ? eventTrust(seed) : null,
     };
   }
   if (h.type === "category") {
