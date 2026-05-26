@@ -1,11 +1,46 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock, Wand2, Shuffle } from "lucide-react";
+import {
+  Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock,
+  Wand2, Shuffle, ChevronDown, Plus, ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
 import type { Plan, PlanInputs } from "@/lib/integrations/planner";
 import { generatePlan, removeStop, swapStop } from "./actions";
 import { formatDistance } from "@/lib/geo";
+import BottomDrawer from "@/components/ui/BottomDrawer";
+
+/**
+ * PlanBuilder — the /plan workhorse.
+ *
+ * Redesigned around two states:
+ *
+ * 1. NO-PLAN (the empty / first-visit state)
+ *    Opens with VIBE cards as the primary CTA — five cinematic
+ *    color-graded tiles ("Easy / Active / Cultural / Outdoors /
+ *    Food first") that pick the mood AND immediately build a plan
+ *    in one tap. Below, a "Curated outings" preset rail keeps the
+ *    8 popular combinations one tap away. At the bottom, a
+ *    "Customize the details" link opens a Vaul drawer where power
+ *    users can pick audience, duration, start window, and "near me"
+ *    location. Casual user: 1 tap. Power user: 4 picks + tap.
+ *
+ * 2. HAS-PLAN
+ *    The plan itself is the page. A hero card (title + narrative
+ *    + stop-count + total minutes). Below, a cinematic numbered
+ *    timeline of stops with photo banners, time + open chips, and
+ *    inline Swap / Remove / Directions actions. A sticky action
+ *    bar at the bottom of the page on mobile gives single-tap
+ *    Shuffle / Build new / Share so the user is never hunting for
+ *    the controls after they've scrolled through 5 stops.
+ *
+ * Mobile-first. Single column. Generous touch targets. Respects
+ * prefers-reduced-motion. Uses Vaul for the customize drawer (the
+ * native-feeling mobile pattern), navigator.share for sharing,
+ * navigator.geolocation for "near me". All progressive — the page
+ * works without any of those APIs.
+ */
 
 const AUDIENCES: { value: PlanInputs["audience"]; label: string; emoji: string }[] = [
   { value: "solo", label: "Solo", emoji: "🧍" },
@@ -15,18 +50,24 @@ const AUDIENCES: { value: PlanInputs["audience"]; label: string; emoji: string }
   { value: "visitor", label: "Visitor", emoji: "🧳" },
 ];
 
-const VIBES: { value: PlanInputs["vibe"]; label: string; emoji: string }[] = [
-  { value: "easy", label: "Easy", emoji: "🌿" },
-  { value: "active", label: "Active", emoji: "⚡️" },
-  { value: "cultural", label: "Cultural", emoji: "🎭" },
-  { value: "outdoors", label: "Outdoors", emoji: "🥾" },
-  { value: "food", label: "Food first", emoji: "🍽️" },
+// Cinematic vibe cards — the new front-and-center CTA. Each carries
+// its own color story so the picker reads as a mood board, not a
+// filter row. The hex is the "mood color" — used for gradient
+// backings, accent bands, and the active state.
+const VIBES: {
+  value: PlanInputs["vibe"];
+  label: string;
+  tagline: string;
+  emoji: string;
+  color: string;
+}[] = [
+  { value: "easy",     label: "Easy",     tagline: "Wander, sit, sip.",      emoji: "🌿", color: "#859076" },
+  { value: "active",   label: "Active",   tagline: "Move, climb, ride.",     emoji: "⚡️", color: "#C99632" },
+  { value: "cultural", label: "Cultural", tagline: "Galleries, music, words.", emoji: "🎭", color: "#7E2C6F" },
+  { value: "outdoors", label: "Outdoors", tagline: "Trails, water, sky.",     emoji: "🥾", color: "#2E3B2C" },
+  { value: "food",     label: "Food first", tagline: "Eat. Then everything else.", emoji: "🍽️", color: "#A8462C" },
 ];
 
-/** Presets — the curated combinations people actually search for.
- *  Each one prefills the form AND auto-builds, so two taps gets you
- *  to a plan: "Library date" → see a plan. The "Customize" section
- *  below stays editable for power-users. */
 type Preset = {
   id: string;
   emoji: string;
@@ -40,94 +81,14 @@ type Preset = {
 };
 
 const PRESETS: Preset[] = [
-  {
-    id: "library-date",
-    emoji: "📚",
-    label: "Library date",
-    tagline: "Quiet, smart, charming.",
-    audience: "date",
-    vibe: "cultural",
-    hours: 3,
-    start: "afternoon",
-    color: "#7E2C6F",
-  },
-  {
-    id: "date-night",
-    emoji: "💞",
-    label: "Date night",
-    tagline: "Dinner. Drinks. A walk.",
-    audience: "date",
-    vibe: "easy",
-    hours: 4,
-    start: "evening",
-    color: "#A8462C",
-  },
-  {
-    id: "first-date",
-    emoji: "☕",
-    label: "First date",
-    tagline: "Coffee, walk, dessert. Two hours.",
-    audience: "date",
-    vibe: "easy",
-    hours: 2,
-    start: "afternoon",
-    color: "#8B5A2B",
-  },
-  {
-    id: "girls-night",
-    emoji: "🥂",
-    label: "Girls' night",
-    tagline: "Wine, food, and somewhere fun.",
-    audience: "friends",
-    vibe: "food",
-    hours: 4,
-    start: "evening",
-    color: "#7E1F1F",
-  },
-  {
-    id: "family-sunday",
-    emoji: "🌳",
-    label: "Family Sunday",
-    tagline: "Park, ice cream, somewhere easy.",
-    audience: "family",
-    vibe: "easy",
-    hours: 4,
-    start: "afternoon",
-    color: "#1E6B3A",
-  },
-  {
-    id: "rainy-day",
-    emoji: "🌧️",
-    label: "Rainy day",
-    tagline: "Museum, lunch, theater.",
-    audience: "solo",
-    vibe: "cultural",
-    hours: 3,
-    start: "afternoon",
-    color: "#2F5470",
-  },
-  {
-    id: "sunny-saturday",
-    emoji: "☀️",
-    label: "Sunny Saturday",
-    tagline: "Trail, lunch outside, winery.",
-    audience: "friends",
-    vibe: "outdoors",
-    hours: 6,
-    start: "afternoon",
-    color: "#C99632",
-  },
-  {
-    id: "showing-friends",
-    emoji: "🧳",
-    label: "Out-of-town friends",
-    tagline: "The Frederick highlight reel.",
-    audience: "visitor",
-    vibe: "cultural",
-    hours: 6,
-    start: "afternoon",
-    color: "#2F5470",
-  },
+  { id: "library-date", emoji: "📚", label: "Library date", tagline: "Quiet, smart, charming.", audience: "date", vibe: "cultural", hours: 3, start: "afternoon", color: "#7E2C6F" },
+  { id: "date-night", emoji: "💞", label: "Date night", tagline: "Dinner. Drinks. A walk.", audience: "date", vibe: "easy", hours: 4, start: "evening", color: "#A8462C" },
+  { id: "first-date", emoji: "☕", label: "First date", tagline: "Coffee, walk, dessert.", audience: "date", vibe: "easy", hours: 2, start: "afternoon", color: "#8B5A2B" },
+  { id: "girls-night", emoji: "🥂", label: "Girls' night", tagline: "Wine and somewhere fun.", audience: "friends", vibe: "food", hours: 4, start: "evening", color: "#7E1F1F" },
+  { id: "family-sunday", emoji: "🌳", label: "Family Sunday", tagline: "Park, ice cream, easy.", audience: "family", vibe: "easy", hours: 4, start: "afternoon", color: "#1E6B3A" },
+  { id: "rainy-day", emoji: "🌧️", label: "Rainy day", tagline: "Museum, lunch, theater.", audience: "solo", vibe: "cultural", hours: 3, start: "afternoon", color: "#2F5470" },
+  { id: "sunny-saturday", emoji: "☀️", label: "Sunny Saturday", tagline: "Trail, lunch, winery.", audience: "friends", vibe: "outdoors", hours: 6, start: "afternoon", color: "#C99632" },
+  { id: "showing-friends", emoji: "🧳", label: "Out-of-town friends", tagline: "The highlight reel.", audience: "visitor", vibe: "cultural", hours: 6, start: "afternoon", color: "#2F5470" },
 ];
 
 const DURATIONS: PlanInputs["duration_hours"][] = [2, 3, 4, 6];
@@ -138,12 +99,11 @@ const STARTS: { value: StartMode; label: string; emoji: string }[] = [
   { value: "evening", label: "Evening", emoji: "🌆" },
 ];
 
-/** Local clock time for a preset, as an ISO string the planner accepts. */
 function startAtFor(mode: StartMode): string | undefined {
   if (mode === "now") return undefined;
   const d = new Date();
   d.setHours(mode === "afternoon" ? 14 : 18, 0, 0, 0);
-  if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1); // next occurrence
+  if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1);
   return d.toISOString();
 }
 
@@ -158,7 +118,7 @@ function clock(iso: string): string {
 const OPEN_LABEL: Record<Plan["stops"][number]["open"], { text: string; color: string }> = {
   open: { text: "Open", color: "var(--app-positive)" },
   likely: { text: "Likely open", color: "var(--app-warning)" },
-  unknown: { text: "Hours not confirmed", color: "var(--app-ink-3)" },
+  unknown: { text: "Hours unconfirmed", color: "var(--app-ink-3)" },
   closed: { text: "May be closed", color: "var(--app-warning)" },
 };
 
@@ -181,6 +141,7 @@ export default function PlanBuilder({
   const [editing, setEditing] = useState(!shared);
   const [busy, setBusy] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const useMyLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -197,43 +158,42 @@ export default function PlanBuilder({
     );
   };
 
-  const onBuild = (seed?: number) => {
+  const onBuild = (overrides?: Partial<PlanInputs> & { seed?: number; start?: StartMode }) => {
+    const usingStart = overrides?.start ?? startMode;
     startTransition(async () => {
       const result = await generatePlan({
-        audience,
-        vibe,
-        duration_hours: hours,
-        start_at: startAtFor(startMode),
+        audience: overrides?.audience ?? audience,
+        vibe: overrides?.vibe ?? vibe,
+        duration_hours: overrides?.duration_hours ?? hours,
+        start_at: startAtFor(usingStart),
         start_near: near ?? undefined,
-        seed,
+        seed: overrides?.seed,
       });
       setPlan(result);
       setEditing(true);
+      setDrawerOpen(false);
     });
   };
 
-  /** Shuffle = rebuild with a fresh random seed, same inputs. Same
-   *  vibe and audience, different but valid combination of stops. */
-  const onShuffle = () => onBuild(Math.floor(Math.random() * 100_000));
+  /** One-tap VIBE card: set the vibe + immediately build with the
+   *  current other settings. Smoothes the path for casual users. */
+  const onVibeTap = (v: PlanInputs["vibe"]) => {
+    setVibe(v);
+    onBuild({ vibe: v });
+  };
 
-  /** One-tap presets — set every input and immediately build. The
-   *  power user still has the form below to override; the casual user
-   *  is one tap from a plan. */
+  const onShuffle = () => onBuild({ seed: Math.floor(Math.random() * 100_000) });
+
   const onPreset = (p: Preset) => {
     setAudience(p.audience);
     setVibe(p.vibe);
     setHours(p.hours);
     setStartMode(p.start);
-    startTransition(async () => {
-      const result = await generatePlan({
-        audience: p.audience,
-        vibe: p.vibe,
-        duration_hours: p.hours,
-        start_at: startAtFor(p.start),
-        start_near: near ?? undefined,
-      });
-      setPlan(result);
-      setEditing(true);
+    onBuild({
+      audience: p.audience,
+      vibe: p.vibe,
+      duration_hours: p.hours,
+      start: p.start,
     });
   };
 
@@ -263,210 +223,329 @@ export default function PlanBuilder({
   const building = pending && busy === null;
 
   return (
-    <div className="space-y-5">
-      {(!shared || editing) && (
-        <section
-          className="tactile tactile-e2 space-y-4 rounded-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] p-4 sm:p-5"
-        >
-          <div className="flex items-center gap-2">
-            <span
-              aria-hidden
-              className="grid h-7 w-7 place-items-center rounded-full text-white"
-              style={{ background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 55%, var(--app-cool)))" }}
+    <div className="space-y-6 pb-24">
+      {/* ── NO-PLAN — primary builder surface ──────────────── */}
+      {!plan && (
+        <>
+          {/* HERO PROMPT */}
+          <section className="space-y-2">
+            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+              Pick a mood
+            </p>
+            <h2
+              className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
+              style={{ color: "var(--app-ink)" }}
             >
-              <Wand2 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </span>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>One tap to a plan</p>
+              What kind of night?
+            </h2>
+            <p className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
+              Tap one to build a plan with that energy.
+            </p>
+          </section>
+
+          {/* VIBE CARDS — the primary CTA. Cinematic color-graded
+              tiles that pick a vibe AND build in one tap.
+              Layout: scroll-snap rail on mobile (single touch-friendly
+              row), grid on tablet+, and a full 5-across on desktop.
+              That avoids the lone-last-card problem 2-col layouts have
+              with an odd-count grid, and gives mobile users a swipe
+              affordance the brief asked for. */}
+          <div className="-mx-4 sm:mx-0">
+            <ul
+              className="shelf-rail gap-2.5 px-4 pb-1 sm:px-0 sm:grid sm:grid-cols-3 sm:overflow-visible lg:grid-cols-5"
+              aria-label="Pick a vibe to start"
+            >
+              {VIBES.map((v) => (
+                <li
+                  key={v.value}
+                  className="aspect-[4/5] w-[44vw] max-w-[180px] shrink-0 snap-start sm:w-auto sm:max-w-none"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onVibeTap(v.value)}
+                    disabled={pending}
+                    aria-pressed={vibe === v.value}
+                    className="vibe-card group relative h-full w-full overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 text-left transition active:scale-[0.985] disabled:opacity-70"
+                    style={{
+                      background: `linear-gradient(155deg, ${v.color} 0%, color-mix(in srgb, ${v.color} 65%, var(--app-bedrock)) 100%)`,
+                      boxShadow: `0 12px 28px -10px ${v.color}, var(--app-elev-1)`,
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute -bottom-4 -right-2 text-[88px] leading-none transition-transform duration-300 group-hover:scale-105"
+                      style={{ opacity: 0.22 }}
+                    >
+                      {v.emoji}
+                    </span>
+                    <div className="relative flex h-full flex-col">
+                      <span aria-hidden className="text-[24px] leading-none">
+                        {v.emoji}
+                      </span>
+                      <span className="mt-auto block">
+                        <span className="block font-serif text-[20px] font-semibold leading-tight tracking-tight text-white">
+                          {v.label}
+                        </span>
+                        <span className="mt-0.5 block text-[12px] leading-snug text-white/80">
+                          {v.tagline}
+                        </span>
+                      </span>
+                    </div>
+                    <span
+                      aria-hidden
+                      className="absolute inset-x-3 top-0 h-px"
+                      style={{ background: "rgba(255,255,255,0.35)" }}
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* PRESETS — the curated outings people actually search for.
-              Tap one, get a plan in 2 seconds. The Customize section
-              below stays for fine-tuning. */}
-          <div className="-mx-4 px-4 sm:-mx-5 sm:px-5">
-            <div className="shelf-rail gap-2 pb-1">
-              {PRESETS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => onPreset(p)}
-                  disabled={pending}
-                  className="tactile tactile-interactive relative flex w-[160px] shrink-0 flex-col items-start gap-1 overflow-hidden rounded-[var(--app-radius-md)] p-3 text-left disabled:opacity-70"
+          {/* PRESET RAIL — curated outings, secondary CTA */}
+          <section className="space-y-2.5">
+            <div className="flex items-baseline justify-between">
+              <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+                Curated outings
+              </p>
+              <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                The combos people search for
+              </p>
+            </div>
+            <div className="-mx-4 px-4 sm:-mx-0 sm:px-0">
+              <ul
+                className="shelf-rail gap-2 pb-1"
+                aria-label="Curated plan presets"
+              >
+                {PRESETS.map((p) => (
+                  <li key={p.id} className="shrink-0 snap-start">
+                    <button
+                      type="button"
+                      onClick={() => onPreset(p)}
+                      disabled={pending}
+                      className="tactile-interactive relative flex w-[170px] flex-col gap-1 overflow-hidden rounded-[var(--app-radius-md)] p-3 text-left transition active:scale-[0.985] disabled:opacity-70"
+                      style={{
+                        background: `linear-gradient(155deg, color-mix(in srgb, ${p.color} 22%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 100%)`,
+                        border: `1px solid color-mix(in srgb, ${p.color} 30%, var(--app-border))`,
+                        boxShadow: "var(--app-elev-1)",
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute -bottom-3 -right-2 text-[58px] leading-none"
+                        style={{ opacity: 0.16 }}
+                      >
+                        {p.emoji}
+                      </span>
+                      <span aria-hidden className="relative text-[18px] leading-none">{p.emoji}</span>
+                      <span
+                        className="relative font-serif text-[14px] font-semibold leading-tight tracking-tight"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {p.label}
+                      </span>
+                      <span
+                        className="relative text-[11px] leading-snug"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {p.tagline}
+                      </span>
+                      <span
+                        className="relative mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em]"
+                        style={{ color: p.color }}
+                      >
+                        {p.hours}h · {p.start === "now" ? "now" : p.start}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          {/* CUSTOMIZE DRAWER TRIGGER + LOCATION */}
+          <section className="space-y-2.5">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="tactile tactile-interactive flex w-full items-center justify-between gap-3 rounded-[var(--app-radius-md)] border px-4 py-3.5 text-left"
+              style={{
+                borderColor: "var(--app-border)",
+                background: "var(--app-bg-elevated)",
+              }}
+            >
+              <span className="flex items-center gap-2.5">
+                <span
+                  aria-hidden
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-full"
                   style={{
-                    background: `linear-gradient(155deg, color-mix(in srgb, ${p.color} 28%, var(--app-bg-elevated)), color-mix(in srgb, ${p.color} 8%, var(--app-bg-elevated)))`,
-                    boxShadow: `0 8px 22px -10px ${p.color}`,
+                    background: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
+                    color: "var(--app-cool)",
                   }}
                 >
+                  <Wand2 className="h-3.5 w-3.5" strokeWidth={2.25} />
+                </span>
+                <span className="flex flex-col">
                   <span
-                    aria-hidden
-                    className="pointer-events-none absolute -bottom-3 -right-3 text-[64px] leading-none"
-                    style={{ opacity: 0.18 }}
-                  >
-                    {p.emoji}
-                  </span>
-                  <span aria-hidden className="text-[20px] leading-none">{p.emoji}</span>
-                  <span
-                    className="relative font-serif text-[15px] font-semibold leading-tight tracking-tight"
+                    className="text-[13.5px] font-semibold leading-tight"
                     style={{ color: "var(--app-ink)" }}
                   >
-                    {p.label}
+                    Customize the details
                   </span>
                   <span
-                    className="relative text-[11px] leading-snug"
+                    className="text-[11px] leading-snug"
                     style={{ color: "var(--app-ink-3)" }}
                   >
-                    {p.tagline}
+                    {currentSettingsLabel(audience, hours, startMode, near != null)}
                   </span>
-                  <span
-                    className="relative mt-0.5 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em]"
-                    style={{ color: p.color }}
-                  >
-                    {p.hours}h · {p.start === "now" ? "now" : p.start}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
+                </span>
+              </span>
+              <ChevronDown
+                className="h-4 w-4 shrink-0"
+                strokeWidth={2.25}
+                style={{ color: "var(--app-ink-3)" }}
+                aria-hidden
+              />
+            </button>
 
-          <div
-            className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.1em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-            <span>Or customize</span>
-            <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-          </div>
-
-          <Field label="Who you're with">
-            <ChipRow>
-              {AUDIENCES.map((a) => (
-                <Chip key={a.value} active={a.value === audience} onClick={() => setAudience(a.value)} accent="brand">
-                  <span aria-hidden className="text-[15px] leading-none">{a.emoji}</span> {a.label}
-                </Chip>
-              ))}
-            </ChipRow>
-          </Field>
-          <Field label="The vibe">
-            <ChipRow>
-              {VIBES.map((v) => (
-                <Chip key={v.value} active={v.value === vibe} onClick={() => setVibe(v.value)} accent="cool">
-                  <span aria-hidden className="text-[15px] leading-none">{v.emoji}</span> {v.label}
-                </Chip>
-              ))}
-            </ChipRow>
-          </Field>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="How long">
-              <ChipRow>
-                {DURATIONS.map((d) => (
-                  <Chip key={d} active={d === hours} onClick={() => setHours(d)} accent="cool">
-                    {d} hours
-                  </Chip>
-                ))}
-              </ChipRow>
-            </Field>
-            <Field label="Start">
-              <ChipRow>
-                {STARTS.map((s) => (
-                  <Chip key={s.value} active={s.value === startMode} onClick={() => setStartMode(s.value)} accent="cool">
-                    <span aria-hidden className="text-[15px] leading-none">{s.emoji}</span> {s.label}
-                  </Chip>
-                ))}
-                <Chip active={near != null} onClick={useMyLocation} accent="brand">
-                  <Navigation className="h-3.5 w-3.5" aria-hidden /> {near ? "Your spot" : "Near me"}
-                </Chip>
-              </ChipRow>
-            </Field>
-          </div>
-          {geoMsg && (
-            <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{geoMsg}</p>
-          )}
-          <div className="mt-1 flex gap-2">
+            {/* Primary build button — the always-on escape hatch even
+                if the user doesn't tap a vibe. Uses current state. */}
             <button
               type="button"
               onClick={() => onBuild()}
               disabled={pending}
-              className="tactile tactile-lift group relative inline-flex flex-1 items-center justify-center gap-2 overflow-hidden rounded-[var(--app-radius-md)] px-4 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-70"
+              className="tactile tactile-lift tactile-glow-brand group relative inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3.5 text-[15px] font-semibold text-white transition active:scale-[0.99] disabled:opacity-70"
               style={{
-                background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
+                background:
+                  "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
                 transitionTimingFunction: "var(--app-ease-spring)",
               }}
             >
-              <Sparkles className={`h-4 w-4 ${building ? "animate-spin" : "transition-transform group-hover:rotate-12"}`} strokeWidth={2.25} aria-hidden />
-              {building ? "Stitching your night together…" : plan ? "Build a new plan" : "Build my evening"}
+              <Sparkles
+                className={`h-4 w-4 ${building ? "animate-spin" : "transition-transform group-hover:rotate-12"}`}
+                strokeWidth={2.25}
+                aria-hidden
+              />
+              {building ? "Stitching your night together…" : "Build my evening"}
             </button>
-            {plan && (
-              <button
-                type="button"
-                onClick={onShuffle}
-                disabled={pending}
-                aria-label="Shuffle this plan"
-                title="Same vibe, different stops"
-                className="tactile tactile-interactive inline-flex shrink-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] px-4 py-3.5 text-[13px] font-semibold disabled:opacity-70"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                <Shuffle className={`h-4 w-4 ${pending ? "animate-spin" : ""}`} strokeWidth={2.25} aria-hidden />
-                Shuffle
-              </button>
+            {geoMsg && (
+              <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                {geoMsg}
+              </p>
             )}
-          </div>
-        </section>
+          </section>
+
+          {/* Subtle honesty footer — sets expectations before any plan
+              renders. */}
+          <p
+            className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11.5px] leading-relaxed"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            <Sparkles
+              className="mt-0.5 h-3 w-3 shrink-0"
+              style={{ color: "var(--app-cool)" }}
+              aria-hidden
+            />
+            <span>
+              Every stop is a real, operational place in Frederick County
+              — pulled from the directory, not invented. We respect your
+              vibe + audience + time budget when stitching them together.
+            </span>
+          </p>
+        </>
       )}
 
+      {/* ── HAS-PLAN — the plan IS the page ──────────────── */}
       {plan && (
         <section className="space-y-4">
-          <header className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="display-2" style={{ color: "var(--app-ink)" }}>
-                {plan.title}
-              </h2>
-              <p className="mt-1 text-[14px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-3)" }}>{plan.summary}</p>
-            </div>
-            {plan.stops.length > 0 && (
-              <button
-                type="button"
-                onClick={onShare}
-                className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--app-bg-elevated)] px-3.5 py-2 text-xs font-semibold"
+          {/* PLAN HERO */}
+          <article
+            className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] p-5"
+            style={{
+              background:
+                "linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 10%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 60%, color-mix(in srgb, var(--app-cool) 8%, var(--app-bg-elevated)) 100%)",
+            }}
+          >
+            <span
+              aria-hidden
+              className="absolute inset-x-5 top-0 h-[3px] rounded-full"
+              style={{
+                background:
+                  "linear-gradient(90deg, var(--app-brand), var(--app-cool))",
+              }}
+            />
+            <p
+              className="eyebrow inline-flex items-center gap-1.5"
+              style={{ color: "var(--app-cool)" }}
+            >
+              <Sparkles className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              Your plan
+            </p>
+            <h2
+              className="mt-1.5 font-serif text-[26px] font-semibold leading-[1.1] tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {plan.title}
+            </h2>
+            {plan.summary && (
+              <p
+                className="mt-1.5 text-[14px] leading-relaxed"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                <Share2 className="h-3.5 w-3.5" aria-hidden /> Share
-              </button>
+                {plan.summary}
+              </p>
             )}
-          </header>
-
-          {shared && !editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="tactile tactile-lift inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-white transition active:scale-[0.97]"
-              style={{
-                background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
-                transitionTimingFunction: "var(--app-ease-spring)",
-              }}
-            >
-              <Sparkles className="h-3.5 w-3.5" aria-hidden /> Make it your own
-            </button>
-          )}
-
-          {plan.narrative && (
-            <figure
-              className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4 pl-5"
-            >
-              <span
-                aria-hidden
-                className="absolute inset-y-0 left-0 w-1"
-                style={{ background: "linear-gradient(var(--app-brand), var(--app-cool))" }}
-              />
-              <figcaption className="eyebrow mb-1" style={{ color: "var(--app-cool)" }}>The night, in a sentence</figcaption>
-              <blockquote className="font-serif text-[15px] italic leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            {plan.narrative && (
+              <blockquote
+                className="mt-3 border-l-2 pl-3 font-serif text-[14.5px] italic leading-relaxed"
+                style={{
+                  borderColor: "color-mix(in srgb, var(--app-brand) 50%, transparent)",
+                  color: "var(--app-ink-2)",
+                }}
+              >
                 {plan.narrative}
               </blockquote>
-            </figure>
-          )}
+            )}
+            {plan.stops.length > 0 && (
+              <ul
+                className="mt-3.5 flex flex-wrap items-center gap-1.5"
+                aria-label="Plan summary"
+              >
+                <Meta>
+                  <MapPin className="h-3 w-3" aria-hidden />
+                  {plan.stops.length} {plan.stops.length === 1 ? "stop" : "stops"}
+                </Meta>
+                <Meta>
+                  <Clock className="h-3 w-3" aria-hidden />
+                  {totalMinutes(plan)} min total
+                </Meta>
+                {totalRadius(plan) > 0 && (
+                  <Meta>
+                    <Navigation className="h-3 w-3" aria-hidden />
+                    {formatDistance(totalRadius(plan))} across
+                  </Meta>
+                )}
+              </ul>
+            )}
+            {shared && !editing && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="tactile tactile-lift mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-white"
+                style={{
+                  background:
+                    "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
+                }}
+              >
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                Make it your own
+              </button>
+            )}
+          </article>
 
+          {/* STOPS — cinematic numbered timeline */}
           {plan.stops.length === 0 ? (
-            <div
-              className="tactile flex flex-col items-center gap-2 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] px-6 py-10 text-center"
-            >
+            <div className="tactile flex flex-col items-center gap-2 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] px-6 py-10 text-center">
               <span
                 aria-hidden
                 className="grid h-12 w-12 place-items-center rounded-full text-2xl"
@@ -478,171 +557,406 @@ export default function PlanBuilder({
                 No clean match for that combo
               </p>
               <p className="max-w-xs text-[13px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-                Try a different vibe, give it more time, or start &ldquo;Near me&rdquo; for a wider net.
+                Try a different vibe, give it more time, or open Customize
+                and tap &ldquo;Near me&rdquo; for a wider net.
               </p>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold"
+                style={{
+                  background: "var(--app-bg-sunken)",
+                  color: "var(--app-ink-2)",
+                }}
+              >
+                <Wand2 className="h-3.5 w-3.5" aria-hidden />
+                Open Customize
+              </button>
             </div>
           ) : (
-            <ol className="stagger relative space-y-3 pl-9">
+            <ol
+              className="stagger relative space-y-3 pl-10"
+              aria-label="Plan stops, in order"
+            >
+              {/* The vertical thread between stop nodes — gradient
+                  from brand at the top to cool at the bottom so the
+                  timeline feels intentional, not like a CSS hairline. */}
               <span
-                className="absolute bottom-4 left-[15px] top-4 w-[2px] rounded-full"
-                style={{ background: "linear-gradient(var(--app-brand), var(--app-cool))", opacity: 0.55 }}
                 aria-hidden
+                className="pointer-events-none absolute bottom-4 left-[15px] top-4 w-[2px] rounded-full"
+                style={{
+                  background:
+                    "linear-gradient(var(--app-brand), var(--app-cool))",
+                  opacity: 0.55,
+                }}
               />
-              {plan.stops.map((stop, idx) => {
-                const href = stop.place ? `/places/${stop.place.slug}` : stop.event ? `/events/${stop.event.slug}` : "#";
-                const name = stop.place?.name ?? stop.event?.title ?? "";
-                const where = stop.place ? `${stop.place.address}, ${stop.place.city}` : stop.event?.venue_name ?? "";
-                const geom = stop.place?.geom ?? stop.event?.geom;
-                const ol = OPEN_LABEL[stop.open];
-                return (
-                  <li key={`${stop.order}-${name}`} className="relative">
-                    <span
-                      className="absolute -left-9 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full font-serif text-sm font-bold text-white"
-                      style={{
-                        background: "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 55%, var(--app-cool)))",
-                        boxShadow: "var(--app-elev-2), 0 0 0 4px var(--app-bg)",
-                      }}
-                      aria-hidden
-                    >
-                      {stop.order}
-                    </span>
-                    <article
-                      className="tactile tactile-interactive overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
-                    >
-                      {/* Photo banner — when the stop has a real Google
-                          photo, lead with the image. Time-block + open
-                          chips overlay so the card still answers "when
-                          and is it open." */}
-                      {stop.photo_url && (
-                        <div className="relative h-32 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
-                          {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote photo, plain img avoids domain allowlist */}
-                          <img
-                            src={stop.photo_url}
-                            alt=""
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
-                          <span
-                            className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold tabular-nums"
-                            style={{ color: "var(--app-cool)" }}
-                          >
-                            <Clock className="h-3 w-3" aria-hidden /> {clock(stop.at)} · {stop.duration_min} min
-                          </span>
-                          <span
-                            className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold"
-                            style={{ color: ol.color }}
-                          >
-                            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: ol.color }} aria-hidden />
-                            {ol.text}
-                          </span>
-                        </div>
-                      )}
-                      <div className="p-4">
-                      {!stop.photo_url && (
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span
-                            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums"
-                            style={{ background: "color-mix(in srgb, var(--app-cool) 12%, transparent)", color: "var(--app-cool)" }}
-                          >
-                            <Clock className="h-3 w-3" aria-hidden /> {clock(stop.at)} · {stop.duration_min} min
-                          </span>
-                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: ol.color }}>
-                            <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: ol.color }} aria-hidden />
-                            {ol.text}
-                          </span>
-                        </div>
-                      )}
-                      <Link href={href} className="group mt-2 block">
-                        <h3 className="font-serif text-lg font-semibold leading-snug tracking-tight transition-colors group-hover:underline" style={{ color: "var(--app-ink)" }}>
-                          {name}
-                        </h3>
-                        <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-                          <MapPin className="-mt-0.5 mr-1 inline h-3 w-3" aria-hidden />
-                          {where}
-                        </p>
-                        <p className="mt-2 text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-                          {stop.why}
-                        </p>
-                      </Link>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        {geom && (
-                          <a
-                            href={`https://www.google.com/maps/dir/?api=1&destination=${geom.lat},${geom.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] px-3 py-1.5 text-[11px] font-semibold"
-                            style={{ color: "var(--app-ink-2)" }}
-                          >
-                            <Navigation className="h-3 w-3" aria-hidden /> Directions
-                          </a>
-                        )}
-                        {editing && stop.place && (
-                          <>
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() => mutate(() => swapStop(plan.share, idx), idx)}
-                              className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-elevated)] px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
-                              style={{ color: "var(--app-ink-2)" }}
-                            >
-                              <RefreshCw className={`h-3 w-3 ${busy === idx ? "animate-spin" : ""}`} aria-hidden /> Swap
-                            </button>
-                            <button
-                              type="button"
-                              disabled={pending}
-                              onClick={() => mutate(() => removeStop(plan.share, idx), idx)}
-                              className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-[var(--app-bg-sunken)] disabled:opacity-50"
-                              style={{ color: "var(--app-ink-3)" }}
-                            >
-                              <X className="h-3 w-3" aria-hidden /> Remove
-                            </button>
-                          </>
-                        )}
-                      </div>
-                      </div>
-                    </article>
-                  </li>
-                );
-              })}
+              {plan.stops.map((stop, idx) => (
+                <Stop
+                  key={`${stop.order}-${idx}`}
+                  stop={stop}
+                  idx={idx}
+                  busy={busy}
+                  pending={pending}
+                  editing={editing}
+                  onSwap={() => mutate(() => swapStop(plan.share, idx), idx)}
+                  onRemove={() => mutate(() => removeStop(plan.share, idx), idx)}
+                />
+              ))}
             </ol>
           )}
 
+          {/* HONESTY FOOTER */}
           {plan.stops.length > 0 && (
             <p
               className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px] leading-relaxed"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              <Sparkles className="mt-0.5 h-3 w-3 shrink-0" style={{ color: "var(--app-cool)" }} aria-hidden />
+              <Sparkles
+                className="mt-0.5 h-3 w-3 shrink-0"
+                style={{ color: "var(--app-cool)" }}
+                aria-hidden
+              />
               <span>
-                Every stop is a real, operational place from our directory — nothing invented.
-                {plan.stops[0]?.place && <> Total radius ~{formatDistance(estimateTotalRadius(plan))}.</>}
+                Every stop is a real, operational place from our directory
+                — nothing invented. Open hours are best-known; confirm
+                before you go.
               </span>
             </p>
           )}
+
+          {/* STICKY ACTION BAR (mobile) — keeps shuffle / new / share
+              one tap away even after the user has scrolled past 5 stops. */}
+          <div
+            className="pointer-events-none fixed inset-x-0 bottom-[env(safe-area-inset-bottom,0px)] z-30 px-3 pb-3"
+            // Sit ABOVE BottomNav (which is ~68-72px tall). Bumping
+            // this with a translate keeps a clean stack on mobile.
+            style={{ transform: "translateY(-64px)" }}
+          >
+            <div
+              className="pointer-events-auto mx-auto flex max-w-md items-center gap-1.5 rounded-full border p-1 shadow-[var(--app-elev-3)]"
+              style={{
+                background: "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+                borderColor: "var(--app-border)",
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+              }}
+            >
+              <BarAction
+                onClick={onShuffle}
+                icon={Shuffle}
+                label="Shuffle"
+                disabled={pending}
+                busy={pending && busy === null}
+              />
+              <BarAction
+                onClick={() => {
+                  setPlan(null);
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
+                icon={Plus}
+                label="New plan"
+                disabled={pending}
+              />
+              <BarAction
+                onClick={onShare}
+                icon={Share2}
+                label="Share"
+                primary
+                disabled={pending}
+              />
+            </div>
+          </div>
         </section>
       )}
+
+      {/* ── Customize Drawer — Vaul ─────────────────────────────── */}
+      <BottomDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        title="Customize the details"
+        subtitle="Pick who, how long, and when. We'll do the rest."
+      >
+        <div className="space-y-5 px-4 py-4">
+          <Field label="Who you're with">
+            <ChipRow>
+              {AUDIENCES.map((a) => (
+                <Chip
+                  key={a.value}
+                  active={a.value === audience}
+                  onClick={() => setAudience(a.value)}
+                  accent="brand"
+                >
+                  <span aria-hidden className="text-[15px] leading-none">{a.emoji}</span>{" "}
+                  {a.label}
+                </Chip>
+              ))}
+            </ChipRow>
+          </Field>
+          <Field label="Vibe">
+            <ChipRow>
+              {VIBES.map((v) => (
+                <Chip
+                  key={v.value}
+                  active={v.value === vibe}
+                  onClick={() => setVibe(v.value)}
+                  accent="cool"
+                >
+                  <span aria-hidden className="text-[15px] leading-none">{v.emoji}</span>{" "}
+                  {v.label}
+                </Chip>
+              ))}
+            </ChipRow>
+          </Field>
+          <Field label="How long">
+            <ChipRow>
+              {DURATIONS.map((d) => (
+                <Chip
+                  key={d}
+                  active={d === hours}
+                  onClick={() => setHours(d)}
+                  accent="cool"
+                >
+                  {d} hours
+                </Chip>
+              ))}
+            </ChipRow>
+          </Field>
+          <Field label="Start">
+            <ChipRow>
+              {STARTS.map((s) => (
+                <Chip
+                  key={s.value}
+                  active={s.value === startMode}
+                  onClick={() => setStartMode(s.value)}
+                  accent="cool"
+                >
+                  <span aria-hidden className="text-[15px] leading-none">{s.emoji}</span>{" "}
+                  {s.label}
+                </Chip>
+              ))}
+              <Chip active={near != null} onClick={useMyLocation} accent="brand">
+                <Navigation className="h-3.5 w-3.5" aria-hidden />{" "}
+                {near ? "Your spot" : "Near me"}
+              </Chip>
+            </ChipRow>
+            {geoMsg && (
+              <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                {geoMsg}
+              </p>
+            )}
+          </Field>
+
+          <button
+            type="button"
+            onClick={() => onBuild()}
+            disabled={pending}
+            className="tactile tactile-lift tactile-glow-brand group relative inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-md)] px-4 py-3.5 text-[15px] font-semibold text-white"
+            style={{
+              background:
+                "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
+            }}
+          >
+            <Sparkles
+              className={`h-4 w-4 ${building ? "animate-spin" : "transition-transform group-hover:rotate-12"}`}
+              strokeWidth={2.25}
+              aria-hidden
+            />
+            {building ? "Stitching your night…" : "Build with these"}
+          </button>
+        </div>
+      </BottomDrawer>
     </div>
   );
 }
 
-function estimateTotalRadius(plan: Plan): number {
-  let max = 0;
-  let baseLng: number | null = null;
-  let baseLat: number | null = null;
-  for (const s of plan.stops) {
-    const g = s.place?.geom ?? s.event?.geom;
-    if (!g) continue;
-    if (baseLng === null) {
-      baseLng = g.lng;
-      baseLat = g.lat;
-      continue;
-    }
-    const dLng = (g.lng - baseLng) * 111320 * Math.cos(((baseLat ?? 0) * Math.PI) / 180);
-    const dLat = (g.lat - (baseLat ?? 0)) * 111320;
-    max = Math.max(max, Math.sqrt(dLng * dLng + dLat * dLat));
-  }
-  return max;
+/* ───────────────────────── Subcomponents ───────────────────────── */
+
+function Stop({
+  stop, idx, busy, pending, editing, onSwap, onRemove,
+}: {
+  stop: Plan["stops"][number];
+  idx: number;
+  busy: number | null;
+  pending: boolean;
+  editing: boolean;
+  onSwap: () => void;
+  onRemove: () => void;
+}) {
+  const href = stop.place ? `/places/${stop.place.slug}` : stop.event ? `/events/${stop.event.slug}` : "#";
+  const name = stop.place?.name ?? stop.event?.title ?? "";
+  const where = stop.place
+    ? `${stop.place.address}, ${stop.place.city}`
+    : stop.event?.venue_name ?? "";
+  const geom = stop.place?.geom ?? stop.event?.geom;
+  const ol = OPEN_LABEL[stop.open];
+
+  return (
+    <li className="relative">
+      <span
+        className="absolute -left-10 top-2.5 z-10 grid h-8 w-8 place-items-center rounded-full font-serif text-sm font-bold text-white"
+        style={{
+          background:
+            "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 55%, var(--app-cool)))",
+          boxShadow: "var(--app-elev-2), 0 0 0 4px var(--app-bg)",
+        }}
+        aria-hidden
+      >
+        {stop.order}
+      </span>
+      <article className="tactile tactile-interactive overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]">
+        {stop.photo_url && (
+          <div className="relative h-36 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+            {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote photo, plain img avoids domain allowlist */}
+            <img
+              src={stop.photo_url}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+            />
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 60%, transparent 100%)",
+              }}
+            />
+            <span
+              className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold tabular-nums shadow-[var(--app-elev-1)]"
+              style={{ color: "var(--app-cool)" }}
+            >
+              <Clock className="h-3 w-3" aria-hidden />
+              {clock(stop.at)} · {stop.duration_min} min
+            </span>
+            <span
+              className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold shadow-[var(--app-elev-1)]"
+              style={{ color: ol.color }}
+            >
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ background: ol.color }}
+                aria-hidden
+              />
+              {ol.text}
+            </span>
+            {/* Title overlay on photo — reads cinematic without
+                covering the image. */}
+            <Link
+              href={href}
+              className="absolute inset-x-0 bottom-0 block p-3 group"
+            >
+              <h3 className="font-serif text-[18px] font-semibold leading-tight tracking-tight text-white drop-shadow-md group-hover:underline">
+                {name}
+              </h3>
+              {where && (
+                <p className="mt-0.5 truncate text-[11.5px] text-white/85">
+                  <MapPin className="-mt-0.5 mr-1 inline h-3 w-3" aria-hidden />
+                  {where}
+                </p>
+              )}
+            </Link>
+          </div>
+        )}
+        <div className="p-4">
+          {!stop.photo_url && (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold tabular-nums"
+                  style={{
+                    background: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
+                    color: "var(--app-cool)",
+                  }}
+                >
+                  <Clock className="h-3 w-3" aria-hidden />
+                  {clock(stop.at)} · {stop.duration_min} min
+                </span>
+                <span
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold"
+                  style={{ color: ol.color }}
+                >
+                  <span
+                    className="inline-block h-1.5 w-1.5 rounded-full"
+                    style={{ background: ol.color }}
+                    aria-hidden
+                  />
+                  {ol.text}
+                </span>
+              </div>
+              <Link href={href} className="group mt-2 block">
+                <h3
+                  className="font-serif text-[18px] font-semibold leading-snug tracking-tight transition-colors group-hover:underline"
+                  style={{ color: "var(--app-ink)" }}
+                >
+                  {name}
+                </h3>
+                {where && (
+                  <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                    <MapPin className="-mt-0.5 mr-1 inline h-3 w-3" aria-hidden />
+                    {where}
+                  </p>
+                )}
+              </Link>
+            </>
+          )}
+          <p
+            className="mt-2 text-[13.5px] leading-relaxed text-pretty"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            {stop.why}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {geom && (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${geom.lat},${geom.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                <Navigation className="h-3 w-3" aria-hidden />
+                Directions
+              </a>
+            )}
+            <Link
+              href={href}
+              className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              Details
+              <ChevronRight className="h-3 w-3" aria-hidden />
+            </Link>
+            {editing && stop.place && (
+              <>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={onSwap}
+                  className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${busy === idx ? "animate-spin" : ""}`}
+                    aria-hidden
+                  />
+                  Swap
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={onRemove}
+                  className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-[var(--app-bg-sunken)] disabled:opacity-50"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  <X className="h-3 w-3" aria-hidden />
+                  Remove
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </article>
+    </li>
+  );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -655,15 +969,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function ChipRow({ children }: { children: React.ReactNode }) {
-  // Wrapped — every option visible at once, no hidden horizontal scroll.
   return <div className="flex flex-wrap gap-1.5">{children}</div>;
 }
 
 function Chip({
-  active,
-  accent = "brand",
-  onClick,
-  children,
+  active, accent = "brand", onClick, children,
 }: {
   active: boolean;
   accent?: "brand" | "cool";
@@ -688,4 +998,93 @@ function Chip({
       {children}
     </button>
   );
+}
+
+function Meta({ children }: { children: React.ReactNode }) {
+  return (
+    <li
+      className="inline-flex items-center gap-1.5 rounded-full bg-white/55 px-2.5 py-1 text-[11px] font-semibold tabular-nums"
+      style={{ color: "var(--app-ink-2)" }}
+    >
+      {children}
+    </li>
+  );
+}
+
+function BarAction({
+  onClick, icon: Icon, label, primary, disabled, busy,
+}: {
+  onClick: () => void;
+  icon: typeof Shuffle;
+  label: string;
+  primary?: boolean;
+  disabled?: boolean;
+  busy?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[12.5px] font-semibold transition active:scale-[0.96] disabled:opacity-50"
+      style={
+        primary
+          ? {
+              background:
+                "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
+              color: "white",
+              boxShadow: "var(--app-brand-glow)",
+            }
+          : {
+              background: "transparent",
+              color: "var(--app-ink-2)",
+            }
+      }
+    >
+      <Icon
+        className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`}
+        strokeWidth={2.25}
+        aria-hidden
+      />
+      {label}
+    </button>
+  );
+}
+
+/* ───────────────────────── Helpers ───────────────────────── */
+
+function currentSettingsLabel(
+  audience: PlanInputs["audience"],
+  hours: PlanInputs["duration_hours"],
+  start: StartMode,
+  hasLocation: boolean,
+): string {
+  const aud = AUDIENCES.find((a) => a.value === audience)?.label ?? audience;
+  const startLabel = STARTS.find((s) => s.value === start)?.label ?? start;
+  const loc = hasLocation ? " · Near me" : "";
+  return `${aud} · ${hours}h · ${startLabel}${loc}`;
+}
+
+function totalMinutes(plan: Plan): number {
+  return plan.stops.reduce((sum, s) => sum + (s.duration_min ?? 0), 0);
+}
+
+function totalRadius(plan: Plan): number {
+  let max = 0;
+  let baseLng: number | null = null;
+  let baseLat: number | null = null;
+  for (const s of plan.stops) {
+    const g = s.place?.geom ?? s.event?.geom;
+    if (!g) continue;
+    if (baseLng === null) {
+      baseLng = g.lng;
+      baseLat = g.lat;
+      continue;
+    }
+    const dLng =
+      (g.lng - baseLng) * 111320 * Math.cos(((baseLat ?? 0) * Math.PI) / 180);
+    const dLat = (g.lat - (baseLat ?? 0)) * 111320;
+    max = Math.max(max, Math.sqrt(dLng * dLng + dLat * dLat));
+  }
+  return max;
 }
