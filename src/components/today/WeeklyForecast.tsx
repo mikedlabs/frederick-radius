@@ -199,33 +199,23 @@ export default function WeeklyForecast({
                 className="wx-curve"
               />
             )}
-            {/* Dots at each day's hi point. Today's is the pulse dot
-                so the "you are here" anchor matches the hourly chart. */}
+            {/* Dots at each day's hi point. Today's dot is a touch
+             *  larger with a paper-cream outline so the "you are here"
+             *  anchor matches the hourly chart — static dot only, no
+             *  expanding ring (which was reading as alarmy). */}
             {points.map((p, i) => {
               if (!p) return null;
               const isToday = i === todayIdx;
               return (
-                <g key={`pt-${i}`}>
-                  {isToday && (
-                    <circle
-                      cx={p.x}
-                      cy={p.y}
-                      r={6}
-                      fill={brand}
-                      opacity={0.35}
-                      className="wx-now-ring"
-                    />
-                  )}
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={isToday ? 3.5 : 2.5}
-                    fill={isToday ? brand : fill}
-                    stroke={isToday ? "var(--app-bg-elevated-solid)" : brand}
-                    strokeWidth={isToday ? 1.5 : 1.2}
-                    className={isToday ? "wx-now-dot" : ""}
-                  />
-                </g>
+                <circle
+                  key={`pt-${i}`}
+                  cx={p.x}
+                  cy={p.y}
+                  r={isToday ? 4 : 2.5}
+                  fill={isToday ? brand : fill}
+                  stroke={isToday ? "var(--app-bg-elevated-solid)" : brand}
+                  strokeWidth={isToday ? 2 : 1.2}
+                />
               );
             })}
             {/* Precip dot row — sits in the bottom margin under each
