@@ -1,69 +1,108 @@
 # Frederick Radius
 
-> A smarter way to experience Frederick County.
-
-Frederick Radius is a PWA-first civic discovery platform for Frederick County, Maryland — a single web app that turns 12 fragmented municipalities, 4,500+ businesses, 78 parks, and dozens of civic feeds into one calm, location-aware experience.
+> The pocket compass for Frederick County, Maryland. What's open, what's happening, where, and how to get there.
 
 **Live:** [frederickradius.app](https://frederickradius.app)
-**Strategy:** see `FREDERICK_RADIUS_STRATEGY.md` (kept outside the code repo in the team's working folder).
+**Companion docs:** [`AUDIT.md`](./AUDIT.md) (what works, what's half-working) · [`ROADMAP.md`](./ROADMAP.md) (what's shipping, scaffolded, or unbuilt) · `docs/archive/` (historical decisions, pre-overhaul state).
 
 ---
 
 ## What ships today
 
-| URL | What it is |
-|---|---|
-| `/` | The cinematic 10-scene marketing landing (investor + press) |
-| `/app/today` | Daily-use dashboard — open now, weather, today, this weekend, walkable, towns |
-| `/app/map` | Map view of all places, category-colored pins, Leaflet + CARTO tiles |
-| `/app/events` | Event index grouped: live now → today → weekend → later |
-| `/app/events/[slug]` | Event detail — full description, ICS download, before/after recommendations, parking nearby |
-| `/app/places/[slug]` | Place detail — hours (open-now aware), directions, structured data, nearby + upcoming |
-| `/app/m/[municipality]` | One page per town: hero blurb, stats, browse-by-category, upcoming events, top places |
-| `/app/category/[slug]` | All places in a category, county-wide |
-| `/app/radius` | Set a point + a distance, see what's inside, bucketed by Eat/Do/Practical |
-| `/app/saved` | localStorage-backed saved places + events (anonymous-first) |
-| `/app/search` | Ranked full-text search across places / events / towns / categories |
+Four primary tabs:
 
-Plus: dynamic OG images, Event/LocalBusiness JSON-LD, full sitemap, robots, manifest, install icons.
+| Tab | URL | What it does |
+|---|---|---|
+| **Now** | `/now` | Daily briefing — weather (hourly + 7-day) · 3 right-now picks (open · starting soon · weekend bet) · mood tiles · events scoped to the active lens |
+| **Browse** | `/browse` | Map of all places with category-color clustered pins, layers drawer for civic / transit / trails / amenities |
+| **Plan** | `/events` | Lens-driven event explorer (Tonight · Tomorrow · Weekend · This week · Free) with month-view calendar |
+| **Saved** | `/saved` | localStorage-backed bookmarks · recently-viewed places · smart town-cluster suggestions |
+
+### Deep-link routes (not in bottom nav but discoverable)
+
+- `/places/[slug]` · `/category/[slug]` · `/m/[slug]` · `/events/[slug]` · `/events/calendar`
+- `/radius` (Within-reach mode for the map) · `/search` (one ranked list) · `/pulse` (deep weather)
+- `/parks` · `/trails` · `/trail` (beverage trail) · `/transit` · `/water` · `/history` · `/from-above`
+
+### Meta + flow
+
+- `/` redirects: new visitor → `/about` · returning (cookie set) → `/now`
+- `/welcome` — 2-step mood + live-here onboarding
+- `/about` — 30-second pitch · `/trust` — data source commitments
+- `/business/claim` · `/business/manage/[token]` · `/submit/place` · `/submit/event`
+- `/admin/*` — Basic Auth gated dashboards (claims, data-health, dedup-review, etc.)
+
+Plus: dynamic per-place OG images via `/api/og`, Event + LocalBusiness JSON-LD, full sitemap, robots.txt, manifest with PWA install icons, push-notification scaffolding.
 
 ## Stack
 
 - **Next.js 16** App Router · **React 19** · **TypeScript 5** · **Tailwind 4**
-- **Framer Motion** for cinematic scenes
-- **Leaflet + react-leaflet** for the map (will swap to Mapbox GL JS in Phase 3)
-- **Drizzle ORM** schema committed (Postgres + PostGIS) — DB connection in Phase 1
+- **Mapbox GL JS** + custom paper-mode palette (was Leaflet — switched May 2026)
+- **Vaul** for bottom drawers · **cmdk** for the ⌘K command palette · **nuqs** for URL state
+- **Sonner** for toasts · **Framer Motion** for shelf reveals
+- **Drizzle ORM** schema committed (Postgres + PostGIS) — DB usage limited to feed-snapshots
 - **next/og** for runtime OG image generation
-- **Vercel** hosting, edge runtime where useful, ISR everywhere else
+- **Sentry** for runtime error capture (when `SENTRY_DSN` is set)
+- **Vercel** hosting · ISR everywhere · Skew Protection enabled
 
 ## Architecture
 
 ```
 src/
 ├── app/
-│   ├── (marketing)/        # / — cinematic 10-scene demo
-│   ├── app/                # /app/* — the PWA
-│   │   ├── today/ map/ events/ places/ radius/ saved/ search/
-│   │   └── m/[municipality] · category/[slug]
+│   ├── (marketing)/         # / — cinematic 10-scene demo (investor + press)
+│   ├── (app)/               # the PWA route group
+│   │   ├── now/             # the home briefing
+│   │   ├── browse/          # the map (the merged map + radius surface)
+│   │   ├── events/          # plan tab + [slug] + calendar
+│   │   ├── places/          # directory + [slug]
+│   │   ├── m/[municipality] # town pages
+│   │   ├── category/[slug]  # category surfaces
+│   │   ├── saved/ · search/ · about/ · welcome/ · trust/ · settings/
+│   │   ├── radius/ · pulse/ · history/ · parks/ · trails/ · trail/
+│   │   ├── transit/ · water/
+│   │   └── layout.tsx       # bottom-nav layout chrome
+│   ├── admin/               # gated admin dashboards
+│   ├── business/            # claim + manage
+│   ├── submit/              # add a place / event
+│   ├── from-above/          # the photo book microsite
 │   ├── api/
-│   │   ├── og/             # dynamic OG image generator
-│   │   └── events/[slug]/ics  # downloadable .ics calendar files
+│   │   ├── og/              # dynamic OG image generator
+│   │   ├── isochrone/       # Mapbox isochrone proxy
+│   │   ├── events/[slug]/ics
+│   │   └── push/, /discover/, /cron/
 │   ├── icon.tsx · apple-icon.tsx · manifest.ts · sitemap.ts · robots.ts
-│   ├── layout.tsx          # root: fonts, viewport, theme, skip-link
-│   └── globals.css         # tokens for marketing + app palettes
+│   ├── layout.tsx           # root: fonts, Toaster, NuqsAdapter, SW register
+│   ├── middleware.ts        # /welcome gate + /admin Basic Auth
+│   └── globals.css          # design tokens + .reveal-up + .shimmer + .cmdk-* + .wx-* + .sky-*
 ├── components/
-│   ├── event/ · place/ · today/ · radius/ · saved/ · search/ · nav/ · map/
-│   ├── marketing/          # the 10 cinematic scenes
-│   └── ui/
-├── data/                   # seed data — municipalities, categories, tags, places, events
+│   ├── now/ · today/        # /now sections + WeatherHero stack
+│   ├── event/ · place/ · saved/ · search/ · radius/ · map/
+│   ├── nav/                 # BottomNav (4 tabs, sliding indicator) · TopBar · RouteAccent
+│   ├── cmdk/                # ⌘K command palette
+│   ├── ui/                  # primitives (BottomDrawer, Skeleton, ReasonChip, etc.)
+│   └── marketing/           # the 10 cinematic scenes
+├── data/                    # municipalities, categories, places, events + enrichment JSON
 ├── lib/
-│   ├── geo.ts              # Haversine, walk/bike/drive minutes ↔ meters, bbox
-│   ├── hours.ts            # open-now logic, formatting
-│   ├── search.ts           # in-memory ranked search
-│   ├── db/schema.ts        # Drizzle schema (Postgres + PostGIS) — committed shape
-│   └── loaders/            # places.ts, events.ts — pure server-side data accessors
-└── hooks/                  # useSaved (localStorage + useSyncExternalStore)
+│   ├── loaders/             # places, events, calendar — pure server data accessors
+│   ├── integrations/        # NWS · ical-live · ticketmaster · bandsintown · hood · feed-snapshot
+│   ├── db/schema.ts         # Drizzle schema (feed_snapshots, places, etc.)
+│   ├── geo.ts · hours.ts · search.ts · personalize.ts · view-state.ts
+│   └── tz.ts                # America/New_York-aware time math
+└── hooks/                   # useSaved, useRecentPlaces, useRecentSearches, useMode
 ```
+
+## Information architecture
+
+Three jobs the app does. Every route is structure under one of them:
+
+1. **NOW** — answer "what should I do right now / soon" (weather, open, near, happening)
+2. **BROWSE** — answer "what's here / where / what kind" (map, directory, town, category, radius)
+3. **PLAN** — answer "what's coming up" (events list, calendar, weekend)
+
+Saved is your stuff — not a job, a holding area.
+
+Old `/today`, `/map`, `/discover`, `/tonight`, `/markets`, `/historic`, `/art`, `/amenities` all 301 to canonical destinations via `next.config.ts`.
 
 ## Local dev
 
@@ -72,44 +111,38 @@ npm install
 npm run dev      # http://localhost:3000
 npm run build    # production build; verifies all routes generate
 npm run lint
+npm test         # vitest unit tests
+npm run test:e2e # Playwright E2E
 ```
 
-No environment variables required for the current scope.
+### Optional environment variables
 
-## Roadmap
+Activate live features by setting these on Vercel (or `.env.local`):
 
-The 15-deliverable strategy lives in `FREDERICK_RADIUS_STRATEGY.md`. Near-term:
+| Env var | What it activates |
+|---|---|
+| `HOOD_CALENDAR_URL` | Hood College iCal endpoint override (default points at Trumba) |
+| `WEINBERG_CALENDAR_URL` | Weinberg live feed — inert by default (see AUDIT) |
+| `DELAPLAINE_CALENDAR_URL` | Delaplaine live feed — inert by default |
+| `TICKETMASTER_API_KEY` | Real ticketed shows via Discovery API |
+| `BANDSINTOWN_APP_ID` | Live music shows (also needs a curated artist list) |
+| `GOOGLE_MAPS_API_KEY` | Places enrichment + isochrone (one-time job, already loaded) |
+| `MAPBOX_ACCESS_TOKEN` | Map tiles + isochrone proxy |
+| `NWS_USER_AGENT` | Required identifier for the NWS API |
+| `SENTRY_DSN` | Runtime error capture |
+| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | Plausible analytics |
+| `DATABASE_URL` | Postgres for feed-snapshot telemetry |
+| `ADMIN_USER` / `ADMIN_PASSWORD` | Gate `/admin/*` (fail-closed by default) |
+| `BUSINESS_STATUS_CRON=1` | Nightly Google Place Details refresh (PAID — off by default) |
 
-- [ ] Wire Neon Postgres + PostGIS — promote seed data to real DB
-- [ ] iCal ingest (DFP, Celebrate Frederick, County) — Vercel Cron
-- [ ] Mapbox Studio custom style + swap from Leaflet
-- [ ] Business claim flow + dashboard
-- [ ] Push notifications (civic emergencies opt-out, saved-event reminders opt-in)
-- [ ] AI itinerary builder (grounded in seed data, not hallucinated)
+## Closed-business handling
 
-## Closed-business status (P0-2)
+Closed places never surface. Three guards:
 
-Closed places never display. Three layers enforce this:
-
-1. `isOperational` in `src/lib/loaders/places.ts` is the single
-   closed-place predicate (manual denylist plus `is_operational`).
-   Every surface, including the Radius page, filters through it.
-2. `src/data/closures.json` is the audit log of every suppressed
-   place. Regenerate with `npm run closures:report`.
-3. Google Place Details refresh keeps `is_operational` current for
-   curated places that have a `google_place_id`.
-
-Refresh job and cost:
-
-- `npm run refresh:business-status` writes `src/data/business-status.json`.
-  It is PAID: one Place Details call per curated place with a place id,
-  roughly tens of dollars one-time for the full catalog.
-- The nightly cron `/api/cron/business-status` (07:00 UTC) reports
-  newly closed places. It is OFF by default and no-ops unless
-  `BUSINESS_STATUS_CRON=1`, so deploying it incurs no spend. Each
-  enabled run is capped at 40 Place Details calls (well under the
-  monthly Google budget target).
+1. `isOperational` in `src/lib/loaders/places.ts` is the canonical predicate.
+2. `src/data/closures.json` is the audit log of suppressed places. Regenerate with `npm run closures:report`.
+3. The nightly `/api/cron/business-status` job (gated `BUSINESS_STATUS_CRON=1`) refreshes from Google Place Details, capped at 40 calls per run.
 
 ## License
 
-Proprietary, copyright MAD Productions. All rights reserved.
+Proprietary — © MAD Productions. All rights reserved.
