@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 
 /**
  * /about — the 30-second pitch.
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     "Frederick Radius is the pocket compass for Frederick County, Maryland. What's open, what's happening, where, and how to get there.",
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
   return (
     <div className="relative mx-auto max-w-md space-y-7 py-6">
       <PageBloom variant="warm-cool" />
@@ -46,6 +47,32 @@ export default function AboutPage() {
           Back to Now
         </Link>
       </nav>
+
+      {/* Seasonal hero photograph — a real photo of Frederick from the
+          MAD Productions seasons collection, picked by current season
+          with daily rotation. Frames "the pocket compass for Frederick
+          County" line with a real sense of place before the pitch. */}
+      <div
+        className="relative -mx-4 overflow-hidden rounded-[var(--app-radius-lg)] sm:mx-0"
+        style={{ aspectRatio: "16/9" }}
+      >
+        <SeasonalPhoto
+          season="auto"
+          alt="Frederick County"
+          priority={true}
+          sizes="(max-width: 768px) 100vw, 640px"
+          className="absolute inset-0"
+        />
+        {/* Soft bottom gradient so the eyebrow + H1 below stay readable
+            against a busy photo without darkening it heavily. */}
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-1/3"
+          style={{
+            background: "linear-gradient(to top, rgba(0,0,0,0.18), transparent)",
+          }}
+        />
+      </div>
 
       <header className="space-y-3">
         <p
