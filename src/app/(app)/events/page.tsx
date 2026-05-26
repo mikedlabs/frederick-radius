@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink, GraduationCap, CalendarDays } from "lucide-react";
-import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
+import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
@@ -53,9 +53,15 @@ export default async function EventsIndexPage({
     ]);
 
   // Live/county events + real live-music feeds, with curated-duplicates
-  // dropped (P0-4).
+  // dropped (P0-4). Civic-meeting rows (Frederick County Board of
+  // Education, planning commissions, public hearings) are stripped
+  // here too — same discipline as the curated loader. The live county
+  // calendar feed pumps those in by the dozen; without this filter
+  // they'd bury everything else in the list.
   const liveCards = dedupeLiveAgainstCurated(
-    [...liveEventsRaw, ...tmEvents, ...bitEvents].map(liveToCardEvent),
+    [...liveEventsRaw, ...tmEvents, ...bitEvents]
+      .map(liveToCardEvent)
+      .filter((e) => !isCivicEvent(e)),
     curatedUpcoming,
   );
 
