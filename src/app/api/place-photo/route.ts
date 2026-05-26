@@ -26,7 +26,7 @@ const VALID_SLUG = /^[a-z0-9-]+$/;
 
 /**
  * Pull display initials from a place name. "Brewers Alley" → "BA";
- * "Sumittra Thai Cuisine" → "ST"; single-word "Volt" → "VO". Anything
+ * "Sumittra Thai Cuisine" → "ST"; single-word "Tabù" → "TA". Anything
  * already two characters or shorter stays as-is. Drops parens / dashes
  * / business filler.
  */

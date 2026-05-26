@@ -182,6 +182,6 @@ The same rules apply to buttons, empty states, and errors. Examples that ship:
 - Empty hours: "Hours not confirmed. Last we knew: 11–9, but that was March. Tap to help us update."
 - Feed failure: "Events feed from DFP didn't come back today. We'd rather show nothing than guess."
 - Push (civic): "Catoctin Creek flood watch through 9 PM. Lower Brunswick streets first. One tap to silence civic alerts."
-- Push (followed business): "Volt closed tonight — kitchen fire, no one hurt. They'll post when they reopen."
+- Push (followed business): "Olde Mother closed tonight — power outage, back tomorrow. They'll post when they reopen."
 
 What does NOT ship: "Oops! Nothing here :(", "Coming soon ✨", "Stay in the loop!", "Subscribe for exclusive updates!"

@@ -15,7 +15,7 @@ import {
 
 /**
  * Systemic guard: never surface an event whose venue is a known-closed
- * business (VOLT, Idiom, etc.). Seed events go stale when a venue shuts;
+ * business (Idiom, etc.). Seed events go stale when a venue shuts;
  * filtering at the source means every loader function is protected without
  * having to remember the filter in each one.
  */
