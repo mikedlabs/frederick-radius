@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useSavedList, useMounted } from "@/hooks/useSaved";
+import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
 // Client-safe: slim pre-decorated set, NOT @/lib/loaders/places
 // (that static-imports the ~12MB enrichment into the browser).
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -42,6 +43,12 @@ const EMPTY_SEEDS: Array<{ slug: string; reason: string }> = [
 export default function SavedList() {
   const mounted = useMounted();
   const items = useSavedList();
+  // Soft signal — slugs the user has opened (PlaceSheet) but maybe
+  // never bookmarked. Filtered to slugs still in the client place
+  // index and to ones not already in the explicit Saved set so the
+  // section never duplicates a card the user has already bookmarked.
+  const recentSlugs = useRecentPlaces();
+  const clearRecent = useClearRecentPlaces();
 
   const { places, events, byCategory, townTally } = useMemo(() => {
     const places = items
@@ -78,6 +85,25 @@ export default function SavedList() {
 
     return { places, events, byCategory, townTally };
   }, [items]);
+
+  // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
+  // "Saved" sections already surface them) and ones not in the place
+  // index. Capped to 6 so the row stays scannable.
+  const savedSlugs = useMemo(
+    () => new Set(items.filter((i) => i.type === "place").map((i) => i.id)),
+    [items],
+  );
+  const recentPlaces = useMemo<PlaceCardData[]>(() => {
+    if (!recentSlugs.length) return [];
+    const out: PlaceCardData[] = [];
+    for (const slug of recentSlugs) {
+      if (savedSlugs.has(slug)) continue;
+      const p = clientPlaceBySlug(slug);
+      if (p) out.push(p);
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [recentSlugs, savedSlugs]);
 
   if (!mounted) {
     // Pre-hydration: render skeleton rows that match the real
@@ -236,6 +262,54 @@ export default function SavedList() {
               );
             })}
         </div>
+      )}
+
+      {/* Recently viewed — soft signal. Surfaces places the user has
+          opened (via PlaceSheet) but hasn't explicitly bookmarked, so
+          returning users can pick a thread back up without having to
+          remember the exact name. Quieter visual weight than the
+          deliberate Saved sections above. Only renders when there's
+          something to show that isn't already in Saved. */}
+      {recentPlaces.length > 0 && (
+        <section aria-label="Recently viewed" className="space-y-2">
+          <header className="flex items-baseline gap-2.5">
+            <span
+              aria-hidden
+              className="block h-[3px] w-7 rounded-full"
+              style={{ background: "var(--app-ink-3)" }}
+            />
+            <h2
+              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Recently viewed
+            </h2>
+            <span
+              className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+              style={{
+                background: "color-mix(in srgb, var(--app-ink-3) 14%, transparent)",
+                color: "var(--app-ink-3)",
+              }}
+            >
+              {recentPlaces.length}
+            </span>
+            <button
+              type="button"
+              onClick={clearRecent}
+              className="ml-auto text-[11px] font-semibold underline-offset-2 hover:underline"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Clear
+            </button>
+          </header>
+          <ul className="space-y-2">
+            {recentPlaces.map((p) => (
+              <li key={p.slug}>
+                <PlaceCard place={p} />
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {events.length > 0 && (
