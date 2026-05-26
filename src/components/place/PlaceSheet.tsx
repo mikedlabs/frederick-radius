@@ -5,7 +5,9 @@ import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } f
 import { ExternalLink, Phone, Globe, Navigation, X, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import { placeActions, type PlaceAction } from "@/lib/place-actions";
 import Link from "next/link";
+import Image from "next/image";
 import { haptic } from "@/lib/haptics";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import OpenClosedDot from "./OpenClosedDot";
@@ -217,14 +219,16 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
          *  When there is no photo, we fall back to a category-tinted
          *  panel with the icon — still cinematic, still on-brand. */}
         {heroUrl ? (
-          <div className="relative overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+          <div className="relative aspect-[4/3] w-full overflow-hidden">
+            <Image
               src={heroUrl}
               alt={place.name}
-              className="aspect-[4/3] w-full object-cover"
-              loading="eager"
-              fetchPriority="high"
+              fill
+              priority
+              sizes="(max-width: 720px) 100vw, 720px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover"
             />
             <div
               aria-hidden
@@ -461,15 +465,22 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         {photos.length > 1 && (
           <div className="shelf-rail -mx-1 mt-4 gap-2 px-1 pb-1">
             {photos.slice(1, 8).map((u, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <div
                 key={i}
-                src={u}
-                alt={`${place.name} photo ${i + 2}`}
-                loading="lazy"
-                className="h-24 w-32 shrink-0 rounded-[var(--app-radius-md)] border object-cover"
+                className="relative h-24 w-32 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] border"
                 style={{ borderColor: "var(--app-border)" }}
-              />
+              >
+                <Image
+                  src={u}
+                  alt={`${place.name} photo ${i + 2}`}
+                  fill
+                  loading="lazy"
+                  sizes="128px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
+                  className="object-cover"
+                />
+              </div>
             ))}
           </div>
         )}

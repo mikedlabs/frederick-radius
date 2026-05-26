@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowUpRight, CalendarDays, MapPin } from "lucide-react";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 export type EventSlide = {
   slug: string;
@@ -78,16 +80,18 @@ export default function FeaturedEvents({ events }: { events: EventSlide[] }) {
                 aria-hidden
               />
               {e.photo && !failed.has(e.slug) && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={e.photo}
                   alt={e.title}
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  loading="eager"
-                  fetchPriority={i === 0 ? "high" : "auto"}
+                  fill
+                  priority={i === 0}
+                  sizes="(max-width: 720px) 100vw, 720px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
                   onError={() =>
                     setFailed((prev) => new Set(prev).add(e.slug))
                   }
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />

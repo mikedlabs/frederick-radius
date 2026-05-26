@@ -27,11 +27,28 @@ const nextConfig: NextConfig = {
   // Vercel; undefined locally, so this is a no-op in dev.
   deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   images: {
+    // Same-origin photo proxy carries query strings (?name=...&w=...).
+    // Next 16's image optimizer refuses query-stringed local URLs by
+    // default unless they appear here. The pattern is restricted to
+    // the place-photo route so any future API route is opt-in.
+    localPatterns: [
+      { pathname: "/api/place-photo", search: "?**" },
+    ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "res.cloudinary.com" },
       { protocol: "https", hostname: "commons.wikimedia.org" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
+      // Google Places photo CDN. The app normally proxies these via
+      // /api/place-photo to keep the API key off the client, but the
+      // allowlist is here for defensive parity in case any future
+      // path renders a direct CDN URL (the next/image optimizer would
+      // refuse without it).
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "lh4.googleusercontent.com" },
+      { protocol: "https", hostname: "lh5.googleusercontent.com" },
+      { protocol: "https", hostname: "lh6.googleusercontent.com" },
+      { protocol: "https", hostname: "places.googleapis.com" },
     ],
   },
   // Permanent route consolidation — duplicate editorial pages and

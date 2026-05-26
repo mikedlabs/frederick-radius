@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music, Ban } from "lucide-react";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
 import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
@@ -197,13 +199,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       >
         {event.hero_image ? (
           <div className="relative h-64 w-full overflow-hidden sm:h-72">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src={event.hero_image}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-              loading="eager"
-              fetchPriority="high"
+              fill
+              priority
+              sizes="(max-width: 720px) 100vw, 720px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover"
             />
             {/* Legibility gradient — dark at bottom for the title, soft
              *  at top for the date pill. */}

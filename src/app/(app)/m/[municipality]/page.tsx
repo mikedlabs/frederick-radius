@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
 import PlaceList from "@/components/place/PlaceList";
@@ -87,8 +89,16 @@ export default async function MunicipalityPage(
       <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-60">
           {heroPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element -- proxied photo; img avoids the domain allowlist dance
-            <img src={heroPhoto} alt="" className="h-full w-full object-cover" />
+            <Image
+              src={heroPhoto}
+              alt=""
+              fill
+              priority
+              sizes="(max-width: 720px) 100vw, 720px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover"
+            />
           ) : (
             <div
               className="h-full w-full"

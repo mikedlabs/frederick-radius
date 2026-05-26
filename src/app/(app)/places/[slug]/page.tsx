@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Utensils, ShoppingBag, Car, Instagram, ExternalLink } from "lucide-react";
+import Image from "next/image";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
@@ -296,15 +298,22 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           </h2>
           <div className="shelf-rail -mx-1 gap-2 px-1 pb-1">
             {place.google_photos.slice(1, 8).map((url, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <div
                 key={i}
-                src={url}
-                alt={`${place.name} photo ${i + 2}`}
-                loading="lazy"
-                className="h-28 w-40 shrink-0 rounded-[var(--app-radius-md)] border object-cover"
+                className="relative h-28 w-40 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] border"
                 style={{ borderColor: "var(--app-border)" }}
-              />
+              >
+                <Image
+                  src={url}
+                  alt={`${place.name} photo ${i + 2}`}
+                  fill
+                  loading="lazy"
+                  sizes="160px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
+                  className="object-cover"
+                />
+              </div>
             ))}
           </div>
         </section>
