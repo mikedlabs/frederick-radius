@@ -121,6 +121,49 @@ const FEEDS: FeedSpec[] = [
     // catch-all.
     default_category: "community",
   },
+  {
+    // Weinberg Center for the Arts — downtown Frederick's primary
+    // performance venue (theater, music, cinema). The default URL
+    // assumes WordPress + The Events Calendar plugin's standard
+    // `?ical=1` export. If their actual public feed lives elsewhere
+    // (Patron Manager, Trumba, etc.), set WEINBERG_CALENDAR_URL on
+    // Vercel and the override takes precedence — no deploy needed.
+    //
+    // Graceful failure: if the URL 404s or returns non-iCal, fetchFeed
+    // catches and returns []; the page just doesn't get Weinberg rows
+    // this fetch. Logged once via the existing source-failure path.
+    source: "weinberg",
+    source_label: "Weinberg Center for the Arts",
+    url:
+      process.env.WEINBERG_CALENDAR_URL ||
+      "https://weinbergcenter.org/events/?ical=1",
+    format: "ical",
+    default_venue: "Weinberg Center for the Arts",
+    default_geom: { lng: -77.4114, lat: 39.4147 },
+    default_municipality: "frederick",
+    // Weinberg's calendar is overwhelmingly theater + music + cinema.
+    // Keyword inference promotes specific titles (CATEGORY_KEYWORDS
+    // includes "weinberg" → theater) but this default keeps the
+    // honest fallback honest.
+    default_category: "theater",
+  },
+  {
+    // Delaplaine Arts Center — Carroll Creek's community arts hub
+    // (galleries, classes, family events). Same env-override pattern
+    // as Weinberg. Their public calendar may live at delaplaine.org
+    // or on a third-party platform — set DELAPLAINE_CALENDAR_URL to
+    // point at the real export when you have it.
+    source: "delaplaine",
+    source_label: "Delaplaine Arts Center",
+    url:
+      process.env.DELAPLAINE_CALENDAR_URL ||
+      "https://delaplaine.org/events/?ical=1",
+    format: "ical",
+    default_venue: "Delaplaine Arts Center",
+    default_geom: { lng: -77.4147, lat: 39.4109 },
+    default_municipality: "frederick",
+    default_category: "gallery",
+  },
 ];
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
