@@ -1,30 +1,19 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import dynamic from "next/dynamic";
 import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
 import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MoodTiles from "@/components/today/MoodTiles";
+import RightNowStrip from "@/components/now/RightNowStrip";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 
-// FeaturedTonightPicker stays code-split — it's the one editorial
-// place card kept for now under the events shelf. RightNow,
-// LocalNewsStrip, HistoryPulse, FromAboveTile, HiddenSectionsBar
-// all retired in the structural cuts. Anything that survives is
-// because it earns its place against the briefing-discipline rule:
-// /now is an answer, not a magazine.
-const FeaturedTonightPicker = dynamic(
-  () => import("@/components/today/FeaturedTonightPicker"),
-);
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
-import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
-import { FREDERICK_CENTER } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
 
 /**
@@ -68,52 +57,13 @@ export const metadata: Metadata = {
 
 export const revalidate = 60;
 
-// "Worth your evening" must read as a destination, not whatever the
-// directory happens to have ranked highest. Birthing classes, dialysis
-// clinics, and county-permits offices all technically can hit the top
-// of the rated list — that's what the design audits flagged. Restrict
-// to categories that ARE an evening out.
-const EVENING_CATEGORIES: ReadonlySet<string> = new Set([
-  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
-  "music", "theater", "gallery", "museum",
-  "lodging", "market",
-]);
-
 // Event titles that look like internal/admin business — board meetings,
 // hearings, classes, rehearsals. Public meetings live on /events under
 // their own section; they don't carry a "Don't miss" hero card.
+// (EVENING_CATEGORIES + pickFeaturedCandidates retired in Push 2:
+// RightNowStrip's "Weekend bet" card now carries the editorial-place
+// answer. The filter logic moved into RightNowStrip's NIGHT_OUT_CATS.)
 const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal|board meeting|training|orientation|class|certification|breastfeeding|prenatal|birthing|info session|hr|policy)\b/i;
-
-/**
- * Pick the top 5 featured-tonight candidates — the server's shortlist
- * for the editorial place card. The first one is the unconditional
- * best; the rest exist so a client wrapper can prefer a candidate
- * whose category umbrella matches a user's onboarding interest
- * (Phase D personalization). Returns an empty array when no place
- * meets the bar, which the page treats as "no card".
- */
-function pickFeaturedCandidates(now: Date): PlaceCardData[] {
-  const ranked = rankPlaces({
-    origin: FREDERICK_CENTER,
-    now,
-    preferOpen: true,
-    limit: 120,
-  });
-  return ranked
-    .filter((p) => Boolean(p.google_photo_url))
-    // Tightened from "not closed" → "actually open right now". The old
-    // filter let through unknown/no_hours places that could be just as
-    // closed as the ones we rejected; on a card that says "Worth your
-    // evening" that lie burns user trust the first time they walk to a
-    // dark door. If nothing is open + photo-backed + evening-category
-    // + highly rated right now, render no card at all — the page
-    // already handles the empty case gracefully.
-    .filter((p) => p.open_status.state === "open")
-    .filter((p) => EVENING_CATEGORIES.has(p.category))
-    .filter((p) => (p.google_rating ?? 0) >= 4.3)
-    .sort((a, b) => (b.google_rating ?? 0) - (a.google_rating ?? 0))
-    .slice(0, 5);
-}
 
 /** Pick the next photo-backed marquee event for the hero card.
  *  Photo-led entries (Alive @ Five, Sky Stage) outrank text-only
@@ -243,7 +193,6 @@ export default async function HomePage({
   const { t } = await searchParams;
   const now = new Date();
 
-  const featuredCandidates = pickFeaturedCandidates(now);
   const featuredEvent = pickFeaturedEvent(now);
   // Pre-compute per-mode counts so the chip strip shows "Tonight · 3"
   // without forcing a click into an empty surface — AND so the default
@@ -301,16 +250,23 @@ export default async function HomePage({
         <PrimaryActionCard now={now} />
       </SkyHero>
 
+      {/* RightNowStrip — three direct answers to the questions a
+       *  stranger opens the app to ask: what's open near me, what's
+       *  starting soon, what's worth this weekend. Each card is a
+       *  full-width tap target into the canonical detail page. Sits
+       *  right under the hero so the briefing's primary surface is
+       *  three answers, not three rails. */}
+      <RightNowStrip now={now} />
+
+      {/* In the mood for — 4-up affordance tiles (Coffee / Outdoors /
+       *  Eat / With kids) that deep-link into the category page with
+       *  the right scope. */}
+      <MoodTiles />
+
       {/* When? — the brand-defining temporal control. Pivots the
        *  events section between Now / Tonight / Tomorrow / Weekend.
        *  Mode lives in ?t= so the view is shareable. */}
       <TimeToggle active={mode} counts={counts} />
-
-      {/* In the mood for — 4-up affordance tiles (Coffee / Outdoors /
-       *  Eat / With kids) that deep-link into /radius with the right
-       *  category pre-filtered. The brief's "answer 'what should I do
-       *  right now?' before the calendar of events" pattern. */}
-      <MoodTiles />
 
       {/* ── PRIMARY ZONE ───────────────────────────────────────────
           The two things a stranger opens the app to learn: what's the
@@ -356,18 +312,6 @@ export default async function HomePage({
           </p>
         )}
       </DismissibleSection>
-
-      {/* Editorial place — kept for now as the one "look at this one"
-          card after the events shelf. The picker prefers a candidate
-          matching the user's interests; falls back to the server's
-          editorial pick. Cut signal: if this still feels redundant
-          with the events shelf after RightNowStrip ships in Push 2,
-          retire it. */}
-      {featuredCandidates.length > 0 && (
-        <DismissibleSection id="featured-place" title="Worth your evening">
-          <FeaturedTonightPicker candidates={featuredCandidates} />
-        </DismissibleSection>
-      )}
     </div>
   );
 }
