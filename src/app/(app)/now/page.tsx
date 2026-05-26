@@ -12,6 +12,7 @@ import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
+import AlmanacFooter from "@/components/today/AlmanacFooter";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -312,6 +313,14 @@ export default async function HomePage({
           </p>
         )}
       </DismissibleSection>
+
+      {/* A quiet last line at the bottom of the daily briefing. The
+          sunrise / sunset clocks anchor the page in actual time-of-
+          day, and the daylight delta vs yesterday is the part that
+          reads as editorial — a casual scroll past it still picks
+          up on "days are getting longer / shorter" without needing
+          a label. */}
+      <AlmanacFooter />
     </div>
   );
 }
