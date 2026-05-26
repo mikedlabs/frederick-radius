@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
 import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
@@ -65,7 +66,17 @@ export default function EventsExplorer({
   initialDay,
 }: Props) {
   const [cat, setCat] = useState<string | null>(initialView?.cats?.[0] ?? null);
-  const [time, setTime] = useState<TimeKey>(whenToTime(initialView?.when));
+  // Lens (Now / Tonight / Weekend / This week / All) — URL-synced via
+  // ?lens=foo so shared links restore the view, and the EventsCompartmented
+  // "See all" deep-links land on the right tab. nuqs handles the param
+  // codec (parseAsStringEnum) and rerenders on browser back/forward.
+  // Default falls through to the server-parsed initialView so first paint
+  // still matches the URL with no hydration flash.
+  const [time, setTime] = useQueryState<TimeKey>(
+    "lens",
+    parseAsStringEnum<TimeKey>(["all", "today", "weekend", "week"])
+      .withDefault(whenToTime(initialView?.when)),
+  );
   const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
   const [day, setDay] = useState<string | null>(initialDay ?? null);
   const [q, setQ] = useState("");
@@ -73,7 +84,13 @@ export default function EventsExplorer({
   // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
   // collapsed by default so the page leads with events, not controls.
   const [showFilters, setShowFilters] = useState(false);
-  const [freeOnly, setFreeOnly] = useState(false);
+  // Free-only toggle — URL-synced via ?free=1 so a filtered view is
+  // shareable. Boolean codec maps 0/1 to false/true; default false so
+  // an empty URL = no filter (no extra param on first load).
+  const [freeOnly, setFreeOnly] = useQueryState(
+    "free",
+    parseAsBoolean.withDefault(false),
+  );
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (k: string) =>

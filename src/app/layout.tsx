@@ -9,6 +9,7 @@ import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
 import { Toaster } from "sonner";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
@@ -136,7 +137,14 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <div id="main">{children}</div>
+        {/* NuqsAdapter — App Router edition. Wraps the tree so any
+            client component can call useQueryState to read/write URL
+            search params with a typed API. Master UI brief §16 + §20:
+            filter state lives in the URL so views are shareable +
+            restorable. No-op cost when no component uses nuqs. */}
+        <NuqsAdapter>
+          <div id="main">{children}</div>
+        </NuqsAdapter>
         {/* Two complementary analytics layers:
             - Plausible (self-hosted feel; product metrics, no IP storage)
             - Vercel Analytics + Speed Insights (Pro-tier; real-user web
