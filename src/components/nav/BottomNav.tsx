@@ -63,6 +63,13 @@ export default function BottomNav() {
             <li key={href} className="flex">
               <Link
                 href={href}
+                // Eager prefetch — these are the 4 tabs a user
+                // switches between constantly. Default Next.js
+                // prefetch is `null` (on-hover); for a known short
+                // top-level nav, eager prefetch makes the switch
+                // feel instant. Cost is small (4 RSC payloads on
+                // first paint) and the cache invalidates per route.
+                prefetch={true}
                 onClick={() => {
                   // Quiet feedback on every tab tap. Skip the haptic
                   // when re-tapping the active tab so there's no

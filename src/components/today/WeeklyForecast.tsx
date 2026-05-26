@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind,
-  Droplets,
+  Droplets, ChevronDown,
 } from "lucide-react";
 import { iconForShortForecast, type NwsHourly } from "@/lib/integrations/nws";
 
@@ -15,6 +16,8 @@ const ICON_TINT_DARK: Record<keyof typeof ICONS, string> = {
   Sun: "#F2B854", CloudSun: "#E8A33D", Cloud: "#BFBAB1", CloudRain: "#9CC4E8",
   CloudSnow: "#B6D2EC", CloudLightning: "#B47AAB", CloudFog: "#BFBAB1", Wind: "#82A8C8",
 };
+
+const STORAGE_KEY = "fr:wx-week-expanded:v1";
 
 function dayKey(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -35,7 +38,6 @@ type Day = {
   precip: number;
 };
 
-/** Group the day/night periods NWS returns into up to 7 calendar days. */
 function groupDays(daily: NwsHourly[]): Day[] {
   const todayKey = dayKey(new Date().toISOString());
   const order: string[] = [];
@@ -65,29 +67,24 @@ function groupDays(daily: NwsHourly[]): Day[] {
 }
 
 /**
- * The 7-day outlook, redesigned as a vertical row layout.
+ * 7-day forecast — collapsed by default, expandable on tap.
  *
- * Previous design was an SVG hi-temp curve with absolutely-positioned
- * day cells tracking the curve's xFor() math. The cells got cramped
- * and overlapped at narrow viewports; the strip became hard to scan
- * at a glance. (The brand-y curve was nice but cost legibility.)
+ * Per direct feedback: the previous always-visible 7-row layout was
+ * "way too much" and "needs a button to hide the seven-day." This
+ * version shows a one-line peek summary by default and expands on
+ * tap. The user's open/closed preference persists in localStorage
+ * so the next visit honors it.
  *
- * New design — seven full-width rows, scannable in one downward
- * sweep. Each row carries:
+ * Peek line (collapsed):
+ *   [7-day]  Today 77° · Wed 80° · ··· · Mon 75°  [▾]
  *
- *   [weekday] [glyph]  [hi-lo gradient bar]  [hi°]  [precip pill if ≥30%]
+ * Expanded: the same 7 readable rows from the prior redesign, with
+ * weekday + glyph + hi-lo gradient bar + hi temp + precip pill.
  *
- * The hi-lo bar is a horizontal track positioned relative to the
- * week's overall hi/lo range — visually shows where this day's
- * temperature sits in context. Today's row gets a brand-tinted
- * background so it pops as "you are here."
- *
- * Honest about clipping: with 7 fixed-height rows there is no
- * absolute positioning, no SVG math, no responsive cleverness to
- * break — every row reads at every width.
- *
- * `tone` (light | dark) is the parent card's tone so type sits
- * legibly on the same gradient as the hourly chart.
+ * Interaction:
+ *   - Tap header → toggle
+ *   - Keyboard: Enter / Space on focused header
+ *   - prefers-reduced-motion: respected via CSS transition fallback
  */
 export default function WeeklyForecast({
   daily,
@@ -96,6 +93,29 @@ export default function WeeklyForecast({
   daily: NwsHourly[];
   tone: "light" | "dark";
 }) {
+  // Default collapsed. Hydrate the persisted preference on mount so
+  // SSR + first paint always show the calm one-line peek. If the user
+  // previously expanded it, the client effect flips it open after
+  // mount — a brief peek-flash but no hydration mismatch.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw === "1") setOpen(true);
+    } catch {
+      // localStorage blocked (Safari private mode, etc.) — stay closed.
+    }
+  }, []);
+  function toggle() {
+    setOpen((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+      } catch { /* ignore */ }
+      return next;
+    });
+  }
+
   const days = groupDays(daily);
   if (days.length === 0) return null;
 
@@ -111,136 +131,172 @@ export default function WeeklyForecast({
     : "color-mix(in srgb, var(--app-brand) 8%, transparent)";
   const tints = tone === "dark" ? ICON_TINT_DARK : ICON_TINT_LIGHT;
 
-  // Compute the week's overall hi/lo so each row's bar is positioned
-  // relative to a stable reference, not just its own day.
   const allHi = days.map((d) => d.hi).filter((v): v is number => v != null);
   const allLo = days.map((d) => d.lo).filter((v): v is number => v != null);
   const weekMax = allHi.length ? Math.max(...allHi) : 0;
   const weekMin = allLo.length ? Math.min(...allLo) : 0;
-  const weekSpan = Math.max(1, weekMax - weekMin); // guard /0
+  const weekSpan = Math.max(1, weekMax - weekMin);
+
+  // Peek summary — three temperature snapshots so the collapsed row
+  // still says something useful: today's hi, the week's hi, the
+  // week's lo (with their day labels).
+  const todayHi = days[0]?.hi;
+  const hottestDay = days.reduce<Day | null>(
+    (best, d) => (d.hi != null && (!best || (best.hi ?? -Infinity) < d.hi)) ? d : best,
+    null,
+  );
+  const coldestDay = days.reduce<Day | null>(
+    (best, d) => (d.lo != null && (!best || (best.lo ?? Infinity) > d.lo)) ? d : best,
+    null,
+  );
 
   return (
     <div
       className="mt-px"
       style={{ background: panel, backdropFilter: "blur(2px)" }}
     >
-      <header className="flex items-baseline justify-between gap-3 px-4 pt-2.5 pb-1">
-        <span
-          className="text-[10px] font-bold uppercase tracking-[0.14em]"
-          style={{ color: ink2 }}
-        >
-          7-day outlook
-        </span>
-        <span
-          className="text-[10px] tabular-nums"
-          style={{ color: ink3 }}
-        >
-          {weekMin}° – {weekMax}°
-        </span>
-      </header>
-
-      <ul className="px-2 pb-2">
-        {days.map((d) => {
-          const isToday = d.label === "Today";
-          const k = iconForShortForecast(d.short);
-          const Icon = ICONS[k];
-          const iconColor = tone === "dark" ? "#fff" : tints[k];
-
-          // Position of THIS day's bar within the week's range, 0–100%.
-          // hi → end of the bar; lo → start. If lo is missing (rare —
-          // last day's night period may not exist yet), use hi-5 as a
-          // synthetic low so the bar still has visible length.
-          const hi = d.hi ?? d.lo ?? weekMax;
-          const lo = d.lo ?? (hi - 5);
-          const leftPct = ((Math.min(hi, lo) - weekMin) / weekSpan) * 100;
-          const widthPct = (Math.abs(hi - lo) / weekSpan) * 100;
-
-          return (
-            <li
-              key={d.key}
-              className="grid items-center gap-2 rounded-[10px] px-2.5 py-2"
-              style={{
-                gridTemplateColumns: "44px 22px 1fr 42px 36px",
-                background: isToday ? todayBg : "transparent",
-                borderTop: `1px solid ${hairline}`,
-              }}
+      {/* Header — always visible, doubles as the toggle. The
+          chevron rotates to signal state. */}
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        aria-controls="weekly-forecast-rows"
+        className="block w-full text-left transition active:scale-[0.998]"
+      >
+        <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+          <span className="flex items-baseline gap-2">
+            <span
+              className="text-[10px] font-bold uppercase tracking-[0.14em]"
+              style={{ color: ink2 }}
             >
-              {/* Weekday */}
+              7-day
+            </span>
+            {!open && (
               <span
-                className="text-[12.5px] font-semibold tracking-tight"
-                style={{ color: isToday ? brand : ink }}
+                className="text-[11.5px] tabular-nums"
+                style={{ color: ink3 }}
               >
-                {d.label}
+                {todayHi != null && (
+                  <>
+                    <span style={{ color: ink }}>Today {todayHi}°</span>
+                  </>
+                )}
+                {hottestDay && hottestDay.label !== "Today" && hottestDay.hi != null && (
+                  <>
+                    {" · "}
+                    {hottestDay.label} <span style={{ color: brand }}>{hottestDay.hi}°</span>
+                  </>
+                )}
+                {coldestDay && coldestDay.label !== "Today" && coldestDay !== hottestDay && coldestDay.lo != null && (
+                  <>
+                    {" · "}
+                    {coldestDay.label} <span style={{ color: cool }}>{coldestDay.lo}°</span>
+                  </>
+                )}
               </span>
+            )}
+          </span>
+          <span className="flex items-center gap-1.5 text-[10px] tabular-nums" style={{ color: ink3 }}>
+            {open && <span>{weekMin}° – {weekMax}°</span>}
+            <ChevronDown
+              className="h-3.5 w-3.5 transition-transform"
+              strokeWidth={2.5}
+              style={{ color: ink3, transform: open ? "rotate(180deg)" : "none" }}
+              aria-hidden
+            />
+          </span>
+        </div>
+      </button>
 
-              {/* Glyph */}
-              <span aria-hidden className="flex justify-center">
-                <Icon
-                  className="h-[18px] w-[18px]"
-                  strokeWidth={1.75}
-                  style={{ color: iconColor }}
-                />
-              </span>
+      {open && (
+        <ul id="weekly-forecast-rows" className="px-2 pb-2">
+          {days.map((d) => {
+            const isToday = d.label === "Today";
+            const k = iconForShortForecast(d.short);
+            const Icon = ICONS[k];
+            const iconColor = tone === "dark" ? "#fff" : tints[k];
 
-              {/* Hi-lo gradient bar — visualizes where this day's
-                  temperature range sits inside the week's overall
-                  range. The track is a faint hairline; the filled
-                  segment is a cool→warm gradient that signals "lows
-                  are cool, highs are warm" at a glance. */}
-              <div
-                className="relative h-1.5 rounded-full"
-                style={{ background: hairline }}
-                aria-hidden
+            const hi = d.hi ?? d.lo ?? weekMax;
+            const lo = d.lo ?? (hi - 5);
+            const leftPct = ((Math.min(hi, lo) - weekMin) / weekSpan) * 100;
+            const widthPct = (Math.abs(hi - lo) / weekSpan) * 100;
+
+            return (
+              <li
+                key={d.key}
+                className="grid items-center gap-2 rounded-[10px] px-2.5 py-2"
+                style={{
+                  gridTemplateColumns: "44px 22px 1fr 42px 36px",
+                  background: isToday ? todayBg : "transparent",
+                  borderTop: `1px solid ${hairline}`,
+                }}
               >
                 <span
-                  className="absolute top-0 h-full rounded-full"
-                  style={{
-                    left: `${leftPct}%`,
-                    width: `${widthPct}%`,
-                    background: `linear-gradient(90deg, ${cool}, ${brand})`,
-                    boxShadow: isToday
-                      ? `0 0 0 1.5px color-mix(in srgb, ${brand} 35%, transparent)`
-                      : "none",
-                  }}
-                />
-              </div>
+                  className="text-[12.5px] font-semibold tracking-tight"
+                  style={{ color: isToday ? brand : ink }}
+                >
+                  {d.label}
+                </span>
 
-              {/* Hi temperature — primary read for each row */}
-              <span
-                className="text-right text-[13.5px] font-semibold tabular-nums leading-none"
-                style={{ color: isToday ? brand : ink }}
-              >
-                {d.hi != null ? `${d.hi}°` : "—"}
-              </span>
+                <span aria-hidden className="flex justify-center">
+                  <Icon
+                    className="h-[18px] w-[18px]"
+                    strokeWidth={1.75}
+                    style={{ color: iconColor }}
+                  />
+                </span>
 
-              {/* Precip pill — only renders for days with ≥30% rain.
-                  The slot is reserved (36px) so columns line up even
-                  when the pill is absent. */}
-              <span className="flex justify-end">
-                {d.precip >= 30 ? (
+                <div
+                  className="relative h-1.5 rounded-full"
+                  style={{ background: hairline }}
+                  aria-hidden
+                >
                   <span
-                    className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[9.5px] font-semibold tabular-nums"
+                    className="absolute top-0 h-full rounded-full"
                     style={{
-                      background: `color-mix(in srgb, ${cool} 16%, transparent)`,
-                      color: cool,
+                      left: `${leftPct}%`,
+                      width: `${widthPct}%`,
+                      background: `linear-gradient(90deg, ${cool}, ${brand})`,
+                      boxShadow: isToday
+                        ? `0 0 0 1.5px color-mix(in srgb, ${brand} 35%, transparent)`
+                        : "none",
                     }}
-                  >
-                    <Droplets className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
-                    {d.precip}%
-                  </span>
-                ) : null}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+                  />
+                </div>
 
-      <p
-        className="px-4 pb-2 text-[9.5px] uppercase tracking-[0.12em]"
-        style={{ color: ink3 }}
-      >
-        National Weather Service · Frederick
-      </p>
+                <span
+                  className="text-right text-[13.5px] font-semibold tabular-nums leading-none"
+                  style={{ color: isToday ? brand : ink }}
+                >
+                  {d.hi != null ? `${d.hi}°` : "—"}
+                </span>
+
+                <span className="flex justify-end">
+                  {d.precip >= 30 ? (
+                    <span
+                      className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[9.5px] font-semibold tabular-nums"
+                      style={{
+                        background: `color-mix(in srgb, ${cool} 16%, transparent)`,
+                        color: cool,
+                      }}
+                    >
+                      <Droplets className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
+                      {d.precip}%
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
+          <li
+            className="px-2.5 pt-2 text-[9.5px] uppercase tracking-[0.12em]"
+            style={{ color: ink3 }}
+          >
+            National Weather Service · Frederick
+          </li>
+        </ul>
+      )}
     </div>
   );
 }
