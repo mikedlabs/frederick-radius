@@ -32,6 +32,8 @@
     "build:discovered": "tsx --tsconfig tsconfig.json scripts/build-discovered-places.ts",
     "ingest": "tsx --tsconfig tsconfig.json scripts/run-ingest.ts",
     "dedup": "tsx --tsconfig tsconfig.json scripts/dedup.ts",
+    "find-dupes": "tsx --tsconfig tsconfig.json scripts/find-duplicates.ts",
+    "find-dupes:apply": "tsx --tsconfig tsconfig.json scripts/find-duplicates.ts --auto-merge && tsx --tsconfig tsconfig.json scripts/dedup.ts",
     "closures:report": "tsx --tsconfig tsconfig.json scripts/closures-report.ts",
     "coord:audit": "tsx --tsconfig tsconfig.json scripts/coord-audit.ts",
     "refresh:business-status": "tsx --tsconfig tsconfig.json scripts/refresh-business-status.ts",
