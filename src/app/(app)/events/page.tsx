@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Calendar, Sparkles, MapPin } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
@@ -18,14 +18,46 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 import PageBloom from "@/components/ui/PageBloom";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 
 export const metadata: Metadata = {
   title: "Events",
-  description: "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, and Hood College.",
+  description:
+    "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, and Hood College.",
 };
 
 export const revalidate = 3600;
 
+/**
+ * /events — the magazine-front-of-the-county.
+ *
+ * Mobile-first redesign matching the rest of the recent batch
+ * (/now weather, /plan, /pulse). Same beats: a cinematic hero, a
+ * tight editorial masthead, scannable secondary surfaces.
+ *
+ * Composition, top to bottom:
+ *   1. CINEMATIC HERO — the next photo-backed featured event takes
+ *      a full-bleed magazine card with serif overlay. If nothing
+ *      photo-backed is on deck, a SeasonalPhoto + serif "Events"
+ *      headline carries the moment so the page never opens cold.
+ *   2. TIGHT MASTHEAD — eyebrow + serif H1 + a single meta strip
+ *      (events / towns / live count) in tabular pills, plus a
+ *      "Month view" pill on the right.
+ *   3. WEEK STRIP — 14-day rail with activity bars per day. Tap a
+ *      day to filter the explorer.
+ *   4. TONIGHT RAIL — editorial marquee for events starting in the
+ *      next ~6 hours (widens to 24h if the evening is thin).
+ *   5. CATEGORY JUMP TILES — entry points to deeper category
+ *      surfaces (music, arts, family, civic).
+ *   6. EVENTS EXPLORER — the single primary browse surface with
+ *      lens chips (Tonight / Weekend / Free) at the top.
+ *   7. MUNICIPAL SERIES — quiet series-level summary block.
+ *   8. HONESTY FOOTER — what feeds, where to submit.
+ *
+ * Server-rendered. Pure data composition; the explorer below is
+ * the only client surface and owns all the filter state via URL
+ * params for shareable deep links.
+ */
 export default async function EventsIndexPage({
   searchParams,
 }: {
@@ -40,20 +72,13 @@ export default async function EventsIndexPage({
       getLiveEvents(60),
       getIngestedSeries(),
       getIngestedSummary(),
-      // Real live-music shows. Inert (returns []) until the owner sets
-      // TICKETMASTER_API_KEY / BANDSINTOWN_APP_ID — never fabricated.
       fetchTicketmasterMusic().catch(() => []),
-      // Bandsintown public API is artist-scoped only (see the module):
-      // no curated local-artist list yet, so this is inert by design.
       fetchBandsintownForArtists([]).catch(() => []),
     ]);
 
-  // Live/county events + real live-music feeds, with curated-duplicates
-  // dropped (P0-4). Civic-meeting rows (Frederick County Board of
-  // Education, planning commissions, public hearings) are stripped
-  // here too — same discipline as the curated loader. The live county
-  // calendar feed pumps those in by the dozen; without this filter
-  // they'd bury everything else in the list.
+  // Live/county events + real live-music feeds, with curated duplicates
+  // dropped (P0-4). Civic-meeting rows stripped so they don't bury
+  // everything else.
   const liveCards = dedupeLiveAgainstCurated(
     [...liveEventsRaw, ...tmEvents, ...bitEvents]
       .map(liveToCardEvent)
@@ -61,7 +86,7 @@ export default async function EventsIndexPage({
     curatedUpcoming,
   );
 
-  // One unified, de-duplicated, time-sorted set the explorer drives.
+  // One unified, deduplicated, time-sorted set the explorer drives.
   const bySlug = new Map<string, EventWithMeta>();
   for (const e of [...curatedUpcoming, ...liveCards]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
@@ -95,135 +120,188 @@ export default async function EventsIndexPage({
   monday.setHours(0, 0, 0, 0);
 
   // Parse the deep-link view server-side so the explorer's first paint
-  // already reflects it (no post-mount setState, no hydration mismatch).
+  // already reflects it.
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(await searchParams)) {
     if (typeof v === "string") sp.set(k, v);
     else if (Array.isArray(v) && typeof v[0] === "string") sp.set(k, v[0]);
   }
   const initialView: ViewState = parseViewState(sp);
-  // ?d=YYYY-MM-DD deep-links to a specific Eastern day. Format is
-  // validated by the regex so a garbled link can't crash the explorer.
   const dParam = sp.get("d");
-  const initialDay = dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
+  const initialDay =
+    dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
 
-  // Quiet byline numbers for /events — identity at a glance, not a
-  // four-cell stat block. Live-feed count + town count is enough to
-  // earn the "the whole county is here" claim without taking up a
-  // whole module above the date rail.
   const liveCount = liveCards.length;
 
-  // Hero feature — the next photo-backed upcoming event. Photo-led
-  // entries (Alive @ Five, Sky Stage, the curated season) carry the
-  // banner; text-only county-feed rows stay out of the hero so the
-  // top of the page always has imagery to land on.
+  // Hero feature — the next photo-backed upcoming event. If none, we
+  // fall back to a SeasonalPhoto + serif headline so the page never
+  // opens cold without imagery.
   const heroEvent = allEvents.find((e) => Boolean(e.hero_image)) ?? null;
 
-  // "Tonight" rail — events starting in the next 6 hours (the next-24
-  // window if it's already past 8pm so the rail isn't empty at night).
-  // Photo-led, ordered by start time. Different from the explorer's
-  // "Tonight" lens because this is the *editorial marquee*, capped at 8.
+  // "Tonight" rail — events starting in the next 6 hours (widening to
+  // next-24 after 8pm so the rail isn't empty at night).
   const tonightEnd = new Date(now);
   tonightEnd.setHours(tonightEnd.getHours() + 6);
   const tonightEvents = allEvents.filter((e) => {
     const t = +new Date(e.starts_at);
     return t >= +now && t <= +tonightEnd;
   });
-  // If "next 6 hours" is too thin (late night, post-evening lull), widen
-  // to "next 24 hours" so the rail still has signal to show.
   const tonightFinal =
     tonightEvents.length >= 3
       ? tonightEvents
-      : allEvents.filter((e) => {
-          const t = +new Date(e.starts_at);
-          return t >= +now && t <= +start24;
-        }).slice(0, 8);
+      : allEvents
+          .filter((e) => {
+            const t = +new Date(e.starts_at);
+            return t >= +now && t <= +start24;
+          })
+          .slice(0, 8);
+
+  // Weekend count — feeds the masthead meta strip's "X this weekend"
+  // pill so the user gets a useful at-a-glance number without scrolling
+  // down to the explorer.
+  const weekendCount = allEvents.filter((e) => {
+    const t = +new Date(e.starts_at);
+    return t >= +friday && t <= +monday;
+  }).length;
 
   return (
     <div className="relative space-y-6">
       <PageBloom variant="warm-cool" />
 
-      {/* Editorial event hero — full-bleed magazine card for the next
-          photo-backed event. Above the title so visitors meet imagery
-          before they meet a list. */}
-      {heroEvent && (
-        <section aria-label="Featured event">
+      {/* ── 1. Cinematic hero ────────────────────────────────────────
+          When we have a photo-backed upcoming event, lead with the
+          feature-variant EventCard wrapped in a "Tonight's marquee"
+          eyebrow so the magazine intent is explicit. When we don't,
+          fall back to a SeasonalPhoto with a serif overlay so the
+          page never opens cold without imagery. */}
+      {heroEvent ? (
+        <section aria-label="Featured event" className="space-y-2">
+          <p
+            className="eyebrow inline-flex items-center gap-1.5"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <Sparkles
+              className="h-3 w-3"
+              strokeWidth={2.25}
+              style={{ color: "var(--app-brand)" }}
+              aria-hidden
+            />
+            Featured event
+          </p>
           <EventCard event={heroEvent} variant="feature" />
         </section>
-      )}
-
-      {/* Magazine masthead — one compact row. Eyebrow + serif title;
-          the month view link is a quiet inline pill, not a loud
-          full-width CTA. Byline carries the breadth claim ("112 events
-          across 7 towns") in one sentence so the StatStrip cell grid
-          can retire. */}
-      <header className="space-y-1.5">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Live across the county
-            </p>
-            <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+      ) : (
+        <header className="relative -mx-4 overflow-hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)]">
+          <div className="relative h-44 w-full sm:h-52" aria-hidden>
+            <SeasonalPhoto
+              season="auto"
+              alt=""
+              priority
+              sizes="(max-width: 768px) 100vw, 640px"
+              className="absolute inset-0"
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.18) 55%, transparent 90%)",
+              }}
+            />
+          </div>
+          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
+            <p className="eyebrow text-white/85">Live across the county</p>
+            <h1 className="font-serif text-[34px] font-semibold leading-[1.02] tracking-tight text-white">
               Events
             </h1>
           </div>
-          <Link
-            href="/events/calendar"
-            className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-            style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
-          >
-            <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            Month view
-          </Link>
-        </div>
-        <p
-          className="text-[12px] tabular-nums"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
-            {allEvents.length}
-          </span>{" "}
-          events across{" "}
-          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
-            {towns.length}
-          </span>{" "}
-          towns this season
-          {liveCount > 0 && (
-            <>
-              {" · "}
-              <span
-                className="inline-flex items-center gap-1 font-semibold"
-                style={{ color: "var(--app-positive)" }}
-              >
-                <span className="live-dot" /> {liveCount} live
-              </span>
-            </>
-          )}
-        </p>
-      </header>
-
-      {/* The new date rail — 14 days, activity-bar density, no tile
-          borders. Replaces the boxy WeekStrip-as-tile-grid. */}
-      <WeekStrip events={allEvents} activeDay={initialDay} />
-
-      {/* "Tonight at a glance" — editorial marquee of what's starting
-          in the next ~6 hours (or 24h if the evening's thin). Photo-led
-          horizontal rail; this is what people actually open /events to
-          ask. */}
-      {tonightFinal.length > 0 && (
-        <TonightRail events={tonightFinal} />
+        </header>
       )}
 
-      {/* Visual entry points to the deeper category surfaces. */}
+      {/* ── 2. Editorial masthead ─────────────────────────────────────
+          Only renders when the cinematic hero used a real event card
+          (the SeasonalPhoto fallback already carries the H1). Tight
+          row: eyebrow + serif title + meta-pill strip + Month-view
+          pill. The pills mirror the meta chips on /plan + /pulse so
+          the visual language carries across the redesigned pages. */}
+      {heroEvent && (
+        <header className="space-y-2.5">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+                Live across the county
+              </p>
+              <h1
+                className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                Events
+              </h1>
+            </div>
+            <Link
+              href="/events/calendar"
+              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+              style={{
+                background: "var(--app-bg-elevated)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <CalendarDays
+                className="h-3.5 w-3.5"
+                strokeWidth={2.25}
+                aria-hidden
+              />
+              Month view
+            </Link>
+          </div>
+          <ul
+            className="flex flex-wrap items-center gap-1.5"
+            aria-label="Events summary"
+          >
+            <Meta>
+              <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              <span className="font-bold tabular-nums">{allEvents.length}</span>
+              {allEvents.length === 1 ? " event" : " events"}
+            </Meta>
+            <Meta>
+              <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              <span className="font-bold tabular-nums">{towns.length}</span>{" "}
+              {towns.length === 1 ? "town" : "towns"}
+            </Meta>
+            {weekendCount > 0 && (
+              <Meta accent="var(--app-brand)">
+                <Sparkles className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                <span className="font-bold tabular-nums">{weekendCount}</span>{" "}
+                this weekend
+              </Meta>
+            )}
+            {liveCount > 0 && (
+              <Meta accent="var(--app-positive)">
+                <span className="live-dot" />
+                <span className="font-bold tabular-nums">{liveCount}</span> live
+                feed{liveCount === 1 ? "" : "s"}
+              </Meta>
+            )}
+          </ul>
+        </header>
+      )}
+
+      {/* ── 3. Week strip — 14 days, activity-bar density.
+          Tap a day to filter the explorer. No tile borders; visual
+          rhythm comes from the activity bars. */}
+      <WeekStrip events={allEvents} activeDay={initialDay} />
+
+      {/* ── 4. Tonight rail — editorial marquee of next ~6 hours.
+          Photo-led horizontal rail; this is the answer to "what's
+          actually starting soon." */}
+      {tonightFinal.length > 0 && <TonightRail events={tonightFinal} />}
+
+      {/* ── 5. Category jump tiles — visual entry to deeper surfaces. */}
       <CategoryJumpTiles events={allEvents} />
 
-      {/* EventsExplorer — the single primary browse surface. Lens
-          chips (Tonight / Tomorrow / Weekend / This week / Free)
-          live at the top and own all the filter state via URL
-          params. Replaces the previous stack of Compartmented
-          rooms + Power-view collapsible, which split the same data
-          across three mental models on one page. One list, one
-          filter row, one mental model. */}
+      {/* ── 6. Events explorer — the primary browse surface.
+          Lens chips (Tonight / Tomorrow / Weekend / This week / Free)
+          live at the top and own all the filter state via URL params.
+          One list, one filter row, one mental model. */}
       <EventsExplorer
         events={allEvents}
         liveSlugs={liveSlugs}
@@ -237,24 +315,59 @@ export default async function EventsIndexPage({
         initialDay={initialDay}
       />
 
-      {/* Municipal series — series-level summary block; quieter than
-          the explorer and only renders when there's series data to
-          show. Keeps the "by-source" entry point without making it a
-          competing primary surface. */}
+      {/* ── 7. Municipal series — quiet series-level summary block. */}
       {ingestedSeries.length > 0 && (
         <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
       )}
 
-      <footer className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+      {/* ── 8. Honesty footer ───────────────────────────────────────── */}
+      <footer
+        className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
+        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+      >
         <p>
-          Live event data pulled from Downtown Frederick Partnership, Celebrate Frederick,
-          the Frederick County calendar, and the Hood College Trumba feed. Cached for one hour.
+          Live event data pulled from Downtown Frederick Partnership,
+          Celebrate Frederick, the Frederick County calendar, and the
+          Hood College Trumba feed. Cached for one hour.
         </p>
         <p>
-          Missing an event? <a href="/submit/event" className="underline" style={{ color: "var(--app-cool)" }}>Submit it →</a>
+          Missing an event?{" "}
+          <a
+            href="/submit/event"
+            className="underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Submit it →
+          </a>
         </p>
       </footer>
     </div>
+  );
+}
+
+/**
+ * Meta — small pill that mirrors the meta chips on /plan and /pulse.
+ * Accent-tinted background by default; pass an accent to highlight a
+ * specific stat (e.g. weekend count in brand, live count in positive).
+ */
+function Meta({
+  children,
+  accent,
+}: {
+  children: React.ReactNode;
+  accent?: string;
+}) {
+  return (
+    <li
+      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] tabular-nums"
+      style={{
+        background: accent
+          ? `color-mix(in srgb, ${accent} 12%, transparent)`
+          : "var(--app-bg-elevated)",
+        color: accent ?? "var(--app-ink-2)",
+      }}
+    >
+      {children}
+    </li>
   );
 }
