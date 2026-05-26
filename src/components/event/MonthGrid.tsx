@@ -20,6 +20,20 @@ function muniColor(m: string): string {
   return "var(--app-ink-3)";
 }
 
+/** Map a day's event count to a single density signal — size + brand
+ *  tint when the day is busy. Reads cleaner than the old "up to 3 muni
+ *  dots + +N" cluster, which became visual noise at month scale.
+ *  - 1–2 events → small neutral dot
+ *  - 3–5 events → medium dot
+ *  - 6+ events  → large brand-tinted dot
+ *  Returns null when the day has nothing. */
+function densitySpec(n: number): { size: number; tint: string } | null {
+  if (n <= 0) return null;
+  if (n <= 2) return { size: 5, tint: "var(--app-ink-3)" };
+  if (n <= 5) return { size: 7, tint: "var(--app-ink-2)" };
+  return { size: 9, tint: "var(--app-brand)" };
+}
+
 function monthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -101,19 +115,56 @@ export default function MonthGrid({
         style={{ borderColor: "var(--app-border)" }}
       >
         <div className="grid grid-cols-7 border-b" style={{ borderColor: "var(--app-border)" }}>
-          {WD.map((w, i) => (
-            <div key={i} className="py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--app-ink-3)" }}>
-              {w}
-            </div>
-          ))}
+          {WD.map((w, i) => {
+            const isWeekend = i === 0 || i === 6;
+            return (
+              <div
+                key={i}
+                className="py-1.5 text-center text-[10px] font-semibold uppercase tracking-wider"
+                style={{
+                  color: isWeekend ? "var(--app-ink-2)" : "var(--app-ink-3)",
+                  background: isWeekend ? "var(--app-bg-sunken)" : "transparent",
+                }}
+              >
+                {w}
+              </div>
+            );
+          })}
         </div>
         <div className="grid grid-cols-7">
           {cells.map((key, i) => {
-            if (!key) return <div key={i} className="aspect-square border-b border-r" style={{ borderColor: "var(--app-border)" }} />;
+            const dayOfWeek = i % 7; // 0 = Sun, 6 = Sat
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            if (!key) {
+              return (
+                <div
+                  key={i}
+                  className="aspect-square border-b border-r"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    // Weekend tint extends into the empty leading/trailing
+                    // cells so the weekend column reads as one continuous
+                    // strip, not a broken pattern at the month edges.
+                    background: isWeekend
+                      ? "color-mix(in srgb, var(--app-bg-sunken) 55%, transparent)"
+                      : "transparent",
+                  }}
+                />
+              );
+            }
             const evs = byDay[key] ?? [];
             const dayNum = Number(key.split("-")[2]);
             const isToday = key === todayKey;
             const isSel = key === selected;
+            const density = densitySpec(evs.length);
+            // Compose the cell background: selected wins, then weekend
+            // tint, then nothing. Selected uses paper-2 so it reads as
+            // a single picked day; weekend uses a softer 55% paper-2.
+            const cellBg = isSel
+              ? "var(--app-bg-sunken)"
+              : isWeekend
+                ? "color-mix(in srgb, var(--app-bg-sunken) 55%, transparent)"
+                : "transparent";
             return (
               <button
                 key={i}
@@ -122,10 +173,20 @@ export default function MonthGrid({
                 className="relative aspect-square border-b border-r p-1 text-left transition active:scale-[0.97]"
                 style={{
                   borderColor: "var(--app-border)",
-                  background: isSel ? "var(--app-bg-sunken)" : "transparent",
+                  background: cellBg,
                 }}
-                aria-label={`${evs.length} events on ${key}`}
+                aria-label={`${evs.length} ${evs.length === 1 ? "event" : "events"} on ${key}`}
               >
+                {/* Today bar — a thin brand strip at the top of the cell
+                 *  is more legible at a glance than relying only on a
+                 *  filled day-number circle. */}
+                {isToday && (
+                  <span
+                    aria-hidden
+                    className="absolute left-0 right-0 top-0 h-[2px]"
+                    style={{ background: "var(--app-brand)" }}
+                  />
+                )}
                 <span
                   className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums"
                   style={{
@@ -135,17 +196,22 @@ export default function MonthGrid({
                 >
                   {dayNum}
                 </span>
-                {/* up to 3 dots by municipality */}
-                <div className="absolute bottom-1 left-1 right-1 flex flex-wrap gap-0.5">
-                  {evs.slice(0, 3).map((e, j) => (
-                    <span key={j} className="h-1.5 w-1.5 rounded-full" style={{ background: muniColor(e.municipality) }} aria-hidden />
-                  ))}
-                  {evs.length > 3 && (
-                    <span className="text-[8px] font-bold leading-none" style={{ color: "var(--app-ink-3)" }}>
-                      +{evs.length - 3}
-                    </span>
-                  )}
-                </div>
+                {/* Density signal — one dot whose size + tint scales with
+                 *  the day's event count. Reads cleaner at month scale
+                 *  than the previous "up to 3 muni dots + +N" pile. The
+                 *  per-event muni colors still surface on the picked
+                 *  day's list below. */}
+                {density && (
+                  <span
+                    aria-hidden
+                    className="absolute bottom-1.5 left-1/2 -translate-x-1/2 rounded-full"
+                    style={{
+                      width: density.size,
+                      height: density.size,
+                      background: density.tint,
+                    }}
+                  />
+                )}
               </button>
             );
           })}
