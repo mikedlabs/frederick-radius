@@ -32,10 +32,12 @@
  *     the same join the day a human activates them.
  */
 
-import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
+import { type Municipality } from "@/data/municipalities";
 import { haversineMeters, type LngLat } from "@/lib/geo";
-// Client-safe: NearbyNow ("use client") imports this lib, so it must
-// not pull @/lib/loaders/places (the ~12MB enrichment). Slim set.
+// A2.6: this module is server-side only (it's used by /api/nearby and
+// other route handlers). Client surfaces that need the lightweight
+// point → municipality utilities import from `@/lib/location` directly
+// so they don't drag places-client.json into the browser bundle.
 import { clientPlacesWithinRadius } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import {
@@ -44,70 +46,17 @@ import {
   type EventWithMeta,
 } from "@/lib/loaders/events";
 import { locations, type Location } from "@/lib/locations";
+import {
+  resolveMunicipality,
+  locationLabel,
+  type MunicipalityHit,
+} from "@/lib/location";
 
-// ───────────────────────────────────────────────────────────────────────────
-// point ▶ municipality
-// ───────────────────────────────────────────────────────────────────────────
-
-export type MunicipalityHit = {
-  municipality: Municipality;
-  /** True when the point falls inside the municipality's bbox. */
-  inside: boolean;
-  /** Great-circle metres from the point to the municipality centroid. */
-  distance_m: number;
-};
-
-function inBbox(p: LngLat, bbox: [number, number, number, number]): boolean {
-  const [minLng, minLat, maxLng, maxLat] = bbox;
-  return p.lng >= minLng && p.lng <= maxLng && p.lat >= minLat && p.lat <= maxLat;
-}
-
-/**
- * Resolve a coordinate to one of the county's 12 municipalities.
- *
- * Containment wins: if the point is inside exactly one bbox we return it
- * with `inside:true`. Bboxes can overlap at the seams (Mount Airy sits in
- * four counties); when several contain the point we keep the one whose
- * centroid is closest, which is the correct disambiguation for a user
- * standing near a town line. With no containing bbox we fall back to the
- * nearest centroid so the function is total — every point in (and near)
- * the county resolves to something, never null.
- *
- * Pure: depends only on the static MUNICIPALITIES table. No network, no
- * reverse-geocode API, no key, works offline and on the server.
- */
-export function resolveMunicipality(point: LngLat): MunicipalityHit {
-  let containing: MunicipalityHit | null = null;
-  let nearest: MunicipalityHit | null = null;
-
-  for (const m of MUNICIPALITIES) {
-    const distance_m = haversineMeters(point, m.centroid);
-    if (!nearest || distance_m < nearest.distance_m) {
-      nearest = { municipality: m, inside: false, distance_m };
-    }
-    if (inBbox(point, m.bbox)) {
-      if (!containing || distance_m < containing.distance_m) {
-        containing = { municipality: m, inside: true, distance_m };
-      }
-    }
-  }
-
-  // nearest is never null: MUNICIPALITIES is a non-empty const.
-  return containing ?? nearest!;
-}
-
-/**
- * A short, honest location label for the geolocation chip and headers.
- * Inside a town → "Frederick, MD". Outside but close → "Near Thurmont".
- * Far from every centroid → "Frederick County, MD" (generic but true —
- * the app's whole footprint is the county).
- */
-export function locationLabel(point: LngLat): string {
-  const hit = resolveMunicipality(point);
-  if (hit.inside) return `${hit.municipality.name}, MD`;
-  if (hit.distance_m <= 8_000) return `Near ${hit.municipality.name}`;
-  return "Frederick County, MD";
-}
+// Re-export for backward compat: lib/integrations/* still import these
+// from "@/lib/connect". They're server-only callers so the chain
+// staying intact for them is fine.
+export { resolveMunicipality, locationLabel };
+export type { MunicipalityHit };
 
 // ───────────────────────────────────────────────────────────────────────────
 // municipality ▶ civic context

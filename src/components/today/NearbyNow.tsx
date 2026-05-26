@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -14,12 +14,26 @@ import {
 } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { useMounted } from "@/hooks/useSaved";
-import { nearbyNow, isNearbyEmpty } from "@/lib/connect";
+// A2.6: import the NearbyContext TYPE only. The nearbyNow function
+// itself (and the places-client.json it transitively pulls in) now
+// lives behind /api/nearby. `import type` is erased at build, so this
+// line costs zero bytes in the client bundle.
+import type { NearbyContext } from "@/lib/connect";
 import { formatDistance } from "@/lib/geo";
 import { formatEventWhen } from "@/lib/loaders/events";
 import PlaceCard from "@/components/place/PlaceCard";
 import LiveDot from "@/components/ui/LiveDot";
 import { haptic } from "@/lib/haptics";
+
+// Tiny pure helper — was previously imported from lib/connect, but
+// inlining it lets us drop the connect runtime import entirely.
+function isNearbyEmpty(ctx: NearbyContext): boolean {
+  return (
+    ctx.counts.openPlaces === 0 &&
+    ctx.counts.liveEvents === 0 &&
+    ctx.counts.upcomingEvents === 0
+  );
+}
 
 /**
  * NearbyNow — the location-aware, county-wide "what's around me right
@@ -44,14 +58,36 @@ export default function NearbyNow() {
   const mounted = useMounted();
   const { state, request, clear } = useGeolocation();
 
-  // Pure, on-device join over static data. Recompute only when the
-  // resolved position changes.
-  const ctx = useMemo(() => {
-    if (state.status !== "granted") return null;
-    return nearbyNow(
-      { lng: state.position.lng, lat: state.position.lat },
-      { now: new Date(), limit: 6 },
-    );
+  // Fetch the join from /api/nearby whenever the resolved position
+  // changes. A small AbortController guard so a fast position swap
+  // (e.g. user moves between towns while loading) doesn't show a
+  // stale answer. The result is request-scoped on the server, edge-
+  // cached with s-maxage=60.
+  const [ctx, setCtx] = useState<NearbyContext | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (state.status !== "granted") {
+      setCtx(null);
+      setLoading(false);
+      return;
+    }
+    const { lng, lat } = state.position;
+    const ctrl = new AbortController();
+    setLoading(true);
+    fetch(`/api/nearby?lng=${lng}&lat=${lat}&limit=6`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: NearbyContext) => {
+        setCtx(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (err && err.name !== "AbortError") {
+          setCtx(null);
+          setLoading(false);
+        }
+      });
+    return () => ctrl.abort();
   }, [state]);
 
   // Until mounted, render nothing — useGeolocation hydrates from cache in
@@ -126,7 +162,39 @@ export default function NearbyNow() {
   }
 
   // ── Granted: the connected, county-wide nearby picture ───────────────
-  if (!ctx) return null;
+  // First render after grant: the /api/nearby fetch hasn't returned
+  // yet. Show a small loading row that matches the granted-state
+  // layout so there's no jump when context arrives.
+  if (!ctx) {
+    if (loading) {
+      return (
+        <section
+          className={SECTION_CARD}
+          style={{ borderColor: "var(--app-border)" }}
+          aria-label="Around you"
+          aria-busy="true"
+        >
+          <div className="flex items-center gap-3">
+            <span
+              aria-hidden
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
+                color: "var(--app-brand)",
+              }}
+            >
+              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2} />
+            </span>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              Finding what&apos;s around you…
+            </p>
+          </div>
+        </section>
+      );
+    }
+    // Fetch failed silently (e.g. offline). Don't show a broken slot.
+    return null;
+  }
   const empty = isNearbyEmpty(ctx);
 
   return (
