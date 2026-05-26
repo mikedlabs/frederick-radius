@@ -5,16 +5,37 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
 import PlaceList from "@/components/place/PlaceList";
-import IconStamp from "@/components/ui/IconStamp";
-import CategoryIcon from "@/components/place/CategoryIcon";
 import EventCard from "@/components/event/EventCard";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
-import StatStrip from "@/components/ui/StatStrip";
 import SectionHeading from "@/components/ui/SectionHeading";
-import { CATEGORIES, TOP_CATEGORIES } from "@/data/categories";
 
 export const revalidate = 600;
+
+/**
+ * Town page — rebuilt to three answers instead of seven sections.
+ *
+ * Per the architecture review: a town page should answer "what's
+ * here / what's happening / how to get there" — not be a four-cell
+ * stat dashboard with parallel browse rails.
+ *
+ * New spine:
+ *   1. Photo hero — name + blurb + type/era/population overlay
+ *   2. One-line description
+ *   3. Worth your time — top 8 places (grid by default)
+ *   4. Looks like {town} — photo mosaic (4+ photo-backed places)
+ *   5. Upcoming in {town} — max 4 events (empty state shows the
+ *      submit-an-event door + a nearby fallback)
+ *
+ * What got cut
+ *   - StatStrip (Places / Verified / Categories / Events counts) —
+ *     generic numbers without signal
+ *   - "Around {town}" category-tile row — duplicate browse axis;
+ *     the place list and the global /category/[slug] surfaces already
+ *     do this work
+ *
+ * The page is about the town, not about the directory's shape.
+ */
 
 export async function generateStaticParams() {
   return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
@@ -50,40 +71,23 @@ export default async function MunicipalityPage(
 
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
-  const verifiedCount = places.filter((p) => p.is_verified).length;
 
   // A real photo FROM this town for the hero (highest feature score
   // with a Google photo). Never stock or fabricated — if none, a
   // System-Black gradient carries the name instead.
   const heroPhoto = places.find((p) => p.google_photo_url)?.google_photo_url ?? null;
-
-  const categoryCounts = TOP_CATEGORIES
-    .map((c) => ({
-      c,
-      n: places.filter((p) => {
-        const cat = CATEGORIES.find((x) => x.slug === p.category);
-        return p.category === c.slug || cat?.parent === c.slug;
-      }).length,
-    }))
-    .filter((x) => x.n > 0)
-    .sort((a, b) => b.n - a.n);
-
   const placesWithPhotos = places.filter((p) => p.google_photo_url);
-  const townStats = [
-    { label: "Places", value: places.length },
-    { label: "Verified", value: verifiedCount },
-    { label: "Categories", value: categoryCounts.length },
-    { label: "Events", value: upcomingEvents.length },
-  ];
 
   return (
     <div className="relative space-y-6">
       <PageBloom variant="single" />
-      {/* Photo hero — image-forward, the town as a place not a row */}
+
+      {/* Photo hero — the place as a place, not a row. The image
+          carries identity; the overlay carries facts. */}
       <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-60">
           {heroPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element -- key-safe proxied Google photo; plain img avoids a domain allowlist
+            // eslint-disable-next-line @next/next/no-img-element -- proxied photo; img avoids the domain allowlist dance
             <img src={heroPhoto} alt="" className="h-full w-full object-cover" />
           ) : (
             <div
@@ -106,65 +110,27 @@ export default async function MunicipalityPage(
         </div>
       </header>
 
+      {/* The one-line context. The full description is in metadata for
+          SEO; this is the human read. */}
       <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         {m.description}
       </p>
 
-      <StatStrip stats={townStats} eyebrow={`Across ${m.name}`} />
-
-      {/* Visual category tiles — 2-up, tappable, color + glyph + count */}
-      {categoryCounts.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-            Around {m.name}
-          </h2>
-          <div className="grid grid-cols-2 gap-2">
-            {categoryCounts.map(({ c, n }) => (
-              <Link
-                key={c.slug}
-                href={`/category/${c.slug}`}
-                className="hover-lift relative flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] border p-3 transition"
-                style={{
-                  borderColor: "var(--app-border)",
-                  background: `linear-gradient(135deg, ${c.color}1f, ${c.color}08)`,
-                }}
-              >
-                <IconStamp accent={c.color} size="md">
-                  <CategoryIcon
-                    slug={c.slug}
-                    strokeWidth={1.75}
-                    className="h-[18px] w-[18px]"
-                  />
-                </IconStamp>
-                <span className="min-w-0">
-                  <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                    {c.name}
-                  </span>
-                  <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                    {n} {n === 1 ? "place" : "places"}
-                  </span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Worth your time — PlaceList lets the visitor flip between
-          a 2-up photo grid (visual browsing) and a dense list (fast
-          scanning). Town page defaults to grid; the user's choice
-          persists across surfaces via localStorage. */}
+      {/* Worth your time — the answer to "what's here." Top 8 by
+          feature score; grid-by-default so a scroll feels like a
+          gallery, not a list. */}
       <section className="space-y-2.5">
         <SectionHeading title="Worth your time" />
         <PlaceList
-          places={places.slice(0, 12)}
+          places={places.slice(0, 8)}
           initialLayout="grid"
           emptyMessage={`We're still seeding places for ${m.name}. Check back soon, or submit a place you love.`}
         />
       </section>
 
-      {/* Photo wall — six tiles from THIS town. The page-level
-          identity beat: a column of pictures of a real place. */}
+      {/* Photo wall — the page-level identity beat. A column of
+          pictures of a real place. Only renders when there are enough
+          photo-backed places to fill it. */}
       {placesWithPhotos.length >= 4 && (
         <section className="space-y-3">
           <SectionHeading title={`Looks like ${m.name}`} />
@@ -172,8 +138,8 @@ export default async function MunicipalityPage(
         </section>
       )}
 
-      {/* Upcoming — kept tight (max 4); the page is about the place,
-          not an event directory. */}
+      {/* Upcoming — answer to "what's happening." Kept tight (max 4);
+          empty state surfaces the submit door + a nearby fallback. */}
       {(upcomingEvents.length > 0 || BY_TOWN_ENABLED) && (
         <section className="space-y-2.5">
           <SectionHeading
