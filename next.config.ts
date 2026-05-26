@@ -49,6 +49,10 @@ const nextConfig: NextConfig = {
       { source: "/discover", destination: "/now", permanent: true },
       // /today renamed to /now (the home page is about NOW, not "today").
       { source: "/today", destination: "/now", permanent: true },
+      // /map renamed to /browse (one spatial tab — Browse — that
+      // hosts both the pan map and the within-reach radius mode in
+      // a single mental model).
+      { source: "/map", destination: "/browse", permanent: true },
     ];
   },
 };
