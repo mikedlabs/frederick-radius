@@ -212,14 +212,24 @@ export default function PlaceCard({
                 <> · {formatDistance(place.distance_m)}</>
               )}
             </p>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <PlaceStatus status={place.open_status} className="!text-[12px]" />
-              <Rave
-                rating={place.google_rating}
-                count={place.google_rating_count}
-                className="!text-[12px]"
-              />
-            </div>
+            {/* Reason chips on the tile variant — same producer as the
+                grid variant. Falls back to the legacy status+rating
+                row only if placeReasons() returns empty. */}
+            {(() => {
+              const reasons = placeReasons(place);
+              return reasons.length > 0 ? (
+                <ReasonChipRow reasons={reasons} className="pt-0.5" />
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <PlaceStatus status={place.open_status} className="!text-[12px]" />
+                  <Rave
+                    rating={place.google_rating}
+                    count={place.google_rating_count}
+                    className="!text-[12px]"
+                  />
+                </div>
+              );
+            })()}
           </div>
         </button>
         <div className="absolute right-2 top-2 z-10">
@@ -367,17 +377,26 @@ export default function PlaceCard({
           {cat?.name ?? place.category}
           {kf && <> · {kf}</>}
         </p>
-        {!compact && (
-          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <PlaceStatus status={place.open_status} />
-            <Rave rating={place.google_rating} count={place.google_rating_count} />
-            {place.price_band && (
-              <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
-                {"$".repeat(place.price_band)}
-              </span>
-            )}
-          </div>
-        )}
+        {!compact && (() => {
+          // Reason chips on the row variant — same producer as grid +
+          // tile. Falls back to the legacy status / rating / price row
+          // only if placeReasons() returns nothing.
+          const reasons = placeReasons(place);
+          if (reasons.length > 0) {
+            return <ReasonChipRow reasons={reasons} className="mt-2" />;
+          }
+          return (
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <PlaceStatus status={place.open_status} />
+              <Rave rating={place.google_rating} count={place.google_rating_count} />
+              {place.price_band && (
+                <span className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+                  {"$".repeat(place.price_band)}
+                </span>
+              )}
+            </div>
+          );
+        })()}
       </div>
       <div className="relative z-10 self-start">
         <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
