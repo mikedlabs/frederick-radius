@@ -591,6 +591,34 @@ html.dark .shimmer::after {
 }
 
 /* ─────────────────────────────────────────────────────
+ * Pulse-dot — the small "this is live data" indicator
+ * used in the /pulse hero eyebrow. A solid dot with a
+ * radiating ring that gently breathes; respects
+ * prefers-reduced-motion. The dot's color is set
+ * inline (sage for all-clear, danger for active).
+ * ───────────────────────────────────────────────────── */
+.pulse-dot {
+  position: relative;
+}
+.pulse-dot::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.5;
+  animation: pulse-dot-ring 2s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+@keyframes pulse-dot-ring {
+  0%   { transform: scale(0.85); opacity: 0.45; }
+  80%  { transform: scale(2.4);  opacity: 0;    }
+  100% { transform: scale(2.4);  opacity: 0;    }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot::before { animation: none; }
+}
+
+/* ─────────────────────────────────────────────────────
  * Save micro-interaction — a quick overshoot pop on the
  * bookmark glyph + a one-shot radiating ring. The button
  * mounts the .save-ring only for ~520ms after a fresh
