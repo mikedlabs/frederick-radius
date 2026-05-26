@@ -1,0 +1,23 @@
+# Lighthouse audit: after-a1-narrow
+
+Run at 2026-05-26T19:33:18.976Z
+Base: http://localhost:3000
+
+| Page | Perf | A11y | Best | SEO | TTFB | LCP | CLS | TBT | FCP |
+|---|---|---|---|---|---|---|---|---|---|
+| `/now` | 🟡 69 | 🟢 98 | 🟢 93 | 🟢 100 | 1.78 s | 3.76 s | 0.395 | 91 ms | 1.20 s |
+| `/browse` | error | error | error | error | error | error | error | error | error |
+| `/events` | 🟡 73 | 🟢 97 | 🟢 93 | 🟢 100 | 456 ms | 9.79 s | 0.000 | 99 ms | 1.80 s |
+| `/radius` | 🟡 79 | 🟢 96 | 🟢 93 | 🟢 100 | 4 ms | 5.19 s | 0.000 | 119 ms | 1.20 s |
+| `/places/carroll-creek-linear-park-frederick` | 🟡 71 | 🟢 100 | 🟡 89 | 🟢 100 | 3 ms | 14.82 s | 0.000 | 112 ms | 1.20 s |
+
+Targets: Perf >= 90, A11y >= 95, BP >= 95, SEO >= 95.
+LCP < 2.5s, CLS < 0.1, TBT < 200ms, TTFB < 200ms.
+
+## Failures
+
+- `http://localhost:3000/browse`
+
+```
+Runtime error encountered: The page did not paint any content. Please ensure you keep the browser window in the foreground during the load and try again. (NO_FCP)
+```
