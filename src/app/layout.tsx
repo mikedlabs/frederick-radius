@@ -121,8 +121,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning on <html> + <body> is the Next.js-
+    // recommended fix for the "Hydration failed because the server
+    // rendered HTML didn't match the client" error caused by browser
+    // extensions that inject attributes or stray DOM nodes into the
+    // top of the document (1Password, Grammarly, Dark Reader, the
+    // "iki" automation extension, etc.). It scopes the suppression to
+    // the two elements extensions typically touch — it does NOT
+    // disable hydration checking for the rest of the tree, so a real
+    // SSR/client mismatch inside one of our components still surfaces.
+    // Ref: https://nextjs.org/docs/messages/react-hydration-error
+    <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={cn(
           sans.variable,
           display.variable,
