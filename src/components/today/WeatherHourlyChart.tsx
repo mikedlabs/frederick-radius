@@ -180,37 +180,33 @@ export default function WeatherHourlyChart({ hours }: Props) {
             className="wx-curve"
           />
 
-          {/* Now marker — pulsing dot + radiating ring. */}
+          {/* Now marker — a single static dot with a paper-cream
+           *  outline so it reads as "you are here" without the
+           *  expanding-ring effect that was reading as alarmy. */}
           <circle
             cx={xFor(nowIdx)}
             cy={yFor(temps[nowIdx])}
-            r={6}
-            fill="var(--app-brand)"
-            opacity={0.35}
-            className="wx-now-ring"
-          />
-          <circle
-            cx={xFor(nowIdx)}
-            cy={yFor(temps[nowIdx])}
-            r={3.5}
+            r={4}
             fill="var(--app-brand)"
             stroke="var(--app-bg-elevated-solid)"
-            strokeWidth={1.5}
-            className="wx-now-dot"
+            strokeWidth={2}
           />
         </svg>
 
-        {/* Hour cells — labels + glyph for each tick. Absolutely
-         *  positioned so they align with the SVG's xFor() math. */}
-        <div className="relative mt-1 h-8">
+        {/* Hour cells — temp + glyph + hour for each tick. Absolutely
+         *  positioned so they align with the SVG's xFor() math. The
+         *  temperature is the primary read (top), the glyph adds
+         *  conditions, and the hour anchors it in time. Apple Weather
+         *  uses the same stacking. */}
+        <div className="relative mt-1 h-12">
           {hours.map((h, i) => {
             const Hi = ICONS[iconForShortForecast(h.shortForecast)];
             const pct = h.probabilityOfPrecipitation ?? 0;
             // Translate the SVG xFor() value (in viewBox units, 0..W)
             // to a CSS left % so the cells track the curve regardless
-            // of card width. Add the PAD_X-derived 4% inset so the
-            // first cell isn't crammed against the card edge.
+            // of card width.
             const leftPct = ((xFor(i) / W) * 100).toFixed(2);
+            const isNow = i === nowIdx;
             return (
               <div
                 key={`cell-${i}`}
@@ -220,15 +216,21 @@ export default function WeatherHourlyChart({ hours }: Props) {
                   animationDelay: `${0.4 + i * 0.04}s`,
                 }}
               >
+                <span
+                  className="text-[11px] font-semibold tabular-nums leading-none"
+                  style={{ color: isNow ? "var(--app-brand)" : "var(--app-ink)" }}
+                >
+                  {h.temperature}°
+                </span>
                 <Hi
                   className="h-3 w-3"
                   strokeWidth={2}
-                  style={{ color: i === nowIdx ? "var(--app-brand)" : "var(--app-ink-3)" }}
+                  style={{ color: isNow ? "var(--app-brand)" : "var(--app-ink-3)" }}
                   aria-hidden
                 />
                 <span
-                  className="text-[9px] font-semibold tabular-nums"
-                  style={{ color: i === nowIdx ? "var(--app-ink)" : "var(--app-ink-3)" }}
+                  className="text-[9px] font-semibold tabular-nums leading-none"
+                  style={{ color: isNow ? "var(--app-ink)" : "var(--app-ink-3)" }}
                 >
                   {hourLabel(h.startTime)}
                 </span>
