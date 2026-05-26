@@ -1,0 +1,767 @@
+{
+  "spring": [
+    {
+      "slug": "001",
+      "src": "/images/seasons/spring/001.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#5c5c51"
+    },
+    {
+      "slug": "002",
+      "src": "/images/seasons/spring/002.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#a09883"
+    },
+    {
+      "slug": "004",
+      "src": "/images/seasons/spring/004.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#799368"
+    },
+    {
+      "slug": "008",
+      "src": "/images/seasons/spring/008.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#968f68"
+    },
+    {
+      "slug": "009",
+      "src": "/images/seasons/spring/009.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#616432"
+    },
+    {
+      "slug": "010",
+      "src": "/images/seasons/spring/010.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#808673"
+    },
+    {
+      "slug": "013",
+      "src": "/images/seasons/spring/013.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#726350"
+    },
+    {
+      "slug": "015",
+      "src": "/images/seasons/spring/015.jpg",
+      "width": 1920,
+      "height": 1475,
+      "blur": "#d3cec9"
+    },
+    {
+      "slug": "016",
+      "src": "/images/seasons/spring/016.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#b99474"
+    },
+    {
+      "slug": "017",
+      "src": "/images/seasons/spring/017.jpg",
+      "width": 1920,
+      "height": 3417,
+      "blur": "#a7806b"
+    },
+    {
+      "slug": "018",
+      "src": "/images/seasons/spring/018.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#a2aa9f"
+    },
+    {
+      "slug": "Frederick Night",
+      "src": "/images/seasons/spring/Frederick Night.jpg",
+      "width": 1920,
+      "height": 1077,
+      "blur": "#837166"
+    },
+    {
+      "slug": "HDR_0002",
+      "src": "/images/seasons/spring/HDR_0002.jpg",
+      "width": 1920,
+      "height": 1078,
+      "blur": "#c2a39e"
+    },
+    {
+      "slug": "PG40-41 Replacement",
+      "src": "/images/seasons/spring/PG40-41 Replacement.jpg",
+      "width": 1920,
+      "height": 1049,
+      "blur": "#777a2d"
+    },
+    {
+      "slug": "SPRING NEW 1",
+      "src": "/images/seasons/spring/SPRING NEW 1.jpg",
+      "width": 1920,
+      "height": 1280,
+      "blur": "#b5a078"
+    },
+    {
+      "slug": "SPRING NEW 2",
+      "src": "/images/seasons/spring/SPRING NEW 2.jpg",
+      "width": 1920,
+      "height": 1279,
+      "blur": "#6f8823"
+    },
+    {
+      "slug": "SPRING NEW 3",
+      "src": "/images/seasons/spring/SPRING NEW 3.jpg",
+      "width": 1920,
+      "height": 3417,
+      "blur": "#738081"
+    },
+    {
+      "slug": "aerial-view-baseball-field",
+      "src": "/images/seasons/spring/aerial-view-baseball-field.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#a69559"
+    },
+    {
+      "slug": "aerial-view-of-town",
+      "src": "/images/seasons/spring/aerial-view-of-town.jpg",
+      "width": 1920,
+      "height": 1078,
+      "blur": "#8a7872"
+    },
+    {
+      "slug": "circular-park-layout",
+      "src": "/images/seasons/spring/circular-park-layout.jpg",
+      "width": 1920,
+      "height": 3417,
+      "blur": "#514b4d"
+    },
+    {
+      "slug": "city-skyline-at-sunset",
+      "src": "/images/seasons/spring/city-skyline-at-sunset.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#a18779"
+    },
+    {
+      "slug": "hazardous-air-quality-city",
+      "src": "/images/seasons/spring/hazardous-air-quality-city.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#ccad8a"
+    }
+  ],
+  "summer": [
+    {
+      "slug": "004",
+      "src": "/images/seasons/summer/004.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#8a9767"
+    },
+    {
+      "slug": "011",
+      "src": "/images/seasons/summer/011.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#937d71"
+    },
+    {
+      "slug": "016",
+      "src": "/images/seasons/summer/016.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#998071"
+    },
+    {
+      "slug": "017",
+      "src": "/images/seasons/summer/017.jpg",
+      "width": 1756,
+      "height": 2231,
+      "blur": "#63623a"
+    },
+    {
+      "slug": "021",
+      "src": "/images/seasons/summer/021.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#5a3b2c"
+    },
+    {
+      "slug": "022",
+      "src": "/images/seasons/summer/022.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#b7b7af"
+    },
+    {
+      "slug": "024",
+      "src": "/images/seasons/summer/024.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#aaaaa7"
+    },
+    {
+      "slug": "025",
+      "src": "/images/seasons/summer/025.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#d5cecf"
+    },
+    {
+      "slug": "030",
+      "src": "/images/seasons/summer/030.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#bbbeb5"
+    },
+    {
+      "slug": "036",
+      "src": "/images/seasons/summer/036.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#6d5950"
+    },
+    {
+      "slug": "038",
+      "src": "/images/seasons/summer/038.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#7f4e40"
+    },
+    {
+      "slug": "042",
+      "src": "/images/seasons/summer/042.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#7a7f60"
+    },
+    {
+      "slug": "056",
+      "src": "/images/seasons/summer/056.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#b1aaa9"
+    },
+    {
+      "slug": "074",
+      "src": "/images/seasons/summer/074.jpg",
+      "width": 1920,
+      "height": 3418,
+      "blur": "#979ea6"
+    },
+    {
+      "slug": "079",
+      "src": "/images/seasons/summer/079.jpg",
+      "width": 1251,
+      "height": 2228,
+      "blur": "#282a28"
+    },
+    {
+      "slug": "083",
+      "src": "/images/seasons/summer/083.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#916453"
+    },
+    {
+      "slug": "084",
+      "src": "/images/seasons/summer/084.jpg",
+      "width": 1920,
+      "height": 1078,
+      "blur": "#7c8071"
+    },
+    {
+      "slug": "085",
+      "src": "/images/seasons/summer/085.jpg",
+      "width": 1920,
+      "height": 1078,
+      "blur": "#63b7c3"
+    },
+    {
+      "slug": "087",
+      "src": "/images/seasons/summer/087.jpg",
+      "width": 1920,
+      "height": 1078,
+      "blur": "#cac1b4"
+    },
+    {
+      "slug": "089",
+      "src": "/images/seasons/summer/089.jpg",
+      "width": 1920,
+      "height": 1438,
+      "blur": "#4b5843"
+    },
+    {
+      "slug": "098",
+      "src": "/images/seasons/summer/098.jpg",
+      "width": 1920,
+      "height": 1920,
+      "blur": "#684b11"
+    },
+    {
+      "slug": "105",
+      "src": "/images/seasons/summer/105.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#c0a29e"
+    },
+    {
+      "slug": "SUMMER CARROL CREEK",
+      "src": "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+      "width": 1920,
+      "height": 1078,
+      "blur": "#857247"
+    },
+    {
+      "slug": "SUMMER FIREWORKS",
+      "src": "/images/seasons/summer/SUMMER FIREWORKS.jpg",
+      "width": 1920,
+      "height": 2571,
+      "blur": "#9f2e49"
+    },
+    {
+      "slug": "SUMMER MUST USE",
+      "src": "/images/seasons/summer/SUMMER MUST USE.jpg",
+      "width": 1248,
+      "height": 2222,
+      "blur": "#52603e"
+    },
+    {
+      "slug": "SUMMER NEW 7",
+      "src": "/images/seasons/summer/SUMMER NEW 7.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#afa6aa"
+    },
+    {
+      "slug": "SUMMER NEW 9",
+      "src": "/images/seasons/summer/SUMMER NEW 9.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#c89843"
+    },
+    {
+      "slug": "SUMMER POWER LINES",
+      "src": "/images/seasons/summer/SUMMER POWER LINES.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#999498"
+    },
+    {
+      "slug": "SUMMER STREETS",
+      "src": "/images/seasons/summer/SUMMER STREETS.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#8d8987"
+    }
+  ],
+  "fall": [
+    {
+      "slug": "001",
+      "src": "/images/seasons/fall/001.jpg",
+      "width": 1920,
+      "height": 3413,
+      "blur": "#e4ad0c"
+    },
+    {
+      "slug": "002",
+      "src": "/images/seasons/fall/002.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#90755c"
+    },
+    {
+      "slug": "007",
+      "src": "/images/seasons/fall/007.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#8a7b62"
+    },
+    {
+      "slug": "010",
+      "src": "/images/seasons/fall/010.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#5a6b86"
+    },
+    {
+      "slug": "012",
+      "src": "/images/seasons/fall/012.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#b1a0aa"
+    },
+    {
+      "slug": "013",
+      "src": "/images/seasons/fall/013.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#ba966b"
+    },
+    {
+      "slug": "015",
+      "src": "/images/seasons/fall/015.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#838a59"
+    },
+    {
+      "slug": "016",
+      "src": "/images/seasons/fall/016.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#a58972"
+    },
+    {
+      "slug": "018",
+      "src": "/images/seasons/fall/018.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#89643f"
+    },
+    {
+      "slug": "021",
+      "src": "/images/seasons/fall/021.jpg",
+      "width": 1920,
+      "height": 1279,
+      "blur": "#464e35"
+    },
+    {
+      "slug": "022",
+      "src": "/images/seasons/fall/022.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#87735a"
+    },
+    {
+      "slug": "023",
+      "src": "/images/seasons/fall/023.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#bb8448"
+    },
+    {
+      "slug": "024",
+      "src": "/images/seasons/fall/024.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#7a655a"
+    },
+    {
+      "slug": "025",
+      "src": "/images/seasons/fall/025.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#c4a391"
+    },
+    {
+      "slug": "027",
+      "src": "/images/seasons/fall/027.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#53432d"
+    },
+    {
+      "slug": "028",
+      "src": "/images/seasons/fall/028.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#765e2f"
+    },
+    {
+      "slug": "029",
+      "src": "/images/seasons/fall/029.jpg",
+      "width": 1920,
+      "height": 2786,
+      "blur": "#ab6e20"
+    },
+    {
+      "slug": "030",
+      "src": "/images/seasons/fall/030.jpg",
+      "width": 1725,
+      "height": 3070,
+      "blur": "#a9a094"
+    },
+    {
+      "slug": "039",
+      "src": "/images/seasons/fall/039.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#c7b7ab"
+    },
+    {
+      "slug": "043",
+      "src": "/images/seasons/fall/043.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#706958"
+    },
+    {
+      "slug": "049",
+      "src": "/images/seasons/fall/049.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#ad8c35"
+    },
+    {
+      "slug": "052",
+      "src": "/images/seasons/fall/052.jpg",
+      "width": 1920,
+      "height": 1078,
+      "blur": "#687084"
+    },
+    {
+      "slug": "053",
+      "src": "/images/seasons/fall/053.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#6c8c67"
+    },
+    {
+      "slug": "054",
+      "src": "/images/seasons/fall/054.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#93a493"
+    },
+    {
+      "slug": "056",
+      "src": "/images/seasons/fall/056.jpg",
+      "width": 1920,
+      "height": 1279,
+      "blur": "#c6c7c7"
+    },
+    {
+      "slug": "058",
+      "src": "/images/seasons/fall/058.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#3d4e55"
+    },
+    {
+      "slug": "FALL COLORS",
+      "src": "/images/seasons/fall/FALL COLORS.jpg",
+      "width": 1920,
+      "height": 1078,
+      "blur": "#936248"
+    },
+    {
+      "slug": "FALL LOOKING DOWN",
+      "src": "/images/seasons/fall/FALL LOOKING DOWN.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#966c3c"
+    },
+    {
+      "slug": "FALL NEW 6",
+      "src": "/images/seasons/fall/FALL NEW 6.jpg",
+      "width": 1920,
+      "height": 3417,
+      "blur": "#7c7054"
+    }
+  ],
+  "winter": [
+    {
+      "slug": "001",
+      "src": "/images/seasons/winter/001.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#5e5349"
+    },
+    {
+      "slug": "004",
+      "src": "/images/seasons/winter/004.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#6a6a6a"
+    },
+    {
+      "slug": "005",
+      "src": "/images/seasons/winter/005.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#68636a"
+    },
+    {
+      "slug": "006",
+      "src": "/images/seasons/winter/006.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#a39682"
+    },
+    {
+      "slug": "007",
+      "src": "/images/seasons/winter/007.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#54423f"
+    },
+    {
+      "slug": "009",
+      "src": "/images/seasons/winter/009.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#19140d"
+    },
+    {
+      "slug": "010",
+      "src": "/images/seasons/winter/010.jpg",
+      "width": 1920,
+      "height": 1440,
+      "blur": "#8e8484"
+    },
+    {
+      "slug": "011",
+      "src": "/images/seasons/winter/011.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#76513c"
+    },
+    {
+      "slug": "012",
+      "src": "/images/seasons/winter/012.jpg",
+      "width": 1920,
+      "height": 1440,
+      "blur": "#575552"
+    },
+    {
+      "slug": "013",
+      "src": "/images/seasons/winter/013.jpg",
+      "width": 1920,
+      "height": 1440,
+      "blur": "#b19381"
+    },
+    {
+      "slug": "014",
+      "src": "/images/seasons/winter/014.jpg",
+      "width": 1920,
+      "height": 1440,
+      "blur": "#c2bdbc"
+    },
+    {
+      "slug": "015",
+      "src": "/images/seasons/winter/015.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#936941"
+    },
+    {
+      "slug": "017",
+      "src": "/images/seasons/winter/017.jpg",
+      "width": 1920,
+      "height": 1920,
+      "blur": "#2e2135"
+    },
+    {
+      "slug": "018",
+      "src": "/images/seasons/winter/018.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#616161"
+    },
+    {
+      "slug": "019",
+      "src": "/images/seasons/winter/019.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#342c20"
+    },
+    {
+      "slug": "020",
+      "src": "/images/seasons/winter/020.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#777875"
+    },
+    {
+      "slug": "IMG_2732",
+      "src": "/images/seasons/winter/IMG_2732.jpg",
+      "width": 1920,
+      "height": 2400,
+      "blur": "#7b5664"
+    },
+    {
+      "slug": "PG134 Replacement",
+      "src": "/images/seasons/winter/PG134 Replacement.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#764b23"
+    },
+    {
+      "slug": "WINTER 3",
+      "src": "/images/seasons/winter/WINTER 3.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#9f8c67"
+    },
+    {
+      "slug": "WINTER BOATS",
+      "src": "/images/seasons/winter/WINTER BOATS.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#4b3233"
+    },
+    {
+      "slug": "WINTER COLOR",
+      "src": "/images/seasons/winter/WINTER COLOR.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#bcc0c4"
+    },
+    {
+      "slug": "WINTER NEW 4",
+      "src": "/images/seasons/winter/WINTER NEW 4.jpg",
+      "width": 1920,
+      "height": 1440,
+      "blur": "#e5e7ea"
+    },
+    {
+      "slug": "WINTER NEW 5",
+      "src": "/images/seasons/winter/WINTER NEW 5.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#9c5d45"
+    },
+    {
+      "slug": "WINTER NEW 6",
+      "src": "/images/seasons/winter/WINTER NEW 6.jpg",
+      "width": 1920,
+      "height": 3413,
+      "blur": "#e7e7e7"
+    },
+    {
+      "slug": "WINTER NEW 7",
+      "src": "/images/seasons/winter/WINTER NEW 7.jpg",
+      "width": 1920,
+      "height": 1079,
+      "blur": "#919492"
+    },
+    {
+      "slug": "WINTER NEW 8",
+      "src": "/images/seasons/winter/WINTER NEW 8.jpg",
+      "width": 1920,
+      "height": 1920,
+      "blur": "#544f4a"
+    },
+    {
+      "slug": "WINTER NEW 9",
+      "src": "/images/seasons/winter/WINTER NEW 9.jpg",
+      "width": 1920,
+      "height": 1080,
+      "blur": "#c2c0c0"
+    },
+    {
+      "slug": "WINTER SNOW",
+      "src": "/images/seasons/winter/WINTER SNOW.jpg",
+      "width": 1920,
+      "height": 1440,
+      "blur": "#aaa8a8"
+    }
+  ],
+  "generatedAt": "2026-05-26T15:43:27.604Z"
+}
