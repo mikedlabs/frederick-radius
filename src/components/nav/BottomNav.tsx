@@ -16,7 +16,11 @@ import { haptic } from "@/lib/haptics";
 const TABS = [
   { href: "/today", label: "Today", icon: Sun },
   { href: "/places", label: "Places", icon: BookOpen },
-  { href: "/radius", label: "Radius", icon: Disc },
+  // Per the master UI brief: route stays /radius (a product mechanic
+  // name), the visible label is "Near Me" (a user need name). The
+  // mechanic-name shows up in URLs, the user-need name shows up in
+  // the nav where it's read by a person making a decision.
+  { href: "/radius", label: "Near Me", icon: Disc },
   { href: "/map", label: "Map", icon: Map },
   { href: "/events", label: "Events", icon: Calendar },
 ] as const;
