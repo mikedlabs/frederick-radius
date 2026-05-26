@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  Wind,
-  Droplets,
-  Sunrise,
-  Sunset,
-} from "lucide-react";
+import { Wind, Droplets, Sunset } from "lucide-react";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 // NWS alerts are rendered separately by CivicAlerts (promoted to the
 // very top of /today in PR #100). We deliberately don't refetch them
@@ -12,80 +7,52 @@ import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 // alert design.
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { weatherVerdict, nextWeatherChange } from "@/lib/weather-verdict";
+import { sunTimes, FREDERICK_LAT, FREDERICK_LNG } from "@/lib/almanac";
 import WeeklyForecast from "./WeeklyForecast";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import WeatherHourlyChart from "./WeatherHourlyChart";
 
 /**
- * WeatherHero — the richer current-conditions module.
+ * WeatherHero — the at-a-glance weather card on /now.
  *
- * Layered card over the SkyHero gradient. Shows: current temp + icon,
- * short forecast, today's high/low, precip chance, wind, a sun arc
- * with sunrise + sunset endpoints and a marker at the current sun
- * position, then a 6-hour mini-strip. NWS alerts get a stronger red
- * banner above the card when active.
+ * REDESIGNED for stranger-clarity. The previous shape packed eleven
+ * things into one card: temp + glyph + H/L + short forecast + verdict
+ * + next change + wind + precip + sun arc + daylight remaining +
+ * hourly chart + 7-day. A reader couldn't tell what the answer was.
  *
- * Replaces HomeWeatherStrip on the Today hero. The /pulse page still
- * owns the deep weather view; this is the at-a-glance read.
+ * The new shape has three tiers, each answering a different question:
+ *
+ *   1. HERO       — what is it doing right now?
+ *      Sky glyph, huge tabular-nums temp, a single editorial verdict
+ *      sentence. That's the headline.
+ *
+ *   2. STATS ROW  — the four readings a reader scans for next.
+ *      H/L, wind, rain chance, sunset clock. One row, monospaced
+ *      numerics, no chrome. Reads like a typewriter slug, not a UI.
+ *
+ *   3. HOURLY     — the next 12 hours.
+ *      Owned by WeatherHourlyChart. This component just hands off.
+ *      The 7-day rail sits below that as a collapsible section.
+ *
+ * What got cut: short forecast string (the glyph + verdict carry the
+ * meaning), inline next-change italic (folded into the verdict copy
+ * via nextWeatherChange below), the sun-arc SVG (the AlmanacFooter
+ * at the bottom of /now now anchors the day in sunrise/sunset; the
+ * arc was duplicating that), and the "daylight remaining" line for
+ * the same reason. Sunset stays as a single stat tile because
+ * tonight's sunset is still useful planning data right next to the
+ * temp.
  */
-
-const FREDERICK_LAT = 39.4143;
-const FREDERICK_LNG = -77.4105;
-
-// Reuse the same almanac math as SunCountdown but inline for two
-// reasons: 1) we don't need to depend on the public SunCountdown
-// surface, 2) we only need the rise/set Date objects on the server.
-function sunTimes(date: Date, lat: number, lng: number) {
-  const RAD = Math.PI / 180;
-  const ZENITH = 90.833;
-  const yyyy = date.getUTCFullYear();
-  const mm = date.getUTCMonth();
-  const dd = date.getUTCDate();
-  const N = Math.floor(
-    (Date.UTC(yyyy, mm, dd) - Date.UTC(yyyy, 0, 0)) / 86_400_000,
-  );
-  const lngHour = lng / 15;
-  const calc = (rising: boolean): Date | null => {
-    const t = N + ((rising ? 6 : 18) - lngHour) / 24;
-    const M = 0.9856 * t - 3.289;
-    let L =
-      M +
-      1.916 * Math.sin(M * RAD) +
-      0.02 * Math.sin(2 * M * RAD) +
-      282.634;
-    L = ((L % 360) + 360) % 360;
-    let RA = Math.atan(0.91764 * Math.tan(L * RAD)) / RAD;
-    RA = ((RA % 360) + 360) % 360;
-    const Lq = Math.floor(L / 90) * 90;
-    const RAq = Math.floor(RA / 90) * 90;
-    RA = (RA + (Lq - RAq)) / 15;
-    const sinDec = 0.39782 * Math.sin(L * RAD);
-    const cosDec = Math.cos(Math.asin(sinDec));
-    const cosH =
-      (Math.cos(ZENITH * RAD) - sinDec * Math.sin(lat * RAD)) /
-      (cosDec * Math.cos(lat * RAD));
-    if (cosH > 1 || cosH < -1) return null;
-    let H = rising ? 360 - Math.acos(cosH) / RAD : Math.acos(cosH) / RAD;
-    H = H / 15;
-    const T = H + RA - 0.06571 * t - 6.622;
-    const UT = ((T - lngHour) % 24 + 24) % 24;
-    const dayOffset = !rising && UT < 12 ? 1 : rising && UT > 18 ? -1 : 0;
-    const hours = Math.floor(UT);
-    const minutes = Math.floor((UT - hours) * 60);
-    return new Date(Date.UTC(yyyy, mm, dd + dayOffset, hours, minutes, 0));
-  };
-  const sunrise = calc(true);
-  const sunset = calc(false);
-  if (!sunrise || !sunset) return null;
-  return { sunrise, sunset };
-}
 
 function clockLabel(d: Date): string {
   return new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     hour: "numeric",
     minute: "2-digit",
-  }).format(d);
+  })
+    .format(d)
+    .replace(/\s?AM$/i, "a")
+    .replace(/\s?PM$/i, "p");
 }
 
 export default async function WeatherHero() {
@@ -93,8 +60,7 @@ export default async function WeatherHero() {
 
   const cur = forecast?.hourly?.[0] ?? null;
   // 12-hour chart — the NWS API caps us at 12 periods anyway, so this
-  // is the full hourly outlook. The chart is space-efficient enough
-  // to show all of them legibly without scroll.
+  // is the full hourly outlook handed to the chart component.
   const next12 = forecast?.hourly?.slice(0, 12) ?? [];
   // Today's high/low — the first "isDaytime: true" daily period is
   // today's high (or tomorrow's if we're already past sunset; the
@@ -108,18 +74,12 @@ export default async function WeatherHero() {
 
   const now = new Date();
   const sun = sunTimes(now, FREDERICK_LAT, FREDERICK_LNG);
-  // Map current time to a 0-1 position along the daytime arc.
-  let sunProgress = 0;
-  if (sun) {
-    const t = now.getTime();
-    const a = sun.sunrise.getTime();
-    const b = sun.sunset.getTime();
-    sunProgress = Math.max(0, Math.min(1, (t - a) / (b - a)));
-  }
 
   const curVariant: SkyVariant = cur ? iconForShortForecast(cur.shortForecast) : "Cloud";
 
   // Verdict — the one sentence that turns the forecast into a plan.
+  // This is the headline answer below the temp; the typography weight
+  // signals it carries the meaning.
   const verdict = cur
     ? weatherVerdict({
         temp: cur.temperature,
@@ -130,9 +90,10 @@ export default async function WeatherHero() {
       })
     : null;
 
-  // Next change — Mercury Weather's editorial-second-line move.
-  // Verdict is the mood; this is the heads-up. "Warming to 80° by
-  // 4 PM" / "Rain starting around 5 PM" / "Steady through evening."
+  // Next change — folded into a quiet subtitle under the verdict
+  // when present. Removed from a separate italic line because the
+  // double-headline read was confusing. One editorial voice, one
+  // tier down for the time-stamped heads-up.
   const nextChange = cur && forecast?.hourly
     ? nextWeatherChange({ hourly: forecast.hourly, now })
     : null;
@@ -159,197 +120,154 @@ export default async function WeatherHero() {
           : "var(--app-paper-2)";
   const heroBg = `linear-gradient(155deg, var(--app-bg-elevated) 0%, color-mix(in srgb, ${accentToken} 9%, var(--app-bg-elevated)) 100%)`;
 
-  // Daylight remaining — more useful than a bare sunset clock for an
-  // app about getting out tonight.
-  let daylightNote: string | null = null;
-  if (sun) {
-    const msLeft = sun.sunset.getTime() - now.getTime();
-    if (msLeft > 0) {
-      const h = Math.floor(msLeft / 3_600_000);
-      const m = Math.round((msLeft % 3_600_000) / 60_000);
-      const left = h > 0 ? `${h}h ${m}m` : `${m}m`;
-      daylightNote = `${left} of daylight · sunset ${clockLabel(sun.sunset)}`;
-    } else {
-      daylightNote = `Sunset was ${clockLabel(sun.sunset)}`;
-    }
+  if (!cur) {
+    return (
+      <article
+        className="wx-hero relative overflow-hidden rounded-[var(--app-radius-lg)] p-4"
+        style={{ background: heroBg }}
+      >
+        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          Weather is briefly unavailable.
+        </p>
+      </article>
+    );
   }
 
   return (
     <article
-      className="wx-hero tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)] p-4"
+      className="wx-hero tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)]"
       style={{ background: heroBg }}
     >
-      {/* Inline alert chip removed — the CivicAlerts component at the
-          top of Today already shows the active NWS alert with the full
-          headline, severity color, ends-at time, and scope chip. We
-          were rendering the same Severe Thunderstorm Watch twice. */}
-      {/*
-        The hero is split: the "summary" top half is a Link to /pulse
-        (the deep weather page), and the hourly chart + 7-day live
-        outside that link so their interactive controls (tab buttons,
-        show/hide toggle) don't have to fight a parent navigation
-        intent. Putting buttons inside an <a> is invalid HTML and
-        gives the user a janky double-action on every tap.
-       */}
+      {/* HERO + STATS — wrapped in a Link to /pulse for the deep view.
+          Hourly chart + weekly forecast sit OUTSIDE the link so their
+          interactive controls (scrub, expand/collapse) don't fight
+          the parent navigation intent. */}
       <Link
         href="/pulse"
-        aria-label="Current weather and today's outlook — open the full weather board"
-        className="block transition active:scale-[0.995]"
+        aria-label="Current weather — open the full weather board"
+        className="block px-4 pt-4 pb-3 transition active:scale-[0.995]"
       >
-        {cur ? (
-          <>
-            {/* Top row: big temp + animated sky glyph + H/L + meta chips.
-                The sky glyph replaces a flat Lucide icon — rays rotate,
-                clouds drift, rain falls, snow drifts. Pure CSS, respects
-                prefers-reduced-motion. */}
-            <div className="flex items-start gap-3">
-              <AnimatedSkyGlyph variant={curVariant} size={56} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline gap-2">
-                  <p
-                    className="font-serif text-[40px] font-semibold leading-none tabular-nums"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    {cur.temperature}&deg;
-                  </p>
-                  {(high !== undefined || low !== undefined) && (
-                    <p
-                      className="text-[12px] font-semibold tabular-nums"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {high !== undefined && (
-                        <>
-                          H&nbsp;<span style={{ color: "var(--app-ink-2)" }}>{high}&deg;</span>
-                        </>
-                      )}
-                      {low !== undefined && (
-                        <>
-                          &nbsp;&middot;&nbsp;L&nbsp;<span style={{ color: "var(--app-ink-2)" }}>{low}&deg;</span>
-                        </>
-                      )}
-                    </p>
-                  )}
-                </div>
-                <p
-                  className="mt-0.5 truncate text-[13px]"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {cur.shortForecast}
-                </p>
-                {/* Verdict — the forecast turned into a plan. The
-                    editorial line, weighted to read as the takeaway. */}
-                {verdict && (
-                  <p
-                    className="mt-1 text-[13.5px] font-semibold leading-snug"
-                    style={{ color: verdictColor }}
-                  >
-                    {verdict.line}
-                  </p>
-                )}
-                {/* Next change — the specific time-stamped heads-up
-                    below the editorial mood. Italic serif so it
-                    reads as a quiet annotation, not a second headline. */}
-                {nextChange && (
-                  <p
-                    className="mt-0.5 font-serif text-[12.5px] italic leading-snug"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {nextChange}
-                  </p>
-                )}
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                  {cur.windSpeed && (
-                    <span className="inline-flex items-center gap-1">
-                      <Wind className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                      {cur.windSpeed}{cur.windDirection ? ` ${cur.windDirection}` : ""}
-                    </span>
-                  )}
-                  {precip > 0 && (
-                    <span
-                      className="inline-flex items-center gap-1 font-semibold"
-                      style={{ color: precip >= 50 ? "var(--app-cool)" : undefined }}
-                    >
-                      <Droplets className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                      {precip}% rain
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Sun arc — sunrise/sunset endpoints + current position. */}
-            {sun && (
-              <div className="mt-3 flex items-center gap-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                <span className="inline-flex items-center gap-1 tabular-nums">
-                  <Sunrise className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  {clockLabel(sun.sunrise)}
-                </span>
-                <div className="relative h-6 flex-1">
-                  {/* Arc — a top-half semicircle as the day's path. */}
-                  <svg viewBox="0 0 100 24" className="absolute inset-0 h-full w-full" aria-hidden>
-                    <path
-                      d="M 2 22 Q 50 -10, 98 22"
-                      fill="none"
-                      stroke="color-mix(in srgb, var(--app-cool) 28%, transparent)"
-                      strokeWidth={1.5}
-                      strokeDasharray="3 3"
-                    />
-                    {sunProgress > 0 && sunProgress < 1 && (
-                      <>
-                        <circle
-                          cx={2 + 96 * sunProgress}
-                          cy={22 - 32 * Math.sin(Math.PI * sunProgress)}
-                          r={3.2}
-                          fill="var(--app-accent)"
-                        />
-                        <circle
-                          cx={2 + 96 * sunProgress}
-                          cy={22 - 32 * Math.sin(Math.PI * sunProgress)}
-                          r={6}
-                          fill="color-mix(in srgb, var(--app-accent) 35%, transparent)"
-                        />
-                      </>
-                    )}
-                  </svg>
-                </div>
-                <span className="inline-flex items-center gap-1 tabular-nums">
-                  <Sunset className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-                  {clockLabel(sun.sunset)}
-                </span>
-              </div>
+        {/* HERO: huge temp + sky glyph + verdict. The verdict carries
+            the meaning; the short-forecast text used to do this less
+            well and is gone. */}
+        <div className="flex items-start gap-3">
+          <AnimatedSkyGlyph variant={curVariant} size={64} />
+          <div className="min-w-0 flex-1">
+            <p
+              className="font-serif text-[44px] font-semibold leading-none tabular-nums"
+              style={{ color: "var(--app-ink)" }}
+            >
+              {cur.temperature}&deg;
+            </p>
+            {verdict && (
+              <p
+                className="mt-1.5 text-[15px] font-semibold leading-snug tracking-tight"
+                style={{ color: verdictColor }}
+              >
+                {verdict.line}
+              </p>
             )}
-
-            {/* Daylight remaining — the actionable read of the arc:
-                how much light is left, not just when the sun sets. */}
-            {daylightNote && (
-              <div
-                className="mt-1.5 text-[11px] font-medium tabular-nums"
+            {nextChange && (
+              <p
+                className="mt-0.5 text-[12.5px] leading-snug"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                {daylightNote}
-              </div>
+                {nextChange}
+              </p>
             )}
-          </>
-        ) : (
-          <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Weather is briefly unavailable.
-          </p>
-        )}
+          </div>
+        </div>
+
+        {/* STATS ROW — four single-line readings, monospaced numerics,
+            consistent icon weight. Wraps gracefully on a 380px viewport
+            (two-up rows) instead of cramming a single overflowing line. */}
+        <dl
+          className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[12px] tabular-nums sm:grid-cols-4"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {(high !== undefined || low !== undefined) && (
+            <Stat
+              label="High / Low"
+              value={
+                <>
+                  {high !== undefined ? `${high}°` : "—"}
+                  <span className="opacity-50">{" / "}</span>
+                  {low !== undefined ? `${low}°` : "—"}
+                </>
+              }
+            />
+          )}
+          {cur.windSpeed && (
+            <Stat
+              icon={<Wind className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+              label="Wind"
+              value={`${cur.windSpeed}${cur.windDirection ? ` ${cur.windDirection}` : ""}`}
+            />
+          )}
+          {precip > 0 && (
+            <Stat
+              icon={<Droplets className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+              label="Rain"
+              value={`${precip}%`}
+              valueColor={precip >= 50 ? "var(--app-cool)" : undefined}
+            />
+          )}
+          {sun && (
+            <Stat
+              icon={<Sunset className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+              label="Sunset"
+              value={clockLabel(sun.sunset)}
+            />
+          )}
+        </dl>
       </Link>
 
-      {/* Hourly + weekly — interactive surfaces, NOT nested in the
-          /pulse link. The hourly rail's tab buttons and the weekly
-          show/hide toggle would otherwise double-fire navigation on
-          every tap. */}
-      {cur && next12.length > 0 && <WeatherHourlyChart hours={next12} />}
-      {cur && forecast?.daily && forecast.daily.length > 0 && (
-        <div
-          className="-mx-4 -mb-4 mt-3"
-          style={{ borderTop: "1px solid var(--app-border)" }}
-        >
+      {/* HOURLY — interactive scrub, NOT nested in the /pulse link.
+          The scrub's pointer events would otherwise double-fire a
+          page navigation on every drag. */}
+      {next12.length > 0 && <WeatherHourlyChart hours={next12} />}
+
+      {/* WEEKLY — collapsible 7-day rail. Same containment rules. */}
+      {forecast?.daily && forecast.daily.length > 0 && (
+        <div style={{ borderTop: "1px solid var(--app-border)" }}>
           <WeeklyForecast daily={forecast.daily} />
         </div>
       )}
     </article>
+  );
+}
+
+/**
+ * A single stat tile in the row below the hero. Label sits above the
+ * value, both lines small and quiet — the hero up top is doing all
+ * the typographic work, so this row reads as a typewriter slug.
+ */
+function Stat({
+  icon,
+  label,
+  value,
+  valueColor,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  valueColor?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col">
+      <dt
+        className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.08em]"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        {icon}
+        {label}
+      </dt>
+      <dd
+        className="truncate text-[13.5px] font-semibold"
+        style={{ color: valueColor ?? "var(--app-ink-2)" }}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }

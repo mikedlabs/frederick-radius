@@ -142,19 +142,32 @@ export default function WeatherHourlyChart({ hours }: Props) {
       if (temps[i] < temps[loIdx]) loIdx = i;
     }
 
-    // Daylight stops for the background gradient — one stop per
-    // hour, transitioning between warm (day) and cool (night) cream
-    // tints. Each stop offset is the hour's x position as %.
-    const dayStops = hours.map((h, i) => ({
-      offset: ((xFor(i) - PAD_X) / (W - 2 * PAD_X)) * 100,
-      color: h.isDaytime
-        ? "color-mix(in srgb, var(--app-accent) 14%, var(--app-bg-elevated-solid))"
-        : "color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-elevated-solid))",
-    }));
+    // Daylight bands — contiguous spans of isDaytime / not, so the
+    // chart can paint one quiet band per stretch instead of a per-
+    // hour gradient. Fewer, larger blocks read as "day vs night"
+    // instead of competing with the temp curve for attention.
+    const dayBands: Array<{ x0: number; x1: number; day: boolean }> = [];
+    {
+      let i = 0;
+      while (i < hours.length) {
+        const isDay = !!hours[i].isDaytime;
+        let j = i;
+        while (j + 1 < hours.length && !!hours[j + 1].isDaytime === isDay) j++;
+        // Half-step left/right so the bands butt cleanly between
+        // hour centers rather than leaving gutters or overlapping.
+        const x0 = i === 0 ? PAD_X : (xFor(i - 1) + xFor(i)) / 2;
+        const x1 =
+          j === hours.length - 1
+            ? W - PAD_X
+            : (xFor(j) + xFor(j + 1)) / 2;
+        dayBands.push({ x0, x1, day: isDay });
+        i = j + 1;
+      }
+    }
 
     return {
       W, H, PAD_X, PAD_TOP, PAD_BOTTOM, n, xFor, yFor, d, fill,
-      tMin, tMax, hiIdx, loIdx, dayStops,
+      tMin, tMax, hiIdx, loIdx, dayBands,
     };
   }, [hours]);
 
@@ -236,21 +249,6 @@ export default function WeatherHourlyChart({ hours }: Props) {
           aria-hidden
         >
           <defs>
-            {/* Daylight gradient — warm cream during isDaytime hours,
-             *  cool cream at night. The chart itself shows you where
-             *  the sun is. */}
-            <linearGradient
-              id="wx-daylight"
-              x1={geo.PAD_X}
-              y1={0}
-              x2={geo.W - geo.PAD_X}
-              y2={0}
-              gradientUnits="userSpaceOnUse"
-            >
-              {geo.dayStops.map((s, i) => (
-                <stop key={i} offset={`${s.offset.toFixed(2)}%`} stopColor={s.color} />
-              ))}
-            </linearGradient>
             {/* Temp-curve fill — fades from accent tint to nothing.
              *  Reads as the "weight" of the day's heat. */}
             <linearGradient id="wx-fill" x1="0" y1="0" x2="0" y2="1">
@@ -270,44 +268,27 @@ export default function WeatherHourlyChart({ hours }: Props) {
               <stop offset="0%" stopColor="var(--app-brand)" />
               <stop offset="100%" stopColor="var(--app-cool)" />
             </linearGradient>
-            {/* Precip bar gradient — slate fading at top so the bars
-             *  feel weather-y, not bar-chart-y. */}
-            <linearGradient id="wx-precip" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--app-cool)" stopOpacity={0.55} />
-              <stop offset="100%" stopColor="var(--app-cool)" stopOpacity={0.9} />
-            </linearGradient>
           </defs>
 
-          {/* Daylight backing — single rect filled with the per-hour
-           *  stop gradient. */}
-          <rect
-            x={geo.PAD_X}
-            y={geo.PAD_TOP - 4}
-            width={geo.W - 2 * geo.PAD_X}
-            height={geo.H - geo.PAD_TOP - geo.PAD_BOTTOM + 8}
-            fill="url(#wx-daylight)"
-            rx={8}
-          />
-
-          {/* Precip bars at the baseline. */}
-          {hours.map((h, i) => {
-            const pct = h.probabilityOfPrecipitation ?? 0;
-            if (pct < 20) return null;
-            const barH = Math.max(2, (pct / 100) * 18);
-            const cx = geo.xFor(i);
-            return (
-              <rect
-                key={`bar-${i}`}
-                x={cx - 4}
-                y={geo.H - geo.PAD_BOTTOM - barH + 4}
-                width={8}
-                height={barH}
-                rx={1.5}
-                fill="url(#wx-precip)"
-                opacity={Math.min(1, 0.4 + pct / 150)}
-              />
-            );
-          })}
+          {/* Daylight bands — one quiet block per contiguous stretch
+           *  of day or night, instead of a per-hour gradient. Reads
+           *  as "where's the sun" without painting noise behind the
+           *  curve. */}
+          {geo.dayBands.map((b, i) => (
+            <rect
+              key={`band-${i}`}
+              x={b.x0}
+              y={geo.PAD_TOP - 4}
+              width={b.x1 - b.x0}
+              height={geo.H - geo.PAD_TOP - geo.PAD_BOTTOM + 8}
+              fill={
+                b.day
+                  ? "color-mix(in srgb, var(--app-accent) 8%, transparent)"
+                  : "color-mix(in srgb, var(--app-cool) 10%, transparent)"
+              }
+              rx={6}
+            />
+          ))}
 
           {/* Temp curve — area + line. */}
           <path d={geo.fill} fill="url(#wx-fill)" />
@@ -403,6 +384,40 @@ export default function WeatherHourlyChart({ hours }: Props) {
             </text>
           ))}
         </svg>
+
+        {/* Precip strip — a thin row of hour-wide marks below the
+         *  temp chart, ONLY when there's meaningful rain in the
+         *  window. Keeps "rain coming at hour X" at-a-glance without
+         *  competing with the temp curve for space. Hidden entirely
+         *  on dry days so the chart reads as one calm line. */}
+        {(() => {
+          const maxPct = Math.max(0, ...hours.map((h) => h.probabilityOfPrecipitation ?? 0));
+          if (maxPct < 20) return null;
+          return (
+            <div
+              className="mt-1 flex items-end gap-px"
+              style={{ height: 6, marginInline: geo.PAD_X / (geo.W / 100) + "%" }}
+              aria-hidden
+            >
+              {hours.map((h, i) => {
+                const pct = h.probabilityOfPrecipitation ?? 0;
+                const op = pct < 20 ? 0 : 0.25 + Math.min(0.65, pct / 200);
+                return (
+                  <div
+                    key={`precip-${i}`}
+                    className="flex-1 rounded-sm"
+                    style={{
+                      height: pct < 20 ? 2 : Math.max(3, (pct / 100) * 6),
+                      background: "var(--app-cool)",
+                      opacity: op,
+                    }}
+                    title={pct >= 20 ? `${pct}% rain` : undefined}
+                  />
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Detail card — updates as the user scrubs. Same paper-cream
@@ -465,12 +480,6 @@ export default function WeatherHourlyChart({ hours }: Props) {
         </div>
       </div>
 
-      <p
-        className="mt-1.5 px-4 text-center text-[9.5px] uppercase tracking-[0.1em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Drag to scrub · the dot is the hour you&apos;re reading
-      </p>
     </section>
   );
 }
