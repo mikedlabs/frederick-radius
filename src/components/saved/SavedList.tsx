@@ -410,7 +410,7 @@ function EmptyState() {
           </p>
           <div className="flex flex-wrap gap-2 pt-1">
             <Link
-              href="/map"
+              href="/browse"
               className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ background: "var(--app-brand)", color: "white" }}
             >

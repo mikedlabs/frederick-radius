@@ -1,23 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ExternalLink, GraduationCap, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
-import EventsCompartmented from "@/components/event/EventsCompartmented";
 import EventCard from "@/components/event/EventCard";
 import WeekStrip from "@/components/event/WeekStrip";
 import TonightRail from "@/components/event/TonightRail";
 import CategoryJumpTiles from "@/components/event/CategoryJumpTiles";
-import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 import PageBloom from "@/components/ui/PageBloom";
@@ -38,10 +35,9 @@ export default async function EventsIndexPage({
   const seedLive = eventsLive(now);
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw }, hood, ingestedSeries, ingestedSummary, tmEvents, bitEvents] =
+  const [{ events: liveEventsRaw }, ingestedSeries, ingestedSummary, tmEvents, bitEvents] =
     await Promise.all([
       getLiveEvents(60),
-      getHoodEvents(),
       getIngestedSeries(),
       getIngestedSummary(),
       // Real live-music shows. Inert (returns []) until the owner sets
@@ -97,12 +93,6 @@ export default async function EventsIndexPage({
   const monday = new Date(friday);
   monday.setDate(monday.getDate() + 3);
   monday.setHours(0, 0, 0, 0);
-
-  // 7 days from now — used by the "Next 7 days" compartment so it
-  // reads as "after this weekend, through next week" instead of the
-  // calendar-month-out tail.
-  const weekEnd = new Date(now);
-  weekEnd.setDate(weekEnd.getDate() + 7);
 
   // Parse the deep-link view server-side so the explorer's first paint
   // already reflects it (no post-mount setState, no hydration mismatch).
@@ -227,111 +217,32 @@ export default async function EventsIndexPage({
       {/* Visual entry points to the deeper category surfaces. */}
       <CategoryJumpTiles events={allEvents} />
 
-      {/* Compartmented rooms — what replaces the long single-list
-          view. Each section is four tiles, a count, and a "See all"
-          link that deep-links into the EventsExplorer's filtered
-          view. The brief from the owner: "I get lost in long lists.
-          Give me rooms to walk into." This is those rooms. */}
-      <EventsCompartmented
+      {/* EventsExplorer — the single primary browse surface. Lens
+          chips (Tonight / Tomorrow / Weekend / This week / Free)
+          live at the top and own all the filter state via URL
+          params. Replaces the previous stack of Compartmented
+          rooms + Power-view collapsible, which split the same data
+          across three mental models on one page. One list, one
+          filter row, one mental model. */}
+      <EventsExplorer
         events={allEvents}
+        liveSlugs={liveSlugs}
+        categories={categories}
+        towns={towns}
         nowISO={now.toISOString()}
-        tomorrowEndISO={start24.toISOString()}
+        next24ISO={start24.toISOString()}
         weekendStartISO={friday.toISOString()}
         weekendEndISO={monday.toISOString()}
-        weekEndISO={weekEnd.toISOString()}
+        initialView={initialView}
+        initialDay={initialDay}
       />
 
-      {/* Full filter explorer — kept for the "I know what I want,
-          let me filter" case, but no longer the page's primary view.
-          Reads as the power-user tool below the rooms. */}
-      <details className="group rounded-[var(--app-radius-md)] border" style={{ borderColor: "var(--app-border)" }}>
-        <summary
-          className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-[var(--app-bg-sunken)]"
-          style={{ color: "var(--app-ink)" }}
-        >
-          <span>
-            <span
-              className="block text-[11px] font-medium uppercase tracking-[0.14em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Power view
-            </span>
-            <span className="font-serif text-base font-semibold tracking-tight">
-              Browse all events with filters
-            </span>
-          </span>
-          <span
-            className="text-[18px] transition-transform group-open:rotate-45"
-            aria-hidden
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            +
-          </span>
-        </summary>
-        <div className="border-t px-2 pt-4 pb-3" style={{ borderColor: "var(--app-border)" }}>
-          <EventsExplorer
-            events={allEvents}
-            liveSlugs={liveSlugs}
-            categories={categories}
-            towns={towns}
-            nowISO={now.toISOString()}
-            next24ISO={start24.toISOString()}
-            weekendStartISO={friday.toISOString()}
-            weekendEndISO={monday.toISOString()}
-            initialView={initialView}
-            initialDay={initialDay}
-          />
-        </div>
-      </details>
-
+      {/* Municipal series — series-level summary block; quieter than
+          the explorer and only renders when there's series data to
+          show. Keeps the "by-source" entry point without making it a
+          competing primary surface. */}
       {ingestedSeries.length > 0 && (
         <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
-      )}
-
-      {hood.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-baseline justify-between">
-            <h2 className="inline-flex items-center gap-2 font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              <GraduationCap className="h-4 w-4" strokeWidth={1.75} style={{ color: "var(--app-cool)" }} aria-hidden />
-              Hood College
-            </h2>
-            <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>{hood.length} upcoming</span>
-          </div>
-          <ul className="stagger space-y-2">
-            {hood.map((e) => (
-              <li key={e.id}>
-                <a
-                  href={e.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="tactile tactile-interactive flex items-start gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3"
-                >
-                  <div
-                    aria-hidden
-                    className="flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
-                    style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-cool)" }}>
-                      {eventDateParts(e.starts_at).monthShortUpper}
-                    </span>
-                    <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
-                      {eventDateParts(e.starts_at).day}
-                    </span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
-                      {e.title}
-                    </h3>
-                    <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-                      {formatEventTime(e.starts_at)} · {e.location}
-                    </p>
-                  </div>
-                  <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
 
       <footer className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"

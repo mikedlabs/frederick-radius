@@ -2,27 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Disc, Sun, Map, Calendar, BookOpen } from "lucide-react";
+import { Sun, Compass, Calendar, Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 
-// Primary destinations. Five tabs — added /places (the directory)
-// because there was no top-down browsing entry point: a stranger
-// could land on /today (curated rails) or /map (visual) but had no
-// way to see the directory's breadth by category × town without
-// already knowing what they wanted.
-// Saved moved to the header (TopBar) as a bookmark icon; Plan
-// absorbed into Radius (the two answered the same intent and split
-// attention). /plan + /saved routes stay alive — just not tabs.
+// Primary destinations — four tabs. Tightened from five per the
+// architecture overhaul: /places, /radius (Near Me), and /map all
+// answered the same question ("see things spatially"), splitting
+// attention across three nav entries. They now live under one tab,
+// /browse, with mode chips inside the page for Pan vs Within reach.
+// /events ("Plan") and /saved round out the model.
+// /places + /radius remain as routes (deep links survive) — they're
+// just not bottom-nav primaries.
 const TABS = [
   { href: "/now", label: "Now", icon: Sun },
-  { href: "/places", label: "Places", icon: BookOpen },
-  // Per the master UI brief: route stays /radius (a product mechanic
-  // name), the visible label is "Near Me" (a user need name). The
-  // mechanic-name shows up in URLs, the user-need name shows up in
-  // the nav where it's read by a person making a decision.
-  { href: "/radius", label: "Near Me", icon: Disc },
-  { href: "/map", label: "Map", icon: Map },
-  { href: "/events", label: "Events", icon: Calendar },
+  { href: "/browse", label: "Browse", icon: Compass },
+  { href: "/events", label: "Plan", icon: Calendar },
+  { href: "/saved", label: "Saved", icon: Bookmark },
 ] as const;
 
 export default function BottomNav() {
@@ -60,7 +55,7 @@ export default function BottomNav() {
           boxShadow: "0 4px 12px -2px color-mix(in srgb, var(--app-brand) 45%, transparent)",
         }}
       />
-      <ul className="mx-auto grid max-w-screen-md grid-cols-5">
+      <ul className="mx-auto grid max-w-screen-md grid-cols-4">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active =
             pathname === href || pathname.startsWith(href + "/");
