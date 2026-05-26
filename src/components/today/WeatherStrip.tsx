@@ -225,8 +225,10 @@ export default async function WeatherStrip() {
       )}
 
       {/* 7-day outlook — a frosted sub-panel of THIS card, not a
-          detached afterthought. One cohesive weather module. */}
-      <WeeklyForecast daily={forecast.daily} tone={tone} />
+          detached afterthought. One cohesive weather module.
+          Component now uses auto-flipping ink tokens, so the tone
+          parameter is no longer needed. */}
+      <WeeklyForecast daily={forecast.daily} />
     </div>
   );
 }

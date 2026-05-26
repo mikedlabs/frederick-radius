@@ -1391,74 +1391,35 @@ html.dark .shimmer::after {
 }
 
 /* ─────────────────────────────────────────────────────
- * Weather hourly chart — animated temperature curve.
- * The polyline draws-on from left to right on first paint
- * via a stroke-dashoffset transition. The current-hour dot
- * pulses gently to anchor the "you are here" read.
+ * Weather — hero and 7-day reveal.
+ *
+ * The hourly chart's drawing animation, precip-bar growth, and now-dot
+ * pulse all retired with the redesign — that surface is now a touch-
+ * interactive rail with a static sparkline, where motion is the
+ * scroll itself rather than CSS keyframes the user can't influence.
+ *
+ * What's left here: the hero's first-paint lift (`@starting-style` so
+ * it fires once on mount, not on every prop change), and the 7-day
+ * list reveal that fades-in when the user expands the peek summary.
  * ───────────────────────────────────────────────────── */
-.wx-curve {
-  stroke-dasharray: 800;
-  stroke-dashoffset: 800;
-  animation: wxCurveDraw 1.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards;
-}
-@keyframes wxCurveDraw {
-  to { stroke-dashoffset: 0; }
-}
-.wx-curve-fill {
-  opacity: 0;
-  animation: wxCurveFade 0.8s ease-out 1.2s forwards;
-}
-@keyframes wxCurveFade {
-  to { opacity: 1; }
-}
-.wx-now-dot {
-  animation: wxNowPulse 2.4s ease-in-out infinite;
-  transform-origin: center;
-}
-@keyframes wxNowPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.25); opacity: 0.7; }
-}
-.wx-now-ring {
-  animation: wxNowRing 2.4s ease-out infinite;
-  transform-origin: center;
-}
-@keyframes wxNowRing {
-  0% { transform: scale(1); opacity: 0.6; }
-  100% { transform: scale(2.6); opacity: 0; }
-}
-.wx-bar {
-  transform-origin: bottom;
-  animation: wxBarGrow 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  transform: scaleY(0);
-}
-@keyframes wxBarGrow {
-  to { transform: scaleY(1); }
-}
-.wx-hour-cell {
-  opacity: 0;
-  animation: wxHourReveal 0.4s ease-out forwards;
-}
-@keyframes wxHourReveal {
-  to { opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .wx-curve { stroke-dashoffset: 0; animation: none; }
-  .wx-curve-fill { opacity: 1; animation: none; }
-  .wx-now-dot { animation: none; }
-  .wx-now-ring { display: none; }
-  .wx-bar { transform: scaleY(1); animation: none; }
-  .wx-hour-cell { opacity: 1; animation: none; }
-}
-
-/* Weather hero — soft entrance on first paint. Uses @starting-style
- * so the lift fires once on mount, then never again on prop changes. */
 .wx-hero {
   transition: opacity 480ms var(--app-ease-out), transform 480ms var(--app-ease-out);
 }
 @starting-style {
   .wx-hero { opacity: 0; transform: translateY(6px); }
 }
+
+/* 7-day list — soft fade + slight lift on first reveal. Conditional
+ * render means the element is freshly inserted, so @starting-style
+ * fires for each expand. Reduced motion turns it off entirely. */
+.wx-week-list {
+  transition: opacity 280ms var(--app-ease-out), transform 280ms var(--app-ease-out);
+}
+@starting-style {
+  .wx-week-list { opacity: 0; transform: translateY(-4px); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wx-hero { transition: none; }
+  .wx-week-list { transition: none; }
 }
