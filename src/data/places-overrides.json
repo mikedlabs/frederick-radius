@@ -5,5 +5,9 @@
   },
   "remove": [],
   "keepApart": [],
-  "patch": {}
+  "patch": {
+    "crash-and-catharsis-rage-factory": {
+      "category": "wellness"
+    }
+  }
 }
