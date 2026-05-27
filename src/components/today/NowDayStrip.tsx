@@ -32,14 +32,14 @@ const WEEKDAY_FULL = [
   "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 ];
 
-function easternWeekday(now: Date): number {
+function easternWeekday(d: Date): number {
   const WD: Record<string, number> = {
     Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
   const w = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     weekday: "short",
-  }).format(now);
+  }).format(d);
   return WD[w] ?? 0;
 }
 
@@ -111,7 +111,12 @@ export default async function NowDayStrip({
   eventCountByDate?: Map<string, number>;
 } = {}) {
   const now = new Date();
-  const todayDow = easternWeekday(now);
+  // Pre-redesign the strip ran S-M-T-W-T-F-S with today in the middle,
+  // so past days (S/M/T before today) had no weather since NWS only
+  // gives forward forecast. The user wanted weather for every day in
+  // the strip. Easy fix: start from today and run 7 days forward —
+  // today on the LEFT, +6 days on the right. Every cell is then
+  // covered by the 7-day NWS forecast.
   const todayKey = easternDateKey(now);
 
   const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
@@ -136,15 +141,23 @@ export default async function NowDayStrip({
       aria-label="This week"
       className="grid grid-cols-7 gap-1 sm:gap-1.5"
     >
-      {WEEKDAY_LETTERS.map((letter, i) => {
-        const isToday = i === todayDow;
-        const isPast = i < todayDow;
-        const offset = i - todayDow;
+      {Array.from({ length: 7 }, (_, i) => {
+        // Position 0 = today; positions 1..6 = today+1..today+6.
+        // Past days are gone from the strip, so isPast is always
+        // false — the dimming logic that used to apply to S/M/T
+        // before today retires here.
+        const offset = i;
+        const cellDate = dateForOffset(now, offset);
+        const cellDow = easternWeekday(cellDate);
+        const letter = WEEKDAY_LETTERS[cellDow];
+        const fullName = WEEKDAY_FULL[cellDow];
+        const isPast = false;
         const dayNumber = easternDayNumber(now, offset);
-        const dk = easternDateKey(dateForOffset(now, offset));
+        const dk = easternDateKey(cellDate);
         const info = dailyByDate.get(dk);
         const variant = info?.shortForecast ? iconForShortForecast(info.shortForecast) : null;
         const eventCount = eventCountByDate?.get(dk);
+        const isToday = offset === 0;
         // "Active" day: caller-supplied (used by /events to highlight
         // the day they've filtered to) OR fall back to today.
         const isActive = activeDateKey
@@ -163,7 +176,7 @@ export default async function NowDayStrip({
             : "transparent",
         };
         const ariaLabel = [
-          `${WEEKDAY_FULL[i]} ${dayNumber}`,
+          `${fullName} ${dayNumber}`,
           isTodayMarker ? "today" : null,
           info?.high !== undefined ? `high ${info.high}` : null,
           info?.low !== undefined ? `low ${info.low}` : null,
