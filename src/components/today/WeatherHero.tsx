@@ -77,20 +77,13 @@ export default async function WeatherHero() {
       aria-label={`Current weather: ${cur.temperature}°F, ${cur.shortForecast}`}
       style={{ color: "currentColor" }}
     >
-      {/* TOP ROW: WEATHER · FREDERICK eyebrow on the left, H/L on the
-          right — pre-redesign the eyebrow sat in a column with all
-          the other text, leaving the gradient's horizontal real
-          estate empty on both sides. Splitting eyebrow ↔ H/L across
-          the row lets the SkyHero's width actually carry information
-          on both sides instead of a centered ribbon. */}
-      <div className="flex items-baseline justify-between gap-3">
-        <p
-          className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-70 sm:text-[11px]"
-          style={{ color: "currentColor" }}
-        >
-          Weather · Frederick
-        </p>
-        {(high !== undefined || low !== undefined) && (
+      {/* TOP ROW: H/L only, right-aligned. The "WEATHER · FREDERICK"
+          eyebrow was removed pre-launch — the giant 78° + sky glyph
+          below makes it obvious what the block is; an eyebrow that
+          says "weather" on top of weather reads as redundant. The
+          H/L stays so the row carries a useful number, not chrome. */}
+      {(high !== undefined || low !== undefined) && (
+        <div className="flex items-baseline justify-end gap-3">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] tabular-nums opacity-70 sm:text-[12px]">
             {high !== undefined && <>H {high}&deg;</>}
             {high !== undefined && low !== undefined && (
@@ -98,8 +91,8 @@ export default async function WeatherHero() {
             )}
             {low !== undefined && <>L {low}&deg;</>}
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* MIDDLE ROW: huge temperature on the LEFT, animated sky glyph
           + condition + nextChange on the RIGHT. The two columns share

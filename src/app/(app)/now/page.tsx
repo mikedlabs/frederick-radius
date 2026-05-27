@@ -311,16 +311,15 @@ export default async function HomePage({
             <WeatherHero />
           </Suspense>
         </SkyHero>
-        {/* Post-sky stack is pulled UP 16px (-mt-4) so the first card
-            sits IN FRONT OF the lower edge of the ridge silhouette,
-            killing the "cream band" between sky-hero and the hourly
-            card. Without this, three near-identical cream tones stack
-            in series (RidgeLine paper-cream → 8px page-bg cream →
-            card cream-elevated) and read as a flat band.
-            relative z-10 keeps the card painted ABOVE sky-hero's
-            isolated stacking context. Inner space-y-2 preserves
-            existing gaps between the cards below. */}
-        <div className="relative z-10 -mt-4 space-y-2">
+        {/* Post-sky stack — previously had a -mt-4 negative margin so
+            the hourly card sat IN FRONT OF the bottom of the
+            RidgeLine silhouette. The ridge is gone (#334) and the
+            new horizontal WeatherHero layout puts more text near the
+            sky's bottom edge, so the overlap was cutting off the
+            condition + nextChange lines. mt-2 gives a normal gap;
+            relative z-10 stays so the cards still paint above the
+            sky's stacking context cleanly. */}
+        <div className="relative z-10 mt-2 space-y-2">
         <Suspense fallback={null}>
           <CivicAlerts />
         </Suspense>

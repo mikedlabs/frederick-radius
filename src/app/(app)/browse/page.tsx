@@ -6,7 +6,11 @@ import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
-import { allUpcoming } from "@/lib/loaders/events";
+import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent } from "@/lib/loaders/events";
+import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
+import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
@@ -164,6 +168,10 @@ export default async function MapPage({
     mapillaryTrash,
     trailLines,
     transitLines,
+    liveEventsRaw,
+    tmMusic,
+    tmSports,
+    bitEvents,
   ] = await Promise.all([
     searchParams,
     getChartIncidentsFrederick().catch(() => []),
@@ -171,6 +179,14 @@ export default async function MapPage({
     fetchMapillaryTrash().catch(() => []),
     getFrederickTrailShapes().catch(() => EMPTY_FC),
     getFrederickTransitRouteShapes().catch(() => EMPTY_FC),
+    // Live event feeds — same set /events uses. Pre-fix the map only
+    // pulled `allUpcoming` (curated seed events.ts), so the event
+    // layer showed 2 pins when /events listed dozens. Joining the
+    // live feeds here brings the map to parity. All fail-soft.
+    getLiveEvents(60).then((r) => r.events).catch(() => []),
+    fetchTicketmasterMusic().catch(() => []),
+    fetchTicketmasterSports().catch(() => []),
+    fetchBandsintownForArtists([]).catch(() => []),
   ]);
   const civic: CivicPin[] = [
     ...incidents
@@ -226,7 +242,24 @@ export default async function MapPage({
   // brief's "what's happening now / tonight / this weekend" filter
   // lives in the ?t= search param.
   const now = new Date();
-  const allWeek = allUpcoming(now, 200);
+  // Combine curated seed events with live feeds (DFP iCal, Ticketmaster
+  // music + sports, Bandsintown) — same union /events uses. Dedupe by
+  // slug so a curated entry doesn't double up with a live duplicate;
+  // strip civic-meeting rows the same way /events does.
+  const curatedWeek = allUpcoming(now, 200);
+  const liveCards = dedupeLiveAgainstCurated(
+    [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
+      .map(liveToCardEvent)
+      .filter((e) => !isCivicEvent(e)),
+    curatedWeek,
+  );
+  const eventsBySlug = new Map<string, (typeof curatedWeek)[number]>();
+  for (const e of [...curatedWeek, ...liveCards]) {
+    if (!eventsBySlug.has(e.slug)) eventsBySlug.set(e.slug, e);
+  }
+  const allWeek = [...eventsBySlug.values()].sort(
+    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+  );
   // Pre-compute per-mode counts so the chip strip can show "Tonight · 3"
   // without forcing a click into an empty map.
   const counts: Partial<Record<TimeMode, number>> = {};
