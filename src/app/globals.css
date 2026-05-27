@@ -1259,6 +1259,19 @@ html.dark .shimmer::after {
   color: var(--app-ink-2);
   flex-shrink: 0;
 }
+.cmdk-item-thumb {
+  /* Photo thumbnail for place rows that have a Google photo. Matches
+     SearchOverlay's 36px tile shape so the two surfaces stay in
+     visual lockstep, scaled down slightly to fit the denser
+     CommandPalette row height. */
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: var(--app-radius-sm);
+  object-fit: cover;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-bg-sunken);
+}
 .cmdk-item-body {
   display: flex;
   flex-direction: column;
