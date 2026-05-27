@@ -1,6 +1,6 @@
 import { Navigation, CalendarClock, ArrowRight } from "lucide-react";
-import { Surface } from "@/components/ui/Surface";
 import { Button } from "@/components/ui/Button";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { readModeFromCookie } from "@/lib/mode-server";
 
 /**
@@ -55,37 +55,88 @@ export default async function PrimaryActionCard({ now = new Date() }: { now?: Da
         Icon: Navigation,
       };
 
+  // Photo-led magazine variant. Previously a paper-cream Surface
+  // with an icon stamp + headline + body; now a full-bleed
+  // SeasonalPhoto hero with serif headline overlaid in white. Same
+  // visual pattern as /about / /m / /events / /history heroes so
+  // the whole app reads as one editorial product. The brand-color
+  // CTA button stays at the bottom on solid color so it pops
+  // against the photo.
   return (
-    <Surface elevation={2} radius="var(--app-radius-lg)" className="tactile-feature p-5">
-      <div className="flex items-start gap-3">
-        <span
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
+    <section
+      className="tactile tactile-feature relative overflow-hidden rounded-[var(--app-radius-lg)]"
+      style={{
+        boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
+      }}
+    >
+      {/* SeasonalPhoto fills the top of the card; the bottom half is
+          a solid color band that hosts the CTA button so the brand
+          color reads cleanly without competing with the photo. */}
+      <div className="relative h-44 w-full sm:h-52" aria-hidden>
+        <SeasonalPhoto
+          season="auto"
+          alt=""
+          sizes="(max-width: 768px) 100vw, 640px"
+          className="absolute inset-0"
+        />
+        <div
+          className="absolute inset-0"
           style={{
-            background: "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))",
-            boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-brand) 30%, transparent)",
+            background:
+              "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, transparent 90%)",
           }}
+        />
+        {/* Icon stamp in the top-left of the photo — small glass
+            pill with the brand-color icon so the action signal still
+            reads on the photo. */}
+        <span
           aria-hidden
+          className="absolute left-3 top-3 grid h-9 w-9 place-items-center rounded-full"
+          style={{
+            background: "rgba(255,255,255,0.88)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            boxShadow: "var(--app-shadow-1)",
+          }}
         >
-          <copy.Icon className="h-5 w-5" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
+          <copy.Icon
+            className="h-[18px] w-[18px]"
+            strokeWidth={2}
+            style={{ color: "var(--app-brand)" }}
+          />
         </span>
-        <div className="min-w-0">
-          <h2 className="display-2" style={{ color: "var(--app-ink)" }}>
+        {/* Headline + subhead anchored to the bottom of the photo
+            on the dark gradient. Same serif treatment as the /events
+            cinematic hero. */}
+        <div className="absolute inset-x-0 bottom-0 space-y-1 p-4 sm:p-5">
+          <h2
+            className="font-serif text-[24px] font-semibold leading-tight tracking-tight text-white sm:text-[28px]"
+            style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
+          >
             {copy.headline}
           </h2>
-          <p className="mt-1 text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          <p
+            className="text-[13px] leading-snug text-white/90 sm:text-[14px]"
+            style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
+          >
             {copy.subhead}
           </p>
         </div>
       </div>
-      <Button
-        href={copy.href}
-        variant="primary"
-        size="lg"
-        className="mt-4 w-full"
-        iconRight={<ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
-      >
-        {copy.cta}
-      </Button>
-    </Surface>
+      {/* CTA band — paper-cream so the brand-color button pops, and
+          the action target is a clear "do this" instead of a button
+          buried inside a photo. */}
+      <div className="p-4" style={{ background: "var(--app-bg-elevated)" }}>
+        <Button
+          href={copy.href}
+          variant="primary"
+          size="lg"
+          className="w-full"
+          iconRight={<ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />}
+        >
+          {copy.cta}
+        </Button>
+      </div>
+    </section>
   );
 }
