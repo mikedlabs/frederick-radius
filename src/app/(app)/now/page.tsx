@@ -3,7 +3,12 @@ import { Suspense } from "react";
 import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
-import AdaptiveGreeting from "@/components/today/AdaptiveGreeting";
+// AdaptiveGreeting import removed — the day/time dateline + serif
+// headline ("Sun for now" / "Wet afternoon") used to sit inside
+// SkyHero alongside WeatherHero; it competed with the actual
+// weather card and made the hero feel cluttered. Component still
+// lives at src/components/today/AdaptiveGreeting.tsx in case we
+// want to surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MoodTiles from "@/components/today/MoodTiles";
 import RightNowStrip from "@/components/now/RightNowStrip";
@@ -274,10 +279,16 @@ export default async function HomePage({
           active CivicAlerts renders nothing and the stack collapses
           (Suspense fallback={null}). */}
       <div>
-        <SkyHero className="space-y-4">
-          <Suspense fallback={<Skeleton.Block height={56} round="var(--app-radius-md)" />}>
-            <AdaptiveGreeting />
-          </Suspense>
+        {/* AdaptiveGreeting (the day/time dateline + serif headline
+            "Sun for now" / "Wet afternoon") was removed from the
+            sky-hero pre-launch. The weather IS the weather; a second
+            editorial verdict above it competed with the WeatherHero
+            card directly below ("60° Mostly sunny H 78 L 54") and
+            made the hero feel cluttered. The greeting still lives in
+            the codebase (src/components/today/AdaptiveGreeting.tsx)
+            if we want to surface it elsewhere later — just not
+            stacked on top of the weather. */}
+        <SkyHero>
           <Suspense
             fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
           >
