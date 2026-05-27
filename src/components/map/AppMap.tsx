@@ -95,8 +95,11 @@ type Props = {
    *  nearest-to-center first — powers the synced results list. */
   onPlacesInView?: (slugs: string[]) => void;
   /** Tap a result in the synced list → fly the map there and glow it.
-   *  `n` is a nonce so re-tapping the same place re-triggers. */
-  focus?: { slug: string; n: number } | null;
+   *  `n` is a nonce so re-tapping the same place re-triggers.
+   *  `lngLat` overrides slug resolution for the locate-me case — when
+   *  present, the camera flies to those coordinates and no pin is
+   *  selected. */
+  focus?: { slug: string; n: number; lngLat?: { lng: number; lat: number } } | null;
   /** Live civic points (traffic incidents, 311 reports) for the overlay. */
   civic?: CivicPin[];
   /** Server-fetched amenity points (Mapillary trash detections) merged
@@ -224,11 +227,30 @@ export default function AppMap({
   }, [osmFromProps]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Tap a result in the synced list → fly there, glow it, light haptic.
+  // Also handles the "locate me" case from AppMapClient, which passes
+  // an explicit lngLat instead of a slug-resolved place. The lngLat
+  // path skips the place lookup and the slug-select side effect — we
+  // just move the camera.
   useEffect(() => {
     if (!focus) return;
-    const p = places.find((x) => x.slug === focus.slug);
     const map = mapRef.current?.getMap();
-    if (!p || !map) return;
+    if (!map) return;
+    if (focus.lngLat) {
+      // Locate-me path — center on the user without selecting a pin.
+      // Slight zoom-in so the city scale doesn't swallow them.
+      haptic("light");
+      const currentZoom = map.getZoom();
+      map.easeTo({
+        center: [focus.lngLat.lng, focus.lngLat.lat],
+        zoom: currentZoom < 13 ? 14 : currentZoom,
+        duration: 700,
+        easing: CAM_EASE,
+        essential: true,
+      });
+      return;
+    }
+    const p = places.find((x) => x.slug === focus.slug);
+    if (!p) return;
     setSelectedSlug(p.slug);
     haptic("light");
     // Pan to the result without zooming in — the user already chose
