@@ -59,6 +59,16 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "lh5.googleusercontent.com" },
       { protocol: "https", hostname: "lh6.googleusercontent.com" },
       { protocol: "https", hostname: "places.googleapis.com" },
+      // Vercel Blob — every Blob store has its own random subdomain
+      // (e.g. ijszzixn2rzddhti.public.blob.vercel-storage.com). The
+      // wildcard pattern below covers all stores on this account, so
+      // a Blob rotation never requires a redeploy. This is where the
+      // downloaded place photos live; without it, next/image throws
+      // "Invalid src prop" on every place page.
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
     ],
   },
   // Permanent route consolidation — duplicate editorial pages and

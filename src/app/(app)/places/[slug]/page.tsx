@@ -18,9 +18,9 @@ import FollowButton from "@/components/place/FollowButton";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
+import PlaceAmenityIcons from "@/components/place/PlaceAmenityIcons";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { classifyDescription } from "@/lib/copy-quality";
-import { Chip } from "@/components/ui/Chip";
 import { Button } from "@/components/ui/Button";
 import SourceBadge from "@/components/place/SourceBadge";
 
@@ -253,6 +253,19 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         {place.website && <ActionButton href={place.website} icon={Globe} label="Website" external />}
       </div>
 
+      {/* Waze-style amenity icon row. Lives right after the primary
+          action grid so the user gets the "what's here?" answer in
+          glyph form before any text. Self-hides when no amenities
+          are curated for the place. Accent matches the place's
+          category color so the row reads as part of the place's
+          identity, not as decoration. */}
+      {place.amenities && place.amenities.length > 0 && (
+        <PlaceAmenityIcons
+          amenities={place.amenities}
+          accent={cat?.color ?? "var(--app-brand)"}
+        />
+      )}
+
       {reserveActions.length > 0 && (
         <IntegrationRow
           icon={Utensils}
@@ -333,22 +346,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         </div>
       </section>
 
-      {place.amenities && place.amenities.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="eyebrow">
-            Amenities
-          </h2>
-          <ul className="flex flex-wrap gap-1.5">
-            {place.amenities.map((a) => (
-              <li key={a}>
-                <Chip tone="neutral" className="px-2.5 py-1 text-xs">
-                  {prettyAmenity(a)}
-                </Chip>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* The text-pill amenities section that used to live here was
+          replaced by the Waze-style icon row directly under the
+          primary action buttons. Same data source (place.amenities),
+          one rendering, much faster to scan. */}
 
       {eventsAtThisVenue.length > 0 && (
         <section className="space-y-3">
@@ -480,21 +481,6 @@ function IntegrationRow({
   );
 }
 
-function prettyAmenity(slug: string): string {
-  const map: Record<string, string> = {
-    "wifi": "Free WiFi",
-    "outdoor-seating": "Outdoor seating",
-    "dog-friendly": "Dog friendly",
-    "parking-lot": "Parking lot",
-    "bike-rack": "Bike parking",
-    "restroom": "Restroom",
-    "patio": "Patio",
-    "live-music": "Live music",
-    "takeout": "Takeout",
-    "delivery": "Delivery",
-    "reservations": "Reservations",
-    "byob": "BYOB",
-    "accessible": "Wheelchair accessible",
-  };
-  return map[slug] ?? slug.replace(/-/g, " ");
-}
+// prettyAmenity() was removed when the amenities section moved from
+// text pills to PlaceAmenityIcons. The icon component owns its own
+// slug → label map (AMENITY_META).
