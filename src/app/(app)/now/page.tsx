@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import WeatherHero from "@/components/today/WeatherHero";
-import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import NowDayStrip from "@/components/today/NowDayStrip";
@@ -14,7 +13,6 @@ import NowDayStrip from "@/components/today/NowDayStrip";
 // surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MoodTiles from "@/components/today/MoodTiles";
-import RightNowStrip from "@/components/now/RightNowStrip";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -44,37 +42,35 @@ import { easternWallToUtcISO } from "@/lib/tz";
 /**
  * Now — the daily briefing.
  *
- * Strict 5-section spine (down from 7 in the previous pass, 11 before
- * that). Every section answers a question; nothing decorative.
+ * Spine (post-cleanup pass):
  *
- *   1. Hero          → greeting + sun + civic alert + weather + plan
- *   2. MoodTiles     → "in the mood for" 4-up affordance row
- *   3. When?         → temporal toggle: Now / Tonight / Tomorrow / Weekend
- *   4. Upcoming      → featured event hero + the queue (mode-scoped)
- *   5. Worth tonight → one editorial place card (kept under review;
- *                      retires if RightNowStrip covers it)
+ *   1. Hero          → DateLine + day strip + SkyHero + weather panel
+ *   2. MoodTiles     → "in the mood for" 6-up affordance row
+ *   3. PartnerApps   → ParkMobile + OpenTable handoffs
+ *   4. WorthALook    → one editorial place card
+ *   5. When?         → temporal toggle: Now / Tonight / Tomorrow / Weekend
+ *   6. Upcoming      → featured event hero + the queue (mode-scoped)
+ *   7. From Above    → quiet exit beat → photography book
  *
- * What got cut in this push:
+ * What got cut in this pass:
+ *   • RightNowStrip (On deck)    — overlapped the Upcoming events
+ *                                  section and TimeToggle below
+ *   • PrimaryActionCard (Plan)   — overlapped MoreSheet's Plan tool
+ *
+ * What got cut in earlier passes (preserved here for archeology):
  *   • LocalNewsStrip   — news belongs on its own surface, not the briefing
- *   • RightNow         — time-aware places overlap MoodTiles and the
- *                        upcoming events shelf
  *   • HistoryPulse     — editorial filler; one rotating fact ≠ daily utility
- *   • FromAboveTile    — the photography book has its own home
+ *   • FromAboveTile    — the photography book has its own home (kept the
+ *                        FromAboveCta footer)
  *   • HiddenSectionsBar — managing hidden sections is a feature for a page
- *                        that has too many; a page with 5 sections doesn't
+ *                        that has too many; a page with 7 sections doesn't
  *   • The /discover crosslink + "More around Frederick" divider
  *   • Hidden Frederick footer doors
- *
- * What got cut in prior passes (preserved here for archeology):
  *   • StatStrip "Across Frederick County"  — generic counts, no signal
  *   • PhotoMosaic "Looks like Frederick"   — pretty but redundant
  *   • RedditPulse                          — noisy subreddit posts
  *   • MunicipalityStrip                    — towns reachable via /m
  *   • DecorativeDivider variants           — visual filler
- *
- * Push 2 will replace the FeaturedTonightPicker with a proper
- * RightNowStrip — three direct answers (open now / starting soon /
- * weekend bet). At that point the editorial picker block retires too.
  */
 export const metadata: Metadata = {
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
@@ -297,7 +293,7 @@ export default async function HomePage({
           `space-y-2` (8px) container so they read as a connected
           stack instead of four floating cards. The parent's
           space-y-6 only kicks back in BELOW this group, when
-          PrimaryActionCard and the rest of /now take over. */}
+          MoodTiles and the rest of /now take over. */}
       {/* CivicAlerts placement: moved OUT of SkyHero (where it lived
           on the sky gradient and visually competed with the weather
           hero) to its own row between SkyHero and HourlyForecast.
@@ -379,42 +375,20 @@ export default async function HomePage({
         </div>
       </div>
 
-      {/* SPINE REORDER (pleasant-layout pass):
+      {/* SPINE REORDER (cleanup pass):
        *
-       *   weather (above) → RIGHT NOW → PLAN → MOOD → PARTNER APPS →
-       *   DISCOVERY (WorthALook) → events → from above
+       *   weather (above) → MOOD → PARTNER APPS → DISCOVERY (WorthALook)
+       *   → events → from above
        *
-       * Pre-redesign the order was weather → WorthALook → CreekHairline
-       * → action → right-now → mood → partner → events → from above.
-       * That put a photo discovery rail BEFORE the action surfaces,
-       * which buried the page's most useful answers (open-now /
-       * starting-soon / weekend-bet) below a scroll. The hairline was
-       * decorative chrome — dropped. The new order leads with the
-       * three impulse cards, then the plan-tonight action card, then
-       * the mood / utility rows, THEN the photo discovery, THEN
-       * events. Reads as: "here are the direct answers · plan
-       * something · narrow by mood / handoff to partner · here's
-       * something pretty to come back for · here's what's happening."
+       * Earlier passes carried two more surfaces here — RightNowStrip
+       * ("On deck": open-now / starting-soon / weekend-bet) and
+       * PrimaryActionCard ("Plan tonight"). Both were retired in this
+       * pass: the events section + TimeToggle below already cover the
+       * "what's happening tonight" job; the MoreSheet's Tools cluster
+       * carries Plan, Within Reach, and Pulse. Keeping these on /now
+       * meant the page repeated itself across three scroll-screens.
+       * Removing them lets the briefing breathe.
        */}
-
-      {/* RightNowStrip — three direct answers, 3-card grid. */}
-      <Suspense
-        fallback={
-          <div className="space-y-2" aria-busy="true">
-            <Skeleton.Block height={20} round="var(--app-radius-sm)" />
-            <div className="grid grid-cols-3 gap-2">
-              <Skeleton.Block height={130} round="var(--app-radius-lg)" />
-              <Skeleton.Block height={130} round="var(--app-radius-lg)" />
-              <Skeleton.Block height={130} round="var(--app-radius-lg)" />
-            </div>
-          </div>
-        }
-      >
-        <RightNowStrip now={now} />
-      </Suspense>
-
-      {/* PrimaryActionCard — Plan tonight / what's open near you. */}
-      <PrimaryActionCard now={now} />
 
       {/* MoodTiles — what do you need right now, with sub-tile expand. */}
       <MoodTiles />
