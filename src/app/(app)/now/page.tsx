@@ -239,55 +239,45 @@ export default async function HomePage({
           lives INSIDE SkyHero so an active alert reads as part of the
           hero unit, not as a strange floating banner between the page
           header and the sky gradient. */}
-      <SkyHero className="space-y-4">
-        <Suspense fallback={<Skeleton.Block height={56} round="var(--app-radius-md)" />}>
-          <AdaptiveGreeting />
-        </Suspense>
-        <Suspense fallback={null}>
-          <CivicAlerts />
-        </Suspense>
-        <Suspense
-          fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
-        >
-          <WeatherHero />
-        </Suspense>
-        {/* PrimaryActionCard ("What is open near you") used to live in
-            here. Per owner feedback it's moved below the full weather
-            block — sky + hourly + 7-day + almanac — so the weather is
-            one cohesive unit, then the call-to-action lands as a
-            distinct next step. */}
-      </SkyHero>
-
-      {/* Weather block, ordered to put the most-actionable data first:
-            HourlyForecast — visible. Next 12 hours rail with inline
-                             sunset. The "what should I do in 2 hours"
-                             read, never hidden.
-            WeeklyCard     — collapsed by default. Header shows a
-                             1-line peek ("60° to 84° · 2 rainy"),
-                             tap reveals the 7-day range bars. User's
-                             choice persists across visits.
-            AlmanacFooter  — visible. Sunrise / sunset / daylight
-                             delta + AQI chip (when AIRNOW_API_KEY
-                             is set, colored by category).
-          Each fetches the same NWS forecast; Next.js request cache
-          dedupes into one network call. */}
-      <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
-        <HourlyForecast />
-      </Suspense>
-      <WeeklyCard
-        summary={
-          <Suspense fallback={<>Loading…</>}>
-            <WeeklySummary />
+      {/* WEATHER BLOCK — one cohesive unit. SkyHero + Hourly + 7-day
+          + Almanac all sit in a tight `space-y-2` (8px) container so
+          they read as a connected stack instead of four floating
+          cards. The parent's space-y-6 only kicks back in BELOW this
+          group, when PrimaryActionCard and the rest of /now take
+          over. SkyHero's own pb-4 (was pb-8) further reduces the
+          empty sky above the ridge before the hourly card. */}
+      <div className="space-y-2">
+        <SkyHero className="space-y-4">
+          <Suspense fallback={<Skeleton.Block height={56} round="var(--app-radius-md)" />}>
+            <AdaptiveGreeting />
           </Suspense>
-        }
-      >
-        <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-md)" />}>
-          <WeeklyForecast />
+          <Suspense fallback={null}>
+            <CivicAlerts />
+          </Suspense>
+          <Suspense
+            fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
+          >
+            <WeatherHero />
+          </Suspense>
+        </SkyHero>
+        <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
+          <HourlyForecast />
         </Suspense>
-      </WeeklyCard>
-      <Suspense fallback={null}>
-        <AlmanacFooter />
-      </Suspense>
+        <WeeklyCard
+          summary={
+            <Suspense fallback={<>Loading…</>}>
+              <WeeklySummary />
+            </Suspense>
+          }
+        >
+          <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-md)" />}>
+            <WeeklyForecast />
+          </Suspense>
+        </WeeklyCard>
+        <Suspense fallback={null}>
+          <AlmanacFooter />
+        </Suspense>
+      </div>
 
       {/* PrimaryActionCard — the primary call to action ("What is open
           near you" / "What's open right now"). Sits BELOW the weather
