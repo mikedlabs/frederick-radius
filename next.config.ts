@@ -54,6 +54,12 @@ const nextConfig: NextConfig = {
     localPatterns: [
       { pathname: "/api/place-photo", search: "?**" },
       { pathname: "/images/**", search: "" },
+      // /from-above/photos/** — the drone-photography book extracted
+      // from the print PDF. Lives under /public/from-above/photos and
+      // is rendered by BookExperience via next/image. Without this
+      // entry, the /from-above/preview route 500s ("Invalid src prop
+      // does not match images.localPatterns").
+      { pathname: "/from-above/**", search: "" },
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },

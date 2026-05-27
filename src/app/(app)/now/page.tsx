@@ -30,6 +30,7 @@ import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
 import TuneForYou from "@/components/today/TuneForYou";
 import WorthALook from "@/components/today/WorthALook";
+import FromAboveCta from "@/components/today/FromAboveCta";
 import CreekHairline from "@/components/ui/CreekHairline";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
@@ -446,6 +447,14 @@ export default async function HomePage({
           </p>
         )}
       </DismissibleSection>
+
+      {/* From Above — the page's quiet exit beat. After the daily
+          utility surfaces (weather + events + places) finish their
+          work, the user is invited into the photography book. The
+          card carries a seasonal thumbnail from the same /images/
+          seasons collection that backs /about's hero, so the visual
+          identity stays consistent end-to-end. */}
+      <FromAboveCta />
     </div>
   );
 }

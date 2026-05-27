@@ -11,6 +11,7 @@ import EventCard from "@/components/event/EventCard";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 
 export const revalidate = 600;
 
@@ -100,9 +101,19 @@ export default async function MunicipalityPage(
               className="object-cover"
             />
           ) : (
-            <div
-              className="h-full w-full"
-              style={{ background: "linear-gradient(150deg,#1A1A1A,#2A2A2A 60%,#3A2E1E)" }}
+            // Fallback: a real Frederick County photograph from the
+            // owner's seasonal collection, picked by current season
+            // with daily rotation. Small towns without a top venue's
+            // Google photo used to fall through to a flat dark
+            // gradient — now they get an aerial of the county that
+            // belongs to them too. Identity carrying for the town
+            // still comes from the overlay below (name + type + era).
+            <SeasonalPhoto
+              season="auto"
+              alt={`Frederick County (near ${m.name})`}
+              priority
+              sizes="(max-width: 720px) 100vw, 720px"
+              className="absolute inset-0"
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
