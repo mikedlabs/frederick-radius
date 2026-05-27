@@ -1,7 +1,6 @@
 "use client";
 
 import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal } from "lucide-react";
-import ModeSwitch from "@/components/mode/ModeSwitch";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -113,12 +112,13 @@ export default function AppMapDeck({
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-2.5 pt-2.5 sm:px-3 sm:pt-3">
       <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
-        {/* Mode switch row — always visible per the brief. One tap
-            flips Visitor↔Resident and the layer toggles below reset
-            to that mode's defaults via the useEffect above. */}
-        <div className="flex items-center justify-end">
-          <ModeSwitch />
-        </div>
+        {/* The Visitor / Resident mode-switch pill used to sit here
+            on the map deck. Removed pre-launch — the map surface
+            doesn't actually change behavior between visitor and
+            resident voice, so the pill read as confusing UI noise.
+            Mode still lives on /now (AdaptiveGreeting + ModeLead +
+            PrimaryActionCard) where it genuinely shapes copy, and
+            in /settings as an explicit preference. */}
         {/* Unified search deck: a single rounded-pill bar with the
             search input filling the row and two icon-only buttons
             tucked into the bar's right side. The previous three
