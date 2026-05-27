@@ -508,24 +508,35 @@ sources:
   - id: kfdk_metars
     name: Frederick Municipal Airport METARs (KFDK)
     owner: NOAA Aviation Weather Center
-    url: https://aviationweather.gov/api/data/metar?ids=KFDK&format=json
+    url: https://aviationweather.gov/api/data/metar?ids=KFDK&format=json&hours=1
     endpoint_type: rest_json
     format: json
     refresh_cadence: hourly
     license: US federal government open data, public domain
     contact: https://aviationweather.gov
-    status: pending_approval
-    last_validated: null
+    status: scaffold
+    last_validated: 2026-05-26
     last_success: null
     schema_file: null
-    transform_file: null
+    transform_file: src/lib/integrations/aviationweather.ts
     notes: |
-      Hourly surface observation at the downtown-adjacent field. A real
-      measured observation (temperature, dewpoint, wind, altimeter,
-      derived flight category), not the regional NWS point forecast.
-      Proposed to sharpen the Today weather strip. Schema and transform
-      are staged on disk; the row stays pending_approval and the worker
-      does not fetch it until a human flips the status.
+      Live runtime integration, not a daily-worker source (same posture
+      as airnow + ticketmaster + mapillary_objects). getKfdkMetar()
+      reads the hourly METAR and the AlmanacFooter on /now surfaces a
+      dewpoint comfort label ("Sticky" / "Muggy" / "Oppressive" /
+      "Very dry") ONLY at the edges of the comfort spectrum — the
+      "comfortable" middle band is silent so we don't add noise on a
+      normal day.
+
+      The signal it adds over the regional NWS forecast is DEWPOINT,
+      which the NWS hourly response doesn't expose cleanly. Dewpoint
+      maps to comfort better than temperature: 72°F at 50°F dewpoint
+      feels great; 72°F at 70°F dewpoint feels oppressive.
+
+      No API key required (public-domain US federal data). 15-minute
+      revalidate cache via next/fetch. Failure is silent —
+      getKfdkMetar() returns null and the chip is hidden. Fully
+      inert when aviationweather.gov is unreachable.
 
   - id: cof_parking_occupancy
     name: City of Frederick parking deck occupancy
