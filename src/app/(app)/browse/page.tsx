@@ -15,7 +15,28 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
-const OPEN_PLACES = publicPlaces().map((p) => decoratePlace(p));
+// Slim the SSR payload for /browse before it ships to the client.
+//
+// Why: decoratePlace returns the full PlaceCardData, including
+// `google_photos` (an array of up to 8 photo URLs per place). On the
+// map page that array was inlining ~5.7 MB of proxy URLs across the
+// 1,694 places — 67% of the page's 8.5 MB HTML weight.
+//
+// google_photos is ONLY rendered on the place detail surface
+// (/places/[slug] and PlaceSheet's swipe deck). PlaceCard, AppMap's
+// pins, and the in-view drawer use the single `google_photo_url`
+// hero. PlaceSheet has an on-demand `extra.photos` fallback when
+// `google_photos` is empty, so stripping it here costs nothing in
+// the drawer-tap flow.
+//
+// After this strip the HTML drops from 8.5 MB → ~2.8 MB (3x faster
+// on the wire). A bigger SLIM shape (drop description / hours /
+// review_snippet) would shave another MB+; that's a follow-up.
+const OPEN_PLACES = publicPlaces().map((p) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { google_photos, ...slim } = decoratePlace(p);
+  return slim;
+});
 
 export const metadata: Metadata = {
   title: "Map · Frederick County",
