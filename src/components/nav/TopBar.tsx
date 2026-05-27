@@ -41,9 +41,45 @@ function useHideOnScroll(disabled: boolean) {
   return disabled ? false : scrollHidden;
 }
 
+/**
+ * Rotating placeholder prompts inside the search pill. A static
+ * "Search the county" reads as a generic input affordance; rotating
+ * concrete questions advertises what the search actually knows — a
+ * coffee shop open right now, tonight's live music, Carroll Creek,
+ * a date-night plan. Apple Maps and Google's home-bar do the same
+ * thing for the same reason: nothing else on a header tells a new
+ * user the shape of what's inside.
+ *
+ * Order is deterministic; cycle is ~4s with a 220ms cross-fade so
+ * the change is felt, not read mid-rotation. Stops while the search
+ * overlay is open so the user isn't watching prompts swap behind
+ * the modal.
+ */
+const SEARCH_PROMPTS = [
+  "Coffee open right now",
+  "Tonight's live music",
+  "Carroll Creek",
+  "Plan a date night",
+  "Family-friendly weekend",
+  "Hiking near downtown",
+] as const;
+
+function useRotatingPrompt(paused: boolean) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (paused) return;
+    const t = window.setInterval(() => {
+      setIdx((i) => (i + 1) % SEARCH_PROMPTS.length);
+    }, 4000);
+    return () => window.clearInterval(t);
+  }, [paused]);
+  return SEARCH_PROMPTS[idx];
+}
+
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const hidden = useHideOnScroll(searchOpen);
+  const prompt = useRotatingPrompt(searchOpen);
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
@@ -110,7 +146,15 @@ export default function TopBar() {
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-            <span className="truncate text-left">Search the county</span>
+            {/* Rotating prompt. Keyed on the prompt itself so React
+                remounts the span — pairs with the keyframe fade so a
+                new prompt slides in cleanly without a layout jump. */}
+            <span
+              key={prompt}
+              className="truncate text-left animate-[fadePrompt_360ms_var(--app-ease-out)_both]"
+            >
+              {prompt}
+            </span>
             <kbd
               className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
