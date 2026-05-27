@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
-  Compass,
   Info,
   MapPinned,
   Wrench,
@@ -11,65 +10,41 @@ import {
   Bus,
   Mountain,
   BookOpen,
-  Palette,
   Settings as SettingsIcon,
   Activity,
   CalendarRange,
   Landmark,
   Droplets,
   ExternalLink,
-  ArrowRight,
-  Search as SearchIcon,
-  Clock,
-  Calendar,
-  Sparkles,
+  ArrowUpRight,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
 /**
- * MoreSheet v2 — action-first, not a directory.
+ * MoreSheet v3 — tools first, books shown like books.
  *
- * Pre-launch this sheet was a four-cluster list (Tools / Useful /
- * Discover / App). It worked but read as a phonebook. The user
- * pushed back: it should DO things, not list things. So:
+ * v2 stacked a plan-hero, a 3-card right-now grid, and a time-aware
+ * banner on top of the directory. The user's read: the sheet should
+ * "start with the tools and remove the other things above that" —
+ * the action surface in /now already covers Plan / Open-now /
+ * Tonight; the More menu shouldn't reproduce them.
  *
- *   1. PLAN-A-NIGHT HERO — big brand-color card at the top. The
- *      most common ask ("what should I do tonight?") gets the
- *      most prominent answer button. Links to /plan, which is a
- *      real planning surface already built.
- *
- *   2. NOW-TONIGHT-WEEKEND 3-card row — same pattern as /now's
- *      RightNowStrip. Three impulse doorways: open-near-me /
- *      starting-tonight / weekend-bet. Each links to /browse or
- *      /events with the right time filter pre-set.
- *
- *   3. CONTEXTUAL BANNER — a quiet one-line suggestion that
- *      changes with the time of day ("Coffee mornings, dinner
- *      around 5, late-night around 9"). Driven by client time;
- *      no LLM, no live data fetch, just rule-based phrasing
- *      against the hour-of-day. The map's intent chips set the
- *      bar for "interactive AND useful"; this row matches it.
- *
- *   4. FILTER INPUT — typeahead-style search that narrows the
- *      directory below by label/description match. Lets a user
- *      who knows what they want type "trail" or "park" and jump
- *      straight there. Empty input shows the full directory.
- *
- *   5. DIRECTORY — kept, but compact and below the actions.
- *      Groups: Tools / Useful / Discover / App. Each row is a
- *      single icon + label + description Link, same as v1.
- *
- * Still pure client UI — no API calls, no LLM. The "intelligence"
- * is rule-based (time-of-day routing). If we want real plan
- * generation later, the AI variant adds a server action that
- * grounds the LLM in our actual places/events data.
+ * Order:
+ *   1. TOOLS — Plan, Within reach, Pulse. The verbs.
+ *   2. USEFUL — Amenities / Transit / Trails / Parks / Water /
+ *      Contacts. The nouns the city carries.
+ *   3. DISCOVER — the editorial surface. The two physical books
+ *      (From Above + Color Frederick) get real photo cards using
+ *      their cover art so a tap reads as opening a book, not a
+ *      menu row. History stays as a row.
+ *   4. APP — About + Settings. The chrome.
  */
 
 type Item = {
   href: string;
   label: string;
   description: string;
-  icon: typeof Compass;
+  icon: typeof Wrench;
   external?: boolean;
 };
 
@@ -88,46 +63,47 @@ const USEFUL: Item[] = [
   { href: "/water",     label: "Water",     description: "Public drinking fountains and water bottle refills", icon: Droplets },
 ];
 
-const DISCOVER: Item[] = [
-  { href: "/from-above/preview", label: "From Above",       description: "The coffee-table book of drone photography over Frederick", icon: BookOpen },
-  { href: "https://www.colorfrederick.com", label: "Color Frederick", description: "The Frederick coloring book", icon: Palette, external: true },
-  { href: "/history",            label: "History",          description: "Frederick County, one story at a time",                       icon: Landmark },
+/** Editorial surfaces. The two books get visual cards above the
+ *  History row — they ARE objects, so they should look like objects,
+ *  not menu entries. */
+const BOOKS: Array<{
+  href: string;
+  label: string;
+  description: string;
+  cover: string;
+  external?: boolean;
+}> = [
+  {
+    href: "/from-above/preview",
+    label: "From Above",
+    description: "Drone photography over Frederick",
+    cover: "/from-above/cover-front.webp",
+  },
+  {
+    href: "https://www.colorfrederick.com",
+    label: "Color Frederick",
+    description: "The Frederick coloring book",
+    // No local cover for the coloring book (it lives on
+    // colorfrederick.com). Using the most color-rich seasonal photo
+    // we have so the card still sells the idea — a colorful
+    // Frederick scene next to the title makes the link feel like a
+    // book preview, not a directory entry.
+    cover: "/images/seasons/fall/FALL COLORS.jpg",
+    external: true,
+  },
 ];
+
+const HISTORY: Item = {
+  href: "/history",
+  label: "History",
+  description: "Frederick County, one story at a time",
+  icon: Landmark,
+};
 
 const APP: Item[] = [
-  { href: "/about",    label: "About",    description: "What this app is and how it stays honest", icon: Info },
+  { href: "/about",    label: "About",    description: "What this app is and how it stays honest",     icon: Info },
   { href: "/settings", label: "Settings", description: "Persona, home spot, interests, notifications", icon: SettingsIcon },
 ];
-
-const ALL_GROUPS: Array<{ heading: string; items: Item[] }> = [
-  { heading: "Tools", items: TOOLS },
-  { heading: "Useful", items: USEFUL },
-  { heading: "Discover", items: DISCOVER },
-  { heading: "App", items: APP },
-];
-
-/** Pull a time-aware nudge from the current hour. Pure
- *  client-side rule-based copy — no live data lookup. The hour
- *  is read in Eastern time so a user in another zone still sees
- *  the Frederick-relevant suggestion. */
-function nudgeForHour(hour: number): { eyebrow: string; line: string } {
-  if (hour >= 5 && hour < 11) {
-    return { eyebrow: "Morning", line: "Open coffee shops, parks for a walk, the weekly markets if it's a Saturday." };
-  }
-  if (hour >= 11 && hour < 14) {
-    return { eyebrow: "Midday", line: "Lunch spots near you, museums and galleries with quiet hours." };
-  }
-  if (hour >= 14 && hour < 17) {
-    return { eyebrow: "Afternoon", line: "Trails before sunset, breweries opening, kid-friendly spots." };
-  }
-  if (hour >= 17 && hour < 21) {
-    return { eyebrow: "Evening", line: "Alive @ Five at Carroll Creek runs through September. Dinner reservations move fast." };
-  }
-  if (hour >= 21 && hour < 24) {
-    return { eyebrow: "Late", line: "Last-call bars, late-night spots, parking lots that stay open." };
-  }
-  return { eyebrow: "Overnight", line: "24-hour pharmacies, ER directions, late food." };
-}
 
 export default function MoreSheet({
   open,
@@ -136,221 +112,39 @@ export default function MoreSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const filteredGroups = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return ALL_GROUPS;
-    return ALL_GROUPS.map((g) => ({
-      ...g,
-      items: g.items.filter(
-        (it) =>
-          it.label.toLowerCase().includes(q) ||
-          it.description.toLowerCase().includes(q),
-      ),
-    })).filter((g) => g.items.length > 0);
-  }, [query]);
-
-  const hour = (() => {
-    try {
-      return parseInt(
-        new Intl.DateTimeFormat("en-US", {
-          timeZone: "America/New_York",
-          hour: "numeric",
-          hour12: false,
-        }).format(new Date()),
-        10,
-      );
-    } catch {
-      return new Date().getHours();
-    }
-  })();
-  const nudge = nudgeForHour(hour);
+  const close = () => onOpenChange(false);
 
   return (
     <BottomDrawer
       open={open}
       onOpenChange={onOpenChange}
       title="More"
-      subtitle="Plan your night or browse the rest"
+      subtitle="Tools, the city's bits, and the books"
     >
-      <div className="space-y-4 px-4 pt-3 pb-6">
-        {/* 1. PLAN-A-NIGHT HERO. The brand-color card up top. The
-            single most useful action of the entire menu, given the
-            visual weight it deserves. */}
-        <Link
-          href="/plan"
-          onClick={() => onOpenChange(false)}
-          className="tactile tactile-interactive group flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-lg)] p-4 transition active:scale-[0.99]"
-          style={{
-            background: "var(--app-brand)",
-            color: "#fff",
-            boxShadow: "0 12px 32px -10px color-mix(in srgb, var(--app-brand) 50%, transparent)",
-          }}
-        >
-          <span
-            aria-hidden
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
-            style={{ background: "rgba(255,255,255,0.18)" }}
-          >
-            <Sparkles className="h-5 w-5" strokeWidth={2} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[10px] font-bold uppercase tracking-[0.16em] opacity-85">
-              Right now
-            </span>
-            <span className="block font-serif text-[19px] font-semibold leading-tight">
-              Plan tonight in one tap
-            </span>
-            <span className="block truncate text-[12px] opacity-85">
-              Dinner, drinks, somewhere to land late.
-            </span>
-          </span>
-          <ArrowRight
-            aria-hidden
-            className="h-5 w-5 shrink-0 transition group-hover:translate-x-0.5"
-            strokeWidth={2.25}
-          />
-        </Link>
+      <div className="space-y-5 px-4 pt-3 pb-6">
+        <Cluster heading="Tools" items={TOOLS} onClose={close} />
+        <Cluster heading="Useful" items={USEFUL} onClose={close} />
 
-        {/* 2. RIGHT-NOW 3-CARD ROW. Same shape as /now's
-            RightNowStrip. Three doorways into the most common
-            impulse asks. Links target /browse or /events with the
-            right time filter so the user lands somewhere already
-            narrow. */}
-        <ul className="grid grid-cols-3 gap-2">
-          {[
-            {
-              href: "/browse?intent=eat&t=now",
-              eyebrow: "Open now",
-              title: "Eat near me",
-              meta: "Restaurants open this hour",
-              Icon: Clock,
-              color: "var(--app-positive)",
-            },
-            {
-              href: "/events?t=tonight",
-              eyebrow: "Tonight",
-              title: "Starting soon",
-              meta: "Music, food, festivals",
-              Icon: Calendar,
-              color: "var(--app-brand)",
-            },
-            {
-              href: "/events?t=weekend",
-              eyebrow: "Weekend",
-              title: "This weekend",
-              meta: "Fri eve → Sun night",
-              Icon: Sparkles,
-              color: "var(--app-accent)",
-            },
-          ].map(({ href, eyebrow, title, meta, Icon, color }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                onClick={() => onOpenChange(false)}
-                className="tactile tactile-interactive flex h-full flex-col gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.97]"
-                style={{
-                  borderColor: "var(--app-border)",
-                  boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-                }}
-              >
-                <span
-                  aria-hidden
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                  style={{
-                    background: `color-mix(in srgb, ${color} 14%, transparent)`,
-                  }}
-                >
-                  <Icon className="h-4 w-4" strokeWidth={2} style={{ color }} />
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span
-                    className="block text-[9px] font-bold uppercase tracking-[0.1em]"
-                    style={{ color }}
-                  >
-                    {eyebrow}
-                  </span>
-                  <span
-                    className="block text-[12px] font-semibold leading-snug"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    {title}
-                  </span>
-                  <span
-                    className="mt-auto block truncate text-[11px]"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {meta}
-                  </span>
-                </span>
-              </Link>
+        {/* Discover — books shown as books, then history as a row. */}
+        <section className="space-y-2">
+          <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
+            Discover
+          </h3>
+          <ul className="grid grid-cols-2 gap-2">
+            {BOOKS.map((b) => (
+              <li key={b.href}>
+                <BookCard {...b} onClose={close} />
+              </li>
+            ))}
+          </ul>
+          <ul className="space-y-1.5 pt-1">
+            <li>
+              <DirectoryRow {...HISTORY} onClose={close} />
             </li>
-          ))}
-        </ul>
+          </ul>
+        </section>
 
-        {/* 3. CONTEXTUAL BANNER. Quiet, time-aware. Reads like a
-            local telling you what makes sense at this hour. */}
-        <div
-          className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <p
-            className="text-[10px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-cool)" }}
-          >
-            {nudge.eyebrow}
-          </p>
-          <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            {nudge.line}
-          </p>
-        </div>
-
-        {/* 4. FILTER INPUT. Typeahead-style narrowing of the
-            directory below. Empty = full directory. The page header
-            already had "More"; this input is the question users
-            actually ask when they tap More. */}
-        <div
-          className="flex items-center gap-2 rounded-full border bg-[var(--app-bg-sunken)] px-3 py-2"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <SearchIcon
-            aria-hidden
-            className="h-3.5 w-3.5 shrink-0"
-            strokeWidth={2}
-            style={{ color: "var(--app-ink-3)" }}
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a tool…"
-            aria-label="Filter tools"
-            className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--app-ink-3)]"
-            style={{ color: "var(--app-ink)" }}
-          />
-        </div>
-
-        {/* 5. DIRECTORY. The browse-by-name fallback. Groups stay
-            stable but render only the items that match the filter.
-            When the input is empty all clusters show. */}
-        <div className="space-y-4">
-          {filteredGroups.map((g) => (
-            <Cluster
-              key={g.heading}
-              heading={g.heading}
-              items={g.items}
-              onClose={() => onOpenChange(false)}
-            />
-          ))}
-          {filteredGroups.length === 0 && (
-            <p
-              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[12px]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-            >
-              Nothing in More matches “{query}”. Try a different word.
-            </p>
-          )}
-        </div>
+        <Cluster heading="App" items={APP} onClose={close} />
       </div>
     </BottomDrawer>
   );
@@ -367,69 +161,199 @@ function Cluster({
 }) {
   return (
     <section className="space-y-1.5">
-      <h3
-        className="eyebrow px-1"
-        style={{ color: "var(--app-ink-3)" }}
-      >
+      <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
         {heading}
       </h3>
       <ul className="space-y-1.5">
-        {items.map(({ href, label, description, icon: Icon, external }) => {
-          const body = (
-            <>
-              <span
-                aria-hidden
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-                style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)" }}
-              >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
-                  {label}
-                </span>
-                <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                  {description}
-                </span>
-              </span>
-              {external && (
-                <ExternalLink
-                  aria-hidden
-                  className="h-3.5 w-3.5 shrink-0"
-                  strokeWidth={2}
-                  style={{ color: "var(--app-ink-3)" }}
-                />
-              )}
-            </>
-          );
-          const className =
-            "hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition";
-          const style = {
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          };
-          return (
-            <li key={href}>
-              {external ? (
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={onClose}
-                  className={className}
-                  style={style}
-                >
-                  {body}
-                </a>
-              ) : (
-                <Link href={href} onClick={onClose} className={className} style={style}>
-                  {body}
-                </Link>
-              )}
-            </li>
-          );
-        })}
+        {items.map((it) => (
+          <li key={it.href}>
+            <DirectoryRow {...it} onClose={onClose} />
+          </li>
+        ))}
       </ul>
     </section>
+  );
+}
+
+function DirectoryRow({
+  href,
+  label,
+  description,
+  icon: Icon,
+  external,
+  onClose,
+}: Item & { onClose: () => void }) {
+  const body = (
+    <>
+      <span
+        aria-hidden
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+        style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)" }}
+      >
+        <Icon
+          className="h-[18px] w-[18px]"
+          strokeWidth={2}
+          style={{ color: "var(--app-cool)" }}
+        />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className="block text-[13px] font-semibold"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {label}
+        </span>
+        <span
+          className="block truncate text-[11px]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {description}
+        </span>
+      </span>
+      {external && (
+        <ExternalLink
+          aria-hidden
+          className="h-3.5 w-3.5 shrink-0"
+          strokeWidth={2}
+          style={{ color: "var(--app-ink-3)" }}
+        />
+      )}
+    </>
+  );
+  const className =
+    "hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition";
+  const style = {
+    borderColor: "var(--app-border)",
+    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+  };
+  return external ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClose}
+      className={className}
+      style={style}
+    >
+      {body}
+    </a>
+  ) : (
+    <Link href={href} onClick={onClose} className={className} style={style}>
+      {body}
+    </Link>
+  );
+}
+
+/** Visual book card — full-bleed cover photo with the title and a
+ *  one-line gloss reading from a dark gradient at the bottom. The
+ *  external arrow appears in the top-right when the destination
+ *  leaves the app. */
+function BookCard({
+  href,
+  label,
+  description,
+  cover,
+  external,
+  onClose,
+}: {
+  href: string;
+  label: string;
+  description: string;
+  cover: string;
+  external?: boolean;
+  onClose: () => void;
+}) {
+  const body = (
+    <>
+      <Image
+        src={cover}
+        alt=""
+        fill
+        sizes="(max-width: 480px) 50vw, 240px"
+        className="object-cover"
+      />
+      <span
+        aria-hidden
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, transparent 90%)",
+        }}
+      />
+      {external && (
+        <span
+          aria-hidden
+          className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full"
+          style={{
+            background: "rgba(255,255,255,0.88)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+            boxShadow: "var(--app-shadow-1)",
+          }}
+        >
+          <ArrowUpRight
+            className="h-3.5 w-3.5"
+            strokeWidth={2.25}
+            style={{ color: "var(--app-ink)" }}
+          />
+        </span>
+      )}
+      <span
+        aria-hidden
+        className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]"
+        style={{
+          background: "rgba(255,255,255,0.88)",
+          color: "var(--app-ink)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+        }}
+      >
+        <BookOpen className="h-3 w-3" strokeWidth={2.25} />
+        Book
+      </span>
+      <span className="absolute inset-x-0 bottom-0 p-3">
+        <span
+          className="block font-serif text-[15px] font-semibold leading-tight text-white"
+          style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
+        >
+          {label}
+        </span>
+        <span
+          className="mt-0.5 block text-[10.5px] leading-snug text-white/85"
+          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
+        >
+          {description}
+        </span>
+      </span>
+    </>
+  );
+  const className =
+    "tactile tactile-interactive relative block aspect-[3/4] w-full overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.98]";
+  const style = {
+    borderColor: "var(--app-border)",
+    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+  };
+  return external ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClose}
+      className={className}
+      style={style}
+      aria-label={label}
+    >
+      {body}
+    </a>
+  ) : (
+    <Link
+      href={href}
+      onClick={onClose}
+      className={className}
+      style={style}
+      aria-label={label}
+    >
+      {body}
+    </Link>
   );
 }
