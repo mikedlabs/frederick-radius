@@ -15,7 +15,52 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
-const OPEN_PLACES = publicPlaces().map((p) => decoratePlace(p));
+/**
+ * Slim the SSR payload for /browse before it ships to the client.
+ *
+ * /browse renders ~1,700 places into the initial HTML. decoratePlace
+ * returns the full PlaceCardData; that's overkill for the map +
+ * in-view drawer surfaces, and the size matters — every place is
+ * stamped into HTML times the place count.
+ *
+ * Fields stripped here:
+ *   - google_photos      (5.7 MB by itself — only used by detail page
+ *                         gallery and PlaceSheet's multi-photo deck,
+ *                         which has on-demand fallback)
+ *   - description         (long; only the detail page renders it)
+ *   - review_snippet      (~120 chars × 1,700 ≈ 200 KB; detail-only)
+ *   - review_author       (rendered alongside review_snippet)
+ *   - google_hours        (array of 7 weekday strings; detail-only)
+ *   - hours               (curated weekly schedule object; detail-only,
+ *                         open_status is already pre-computed)
+ *   - amenities           (array; rendered by detail page only)
+ *
+ * KEPT for the drawer's PlaceCard:
+ *   - google_photo_url, open_status, distance_m fields, name, slug,
+ *     category, geom, address, city, phone, website, source,
+ *     google_rating, google_rating_count, price_band, short_blurb,
+ *     last_verified_at, is_verified, is_operational, municipality
+ *
+ * The detail page (/places/[slug]) loads its own full data via
+ * getPlaceBySlug, so nothing the stripped fields power is lost — they
+ * just stop riding along on the map's HTML.
+ */
+const OPEN_PLACES = publicPlaces().map((p) => {
+  const decorated = decoratePlace(p);
+  const {
+    /* eslint-disable @typescript-eslint/no-unused-vars */
+    google_photos: _google_photos,
+    description: _description,
+    review_snippet: _review_snippet,
+    review_author: _review_author,
+    google_hours: _google_hours,
+    hours: _hours,
+    amenities: _amenities,
+    /* eslint-enable @typescript-eslint/no-unused-vars */
+    ...slim
+  } = decorated;
+  return slim;
+});
 
 export const metadata: Metadata = {
   title: "Map · Frederick County",
