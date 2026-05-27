@@ -23,6 +23,7 @@ import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/to
 import AlmanacFooter from "@/components/today/AlmanacFooter";
 import HourlyForecast from "@/components/today/HourlyForecast";
 import HourlyDisclosure from "@/components/today/HourlyDisclosure";
+import HourlySummary from "@/components/today/HourlySummary";
 import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
@@ -345,9 +346,16 @@ export default async function HomePage({
           {/* All three weather subsections (Hourly · 7-Day · More
               Details) are now disclosure pills for visual uniformity.
               Hourly defaults open (it's the most-glanced piece); the
-              other two default closed. Almanac moved up INTO the
-              gradient hero. */}
-          <HourlyDisclosure>
+              other two default closed. Each one carries a real
+              summary so the collapsed pill reads as informative, not
+              a "we hid stuff" placeholder. */}
+          <HourlyDisclosure
+            summary={
+              <Suspense fallback={<>Loading…</>}>
+                <HourlySummary />
+              </Suspense>
+            }
+          >
             <Suspense fallback={<Skeleton.Block height={92} round="0" />}>
               <HourlyForecast />
             </Suspense>

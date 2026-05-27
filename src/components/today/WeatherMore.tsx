@@ -67,11 +67,17 @@ export default function WeatherMore({ children }: { children: ReactNode }) {
         >
           More weather details
         </span>
+        {/* Collapsed summary — was the full list "Sun · Wind ·
+            Humidity · Pressure · Visibility · Moon" which truncated
+            to "...Pres..." on narrow viewports, reading as broken.
+            Shortened to "7 cards" so the pill stays informative
+            without ever clipping. The detail cards themselves load
+            on expand. */}
         <span
-          className="min-w-0 flex-1 truncate text-[12px]"
+          className="min-w-0 flex-1 text-[12px]"
           style={{ color: "var(--app-ink-3)" }}
         >
-          Sun · Wind · Humidity · Pressure · Visibility · Moon
+          Sun, wind, humidity, and more
         </span>
         <ChevronDown
           className="h-4 w-4 shrink-0 transition-transform duration-200"

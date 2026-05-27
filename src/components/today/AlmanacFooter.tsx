@@ -107,12 +107,22 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
         <Sunset className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
         {sunsetStr}
       </span>
-      <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
-        ·
-      </span>
-      <span className="tabular-nums" title={deltaTitle}>
-        {deltaShort}
-      </span>
+      {/* "+2m" delta dropped from the in-sky variant — it was cryptic
+          on a tight row. When AlmanacFooter mounts in its old
+          standalone position (inSky=false), the delta still ships
+          with the full title tooltip for the curious. In the gradient
+          hero, sunrise + sunset are enough; the delta is editorial
+          and not worth the confusion tax. */}
+      {!inSky && (
+        <>
+          <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
+            ·
+          </span>
+          <span className="tabular-nums" title={deltaTitle}>
+            {deltaShort}
+          </span>
+        </>
+      )}
       {worst && (
         <>
           <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
