@@ -15,8 +15,6 @@ import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/to
 import AlmanacFooter from "@/components/today/AlmanacFooter";
 import HourlyForecast from "@/components/today/HourlyForecast";
 import WeeklyForecast from "@/components/today/WeeklyForecast";
-import ForecastCard from "@/components/today/ForecastCard";
-import ForecastSummary from "@/components/today/ForecastSummary";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -254,26 +252,26 @@ export default async function HomePage({
         <PrimaryActionCard now={now} />
       </SkyHero>
 
-      {/* Forecast disclosure — closed by default, remembers the user's
-          choice across visits via localStorage. The peek summary
-          ("7 days · 60° to 84° · 2 days of rain") is computed once
-          server-side. Expanding reveals the iOS-style hourly rail +
-          range-bar 7-day. /now stays compact unless the reader asks
-          for the data. */}
-      <ForecastCard
-        summary={
-          <Suspense fallback={<>Loading forecast…</>}>
-            <ForecastSummary />
-          </Suspense>
-        }
-      >
-        <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-md)" />}>
-          <HourlyForecast />
-        </Suspense>
-        <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-md)" />}>
-          <WeeklyForecast />
-        </Suspense>
-      </ForecastCard>
+      {/* Weather block — visible by default. Three stacked cards:
+            HourlyForecast — next 12 hours rail with inline sunset
+            WeeklyForecast — 7-day range bars with "today" indicator
+            AlmanacFooter  — sunrise / sunset / daylight delta +
+                              AQI when air is Moderate or worse +
+                              dewpoint comfort at the edges
+          AlmanacFooter used to live at the very bottom of /now as an
+          editorial signature; per owner feedback it reads more
+          usefully right next to the weather it relates to. Each
+          fetches the same NWS forecast; Next.js request cache
+          dedupes into one network call. */}
+      <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
+        <HourlyForecast />
+      </Suspense>
+      <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-lg)" />}>
+        <WeeklyForecast />
+      </Suspense>
+      <Suspense fallback={null}>
+        <AlmanacFooter />
+      </Suspense>
 
       {/* RightNowStrip: three direct answers to the questions a
        *  stranger opens the app to ask: what's open near me, what's
@@ -351,14 +349,6 @@ export default async function HomePage({
           </p>
         )}
       </DismissibleSection>
-
-      {/* A quiet last line at the bottom of the daily briefing. The
-          sunrise / sunset clocks anchor the page in actual time-of-
-          day, and the daylight delta vs yesterday is the part that
-          reads as editorial — a casual scroll past it still picks
-          up on "days are getting longer / shorter" without needing
-          a label. */}
-      <AlmanacFooter />
     </div>
   );
 }

@@ -1,5 +1,7 @@
-import { Sunrise, Sunset } from "lucide-react";
+import { Sunrise, Sunset, Wind } from "lucide-react";
 import { daylightDelta } from "@/lib/almanac";
+import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 /**
  * AlmanacFooter — a single quiet line at the bottom of /now that says
@@ -19,11 +21,19 @@ import { daylightDelta } from "@/lib/almanac";
  * page already revalidates on a 60s cadence and the answer for
  * Frederick only changes once at midnight Eastern.
  */
-export default function AlmanacFooter() {
+export default async function AlmanacFooter() {
   // eslint-disable-next-line react-hooks/purity
   const now = new Date();
   const delta = daylightDelta(now);
   if (!delta) return null;
+
+  // AirNow AQI — always surface the chip when we have a reading,
+  // colored by the category (green = Good, amber = Moderate, brick =
+  // Unhealthy, etc.). AQI is one of the expected metrics next to
+  // sunrise + sunset on this strip. Returns null without an
+  // AIRNOW_API_KEY, so the chip is hidden when the env var isn't set.
+  const aqi = await getAirQuality(FREDERICK_CENTER).catch(() => null);
+  const worst = aqi ? pickWorstAqi(aqi) : null;
 
   const fmtClock = (d: Date) =>
     new Intl.DateTimeFormat("en-US", {
@@ -74,6 +84,21 @@ export default function AlmanacFooter() {
         ·
       </span>
       <span>{deltaLine}</span>
+      {worst && (
+        <>
+          <span aria-hidden style={{ color: "var(--app-border)" }}>
+            ·
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 font-semibold"
+            style={{ color: worst.category.color }}
+            title={`${worst.category.name} (${worst.parameter} ${worst.aqi}) — observed in ${worst.reportingArea}`}
+          >
+            <Wind className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+            AQI {worst.aqi} {worst.category.name}
+          </span>
+        </>
+      )}
     </footer>
   );
 }

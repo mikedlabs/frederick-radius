@@ -136,7 +136,11 @@ export default async function HourlyForecast() {
   const cells = buildCells(hours, now);
 
   return (
-    <section aria-label={`Next ${hours.length} hours`}>
+    <article
+      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
+      style={{ borderColor: "var(--app-border)" }}
+      aria-label={`Next ${hours.length} hours`}
+    >
       <header className="mb-2 flex items-baseline justify-between gap-2 px-1">
         <h3
           className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
@@ -146,10 +150,10 @@ export default async function HourlyForecast() {
         </h3>
       </header>
 
-      {/* Horizontal scroll. -mx-1 + px-1 lets the rail edge-fade past
-          the section's text padding so cells flow to the card edge. */}
+      {/* Horizontal scroll. -mx-3 + px-3 lets the rail edge-fade past
+          the card's padding the way the iOS Weather card does. */}
       <div
-        className="-mx-1 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-3 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="list"
       >
         <ol className="flex min-w-max gap-3">
@@ -216,6 +220,6 @@ export default async function HourlyForecast() {
           })}
         </ol>
       </div>
-    </section>
+    </article>
   );
 }
