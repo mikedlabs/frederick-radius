@@ -1,8 +1,5 @@
 import Link from "next/link";
-import { Coffee, Utensils, Wine, Beer, Trees, Baby, Palette, Landmark, X } from "lucide-react";
-import { INTENTS, type Intent } from "@/data/intents";
-
-const ICON: Record<Intent["icon"], typeof Coffee> = {
+import {
   Coffee,
   Utensils,
   Wine,
@@ -11,6 +8,45 @@ const ICON: Record<Intent["icon"], typeof Coffee> = {
   Baby,
   Palette,
   Landmark,
+  Pizza,
+  Cookie,
+  Truck,
+  Mountain,
+  Music,
+  Library,
+  Building,
+  ShieldCheck,
+  Vote,
+  Church,
+  Theater,
+  Image as ImageIcon,
+  ToyBrick,
+  X,
+} from "lucide-react";
+import { INTENTS, type Intent, type SubIntent } from "@/data/intents";
+
+const ICON: Record<NonNullable<SubIntent["icon"]>, typeof Coffee> = {
+  Coffee,
+  Utensils,
+  Wine,
+  Beer,
+  Trees,
+  Baby,
+  Palette,
+  Landmark,
+  Pizza,
+  Cookie,
+  Truck,
+  Mountain,
+  Music,
+  Library,
+  Building,
+  ShieldCheck,
+  Vote,
+  Church,
+  Theater,
+  ImageIcon,
+  ToyBrick,
 };
 
 /**
@@ -26,14 +62,26 @@ const ICON: Record<Intent["icon"], typeof Coffee> = {
 export default function MapIntentChips({
   active,
   activeCount,
+  activeSub,
+  subCounts,
 }: {
   active?: string;
   /** Number of places matching the active intent — shown in the
    *  prominent active banner so the filter feels REAL. */
   activeCount?: number;
+  /** Currently-active sub-intent key, when the user has drilled in
+   *  one level deeper (Eat & drink → Pizza). */
+  activeSub?: string;
+  /** Per-sub-intent place counts so the sub-chips can show "Pizza · 12"
+   *  and the user doesn't tap into an empty filter. */
+  subCounts?: Record<string, number>;
 }) {
   const activeIntent = active ? INTENTS.find((i) => i.key === active) : null;
   const ActiveIcon = activeIntent ? ICON[activeIntent.icon] : null;
+  const activeSubIntent =
+    activeIntent && activeSub
+      ? activeIntent.subIntents?.find((s) => s.key === activeSub)
+      : null;
   return (
     <div
       className="pointer-events-none absolute inset-x-0 top-0 z-30 space-y-2 px-2.5 sm:px-3"
@@ -56,6 +104,9 @@ export default function MapIntentChips({
           <ActiveIcon className="h-4 w-4 shrink-0" strokeWidth={2.5} aria-hidden />
           <span className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight">
             {activeIntent.label}
+            {activeSubIntent && (
+              <span className="opacity-80"> · {activeSubIntent.label}</span>
+            )}
           </span>
           {typeof activeCount === "number" && (
             <span className="shrink-0 rounded-full bg-white/22 px-2 py-0.5 text-[11px] font-bold tabular-nums backdrop-blur">
@@ -71,6 +122,70 @@ export default function MapIntentChips({
             <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
             Clear
           </Link>
+        </div>
+      )}
+      {/* Sub-intent strip — appears below the active-intent banner
+          when the user has drilled into an intent that defines
+          sub-categories. Each chip narrows the parent filter one
+          more level: Eat & drink → Pizza shows only pizza places.
+          Empty when the active intent has no subIntents (Wineries
+          is already narrow enough; civic doesn't sub-divide here).
+          The chips inherit the parent intent's color family so the
+          two strips read as one connected filter, not separate
+          surfaces. */}
+      {activeIntent?.subIntents && activeIntent.subIntents.length > 0 && (
+        <div
+          className="pointer-events-auto mx-auto flex w-full max-w-[680px] gap-1.5 overflow-x-auto rounded-full p-1 backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          style={{
+            background: `color-mix(in srgb, ${activeIntent.color} 10%, var(--app-bg-elevated) 88%)`,
+            boxShadow: "var(--app-shadow-1)",
+          }}
+          aria-label={`Narrow ${activeIntent.label}`}
+        >
+          {/* "All" sub-chip — clears the sub filter while keeping the
+              parent intent active. Same shape as the parent's "All"
+              chip but smaller. */}
+          <Link
+            href={`/browse?intent=${activeIntent.key}`}
+            aria-current={!activeSub ? "page" : undefined}
+            className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.97]"
+            style={{
+              background: !activeSub ? activeIntent.color : "transparent",
+              color: !activeSub ? "#fff" : activeIntent.color,
+            }}
+          >
+            All
+            {typeof activeCount === "number" && (
+              <span className="ml-1 tabular-nums opacity-80">
+                {activeCount.toLocaleString()}
+              </span>
+            )}
+          </Link>
+          {activeIntent.subIntents.map((sub) => {
+            const SubIcon = sub.icon ? ICON[sub.icon] : null;
+            const isActive = activeSub === sub.key;
+            const count = subCounts?.[sub.key];
+            return (
+              <Link
+                key={sub.key}
+                href={`/browse?intent=${activeIntent.key}&sub=${sub.key}`}
+                aria-current={isActive ? "page" : undefined}
+                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
+                style={{
+                  background: isActive
+                    ? activeIntent.color
+                    : "transparent",
+                  color: isActive ? "#fff" : activeIntent.color,
+                }}
+              >
+                {SubIcon && <SubIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+                {sub.label}
+                {typeof count === "number" && count > 0 && (
+                  <span className="tabular-nums opacity-75">{count}</span>
+                )}
+              </Link>
+            );
+          })}
         </div>
       )}
       <div

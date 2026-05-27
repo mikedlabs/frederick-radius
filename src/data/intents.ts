@@ -49,6 +49,53 @@ export type Intent = {
    *  discover view honors this — "coffee right now" filters open;
    *  "outdoor today" doesn't (parks don't have hours that matter). */
   preferOpen: boolean;
+  /** Optional sub-intents — the second-tier chip strip that appears
+   *  in /browse when this top intent is active. Each sub narrows the
+   *  parent's match further. Parents that don't define subIntents
+   *  render no sub-strip; the parent's chip still works as a single-
+   *  level filter. */
+  subIntents?: SubIntent[];
+};
+
+/**
+ * SubIntent — a second-tier filter that appears under an active top
+ * intent in /browse. Sub-intents narrow the parent's match by category
+ * slug ("Eat & drink → Pizza"). Time-of-day sub-intents are planned
+ * for a follow-up; the type's `type` discriminator is here so they
+ * group cleanly when added.
+ */
+export type SubIntent = {
+  key: string;
+  label: string;
+  type: "category" | "time";
+  /** Match predicate. Always called AFTER the parent intent's match
+   *  has passed, so a sub-intent only needs to express the narrower
+   *  filter (e.g. "category is pizza", not "is food AND is pizza"). */
+  match: (p: PlaceCardData) => boolean;
+  /** Lucide icon name (optional). Resolved by the rendering chip
+   *  component the same way the top intent's icon is. */
+  icon?:
+    | "Coffee"
+    | "Utensils"
+    | "Wine"
+    | "Beer"
+    | "Trees"
+    | "Baby"
+    | "Palette"
+    | "Landmark"
+    | "Pizza"
+    | "Cookie"
+    | "Truck"
+    | "Mountain"
+    | "Music"
+    | "Library"
+    | "Building"
+    | "ShieldCheck"
+    | "Vote"
+    | "Church"
+    | "Theater"
+    | "ImageIcon"
+    | "ToyBrick";
 };
 
 const COFFEE = new Set(["coffee", "bakery"]);
@@ -112,6 +159,10 @@ export const INTENTS: Intent[] = [
     icon: "Coffee",
     match: (p) => COFFEE.has(p.category),
     preferOpen: true,
+    subIntents: [
+      { key: "cafes",    type: "category", label: "Cafes",    icon: "Coffee",  match: (p) => p.category === "coffee" },
+      { key: "bakeries", type: "category", label: "Bakeries", icon: "Cookie",  match: (p) => p.category === "bakery" },
+    ],
   },
   {
     key: "eat",
@@ -121,6 +172,15 @@ export const INTENTS: Intent[] = [
     icon: "Utensils",
     match: (p) => FOOD.has(p.category),
     preferOpen: true,
+    subIntents: [
+      { key: "restaurants", type: "category", label: "Restaurants", icon: "Utensils", match: (p) => p.category === "restaurant" },
+      { key: "pizza",       type: "category", label: "Pizza",       icon: "Pizza",    match: (p) => p.category === "pizza" },
+      { key: "bars",        type: "category", label: "Bars",        icon: "Wine",     match: (p) => p.category === "bar" },
+      { key: "breweries",   type: "category", label: "Breweries",   icon: "Beer",     match: (p) => p.category === "brewery" && !isWinery(p) },
+      { key: "wineries",    type: "category", label: "Wineries",    icon: "Wine",     match: (p) => isWinery(p) },
+      { key: "bakeries",    type: "category", label: "Bakeries",    icon: "Cookie",   match: (p) => p.category === "bakery" },
+      { key: "trucks",      type: "category", label: "Food trucks", icon: "Truck",    match: (p) => p.category === "food-truck" },
+    ],
   },
   {
     key: "wineries",
@@ -131,6 +191,8 @@ export const INTENTS: Intent[] = [
     icon: "Wine",
     match: (p) => isWinery(p),
     preferOpen: false,
+    // No subIntents — wineries are already a narrow set (16 places).
+    // Slicing them further would produce 1-2 results per sub-chip.
   },
   {
     key: "breweries",
@@ -145,6 +207,10 @@ export const INTENTS: Intent[] = [
       (BREWERY_CATS.has(p.category) && !isWinery(p)) ||
       (p.subcategories ?? []).some((s) => BREWERY_SUBS.has(s)),
     preferOpen: false,
+    subIntents: [
+      { key: "brewpubs",     type: "category", label: "Brewpubs",     icon: "Beer", match: (p) => BREWERY_CATS.has(p.category) && !isWinery(p) },
+      { key: "distilleries", type: "category", label: "Distilleries", icon: "Wine", match: (p) => (p.subcategories ?? []).some((s) => BREWERY_SUBS.has(s)) },
+    ],
   },
   {
     key: "outdoor",
@@ -154,6 +220,11 @@ export const INTENTS: Intent[] = [
     icon: "Trees",
     match: (p) => OUTDOOR.has(p.category),
     preferOpen: false,
+    subIntents: [
+      { key: "parks",       type: "category", label: "Parks",       icon: "Trees",    match: (p) => p.category === "park" },
+      { key: "trails",      type: "category", label: "Trails",      icon: "Mountain", match: (p) => p.category === "trail" },
+      { key: "playgrounds", type: "category", label: "Playgrounds", icon: "ToyBrick", match: (p) => p.category === "playground" },
+    ],
   },
   {
     key: "family",
@@ -163,6 +234,12 @@ export const INTENTS: Intent[] = [
     icon: "Baby",
     match: (p) => FAMILY_CATS.has(p.category),
     preferOpen: false,
+    subIntents: [
+      { key: "playgrounds", type: "category", label: "Playgrounds", icon: "ToyBrick", match: (p) => p.category === "playground" },
+      { key: "libraries",   type: "category", label: "Libraries",   icon: "Library",  match: (p) => p.category === "library" },
+      { key: "museums",     type: "category", label: "Museums",     icon: "Palette",  match: (p) => p.category === "museum" },
+      { key: "parks",       type: "category", label: "Parks",       icon: "Trees",    match: (p) => p.category === "park" },
+    ],
   },
   {
     key: "arts",
@@ -172,6 +249,13 @@ export const INTENTS: Intent[] = [
     icon: "Palette",
     match: (p) => ARTS.has(p.category),
     preferOpen: false,
+    subIntents: [
+      { key: "museums",    type: "category", label: "Museums",    icon: "Palette",   match: (p) => p.category === "museum" },
+      { key: "galleries",  type: "category", label: "Galleries",  icon: "ImageIcon", match: (p) => p.category === "gallery" },
+      { key: "theaters",   type: "category", label: "Theaters",   icon: "Theater",   match: (p) => p.category === "theater" },
+      { key: "live-music", type: "category", label: "Live music", icon: "Music",     match: (p) => p.category === "music" },
+      { key: "public-art", type: "category", label: "Public art", icon: "Palette",   match: (p) => p.category === "public-art" },
+    ],
   },
   {
     key: "civic",
@@ -181,6 +265,13 @@ export const INTENTS: Intent[] = [
     icon: "Landmark",
     match: (p) => CIVIC.has(p.category),
     preferOpen: false,
+    subIntents: [
+      { key: "libraries",     type: "category", label: "Libraries",     icon: "Library",     match: (p) => p.category === "library" },
+      { key: "government",    type: "category", label: "Government",    icon: "Building",    match: (p) => p.category === "government" },
+      { key: "public-safety", type: "category", label: "Public safety", icon: "ShieldCheck", match: (p) => p.category === "public-safety" },
+      { key: "voting",        type: "category", label: "Voting",        icon: "Vote",        match: (p) => p.category === "voting" },
+      { key: "worship",       type: "category", label: "Worship",       icon: "Church",      match: (p) => p.category === "worship" },
+    ],
   },
 ];
 

@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
 import PlaceList from "@/components/place/PlaceList";
@@ -75,10 +73,13 @@ export default async function MunicipalityPage(
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
 
-  // A real photo FROM this town for the hero (highest feature score
-  // with a Google photo). Never stock or fabricated — if none, a
-  // System-Black gradient carries the name instead.
-  const heroPhoto = places.find((p) => p.google_photo_url)?.google_photo_url ?? null;
+  // The town hero is now an aerial drone photograph of Frederick County
+  // from the owner's seasonal collection (rotates daily, picks by
+  // current season). The page used to lead with the top venue's Google
+  // photo — usually a restaurant interior shot — which read as utility,
+  // not identity. An aerial reads as the PLACE; the venue photo then
+  // lives further down inside PlaceList and the "Looks like {town}"
+  // mosaic, where it belongs.
   const placesWithPhotos = places.filter((p) => p.google_photo_url);
 
   return (
@@ -89,33 +90,13 @@ export default async function MunicipalityPage(
           carries identity; the overlay carries facts. */}
       <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-60">
-          {heroPhoto ? (
-            <Image
-              src={heroPhoto}
-              alt=""
-              fill
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
-            />
-          ) : (
-            // Fallback: a real Frederick County photograph from the
-            // owner's seasonal collection, picked by current season
-            // with daily rotation. Small towns without a top venue's
-            // Google photo used to fall through to a flat dark
-            // gradient — now they get an aerial of the county that
-            // belongs to them too. Identity carrying for the town
-            // still comes from the overlay below (name + type + era).
-            <SeasonalPhoto
-              season="auto"
-              alt={`Frederick County (near ${m.name})`}
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              className="absolute inset-0"
-            />
-          )}
+          <SeasonalPhoto
+            season="auto"
+            alt={`Frederick County (near ${m.name})`}
+            priority
+            sizes="(max-width: 720px) 100vw, 720px"
+            className="absolute inset-0"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
           <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">

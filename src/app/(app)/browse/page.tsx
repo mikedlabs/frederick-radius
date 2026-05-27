@@ -155,10 +155,10 @@ function isTimeMode(s: string | undefined): s is TimeMode {
 export default async function MapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ intent?: string; t?: string }>;
+  searchParams: Promise<{ intent?: string; sub?: string; t?: string }>;
 }) {
   const [
-    { intent: intentParam, t: tParam },
+    { intent: intentParam, sub: subParam, t: tParam },
     incidents,
     fixit,
     mapillaryTrash,
@@ -200,7 +200,27 @@ export default async function MapPage({
     intentParam && intentParam in INTENT_BY_KEY
       ? INTENT_BY_KEY[intentParam as IntentKey]
       : null;
-  const places = intent ? OPEN_PLACES.filter(intent.match) : OPEN_PLACES;
+  // First-tier filter: top intent.
+  const intentPlaces = intent ? OPEN_PLACES.filter(intent.match) : OPEN_PLACES;
+  // Sub-counts (parent-scoped) — computed BEFORE the sub-filter is
+  // applied so each sub-chip shows the population reachable from the
+  // current parent state. Users see "Pizza · 12" and don't tap into
+  // an empty filter. Empty when no intent active or no subIntents
+  // defined; sub-strip simply doesn't render in that case.
+  const subCounts: Record<string, number> = {};
+  if (intent?.subIntents) {
+    for (const s of intent.subIntents) {
+      subCounts[s.key] = intentPlaces.filter(s.match).length;
+    }
+  }
+  // Second-tier filter: sub-intent, scoped to the active parent.
+  // Ignored when the parent intent doesn't define this sub key — so
+  // a stale ?sub= param from a parent switch doesn't quietly wipe the
+  // result set.
+  const activeSub = intent?.subIntents?.find((s) => s.key === subParam);
+  const places = activeSub
+    ? intentPlaces.filter(activeSub.match)
+    : intentPlaces;
 
   // Events as map pins, scoped to the active temporal window. The
   // brief's "what's happening now / tonight / this weekend" filter
@@ -252,6 +272,8 @@ export default async function MapPage({
       <MapIntentChips
         active={intent?.key}
         activeCount={intent ? places.length : undefined}
+        activeSub={activeSub?.key}
+        subCounts={subCounts}
       />
       <MapTimeChips
         active={timeMode}
