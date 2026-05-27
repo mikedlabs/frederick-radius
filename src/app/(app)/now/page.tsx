@@ -19,6 +19,7 @@ import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
 import WeatherMore from "@/components/today/WeatherMore";
 import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
+import BetaIntroCard from "@/components/today/BetaIntroCard";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -234,6 +235,14 @@ export default async function HomePage({
   return (
     <div className="relative space-y-6">
       <PageBloom />
+
+      {/* First-visit beta intro — explains what Frederick Radius is,
+          the current beta state, what's coming, and how to send
+          feedback. Renders only when the dismiss cookie hasn't been
+          set; once dismissed, never shows again until we ship a v2
+          message and bump the key. Client component so the SSR HTML
+          is empty and there's no hydration flash. */}
+      <BetaIntroCard />
 
       {/* 1 — Sky-tinted hero. Greeting + sun countdown + civic alert
           (when active) + weather (now and the 7-day, on one card) +
