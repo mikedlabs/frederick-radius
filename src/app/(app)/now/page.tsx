@@ -20,6 +20,7 @@ import WeeklySummary from "@/components/today/WeeklySummary";
 import WeatherMore from "@/components/today/WeatherMore";
 import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
+import TuneForYou from "@/components/today/TuneForYou";
 import WorthALook from "@/components/today/WorthALook";
 import CreekHairline from "@/components/ui/CreekHairline";
 
@@ -245,6 +246,14 @@ export default async function HomePage({
           message and bump the key. Client component so the SSR HTML
           is empty and there's no hydration flash. */}
       <BetaIntroCard />
+
+      {/* Tune this for you — three small persona pills (I live here /
+          I'm visiting / I own a business) linking to /welcome. Replaces
+          the killed onboarding redirect's purpose: the field guide is
+          useful immediately, but a user who wants it tuned can opt in
+          in one tap. Independent dismissal so a user can hide the beta
+          card and keep the tune-for-you affordance (or vice versa). */}
+      <TuneForYou />
 
       {/* 1 — Sky-tinted hero. Greeting + sun countdown + civic alert
           (when active) + weather (now and the 7-day, on one card) +
