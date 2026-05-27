@@ -32,7 +32,9 @@ import TuneForYou from "@/components/today/TuneForYou";
 import WorthALook from "@/components/today/WorthALook";
 import FromAboveCta from "@/components/today/FromAboveCta";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
-import CreekHairline from "@/components/ui/CreekHairline";
+// CreekHairline removed in the pleasant-layout pass — it was a
+// decorative divider between weather/discovery and action; the
+// reorder makes the divider unnecessary.
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -303,6 +305,14 @@ export default async function HomePage({
           getting absorbed into the sky gradient. When no alert is
           active CivicAlerts renders nothing and the stack collapses
           (Suspense fallback={null}). */}
+      {/* WEATHER BLOCK — one cohesive unit. SkyHero is the visual hero;
+          everything below (CivicAlerts when active, Hourly, More-details
+          disclosure, 7-day disclosure, Almanac) lives in ONE bordered
+          container with internal hairline dividers so the four sub-cards
+          read as ONE weather panel instead of four floating cards. The
+          gradient hero overlaps the panel's top edge by 8px so the two
+          read as connected; the panel's own border holds the rest of
+          the weather stack together. */}
       <div>
         <SkyHero>
           <Suspense
@@ -311,79 +321,60 @@ export default async function HomePage({
             <WeatherHero />
           </Suspense>
         </SkyHero>
-        {/* Post-sky stack — previously had a -mt-4 negative margin so
-            the hourly card sat IN FRONT OF the bottom of the
-            RidgeLine silhouette. The ridge is gone (#334) and the
-            new horizontal WeatherHero layout puts more text near the
-            sky's bottom edge, so the overlap was cutting off the
-            condition + nextChange lines. mt-2 gives a normal gap;
-            relative z-10 stays so the cards still paint above the
-            sky's stacking context cleanly. */}
-        <div className="relative z-10 mt-2 space-y-2">
-        <Suspense fallback={null}>
-          <CivicAlerts />
-        </Suspense>
-        <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
-          <HourlyForecast />
-        </Suspense>
-        {/* More weather details — iOS-style 2-up grid (Sun arc, Wind,
-            Humidity, Feels Like, Pressure, Visibility, Moon, Daylight).
-            Collapsed by default. Sits ABOVE the 7-day pill so the
-            two disclosures stack as one "details" cluster between the
-            visible hourly rail and the always-on almanac strip. */}
-        <WeatherMore>
-          <Suspense fallback={<Skeleton.Block height={280} round="var(--app-radius-md)" />}>
-            <WeatherMoreGrid />
-          </Suspense>
-        </WeatherMore>
-        <WeeklyCard
-          summary={
-            <Suspense fallback={<>Loading…</>}>
-              <WeeklySummary />
-            </Suspense>
-          }
+        <div
+          className="relative z-10 mt-2 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_*:not(:last-child)]:border-b"
+          style={{
+            borderColor: "var(--app-border)",
+            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          }}
         >
-          <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-md)" />}>
-            <WeeklyForecast />
+          <Suspense fallback={null}>
+            <CivicAlerts />
           </Suspense>
-        </WeeklyCard>
-        <Suspense fallback={null}>
-          <AlmanacFooter />
-        </Suspense>
+          <Suspense fallback={<Skeleton.Block height={92} round="0" />}>
+            <HourlyForecast />
+          </Suspense>
+          <WeatherMore>
+            <Suspense fallback={<Skeleton.Block height={280} round="0" />}>
+              <WeatherMoreGrid />
+            </Suspense>
+          </WeatherMore>
+          <WeeklyCard
+            summary={
+              <Suspense fallback={<>Loading…</>}>
+                <WeeklySummary />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<Skeleton.Block height={260} round="0" />}>
+              <WeeklyForecast />
+            </Suspense>
+          </WeeklyCard>
+          <Suspense fallback={null}>
+            <AlmanacFooter />
+          </Suspense>
         </div>
       </div>
 
-      {/* Worth a look today — photo-led discovery rail. Six tiles
-          rotated by day so the page rewards return visits. The only
-          surprise-me surface on /now; the rest of the page answers
-          specific questions, this one says "here's something you
-          might not have known about." */}
-      <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
-        <WorthALook />
-      </Suspense>
-
-      {/* Section break between "what's the day" (weather + discovery)
-          and "what should I do" (action card + RightNowStrip + mood
-          tiles + events). The hairline traces Carroll Creek — too
-          small to read on a quick scan, recognized by a local on a
-          second look. The page's one small wink. */}
-      <CreekHairline />
-
-      {/* PrimaryActionCard — the primary call to action ("What is open
-          near you" / "What's open right now"). Sits BELOW the weather
-          block on paper-cream so the weather reads as a single unit
-          and the CTA lands as the page's "now what?" answer. */}
-      <PrimaryActionCard now={now} />
-
-      {/* RightNowStrip: three direct answers to the questions a
-       *  stranger opens the app to ask: what's open near me, what's
-       *  starting soon, what's worth this weekend. Each card is a
-       *  full-width tap target into the canonical detail page.
+      {/* SPINE REORDER (pleasant-layout pass):
        *
-       *  Wrapped in Suspense so PPR streams the static shell of the
-       *  page (hero, MoodTiles, time toggle) immediately while the
-       *  ranked picks resolve from the cached helpers in src/lib/
-       *  now-picks.ts. */}
+       *   weather (above) → RIGHT NOW → PLAN → MOOD → PARTNER APPS →
+       *   DISCOVERY (WorthALook) → events → from above
+       *
+       * Pre-redesign the order was weather → WorthALook → CreekHairline
+       * → action → right-now → mood → partner → events → from above.
+       * That put a photo discovery rail BEFORE the action surfaces,
+       * which buried the page's most useful answers (open-now /
+       * starting-soon / weekend-bet) below a scroll. The hairline was
+       * decorative chrome — dropped. The new order leads with the
+       * three impulse cards, then the plan-tonight action card, then
+       * the mood / utility rows, THEN the photo discovery, THEN
+       * events. Reads as: "here are the direct answers · plan
+       * something · narrow by mood / handoff to partner · here's
+       * something pretty to come back for · here's what's happening."
+       */}
+
+      {/* RightNowStrip — three direct answers, 3-card grid. */}
       <Suspense
         fallback={
           <div className="space-y-2" aria-busy="true">
@@ -399,17 +390,21 @@ export default async function HomePage({
         <RightNowStrip now={now} />
       </Suspense>
 
-      {/* In the mood for — 4-up affordance tiles (Coffee / Outdoors /
-       *  Eat / With kids) that deep-link into the category page with
-       *  the right scope. */}
+      {/* PrimaryActionCard — Plan tonight / what's open near you. */}
+      <PrimaryActionCard now={now} />
+
+      {/* MoodTiles — what do you need right now, with sub-tile expand. */}
       <MoodTiles />
 
-      {/* Partner-app handoffs — ParkMobile (the City of Frederick's
-          all-digital street-parking platform) + OpenTable (the
-          dominant reservation system downtown). Two job-to-be-done
-          shortcuts that no in-app surface can fulfill on its own;
-          we hand off to the partner app and let them do their thing. */}
+      {/* PartnerAppsRow — ParkMobile + OpenTable. */}
       <PartnerAppsRow />
+
+      {/* Worth a look today — the page's surprise-me block now lives
+          AFTER the action surfaces, so it earns return visits without
+          burying the actually-useful answers above it. */}
+      <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
+        <WorthALook />
+      </Suspense>
 
       {/* When? — the brand-defining temporal control. Pivots the
        *  events section between Now / Tonight / Tomorrow / Weekend.
