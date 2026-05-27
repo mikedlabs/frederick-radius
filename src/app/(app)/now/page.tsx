@@ -15,6 +15,8 @@ import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/to
 import AlmanacFooter from "@/components/today/AlmanacFooter";
 import HourlyForecast from "@/components/today/HourlyForecast";
 import WeeklyForecast from "@/components/today/WeeklyForecast";
+import ForecastCard from "@/components/today/ForecastCard";
+import ForecastSummary from "@/components/today/ForecastSummary";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -252,16 +254,26 @@ export default async function HomePage({
         <PrimaryActionCard now={now} />
       </SkyHero>
 
-      {/* Hourly + Weekly weather cards — lifted out of WeatherHero into
-          their own paper-cream cards on the page background, the iOS
-          Weather pattern. Each fetches the same NWS forecast which the
-          Next.js request cache dedupes into a single network call. */}
-      <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
-        <HourlyForecast />
-      </Suspense>
-      <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-lg)" />}>
-        <WeeklyForecast />
-      </Suspense>
+      {/* Forecast disclosure — closed by default, remembers the user's
+          choice across visits via localStorage. The peek summary
+          ("7 days · 60° to 84° · 2 days of rain") is computed once
+          server-side. Expanding reveals the iOS-style hourly rail +
+          range-bar 7-day. /now stays compact unless the reader asks
+          for the data. */}
+      <ForecastCard
+        summary={
+          <Suspense fallback={<>Loading forecast…</>}>
+            <ForecastSummary />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-md)" />}>
+          <HourlyForecast />
+        </Suspense>
+        <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-md)" />}>
+          <WeeklyForecast />
+        </Suspense>
+      </ForecastCard>
 
       {/* RightNowStrip: three direct answers to the questions a
        *  stranger opens the app to ask: what's open near me, what's

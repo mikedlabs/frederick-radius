@@ -125,11 +125,7 @@ export default async function WeeklyForecast() {
   const weekSpan = Math.max(1, weekMax - weekMin);
 
   return (
-    <article
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
-      aria-label="7-day forecast"
-    >
+    <section aria-label="7-day forecast">
       <header className="mb-2 px-1">
         <h3
           className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
@@ -259,6 +255,6 @@ export default async function WeeklyForecast() {
       >
         National Weather Service · Frederick
       </p>
-    </article>
+    </section>
   );
 }
