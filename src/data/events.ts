@@ -149,15 +149,16 @@ function aliveAtFiveSeason(): Event[] {
       timezone: "America/New_York",
       is_recurring: true,
       recurrence_text: "Every Thursday, May 7 – September 24, 2026",
-      venue_place_slug: "carroll-creek-linear-park-frederick",
+      venue_place_slug: "carroll-creek-outdoor-amphitheater",
       venue_name: "Carroll Creek Amphitheater",
       address: "Carroll Creek Park, Frederick, MD 21701",
-      // Coordinates were 200m west and 100m north of the actual
-      // amphitheater — putting the pin on the wrong side of the
-      // creek. The amphitheater sits at the south bank of Carroll
-      // Creek near S Market St, matching the place pin for
-      // "Carroll Creek Linear Park" exactly.
-      geom: { lng: -77.4083747, lat: 39.4127865 },
+      // Exact coordinates of the Carroll Creek Outdoor Amphitheater
+      // venue pin from places-client.json. Earlier passes used the
+      // Linear Park centroid (-77.4084, 39.4128) which is in the
+      // right neighborhood but still ~30m off the amphitheater's
+      // actual stage. The new venue_place_slug also matches so the
+      // event detail page's place lookup resolves cleanly.
+      geom: { lng: -77.4087681, lat: 39.4126271 },
       municipality: "frederick",
       category: "music",
       audience: ["adults", "groups"],

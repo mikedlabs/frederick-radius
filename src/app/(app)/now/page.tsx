@@ -334,11 +334,14 @@ export default async function HomePage({
           <Suspense fallback={<Skeleton.Block height={92} round="0" />}>
             <HourlyForecast />
           </Suspense>
-          <WeatherMore>
-            <Suspense fallback={<Skeleton.Block height={280} round="0" />}>
-              <WeatherMoreGrid />
-            </Suspense>
-          </WeatherMore>
+          {/* Order: HOURLY → 7-DAY → MORE WEATHER DETAILS → almanac.
+              Pre-swap the More-Weather-Details disclosure sat between
+              hourly and 7-day, which read backwards: a user looking
+              at "what's the rest of the week" had to scroll past
+              wind/humidity/pressure first. 7-day is the broader
+              forecast view; "more details" is the deeper drill-in.
+              Almanac (sunrise/sunset, AQI, comfort) is the quiet
+              footer line that wraps up the panel. */}
           <WeeklyCard
             summary={
               <Suspense fallback={<>Loading…</>}>
@@ -350,6 +353,11 @@ export default async function HomePage({
               <WeeklyForecast />
             </Suspense>
           </WeeklyCard>
+          <WeatherMore>
+            <Suspense fallback={<Skeleton.Block height={280} round="0" />}>
+              <WeatherMoreGrid />
+            </Suspense>
+          </WeatherMore>
           <Suspense fallback={null}>
             <AlmanacFooter />
           </Suspense>
