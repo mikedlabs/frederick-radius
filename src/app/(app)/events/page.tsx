@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Calendar, Sparkles, MapPin } from "lucide-react";
+import { CalendarDays, Sparkles } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
@@ -8,7 +8,6 @@ import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
 import WeekStrip from "@/components/event/WeekStrip";
 import TonightRail from "@/components/event/TonightRail";
-import CategoryJumpTiles from "@/components/event/CategoryJumpTiles";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
@@ -131,8 +130,6 @@ export default async function EventsIndexPage({
   const initialDay =
     dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
 
-  const liveCount = liveCards.length;
-
   // Hero feature — the next photo-backed upcoming event. If none, we
   // fall back to a SeasonalPhoto + serif headline so the page never
   // opens cold without imagery.
@@ -155,14 +152,6 @@ export default async function EventsIndexPage({
             return t >= +now && t <= +start24;
           })
           .slice(0, 8);
-
-  // Weekend count — feeds the masthead meta strip's "X this weekend"
-  // pill so the user gets a useful at-a-glance number without scrolling
-  // down to the explorer.
-  const weekendCount = allEvents.filter((e) => {
-    const t = +new Date(e.starts_at);
-    return t >= +friday && t <= +monday;
-  }).length;
 
   return (
     <div className="relative space-y-6">
@@ -219,69 +208,41 @@ export default async function EventsIndexPage({
 
       {/* ── 2. Editorial masthead ─────────────────────────────────────
           Only renders when the cinematic hero used a real event card
-          (the SeasonalPhoto fallback already carries the H1). Tight
-          row: eyebrow + serif title + meta-pill strip + Month-view
-          pill. The pills mirror the meta chips on /plan + /pulse so
-          the visual language carries across the redesigned pages. */}
+          (the SeasonalPhoto fallback already carries the H1).
+          Slimmed pre-launch (review §5): the four-pill stats row
+          (events / towns / weekend / live) was removed because it
+          read as an admin panel rather than a useful decision tool.
+          The same numbers surface naturally inside the explorer's
+          lens chips below. Only the page title + Month-view pivot
+          remain at the top. */}
       {heroEvent && (
-        <header className="space-y-2.5">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-                Live across the county
-              </p>
-              <h1
-                className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                Events
-              </h1>
-            </div>
-            <Link
-              href="/events/calendar"
-              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-              style={{
-                background: "var(--app-bg-elevated)",
-                color: "var(--app-ink-2)",
-              }}
+        <header className="flex items-end justify-between gap-3">
+          <div>
+            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+              Live across the county
+            </p>
+            <h1
+              className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
+              style={{ color: "var(--app-ink)" }}
             >
-              <CalendarDays
-                className="h-3.5 w-3.5"
-                strokeWidth={2.25}
-                aria-hidden
-              />
-              Month view
-            </Link>
+              Events
+            </h1>
           </div>
-          <ul
-            className="flex flex-wrap items-center gap-1.5"
-            aria-label="Events summary"
+          <Link
+            href="/events/calendar"
+            className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+            style={{
+              background: "var(--app-bg-elevated)",
+              color: "var(--app-ink-2)",
+            }}
           >
-            <Meta>
-              <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              <span className="font-bold tabular-nums">{allEvents.length}</span>
-              {allEvents.length === 1 ? " event" : " events"}
-            </Meta>
-            <Meta>
-              <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              <span className="font-bold tabular-nums">{towns.length}</span>{" "}
-              {towns.length === 1 ? "town" : "towns"}
-            </Meta>
-            {weekendCount > 0 && (
-              <Meta accent="var(--app-brand)">
-                <Sparkles className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                <span className="font-bold tabular-nums">{weekendCount}</span>{" "}
-                this weekend
-              </Meta>
-            )}
-            {liveCount > 0 && (
-              <Meta accent="var(--app-positive)">
-                <span className="live-dot" />
-                <span className="font-bold tabular-nums">{liveCount}</span> live
-                feed{liveCount === 1 ? "" : "s"}
-              </Meta>
-            )}
-          </ul>
+            <CalendarDays
+              className="h-3.5 w-3.5"
+              strokeWidth={2.25}
+              aria-hidden
+            />
+            Month view
+          </Link>
         </header>
       )}
 
@@ -295,10 +256,14 @@ export default async function EventsIndexPage({
           actually starting soon." */}
       {tonightFinal.length > 0 && <TonightRail events={tonightFinal} />}
 
-      {/* ── 5. Category jump tiles — visual entry to deeper surfaces. */}
-      <CategoryJumpTiles events={allEvents} />
+      {/* CategoryJumpTiles was here. Removed pre-launch (review §5):
+          a six-tile category grid that linked out to /category/<slug>
+          duplicated the visual weight of the explorer's own category
+          facets below. Browsing by category lives ONE click deep
+          inside the explorer's lens row; the user doesn't need a
+          parallel surface that asks the same question. */}
 
-      {/* ── 6. Events explorer — the primary browse surface.
+      {/* ── 5. Events explorer — the primary browse surface.
           Lens chips (Tonight / Tomorrow / Weekend / This week / Free)
           live at the top and own all the filter state via URL params.
           One list, one filter row, one mental model. */}
@@ -315,12 +280,12 @@ export default async function EventsIndexPage({
         initialDay={initialDay}
       />
 
-      {/* ── 7. Municipal series — quiet series-level summary block. */}
+      {/* ── 6. Municipal series — quiet series-level summary block. */}
       {ingestedSeries.length > 0 && (
         <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
       )}
 
-      {/* ── 8. Honesty footer ───────────────────────────────────────── */}
+      {/* ── 7. Honesty footer ───────────────────────────────────────── */}
       <footer
         className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
@@ -345,29 +310,3 @@ export default async function EventsIndexPage({
   );
 }
 
-/**
- * Meta — small pill that mirrors the meta chips on /plan and /pulse.
- * Accent-tinted background by default; pass an accent to highlight a
- * specific stat (e.g. weekend count in brand, live count in positive).
- */
-function Meta({
-  children,
-  accent,
-}: {
-  children: React.ReactNode;
-  accent?: string;
-}) {
-  return (
-    <li
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] tabular-nums"
-      style={{
-        background: accent
-          ? `color-mix(in srgb, ${accent} 12%, transparent)`
-          : "var(--app-bg-elevated)",
-        color: accent ?? "var(--app-ink-2)",
-      }}
-    >
-      {children}
-    </li>
-  );
-}
