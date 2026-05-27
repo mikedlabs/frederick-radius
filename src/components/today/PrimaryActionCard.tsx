@@ -41,8 +41,15 @@ export default async function PrimaryActionCard({ now = new Date() }: { now?: Da
         subhead: visitor
           ? "Dinner, drinks, then somewhere to land late. All walkable."
           : "Dinner, drinks, late spot. Routed by foot.",
-        cta: visitor ? "See tonight" : "Tonight",
-        href: "/events?lens=tonight",
+        cta: visitor ? "Plan tonight" : "Plan it",
+        // Routes to /plan — the dedicated planner surface that
+        // walks the user through dinner → drinks → late spot. The
+        // earlier href, /events?lens=tonight, just dumped a list of
+        // tonight's events; the card promised a PLAN ("Plan tonight
+        // in one tap") but the destination was a calendar list. The
+        // MoreSheet's plan-hero also routes to /plan; now both
+        // surfaces line up on the same destination.
+        href: "/plan",
         Icon: CalendarClock,
       }
     : {

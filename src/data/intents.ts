@@ -174,7 +174,22 @@ export const INTENTS: Intent[] = [
     preferOpen: true,
     subIntents: [
       { key: "restaurants", type: "category", label: "Restaurants", icon: "Utensils", match: (p) => p.category === "restaurant" },
-      { key: "pizza",       type: "category", label: "Pizza",       icon: "Pizza",    match: (p) => p.category === "pizza" },
+      // Pizza: match places categorized as pizza OR places with
+      // "pizza" / "pizzeria" / "pie" in the name (Pretzel & Pizza
+      // Creations, Wine Kitchen's pizza menu, etc.). Strict category
+      // matching alone was hiding ~half the actual pizza places
+      // because Google's primary_type lands most of them in
+      // "restaurant" and only a few in "pizza_restaurant".
+      {
+        key: "pizza",
+        type: "category",
+        label: "Pizza",
+        icon: "Pizza",
+        match: (p) =>
+          p.category === "pizza" ||
+          (p.subcategories ?? []).includes("pizza") ||
+          /\b(pizza|pizzeria)\b/i.test(p.name),
+      },
       { key: "bars",        type: "category", label: "Bars",        icon: "Wine",     match: (p) => p.category === "bar" },
       { key: "breweries",   type: "category", label: "Breweries",   icon: "Beer",     match: (p) => p.category === "brewery" && !isWinery(p) },
       { key: "wineries",    type: "category", label: "Wineries",    icon: "Wine",     match: (p) => isWinery(p) },
