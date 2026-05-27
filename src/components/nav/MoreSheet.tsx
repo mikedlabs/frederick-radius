@@ -17,6 +17,8 @@ import {
   Droplets,
   ExternalLink,
   ArrowUpRight,
+  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -36,8 +38,8 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
  *   3. DISCOVER — the editorial surface. The two physical books
  *      (From Above + Color Frederick) get real photo cards using
  *      their cover art so a tap reads as opening a book, not a
- *      menu row. History stays as a row.
- *   4. APP — About + Settings. The chrome.
+ *      menu row. History and Collections sit as rows beneath.
+ *   4. APP — About + Trust & data + Settings. The chrome.
  */
 
 type Item = {
@@ -93,15 +95,16 @@ const BOOKS: Array<{
   },
 ];
 
-const HISTORY: Item = {
-  href: "/history",
-  label: "History",
-  description: "Frederick County, one story at a time",
-  icon: Landmark,
-};
+/** Discover rows that sit beneath the book cards. History first
+ *  (the heaviest editorial surface), then Collections. */
+const DISCOVER_ROWS: Item[] = [
+  { href: "/history",     label: "History",     description: "Frederick County, one story at a time",       icon: Landmark },
+  { href: "/collections", label: "Collections", description: "Editorial lists — date nights, rainy days, kid energy", icon: Sparkles },
+];
 
 const APP: Item[] = [
   { href: "/about",    label: "About",    description: "What this app is and how it stays honest",     icon: Info },
+  { href: "/trust",    label: "Trust & data", description: "Where the data comes from and what the badges mean", icon: ShieldCheck },
   { href: "/settings", label: "Settings", description: "Persona, home spot, interests, notifications", icon: SettingsIcon },
 ];
 
@@ -125,7 +128,8 @@ export default function MoreSheet({
         <Cluster heading="Tools" items={TOOLS} onClose={close} />
         <Cluster heading="Useful" items={USEFUL} onClose={close} />
 
-        {/* Discover — books shown as books, then history as a row. */}
+        {/* Discover — books shown as books, then History + Collections
+            as rows beneath. */}
         <section className="space-y-2">
           <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
             Discover
@@ -138,9 +142,11 @@ export default function MoreSheet({
             ))}
           </ul>
           <ul className="space-y-1.5 pt-1">
-            <li>
-              <DirectoryRow {...HISTORY} onClose={close} />
-            </li>
+            {DISCOVER_ROWS.map((it) => (
+              <li key={it.href}>
+                <DirectoryRow {...it} onClose={close} />
+              </li>
+            ))}
           </ul>
         </section>
 
