@@ -66,3 +66,4 @@ scripts/.lighthouse/
 # Lighthouse / perf audit snapshots: local-only, do not commit
 .perf/
 scripts/.lighthouse/
+.env*.local
