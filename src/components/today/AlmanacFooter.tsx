@@ -1,5 +1,6 @@
-import { Sunrise, Sunset } from "lucide-react";
+import { Sunrise, Sunset, Droplets } from "lucide-react";
 import { daylightDelta } from "@/lib/almanac";
+import { getKfdkMetar, dewpointComfort } from "@/lib/integrations/aviationweather";
 
 /**
  * AlmanacFooter — a single quiet line at the bottom of /now that says
@@ -19,11 +20,19 @@ import { daylightDelta } from "@/lib/almanac";
  * page already revalidates on a 60s cadence and the answer for
  * Frederick only changes once at midnight Eastern.
  */
-export default function AlmanacFooter() {
+export default async function AlmanacFooter() {
   // eslint-disable-next-line react-hooks/purity
   const now = new Date();
   const delta = daylightDelta(now);
   if (!delta) return null;
+
+  // KFDK METAR — surfaces a dewpoint comfort label ("Sticky", "Muggy",
+  // "Oppressive", "Very dry") inline ONLY at the edges of the comfort
+  // spectrum. The "comfortable" middle band is silent so we don't add
+  // noise on a normal day. Public-domain US federal data, no key.
+  const metar = await getKfdkMetar().catch(() => null);
+  const comfort = metar ? dewpointComfort(metar.dewpointF) : null;
+  const showComfort = comfort && comfort.worthSurfacing;
 
   const fmtClock = (d: Date) =>
     new Intl.DateTimeFormat("en-US", {
@@ -74,6 +83,21 @@ export default function AlmanacFooter() {
         ·
       </span>
       <span>{deltaLine}</span>
+      {showComfort && metar && (
+        <>
+          <span aria-hidden style={{ color: "var(--app-border)" }}>
+            ·
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 font-semibold"
+            style={{ color: comfort.color }}
+            title={`Dewpoint ${metar.dewpointF}°F at KFDK — ${comfort.label.toLowerCase()}`}
+          >
+            <Droplets className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+            {comfort.label}
+          </span>
+        </>
+      )}
     </footer>
   );
 }
