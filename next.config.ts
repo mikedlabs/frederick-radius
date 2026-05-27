@@ -52,17 +52,15 @@ const nextConfig: NextConfig = {
     //      the wildcard restores the default behavior for the public
     //      folder while keeping non-image static paths gated.
     localPatterns: [
-      { pathname: "/api/place-photo", search: "?**" },
+      // /api/place-photo — same-origin Google photo proxy. Carries a
+      // query string (?name=...&w=...&slug=...). Next 16 made the
+      // glob matcher stricter: the earlier "?**" search pattern
+      // started rejecting valid URLs. Omitting `search` allows any
+      // query string for this path, which is what we want — the API
+      // route validates its own params and rejects bad input there.
+      { pathname: "/api/place-photo" },
       { pathname: "/images/**", search: "" },
-      // /from-above/photos/** — the drone-photography book extracted
-      // from the print PDF. Lives under /public/from-above/photos and
-      // is rendered by BookExperience via next/image. Without this
-      // entry, the /from-above/preview route 500s ("Invalid src prop
-      // does not match images.localPatterns").
       { pathname: "/from-above/**", search: "" },
-      // /history-photos/** — public-domain historical imagery (NPS,
-      // Library of Congress, Wikimedia Commons) used by the
-      // HistoryMomentCard. Same localPatterns gating as the book.
       { pathname: "/history-photos/**", search: "" },
     ],
     remotePatterns: [
