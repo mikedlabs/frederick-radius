@@ -13,7 +13,7 @@ import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
-import { Bookmark, MapPin, Sparkles } from "lucide-react";
+import { Bookmark, MapPin, Sparkles, Calendar, UtensilsCrossed } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
 
 type DecoratedEvent = ReturnType<typeof decorateEvent>;
@@ -457,13 +457,19 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
             className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            A place to keep track of your Frederick.
+            Your Frederick list starts here.
           </p>
           <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-            Tap the bookmark on any place or event to pin it here. The list is
-            yours, for things you&apos;ve been meaning to try, dates worth a return
-            visit, or a list to send a friend who&apos;s coming through town.
+            Save places, events, trails, and ideas for later. Tap the bookmark
+            on anything in the field guide and it lands here. The list is yours
+            — things you&apos;ve been meaning to try, dates worth a return visit,
+            or a short list to send a friend who&apos;s coming through town.
           </p>
+          {/* Three primary entry points so the empty page suggests three
+              different starting paths (explore the map, see what's on,
+              or follow a craving). The first is the brand-filled primary;
+              the other two are hairline pills so the visual hierarchy
+              still reads "one main move, two alternatives." */}
           <div className="flex flex-wrap gap-2 pt-1">
             <Link
               href="/browse"
@@ -471,14 +477,23 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
               style={{ background: "var(--app-brand)", color: "white" }}
             >
               <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Browse the map
+              Explore nearby
             </Link>
             <Link
               href="/events"
               className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             >
-              See what&apos;s on
+              <Calendar className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              Browse events
+            </Link>
+            <Link
+              href="/browse?intent=eat"
+              className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+            >
+              <UtensilsCrossed className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              Food and drink
             </Link>
           </div>
         </div>
