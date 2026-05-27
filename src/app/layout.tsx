@@ -133,6 +133,27 @@ export default function RootLayout({
     // SSR/client mismatch inside one of our components still surfaces.
     // Ref: https://nextjs.org/docs/messages/react-hydration-error
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preconnect to the Vercel Blob CDN where the downloaded
+            place photos live. A blank preconnect lets the browser
+            start the TLS handshake AND DNS lookup the moment the
+            HTML lands, instead of waiting for the first <img> tag
+            to be parsed. Saves ~50-150ms on the first photo per
+            page; compounds on /browse where 8+ photos can request
+            simultaneously when the in-view drawer opens.
+            dns-prefetch is the cheaper fallback for browsers /
+            cases where preconnect is skipped (e.g. when too many
+            preconnects are in use). */}
+        <link
+          rel="preconnect"
+          href="https://ijszzixn2rzddhti.public.blob.vercel-storage.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="dns-prefetch"
+          href="https://ijszzixn2rzddhti.public.blob.vercel-storage.com"
+        />
+      </head>
       <body
         suppressHydrationWarning
         className={cn(

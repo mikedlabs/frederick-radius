@@ -83,6 +83,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/web-push": "^3.6.4",
+    "babel-plugin-react-compiler": "^1.0.0",
     "chrome-launcher": "^1.2.1",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
