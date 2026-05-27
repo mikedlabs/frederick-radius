@@ -47,24 +47,21 @@ export default function MapTimeChips({
     return `/browse?${qs.toString()}`;
   };
 
+  // No outer absolute wrapper anymore — MapIntentChips renders this
+  // strip inside its own space-y-2 stack, so the layout flows
+  // naturally regardless of which rows above it are visible (active
+  // banner, sub-intents, etc.). The earlier `top: calc(...+56px)`
+  // hardcode assumed exactly ONE chip row above; once the banner/sub
+  // rows joined the picture, it overlapped the intent chips strip.
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 z-30 px-2.5 sm:px-3"
+      className="pointer-events-auto mx-auto flex w-full max-w-[680px] gap-1.5 overflow-x-auto rounded-full p-1 backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       style={{
-        // Sit just below MapIntentChips (which already accounts for
-        // safe-area + header). 56px is the standard chip-row height
-        // we use across the app; tweak together if either changes.
-        top: "calc(2.5rem + env(safe-area-inset-top, 0px) + 18px + 56px)",
+        background: "color-mix(in srgb, var(--app-bg-elevated) 80%, transparent)",
+        boxShadow: "var(--app-shadow-1)",
       }}
       aria-label="Filter map by time"
     >
-      <div
-        className="pointer-events-auto mx-auto flex w-full max-w-[680px] gap-1.5 overflow-x-auto rounded-full p-1 backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{
-          background: "color-mix(in srgb, var(--app-bg-elevated) 80%, transparent)",
-          boxShadow: "var(--app-shadow-1)",
-        }}
-      >
         {CHIPS.map(({ key, label, Icon }) => {
           const isActive = key === active;
           const n = counts?.[key];
@@ -97,7 +94,6 @@ export default function MapTimeChips({
             </Link>
           );
         })}
-      </div>
     </div>
   );
 }

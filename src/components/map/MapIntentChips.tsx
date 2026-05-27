@@ -64,6 +64,7 @@ export default function MapIntentChips({
   activeCount,
   activeSub,
   subCounts,
+  children,
 }: {
   active?: string;
   /** Number of places matching the active intent — shown in the
@@ -75,6 +76,14 @@ export default function MapIntentChips({
   /** Per-sub-intent place counts so the sub-chips can show "Pizza · 12"
    *  and the user doesn't tap into an empty filter. */
   subCounts?: Record<string, number>;
+  /** Slot at the BOTTOM of the chips stack — used by /browse to render
+   *  the MapTimeChips strip directly below the intent chips. Used to be
+   *  two siblings with independent `top: calc(...)` positions, which
+   *  caused the time chips to overlap the intent chips strip when the
+   *  active-intent banner pushed everything down by one row. Putting
+   *  them in the same space-y-2 flow makes the layout naturally stack
+   *  regardless of how many rows the intent group has. */
+  children?: React.ReactNode;
 }) {
   const activeIntent = active ? INTENTS.find((i) => i.key === active) : null;
   const ActiveIcon = activeIntent ? ICON[activeIntent.icon] : null;
@@ -238,6 +247,12 @@ export default function MapIntentChips({
           );
         })}
       </div>
+      {/* Bottom slot — typically the MapTimeChips strip. Lives inside
+          the same absolute container so the layout naturally stacks
+          regardless of which intent rows above it are visible (banner,
+          sub-intents, main chips). The outer `space-y-2` gives an 8px
+          gap between rows. */}
+      {children}
     </div>
   );
 }

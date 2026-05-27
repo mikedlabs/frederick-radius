@@ -279,17 +279,24 @@ export default async function MapPage({
         height: "calc(100dvh - 56px - env(safe-area-inset-top, 0px))",
       }}
     >
+      {/* MapIntentChips owns the absolute positioning at the top of
+          the map; MapTimeChips renders as a child so the two strips
+          stack inside the same flow container. Previously they were
+          siblings with independent `top:` offsets, which overlapped
+          the moment the active-intent banner pushed the intent strip
+          down. */}
       <MapIntentChips
         active={intent?.key}
         activeCount={intent ? places.length : undefined}
         activeSub={activeSub?.key}
         subCounts={subCounts}
-      />
-      <MapTimeChips
-        active={timeMode}
-        intent={intent?.key}
-        counts={counts}
-      />
+      >
+        <MapTimeChips
+          active={timeMode}
+          intent={intent?.key}
+          counts={counts}
+        />
+      </MapIntentChips>
       <AppMapClient
         places={places}
         civic={civic}
