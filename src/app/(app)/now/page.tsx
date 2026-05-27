@@ -255,26 +255,28 @@ export default async function HomePage({
           card and keep the tune-for-you affordance (or vice versa). */}
       <TuneForYou />
 
-      {/* 1 — Sky-tinted hero. Greeting + sun countdown + civic alert
-          (when active) + weather (now and the 7-day, on one card) +
-          plan card, layered on the time-of-day gradient. CivicAlerts
-          lives INSIDE SkyHero so an active alert reads as part of the
-          hero unit, not as a strange floating banner between the page
-          header and the sky gradient. */}
-      {/* WEATHER BLOCK — one cohesive unit. SkyHero + Hourly + 7-day
-          + Almanac all sit in a tight `space-y-2` (8px) container so
-          they read as a connected stack instead of four floating
-          cards. The parent's space-y-6 only kicks back in BELOW this
-          group, when PrimaryActionCard and the rest of /now take
-          over. SkyHero's own pb-4 (was pb-8) further reduces the
-          empty sky above the ridge before the hourly card. */}
+      {/* 1 — Sky-tinted hero. Greeting + sun countdown + weather (now
+          and the 7-day, on one card) + plan card, layered on the
+          time-of-day gradient. */}
+      {/* WEATHER BLOCK — one cohesive unit. SkyHero + CivicAlerts
+          (when active) + Hourly + 7-day + Almanac all sit in a tight
+          `space-y-2` (8px) container so they read as a connected
+          stack instead of four floating cards. The parent's
+          space-y-6 only kicks back in BELOW this group, when
+          PrimaryActionCard and the rest of /now take over. */}
+      {/* CivicAlerts placement: moved OUT of SkyHero (where it lived
+          on the sky gradient and visually competed with the weather
+          hero) to its own row between SkyHero and HourlyForecast.
+          During a severe-weather event the red/orange alert banner
+          now reads as a distinct row above the hourly forecast — the
+          warning lands with the visual weight it needs, instead of
+          getting absorbed into the sky gradient. When no alert is
+          active CivicAlerts renders nothing and the stack collapses
+          (Suspense fallback={null}). */}
       <div className="space-y-2">
         <SkyHero className="space-y-4">
           <Suspense fallback={<Skeleton.Block height={56} round="var(--app-radius-md)" />}>
             <AdaptiveGreeting />
-          </Suspense>
-          <Suspense fallback={null}>
-            <CivicAlerts />
           </Suspense>
           <Suspense
             fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
@@ -282,6 +284,9 @@ export default async function HomePage({
             <WeatherHero />
           </Suspense>
         </SkyHero>
+        <Suspense fallback={null}>
+          <CivicAlerts />
+        </Suspense>
         <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
           <HourlyForecast />
         </Suspense>
