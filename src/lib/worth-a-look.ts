@@ -87,7 +87,16 @@ export const getWorthALookToday = unstable_cache(
     const STRIDE = 7;
     return Array.from({ length: 6 }, (_, i) => pool[(start + i * STRIDE) % pool.length]);
   },
-  ["worth-a-look:today"],
+  // Cache key includes the current deployment hash so any data
+  // change (e.g. places-photos.json gaining downloaded Blob URLs)
+  // busts the cache automatically on deploy. Without this, the
+  // 60-minute revalidate window holds the OLD URLs even after a
+  // build that should have switched the loader to Blob — which is
+  // exactly what happened when this fix's PR was merged but /now
+  // kept serving slow proxy URLs.
+  // VERCEL_GIT_COMMIT_SHA is set on every Vercel build; falls back
+  // to "dev" locally so the dev server still caches normally.
+  ["worth-a-look:today", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // 60-minute revalidate — well under the daily rotation but cheap
   // enough that an admin write to places-client.json shows up fast.
   { revalidate: 3600, tags: ["worth-a-look", "places"] },
