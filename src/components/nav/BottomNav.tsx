@@ -13,10 +13,15 @@ import { haptic } from "@/lib/haptics";
 // chips inside the page for Pan vs Within reach. /events ("Plan")
 // and /saved round out the model. /places + /radius remain as
 // routes (deep links survive); they are no longer primary tabs.
+// Tab labels lean on everyday language rather than internal slugs.
+// Pre-launch review §7: "Today" reads more naturally than "Now" and
+// "Events" reads more naturally than "Plan" — the routes (/now, /events)
+// keep the original slugs so every bookmark, deep link, and shared URL
+// in the wild still works. Only the visible labels change.
 const TABS = [
-  { href: "/now", label: "Now", icon: Sun },
+  { href: "/now", label: "Today", icon: Sun },
   { href: "/browse", label: "Browse", icon: Compass },
-  { href: "/events", label: "Plan", icon: Calendar },
+  { href: "/events", label: "Events", icon: Calendar },
   { href: "/saved", label: "Saved", icon: Bookmark },
 ] as const;
 
