@@ -126,6 +126,8 @@ Activate live features by setting these on Vercel (or `.env.local`):
 | `DELAPLAINE_CALENDAR_URL` | Delaplaine live feed — inert by default |
 | `TICKETMASTER_API_KEY` | Real ticketed shows via Discovery API |
 | `BANDSINTOWN_APP_ID` | Live music shows (also needs a curated artist list) |
+| `AIRNOW_API_KEY` | AQI chip in the AlmanacFooter (shows only when air is Moderate or worse). Free key at airnowapi.org/login |
+| `MAPILLARY_TOKEN` | Street-level trash-can detections in the map's Trash amenities layer |
 | `GOOGLE_MAPS_API_KEY` | Places enrichment + isochrone (one-time job, already loaded) |
 | `MAPBOX_ACCESS_TOKEN` | Map tiles + isochrone proxy |
 | `NWS_USER_AGENT` | Required identifier for the NWS API |

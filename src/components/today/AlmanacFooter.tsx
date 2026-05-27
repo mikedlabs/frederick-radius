@@ -1,5 +1,7 @@
-import { Sunrise, Sunset } from "lucide-react";
+import { Sunrise, Sunset, Wind } from "lucide-react";
 import { daylightDelta } from "@/lib/almanac";
+import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 /**
  * AlmanacFooter — a single quiet line at the bottom of /now that says
@@ -19,11 +21,22 @@ import { daylightDelta } from "@/lib/almanac";
  * page already revalidates on a 60s cadence and the answer for
  * Frederick only changes once at midnight Eastern.
  */
-export default function AlmanacFooter() {
+export default async function AlmanacFooter() {
   // eslint-disable-next-line react-hooks/purity
   const now = new Date();
   const delta = daylightDelta(now);
   if (!delta) return null;
+
+  // AirNow AQI — surfaced inline ONLY when the reading is Moderate or
+  // worse (category id >= 2). On a Good-air day the line is already
+  // doing useful work with sunrise / sunset / delta; an "AQI 38 Good"
+  // append would be noise. When the air is actually worth flagging,
+  // the chip gets the category's color so a quick scan picks it up.
+  // Returns null without an AIRNOW_API_KEY, so the footer stays clean
+  // when the env var isn't set.
+  const aqi = await getAirQuality(FREDERICK_CENTER).catch(() => null);
+  const worst = aqi ? pickWorstAqi(aqi) : null;
+  const showAqi = worst && worst.category.id >= 2;
 
   const fmtClock = (d: Date) =>
     new Intl.DateTimeFormat("en-US", {
@@ -74,6 +87,21 @@ export default function AlmanacFooter() {
         ·
       </span>
       <span>{deltaLine}</span>
+      {showAqi && (
+        <>
+          <span aria-hidden style={{ color: "var(--app-border)" }}>
+            ·
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 font-semibold"
+            style={{ color: worst.category.color }}
+            title={`${worst.category.name} (${worst.parameter} ${worst.aqi}) — observed in ${worst.reportingArea}`}
+          >
+            <Wind className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+            AQI {worst.aqi} {worst.category.name}
+          </span>
+        </>
+      )}
     </footer>
   );
 }

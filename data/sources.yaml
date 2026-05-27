@@ -283,11 +283,23 @@ sources:
     license: AirNow terms, attribution required
     contact: https://www.airnow.gov
     status: scaffold
-    last_validated: null
+    last_validated: 2026-05-26
     last_success: null
     schema_file: null
-    transform_file: null
-    notes: Requires AIRNOW_API_KEY.
+    transform_file: src/lib/integrations/airnow.ts
+    notes: |
+      Live runtime integration, NOT a daily-worker source (same posture
+      as ticketmaster + mapillary_objects). getAirQuality() is wired
+      into the AlmanacFooter on /now and surfaces the worst AQI reading
+      within 25 km of Frederick — but ONLY when the category is
+      Moderate or worse (id >= 2). On a Good-air day the chip is
+      hidden so the footer stays calm. status stays scaffold so the
+      worker never fetches it; this is a request-time integration
+      gated entirely on AIRNOW_API_KEY (free at airnowapi.org/login;
+      server-only). Absent the key, getAirQuality() returns null and
+      this is fully inert. Attribution is satisfied by the chip's
+      title attribute ("observed in {reportingArea}") and the
+      AirNow brand name when the legal scope grows.
 
   - id: nps
     name: National Park Service
