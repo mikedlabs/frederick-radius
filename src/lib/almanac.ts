@@ -152,3 +152,71 @@ export function daylightDelta(
     deltaMinutes: todayMin - yesterdayMin,
   };
 }
+
+export type MoonPhase = {
+  /** 0…1 fraction through the synodic month (new → full → new). */
+  cycle: number;
+  /** 0…1 illuminated fraction of the visible disk. */
+  illumination: number;
+  /** Human-readable phase name. */
+  name:
+    | "New Moon"
+    | "Waxing Crescent"
+    | "First Quarter"
+    | "Waxing Gibbous"
+    | "Full Moon"
+    | "Waning Gibbous"
+    | "Last Quarter"
+    | "Waning Crescent";
+  /** Days until the next full moon (whole days, rounded). */
+  daysToFull: number;
+  /** Days until the next new moon (whole days, rounded). */
+  daysToNew: number;
+};
+
+/**
+ * Moon phase via the standard synodic-month approximation. The lunar
+ * cycle averages 29.53059 days; we count days since a known new moon
+ * (2000-01-06 18:14 UTC, the reference new moon astronomers use for
+ * back-of-envelope phase calculation), modulo the synodic month.
+ *
+ * Accurate to within a few hours — fine for "Waxing Crescent · 33%"
+ * editorial display. The actual NASA / JPL ephemeris would be more
+ * precise, but this is the same model iOS Weather and most almanac
+ * widgets use for the same reason.
+ */
+export function moonPhase(now: Date = new Date()): MoonPhase {
+  const SYNODIC = 29.530588853; // days
+  const REF_NEW_MOON_MS = Date.UTC(2000, 0, 6, 18, 14, 0);
+  const days = (now.getTime() - REF_NEW_MOON_MS) / 86_400_000;
+  const cycle = ((days % SYNODIC) + SYNODIC) % SYNODIC;
+  const fraction = cycle / SYNODIC;
+
+  // Illumination via the smooth (1 - cos)/2 model. Peaks at 1.0 at the
+  // full moon (fraction = 0.5), zero at new moon (0 or 1).
+  const illumination = (1 - Math.cos(2 * Math.PI * fraction)) / 2;
+
+  // Phase names — 8-segment classical division. The four "named"
+  // phases (New, First Q, Full, Last Q) sit at fraction = 0, 0.25,
+  // 0.5, 0.75; the four crescent/gibbous spans fill between them.
+  let name: MoonPhase["name"];
+  if (fraction < 0.03 || fraction > 0.97) name = "New Moon";
+  else if (fraction < 0.22) name = "Waxing Crescent";
+  else if (fraction < 0.28) name = "First Quarter";
+  else if (fraction < 0.47) name = "Waxing Gibbous";
+  else if (fraction < 0.53) name = "Full Moon";
+  else if (fraction < 0.72) name = "Waning Gibbous";
+  else if (fraction < 0.78) name = "Last Quarter";
+  else name = "Waning Crescent";
+
+  const daysToFull = Math.max(0, Math.round((0.5 - fraction + 1) % 1 * SYNODIC));
+  const daysToNew = Math.max(0, Math.round((1 - fraction) % 1 * SYNODIC));
+
+  return {
+    cycle,
+    illumination: Math.round(illumination * 100) / 100,
+    name,
+    daysToFull,
+    daysToNew,
+  };
+}
