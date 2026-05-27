@@ -3,12 +3,15 @@ import { Suspense } from "react";
 import WeatherHero from "@/components/today/WeatherHero";
 import PrimaryActionCard from "@/components/today/PrimaryActionCard";
 import SkyHero from "@/components/today/SkyHero";
-// AdaptiveGreeting import removed — the day/time dateline + serif
-// headline ("Sun for now" / "Wet afternoon") used to sit inside
-// SkyHero alongside WeatherHero; it competed with the actual
-// weather card and made the hero feel cluttered. Component still
-// lives at src/components/today/AdaptiveGreeting.tsx in case we
-// want to surface it elsewhere later.
+import DateLine from "@/components/today/DateLine";
+import NowDayStrip from "@/components/today/NowDayStrip";
+// AdaptiveGreeting (serif headline like "Sun for now") was removed
+// from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
+// header above the hero now carries the temporal anchor — weekday +
+// time + week strip — without a second editorial verdict on top of
+// the WeatherHero's own conditions line. AdaptiveGreeting still
+// lives at src/components/today/AdaptiveGreeting.tsx if we want to
+// surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MoodTiles from "@/components/today/MoodTiles";
 import RightNowStrip from "@/components/now/RightNowStrip";
@@ -260,9 +263,23 @@ export default async function HomePage({
           card and keep the tune-for-you affordance (or vice versa). */}
       <TuneForYou />
 
-      {/* 1 — Sky-tinted hero. Greeting + sun countdown + weather (now
-          and the 7-day, on one card) + plan card, layered on the
-          time-of-day gradient. */}
+      {/* DateLine + NowDayStrip — the slim header that replaces the
+          old AdaptiveGreeting block. Sits ABOVE SkyHero on the page
+          background (paper-cream) so it reads as page metadata, not as
+          a competing editorial line stacked on top of the weather.
+          The dateline + week strip together answer "what day is it?"
+          glanceably; HomeMuniChip lands "Your spot: Brunswick" as the
+          first sign that personalization stuck. Visually they sit in
+          a tight space-y-2 container with about an 8px gap to the
+          SkyHero below. */}
+      <div className="space-y-2">
+        <DateLine />
+        <NowDayStrip />
+      </div>
+
+      {/* 1 — Sky-tinted hero. Sun countdown + weather (now and the
+          7-day, on one card) + plan card, layered on the time-of-day
+          gradient. */}
       {/* WEATHER BLOCK — one cohesive unit. SkyHero + CivicAlerts
           (when active) + Hourly + 7-day + Almanac all sit in a tight
           `space-y-2` (8px) container so they read as a connected
@@ -279,15 +296,6 @@ export default async function HomePage({
           active CivicAlerts renders nothing and the stack collapses
           (Suspense fallback={null}). */}
       <div>
-        {/* AdaptiveGreeting (the day/time dateline + serif headline
-            "Sun for now" / "Wet afternoon") was removed from the
-            sky-hero pre-launch. The weather IS the weather; a second
-            editorial verdict above it competed with the WeatherHero
-            card directly below ("60° Mostly sunny H 78 L 54") and
-            made the hero feel cluttered. The greeting still lives in
-            the codebase (src/components/today/AdaptiveGreeting.tsx)
-            if we want to surface it elsewhere later — just not
-            stacked on top of the weather. */}
         <SkyHero>
           <Suspense
             fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
@@ -373,9 +381,11 @@ export default async function HomePage({
         fallback={
           <div className="space-y-2" aria-busy="true">
             <Skeleton.Block height={20} round="var(--app-radius-sm)" />
-            <Skeleton.Block height={96} round="var(--app-radius-md)" />
-            <Skeleton.Block height={96} round="var(--app-radius-md)" />
-            <Skeleton.Block height={96} round="var(--app-radius-md)" />
+            <div className="grid grid-cols-3 gap-2">
+              <Skeleton.Block height={130} round="var(--app-radius-lg)" />
+              <Skeleton.Block height={130} round="var(--app-radius-lg)" />
+              <Skeleton.Block height={130} round="var(--app-radius-lg)" />
+            </div>
           </div>
         }
       >
