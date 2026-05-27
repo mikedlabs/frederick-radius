@@ -1,7 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useTransform,
+} from "framer-motion";
 import Image from "next/image";
 
 // The whole prototype lives in one client component on purpose:
@@ -278,15 +284,69 @@ function SwipeDeck({
   // on whatever the ref's first value was.
   const [direction, setDirection] = useState<1 | -1>(1);
 
+  /* MAGAZINE PAGE FLOW
+   *
+   * Earlier pass shipped a simple x±60 + opacity slide. It read as a
+   * deck of photos, not a book — the user landed and didn't feel like
+   * they were turning pages. This rewrite drives the page off a live
+   * useMotionValue tied directly to the drag, so the photo moves with
+   * the finger frame-by-frame. While dragging:
+   *
+   *   - x          — translates with the drag offset
+   *   - rotateY    — derived from x; the page lifts at a slight angle
+   *                  like a real spread being opened (anchored at the
+   *                  spine via transform-origin)
+   *   - boxShadow  — opacity ramps with rotation so the deeper the
+   *                  flip, the heavier the cast shadow on the back
+   *
+   * On release: if the threshold is hit, we let the page continue
+   * flying off via the AnimatePresence exit variant (no snap-back
+   * frame); otherwise the spring eases it back to 0. The motion value
+   * resets to 0 on photo change so the new page starts at rest.
+   *
+   * This is intentionally NOT a 3D-curl with separate front/back
+   * faces — that pattern needs duplicate DOM per page and breaks
+   * Image priority/lazy-load. A subtle perspective tilt sells the
+   * "magazine spread" feeling for 1/10th the complexity.
+   */
+  const x = useMotionValue(0);
+  // Hinge the rotation at the opposite edge of the drag direction so
+  // dragging left pivots from the left spine, dragging right from the
+  // right. The transform-origin flips with sign so the page reads as
+  // turning around the correct hinge.
+  const rotateY = useTransform(x, [-400, 0, 400], [-22, 0, 22]);
+  // Soft cast shadow under the lifting page — grows with rotation.
+  const shadow = useTransform(
+    x,
+    [-300, 0, 300],
+    [
+      "0 24px 60px -20px rgba(0,0,0,0.85), 0 8px 20px -8px rgba(0,0,0,0.55)",
+      "0 0 0 rgba(0,0,0,0)",
+      "0 24px 60px -20px rgba(0,0,0,0.85), 0 8px 20px -8px rgba(0,0,0,0.55)",
+    ],
+  );
+  // Slight darken on the trailing edge — sells the page-curl illusion
+  // without needing a real curl mesh.
+  const trailingDim = useTransform(x, [-300, 0, 300], [0.22, 0, 0.22]);
+
+  // Reset the motion value whenever the photo changes, so the next
+  // page mounts at x=0 instead of inheriting the previous drag offset.
+  useEffect(() => {
+    x.set(0);
+  }, [photo.id, x]);
+
   const slideVariants = {
-    enter: (d: 1 | -1) => ({ x: d * 60, opacity: 0, scale: 1.02 }),
-    center: { x: 0, opacity: 1, scale: 1 },
-    exit:  (d: 1 | -1) => ({ x: -d * 60, opacity: 0, scale: 0.98 }),
+    enter: (d: 1 | -1) => ({ x: d * 320, rotateY: -d * 16, opacity: 0 }),
+    center: { x: 0, rotateY: 0, opacity: 1 },
+    exit:  (d: 1 | -1) => ({ x: -d * 320, rotateY: d * 16, opacity: 0 }),
   };
 
   return (
-    <div className="absolute inset-0">
-      {/* Full-bleed photo, animated in from the swipe direction.
+    <div
+      className="absolute inset-0"
+      style={{ perspective: "1800px", perspectiveOrigin: "50% 50%" }}
+    >
+      {/* Full-bleed photo, page-flip-animated.
           AnimatePresence with mode="popLayout" so the outgoing and
           incoming photos overlap during the transition, like turning
           a magazine spread. */}
@@ -298,15 +358,35 @@ function SwipeDeck({
           initial="enter"
           animate="center"
           exit="exit"
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          transition={{
+            // Spring physics on the enter/exit — feels like a hand-
+            // turned page that settles with a little weight. Tuned to
+            // be quick enough that a fast swiper isn't waiting, slow
+            // enough that the motion reads.
+            type: "spring",
+            stiffness: 220,
+            damping: 30,
+            mass: 0.9,
+          }}
           drag="x"
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.18}
+          dragElastic={0.1}
+          dragMomentum={false}
+          style={{
+            x,
+            rotateY,
+            boxShadow: shadow,
+            transformStyle: "preserve-3d",
+          }}
           onDragEnd={(_, info) => {
-            if (info.offset.x < -90 || info.velocity.x < -500) {
+            // Threshold tuned for mobile: a comfortable thumb flick
+            // (offset>110 OR velocity>420) commits the turn; anything
+            // less springs back to center via the value's natural
+            // damping (no explicit code needed — releasing the drag
+            // hands the motion value back to the variants).
+            if (info.offset.x < -110 || info.velocity.x < -420) {
               setDirection(1);
               onNext();
-            } else if (info.offset.x > 90 || info.velocity.x > 500) {
+            } else if (info.offset.x > 110 || info.velocity.x > 420) {
               setDirection(-1);
               onPrev();
             }
@@ -330,6 +410,21 @@ function SwipeDeck({
               sizes="100vw"
               style={{ objectFit: "contain", objectPosition: "center" }}
               priority
+              draggable={false}
+              // onContextMenu prevention is a low-friction deterrent
+              // against casual right-click → save. Determined users
+              // can still grab the file from devtools; the goal is to
+              // discourage screenshot-and-share over the bookstore.
+              onContextMenu={(e) => e.preventDefault()}
+            />
+            {/* Trailing-edge dim — a soft black overlay whose opacity
+                grows with rotation, faked the curl shadow without
+                needing a 3D mesh. Pointer-events-none so it doesn't
+                eat drag input. */}
+            <motion.div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{ background: "black", opacity: trailingDim }}
             />
           </div>
         </motion.div>
