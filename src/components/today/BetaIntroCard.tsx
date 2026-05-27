@@ -31,7 +31,8 @@ import { X, ArrowRight, MessageSquare } from "lucide-react";
 // so a previously-dismissed user sees the updated welcome on next visit.
 //   v1 — initial launch (food trucks, business profiles, more event feeds)
 //   v2 — added "refined map with details other maps don't show" bullet
-const KEY = "fr:beta-intro-dismissed:v2";
+//   v3 — added trash & recycling pickup schedules + movie showtimes
+const KEY = "fr:beta-intro-dismissed:v3";
 const FEEDBACK_EMAIL = "miked@madproductions.io";
 const FEEDBACK_SUBJECT = "Frederick Radius feedback";
 
@@ -152,12 +153,16 @@ export default function BetaIntroCard() {
               restrooms, free WiFi, EV charging, mailboxes, FedEx and UPS drop-offs, and more.
             </li>
             <li>
+              <span style={{ color: "var(--app-ink)" }}>Trash and recycling pickup schedules</span>
+              {" "}so you actually know when your day is, without digging through the county PDF.
+            </li>
+            <li>
               <span style={{ color: "var(--app-ink)" }}>Deeper business profiles</span> so owners
               can talk to their customers directly, not through someone else&apos;s algorithm.
             </li>
             <li>
               <span style={{ color: "var(--app-ink)" }}>More live event feeds</span> from
-              Weinberg, Delaplaine, local athletics, and the libraries.
+              Weinberg, Delaplaine, local athletics, the libraries, and the local movie theaters.
             </li>
           </ul>
         </div>
