@@ -12,7 +12,9 @@
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
-import RidgeLine from "./RidgeLine";
+// RidgeLine no longer mounted (see comment at the end of SkyHero
+// for context). Kept in the codebase at ./RidgeLine if we want to
+// resurrect a horizon silhouette later.
 
 export type SkyTone = "light" | "dark";
 type Sky = { top: string; mid: string; bottom: string; tone: SkyTone };
@@ -174,12 +176,19 @@ export default async function SkyHero({
       data-sky-mood={mood}
     >
       {children}
-      {/* Stylized Catoctin + Sugarloaf horizon at the bottom of the
-          hero. Replaces (and improves on) the flat linear fade-to-bg
-          that .sky-hero::after was doing — a recognizably Frederick
-          silhouette in place of a generic gradient. Decorative only;
-          aria-hidden inside the component. */}
-      <RidgeLine />
+      {/* The RidgeLine silhouette (stylized Catoctin + Sugarloaf
+          horizon) was removed pre-launch — the user kept reading
+          its peaks as "wavy" rather than "mountains," even after
+          the bottom sky color was moved into the horizon-blue
+          family. Without the ridge, the sky ends in its own color
+          and the first card below overlaps cleanly into it
+          (the -mt-4 in /now/page.tsx makes the card top sit inside
+          the sky's bottom, so the visible transition is:
+          horizon-blue sky → rounded cream card top → page bg).
+          Local-recognition was a nice touch but it wasn't reading
+          to actual users; the simpler boundary wins. The RidgeLine
+          component is kept in src/components/today/ in case we ever
+          want to bring it back, but is no longer mounted. */}
     </section>
   );
 }

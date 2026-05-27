@@ -147,7 +147,17 @@ export default function AppMap({
   const [selected, setSelected] = useState<Selected>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [hover, setHover] = useState<{ lng: number; lat: number; label: string; sub?: string } | null>(null);
-  const [activeCats, setActiveCats] = useState<Set<string>>(() => new Set(initialDefaults.categories));
+  // activeCats starts EMPTY (was: pre-seeded from the mode's default
+  // category set). The internal category filter is now opt-in via
+  // the Layers panel; the primary filter mechanism on /browse is
+  // the intent chip strip at the top (Coffee / Eat / Outdoors / etc),
+  // which works server-side through the URL ?intent= param. Seeding
+  // activeCats with mode defaults caused a double-filter bug: tapping
+  // "Outdoors" filtered server-side to park/trail places, then the
+  // visitor-default activeCats (["food", "arts", "parking"]) filtered
+  // those out → zero pins rendered. Empty default lets every intent
+  // chip work; the user opts INTO category narrowing if they want it.
+  const [activeCats, setActiveCats] = useState<Set<string>>(() => new Set());
   const [osmPlaces, setOsmPlaces] = useState<OsmPlace[]>(osmFromProps ?? loadCachedOsm() ?? []);
   const [osmLoading, setOsmLoading] = useState(osmPlaces.length === 0);
   // P0-10: a fatal Mapbox failure (missing/invalid token, style auth)
@@ -185,7 +195,10 @@ export default function AppMap({
       return;
     }
     const d = defaultsFor(mode);
-    setActiveCats(new Set(d.categories));
+    // setActiveCats(new Set(d.categories)) was removed — same reason
+    // as the empty initial useState above. The intent chip strip is
+    // the primary filter; mode no longer pre-seeds a category subset
+    // that would silently hide intent-filtered results.
     setAmenityGroups(new Set(d.amenityGroups));
     setShowTrails(d.lineLayers.includes("trails"));
     setShowTransit(d.lineLayers.includes("transit"));
