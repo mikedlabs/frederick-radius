@@ -21,6 +21,7 @@ import WeatherMore from "@/components/today/WeatherMore";
 import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
 import WorthALook from "@/components/today/WorthALook";
+import CreekHairline from "@/components/ui/CreekHairline";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -309,6 +310,13 @@ export default async function HomePage({
       <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
         <WorthALook />
       </Suspense>
+
+      {/* Section break between "what's the day" (weather + discovery)
+          and "what should I do" (action card + RightNowStrip + mood
+          tiles + events). The hairline traces Carroll Creek — too
+          small to read on a quick scan, recognized by a local on a
+          second look. The page's one small wink. */}
+      <CreekHairline />
 
       {/* PrimaryActionCard — the primary call to action ("What is open
           near you" / "What's open right now"). Sits BELOW the weather
