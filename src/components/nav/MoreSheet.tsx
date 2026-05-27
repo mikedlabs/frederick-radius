@@ -90,7 +90,7 @@ const USEFUL: Item[] = [
 
 const DISCOVER: Item[] = [
   { href: "/from-above/preview", label: "From Above",       description: "The coffee-table book of drone photography over Frederick", icon: BookOpen },
-  { href: "https://www.colorfrederick.com", label: "Color Frederick", description: "The Frederick coloring book — buy at colorfrederick.com", icon: Palette, external: true },
+  { href: "https://www.colorfrederick.com", label: "Color Frederick", description: "The Frederick coloring book", icon: Palette, external: true },
   { href: "/history",            label: "History",          description: "Frederick County, one story at a time",                       icon: Landmark },
 ];
 

@@ -73,79 +73,68 @@ export default async function WeatherHero() {
 
   return (
     <section
-      className="mx-auto flex max-w-[320px] flex-col items-center text-center"
+      className="flex flex-col gap-2"
       aria-label={`Current weather: ${cur.temperature}°F, ${cur.shortForecast}`}
       style={{ color: "currentColor" }}
     >
-      {/* Section header — pre-launch review caught that the weather
-          block had no umbrella heading. Hourly Forecast / More Weather
-          Details / 7-Day Forecast each had their own card eyebrows,
-          but the actual current-conditions hero (the 78° + condition
-          line) just appeared without a "this is the weather" anchor.
-          Centered, paper-cream on dark sky, balances the page's
-          left-aligned DateLine + DayStrip above with a proper bar
-          announcement here. */}
-      <p
-        className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-70 sm:text-[11px]"
-        style={{ color: "currentColor" }}
-      >
-        Weather · Frederick
-      </p>
-
-      {/* Atmospheric sky glyph — small, sits above the temp like
-          the iOS sun in its lens flare. */}
-      <div className="mt-2.5">
-        <AnimatedSkyGlyph variant={curVariant} size={56} />
+      {/* TOP ROW: WEATHER · FREDERICK eyebrow on the left, H/L on the
+          right — pre-redesign the eyebrow sat in a column with all
+          the other text, leaving the gradient's horizontal real
+          estate empty on both sides. Splitting eyebrow ↔ H/L across
+          the row lets the SkyHero's width actually carry information
+          on both sides instead of a centered ribbon. */}
+      <div className="flex items-baseline justify-between gap-3">
+        <p
+          className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-70 sm:text-[11px]"
+          style={{ color: "currentColor" }}
+        >
+          Weather · Frederick
+        </p>
+        {(high !== undefined || low !== undefined) && (
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] tabular-nums opacity-70 sm:text-[12px]">
+            {high !== undefined && <>H {high}&deg;</>}
+            {high !== undefined && low !== undefined && (
+              <span className="mx-1.5 opacity-50">·</span>
+            )}
+            {low !== undefined && <>L {low}&deg;</>}
+          </p>
+        )}
       </div>
 
-      {/* Huge thin temperature — the headline. Serif at light weight
-          reads as editorial / almanac, in contrast to iOS's sans-thin
-          but the same gestalt: the number is the page. Tabular nums
-          + negative letter spacing keep the digits + degree symbol
-          balanced; the new section header (WEATHER · FREDERICK) above
-          anchors the column so the temp doesn't read as "floating
-          off-center" the way it did when the SkyHero opened straight
-          on the temperature with no eyebrow. */}
-      <p
-        className="mt-1 font-serif font-light leading-none tabular-nums"
-        style={{
-          fontSize: "clamp(72px, 22vw, 104px)",
-          letterSpacing: "-0.03em",
-        }}
-      >
-        {cur.temperature}&deg;
-      </p>
-
-      {/* Condition — one line, balanced wrap when long. */}
-      <p
-        className="mt-1.5 text-[15px] font-medium opacity-90"
-        style={{ textWrap: "balance" } as React.CSSProperties}
-      >
-        {cur.shortForecast}
-      </p>
-
-      {/* H/L — tabular-nums so the colon and degree symbols align
-          visually with the temperature above. */}
-      {(high !== undefined || low !== undefined) && (
-        <p className="mt-1 text-[13px] font-semibold tabular-nums opacity-75">
-          {high !== undefined && <>H:{high}&deg;</>}
-          {high !== undefined && low !== undefined && (
-            <span className="mx-1.5 opacity-50">·</span>
-          )}
-          {low !== undefined && <>L:{low}&deg;</>}
-        </p>
-      )}
-
-      {/* nextChange — quiet, optional. Only renders when there's a
-          real time-stamped heads-up worth saying. */}
-      {nextChange && (
+      {/* MIDDLE ROW: huge temperature on the LEFT, animated sky glyph
+          + condition + nextChange on the RIGHT. The two columns share
+          the row so the gradient stops being a wide canvas with text
+          centered in a 320px column. Temp is still the headline —
+          the right side is the meta. */}
+      <div className="flex items-center gap-4">
         <p
-          className="mt-2 text-[12.5px] leading-snug opacity-70"
-          style={{ textWrap: "balance" } as React.CSSProperties}
+          className="font-serif font-light leading-none tabular-nums"
+          style={{
+            fontSize: "clamp(80px, 28vw, 128px)",
+            letterSpacing: "-0.04em",
+            flexShrink: 0,
+          }}
         >
-          {nextChange}
+          {cur.temperature}&deg;
         </p>
-      )}
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <AnimatedSkyGlyph variant={curVariant} size={48} />
+          <p
+            className="text-[14px] font-medium leading-snug opacity-95"
+            style={{ textWrap: "balance" } as React.CSSProperties}
+          >
+            {cur.shortForecast}
+          </p>
+          {nextChange && (
+            <p
+              className="text-[12px] leading-snug opacity-75"
+              style={{ textWrap: "balance" } as React.CSSProperties}
+            >
+              {nextChange}
+            </p>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
