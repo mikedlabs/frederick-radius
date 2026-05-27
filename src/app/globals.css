@@ -445,24 +445,17 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   animation: sky-drift 60s ease-in-out infinite alternate;
   z-index: 0;
 }
-/* The old .sky-hero::after rule painted a 50%-tall paper-cream fade
- * over the bottom half of the sky. Visible result: a milky band
- * underneath the RidgeLine that read as "snow" on bright daytime
- * skies (when the sky bottom is already pale and the cream wash
- * desaturates it further). The RidgeLine silhouette REPLACES that
- * fade — the page-bg pokes up into the sky AS the ridge — so the
- * ::after layer is dead code. Keep a much smaller bottom haze (last
- * 18%) just to soften the seam where the ridge meets the page bg,
- * so the sky doesn't visibly butt-end mid-ridge on the rare angle
- * where the ridge silhouette has a low point. */
-.sky-hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 82%, var(--app-bg) 100%);
-  z-index: 1;
-  pointer-events: none;
-}
+/* The .sky-hero::after fade-to-bg was removed entirely. With the
+ * sky-bottom colors now in the sky family (haze blue / horizon
+ * blue / afternoon haze instead of paper-cream), the gradient
+ * reads as sky right up to where the RidgeLine paints the
+ * paper-cream silhouette. The page-bg pokes up into the sky AS
+ * the ridge — that IS the transition. Adding a fade on top of
+ * it desaturates the lower sky and reintroduces the "snow band"
+ * the user kept seeing on bright days.
+ *
+ * RidgeLine handles the seam where the ridge's low points meet
+ * the page bg (its own fillOpacity is 0.96 so the join is soft). */
 .sky-hero > * { position: relative; z-index: 2; }
 @keyframes sky-drift {
   0%   { transform: translate3d(0, 0, 0) scale(1); }

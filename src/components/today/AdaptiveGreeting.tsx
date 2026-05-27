@@ -11,14 +11,20 @@ import PersonalGreetingLine from "./PersonalGreetingLine";
  * lens (Visitor or Resident). Mode is read from a server cookie
  * mirrored by useMode.write(), so the headline lands in the right
  * voice on the first paint — no client-side flash from generic to
- * personalized. Defaults to the Visitor voice when no mode is set,
- * which is the welcoming, orientation-friendly tone the brief calls
- * for as the first-impression default.
+ * personalized.
  *
- * The honest-weather logic is preserved: NWS hedged forecasts ("a
- * slight chance of rain") never get a "duck inside" line, because
- * the app shouldn't ask someone to change their plan over a 30%
- * possibility.
+ * Honest-weather policy (May 2026 rewrite)
+ *   NWS hourly forecasts describe the WHOLE period — a "Showers
+ *   Likely" hour can have a sunny 20-minute gap in it. The old
+ *   copy made confident claims ("Wet afternoon. Hide indoors.")
+ *   that the sky could disprove in the middle of the same hour.
+ *   The new copy never commands an action it can't keep, and
+ *   never asserts a state it isn't watching live:
+ *     - "Showers in the X forecast." instead of "Wet X. Hide indoors."
+ *     - "Sun for now." instead of "Perfect afternoon."
+ *     - Strict-active criteria: NWS phrase must lack ALL hedge
+ *       words AND precip must be ≥80% (was 65). Anything below
+ *       that bar reads as forecast, not claim.
  */
 function pickGreeting(
   hour: number,
@@ -26,39 +32,52 @@ function pickGreeting(
   precip: number,
   mode: Mode,
 ): string {
-  const hedged = /chance|slight|isolated|scattered|patchy|areas of|possible|partly|a few/i.test(conditions);
+  const hedged = /chance|slight|isolated|scattered|patchy|areas of|possible|partly|a few|likely/i.test(conditions);
   const activeWet = /\b(rain|showers?|thunderstorms?|storms?|snow|sleet|drizzle)\b/i.test(conditions) && !hedged;
-  const wet = activeWet || precip >= 65;
+  // "Wet" now requires either an unhedged active phrase or a high-
+  // confidence precip number. The old 65% bar tripped on "Showers
+  // Likely" forecasts that NWS itself classifies as 60-70% — i.e.,
+  // not happening right now most of the time.
+  const wet = activeWet || precip >= 80;
+  // Soft hedge — there's rain in the forecast but it isn't
+  // happening confidently right now. Drives the "Showers around"
+  // class of copy, never the "Hide indoors" class.
+  const wetMaybe = !wet && /\b(rain|showers?|thunderstorms?|storms?|snow|sleet|drizzle)\b/i.test(conditions);
   const fog = /fog|mist|haze/i.test(conditions);
   const sunny = /sun|clear|fair/i.test(conditions);
   const cloudy = /cloud|overcast/i.test(conditions);
   const isVisitor = mode === "visitor";
 
   if (hour >= 5 && hour < 8) {
-    if (wet) return isVisitor ? "Wet start. Find a window seat." : "Wet morning, slow start.";
-    if (sunny) return isVisitor ? "Catch the sunrise. Frederick is glowing." : "First light. Bring coffee.";
+    if (wet) return isVisitor ? "Rain in the morning forecast." : "Showers this morning.";
+    if (wetMaybe) return isVisitor ? "Rain in the morning forecast." : "Showers around this morning.";
+    if (sunny) return isVisitor ? "Sunrise window is open." : "First light. Coffee weather.";
     return isVisitor ? "Good morning, Frederick." : "Morning. The county's up.";
   }
   if (hour >= 8 && hour < 12) {
-    if (wet) return isVisitor ? "Cozy morning. The museum is calling." : "Rain. Indoor day.";
-    if (sunny) return isVisitor ? "Bright morning in Frederick." : "Clear morning. Get out early.";
-    if (cloudy) return isVisitor ? "Soft morning in Frederick." : "Overcast morning. Mellow start.";
+    if (wet) return isVisitor ? "Showers around. Carry a layer." : "Showers around this morning.";
+    if (wetMaybe) return isVisitor ? "Rain in the morning forecast." : "Showers in the forecast.";
+    if (sunny) return isVisitor ? "Sunny morning." : "Clear morning.";
+    if (cloudy) return isVisitor ? "Overcast morning." : "Overcast morning. Mellow start.";
     return isVisitor ? "Good morning. What's open?" : "Morning. Same time, fresh week.";
   }
   if (hour >= 12 && hour < 17) {
-    if (wet) return isVisitor ? "Rainy afternoon. Duck inside somewhere good." : "Wet afternoon. Hide indoors.";
-    if (sunny) return isVisitor ? "Perfect afternoon. What's the plan?" : "Sun's out. Use it.";
+    if (wet) return isVisitor ? "Showers around. Carry a layer." : "Showers around this afternoon.";
+    if (wetMaybe) return isVisitor ? "Rain in the afternoon forecast." : "Showers in the forecast.";
+    if (sunny) return isVisitor ? "Sun for now." : "Sun's out.";
     if (cloudy) return isVisitor ? "Mild afternoon in Frederick." : "Quiet afternoon.";
     return isVisitor ? "Good afternoon." : "Midday check.";
   }
   if (hour >= 17 && hour < 20) {
-    if (wet) return isVisitor ? "Wet evening. There's a bar with your name on it." : "Wet evening. Pick a tap room.";
-    if (sunny) return isVisitor ? "Golden hour. Window seat or rooftop?" : "Golden hour. You know the spots.";
+    if (wet) return isVisitor ? "Showers around this evening." : "Showers around this evening.";
+    if (wetMaybe) return isVisitor ? "Rain in the evening forecast." : "Showers in the forecast.";
+    if (sunny) return isVisitor ? "Golden hour." : "Golden hour. You know the spots.";
     return isVisitor ? "Good to see you in Frederick." : "Evening. What's the move?";
   }
   if (hour >= 20 && hour < 23) {
-    if (fog) return isVisitor ? "Foggy night. Carroll Creek looks like a film set." : "Fog rolling in. Easy lights.";
-    if (wet) return isVisitor ? "Rainy night, warm rooms." : "Rain, lamps, late drink.";
+    if (fog) return isVisitor ? "Fog rolling in." : "Fog rolling in. Easy lights.";
+    if (wet) return isVisitor ? "Showers around tonight." : "Showers around tonight.";
+    if (wetMaybe) return isVisitor ? "Rain in the night forecast." : "Showers in the forecast.";
     return isVisitor ? "Frederick after dark." : "Late tonight. Still open?";
   }
   // 23 - 4 (overnight)

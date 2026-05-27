@@ -38,16 +38,27 @@ export function currentSkyTone(now: Date = new Date()): SkyTone {
 }
 
 function paletteForHour(h: number): Sky {
+  // Sky-bottom colors used to fade to a near-paper-cream (#F0E8D8,
+  // #E8E4D5, #E5C99A) so the gradient would "blend into" the page
+  // below. The visible result was a milky band right above the
+  // RidgeLine that read as snow on bright days — sky desaturating
+  // before the ridge even arrives. Fix: keep the BOTTOM stop in the
+  // sky family so the sky reads as sky all the way down to the
+  // ridge. The RidgeLine (paper-cream silhouette) carries the
+  // transition to the page bg; the sky no longer has to fake it.
+  //
   // Pre-dawn (3–5)
   if (h >= 3 && h < 6) return { top: "#1B1E3A", mid: "#2E3258", bottom: "#5C4F6E", tone: "dark" };
   // Sunrise (6–7)
   if (h >= 6 && h < 8) return { top: "#F5C28C", mid: "#F08770", bottom: "#B85C8B", tone: "light" };
-  // Morning (8–10)
-  if (h >= 8 && h < 11) return { top: "#A8D8F0", mid: "#C7E5F2", bottom: "#F0E8D8", tone: "light" };
-  // Midday (11–14)
-  if (h >= 11 && h < 15) return { top: "#7CB9E8", mid: "#A8D0EE", bottom: "#E8E4D5", tone: "light" };
-  // Afternoon (15–17)
-  if (h >= 15 && h < 18) return { top: "#7CA8D8", mid: "#D8B888", bottom: "#E5C99A", tone: "light" };
+  // Morning (8–10) — was cream bottom; now a haze blue so the sky
+  // doesn't dissolve into paper at the horizon.
+  if (h >= 8 && h < 11) return { top: "#A8D8F0", mid: "#C7E5F2", bottom: "#B8D4E4", tone: "light" };
+  // Midday (11–14) — was off-white; now a clear-sky horizon.
+  if (h >= 11 && h < 15) return { top: "#7CB9E8", mid: "#A8D0EE", bottom: "#9CC5DD", tone: "light" };
+  // Afternoon (15–17) — was a pale gold cream; now a warmer afternoon
+  // haze that still reads as sky.
+  if (h >= 15 && h < 18) return { top: "#7CA8D8", mid: "#B6C8DC", bottom: "#C9B687", tone: "light" };
   // Golden hour (18–19)
   if (h >= 18 && h < 20) return { top: "#D88860", mid: "#E8A878", bottom: "#F5C898", tone: "light" };
   // Twilight (20–21)
