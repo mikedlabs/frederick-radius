@@ -150,7 +150,7 @@ export default async function SkyHero({
 
   return (
     <section
-      className={`sky-hero -mx-4 -mt-4 px-4 pb-8 pt-6 sm:rounded-b-[var(--app-radius-xl)] ${className}`}
+      className={`sky-hero -mx-4 -mt-4 px-4 pb-4 pt-6 sm:rounded-b-[var(--app-radius-xl)] ${className}`}
       style={
         {
           "--sky-top": sky.top,
