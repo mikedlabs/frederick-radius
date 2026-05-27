@@ -1,24 +1,21 @@
-import { Sunrise, Sunset, Droplets } from "lucide-react";
+import { Sunrise, Sunset, Wind, Droplets } from "lucide-react";
 import { daylightDelta } from "@/lib/almanac";
+import { getAirQuality, pickWorstAqi } from "@/lib/integrations/airnow";
 import { getKfdkMetar, dewpointComfort } from "@/lib/integrations/aviationweather";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 /**
- * AlmanacFooter — a single quiet line at the bottom of /now that says
- * what the day actually looks like, in sun terms.
+ * AlmanacFooter — the quiet weather slug that sits right under the
+ * forecast block on /now. Anchors the page in real Frederick time
+ * and (when the relevant env vars are set) carries the day's air and
+ * humidity signals next to the sun clock:
  *
- *   Sunrise 6:42a · Sunset 8:23p · 2 minutes longer than yesterday
+ *   Sunrise 6:42a · Sunset 8:23p · 2 min longer · AQI 42 Good · Muggy
  *
- * The point is anchoring. A briefing app that promises "what's
- * happening today" should know what today's daylight actually is, and
- * say it where a reader who scrolled all the way to the bottom can
- * find it. The delta is the bit that survives a second look: a casual
- * reader sees the rising / falling number and feels the season turn
- * without anyone needing to label it.
- *
- * Pure server component (no client state, no animation). The math is
- * a request-scoped Date — `new Date()` is acceptable here because the
- * page already revalidates on a 60s cadence and the answer for
- * Frederick only changes once at midnight Eastern.
+ * Pure server component. Each external fetch (AirNow, KFDK METAR) is
+ * graceful: returns null on failure or absent key, the chip is
+ * silently hidden, the rest of the strip still renders. Request-cache
+ * dedupes when the same fetch fires elsewhere in the page tree.
  */
 export default async function AlmanacFooter() {
   // eslint-disable-next-line react-hooks/purity
@@ -26,7 +23,15 @@ export default async function AlmanacFooter() {
   const delta = daylightDelta(now);
   if (!delta) return null;
 
-  // KFDK METAR — surfaces a dewpoint comfort label ("Sticky", "Muggy",
+  // AirNow AQI — always surface the chip when we have a reading,
+  // colored by the category (green = Good, amber = Moderate, brick =
+  // Unhealthy, etc.). AQI is one of the expected metrics next to
+  // sunrise + sunset on this strip. Returns null without an
+  // AIRNOW_API_KEY, so the chip is hidden when the env var isn't set.
+  const aqi = await getAirQuality(FREDERICK_CENTER).catch(() => null);
+  const worst = aqi ? pickWorstAqi(aqi) : null;
+
+  // KFDK METAR dewpoint comfort — surfaces a label ("Sticky", "Muggy",
   // "Oppressive", "Very dry") inline ONLY at the edges of the comfort
   // spectrum. The "comfortable" middle band is silent so we don't add
   // noise on a normal day. Public-domain US federal data, no key.
@@ -83,6 +88,21 @@ export default async function AlmanacFooter() {
         ·
       </span>
       <span>{deltaLine}</span>
+      {worst && (
+        <>
+          <span aria-hidden style={{ color: "var(--app-border)" }}>
+            ·
+          </span>
+          <span
+            className="inline-flex items-center gap-1.5 font-semibold"
+            style={{ color: worst.category.color }}
+            title={`${worst.category.name} (${worst.parameter} ${worst.aqi}) — observed in ${worst.reportingArea}`}
+          >
+            <Wind className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+            AQI {worst.aqi} {worst.category.name}
+          </span>
+        </>
+      )}
       {showComfort && metar && (
         <>
           <span aria-hidden style={{ color: "var(--app-border)" }}>
