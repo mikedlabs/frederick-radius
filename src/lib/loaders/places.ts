@@ -230,6 +230,13 @@ const SEED_PLACE_VERIFIED_AT = "2026-05-14T00:00:00Z";
 const photoProxy = (name: string, w = 800, slug?: string) =>
   `/api/place-photo?name=${encodeURIComponent(name)}&w=${w}${slug ? `&slug=${encodeURIComponent(slug)}` : ""}`;
 
+// Blob-backed photos win over the rotating Google proxy. The download
+// script (npm run download:photos) writes src/data/places-photos.json
+// mapping slug → public Blob URL. Imported here so the loader resolves
+// the right source ONCE per place at build time. Slugs not in the map
+// fall through to the proxy.
+import { placePhotoBlob } from "@/lib/places-photos";
+
 export type PlaceCardData = Place & PlaceEnriched & {
   open_status: OpenStatus;
   distance_m?: number;
@@ -289,7 +296,18 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     // If Google gave us hours, we consider hours verified.
     hours_verified: e.has_hours ? true : p.hours_verified,
     is_verified: e.business_status === "OPERATIONAL" ? true : p.is_verified,
-    google_photo_url: photos[0] ? photoProxy(photos[0], 800, p.slug) : undefined,
+    // Photo source resolution:
+    //   1. Blob URL from the downloader (permanent, never rotates)
+    //   2. Live proxy through the API key (rotates every few weeks)
+    //   3. undefined (component falls back to category placeholder)
+    // The Blob URL is the long-term answer; the proxy is the bridge
+    // until the downloader has been run for that slug.
+    google_photo_url:
+      placePhotoBlob(p.slug) ??
+      (photos[0] ? photoProxy(photos[0], 800, p.slug) : undefined),
+    // The detail page's photo gallery still uses the proxy for the
+    // 2nd-8th photos — the downloader only stores the hero for now.
+    // A future pass can extend it to the whole array.
     google_photos: photos.map((n) => photoProxy(n, 800, p.slug)),
     google_rating: e.rating,
     google_rating_count: e.user_rating_count,
