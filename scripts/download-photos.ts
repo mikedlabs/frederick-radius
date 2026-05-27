@@ -31,11 +31,35 @@
  *   Details quota; you've already paid for the reference.
  *
  * Implementation
- *   - Uses Vercel Blob's HTTP API directly (no @vercel/blob dep)
+ *   - Uses the supported @vercel/blob SDK (put with allowOverwrite)
  *   - Concurrency 4 — keeps the run snappy without flooding Google
  *   - Writes places-photos.json incrementally so Ctrl-C is safe
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { put } from "@vercel/blob";
+
+// Load .env.local into process.env before reading any vars. `npm run`
+// doesn't auto-source it, and asking the user to remember
+// `set -a; . .env.local; set +a` before every invocation is brittle.
+// Parser is minimal on purpose — supports KEY=value lines, ignores
+// blanks and #-comments, strips surrounding quotes. No interpolation.
+function loadDotEnv(path: string): void {
+  if (!existsSync(path)) return;
+  for (const raw of readFileSync(path, "utf8").split("\n")) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    // Don't override anything the shell already set.
+    if (process.env[key] === undefined) process.env[key] = value;
+  }
+}
+loadDotEnv(new URL("../.env.local", import.meta.url).pathname);
 
 // We import the enrichment JSON via require to avoid Node's
 // import-assertions stability surface.
@@ -114,28 +138,22 @@ async function fetchGooglePhoto(photoName: string): Promise<ArrayBuffer> {
 
 /**
  * Upload bytes to Vercel Blob at a stable pathname. Returns the
- * public URL. Uses the Blob REST API directly so we don't need to
- * pull in @vercel/blob as a dependency for a one-shot script.
+ * public URL. Uses @vercel/blob's `put` so we don't have to track
+ * Vercel's REST surface ourselves — the SDK handles auth, retries,
+ * and the current API contract.
+ *
+ * `allowOverwrite: true` so re-running the script for the same slug
+ * (e.g. after the photo reference rotates and we re-enrich) replaces
+ * the previous Blob in place instead of erroring.
  */
 async function uploadToBlob(pathname: string, bytes: ArrayBuffer): Promise<string> {
-  const r = await fetch(
-    `https://blob.vercel-storage.com/${encodeURIComponent(pathname)}`,
-    {
-      method: "PUT",
-      headers: {
-        authorization: `Bearer ${BLOB_TOKEN}`,
-        "x-content-type": "image/jpeg",
-        "x-access": "public",
-        "x-api-version": "7",
-        "x-add-random-suffix": "1",
-      },
-      body: bytes,
-    },
-  );
-  if (!r.ok) throw new Error(`Blob upload HTTP ${r.status}: ${await r.text().catch(() => "")}`);
-  const json = (await r.json()) as { url?: string };
-  if (!json.url) throw new Error("Blob upload returned no URL");
-  return json.url;
+  const blob = await put(pathname, bytes, {
+    access: "public",
+    contentType: "image/jpeg",
+    token: BLOB_TOKEN,
+    allowOverwrite: true,
+  });
+  return blob.url;
 }
 
 /**
@@ -181,13 +199,21 @@ async function runWithConcurrency<T>(
   await Promise.all(Array.from({ length: concurrency }, () => next()));
 }
 
-await runWithConcurrency(
-  targets,
-  async ([slug, e]) => processSlug(slug, e),
-  4,
-);
+// Wrapped in an async IIFE because tsx emits CJS by default and
+// top-level await isn't supported there. Lifting the entire runtime
+// into one async block keeps everything else identical.
+(async () => {
+  await runWithConcurrency(
+    targets,
+    async ([slug, e]) => processSlug(slug, e),
+    4,
+  );
 
-console.log("");
-console.log(`  Done. ${Object.keys(existing).length} slugs in places-photos.json.`);
-console.log("  Commit src/data/places-photos.json and deploy.");
-console.log("");
+  console.log("");
+  console.log(`  Done. ${Object.keys(existing).length} slugs in places-photos.json.`);
+  console.log("  Commit src/data/places-photos.json and deploy.");
+  console.log("");
+})().catch((err) => {
+  console.error("FATAL:", err);
+  process.exit(1);
+});
