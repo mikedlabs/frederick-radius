@@ -42,7 +42,9 @@ export default function MapTimeChips({
     const qs = new URLSearchParams();
     if (intent) qs.set("intent", intent);
     qs.set("t", mode);
-    return `/map?${qs.toString()}`;
+    // /map is a legacy redirect to /browse — point chip taps directly
+    // at /browse to avoid the extra 308 hop on every filter change.
+    return `/browse?${qs.toString()}`;
   };
 
   return (

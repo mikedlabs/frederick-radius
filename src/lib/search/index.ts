@@ -37,6 +37,16 @@ export type SearchResult = {
    * resolve it. Only set for place + event results.
    */
   trust?: TrustSignal;
+  /**
+   * Optional thumbnail URL. Populated server-side for place and event
+   * results so SearchOverlay can render a 32px image instead of the
+   * generic round-icon stamp. When absent (category, municipality,
+   * action, or a place/event without a hero photo) the overlay falls
+   * back to the type's icon. The URL goes straight into <img>; for
+   * places it's the proxied Google Places photo, for events the
+   * event's hero_image.
+   */
+  thumbnail?: string;
 };
 
 /**
@@ -133,6 +143,10 @@ function hitToResult(h: SearchHit): SearchResult {
       href: `/places/${p.slug}`,
       badge: cat?.name,
       trust: p.open_status ? placeHoursTrust(p.open_status) : undefined,
+      // First photo from the place's Google photo pipeline. Already
+      // resolved to a proxied or Blob URL in decoratePlace, so the
+      // overlay can render it directly without further work.
+      thumbnail: p.google_photo_url,
     };
   }
   if (h.type === "event") {
@@ -145,6 +159,7 @@ function hitToResult(h: SearchHit): SearchResult {
       href: `/events/${e.slug}`,
       badge: e.category,
       trust: eventTrust(e),
+      thumbnail: e.hero_image,
     };
   }
   if (h.type === "category") {

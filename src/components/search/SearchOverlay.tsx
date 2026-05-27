@@ -279,13 +279,38 @@ export default function SearchOverlay({
                         background: active ? "var(--app-bg-sunken)" : "transparent",
                       }}
                     >
-                      <span
-                        aria-hidden
-                        className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full"
-                        style={{ background: `${color}1A`, color }}
-                      >
-                        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
-                      </span>
+                      {/* Thumbnail when the result has a photo (places +
+                          events) — a 36px rounded square that reads as
+                          "this is a real thing" much faster than a
+                          generic icon stamp. Falls back to the typed
+                          round icon when no photo is available (every
+                          category / municipality / action, plus place +
+                          event rows that lack a hero). The image is
+                          loaded as plain <img>: no next/image optimizer
+                          round-trip just for a 32px tile inside an
+                          already-rendered overlay. */}
+                      {r.thumbnail ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={r.thumbnail}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="mt-0.5 h-9 w-9 shrink-0 rounded-[var(--app-radius-sm)] object-cover"
+                          style={{
+                            background: `${color}1A`,
+                            boxShadow: `inset 0 0 0 1px var(--app-border)`,
+                          }}
+                        />
+                      ) : (
+                        <span
+                          aria-hidden
+                          className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-sm)]"
+                          style={{ background: `${color}1A`, color }}
+                        >
+                          <Icon className="h-4 w-4" strokeWidth={1.75} />
+                        </span>
+                      )}
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                           {r.type === "action" ? r.title : highlight(r.title, query)}

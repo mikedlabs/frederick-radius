@@ -224,9 +224,7 @@ export default async function MapPage({
 
   // Events as map pins, scoped to the active temporal window. The
   // brief's "what's happening now / tonight / this weekend" filter
-  // lives in the ?t= search param; default is "tonight" so the map
-  // answers the most common question on first open.
-  const timeMode: TimeMode = isTimeMode(tParam) ? tParam : "tonight";
+  // lives in the ?t= search param.
   const now = new Date();
   const allWeek = allUpcoming(now, 200);
   // Pre-compute per-mode counts so the chip strip can show "Tonight · 3"
@@ -236,6 +234,18 @@ export default async function MapPage({
     const pred = eventTimePredicate(mode, now);
     counts[mode] = allWeek.filter((e) => pred(e.starts_at, e.ends_at)).length;
   }
+  // Default time mode: was hard-wired to "tonight" which produced an
+  // empty event layer most days/hours. Now picks the first populated
+  // window in priority order Now → Tonight → Weekend → Upcoming. The
+  // user can still tap any chip; this just stops the map from opening
+  // with zero event pins when there are events one chip over.
+  function pickDefaultTimeMode(): TimeMode {
+    if ((counts.now ?? 0) > 0) return "now";
+    if ((counts.tonight ?? 0) > 0) return "tonight";
+    if ((counts.weekend ?? 0) > 0) return "weekend";
+    return "all";
+  }
+  const timeMode: TimeMode = isTimeMode(tParam) ? tParam : pickDefaultTimeMode();
 
   const matchTime = eventTimePredicate(timeMode, now);
   const inWindow = allWeek.filter((e) => matchTime(e.starts_at, e.ends_at));
