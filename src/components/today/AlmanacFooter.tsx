@@ -54,52 +54,62 @@ export default async function AlmanacFooter() {
   const sunriseStr = fmtClock(delta.today.sunrise);
   const sunsetStr = fmtClock(delta.today.sunset);
 
-  // The delta is the editorial half. "+2m" / "-3m" → into prose so it
-  // reads at the same weight as the clock values.
+  // Compact delta. The full "2 minutes longer than yesterday" form was
+  // editorial when the footer sat at the page bottom; in its current
+  // home next to the weather it needs to fit on one line at any
+  // viewport. "+2m" / "−3m" / "—" keeps the sign-of-the-season signal
+  // without the prose tail. The verbose version still ships on the
+  // hover tooltip for the curious.
   const dMin = delta.deltaMinutes;
-  let deltaLine: string;
+  let deltaShort: string;
+  let deltaTitle: string;
   if (dMin === 0) {
-    deltaLine = "same as yesterday";
+    deltaShort = "—";
+    deltaTitle = "Same length as yesterday";
   } else if (dMin > 0) {
-    deltaLine = `${dMin} minute${dMin === 1 ? "" : "s"} longer than yesterday`;
+    deltaShort = `+${dMin}m`;
+    deltaTitle = `${dMin} minute${dMin === 1 ? "" : "s"} longer than yesterday`;
   } else {
     const n = Math.abs(dMin);
-    deltaLine = `${n} minute${n === 1 ? "" : "s"} shorter than yesterday`;
+    deltaShort = `−${n}m`;
+    deltaTitle = `${n} minute${n === 1 ? "" : "s"} shorter than yesterday`;
   }
 
   return (
     <footer
-      className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-1 py-3 text-center text-[11px]"
+      className="-mx-4 mt-2 flex items-center justify-center gap-x-3 overflow-x-auto whitespace-nowrap px-4 py-3 text-center text-[11px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       style={{ color: "var(--app-ink-3)" }}
       aria-label="Today in Frederick"
     >
-      <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center gap-1 tabular-nums">
         <Sunrise className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-        Sunrise {sunriseStr}
+        {sunriseStr}
       </span>
       <span aria-hidden style={{ color: "var(--app-border)" }}>
         ·
       </span>
-      <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center gap-1 tabular-nums">
         <Sunset className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-        Sunset {sunsetStr}
+        {sunsetStr}
       </span>
       <span aria-hidden style={{ color: "var(--app-border)" }}>
         ·
       </span>
-      <span>{deltaLine}</span>
+      <span className="tabular-nums" title={deltaTitle}>
+        {deltaShort}
+      </span>
       {worst && (
         <>
           <span aria-hidden style={{ color: "var(--app-border)" }}>
             ·
           </span>
           <span
-            className="inline-flex items-center gap-1.5 font-semibold"
+            className="inline-flex items-center gap-1 font-semibold tabular-nums"
             style={{ color: worst.category.color }}
-            title={`${worst.category.name} (${worst.parameter} ${worst.aqi}) — observed in ${worst.reportingArea}`}
+            title={`AQI ${worst.aqi} ${worst.category.name} (${worst.parameter}) — observed in ${worst.reportingArea}`}
           >
             <Wind className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
-            AQI {worst.aqi} {worst.category.name}
+            AQI {worst.aqi}
           </span>
         </>
       )}
@@ -109,7 +119,7 @@ export default async function AlmanacFooter() {
             ·
           </span>
           <span
-            className="inline-flex items-center gap-1.5 font-semibold"
+            className="inline-flex items-center gap-1 font-semibold"
             style={{ color: comfort.color }}
             title={`Dewpoint ${metar.dewpointF}°F at KFDK — ${comfort.label.toLowerCase()}`}
           >

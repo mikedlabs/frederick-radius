@@ -274,6 +274,16 @@ export default async function HomePage({
         <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
           <HourlyForecast />
         </Suspense>
+        {/* More weather details — iOS-style 2-up grid (Sun arc, Wind,
+            Humidity, Feels Like, Pressure, Visibility, Moon, Daylight).
+            Collapsed by default. Sits ABOVE the 7-day pill so the
+            two disclosures stack as one "details" cluster between the
+            visible hourly rail and the always-on almanac strip. */}
+        <WeatherMore>
+          <Suspense fallback={<Skeleton.Block height={280} round="var(--app-radius-md)" />}>
+            <WeatherMoreGrid />
+          </Suspense>
+        </WeatherMore>
         <WeeklyCard
           summary={
             <Suspense fallback={<>Loading…</>}>
@@ -288,16 +298,6 @@ export default async function HomePage({
         <Suspense fallback={null}>
           <AlmanacFooter />
         </Suspense>
-        {/* More weather details — iOS-style 2-up grid (Sun arc, Wind,
-            Humidity, Feels Like, Pressure, Visibility, Moon, Daylight).
-            Collapsed by default with the user's choice persisted in
-            localStorage. The grid renders server-side regardless, so
-            expand is instant. */}
-        <WeatherMore>
-          <Suspense fallback={<Skeleton.Block height={280} round="var(--app-radius-md)" />}>
-            <WeatherMoreGrid />
-          </Suspense>
-        </WeatherMore>
       </div>
 
       {/* PrimaryActionCard — the primary call to action ("What is open
