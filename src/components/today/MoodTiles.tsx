@@ -2,199 +2,278 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Coffee, Trees, UtensilsCrossed, Baby, Toilet, ParkingCircle, ChevronRight } from "lucide-react";
+import Image from "next/image";
+import { Coffee, Trees, UtensilsCrossed, Baby, Toilet, ParkingCircle, X } from "lucide-react";
 import { INTENT_BY_KEY, INTENTS, type IntentKey, type SubIntent } from "@/data/intents";
 
 /**
- * MoodTiles — 6-up affordance grid + in-place sub-tile expansion.
+ * MoodTiles v3 — photo-led intent tiles + a tight utility row.
  *
- * Pre-launch this was a server-rendered 6-tile grid; every tile
- * deep-linked into /browse with a matching intent pre-selected. We
- * still do that for the practical tiles (Restroom, Parking) — those
- * have first-class destination surfaces — but the intent tiles
- * (Coffee, Eat, Outdoors, With kids) now EXPAND in place when tapped,
- * revealing the second-tier sub-intents that already live in
- * src/data/intents.ts. Tapping a sub-tile takes the user to
- * /browse?intent=...&sub=... so the two-tier nav we added on /browse
- * (the chip strip with banner + sub-strip) is reachable here too.
+ * Inspired by the mobile reference batch (Postmates, Airbnb, Snoonu):
+ * categories should read as PHOTOS first and labels second. v2 was a
+ * 6-up grid of small icon-on-tint chips; v3 splits the surface into
  *
- * Why in-place expansion: the user explicitly asked for "all three
- * bars" to have subheadings. /browse already does this with chips;
- * MoodTiles funnel INTO /browse but the user expected the sub-options
- * to read RIGHT HERE, not after a navigation. So when a user taps
- * "Eat" on /now, the tile expands and shows Restaurants · Pizza ·
- * Bars · Breweries · Wineries · Bakeries · Food trucks RIGHT THERE,
- * each linking to the right /browse?intent=eat&sub=… URL.
+ *   • 4 photo-led intent tiles (Coffee · Eat · Outdoors · With kids).
+ *     Full-bleed seasonal photo from /public/images/seasons/, dark
+ *     gradient pulling a serif label up from the bottom, intent icon
+ *     in a white glass pill top-left. Aspect 4:5 (taller than wide)
+ *     so each tile reads like a magazine cover.
  *
- * Visual model: tap a tile → that tile stays, the OTHER tiles dim
- * slightly, and a sub-tile strip slides in below. Tap "X" or tap the
- * active tile again to collapse. Only one tile can be active at a
- * time (a second tap on another tile swaps the expansion).
+ *   • 2 utility chips below (Restroom · Parking). Functional, not
+ *     aspirational — tight icon+label rows in a single row, no photo.
  *
- * Practical tiles (Restroom, Parking) have no sub-intents so they
- * navigate directly when tapped — same behavior as before.
+ *   • Sub-intent expand strip below the grid — unchanged behavior from
+ *     v2. Tapping a photo tile expands the sub-tiles inline.
+ *
+ * Photos are hardcoded paths against known files in the manifest so
+ * the component stays a client component (the expand state lives here)
+ * without needing a server wrapper. Each mood gets a deliberately
+ * different season so the four tiles together carry a year of
+ * Frederick at a glance.
  */
 
-type Mood = {
+type IntentMood = {
   label: string;
   nudge: string;
   href: string;
   icon: typeof Coffee;
   color: string;
-  /** When set, this tile points at an intent that has subIntents in
-   *  data/intents.ts — taps EXPAND instead of navigating. */
-  intentKey?: IntentKey;
+  intentKey: IntentKey;
+  photo: string;
+};
+
+type UtilityMood = {
+  label: string;
+  nudge: string;
+  href: string;
+  icon: typeof Coffee;
+  color: string;
 };
 
 const intentColor = (k: IntentKey) =>
   INTENT_BY_KEY[k]?.color ?? "var(--app-brand)";
 
-const MOODS: Mood[] = [
-  { label: "Coffee",    nudge: "Roasters and cafes",        href: "/browse?intent=coffee",  icon: Coffee,            color: intentColor("coffee"),  intentKey: "coffee" },
-  { label: "Eat",       nudge: "Restaurants and breweries", href: "/browse?intent=eat",     icon: UtensilsCrossed,   color: intentColor("eat"),     intentKey: "eat" },
-  { label: "Outdoors",  nudge: "Parks, trails, water",      href: "/browse?intent=outdoor", icon: Trees,             color: intentColor("outdoor"), intentKey: "outdoor" },
-  { label: "With kids", nudge: "Family-friendly",           href: "/browse?intent=family",  icon: Baby,              color: intentColor("family"),  intentKey: "family" },
-  // Practical tiles — direct navigation, no sub-tile expansion.
-  { label: "Restroom",  nudge: "Public restrooms nearby",   href: "/amenities",             icon: Toilet,            color: "var(--app-cool)" },
-  { label: "Parking",   nudge: "Garages, lots, on-street",  href: "/category/parking",      icon: ParkingCircle,     color: "var(--app-ink-2)" },
+const INTENT_MOODS: IntentMood[] = [
+  {
+    intentKey: "coffee",
+    label: "Coffee",
+    nudge: "Roasters and cafes",
+    href: "/browse?intent=coffee",
+    icon: Coffee,
+    color: intentColor("coffee"),
+    // Winter — golden low-sun light reads warm and intimate.
+    photo: "/images/seasons/winter/006.jpg",
+  },
+  {
+    intentKey: "eat",
+    label: "Eat",
+    nudge: "Restaurants and breweries",
+    href: "/browse?intent=eat",
+    icon: UtensilsCrossed,
+    color: intentColor("eat"),
+    // Fall — vibrant downtown color, festive harvest energy.
+    photo: "/images/seasons/fall/010.jpg",
+  },
+  {
+    intentKey: "outdoor",
+    label: "Outdoors",
+    nudge: "Parks, trails, water",
+    href: "/browse?intent=outdoor",
+    icon: Trees,
+    color: intentColor("outdoor"),
+    // Spring — fresh green, leaves in, new growth.
+    photo: "/images/seasons/spring/008.jpg",
+  },
+  {
+    intentKey: "family",
+    label: "With kids",
+    nudge: "Family-friendly",
+    href: "/browse?intent=family",
+    icon: Baby,
+    color: intentColor("family"),
+    // Summer — open bright skies, festival weather.
+    photo: "/images/seasons/summer/017.jpg",
+  },
+];
+
+const UTILITY_MOODS: UtilityMood[] = [
+  { label: "Restroom", nudge: "Public restrooms nearby",  href: "/amenities",        icon: Toilet,        color: "var(--app-cool)" },
+  { label: "Parking",  nudge: "Garages, lots, on-street", href: "/category/parking", icon: ParkingCircle, color: "var(--app-ink-2)" },
 ];
 
 export default function MoodTiles() {
-  // Track which intent tile is expanded. Null = no expansion (the
-  // default state matching the pre-expansion behavior).
+  // Track which intent tile is expanded. Null = no expansion.
   const [openIntent, setOpenIntent] = useState<IntentKey | null>(null);
 
-  // Resolve the active mood + its sub-intents, if any. Falls back
-  // to the raw subIntents array from /data/intents.ts so the labels
-  // and match keys stay consistent with what /browse renders.
   const activeIntent =
     openIntent ? INTENTS.find((i) => i.key === openIntent) ?? null : null;
-  const activeMood = activeIntent ? MOODS.find((m) => m.intentKey === activeIntent.key) ?? null : null;
+  const activeMood = activeIntent
+    ? INTENT_MOODS.find((m) => m.intentKey === activeIntent.key) ?? null
+    : null;
   const activeSubIntents = activeIntent?.subIntents ?? [];
 
   return (
     <section aria-label="What do you need right now">
-      <h2
-        className="eyebrow mb-2.5"
-        style={{ color: "var(--app-ink-3)" }}
-      >
+      <h2 className="eyebrow mb-2.5" style={{ color: "var(--app-ink-3)" }}>
         What do you need right now
       </h2>
-      <ul className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {MOODS.map((m) => {
+
+      {/* 4 photo-led intent tiles — magazine-cover treatment. */}
+      <ul className="reveal-up grid grid-cols-2 gap-2">
+        {INTENT_MOODS.map((m) => {
           const Icon = m.icon;
           const isActive = openIntent === m.intentKey;
           const isDimmed = openIntent !== null && !isActive;
-          const expandable = Boolean(m.intentKey);
           return (
             <li key={m.label}>
-              {/* Expandable tiles render as buttons that toggle the
-                  inline sub-tile strip. Practical tiles stay as Links
-                  so the user lands directly on /amenities or
-                  /category/parking. */}
-              {expandable ? (
-                <button
-                  type="button"
-                  onClick={() => setOpenIntent(isActive ? null : (m.intentKey ?? null))}
-                  aria-expanded={isActive}
-                  aria-controls={isActive ? "mood-sub-tiles" : undefined}
-                  className="hover-lift flex w-full items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-left transition active:scale-[0.98]"
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenIntent(isActive ? null : m.intentKey)
+                }
+                aria-expanded={isActive}
+                aria-controls={isActive ? "mood-sub-tiles" : undefined}
+                className="tactile tactile-interactive relative block aspect-[4/5] w-full overflow-hidden rounded-[var(--app-radius-lg)] border text-left transition active:scale-[0.98]"
+                style={{
+                  borderColor: isActive ? m.color : "var(--app-border)",
+                  boxShadow: isActive
+                    ? `var(--app-elev-2), 0 0 0 1.5px ${m.color}`
+                    : "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                  opacity: isDimmed ? 0.5 : 1,
+                }}
+              >
+                <Image
+                  src={m.photo}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 50vw, 280px"
+                  className="object-cover"
+                />
+                {/* Dark gradient pulls the title up from the bottom and
+                    leaves the photo readable at the top. Intent-color
+                    tint bleeds in subtly when the tile is active. */}
+                <span
+                  aria-hidden
+                  className="absolute inset-0"
                   style={{
-                    borderColor: isActive ? m.color : "var(--app-border)",
-                    boxShadow: isActive
-                      ? `var(--app-elev-2), 0 0 0 1px ${m.color}`
-                      : "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-                    opacity: isDimmed ? 0.55 : 1,
+                    background: isActive
+                      ? `linear-gradient(to top, color-mix(in srgb, ${m.color} 70%, rgba(0,0,0,0.85)) 0%, color-mix(in srgb, ${m.color} 28%, rgba(0,0,0,0.35)) 55%, transparent 100%)`
+                      : "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, transparent 100%)",
+                  }}
+                />
+
+                {/* Glass icon pill top-left — the chip from Airbnb's
+                    "Guest favorite" pattern. Stays a constant white so
+                    the icon reads on any photo. */}
+                <span
+                  aria-hidden
+                  className="absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-full"
+                  style={{
+                    background: "rgba(255,255,255,0.92)",
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
+                    boxShadow: "var(--app-shadow-1)",
                   }}
                 >
-                  <span
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-                    style={{
-                      background: isActive
-                        ? m.color
-                        : `color-mix(in srgb, ${m.color} 14%, transparent)`,
-                    }}
-                    aria-hidden
-                  >
-                    <Icon
-                      className="h-[18px] w-[18px]"
-                      strokeWidth={2}
-                      style={{ color: isActive ? "#fff" : m.color }}
-                    />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="block truncate text-[13px] font-semibold"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      {m.label}
-                    </span>
-                    <span
-                      className="block truncate text-[11px]"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {m.nudge}
-                    </span>
-                  </span>
-                  <ChevronRight
-                    aria-hidden
-                    className="h-3.5 w-3.5 shrink-0 transition"
+                  <Icon
+                    className="h-[16px] w-[16px]"
                     strokeWidth={2.25}
-                    style={{
-                      color: isActive ? m.color : "var(--app-ink-3)",
-                      transform: isActive ? "rotate(90deg)" : "rotate(0deg)",
-                    }}
+                    style={{ color: m.color }}
                   />
-                </button>
-              ) : (
-                <Link
-                  href={m.href}
-                  className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition"
-                  style={{
-                    borderColor: "var(--app-border)",
-                    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-                    opacity: isDimmed ? 0.55 : 1,
-                  }}
-                >
+                </span>
+
+                {/* Active-state X in top-right so a second tap reads as
+                    "close" rather than "tap again to do something else". */}
+                {isActive && (
                   <span
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-                    style={{
-                      background: `color-mix(in srgb, ${m.color} 14%, transparent)`,
-                    }}
                     aria-hidden
+                    className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full"
+                    style={{
+                      background: "rgba(0,0,0,0.55)",
+                      backdropFilter: "blur(8px)",
+                      WebkitBackdropFilter: "blur(8px)",
+                    }}
                   >
-                    <Icon
-                      className="h-[18px] w-[18px]"
-                      strokeWidth={2}
-                      style={{ color: m.color }}
-                    />
+                    <X className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="block truncate text-[13px] font-semibold"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      {m.label}
-                    </span>
-                    <span
-                      className="block truncate text-[11px]"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {m.nudge}
-                    </span>
+                )}
+
+                {/* Headline + nudge anchored to bottom. Serif headline,
+                    sans nudge — same hierarchy as the page heros. */}
+                <span className="absolute inset-x-0 bottom-0 space-y-0.5 p-3">
+                  <span
+                    className="block font-serif text-[19px] font-semibold leading-tight text-white sm:text-[20px]"
+                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+                  >
+                    {m.label}
                   </span>
-                </Link>
-              )}
+                  <span
+                    className="block truncate text-[11px] leading-snug text-white/85"
+                    style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
+                  >
+                    {m.nudge}
+                  </span>
+                </span>
+              </button>
             </li>
           );
         })}
       </ul>
 
-      {/* In-place sub-tile strip — appears below the main grid when
-          a tile is expanded. Wraps to multiple lines as needed; each
-          sub-tile deep-links into /browse with both the parent intent
-          AND the sub-key, so the user lands on /browse with the chip
-          strip already showing the right narrow filter. */}
+      {/* Utility row — Restroom + Parking. These are functional, not
+          aspirational, so they stay as compact icon chips below the
+          photo grid. Two-up so they take only one row of vertical space. */}
+      <ul className="mt-2 grid grid-cols-2 gap-2">
+        {UTILITY_MOODS.map((m) => {
+          const Icon = m.icon;
+          return (
+            <li key={m.label}>
+              <Link
+                href={m.href}
+                className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition"
+                style={{
+                  borderColor: "var(--app-border)",
+                  boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                  opacity: openIntent !== null ? 0.55 : 1,
+                }}
+              >
+                <span
+                  aria-hidden
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+                  style={{
+                    background: `color-mix(in srgb, ${m.color} 14%, transparent)`,
+                  }}
+                >
+                  <Icon
+                    className="h-[18px] w-[18px]"
+                    strokeWidth={2}
+                    style={{ color: m.color }}
+                  />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span
+                    className="block truncate text-[13px] font-semibold"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {m.label}
+                  </span>
+                  <span
+                    className="block truncate text-[11px]"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {m.nudge}
+                  </span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Sub-intent expand strip — pops below both grids when a photo
+          tile is active. Unchanged behavior from v2; visual treatment
+          tweaked so it reads as a continuation of the active tile's
+          color identity. */}
       {activeIntent && activeMood && activeSubIntents.length > 0 && (
         <div
           id="mood-sub-tiles"
@@ -212,9 +291,6 @@ export default function MoodTiles() {
           </p>
           <ul className="flex flex-wrap gap-1.5">
             <li>
-              {/* "All" sub-link — opens /browse with the parent intent
-                  alone (no sub filter). Pinned at the start so it's
-                  always reachable. */}
               <Link
                 href={`/browse?intent=${activeIntent.key}`}
                 className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
