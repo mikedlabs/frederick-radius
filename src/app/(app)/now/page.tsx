@@ -13,6 +13,8 @@ import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 import AlmanacFooter from "@/components/today/AlmanacFooter";
+import HourlyForecast from "@/components/today/HourlyForecast";
+import WeeklyForecast from "@/components/today/WeeklyForecast";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -249,6 +251,17 @@ export default async function HomePage({
         </Suspense>
         <PrimaryActionCard now={now} />
       </SkyHero>
+
+      {/* Hourly + Weekly weather cards — lifted out of WeatherHero into
+          their own paper-cream cards on the page background, the iOS
+          Weather pattern. Each fetches the same NWS forecast which the
+          Next.js request cache dedupes into a single network call. */}
+      <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
+        <HourlyForecast />
+      </Suspense>
+      <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-lg)" />}>
+        <WeeklyForecast />
+      </Suspense>
 
       {/* RightNowStrip: three direct answers to the questions a
        *  stranger opens the app to ask: what's open near me, what's
