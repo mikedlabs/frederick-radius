@@ -391,10 +391,9 @@ export default function RadiusBuilder({
     [inside],
   );
 
-  // The actual place sitting at the edge of the current radius —
-  // surfaced in the floating ribbon over the map. Updates live as the
-  // slider moves.
-  const edgePlace = inside[inside.length - 1] ?? null;
+  // (`edgePlace` — the place at the far edge — was used in the
+  // floating ribbon, removed pre-launch per review §12. Trivia, not
+  // a decision tool. The variable is gone too.)
 
   // Amenities inside the same radius — "what's within X" now genuinely
   // includes the restrooms / Wi-Fi / EV / bike / picnic / playgrounds,
@@ -486,15 +485,11 @@ export default function RadiusBuilder({
                 place{inside.length === 1 ? "" : "s"} in radius
               </span>
             </span>
-            {edgePlace && (
-              <span
-                className="ml-auto hidden min-w-0 max-w-[40%] truncate text-[11px] sm:inline"
-                style={{ color: "var(--app-ink-3)" }}
-                title={`Farthest point in this radius: ${edgePlace.name}`}
-              >
-                farthest: <span style={{ color: "var(--app-ink-2)" }}>{edgePlace.name}</span>
-              </span>
-            )}
+            {/* "farthest: Hill House Bed and Breakfast" was here.
+                Removed pre-launch (review §12): the user needs the
+                best nearby thing at the top of /radius, not the
+                farthest. Keep the count + mode + distance; cut the
+                trivia. */}
           </div>
         </div>
       </div>
