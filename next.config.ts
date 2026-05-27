@@ -60,6 +60,10 @@ const nextConfig: NextConfig = {
       // entry, the /from-above/preview route 500s ("Invalid src prop
       // does not match images.localPatterns").
       { pathname: "/from-above/**", search: "" },
+      // /history-photos/** — public-domain historical imagery (NPS,
+      // Library of Congress, Wikimedia Commons) used by the
+      // HistoryMomentCard. Same localPatterns gating as the book.
+      { pathname: "/history-photos/**", search: "" },
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
