@@ -158,7 +158,11 @@ export const getOpenNowCandidates = unstable_cache(
         (p.google_rating ?? 0) >= 4.0,
     );
   },
-  ["right-now-strip:open-now"],
+  // Deployment hash in the key so a build that updates the place
+  // loader (e.g. new Blob photo URLs) busts the cache. Without it,
+  // the 10-minute revalidate window holds stale URLs even after a
+  // deploy that should have changed them.
+  ["right-now-strip:open-now", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Revalidate every 10 minutes (matches the bucket granularity).
   // Tagged so an admin write triggers an early flip.
   { revalidate: 600, tags: ["now-picks", "places"] },
@@ -187,7 +191,8 @@ export const getWeekendBetCandidates = unstable_cache(
         p.open_status.state !== "closed",
     );
   },
-  ["right-now-strip:weekend-bet"],
+  // Deployment hash in the key — same reason as getOpenNowCandidates.
+  ["right-now-strip:weekend-bet", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   // Day-scoped cache; one warm-up per day per origin.
   { revalidate: 3600, tags: ["now-picks", "places"] },
 );
