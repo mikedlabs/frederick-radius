@@ -143,12 +143,18 @@ export default async function RightNowStrip({
   if (!open && !soon && !weekend) return null;
 
   return (
-    <section aria-label="Right now" className="space-y-2">
+    <section aria-label="On deck" className="space-y-2">
+      {/* Was "Right now" — pre-fix the eyebrow read as a literal
+          time claim but the three cards mix three different windows:
+          something open now, something starting in the next 24h, and
+          a place worth visiting this weekend. The new "On deck"
+          label is honest about the mix without losing the "what
+          should I do" urgency. */}
       <h2
         className="eyebrow"
         style={{ color: "var(--app-ink-3)" }}
       >
-        Right now
+        On deck
       </h2>
       {/* 3-column grid (was a vertical space-y-2 list of full-width
           cards). At narrow widths the trio reads as three different
