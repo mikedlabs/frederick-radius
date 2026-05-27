@@ -273,7 +273,7 @@ export default async function HomePage({
           getting absorbed into the sky gradient. When no alert is
           active CivicAlerts renders nothing and the stack collapses
           (Suspense fallback={null}). */}
-      <div className="space-y-2">
+      <div>
         <SkyHero className="space-y-4">
           <Suspense fallback={<Skeleton.Block height={56} round="var(--app-radius-md)" />}>
             <AdaptiveGreeting />
@@ -284,6 +284,16 @@ export default async function HomePage({
             <WeatherHero />
           </Suspense>
         </SkyHero>
+        {/* Post-sky stack is pulled UP 16px (-mt-4) so the first card
+            sits IN FRONT OF the lower edge of the ridge silhouette,
+            killing the "cream band" between sky-hero and the hourly
+            card. Without this, three near-identical cream tones stack
+            in series (RidgeLine paper-cream → 8px page-bg cream →
+            card cream-elevated) and read as a flat band.
+            relative z-10 keeps the card painted ABOVE sky-hero's
+            isolated stacking context. Inner space-y-2 preserves
+            existing gaps between the cards below. */}
+        <div className="relative z-10 -mt-4 space-y-2">
         <Suspense fallback={null}>
           <CivicAlerts />
         </Suspense>
@@ -314,6 +324,7 @@ export default async function HomePage({
         <Suspense fallback={null}>
           <AlmanacFooter />
         </Suspense>
+        </div>
       </div>
 
       {/* Worth a look today — photo-led discovery rail. Six tiles
