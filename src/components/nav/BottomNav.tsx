@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Sun, Compass, Calendar, Bookmark } from "lucide-react";
+import { Sun, Compass, Calendar, Bookmark, MoreHorizontal } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import MoreSheet from "./MoreSheet";
 
 // Primary destinations. Tightened from five per the architecture
 // overhaul: /places, /radius (Near Me), and /map all answered the
@@ -18,23 +19,38 @@ import { haptic } from "@/lib/haptics";
 // "Events" reads more naturally than "Plan" — the routes (/now, /events)
 // keep the original slugs so every bookmark, deep link, and shared URL
 // in the wild still works. Only the visible labels change.
+//
+// The fifth tab, "More", is special: it doesn't navigate. It opens a
+// bottom drawer listing every secondary route (About, Amenities,
+// Contacts, Plan, Radius, Pulse, Transit, Trails, From Above book,
+// Settings). Pre-launch those were orphan URLs reachable only via
+// deep links scattered across /now; the More sheet collects them.
 const TABS = [
-  { href: "/now", label: "Today", icon: Sun },
-  { href: "/browse", label: "Browse", icon: Compass },
-  { href: "/events", label: "Events", icon: Calendar },
-  { href: "/saved", label: "Saved", icon: Bookmark },
+  { href: "/now", label: "Today", icon: Sun, kind: "link" as const },
+  { href: "/browse", label: "Browse", icon: Compass, kind: "link" as const },
+  { href: "/events", label: "Events", icon: Calendar, kind: "link" as const },
+  { href: "/saved", label: "Saved", icon: Bookmark, kind: "link" as const },
+  { href: "#more", label: "More", icon: MoreHorizontal, kind: "drawer" as const },
 ] as const;
 
-/** Resolve a pathname to its tab index (or -1 if it is not a tab). */
+/** Resolve a pathname to its tab index (or -1 if it is not a tab).
+ *  The drawer-kind "More" tab is excluded — it never owns a route. */
 function tabIndexForPath(pathname: string): number {
   return TABS.findIndex(
-    (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
+    (t) => t.kind === "link" && (pathname === t.href || pathname.startsWith(t.href + "/")),
   );
 }
 
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  // Close the More sheet on route change — otherwise it'd stick around
+  // covering the new page after a tap on one of its items.
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   // Real index from the current route. Falls back to 0 so the slider
   // still has a home on non-primary routes (e.g. /about, /settings).
@@ -75,17 +91,19 @@ export default function BottomNav() {
           boxShadow: "0 4px 12px -2px color-mix(in srgb, var(--app-brand) 45%, transparent)",
         }}
       />
-      <ul className="mx-auto grid max-w-screen-md grid-cols-4">
-        {TABS.map(({ href, label, icon: Icon }, idx) => {
+      <ul className="mx-auto grid max-w-screen-md grid-cols-5">
+        {TABS.map(({ href, label, icon: Icon, kind }, idx) => {
           // Treat the tab as "active" when either:
-          //   - the real pathname already matches it, OR
-          //   - the user has just tapped it and we are mid-navigation
+          //   - the real pathname already matches it (link tabs only), OR
+          //   - the user has just tapped it and we are mid-navigation, OR
+          //   - it's the More tab and the drawer is open
           // The optimistic branch is what makes the chip light up and
           // the indicator slide within a single frame of the touch.
           const isRealActive =
-            pathname === href || pathname.startsWith(href + "/");
+            kind === "link" && (pathname === href || pathname.startsWith(href + "/"));
           const isPendingActive = pendingIdx === idx;
-          const active = isRealActive || isPendingActive;
+          const isDrawerActive = kind === "drawer" && moreOpen;
+          const active = isRealActive || isPendingActive || isDrawerActive;
 
           const handleActivate = (e?: { preventDefault?: () => void }) => {
             if (isRealActive) return;
@@ -107,6 +125,80 @@ export default function BottomNav() {
             }
           };
 
+          // Shared chip body so the link tab and drawer-button tab
+          // render identically below.
+          const chipBody = (
+            <>
+              {/* Icon pill. Active gets the brand-tinted background
+                  with the tactile-glow-brand shadow + lip so the
+                  selected tab visibly lifts and catches light. */}
+              <span
+                className={`grid h-9 w-[52px] place-items-center rounded-full transition-all duration-200 ${
+                  active ? "tactile tactile-lift tactile-glow-brand" : ""
+                }`}
+                style={{
+                  background: active
+                    ? "color-mix(in srgb, var(--app-brand) 18%, var(--app-bg-elevated))"
+                    : "transparent",
+                  transitionTimingFunction: "var(--app-ease-spring)",
+                }}
+                aria-hidden
+              >
+                <Icon
+                  className={`transition-transform duration-200 ${
+                    active ? "h-[20px] w-[20px]" : "h-[19px] w-[19px] group-hover:-translate-y-[1px]"
+                  }`}
+                  strokeWidth={active ? 2.5 : 2}
+                />
+              </span>
+              <span
+                className="transition-opacity"
+                style={{ opacity: active ? 1 : 0.85 }}
+              >
+                {label}
+              </span>
+              <span
+                aria-hidden
+                className="absolute bottom-[3px] left-1/2 h-[3px] w-[3px] -translate-x-1/2 rounded-full transition-opacity"
+                style={{
+                  background: "var(--app-brand)",
+                  opacity: active ? 1 : 0,
+                }}
+              />
+            </>
+          );
+
+          const sharedTabClass =
+            "group relative flex flex-1 flex-col items-center gap-0.5 px-1 pt-1.5 pb-1 text-[10px] font-semibold tracking-tight transition-transform active:scale-[0.92]";
+          const sharedTabStyle = {
+            color: active ? "var(--app-brand)" : "var(--app-ink-3)",
+            transitionTimingFunction: "var(--app-ease-spring)",
+            transitionDuration: "var(--app-dur-fast)",
+          } as const;
+
+          // The drawer-kind "More" tab is a button that toggles the
+          // sheet instead of navigating. Same chip body, same active
+          // styling — just a different element + handler.
+          if (kind === "drawer") {
+            return (
+              <li key={href} className="flex">
+                <button
+                  type="button"
+                  onClick={() => {
+                    haptic("light");
+                    setMoreOpen((v) => !v);
+                  }}
+                  aria-haspopup="dialog"
+                  aria-expanded={moreOpen}
+                  className={sharedTabClass + " bg-transparent"}
+                  style={sharedTabStyle}
+                >
+                  {chipBody}
+                </button>
+              </li>
+            );
+          }
+
           return (
             <li key={href} className="flex">
               <Link
@@ -119,61 +211,17 @@ export default function BottomNav() {
                   if (!isRealActive) setPendingIdx(idx);
                 }}
                 onClick={(e) => handleActivate(e)}
-                className="group relative flex flex-1 flex-col items-center gap-0.5 px-1 pt-1.5 pb-1 text-[10px] font-semibold tracking-tight transition-transform active:scale-[0.92]"
-                style={{
-                  color: active ? "var(--app-brand)" : "var(--app-ink-3)",
-                  transitionTimingFunction: "var(--app-ease-spring)",
-                  transitionDuration: "var(--app-dur-fast)",
-                }}
+                className={sharedTabClass}
+                style={sharedTabStyle}
                 aria-current={active ? "page" : undefined}
               >
-                {/* Icon pill. Active gets the brand-tinted background
-                    with the tactile-glow-brand shadow + lip so the
-                    selected tab visibly lifts and catches light.
-                    Inactive stays flat ink-3 and lifts on hover
-                    (desktop only). The optimistic active style flips
-                    immediately on pointer-down. */}
-                <span
-                  className={`grid h-9 w-[52px] place-items-center rounded-full transition-all duration-200 ${
-                    active ? "tactile tactile-lift tactile-glow-brand" : ""
-                  }`}
-                  style={{
-                    background: active
-                      ? "color-mix(in srgb, var(--app-brand) 18%, var(--app-bg-elevated))"
-                      : "transparent",
-                    transitionTimingFunction: "var(--app-ease-spring)",
-                  }}
-                  aria-hidden
-                >
-                  <Icon
-                    className={`transition-transform duration-200 ${
-                      active ? "h-[20px] w-[20px]" : "h-[19px] w-[19px] group-hover:-translate-y-[1px]"
-                    }`}
-                    strokeWidth={active ? 2.5 : 2}
-                  />
-                </span>
-                <span
-                  className="transition-opacity"
-                  style={{ opacity: active ? 1 : 0.85 }}
-                >
-                  {label}
-                </span>
-                {/* Active indicator dot. Small brand chip beneath the
-                    label so the selected route reads clearly even
-                    when glancing at the nav peripherally. */}
-                <span
-                  aria-hidden
-                  className="absolute bottom-[3px] left-1/2 h-[3px] w-[3px] -translate-x-1/2 rounded-full transition-opacity"
-                  style={{
-                    background: "var(--app-brand)",
-                    opacity: active ? 1 : 0,
-                  }}
-                />
+                {chipBody}
               </Link>
             </li>
           );
         })}
       </ul>
+      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
     </nav>
   );
 }
