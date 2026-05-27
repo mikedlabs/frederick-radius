@@ -46,6 +46,19 @@ export async function generateMetadata({
       title: c.title,
       description: c.blurb,
       type: "article",
+      images: [
+        {
+          url: `/api/og?type=collection&slug=${slug}`,
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: c.title,
+      description: c.blurb,
+      images: [`/api/og?type=collection&slug=${slug}`],
     },
   };
 }

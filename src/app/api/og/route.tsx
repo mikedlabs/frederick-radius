@@ -3,6 +3,18 @@ import { PLACE_BY_SLUG } from "@/data/places";
 import { EVENT_BY_SLUG } from "@/data/events";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { COLLECTION_BY_SLUG } from "@/data/collections";
+
+// Token → hex mapping for the OG image runtime, which has no DOM
+// and so can't resolve CSS variables. Keep in sync with globals.css.
+// New collection accent tokens should be added here when introduced.
+const COLLECTION_ACCENT_HEX: Record<string, string> = {
+  "var(--app-brand)": "#A8462C",
+  "var(--app-brand-2)": "#2E3B2C",
+  "var(--app-cool)": "#2F5470",
+  "var(--app-accent)": "#C99632",
+  "var(--app-sage)": "#859076",
+};
 
 // NOTE: deliberately the Node runtime, NOT edge. This route imports
 // the full composed place/event datasets (PLACE_BY_SLUG / EVENT_BY_SLUG)
@@ -56,6 +68,24 @@ export async function GET(request: Request) {
       title = c.name;
       kicker = "Across Frederick County";
       accent = c.color;
+    }
+  } else if (type === "collection") {
+    // Editorial collections (/collections/[slug]). The blurb already
+    // carries the editorial voice, so it reads true a day from now
+    // without time-baked context. Accent comes from the collection's
+    // own definition. The kicker is fixed ("A Frederick collection")
+    // because each card already carries its title as the headline.
+    const c = COLLECTION_BY_SLUG[slug];
+    if (c) {
+      title = c.title;
+      kicker = "A Frederick collection";
+      blurb = c.blurb;
+      // The collection's `accent` is a CSS variable reference, which
+      // doesn't resolve inside the OG image runtime (no DOM, no
+      // computed styles). Map known accent tokens back to hex so the
+      // card renders the same color the in-app card does. Unknown
+      // tokens fall through to the default brick.
+      accent = COLLECTION_ACCENT_HEX[c.accent] ?? accent;
     }
   }
 
@@ -193,7 +223,7 @@ export async function GET(request: Request) {
             <div>frederickradius.app</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, color: INK_3 }}>
               <span style={{ width: 8, height: 8, borderRadius: 999, background: accent }} />
-              {type === "place" ? "Place" : type === "event" ? "Event" : type === "municipality" ? "Town" : type === "category" ? "Category" : "Local discovery"}
+              {type === "place" ? "Place" : type === "event" ? "Event" : type === "municipality" ? "Town" : type === "category" ? "Category" : type === "collection" ? "Collection" : "Local discovery"}
             </div>
           </div>
         </div>
