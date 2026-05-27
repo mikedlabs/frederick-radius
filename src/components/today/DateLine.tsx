@@ -22,6 +22,15 @@ export default function DateLine() {
     timeZone: "America/New_York",
     weekday: "long",
   }).format(now);
+  // Date — month name + day number ("May 27"). Sits in the same line
+  // as the weekday so users see weekday + calendar date + clock time
+  // in one glance instead of having to read the day strip below to
+  // confirm the date.
+  const date = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    month: "long",
+    day: "numeric",
+  }).format(now);
   const time = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     hour: "numeric",
@@ -31,10 +40,10 @@ export default function DateLine() {
   return (
     <header className="flex items-center justify-between gap-3">
       <p
-        className="text-[11px] font-medium uppercase tracking-[0.12em] sm:text-[12px]"
+        className="truncate text-[11px] font-medium uppercase tracking-[0.12em] sm:text-[12px]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        {weekday} · {time}
+        {weekday} · {date} · {time}
       </p>
       <HomeMuniChip />
     </header>

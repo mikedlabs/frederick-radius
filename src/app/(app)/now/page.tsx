@@ -31,6 +31,7 @@ import BetaIntroCard from "@/components/today/BetaIntroCard";
 import TuneForYou from "@/components/today/TuneForYou";
 import WorthALook from "@/components/today/WorthALook";
 import FromAboveCta from "@/components/today/FromAboveCta";
+import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 import CreekHairline from "@/components/ui/CreekHairline";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
@@ -403,6 +404,13 @@ export default async function HomePage({
        *  Eat / With kids) that deep-link into the category page with
        *  the right scope. */}
       <MoodTiles />
+
+      {/* Partner-app handoffs — ParkMobile (the City of Frederick's
+          all-digital street-parking platform) + OpenTable (the
+          dominant reservation system downtown). Two job-to-be-done
+          shortcuts that no in-app surface can fulfill on its own;
+          we hand off to the partner app and let them do their thing. */}
+      <PartnerAppsRow />
 
       {/* When? — the brand-defining temporal control. Pivots the
        *  events section between Now / Tonight / Tomorrow / Weekend.

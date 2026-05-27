@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import AnimatedSkyGlyph from "./AnimatedSkyGlyph";
@@ -90,9 +91,28 @@ function dateForOffset(now: Date, offset: number): Date {
   );
 }
 
-export default async function NowDayStrip() {
+export default async function NowDayStrip({
+  /** When set, every day cell wraps in a Link to this URL (use {date}
+   *  as the YYYY-MM-DD placeholder). Used by /events to make the day
+   *  strip a temporal filter. When omitted the strip is static. */
+  hrefForDate,
+  /** When set, override which day reads as "active." For /events this
+   *  is the currently-filtered day; for /now it stays undefined so
+   *  today is the active day. ISO YYYY-MM-DD in Eastern time. */
+  activeDateKey,
+  /** Optional event-count map keyed by Eastern date key. When provided,
+   *  replaces the weather hi/lo line with a "N events" badge so the
+   *  strip carries event density instead of forecast. /events uses
+   *  this; /now leaves it undefined for the weather treatment. */
+  eventCountByDate,
+}: {
+  hrefForDate?: (dateKey: string) => string;
+  activeDateKey?: string;
+  eventCountByDate?: Map<string, number>;
+} = {}) {
   const now = new Date();
   const todayDow = easternWeekday(now);
+  const todayKey = easternDateKey(now);
 
   const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const dailyByDate = new Map<string, DailyForecastInfo>();
@@ -124,25 +144,37 @@ export default async function NowDayStrip() {
         const dk = easternDateKey(dateForOffset(now, offset));
         const info = dailyByDate.get(dk);
         const variant = info?.shortForecast ? iconForShortForecast(info.shortForecast) : null;
-        return (
-          <div
-            key={i}
-            aria-current={isToday ? "date" : undefined}
-            aria-label={[
-              `${WEEKDAY_FULL[i]} ${dayNumber}`,
-              isToday ? "today" : null,
-              info?.high !== undefined ? `high ${info.high}` : null,
-              info?.low !== undefined ? `low ${info.low}` : null,
-            ].filter(Boolean).join(", ")}
-            className="flex flex-col items-center gap-1 rounded-[var(--app-radius-sm)] py-1.5"
-            style={{
-              background: isToday ? "color-mix(in srgb, var(--app-brand) 6%, transparent)" : "transparent",
-            }}
-          >
+        const eventCount = eventCountByDate?.get(dk);
+        // "Active" day: caller-supplied (used by /events to highlight
+        // the day they've filtered to) OR fall back to today.
+        const isActive = activeDateKey
+          ? dk === activeDateKey
+          : isToday;
+        const isTodayMarker = dk === todayKey;
+        const href = hrefForDate?.(dk);
+        // Same content inside Link vs div — Link gives client-side
+        // navigation + prefetch when caller passes hrefForDate.
+        const cellClass =
+          "flex flex-col items-center gap-1 rounded-[var(--app-radius-sm)] py-1.5 " +
+          (href ? "transition active:scale-[0.97] hover:bg-[var(--app-bg-sunken)]" : "");
+        const cellStyle = {
+          background: isActive
+            ? "color-mix(in srgb, var(--app-brand) 6%, transparent)"
+            : "transparent",
+        };
+        const ariaLabel = [
+          `${WEEKDAY_FULL[i]} ${dayNumber}`,
+          isTodayMarker ? "today" : null,
+          info?.high !== undefined ? `high ${info.high}` : null,
+          info?.low !== undefined ? `low ${info.low}` : null,
+          typeof eventCount === "number" ? `${eventCount} events` : null,
+        ].filter(Boolean).join(", ");
+        const inner = (
+          <>
             <span
               className="text-[9px] font-semibold uppercase tracking-[0.08em]"
               style={{
-                color: isToday
+                color: isActive
                   ? "var(--app-brand)"
                   : isPast
                     ? "var(--app-ink-3)"
@@ -155,22 +187,44 @@ export default async function NowDayStrip() {
             <span
               className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-bold tabular-nums sm:h-8 sm:w-8 sm:text-[12px]"
               style={{
-                background: isToday ? "var(--app-brand)" : "transparent",
-                color: isToday
+                background: isTodayMarker
+                  ? "var(--app-brand)"
+                  : isActive
+                    ? "color-mix(in srgb, var(--app-brand) 22%, transparent)"
+                    : "transparent",
+                color: isTodayMarker
                   ? "white"
-                  : isPast
-                    ? "var(--app-ink-3)"
-                    : "var(--app-ink)",
+                  : isActive
+                    ? "var(--app-brand)"
+                    : isPast
+                      ? "var(--app-ink-3)"
+                      : "var(--app-ink)",
                 opacity: isPast ? 0.55 : 1,
-                boxShadow: isToday ? "var(--app-shadow-1)" : "none",
+                boxShadow: isTodayMarker ? "var(--app-shadow-1)" : "none",
               }}
             >
               {dayNumber}
             </span>
-            {/* Weather glyph + hi/lo, when NWS daily came back with
-                data for this date. Past days render with reduced
-                opacity since the forecast doesn't apply backwards. */}
-            {variant ? (
+            {/* Bottom row — either an event-count badge (when the
+                caller passes eventCountByDate) or the weather glyph
+                + hi/lo combo from NWS. Past days render with reduced
+                opacity since neither forecast nor future-event count
+                applies backwards. */}
+            {eventCountByDate ? (
+              <span
+                aria-hidden
+                className="text-[10px] font-bold tabular-nums leading-tight"
+                style={{
+                  color: typeof eventCount === "number" && eventCount > 0
+                    ? "var(--app-ink-2)"
+                    : "var(--app-ink-3)",
+                  opacity: isPast ? 0.4 : 1,
+                  minHeight: 14,
+                }}
+              >
+                {typeof eventCount === "number" && eventCount > 0 ? eventCount : "·"}
+              </span>
+            ) : variant ? (
               <div
                 aria-hidden
                 style={{ opacity: isPast ? 0.4 : 1 }}
@@ -191,11 +245,30 @@ export default async function NowDayStrip() {
                 )}
               </div>
             ) : (
-              // Reserve some vertical space so the row height stays
-              // stable while waiting for NWS or when a day falls
-              // outside the 7-day forecast window.
               <div style={{ height: 32 }} aria-hidden />
             )}
+          </>
+        );
+        return href ? (
+          <Link
+            key={i}
+            href={href}
+            aria-current={isActive ? "date" : undefined}
+            aria-label={ariaLabel}
+            className={cellClass}
+            style={cellStyle}
+          >
+            {inner}
+          </Link>
+        ) : (
+          <div
+            key={i}
+            aria-current={isActive ? "date" : undefined}
+            aria-label={ariaLabel}
+            className={cellClass}
+            style={cellStyle}
+          >
+            {inner}
           </div>
         );
       })}
