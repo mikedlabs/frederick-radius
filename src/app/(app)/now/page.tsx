@@ -22,6 +22,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 import AlmanacFooter from "@/components/today/AlmanacFooter";
 import HourlyForecast from "@/components/today/HourlyForecast";
+import HourlyDisclosure from "@/components/today/HourlyDisclosure";
 import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
@@ -320,6 +321,16 @@ export default async function HomePage({
           >
             <WeatherHero />
           </Suspense>
+          {/* AlmanacFooter moved INSIDE the SkyHero gradient as a
+              quiet footer line under the weather hero. Used to live
+              at the bottom of the consolidated weather panel; pulled
+              up here so sunrise/sunset/daylight-delta/AQI/comfort
+              read as part of the sky scene the user is looking at,
+              not a separate strip you scroll past. Inherits the
+              sky's currentColor for tone-aware ink. */}
+          <Suspense fallback={null}>
+            <AlmanacFooter inSky />
+          </Suspense>
         </SkyHero>
         <div
           className="relative z-10 mt-2 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_*:not(:last-child)]:border-b"
@@ -331,17 +342,16 @@ export default async function HomePage({
           <Suspense fallback={null}>
             <CivicAlerts />
           </Suspense>
-          <Suspense fallback={<Skeleton.Block height={92} round="0" />}>
-            <HourlyForecast />
-          </Suspense>
-          {/* Order: HOURLY → 7-DAY → MORE WEATHER DETAILS → almanac.
-              Pre-swap the More-Weather-Details disclosure sat between
-              hourly and 7-day, which read backwards: a user looking
-              at "what's the rest of the week" had to scroll past
-              wind/humidity/pressure first. 7-day is the broader
-              forecast view; "more details" is the deeper drill-in.
-              Almanac (sunrise/sunset, AQI, comfort) is the quiet
-              footer line that wraps up the panel. */}
+          {/* All three weather subsections (Hourly · 7-Day · More
+              Details) are now disclosure pills for visual uniformity.
+              Hourly defaults open (it's the most-glanced piece); the
+              other two default closed. Almanac moved up INTO the
+              gradient hero. */}
+          <HourlyDisclosure>
+            <Suspense fallback={<Skeleton.Block height={92} round="0" />}>
+              <HourlyForecast />
+            </Suspense>
+          </HourlyDisclosure>
           <WeeklyCard
             summary={
               <Suspense fallback={<>Loading…</>}>
@@ -358,9 +368,6 @@ export default async function HomePage({
               <WeatherMoreGrid />
             </Suspense>
           </WeatherMore>
-          <Suspense fallback={null}>
-            <AlmanacFooter />
-          </Suspense>
         </div>
       </div>
 

@@ -173,6 +173,12 @@ function aliveAtFiveSeason(): Event[] {
       organizer: "Downtown Frederick Partnership",
       source: "dfp",
       is_verified: true,
+      // Vibrant outdoor-summer photo from the owner's seasons
+      // collection. SUMMER FIREWORKS reads instantly as "summer
+      // night at Carroll Creek" — pyrotechnics, crowd, warm sky —
+      // perfect cover image for the Thursday-night Alive @ Five
+      // series. Pre-add this was a calendar-placeholder card.
+      hero_image: "/images/seasons/summer/SUMMER FIREWORKS.jpg",
       // Only attach the lineup when we've actually entered it for this
       // week. Empty/undefined → the event detail falls back to the
       // generic "rotating food vendors" line.

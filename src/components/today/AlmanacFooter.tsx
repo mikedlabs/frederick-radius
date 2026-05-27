@@ -17,7 +17,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
  * silently hidden, the rest of the strip still renders. Request-cache
  * dedupes when the same fetch fires elsewhere in the page tree.
  */
-export default async function AlmanacFooter() {
+export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean } = {}) {
   // eslint-disable-next-line react-hooks/purity
   const now = new Date();
   const delta = daylightDelta(now);
@@ -75,24 +75,39 @@ export default async function AlmanacFooter() {
     deltaTitle = `${n} minute${n === 1 ? "" : "s"} shorter than yesterday`;
   }
 
+  // When mounted INSIDE SkyHero (inSky=true), the row uses
+  // currentColor with opacity so it inherits the sky-tone ink
+  // (paper-cream on dark sky, warm-ink on light sky). AQI and
+  // comfort still use their own status colors — they're warning
+  // signals; if it's "Oppressive" the user needs to see that even
+  // through the sky gradient.
+  const sepColor = inSky ? "currentColor" : "var(--app-border)";
+  const sepOpacity = inSky ? 0.45 : 1;
+  const baseColor = inSky ? "currentColor" : "var(--app-ink-3)";
+  const baseOpacity = inSky ? 0.85 : 1;
+
   return (
     <footer
-      className="-mx-4 mt-2 flex items-center justify-center gap-x-3 overflow-x-auto whitespace-nowrap px-4 py-3 text-center text-[11px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      style={{ color: "var(--app-ink-3)" }}
+      className={
+        inSky
+          ? "mt-3 flex items-center justify-center gap-x-3 overflow-x-auto whitespace-nowrap text-[11px] sm:text-[12px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          : "-mx-4 mt-2 flex items-center justify-center gap-x-3 overflow-x-auto whitespace-nowrap px-4 py-3 text-center text-[11px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      }
+      style={{ color: baseColor, opacity: baseOpacity }}
       aria-label="Today in Frederick"
     >
       <span className="inline-flex items-center gap-1 tabular-nums">
         <Sunrise className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
         {sunriseStr}
       </span>
-      <span aria-hidden style={{ color: "var(--app-border)" }}>
+      <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
         ·
       </span>
       <span className="inline-flex items-center gap-1 tabular-nums">
         <Sunset className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
         {sunsetStr}
       </span>
-      <span aria-hidden style={{ color: "var(--app-border)" }}>
+      <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
         ·
       </span>
       <span className="tabular-nums" title={deltaTitle}>
@@ -100,12 +115,12 @@ export default async function AlmanacFooter() {
       </span>
       {worst && (
         <>
-          <span aria-hidden style={{ color: "var(--app-border)" }}>
+          <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
             ·
           </span>
           <span
             className="inline-flex items-center gap-1 font-semibold tabular-nums"
-            style={{ color: worst.category.color }}
+            style={{ color: inSky ? "currentColor" : worst.category.color, opacity: inSky ? 1 : undefined }}
             title={`AQI ${worst.aqi} ${worst.category.name} (${worst.parameter}) — observed in ${worst.reportingArea}`}
           >
             <Wind className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
@@ -115,12 +130,12 @@ export default async function AlmanacFooter() {
       )}
       {showComfort && metar && (
         <>
-          <span aria-hidden style={{ color: "var(--app-border)" }}>
+          <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
             ·
           </span>
           <span
             className="inline-flex items-center gap-1 font-semibold"
-            style={{ color: comfort.color }}
+            style={{ color: inSky ? "currentColor" : comfort.color, opacity: inSky ? 1 : undefined }}
             title={`Dewpoint ${metar.dewpointF}°F at KFDK — ${comfort.label.toLowerCase()}`}
           >
             <Droplets className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
