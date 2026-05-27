@@ -251,7 +251,11 @@ export default async function HomePage({
         >
           <WeatherHero />
         </Suspense>
-        <PrimaryActionCard now={now} />
+        {/* PrimaryActionCard ("What is open near you") used to live in
+            here. Per owner feedback it's moved below the full weather
+            block — sky + hourly + 7-day + almanac — so the weather is
+            one cohesive unit, then the call-to-action lands as a
+            distinct next step. */}
       </SkyHero>
 
       {/* Weather block, ordered to put the most-actionable data first:
@@ -284,6 +288,12 @@ export default async function HomePage({
       <Suspense fallback={null}>
         <AlmanacFooter />
       </Suspense>
+
+      {/* PrimaryActionCard — the primary call to action ("What is open
+          near you" / "What's open right now"). Sits BELOW the weather
+          block on paper-cream so the weather reads as a single unit
+          and the CTA lands as the page's "now what?" answer. */}
+      <PrimaryActionCard now={now} />
 
       {/* RightNowStrip: three direct answers to the questions a
        *  stranger opens the app to ask: what's open near me, what's
