@@ -139,3 +139,41 @@ export async function fetchTicketmasterMusic(): Promise<LiveEvent[]> {
     clearTimeout(timer);
   }
 }
+
+/**
+ * Fetch upcoming sports events in Frederick County — primarily the
+ * Frederick Keys (MiLB, Carolina League) at Nymeo Field at Harry
+ * Grove Stadium, but anything else Ticketmaster classifies as
+ * Sports inside the geo window lands here too (Hood athletics
+ * tournaments, occasional college matchups). Same shape, same
+ * normalize path, same county-bbox filter as fetchTicketmasterMusic.
+ *
+ * Category override: normalizeTicketmaster() hardcodes "music" for
+ * every event it returns (the helper predates this function). Sports
+ * results need the "sports" category so they fall under the right
+ * keyword bucket on the events explorer. We override the category
+ * here after the normalize pass — the keyword inference in
+ * ical-live.ts already maps the sport-specific words (keys, baseball,
+ * tournament, vs.) to "sports" too, but a Keys vs. Salem game whose
+ * title doesn't trip any of those would otherwise read as "music."
+ */
+export async function fetchTicketmasterSports(): Promise<LiveEvent[]> {
+  const key = (process.env.TICKETMASTER_API_KEY ?? "").trim();
+  if (!key) return [];
+  const url =
+    `${ENDPOINT}?apikey=${encodeURIComponent(key)}` +
+    `&classificationName=Sports&sort=date,asc&size=100&unit=miles` +
+    `&latlong=${CENTER.lat},${CENTER.lng}&radius=${RADIUS_MI}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
+    if (!res.ok) return [];
+    const events = normalizeTicketmaster(await res.json());
+    return events.map((e) => ({ ...e, category: "sports" }));
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}

@@ -71,6 +71,27 @@ type FeedSpec = Feed & { format: FeedFormat };
 
 const FEEDS: FeedSpec[] = [
   {
+    // Downtown Frederick Partnership iCal. Already pulled daily via
+    // the cron at /api/ingest/all, which writes to the ingested
+    // events table — but that path surfaces as the quiet MunicipalEvents
+    // strip on /events, not as a primary signal. Adding DFP here joins
+    // it to the same WeekStrip / TonightRail / Explorer that Celebrate,
+    // the county RSS, and Hood already flow through, so a downtown
+    // shop crawl, First Saturday, or Alive @ Five run lands on the
+    // page the moment it's published instead of the next morning.
+    source: "dfp",
+    source_label: "Downtown Frederick Partnership",
+    url: "https://downtownfrederick.org/upcoming-events?ical=1",
+    format: "ical",
+    default_venue: "Downtown Frederick",
+    default_geom: { lng: -77.4109, lat: 39.4137 },
+    default_municipality: "frederick",
+    // DFP events span community / arts / market / food across the
+    // year. "community" is the honest fallback; the keyword inference
+    // above tags Alive @ Five → music, First Saturday → arts, etc.
+    default_category: "community",
+  },
+  {
     source: "celebrate",
     source_label: "Celebrate Frederick",
     url: "https://www.celebratefrederick.com/events/?ical=1",
