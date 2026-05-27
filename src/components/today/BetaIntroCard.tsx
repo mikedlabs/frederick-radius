@@ -27,7 +27,11 @@ import { X, ArrowRight, MessageSquare } from "lucide-react";
  * to say that.
  */
 
-const KEY = "fr:beta-intro-dismissed:v1";
+// Bump the version suffix any time the message copy meaningfully changes,
+// so a previously-dismissed user sees the updated welcome on next visit.
+//   v1 — initial launch (food trucks, business profiles, more event feeds)
+//   v2 — added "refined map with details other maps don't show" bullet
+const KEY = "fr:beta-intro-dismissed:v2";
 const FEEDBACK_EMAIL = "miked@madproductions.io";
 const FEEDBACK_SUBJECT = "Frederick Radius feedback";
 
@@ -143,8 +147,9 @@ export default function BetaIntroCard() {
             style={{ color: "var(--app-ink-2)" }}
           >
             <li>
-              <span style={{ color: "var(--app-ink)" }}>Food truck beacons</span> on the map so
-              you can find them when they&apos;re parked.
+              <span style={{ color: "var(--app-ink)" }}>A refined map with the details other
+              maps don&apos;t show.</span> Food truck beacons when they&apos;re parked, trash cans,
+              restrooms, free WiFi, EV charging, mailboxes, FedEx and UPS drop-offs, and more.
             </li>
             <li>
               <span style={{ color: "var(--app-ink)" }}>Deeper business profiles</span> so owners
