@@ -7,6 +7,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
+import BestNearbyMoves from "./BestNearbyMoves";
 // Read the same slim, pre-decorated set the rest of the app uses on
 // the client. The previous shape (places passed in via props from
 // radius/page) inlined ~4MB of redundant JSON into the SSR HTML for
@@ -498,6 +499,19 @@ export default function RadiusBuilder({
           </div>
         </div>
       </div>
+
+      {/* Best nearby moves — three curated "you should do this right
+          now" tiles (coffee within reach, public restroom, park
+          within reach) derived from the same inside list as the
+          grid below. Pre-launch review §4: /radius needs to feel
+          assistive, not directory-style. Self-hides each tile when
+          there's no match in the current radius — so dialing all
+          the way down doesn't render a row of empty placeholders. */}
+      <BestNearbyMoves
+        places={inside}
+        amenities={insideAmenities}
+        mode={mode}
+      />
 
       {/* Compact control card — center + mode + slider in one tight
           stack so the entire instrument fits under the map in one
