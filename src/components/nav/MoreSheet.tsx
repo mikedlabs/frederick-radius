@@ -10,9 +10,13 @@ import {
   Bus,
   Mountain,
   BookOpen,
+  Palette,
   Settings as SettingsIcon,
   Activity,
   CalendarRange,
+  Landmark,
+  Droplets,
+  ExternalLink,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -43,6 +47,8 @@ type Item = {
   label: string;
   description: string;
   icon: typeof Compass;
+  /** External destination — adds an icon hint + opens in a new tab. */
+  external?: boolean;
 };
 
 const TOOLS: Item[] = [
@@ -56,10 +62,18 @@ const USEFUL: Item[] = [
   { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2 },
   { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus },
   { href: "/trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain },
+  { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: Mountain },
+  { href: "/water",     label: "Water",     description: "Public drinking fountains and water bottle refills", icon: Droplets },
 ];
 
 const DISCOVER: Item[] = [
-  { href: "/from-above/preview", label: "From Above", description: "The coffee-table book of drone photography over Frederick", icon: BookOpen },
+  { href: "/from-above/preview", label: "From Above",       description: "The coffee-table book of drone photography over Frederick", icon: BookOpen },
+  // External — the owner's other Frederick book. ColorFrederick is a
+  // companion coloring book; the link is to its own store page. The
+  // ExternalLink rendering treats this as a clear out-bound and opens
+  // in a new tab.
+  { href: "https://www.colorfrederick.com", label: "Color Frederick", description: "The Frederick coloring book — buy at colorfrederick.com", icon: Palette, external: true },
+  { href: "/history",            label: "History",          description: "Frederick County, one story at a time",                       icon: Landmark },
 ];
 
 const APP: Item[] = [
@@ -109,17 +123,9 @@ function Cluster({
         {heading}
       </h3>
       <ul className="space-y-1.5">
-        {items.map(({ href, label, description, icon: Icon }) => (
-          <li key={href}>
-            <Link
-              href={href}
-              onClick={onClose}
-              className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition"
-              style={{
-                borderColor: "var(--app-border)",
-                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-              }}
-            >
+        {items.map(({ href, label, description, icon: Icon, external }) => {
+          const body = (
+            <>
               <span
                 aria-hidden
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
@@ -135,9 +141,43 @@ function Cluster({
                   {description}
                 </span>
               </span>
-            </Link>
-          </li>
-        ))}
+              {external && (
+                <ExternalLink
+                  aria-hidden
+                  className="h-3.5 w-3.5 shrink-0"
+                  strokeWidth={2}
+                  style={{ color: "var(--app-ink-3)" }}
+                />
+              )}
+            </>
+          );
+          const className =
+            "hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition";
+          const style = {
+            borderColor: "var(--app-border)",
+            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          };
+          return (
+            <li key={href}>
+              {external ? (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={onClose}
+                  className={className}
+                  style={style}
+                >
+                  {body}
+                </a>
+              ) : (
+                <Link href={href} onClick={onClose} className={className} style={style}>
+                  {body}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

@@ -275,7 +275,13 @@ export default async function HomePage({
           SkyHero below. */}
       <div className="space-y-2">
         <DateLine />
-        <NowDayStrip />
+        {/* NowDayStrip became async (fetches NWS daily forecast to
+            render a weather glyph + hi/lo per day). Suspense so the
+            header above SkyHero doesn't block — fallback is a slim
+            placeholder matching the day-strip's height. */}
+        <Suspense fallback={<Skeleton.Block height={86} round="var(--app-radius-sm)" />}>
+          <NowDayStrip />
+        </Suspense>
       </div>
 
       {/* 1 — Sky-tinted hero. Sun countdown + weather (now and the

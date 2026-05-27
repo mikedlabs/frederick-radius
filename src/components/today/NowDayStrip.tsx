@@ -1,40 +1,39 @@
+import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
+import AnimatedSkyGlyph from "./AnimatedSkyGlyph";
+
 /**
- * NowDayStrip — a quiet 7-day "you are here" temporal anchor that sits
- * at the top of /now alongside the dateline.
+ * NowDayStrip — 7-day "you are here + what's the weather" strip.
  *
- * Pure visual: seven dots, Sun → Sat, with today filled in the brand
- * color. No interactions in v1 — TimeToggle further down the page
- * handles the Now / Tonight / Tomorrow / Weekend pivot, and /events
- * carries the calendar. This strip's job is just to ground the
- * page's "today" claim in a glanceable visual ("yes, today is
- * Wednesday").
+ * Previous version was a quiet 7-dot row with today highlighted. It
+ * gave a temporal anchor but didn't carry any data. This rewrite
+ * pairs each day with the NWS forecast pulled server-side:
  *
- * Server-rendered. The current weekday is derived in America/New_York
- * so a Vercel UTC server agrees with a Frederick user about what
- * day it is.
+ *   - Weekday letter (S M T W T F S)
+ *   - Animated sky glyph for the forecast condition
+ *   - Day number (today is filled brand color)
+ *   - High / low temperature
+ *
+ * The whole strip reads in a glance as "here's the week, here's
+ * what the weather will be." Today is still the anchor — same brand-
+ * filled circle as before — but every day around it now carries
+ * useful signal so the strip earns the vertical space it took.
+ *
+ * Server component, fetches NWS once per request (cached by the
+ * shared getNwsForecast). Daily forecast comes back as 14 periods
+ * alternating daytime/nighttime; we pair them up to get hi/low per
+ * date. If the fetch fails the strip degrades gracefully to the
+ * day-only layout (no glyph, no temps).
  */
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
 const WEEKDAY_FULL = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 ];
 
 function easternWeekday(now: Date): number {
-  // 0 = Sunday … 6 = Saturday
   const WD: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
+    Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
   };
   const w = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
@@ -43,24 +42,14 @@ function easternWeekday(now: Date): number {
   return WD[w] ?? 0;
 }
 
-/** The N-th calendar day in Eastern time, relative to today. */
 function easternDayNumber(now: Date, offsetFromToday: number): number {
   const f = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+    year: "numeric", month: "2-digit", day: "2-digit",
   });
   const p = Object.fromEntries(f.formatToParts(now).map((x) => [x.type, x.value]));
-  // Construct UTC noon for the target Eastern day (offset relative to
-  // today) and re-read its day-of-month. Noon avoids DST edge cases.
   const d = new Date(
-    Date.UTC(
-      Number(p.year),
-      Number(p.month) - 1,
-      Number(p.day) + offsetFromToday,
-      16, // ~noon Eastern (UTC-4 EDT / UTC-5 EST)
-    ),
+    Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day) + offsetFromToday, 16),
   );
   return Number(
     new Intl.DateTimeFormat("en-US", {
@@ -70,9 +59,57 @@ function easternDayNumber(now: Date, offsetFromToday: number): number {
   );
 }
 
-export default function NowDayStrip() {
+/**
+ * For each day-offset (-todayDow..6-todayDow), find the NWS daytime
+ * and nighttime periods so we can show hi/lo + a representative
+ * forecast variant. NWS returns periods in chronological order
+ * starting from the next half-day; we match by Eastern-time calendar
+ * date.
+ */
+type DailyForecastInfo = {
+  high?: number;
+  low?: number;
+  shortForecast?: string;
+};
+
+function easternDateKey(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(d);
+}
+
+function dateForOffset(now: Date, offset: number): Date {
+  const f = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  });
+  const p = Object.fromEntries(f.formatToParts(now).map((x) => [x.type, x.value]));
+  return new Date(
+    Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day) + offset, 16),
+  );
+}
+
+export default async function NowDayStrip() {
   const now = new Date();
   const todayDow = easternWeekday(now);
+
+  const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
+  const dailyByDate = new Map<string, DailyForecastInfo>();
+  if (forecast?.daily) {
+    for (const p of forecast.daily) {
+      const dk = easternDateKey(new Date(p.startTime));
+      const cur = dailyByDate.get(dk) ?? {};
+      if (p.isDaytime) {
+        cur.high = p.temperature;
+        cur.shortForecast = p.shortForecast;
+      } else {
+        cur.low = p.temperature;
+        if (!cur.shortForecast) cur.shortForecast = p.shortForecast;
+      }
+      dailyByDate.set(dk, cur);
+    }
+  }
 
   return (
     <nav
@@ -84,15 +121,26 @@ export default function NowDayStrip() {
         const isPast = i < todayDow;
         const offset = i - todayDow;
         const dayNumber = easternDayNumber(now, offset);
+        const dk = easternDateKey(dateForOffset(now, offset));
+        const info = dailyByDate.get(dk);
+        const variant = info?.shortForecast ? iconForShortForecast(info.shortForecast) : null;
         return (
           <div
             key={i}
             aria-current={isToday ? "date" : undefined}
-            aria-label={`${WEEKDAY_FULL[i]} ${dayNumber}${isToday ? ", today" : ""}`}
-            className="flex flex-col items-center gap-1 py-1"
+            aria-label={[
+              `${WEEKDAY_FULL[i]} ${dayNumber}`,
+              isToday ? "today" : null,
+              info?.high !== undefined ? `high ${info.high}` : null,
+              info?.low !== undefined ? `low ${info.low}` : null,
+            ].filter(Boolean).join(", ")}
+            className="flex flex-col items-center gap-1 rounded-[var(--app-radius-sm)] py-1.5"
+            style={{
+              background: isToday ? "color-mix(in srgb, var(--app-brand) 6%, transparent)" : "transparent",
+            }}
           >
             <span
-              className="text-[10px] font-semibold uppercase tracking-[0.08em]"
+              className="text-[9px] font-semibold uppercase tracking-[0.08em]"
               style={{
                 color: isToday
                   ? "var(--app-brand)"
@@ -105,7 +153,7 @@ export default function NowDayStrip() {
               {letter}
             </span>
             <span
-              className="grid h-7 w-7 place-items-center rounded-full text-[12px] font-bold tabular-nums sm:h-8 sm:w-8 sm:text-[13px]"
+              className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-bold tabular-nums sm:h-8 sm:w-8 sm:text-[12px]"
               style={{
                 background: isToday ? "var(--app-brand)" : "transparent",
                 color: isToday
@@ -119,6 +167,35 @@ export default function NowDayStrip() {
             >
               {dayNumber}
             </span>
+            {/* Weather glyph + hi/lo, when NWS daily came back with
+                data for this date. Past days render with reduced
+                opacity since the forecast doesn't apply backwards. */}
+            {variant ? (
+              <div
+                aria-hidden
+                style={{ opacity: isPast ? 0.4 : 1 }}
+                className="flex flex-col items-center gap-0.5"
+              >
+                <AnimatedSkyGlyph variant={variant} size={20} />
+                {(info?.high !== undefined || info?.low !== undefined) && (
+                  <span
+                    className="text-[9px] font-semibold tabular-nums leading-tight"
+                    style={{ color: "var(--app-ink-2)" }}
+                  >
+                    {info?.high !== undefined ? `${info.high}°` : ""}
+                    {info?.high !== undefined && info?.low !== undefined && (
+                      <span className="opacity-50">{"/"}</span>
+                    )}
+                    {info?.low !== undefined ? `${info.low}°` : ""}
+                  </span>
+                )}
+              </div>
+            ) : (
+              // Reserve some vertical space so the row height stays
+              // stable while waiting for NWS or when a day falls
+              // outside the 7-day forecast window.
+              <div style={{ height: 32 }} aria-hidden />
+            )}
           </div>
         );
       })}
