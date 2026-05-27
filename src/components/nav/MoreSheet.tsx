@@ -85,12 +85,11 @@ const BOOKS: Array<{
     href: "https://www.colorfrederick.com",
     label: "Color Frederick",
     description: "The Frederick coloring book",
-    // No local cover for the coloring book (it lives on
-    // colorfrederick.com). Using the most color-rich seasonal photo
-    // we have so the card still sells the idea — a colorful
-    // Frederick scene next to the title makes the link feel like a
-    // book preview, not a directory entry.
-    cover: "/images/seasons/fall/FALL COLORS.jpg",
+    // Actual cover art from miked.store's Shopify CDN, downloaded
+    // and converted to webp in /public/images. Mirroring the asset
+    // locally avoids a remote-domain image config and keeps the card
+    // loading instantly.
+    cover: "/images/color-frederick-cover.webp",
     external: true,
   },
 ];
