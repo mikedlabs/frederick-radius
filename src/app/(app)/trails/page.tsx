@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Mountain, Footprints, Bike, Dog, Accessibility, MapPin } from "lucide-react";
+import { Mountain, Footprints, Bike, Dog, Accessibility, MapPin, ExternalLink } from "lucide-react";
 import { getFrederickTrails, type Trail } from "@/lib/integrations/fcTrails";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
@@ -113,13 +113,66 @@ export default async function TrailsPage() {
       </header>
 
       {trails.length === 0 ? (
-        <p
-          className="rounded-[var(--app-radius-lg)] border border-dashed px-4 py-8 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        <section
+          className="space-y-3 rounded-[var(--app-radius-lg)] border p-5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
-          The county trail layer is briefly unavailable. It refreshes
-          automatically — check back shortly.
-        </p>
+          <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            We&rsquo;re rebuilding our connection to the county trail
+            layer. In the meantime, these three sources cover ~95% of
+            the trails locals use:
+          </p>
+          <ul className="space-y-2">
+            {[
+              {
+                href: "https://dnr.maryland.gov/publiclands/Pages/Western/Catoctin.aspx",
+                title: "Catoctin Mountain Park · NPS",
+                meta: "Cunningham Falls Loop · Wolf Rock · Chimney Rock · Hog Rock",
+              },
+              {
+                href: "https://www.nps.gov/choh/index.htm",
+                title: "C&O Canal Towpath · NPS",
+                meta: "184 miles flat from Cumberland to Georgetown — Brunswick &amp; Point of Rocks segments",
+              },
+              {
+                href: "https://www.frederickcountymd.gov/253/Trails",
+                title: "Frederick County Trails directory",
+                meta: "Greenbrier · Gambrill · Sugarloaf · the master trail list",
+              },
+            ].map((t) => (
+              <li key={t.href}>
+                <a
+                  href={t.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] px-3 py-2.5 transition hover:bg-[var(--app-bg-elevated)]"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <span
+                    aria-hidden
+                    className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                    style={{ background: "color-mix(in srgb, var(--app-positive, #1E6B3A) 14%, transparent)" }}
+                  >
+                    <Mountain className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-positive, #1E6B3A)" }} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                      {t.title}
+                    </span>
+                    <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                      {t.meta}
+                    </span>
+                  </span>
+                  <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+            The full searchable list returns once we&rsquo;ve wired the
+            new feed.
+          </p>
+        </section>
       ) : (
         <>
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>

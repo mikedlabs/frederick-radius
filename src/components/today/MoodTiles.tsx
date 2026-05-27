@@ -53,6 +53,12 @@ type UtilityMood = {
 const intentColor = (k: IntentKey) =>
   INTENT_BY_KEY[k]?.color ?? "var(--app-brand)";
 
+// Photos drawn from the From Above book (interior pages, by season
+// order in the manifest). The book runs roughly winter → spring →
+// summer → autumn across pg-001 → pg-133, so each mood gets a photo
+// from its season's quarter for a year of Frederick across the four
+// tiles. From Above photos are 1200px curated drone shots — the
+// /images/seasons/ folder had less consistent content for this use.
 const INTENT_MOODS: IntentMood[] = [
   {
     intentKey: "coffee",
@@ -61,8 +67,7 @@ const INTENT_MOODS: IntentMood[] = [
     href: "/browse?intent=coffee",
     icon: Coffee,
     color: intentColor("coffee"),
-    // Winter — golden low-sun light reads warm and intimate.
-    photo: "/images/seasons/winter/006.jpg",
+    photo: "/from-above/photos/pg-025-470a@1200.webp",
   },
   {
     intentKey: "eat",
@@ -71,8 +76,7 @@ const INTENT_MOODS: IntentMood[] = [
     href: "/browse?intent=eat",
     icon: UtensilsCrossed,
     color: intentColor("eat"),
-    // Fall — vibrant downtown color, festive harvest energy.
-    photo: "/images/seasons/fall/010.jpg",
+    photo: "/from-above/photos/pg-055-59f5@1200.webp",
   },
   {
     intentKey: "outdoor",
@@ -81,8 +85,7 @@ const INTENT_MOODS: IntentMood[] = [
     href: "/browse?intent=outdoor",
     icon: Trees,
     color: intentColor("outdoor"),
-    // Spring — fresh green, leaves in, new growth.
-    photo: "/images/seasons/spring/008.jpg",
+    photo: "/from-above/photos/pg-090-5356@1200.webp",
   },
   {
     intentKey: "family",
@@ -91,8 +94,7 @@ const INTENT_MOODS: IntentMood[] = [
     href: "/browse?intent=family",
     icon: Baby,
     color: intentColor("family"),
-    // Summer — open bright skies, festival weather.
-    photo: "/images/seasons/summer/017.jpg",
+    photo: "/from-above/photos/pg-115-a5f4@1200.webp",
   },
 ];
 

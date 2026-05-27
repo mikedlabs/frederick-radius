@@ -37,6 +37,7 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // reorder makes the divider unnecessary.
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
+import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
 
 /**
@@ -101,7 +102,12 @@ const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal
 const FEATURED_EVENT_WINDOW_HOURS = 72;
 function pickFeaturedEvent(now: Date) {
   const windowEnd = now.getTime() + FEATURED_EVENT_WINDOW_HOURS * 3_600_000;
-  const upcoming = allUpcoming(now).filter(
+  // withVenueThumbs borrows each event's venue photo onto hero_image
+  // when the event has no image of its own. Without this, Alive @ Five
+  // (and any other DFP event without a hardcoded photo) lost out to
+  // the "must have hero_image" check below and missed the photo path
+  // /events shows. Cheap on a small list — just a slug lookup per event.
+  const upcoming = withVenueThumbs(allUpcoming(now)).filter(
     (e) =>
       !NON_PUBLIC_EVENT.test(e.title ?? "") &&
       Date.parse(e.starts_at) <= windowEnd,
@@ -198,7 +204,10 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
   }
   return {
     title,
-    items: allUpcoming(now).filter((e) => {
+    // withVenueThumbs again here — the Upcoming shelf cards need the
+    // venue photo too, otherwise an Alive @ Five tile sits as a
+    // text-only card next to events that DO carry a hero image.
+    items: withVenueThumbs(allUpcoming(now)).filter((e) => {
       const ms = Date.parse(e.starts_at);
       return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
     }),

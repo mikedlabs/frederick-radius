@@ -137,13 +137,76 @@ export default async function ParksPage() {
       </header>
 
       {parks.length === 0 ? (
-        <p
-          className="rounded-[var(--app-radius-lg)] border border-dashed px-4 py-8 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        <section
+          className="space-y-3 rounded-[var(--app-radius-lg)] border p-5"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
-          The county parks layer is briefly unavailable. It refreshes
-          automatically — check back shortly.
-        </p>
+          <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            We&rsquo;re rebuilding our connection to the county parks
+            layer. In the meantime, these are the parks that carry the
+            weight of the system:
+          </p>
+          <ul className="space-y-2">
+            {[
+              {
+                href: "https://www.cityoffrederickmd.gov/175/Carroll-Creek-Park",
+                title: "Carroll Creek Park · Frederick",
+                meta: "Downtown linear park · amphitheater · the bridge",
+              },
+              {
+                href: "https://www.cityoffrederickmd.gov/176/Baker-Park",
+                title: "Baker Park · Frederick",
+                meta: "44 acres downtown · playground · creek loop · band shell",
+              },
+              {
+                href: "https://www.nps.gov/cato/index.htm",
+                title: "Catoctin Mountain Park · NPS",
+                meta: "5,800 acres · Cunningham Falls vista · the source of the trail map",
+              },
+              {
+                href: "https://dnr.maryland.gov/publiclands/Pages/western/cunninghamfalls.aspx",
+                title: "Cunningham Falls State Park · MD DNR",
+                meta: "78-foot cascade · Hunting Creek Lake · car-camping",
+              },
+              {
+                href: "https://www.frederickcountymd.gov/2106/Parks-Recreation",
+                title: "Frederick County Parks &amp; Rec",
+                meta: "Master directory · pavilion reservations · seasonal programming",
+              },
+            ].map((t) => (
+              <li key={t.href}>
+                <a
+                  href={t.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] px-3 py-2.5 transition hover:bg-[var(--app-bg-elevated)]"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <span
+                    aria-hidden
+                    className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                    style={{ background: "color-mix(in srgb, var(--app-brand-2, #2E3B2C) 14%, transparent)" }}
+                  >
+                    <Trees className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-brand-2, #2E3B2C)" }} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                      {t.title}
+                    </span>
+                    <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                      {t.meta}
+                    </span>
+                  </span>
+                  <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+            The full searchable list returns once we&rsquo;ve wired the
+            new feed.
+          </p>
+        </section>
       ) : (
         <>
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
