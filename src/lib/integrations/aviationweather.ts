@@ -31,23 +31,36 @@ export type KfdkObservation = {
   dewpointF: number;
   /** Sustained wind speed in knots. */
   windSpeedKts: number | null;
+  /** Wind gust speed in knots. */
+  windGustKts: number | null;
   /** Wind direction in degrees (0-360). */
   windDirectionDeg: number | null;
+  /** Visibility in statute miles, capped at "10+" by NWS — we return
+   *  the raw number; consumers can decide how to label "10+". */
+  visibilityMi: number | null;
+  /** Sea-level pressure in hectopascals (millibars). */
+  pressureHpa: number | null;
   /** ICAO observation timestamp (raw, e.g. "2026-05-26T22:00:00Z"). */
   observedAt: string;
   /** Raw flight category if present (VFR / MVFR / IFR / LIFR). */
   flightCategory: string | null;
+  /** Relative humidity %, computed from temp + dewpoint via Magnus. */
+  relativeHumidity: number;
 };
 
 // The aviationweather.gov JSON response shape we actually consume. Many
-// other fields exist (visibility, ceiling, raw METAR text, etc.); we
-// pull only what feeds the comfort signal so a schema change to less
+// other fields exist (raw METAR text, cloud layers, etc.); we pull
+// only what feeds the visible weather UI so a schema change to less
 // important fields doesn't break this loader.
 type KfdkRawObs = {
   temp?: number | null; // Celsius
   dewp?: number | null; // Celsius
   wspd?: number | null; // knots
+  wgst?: number | null; // knots (gust)
   wdir?: number | null; // degrees
+  visib?: number | string | null; // statute miles; "10+" string when capped
+  altim?: number | null; // hectopascals (altimeter setting)
+  mslp?: number | null; // hectopascals (mean sea level pressure)
   reportTime?: string | null;
   obsTime?: number | null; // seconds since epoch (alternate field)
   fltcat?: string | null; // VFR / MVFR / IFR / LIFR
@@ -55,6 +68,29 @@ type KfdkRawObs = {
 
 function cToF(c: number): number {
   return Math.round((c * 9) / 5 + 32);
+}
+
+/**
+ * Relative humidity from temp + dewpoint in Celsius via the Magnus
+ * formula. Standard meteorological computation; accurate to within
+ * ~0.4% for normal atmospheric conditions.
+ */
+function magnusRH(tempC: number, dewpointC: number): number {
+  const a = 17.625;
+  const b = 243.04;
+  const num = Math.exp((a * dewpointC) / (b + dewpointC));
+  const den = Math.exp((a * tempC) / (b + tempC));
+  return Math.max(0, Math.min(100, Math.round((num / den) * 100)));
+}
+
+/** Parse the API's visibility field, which can be a number or "10+". */
+function parseVisibility(v: number | string | null | undefined): number | null {
+  if (v === null || v === undefined) return null;
+  if (typeof v === "number") return v;
+  // "10+" → 10 (capped). Numeric strings → parsed.
+  const s = String(v).replace(/\+$/, "");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
 }
 
 export async function getKfdkMetar(): Promise<KfdkObservation | null> {
@@ -91,9 +127,20 @@ export async function getKfdkMetar(): Promise<KfdkObservation | null> {
       tempF: cToF(m.temp),
       dewpointF: cToF(m.dewp),
       windSpeedKts: typeof m.wspd === "number" ? m.wspd : null,
+      windGustKts: typeof m.wgst === "number" ? m.wgst : null,
       windDirectionDeg: typeof m.wdir === "number" ? m.wdir : null,
+      visibilityMi: parseVisibility(m.visib),
+      // Prefer mslp if present (sea-level pressure); fall back to
+      // altimeter setting (also in hPa via NOAA's JSON response).
+      pressureHpa:
+        typeof m.mslp === "number"
+          ? m.mslp
+          : typeof m.altim === "number"
+            ? m.altim
+            : null,
       observedAt,
       flightCategory: m.fltcat ?? null,
+      relativeHumidity: magnusRH(m.temp, m.dewp),
     };
   } catch {
     return null;

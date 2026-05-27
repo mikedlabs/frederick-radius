@@ -17,6 +17,8 @@ import HourlyForecast from "@/components/today/HourlyForecast";
 import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
+import WeatherMore from "@/components/today/WeatherMore";
+import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -277,6 +279,16 @@ export default async function HomePage({
         <Suspense fallback={null}>
           <AlmanacFooter />
         </Suspense>
+        {/* More weather details — iOS-style 2-up grid (Sun arc, Wind,
+            Humidity, Feels Like, Pressure, Visibility, Moon, Daylight).
+            Collapsed by default with the user's choice persisted in
+            localStorage. The grid renders server-side regardless, so
+            expand is instant. */}
+        <WeatherMore>
+          <Suspense fallback={<Skeleton.Block height={280} round="var(--app-radius-md)" />}>
+            <WeatherMoreGrid />
+          </Suspense>
+        </WeatherMore>
       </div>
 
       {/* PrimaryActionCard — the primary call to action ("What is open
