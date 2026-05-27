@@ -10,6 +10,7 @@ import {
   Toilet,
   ParkingCircle,
   Navigation,
+  BookOpen,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import IconStamp from "@/components/ui/IconStamp";
@@ -273,6 +274,64 @@ export default function PlacesIndexPage() {
           </span>
         </Link>
       </div>
+
+      {/* Editorial collections entry — the curated answer-the-question
+          layer. "Where would a local send me on a rainy afternoon."
+          Sits between the spatial answers above and the directory
+          grids below so a stranger sees the recommendation surface
+          before they see the by-category and by-town breakdowns. */}
+      <Link
+        href="/collections"
+        className="hover-lift relative flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-4 py-3.5 transition"
+        style={{
+          borderColor: "var(--app-border)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        }}
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(80% 110% at 0% 0%, color-mix(in srgb, var(--app-brand) 12%, transparent), transparent 60%)",
+          }}
+        />
+        <span
+          aria-hidden
+          className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full"
+          style={{
+            background:
+              "color-mix(in srgb, var(--app-brand) 14%, transparent)",
+          }}
+        >
+          <BookOpen
+            className="h-4 w-4"
+            strokeWidth={2}
+            style={{ color: "var(--app-brand)" }}
+            aria-hidden
+          />
+        </span>
+        <span className="relative min-w-0 flex-1">
+          <span
+            className="block text-[13.5px] font-semibold"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Editorial collections
+          </span>
+          <span
+            className="block text-[11.5px]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Where a local would send you. Rainy day, date night, kids.
+          </span>
+        </span>
+        <ArrowRight
+          className="relative h-4 w-4 shrink-0"
+          strokeWidth={2.25}
+          style={{ color: "var(--app-ink-3)" }}
+          aria-hidden
+        />
+      </Link>
 
       {/* Categories — the primary browsing axis for someone who knows
           what kind of place they want but not which town. Sorted by
