@@ -152,7 +152,12 @@ function aliveAtFiveSeason(): Event[] {
       venue_place_slug: "carroll-creek-linear-park-frederick",
       venue_name: "Carroll Creek Amphitheater",
       address: "Carroll Creek Park, Frederick, MD 21701",
-      geom: { lng: -77.4109, lat: 39.4137 },
+      // Coordinates were 200m west and 100m north of the actual
+      // amphitheater — putting the pin on the wrong side of the
+      // creek. The amphitheater sits at the south bank of Carroll
+      // Creek near S Market St, matching the place pin for
+      // "Carroll Creek Linear Park" exactly.
+      geom: { lng: -77.4083747, lat: 39.4127865 },
       municipality: "frederick",
       category: "music",
       audience: ["adults", "groups"],
