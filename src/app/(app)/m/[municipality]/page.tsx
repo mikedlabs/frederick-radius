@@ -10,6 +10,7 @@ import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import TownStrip from "@/components/municipality/TownStrip";
 
 export const revalidate = 600;
 
@@ -85,6 +86,13 @@ export default async function MunicipalityPage(
   return (
     <div className="relative space-y-6">
       <PageBloom variant="single" />
+
+      {/* Sibling-town nav — horizontal pill strip with the active
+          town pinned first. Pre-launch the only way to switch towns
+          was via /browse + search; this lets a user jump directly
+          between municipalities while staying in the town-page
+          mental model. */}
+      <TownStrip activeSlug={m.slug} />
 
       {/* Photo hero — the place as a place, not a row. The image
           carries identity; the overlay carries facts. */}
