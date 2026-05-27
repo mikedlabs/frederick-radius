@@ -9,7 +9,7 @@ import EventCard from "@/components/event/EventCard";
 import WeekStrip from "@/components/event/WeekStrip";
 import TonightRail from "@/components/event/TonightRail";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
-import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
+import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -22,7 +22,7 @@ import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 export const metadata: Metadata = {
   title: "Events",
   description:
-    "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, and Hood College.",
+    "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, Hood College, and the Frederick Keys.",
 };
 
 export const revalidate = 3600;
@@ -66,20 +66,31 @@ export default async function EventsIndexPage({
   const seedLive = eventsLive(now);
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw }, ingestedSeries, ingestedSummary, tmEvents, bitEvents] =
-    await Promise.all([
-      getLiveEvents(60),
-      getIngestedSeries(),
-      getIngestedSummary(),
-      fetchTicketmasterMusic().catch(() => []),
-      fetchBandsintownForArtists([]).catch(() => []),
-    ]);
+  const [
+    { events: liveEventsRaw },
+    ingestedSeries,
+    ingestedSummary,
+    tmMusic,
+    tmSports,
+    bitEvents,
+  ] = await Promise.all([
+    getLiveEvents(60),
+    getIngestedSeries(),
+    getIngestedSummary(),
+    fetchTicketmasterMusic().catch(() => []),
+    // Sports adds the Frederick Keys home schedule (Nymeo Field, MiLB)
+    // and any other Ticketmaster Sports entries inside the 25-mi geo
+    // window. Same fail-soft pattern as the other feeds — a
+    // Ticketmaster outage degrades the row, never the page.
+    fetchTicketmasterSports().catch(() => []),
+    fetchBandsintownForArtists([]).catch(() => []),
+  ]);
 
-  // Live/county events + real live-music feeds, with curated duplicates
-  // dropped (P0-4). Civic-meeting rows stripped so they don't bury
-  // everything else.
+  // Live/county events + real live-music + sports feeds, with curated
+  // duplicates dropped (P0-4). Civic-meeting rows stripped so they
+  // don't bury everything else.
   const liveCards = dedupeLiveAgainstCurated(
-    [...liveEventsRaw, ...tmEvents, ...bitEvents]
+    [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
       .map(liveToCardEvent)
       .filter((e) => !isCivicEvent(e)),
     curatedUpcoming,
@@ -292,8 +303,9 @@ export default async function EventsIndexPage({
       >
         <p>
           Live event data pulled from Downtown Frederick Partnership,
-          Celebrate Frederick, the Frederick County calendar, and the
-          Hood College Trumba feed. Cached for one hour.
+          Celebrate Frederick, the Frederick County calendar, the Hood
+          College Trumba feed, and Ticketmaster (music + Frederick Keys
+          home games). Cached for one hour.
         </p>
         <p>
           Missing an event?{" "}
