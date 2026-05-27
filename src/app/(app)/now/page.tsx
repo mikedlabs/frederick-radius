@@ -20,6 +20,7 @@ import WeeklySummary from "@/components/today/WeeklySummary";
 import WeatherMore from "@/components/today/WeatherMore";
 import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
+import WorthALook from "@/components/today/WorthALook";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -299,6 +300,15 @@ export default async function HomePage({
           <AlmanacFooter />
         </Suspense>
       </div>
+
+      {/* Worth a look today — photo-led discovery rail. Six tiles
+          rotated by day so the page rewards return visits. The only
+          surprise-me surface on /now; the rest of the page answers
+          specific questions, this one says "here's something you
+          might not have known about." */}
+      <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
+        <WorthALook />
+      </Suspense>
 
       {/* PrimaryActionCard — the primary call to action ("What is open
           near you" / "What's open right now"). Sits BELOW the weather
