@@ -73,17 +73,39 @@ export default async function WeatherHero() {
 
   return (
     <section
-      className="flex flex-col items-center text-center"
+      className="mx-auto flex max-w-[320px] flex-col items-center text-center"
       aria-label={`Current weather: ${cur.temperature}°F, ${cur.shortForecast}`}
       style={{ color: "currentColor" }}
     >
+      {/* Section header — pre-launch review caught that the weather
+          block had no umbrella heading. Hourly Forecast / More Weather
+          Details / 7-Day Forecast each had their own card eyebrows,
+          but the actual current-conditions hero (the 78° + condition
+          line) just appeared without a "this is the weather" anchor.
+          Centered, paper-cream on dark sky, balances the page's
+          left-aligned DateLine + DayStrip above with a proper bar
+          announcement here. */}
+      <p
+        className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-70 sm:text-[11px]"
+        style={{ color: "currentColor" }}
+      >
+        Weather · Frederick
+      </p>
+
       {/* Atmospheric sky glyph — small, sits above the temp like
           the iOS sun in its lens flare. */}
-      <AnimatedSkyGlyph variant={curVariant} size={56} />
+      <div className="mt-2.5">
+        <AnimatedSkyGlyph variant={curVariant} size={56} />
+      </div>
 
       {/* Huge thin temperature — the headline. Serif at light weight
           reads as editorial / almanac, in contrast to iOS's sans-thin
-          but the same gestalt: the number is the page. */}
+          but the same gestalt: the number is the page. Tabular nums
+          + negative letter spacing keep the digits + degree symbol
+          balanced; the new section header (WEATHER · FREDERICK) above
+          anchors the column so the temp doesn't read as "floating
+          off-center" the way it did when the SkyHero opened straight
+          on the temperature with no eyebrow. */}
       <p
         className="mt-1 font-serif font-light leading-none tabular-nums"
         style={{
@@ -94,8 +116,11 @@ export default async function WeatherHero() {
         {cur.temperature}&deg;
       </p>
 
-      {/* Condition — one line. */}
-      <p className="mt-1 text-[15px] font-medium opacity-90">
+      {/* Condition — one line, balanced wrap when long. */}
+      <p
+        className="mt-1.5 text-[15px] font-medium opacity-90"
+        style={{ textWrap: "balance" } as React.CSSProperties}
+      >
         {cur.shortForecast}
       </p>
 
@@ -115,7 +140,7 @@ export default async function WeatherHero() {
           real time-stamped heads-up worth saying. */}
       {nextChange && (
         <p
-          className="mt-2 max-w-[280px] text-[12.5px] leading-snug opacity-70"
+          className="mt-2 text-[12.5px] leading-snug opacity-70"
           style={{ textWrap: "balance" } as React.CSSProperties}
         >
           {nextChange}
