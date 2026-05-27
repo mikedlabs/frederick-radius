@@ -3,17 +3,24 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Edge middleware: two independent gates.
  *
- * 1. Onboarding nudge. A first-time visitor of the entry routes (/ and
- *    /today) with no `fr_onboarded` cookie is sent to /welcome once.
- *    Cookie-based because middleware cannot read localStorage; only the
- *    two entry routes are gated, so deep links are never blocked.
+ * Onboarding redirect was REMOVED in the pre-launch pass. The previous
+ * behavior sent first-time visitors of `/now` to `/welcome` and
+ * first-time visitors of `/` to `/about`. Pre-launch review caught
+ * this as the single biggest UX failure: a stranger who lands on
+ * "Frederick Radius — the field guide" via a shared Facebook link
+ * should see the actual product, not a persona-picker. The persona
+ * affordance survives as an in-page chip on /now ("Tune this for
+ * you") which a returning user can opt into when they want to. The
+ * old `fr_onboarded` cookie is left alone — it still does its job on
+ * the welcome flow itself; we just no longer gate the product behind
+ * its absence.
  *
- * 2. P0-5 admin access gate: Basic Auth on /admin. The roadmap's
- *    sanctioned interim gate, NOT the full Auth.js direction. It fails
- *    CLOSED: if ADMIN_USER / ADMIN_PASSWORD are not configured, /admin
- *    is unreachable for everyone. Set both env vars (Vercel project
- *    settings + .env.local for local) to enable access. Zero
- *    dependencies, edge-safe (Web `atob`, no Node Buffer/crypto).
+ * What remains:
+ *   - Gate 1: admin Basic Auth on /admin. P0-5 interim gate, NOT the
+ *     full Auth.js direction. Fails CLOSED: if ADMIN_USER /
+ *     ADMIN_PASSWORD aren't configured, /admin is unreachable for
+ *     everyone. Set both env vars to enable access. Zero
+ *     dependencies, edge-safe (Web `atob`, no Node Buffer/crypto).
  */
 function unauthorized(): NextResponse {
   return new NextResponse("Authentication required.", {
@@ -28,32 +35,7 @@ function unauthorized(): NextResponse {
 export function middleware(req: NextRequest): NextResponse {
   const { pathname } = req.nextUrl;
 
-  // Gate 1: onboarding nudge for the two entry routes. A first-time
-  // visitor (no `fr_onboarded` cookie) lands on a different surface
-  // depending on which entry they used:
-  //
-  //   /        → /about    (cold visit, no context. Let them read what
-  //                         the app IS before being asked to tune it.
-  //                         /about's primary CTA goes to /welcome.)
-  //   /now     → /welcome  (a direct link or a returning prompt that
-  //                         lost its cookie. They already meant to
-  //                         start using the app, so jump them into
-  //                         persona-pick, not the marketing page.)
-  //
-  // Returning users (cookie present) pass through to whichever
-  // entry they hit. Legacy /today URLs are caught by next.config.ts
-  // and 301'd to /now before this middleware sees them.
-  if (pathname === "/" || pathname === "/now") {
-    if (!req.cookies.get("fr_onboarded")) {
-      const url = req.nextUrl.clone();
-      url.pathname = pathname === "/" ? "/about" : "/welcome";
-      url.search = "";
-      return NextResponse.redirect(url);
-    }
-    return NextResponse.next();
-  }
-
-  // Gate 2: admin Basic Auth (everything below).
+  // Admin Basic Auth (everything below).
   const user = process.env.ADMIN_USER;
   const pass = process.env.ADMIN_PASSWORD;
   if (!user || !pass) return unauthorized();
@@ -78,5 +60,5 @@ export function middleware(req: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*", "/", "/now"],
+  matcher: ["/admin", "/admin/:path*"],
 };
