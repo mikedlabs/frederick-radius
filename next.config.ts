@@ -27,12 +27,22 @@ const nextConfig: NextConfig = {
   // Vercel; undefined locally, so this is a no-op in dev.
   deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   images: {
-    // Same-origin photo proxy carries query strings (?name=...&w=...).
-    // Next 16's image optimizer refuses query-stringed local URLs by
-    // default unless they appear here. The pattern is restricted to
-    // the place-photo route so any future API route is opt-in.
+    // Next 16 footgun: once `localPatterns` is defined at all, EVERY
+    // local image path served through `next/image` must match one of
+    // the patterns here — the default-allow behavior for /public/* is
+    // replaced by a strict allowlist. So both rules below are required:
+    //
+    //   1. /api/place-photo — same-origin Google photo proxy that
+    //      carries a query string (?name=...&w=...). Default rule
+    //      would refuse query-stringed local URLs even without the
+    //      strict-mode kick.
+    //   2. /images/** — everything under /public/images, including
+    //      the seasonal photos read by SeasonalPhoto on /now. Adding
+    //      the wildcard restores the default behavior for the public
+    //      folder while keeping non-image static paths gated.
     localPatterns: [
       { pathname: "/api/place-photo", search: "?**" },
+      { pathname: "/images/**", search: "" },
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },

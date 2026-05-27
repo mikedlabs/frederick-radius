@@ -13,6 +13,10 @@ import PageBloom from "@/components/ui/PageBloom";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 import AlmanacFooter from "@/components/today/AlmanacFooter";
+import HourlyForecast from "@/components/today/HourlyForecast";
+import WeeklyForecast from "@/components/today/WeeklyForecast";
+import WeeklyCard from "@/components/today/WeeklyCard";
+import WeeklySummary from "@/components/today/WeeklySummary";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -250,6 +254,37 @@ export default async function HomePage({
         <PrimaryActionCard now={now} />
       </SkyHero>
 
+      {/* Weather block, ordered to put the most-actionable data first:
+            HourlyForecast — visible. Next 12 hours rail with inline
+                             sunset. The "what should I do in 2 hours"
+                             read, never hidden.
+            WeeklyCard     — collapsed by default. Header shows a
+                             1-line peek ("60° to 84° · 2 rainy"),
+                             tap reveals the 7-day range bars. User's
+                             choice persists across visits.
+            AlmanacFooter  — visible. Sunrise / sunset / daylight
+                             delta + AQI chip (when AIRNOW_API_KEY
+                             is set, colored by category).
+          Each fetches the same NWS forecast; Next.js request cache
+          dedupes into one network call. */}
+      <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
+        <HourlyForecast />
+      </Suspense>
+      <WeeklyCard
+        summary={
+          <Suspense fallback={<>Loading…</>}>
+            <WeeklySummary />
+          </Suspense>
+        }
+      >
+        <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-md)" />}>
+          <WeeklyForecast />
+        </Suspense>
+      </WeeklyCard>
+      <Suspense fallback={null}>
+        <AlmanacFooter />
+      </Suspense>
+
       {/* RightNowStrip: three direct answers to the questions a
        *  stranger opens the app to ask: what's open near me, what's
        *  starting soon, what's worth this weekend. Each card is a
@@ -326,14 +361,6 @@ export default async function HomePage({
           </p>
         )}
       </DismissibleSection>
-
-      {/* A quiet last line at the bottom of the daily briefing. The
-          sunrise / sunset clocks anchor the page in actual time-of-
-          day, and the daylight delta vs yesterday is the part that
-          reads as editorial — a casual scroll past it still picks
-          up on "days are getting longer / shorter" without needing
-          a label. */}
-      <AlmanacFooter />
     </div>
   );
 }

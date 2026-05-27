@@ -31,23 +31,3 @@ export function ShimmerCard({ rows = 2 }: { rows?: number }) {
   );
 }
 
-export function ShimmerWeatherStrip() {
-  return (
-    <div className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3"
-         style={{ borderColor: "var(--app-border)" }}>
-      <div className="mb-2 flex justify-between">
-        <Shimmer className="h-3 w-32" />
-        <Shimmer className="h-3 w-20" />
-      </div>
-      <div className="flex gap-3 overflow-hidden">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex shrink-0 flex-col items-center gap-1.5">
-            <Shimmer className="h-3 w-8" />
-            <Shimmer className="h-6 w-6 rounded-full" />
-            <Shimmer className="h-3 w-7" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
