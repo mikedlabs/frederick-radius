@@ -75,6 +75,14 @@ export default async function WorthALook() {
                       blurDataURL={PAPER_CREAM_BLUR}
                       className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                       unoptimized
+                      // View Transitions pair-up: the same name on the
+                      // hero image of /places/[slug] lets the browser
+                      // morph this tile photo into the detail hero on
+                      // route change. Apple-Photos style shared-element
+                      // transition; falls back to a normal nav on
+                      // browsers without the API. Names are unique per
+                      // slug so multiple tiles on /now don't collide.
+                      style={{ viewTransitionName: `place-photo-${p.slug}` }}
                     />
                   )}
                   {/* Bottom gradient so the name reads on top of any

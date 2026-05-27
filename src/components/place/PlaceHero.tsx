@@ -98,6 +98,14 @@ export default function PlaceHero({
         placeholder="blur"
         blurDataURL={PAPER_CREAM_BLUR}
         className="absolute inset-0 h-full w-full object-cover"
+        // View Transitions pair-up: a tile on /now's WorthALook rail
+        // carries the same name, so the browser morphs that thumbnail
+        // into this full hero on navigation (Apple-Photos style). The
+        // detail page only paints one hero per slug, so the name is
+        // guaranteed unique on this surface. Only applied on the hero
+        // variant — the card-size variant lives inside lists where a
+        // shared name would collide.
+        style={size === "hero" ? { viewTransitionName: `place-photo-${slug}` } : undefined}
       />
 
       {/* Soft gradient darkening at bottom for text legibility */}
