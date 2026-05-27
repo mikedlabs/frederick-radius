@@ -4,7 +4,6 @@ import {
   forwardRef,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -84,15 +83,14 @@ export default function BookExperience({ cover, photos }: Props) {
 
   const total = photos.length;
 
-  // Book dimensions — derived from the first photo so the engine
-  // sizes pages to the source ratio. StPageFlip uses a "width"
-  // setting at mount; we feed it a base width and scale via CSS
-  // responsively.
-  const baseRatio = useMemo(() => {
-    const p = photos[0];
-    if (!p) return 0.7;
-    return p.width / p.height;
-  }, [photos]);
+  // Fixed page ratio that matches the print book's 3:4-ish trim
+  // (cover-front.webp is 1200×1496 ≈ 0.80). Earlier the ratio was
+  // derived from photos[0], but the manifest now mixes landscape
+  // and portrait drone shots — picking up a landscape as the first
+  // page would have squashed every page in the book to a wide-short
+  // strip. Each photo handles its own orientation inside the fixed
+  // page via object-fit:contain.
+  const baseRatio = 0.78;
 
   const openBook = useCallback(() => {
     if (reducedMotion) {
@@ -114,6 +112,7 @@ export default function BookExperience({ cover, photos }: Props) {
   // (opacity 0) during the cover-open transition.
   const [mountKey, setMountKey] = useState(0);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: re-key HTMLFlipBook on phase change so its internal width measurement runs against the now-visible container
     if (phase === "open") setMountKey((k) => k + 1);
   }, [phase]);
 
@@ -246,26 +245,41 @@ const FlipStage = forwardRef<FlipBookHandle, FlipStageProps>(function FlipStage(
   // Responsive sizing — measure the container so HTMLFlipBook
   // doesn't render at 0×0 on first mount and so portrait phones get
   // a tall page while landscape/tablets get the spread.
-  const [size, setSize] = useState<{ w: number; h: number }>({ w: 360, h: 520 });
+  const [size, setSize] = useState<{ w: number; h: number; portrait: boolean }>({
+    w: 360,
+    h: 520,
+    portrait: true,
+  });
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function measure() {
       const el = containerRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      // Reserve room for top/bottom chrome (~140px) so the book
-      // doesn't overlap the chapter chip / page counter / close button.
-      const maxH = rect.height - 140;
-      const isMobile = rect.width < 640;
-      // On mobile we render single-page portrait; on wider screens
-      // HTMLFlipBook shows a two-page spread, so we halve the width.
-      const pageW = isMobile
-        ? Math.min(rect.width - 32, 480)
-        : Math.min((rect.width - 64) / 2, 600);
+      // Reserve a slim 64px for top/bottom chrome (chapter chip,
+      // close button, page counter). Earlier this was 140px which
+      // capped the book to ~60% of viewport height even on a tall
+      // phone; the chrome itself only needs ~48px and the rest was
+      // just dead air.
+      const maxH = rect.height - 64;
+      // Spread breakpoint: anywhere two pages can sit side-by-side
+      // with reasonable breathing room. Below 900px it's a single
+      // portrait page.
+      const portrait = rect.width < 900;
+      let pageW: number;
+      if (portrait) {
+        // Single page fills the viewport up to a tasteful cap.
+        pageW = Math.min(rect.width - 24, 560);
+      } else {
+        // Two-page spread. The book gets the full inner width minus
+        // some side padding, then split evenly between the pages.
+        const inner = Math.min(rect.width - 80, 1400);
+        pageW = inner / 2;
+      }
       const pageH = Math.min(pageW / baseRatio, maxH);
-      // If height was the constraint, recompute width to keep the ratio.
+      // If height was the constraint, recompute width to keep ratio.
       const finalW = pageH * baseRatio;
-      setSize({ w: Math.floor(finalW), h: Math.floor(pageH) });
+      setSize({ w: Math.floor(finalW), h: Math.floor(pageH), portrait });
     }
     measure();
     window.addEventListener("resize", measure);
@@ -294,7 +308,7 @@ const FlipStage = forwardRef<FlipBookHandle, FlipStageProps>(function FlipStage(
         maxShadowOpacity={0.5}
         drawShadow
         flippingTime={650}
-        usePortrait={true}
+        usePortrait={size.portrait}
         mobileScrollSupport={false}
         clickEventForward={false}
         useMouseEvents

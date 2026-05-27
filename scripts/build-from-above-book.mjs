@@ -24,7 +24,7 @@
 //
 // Run: node scripts/build-from-above-book.mjs
 import sharp from "sharp";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { readdir, mkdir, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -36,8 +36,18 @@ const OUT = "public/from-above";
 // stay in Dropbox; nothing on /public exposes them.
 const SIZES = [800, 1200];
 const MIN_LONG_EDGE = 1400;
+// Aspect window: 0.55 ≤ w/h ≤ 2.4. Earlier the upper bound was 0.95
+// (portrait-only), which made sense when the viewer was a phone-
+// first swipe deck — landscape photos either cropped wrong or
+// letterboxed huge. The current viewer (react-pageflip) handles a
+// landscape page cleanly: on mobile it sits inside the portrait page
+// frame with object-fit:contain on a dark backing, on desktop the
+// two-page spread carries it across the spine. So the cap goes up
+// to 2.4 (the widest panoramas in the print book) and the manifest
+// now includes the drone landscapes that are the bulk of what was
+// missing.
 const MIN_RATIO = 0.55;
-const MAX_RATIO = 0.95;
+const MAX_RATIO = 2.4;
 // Pages 1-12 are the book's front matter (title, dedication, ToC,
 // section openers). The photography proper starts ~page 13.
 const SKIP_SOURCE_PAGES = new Set(
@@ -169,14 +179,26 @@ async function main() {
   }
   console.log(`  → ${candidates.length} candidates after trim/filter`);
 
-  // De-dupe near-duplicates by trimmed dimensions.
+  // De-dupe by perceptual fingerprint, not by raw dimensions. The
+  // previous version compared `Math.round(w/20)`×`Math.round(h/20)`
+  // and dropped anything matching its predecessor — which collapsed
+  // facing-page spreads (two distinct photos that happen to trim to
+  // the same size) and removed roughly half the book. Now we fingerprint
+  // each candidate by hashing a 16×16 grayscale downsample. Two pages
+  // only collide if their actual pixel content matches, so real
+  // accidents-of-export drop but distinct photos always survive.
   const deduped = [];
-  let lastKey = "";
+  const seen = new Set();
   for (const c of candidates) {
-    const key = `${Math.round(c.w / 20)}x${Math.round(c.h / 20)}`;
-    if (key === lastKey) continue;
+    const tiny = await sharp(c.buf)
+      .resize(16, 16, { fit: "fill" })
+      .removeAlpha()
+      .raw()
+      .toBuffer();
+    const fp = createHash("sha1").update(tiny).digest("hex");
+    if (seen.has(fp)) continue;
+    seen.add(fp);
     deduped.push(c);
-    lastKey = key;
   }
   console.log(`  → ${deduped.length} after de-dupe`);
 
