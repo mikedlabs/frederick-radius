@@ -1,12 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Compass, MapPin } from "lucide-react";
+import {
+  ArrowRight,
+  Compass,
+  MapPin,
+  Coffee,
+  UtensilsCrossed,
+  Baby,
+  Toilet,
+  ParkingCircle,
+  Navigation,
+} from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import IconStamp from "@/components/ui/IconStamp";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { publicPlaces } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import { INTENT_BY_KEY } from "@/data/intents";
 
 /**
  * /places — the directory index.
@@ -66,23 +77,134 @@ export default function PlacesIndexPage() {
 
       <header className="space-y-2">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          The directory
+          Places
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Every place in Frederick County.
+          Find the right place faster.
         </h1>
         <p
           className="text-[15px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          {total.toLocaleString()} places across {townCounts.length} towns.
-          Browse by category, by town, or open the map.
+          Start with what you need below. Or browse the full directory by
+          category, by town, or on the map. {total.toLocaleString()} places
+          across {townCounts.length} towns.
         </p>
       </header>
 
+      {/* Start with what you need — the human-intent rail. Pre-launch
+          review §6 flagged that the page lead with "Every place in
+          Frederick County" reads as a directory. This row gives a
+          stranger six everyday questions ("where's a restroom," "where
+          can I park," "I want coffee") with one-tap deep links into the
+          right surface — /browse for moods, /radius for near-me,
+          /category/parking and /amenities for the practical kinds.
+          Visual language matches MoodTiles on /now: paper-cream tile,
+          tinted icon stamp, two-line label. 2-col on mobile, 3-col from
+          sm: so the row never dominates the page. */}
+      <section className="space-y-2.5">
+        <h2
+          className="font-serif text-[20px] font-semibold tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Start with what you need
+        </h2>
+        <ul className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {[
+            {
+              label: "Near me",
+              nudge: "What's within reach",
+              href: "/radius",
+              icon: Navigation,
+              color: "var(--app-brand)",
+            },
+            {
+              label: "Food and drink",
+              nudge: "Restaurants and breweries",
+              href: "/browse?intent=eat",
+              icon: UtensilsCrossed,
+              color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)",
+            },
+            {
+              label: "Coffee",
+              nudge: "Roasters and cafes",
+              href: "/browse?intent=coffee",
+              icon: Coffee,
+              color: INTENT_BY_KEY.coffee?.color ?? "var(--app-brand)",
+            },
+            {
+              label: "With kids",
+              nudge: "Family-friendly",
+              href: "/browse?intent=family",
+              icon: Baby,
+              color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)",
+            },
+            {
+              label: "Restrooms",
+              nudge: "Public restrooms nearby",
+              href: "/amenities",
+              icon: Toilet,
+              color: "var(--app-cool)",
+            },
+            {
+              label: "Parking",
+              nudge: "Garages, lots, on-street",
+              href: "/category/parking",
+              icon: ParkingCircle,
+              color: "var(--app-ink-2)",
+            },
+          ].map((m) => {
+            const Icon = m.icon;
+            return (
+              <li key={m.label}>
+                <Link
+                  href={m.href}
+                  className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    boxShadow:
+                      "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                  }}
+                >
+                  <span
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+                    style={{
+                      background: `color-mix(in srgb, ${m.color} 14%, transparent)`,
+                    }}
+                    aria-hidden
+                  >
+                    <Icon
+                      className="h-[18px] w-[18px]"
+                      strokeWidth={2}
+                      style={{ color: m.color }}
+                    />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className="block truncate text-[13px] font-semibold"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {m.label}
+                    </span>
+                    <span
+                      className="block truncate text-[11px]"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {m.nudge}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
       {/* Quick-access strip — the two top-level alternates to a
           browse-the-list view. Map for the spatial answer, Radius
-          for the "what's near me right now" answer. */}
+          for the "what's near me right now" answer. Sits below the
+          intent rail so the page reads "start with what you need →
+          or browse the whole map → or browse by category / town." */}
       <div className="grid grid-cols-2 gap-2">
         <Link
           href="/browse"
