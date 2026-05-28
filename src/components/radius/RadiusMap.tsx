@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Crosshair, Map as MapIcon, ArrowUpRight, X } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
 // Mapbox CSS — without this, tile rendering and canvas sizing fail.
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -149,6 +150,23 @@ export default function RadiusMap({
     color: string;
   } | null>(null);
 
+  // Hover preview (desktop): the dot under the cursor. Updated only when
+  // the hovered feature CHANGES, never on every pixel, so the popup does
+  // not thrash render. hoveredId tracks the Mapbox feature-state target.
+  const [hover, setHover] = useState<{
+    lng: number;
+    lat: number;
+    name: string;
+    category: string;
+  } | null>(null);
+  const hoveredId = useRef<number | string | null>(null);
+
+  // Pin-drag throttle: coalesce pointermove events into one state flush
+  // per animation frame so dragging the center pin stays smooth instead
+  // of recomputing the radius polygon on every raw pointermove.
+  const latestDrag = useRef<{ lng: number; lat: number } | null>(null);
+  const dragRaf = useRef<number | null>(null);
+
   const effectiveCenter = drag ?? center;
 
   const circle = useMemo(
@@ -176,6 +194,9 @@ export default function RadiusMap({
         properties: {
           slug: p.slug,
           name: p.name,
+          // Category slug rides along so the hover and tap popups can
+          // show a human label resolved via CATEGORY_BY_SLUG.
+          category: p.category,
           // Falls back to a neutral grey for places that don't have a
           // category color, so a missing taxonomy entry never breaks
           // the whole dot layer.
@@ -185,6 +206,14 @@ export default function RadiusMap({
       })),
     };
   }, [insidePlaces]);
+
+  // Cancel any pending drag-flush frame on unmount so it never fires
+  // setDrag after the component is gone.
+  useEffect(() => {
+    return () => {
+      if (dragRaf.current != null) cancelAnimationFrame(dragRaf.current);
+    };
+  }, []);
 
   // When the parent's center changes (preset dropdown, Locate, tap),
   // glide the camera to the new spot without changing zoom. The user's
@@ -259,12 +288,60 @@ export default function RadiusMap({
     onCenterChange({ lng: e.lngLat.lng, lat: e.lngLat.lat });
   };
 
-  // Live-update the visual position as the user drags the pin, then
-  // commit to the parent on dragend so we only push state changes once.
+  // Hover preview. Fires on every mouse move over the map, but only does
+  // work when the dot under the cursor CHANGES: it flips the old dot's
+  // feature-state off, the new dot's on (drives the size bump), and
+  // anchors the popup to the new dot. Moving within one dot is a no-op.
+  const handleMouseMove = (e: MapMouseEvent) => {
+    const map = e.target;
+    const f = e.features && e.features.length > 0 ? e.features[0] : null;
+    const id = f && (f.properties as { slug?: string })?.slug ? f.id ?? null : null;
+    if (id === hoveredId.current) return;
+    if (hoveredId.current != null) {
+      map.setFeatureState({ source: "radius-places", id: hoveredId.current }, { hover: false });
+    }
+    hoveredId.current = id;
+    if (id != null && f) {
+      map.setFeatureState({ source: "radius-places", id }, { hover: true });
+      const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+      const props = (f.properties ?? {}) as { name?: string; category?: string };
+      setHover({
+        lng: coords[0],
+        lat: coords[1],
+        name: props.name ?? "",
+        category: props.category ?? "",
+      });
+    } else {
+      setHover(null);
+    }
+  };
+
+  const handleMouseLeave = (e: MapMouseEvent) => {
+    const map = e.target;
+    if (hoveredId.current != null) {
+      map.setFeatureState({ source: "radius-places", id: hoveredId.current }, { hover: false });
+      hoveredId.current = null;
+    }
+    setHover(null);
+  };
+
+  // Live-update the pin position as the user drags, throttled to one
+  // state flush per animation frame so the radius polygon recompute does
+  // not run on every raw pointermove. Commit to the parent on dragend.
   const onPinDrag = (e: MarkerDragEvent) => {
-    setDrag({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+    latestDrag.current = { lng: e.lngLat.lng, lat: e.lngLat.lat };
+    if (dragRaf.current != null) return;
+    dragRaf.current = requestAnimationFrame(() => {
+      dragRaf.current = null;
+      if (latestDrag.current) setDrag(latestDrag.current);
+    });
   };
   const onPinDragEnd = (e: MarkerDragEvent) => {
+    if (dragRaf.current != null) {
+      cancelAnimationFrame(dragRaf.current);
+      dragRaf.current = null;
+    }
+    latestDrag.current = null;
     setDrag(null);
     if (onCenterChange) {
       onCenterChange({ lng: e.lngLat.lng, lat: e.lngLat.lat });
@@ -315,26 +392,48 @@ export default function RadiusMap({
         touchPitch={false}
         attributionControl={false}
         onClick={handleMapClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         interactiveLayerIds={["radius-places-dots"]}
-        cursor={onCenterChange ? "crosshair" : "grab"}
+        // Pointer over a dot, otherwise the move-center crosshair (or a
+        // plain grab when the map is view-only).
+        cursor={hover ? "pointer" : onCenterChange ? "crosshair" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
         {/* In-range places as category-colored dots — the map now reads
             as a story at a glance: food clusters orange, parks green,
             arts purple. Each dot is tappable; the click handler decides
             whether the tap is a place preview or a center-set. */}
-        <Source id="radius-places" type="geojson" data={placesGeoJson}>
+        {/* generateId lets Mapbox assign stable numeric feature ids so
+            feature-state (the hover size bump) works. */}
+        <Source id="radius-places" type="geojson" data={placesGeoJson} generateId>
           <Layer
             id="radius-places-dots"
             type="circle"
             paint={{
-              // Slightly bigger than the previous 3.5px so taps land
-              // reliably on mobile, and the color story carries.
-              "circle-radius": 4.5,
+              // 4.5px at rest, 7px on hover (feature-state). Slightly
+              // bigger than the old 3.5px so taps land reliably on
+              // mobile and the color story carries.
+              "circle-radius": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                7,
+                4.5,
+              ],
               "circle-color": ["get", "color"],
-              "circle-opacity": 0.85,
+              "circle-opacity": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                1,
+                0.85,
+              ],
               "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": 1.2,
+              "circle-stroke-width": [
+                "case",
+                ["boolean", ["feature-state", "hover"], false],
+                2,
+                1.2,
+              ],
               "circle-stroke-opacity": 0.85,
             }}
           />
@@ -399,6 +498,45 @@ export default function RadiusMap({
             close the popup, and our own 32px close button gives a
             reliable tap target (Mapbox's default × is ~12px and easy
             to miss with a fingertip). */}
+        {/* Hover preview (desktop) — a quiet name + category label on the
+            dot under the cursor. Suppressed while a tap popup is open so
+            the two never stack. Non-interactive so it never eats the
+            click that opens the full preview. */}
+        {hover && !selected && (
+          <Popup
+            longitude={hover.lng}
+            latitude={hover.lat}
+            anchor="bottom"
+            offset={12}
+            closeButton={false}
+            closeOnClick={false}
+            className="radius-hover-popup"
+          >
+            <div style={{ padding: "1px 2px", pointerEvents: "none" }}>
+              <strong
+                style={{
+                  fontSize: 12.5,
+                  color: "#1A1A1A",
+                  fontFamily: "var(--font-plex-serif)",
+                }}
+              >
+                {hover.name}
+              </strong>
+              {CATEGORY_BY_SLUG[hover.category]?.name && (
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: 10.5,
+                    color: "#7A7975",
+                    marginTop: 1,
+                  }}
+                >
+                  {CATEGORY_BY_SLUG[hover.category]?.name}
+                </span>
+              )}
+            </div>
+          </Popup>
+        )}
         {selected && (
           <Popup
             longitude={selected.lng}

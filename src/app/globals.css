@@ -786,6 +786,19 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   padding: 14px 56px 14px 14px !important;
 }
 
+/* Radius-map hover preview — a quiet mini-label that follows the dot
+ * under the cursor. Non-interactive so moving toward it never counts as
+ * leaving the dot (which would flicker the popup). No close button, so
+ * it does not need the wide right padding the tap popup reserves. */
+.radius-hover-popup,
+.radius-hover-popup .mapboxgl-popup-tip {
+  pointer-events: none;
+}
+.radius-hover-popup .mapboxgl-popup-content {
+  padding: 6px 10px !important;
+  box-shadow: var(--app-shadow-2);
+}
+
 /* ─────────────────────────────────────────────────────
  * View Transitions API — smooth cross-page navigation.
  * Supported in Chrome/Edge/Safari. No-op elsewhere.
