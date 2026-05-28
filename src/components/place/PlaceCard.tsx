@@ -375,23 +375,47 @@ export default function PlaceCard({
 
   return (
     <article
-      className="tactile tactile-interactive group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3.5"
+      className="tactile tactile-interactive group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3"
+      style={{
+        borderColor: "var(--app-border)",
+        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+      }}
     >
       {photoUrl ? (
-        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]">
+        <div
+          className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
+          style={{
+            // Inner ring + soft drop so the thumbnail reads as a
+            // physical object on the card, matching the EventCard
+            // tile's date-pill register.
+            boxShadow:
+              "0 2px 6px -1px rgba(20,20,18,0.18), inset 0 0 0 1px rgba(20,20,18,0.10)",
+          }}
+        >
           <PlacePhoto
             src={photoUrl}
             alt={photo?.alt ?? place.name}
             glyph={glyph}
             color={color}
-            sizes="64px"
+            sizes="72px"
+          />
+          {/* Category color hairline along the bottom — same
+              through-line as the tile variant, just thinner. */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-[2px]"
+            style={{ background: color }}
           />
         </div>
       ) : (
         <div
           aria-hidden
-          className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
-          style={{ background: `linear-gradient(145deg, ${color}26, ${color}0c)`, color }}
+          className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
+          style={{
+            background: `linear-gradient(145deg, ${color}2e, ${color}0c)`,
+            color,
+            boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)",
+          }}
         >
           <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-7 w-7 opacity-90" style={{ color }} />
         </div>

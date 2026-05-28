@@ -34,7 +34,10 @@ export const metadata: Metadata = {
 
 export default async function AboutPage() {
   return (
-    <div className="relative mx-auto max-w-md space-y-7 py-6">
+    // Widened from max-w-md (28rem) to a real reading column — was
+    // rendering as a postcard in the middle of a desktop viewport.
+    // Centered, capped at the same 768 the rest of the app uses.
+    <div className="relative mx-auto w-full max-w-screen-md space-y-7 py-6">
       <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -154,7 +157,7 @@ export default async function AboutPage() {
         <p>
           Companion: a photo book of Frederick County from above.{" "}
           <Link
-            href="/from-above"
+            href="/from-above/preview"
             className="font-semibold underline-offset-2 hover:underline"
             style={{ color: "var(--app-brand)" }}
           >
