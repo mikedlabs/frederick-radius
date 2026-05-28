@@ -7,44 +7,45 @@ import { haptic } from "@/lib/haptics";
 import MoreSheet from "./MoreSheet";
 import { TABS, tabIndexForPath } from "./tabs";
 
-export default function BottomNav() {
+/**
+ * SideRail — desktop primary nav (≥lg, 1024px+).
+ *
+ * Vertical mirror of BottomNav. Floating rounded-pill column on the
+ * left edge with the same 5 tabs, the same glass treatment, and the
+ * same MOVING BRAND PILL behind the active tab (left/width became
+ * top/height for the vertical axis). Hidden below lg; BottomNav
+ * carries everything below that breakpoint.
+ *
+ * Width is ~80px so it sits beside content without dominating. The
+ * (app) shell adds matching left padding at lg+ so the centered
+ * content area clears the rail.
+ *
+ * TABS + tabIndexForPath are imported from `./tabs.ts` — same
+ * source of truth as BottomNav, so adding/relabeling a tab updates
+ * both navs at once.
+ */
+export default function SideRail() {
   const pathname = usePathname();
   const router = useRouter();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  // Close the More sheet on route change — otherwise it'd stick around
-  // covering the new page after a tap on one of its items.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: dismiss the drawer when the user navigates away from whatever route they tapped a More item from
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: dismiss the drawer when the user navigates away
     setMoreOpen(false);
   }, [pathname]);
 
-  // Real index from the current route. Falls back to 0 so the slider
-  // still has a home on non-primary routes (e.g. /about, /settings).
   const realIdx = Math.max(0, tabIndexForPath(pathname));
-
-  // Optimistic index. Set on pointer-down so the indicator slides
-  // within one frame, before the server-side route work begins. The
-  // reconcile effect below clears it when the real route catches up,
-  // which collapses the optimistic state cleanly.
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
   useEffect(() => {
-    // The pathname only changes after navigation completes. When it
-    // does, the optimistic state has done its job and can retire.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset optimistic state once the actual route change completes; the pathname dep is the signal
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset optimistic state once the actual route change completes
     setPendingIdx(null);
   }, [pathname]);
-
   const activeIdx = pendingIdx ?? realIdx;
 
-  // Measure the tab strip + active tab so the indicator pill can sit
-  // EXACTLY behind the active chip. Recomputes on resize and on
-  // active-tab change. Using a measured pill instead of a CSS-only
-  // "100% / 5" calc lets us pad the pill smaller than the tab cell
-  // so it reads as a chip behind the icon, not a full-column slab.
+  // Measure the active tab so the brand pill sits exactly behind it.
   const stripRef = useRef<HTMLUListElement>(null);
   const tabRefs = useRef<Array<HTMLLIElement | null>>([]);
-  const [pill, setPill] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+  const [pill, setPill] = useState<{ top: number; height: number }>({ top: 0, height: 0 });
   useEffect(() => {
     function measure() {
       const strip = stripRef.current;
@@ -52,11 +53,11 @@ export default function BottomNav() {
       if (!strip || !cell) return;
       const sBox = strip.getBoundingClientRect();
       const cBox = cell.getBoundingClientRect();
-      // Pad the pill to roughly the chip width — 48px wide centered
-      // on the cell's icon, clamped to the cell.
-      const pillW = Math.min(54, cBox.width - 8);
-      const left = cBox.left - sBox.left + (cBox.width - pillW) / 2;
-      setPill({ left, width: pillW });
+      // 56px chip behind icon — fits the 12px-of-padding glass pill
+      // shape from the bottom nav, just rotated vertically.
+      const pillH = Math.min(58, cBox.height - 8);
+      const top = cBox.top - sBox.top + (cBox.height - pillH) / 2;
+      setPill({ top, height: pillH });
     }
     measure();
     window.addEventListener("resize", measure);
@@ -66,20 +67,14 @@ export default function BottomNav() {
   return (
     <div
       aria-hidden
-      // Hide the floating bottom pill at lg+ where the SideRail
-      // takes over as the primary nav.
-      className="pointer-events-none fixed inset-x-0 bottom-0 px-3 lg:hidden"
-      // Tokenized z-index (--z-nav) — see globals.css :root --z-*
-      // scale. Lift the pill above the iOS safe-area inset so the
-      // nav doesn't sit on top of the home indicator.
-      style={{
-        zIndex: "var(--z-nav)",
-        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
-      }}
+      // Hidden below lg; BottomNav owns small viewports. Fixed to
+      // the left edge so it stays put as the content scrolls.
+      className="pointer-events-none fixed bottom-0 left-0 top-0 z-40 hidden py-4 pl-3 lg:flex lg:items-center"
+      style={{ zIndex: "var(--z-nav)" }}
     >
       <nav
         aria-label="Primary"
-        className="pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden rounded-full"
+        className="pointer-events-auto relative overflow-hidden rounded-full"
         style={{
           background: "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
           backdropFilter: "blur(22px) saturate(1.15)",
@@ -89,30 +84,27 @@ export default function BottomNav() {
             "0 10px 28px -8px rgba(20,20,18,0.22), 0 2px 6px rgba(20,20,18,0.10), var(--app-edge), var(--app-hi)",
         }}
       >
-        {/* Moving brand pill — sits BEHIND the active tab's icon. CSS
-            transform on `left/width` so the pill morphs between cells
-            with the same spring easing the indicator bar used before.
-            The pill carries the brand color + glow; the icon and
-            label ride on top with brand ink color when active. */}
+        {/* Vertical brand pill — top/height morphs between cells with
+            the same spring easing as BottomNav's horizontal pill. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute top-1/2 z-0 h-10 -translate-y-1/2 rounded-full"
+          className="pointer-events-none absolute left-1/2 z-0 w-12 -translate-x-1/2 rounded-full"
           style={{
-            left: pill.left,
-            width: pill.width,
+            top: pill.top,
+            height: pill.height,
             background:
               "linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 22%, var(--app-bg-elevated)) 0%, color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated)) 100%)",
             boxShadow:
               "0 6px 16px -6px color-mix(in srgb, var(--app-brand) 50%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--app-brand) 28%, transparent)",
             transition:
-              "left 320ms var(--app-ease-spring), width 320ms var(--app-ease-spring), opacity 200ms ease",
-            opacity: pill.width > 0 ? 1 : 0,
+              "top 320ms var(--app-ease-spring), height 320ms var(--app-ease-spring), opacity 200ms ease",
+            opacity: pill.height > 0 ? 1 : 0,
           }}
         />
 
         <ul
           ref={stripRef}
-          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
+          className="relative z-10 flex flex-col items-stretch gap-1 px-1.5 py-1.5"
         >
           {TABS.map(({ href, label, icon: Icon, fillOnActive, kind }, idx) => {
             const isRealActive =
@@ -143,7 +135,7 @@ export default function BottomNav() {
                   strokeWidth={active ? 2.25 : 2}
                   fill={active && fillOnActive ? "currentColor" : "none"}
                   style={{
-                    transform: active ? "translateY(-1px) scale(1.04)" : "translateY(0)",
+                    transform: active ? "scale(1.04)" : "scale(1)",
                     transitionTimingFunction: "var(--app-ease-spring)",
                   }}
                 />
@@ -157,7 +149,7 @@ export default function BottomNav() {
             );
 
             const tabClass =
-              "group relative flex h-12 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]";
+              "group relative flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]";
             const tabStyle = {
               color: active ? "var(--app-brand)" : "var(--app-ink-3)",
               transitionTimingFunction: "var(--app-ease-spring)",
@@ -181,7 +173,7 @@ export default function BottomNav() {
                     }}
                     aria-haspopup="dialog"
                     aria-expanded={moreOpen}
-                    className={tabClass + " w-full bg-transparent"}
+                    className={tabClass + " bg-transparent"}
                     style={tabStyle}
                   >
                     {chipBody}
@@ -193,7 +185,7 @@ export default function BottomNav() {
                       if (!isRealActive) setPendingIdx(idx);
                     }}
                     onClick={(e) => handleActivate(e)}
-                    className={tabClass + " w-full"}
+                    className={tabClass}
                     style={tabStyle}
                     aria-current={active ? "page" : undefined}
                   >
