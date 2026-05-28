@@ -9,12 +9,10 @@ import { ChevronDown } from "lucide-react";
  * weather sub-sections (Hourly · 7-Day · More Details) all read as
  * uniform collapsible pills inside the consolidated weather panel.
  *
- * Default OPEN (unlike WeatherMore which defaults closed). The
- * hourly rail is the most-glanced piece of the panel — closing it
- * by default would hide the answer to "is it going to rain in the
- * next 4 hours" behind a tap. The user's choice is remembered
- * across visits via localStorage so a power user who hates hourly
- * can shut it once and keep it shut.
+ * Defaults CLOSED (matches WeatherMore + WeeklyCard) to keep the
+ * /today weather panel compact above the fold — the collapsed pill's
+ * summary ("12 hours, peaks 80° at 7 PM") answers most glances. The
+ * user's expand choice is remembered across visits via localStorage.
  *
  * Children (the HourlyForecast server component) render server-side
  * regardless of expanded state; toggling only hides the content via
@@ -70,7 +68,7 @@ export default function HourlyDisclosure({
       <button
         type="button"
         onClick={toggle}
-        aria-expanded={mounted ? expanded : true}
+        aria-expanded={mounted ? expanded : false}
         aria-controls="hourly-forecast-panel"
         className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition active:scale-[0.99]"
       >

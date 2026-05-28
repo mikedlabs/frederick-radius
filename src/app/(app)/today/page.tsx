@@ -269,6 +269,16 @@ export default async function HomePage({
           the desktop split so it spans both columns. */}
       <div className="space-y-6">
         <BetaIntroCard />
+        {/* DateLine + BriefingLine lifted to full width above the
+            desktop split so the orientation + "what should I do?"
+            answer always leads — on mobile the weather column now
+            drops BELOW the action stack (see the order- classes on
+            the split children), so the page opens with the answer
+            instead of a stack of weather modules. */}
+        <div className="space-y-2">
+          <DateLine />
+          <BriefingLine />
+        </div>
       </div>
 
       {/* RESPONSIVE SPLIT (desktop only):
@@ -279,9 +289,12 @@ export default async function HomePage({
        *             partner apps, WorthALook, events, From Above).
        * Each column keeps its own internal space-y-6 spine so the
        * vertical rhythm doesn't collapse at the breakpoint. */}
-      <div className="mt-6 space-y-6 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
-        {/* ── LEFT column: the day + weather block ───────────── */}
-        <div className="space-y-6">
+      <div className="mt-6 flex flex-col gap-6 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-6">
+        {/* ── LEFT column: the weather block. order-2 on mobile so it
+            sits BELOW the action stack — a "today" page should open
+            with what's worth your time, not the forecast — and is
+            restored to the left column at lg+. ───────────────────── */}
+        <div className="space-y-6 order-2 lg:order-1">
 
       {/* DateLine + BriefingLine + NowDayStrip — the slim header
           that replaces the old AdaptiveGreeting block. Sits ABOVE
@@ -292,17 +305,14 @@ export default async function HomePage({
           synthesis of time-of-day, open places, and the next
           notable event) — the centerpiece of the data → decisions
           shift the review called for. */}
-      <div className="space-y-2">
-        <DateLine />
-        <BriefingLine />
-        {/* NowDayStrip became async (fetches NWS daily forecast to
-            render a weather glyph + hi/lo per day). Suspense so the
-            header above SkyHero doesn't block — fallback is a slim
-            placeholder matching the day-strip's height. */}
-        <Suspense fallback={<Skeleton.Block height={86} round="var(--app-radius-sm)" />}>
-          <NowDayStrip />
-        </Suspense>
-      </div>
+      {/* NowDayStrip — the multi-day weather strip. Stays with the
+          weather column (DateLine + BriefingLine moved up to the
+          full-width header). Async (fetches NWS daily forecast for a
+          glyph + hi/lo per day); Suspense fallback is a slim
+          placeholder matching the strip's height. */}
+      <Suspense fallback={<Skeleton.Block height={86} round="var(--app-radius-sm)" />}>
+        <NowDayStrip />
+      </Suspense>
 
       {/* 1 — Sky-tinted hero. Sun countdown + weather (now and the
           7-day, on one card) + plan card, layered on the time-of-day
@@ -381,11 +391,11 @@ export default async function HomePage({
             <CivicAlerts />
           </Suspense>
           {/* All three weather subsections (Hourly · 7-Day · More
-              Details) are now disclosure pills for visual uniformity.
-              Hourly defaults open (it's the most-glanced piece); the
-              other two default closed. Each one carries a real
-              summary so the collapsed pill reads as informative, not
-              a "we hid stuff" placeholder. */}
+              Details) are disclosure pills for visual uniformity, and
+              all three default CLOSED — each collapsed pill carries a
+              real summary ("12 hours, peaks 80° at 7 PM"), so the
+              panel stays compact and the page opens light on weather.
+              Each remembers the user's expand choice in localStorage. */}
           <HourlyDisclosure
             summary={
               <Suspense fallback={<>Loading…</>}>
@@ -420,8 +430,9 @@ export default async function HomePage({
 
         </div>{/* /LEFT column */}
 
-        {/* ── RIGHT column: the action stack ─────────────────── */}
-        <div className="space-y-6">
+        {/* ── RIGHT column: the action stack. order-1 on mobile so it
+            leads above the weather column; second column at lg+. ──── */}
+        <div className="space-y-6 order-1 lg:order-2">
 
       {/* SPINE REORDER (cleanup pass):
        *
@@ -467,9 +478,10 @@ export default async function HomePage({
 
       {/* ── PRIMARY ZONE ───────────────────────────────────────────
           The two things a stranger opens the app to learn: what's the
-          day like (the SkyHero above) and what's happening (this). The
-          events section sits directly under the toggle so the answer
-          to "what should I do?" is the first thing below the fold. */}
+          day like (the weather column — beside this on desktop, below
+          it on mobile) and what's happening (this). The events section
+          sits under the toggle so the answer to "what should I do?"
+          leads on every screen. */}
       <DismissibleSection
         id="upcoming"
         title={slice.title}
