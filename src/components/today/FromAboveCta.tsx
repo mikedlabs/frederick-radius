@@ -1,12 +1,10 @@
-import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
 /**
- * FromAboveCta — a quiet doorway from /now into the From Above book
- * route. The book is real: six years of drone photography over
- * Downtown Frederick, organized by season. The route exists at
- * /from-above/preview as a full-bleed coffee-table-book experience.
+ * FromAboveCta — a quiet doorway from /now to the From Above book
+ * site (miked.store). The book is real: six years of drone
+ * photography over Downtown Frederick, organized by season.
  *
  * This card sits at the very end of /now as a deliberate "exit
  * beat" — once the user has the day's utility (weather, events,
@@ -16,12 +14,20 @@ import { ArrowRight } from "lucide-react";
  * a generic gallery — the cover IS the book's identity and the
  * link target).
  *
+ * Links externally to miked.store (the photographer's storefront)
+ * via a plain <a> tag, not next/link — there's no SPA value in
+ * trying to client-route to a different origin, and target="_blank"
+ * lets the visitor browse the book without losing their place
+ * inside Frederick Radius.
+ *
  * Server component, no fetches.
  */
 export default function FromAboveCta() {
   return (
-    <Link
-      href="/from-above/preview"
+    <a
+      href="http://www.miked.store"
+      target="_blank"
+      rel="noopener noreferrer"
       className="tactile tactile-interactive group relative flex items-center gap-3.5 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
       style={{
         borderColor: "var(--app-border)",
@@ -73,6 +79,6 @@ export default function FromAboveCta() {
         strokeWidth={2.25}
         style={{ color: "var(--app-ink-3)" }}
       />
-    </Link>
+    </a>
   );
 }
