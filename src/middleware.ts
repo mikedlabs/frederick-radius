@@ -1,26 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
 
 /**
- * Edge middleware: two independent gates.
+ * Edge middleware: three independent gates, applied conditionally
+ * by path.
  *
- * Onboarding redirect was REMOVED in the pre-launch pass. The previous
- * behavior sent first-time visitors of `/now` to `/welcome` and
- * first-time visitors of `/` to `/about`. Pre-launch review caught
- * this as the single biggest UX failure: a stranger who lands on
- * "Frederick Radius — the field guide" via a shared Facebook link
- * should see the actual product, not a persona-picker. The persona
- * affordance survives as an in-page chip on /now ("Tune this for
- * you") which a returning user can opt into when they want to. The
- * old `fr_onboarded` cookie is left alone — it still does its job on
- * the welcome flow itself; we just no longer gate the product behind
- * its absence.
+ *   1. /admin/*   — Basic Auth (P0-5 interim gate). Fails CLOSED:
+ *                   if ADMIN_USER / ADMIN_PASSWORD aren't configured,
+ *                   /admin is unreachable. Set both env vars to
+ *                   enable. Edge-safe (Web `atob`, no Node crypto).
  *
- * What remains:
- *   - Gate 1: admin Basic Auth on /admin. P0-5 interim gate, NOT the
- *     full Auth.js direction. Fails CLOSED: if ADMIN_USER /
- *     ADMIN_PASSWORD aren't configured, /admin is unreachable for
- *     everyone. Set both env vars to enable access. Zero
- *     dependencies, edge-safe (Web `atob`, no Node Buffer/crypto).
+ *   2. Everywhere else — Supabase session refresh. Short-lived
+ *                   access tokens (~1h) get silently refreshed on
+ *                   each request that carries a session cookie.
+ *                   Logged-out users pass through with no change.
+ *                   Does NOT enforce auth; pages decide whether
+ *                   they need a signed-in user via getServerUser().
+ *
+ *   3. Static + image paths — skipped via the matcher below so the
+ *                   middleware doesn't intercept _next/image, _next/
+ *                   static, or asset requests.
+ *
+ * Onboarding redirect was REMOVED in the pre-launch pass. The persona
+ * affordance survives as an in-page chip on /now which a returning
+ * user can opt into when they want to.
  */
 function unauthorized(): NextResponse {
   return new NextResponse("Authentication required.", {
@@ -32,10 +35,11 @@ function unauthorized(): NextResponse {
   });
 }
 
-export function middleware(req: NextRequest): NextResponse {
-  const { pathname } = req.nextUrl;
+function isAdminPath(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
+}
 
-  // Admin Basic Auth (everything below).
+function adminBasicAuth(req: NextRequest): NextResponse | null {
   const user = process.env.ADMIN_USER;
   const pass = process.env.ADMIN_PASSWORD;
   if (!user || !pass) return unauthorized();
@@ -56,9 +60,31 @@ export function middleware(req: NextRequest): NextResponse {
   const p = decoded.slice(sep + 1);
 
   if (u !== user || p !== pass) return unauthorized();
-  return NextResponse.next();
+  return null; // pass-through
+}
+
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  if (isAdminPath(pathname)) {
+    const block = adminBasicAuth(req);
+    if (block) return block;
+    // Admin paths skip Supabase session refresh — the admin surface
+    // is its own world.
+    return NextResponse.next();
+  }
+
+  // Everywhere else: refresh Supabase session on the cookie if there
+  // is one, then pass through. Logged-out users get an unchanged
+  // response.
+  return await updateSession(req);
 }
 
 export const config = {
-  matcher: ["/admin", "/admin/:path*"],
+  // Run on everything EXCEPT static assets + API images. The browser
+  // makes a lot of `/_next/static/*` requests; skipping them avoids
+  // running the session refresh logic on every chunk.
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|images/|api/place-photo|api/og).*)",
+  ],
 };
