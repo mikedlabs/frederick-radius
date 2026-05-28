@@ -184,6 +184,27 @@ export default function PlanBuilder({
     onBuild({ vibe: v });
   };
 
+  /** Cycle helpers — let the user advance audience / duration /
+   *  start by tapping the in-page "Planning for" chips instead of
+   *  opening the Customize drawer. Each tap moves to the next
+   *  option and loops; no build is triggered until the user taps a
+   *  vibe card. Surfaces the assumptions before the vibe-tap
+   *  generates a plan around them. */
+  const cycleAudience = () => {
+    const i = AUDIENCES.findIndex((a) => a.value === audience);
+    setAudience(AUDIENCES[(i + 1) % AUDIENCES.length].value);
+  };
+  const cycleHours = () => {
+    const i = DURATIONS.indexOf(hours);
+    setHours(DURATIONS[(i + 1) % DURATIONS.length]);
+  };
+  const cycleStart = () => {
+    const i = STARTS.findIndex((s) => s.value === startMode);
+    setStartMode(STARTS[(i + 1) % STARTS.length].value);
+  };
+  const currentAudience = AUDIENCES.find((a) => a.value === audience) ?? AUDIENCES[0];
+  const currentStart = STARTS.find((s) => s.value === startMode) ?? STARTS[0];
+
   const onShuffle = () => onBuild({ seed: Math.floor(Math.random() * 100_000) });
 
   const onPreset = (p: Preset) => {
@@ -243,6 +264,55 @@ export default function PlanBuilder({
             <p className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
               Tap one to build a plan with that energy.
             </p>
+          </section>
+
+          {/* PLANNING FOR — three quick-cycle chips that surface the
+              audience / duration / start assumptions BEFORE a vibe
+              tap auto-builds against them. Tap a chip to advance to
+              the next option; no build runs until the user picks a
+              vibe. Previously these lived only inside the Customize
+              drawer, so casual users were getting plans built with
+              default assumptions they couldn't see. */}
+          <section
+            className="-mt-1 flex flex-wrap items-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-2"
+            style={{ borderColor: "var(--app-border)" }}
+            aria-label="Plan settings"
+          >
+            <span
+              className="px-1 text-[10px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Planning for
+            </span>
+            <button
+              type="button"
+              onClick={cycleAudience}
+              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[11.5px] font-semibold transition active:scale-[0.96]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              aria-label={`Audience: ${currentAudience.label}. Tap to change.`}
+            >
+              <span aria-hidden>{currentAudience.emoji}</span>
+              {currentAudience.label}
+            </button>
+            <button
+              type="button"
+              onClick={cycleHours}
+              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[11.5px] font-semibold transition active:scale-[0.96]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              aria-label={`Duration: ${hours} hours. Tap to change.`}
+            >
+              ⏱ {hours} hr
+            </button>
+            <button
+              type="button"
+              onClick={cycleStart}
+              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[11.5px] font-semibold transition active:scale-[0.96]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+              aria-label={`Start: ${currentStart.label}. Tap to change.`}
+            >
+              <span aria-hidden>{currentStart.emoji}</span>
+              Starts {currentStart.label.toLowerCase()}
+            </button>
           </section>
 
           {/* VIBE CARDS — the primary CTA. Cinematic color-graded
