@@ -1,26 +1,71 @@
+import type { NextRequest } from "next/server";
+
 /**
- * Frederick Radius service worker. Hand-rolled, no build plugin, so it
- * is safe on Next 16 + Turbopack and trivial to reason about.
+ * /sw.js — the service worker, served dynamically so the CACHE_VERSION
+ * embedded inside it bumps on every deploy.
  *
- * Safety-first by design: navigations are NETWORK-FIRST. The cache and
- * the offline page are only ever a fallback when the network actually
- * fails. A bad deploy or a stale cache can therefore never trap a user
- * on a broken page -- the worst case offline is the explicit /offline
- * screen, and online always shows live content. Bump CACHE_VERSION to
- * invalidate everything; post {type:'CLEAR_CACHES'} to nuke at runtime.
+ * Why dynamic instead of public/sw.js?
+ *   Previously public/sw.js had `CACHE_VERSION = "fr-v1"` hardcoded.
+ *   The browser would re-fetch /sw.js, byte-compare against the
+ *   registered worker, and — finding identical bytes — keep the old
+ *   one active forever. Result: a user on iOS would see the OLD build
+ *   even after a deploy, because the SW had cached the old HTML/chunks
+ *   and the activate handler only nukes caches whose key DOESN'T start
+ *   with the current CACHE_VERSION (which was always "fr-v1").
+ *
+ *   Serving the SW from a route handler lets us substitute the
+ *   deployment id into CACHE_VERSION at response time. Each deploy =
+ *   different bytes in /sw.js = browser detects an update = the new
+ *   SW's activate handler nukes old caches because their key starts
+ *   with the OLD version. The "A new version is ready" toast fires.
+ *
+ * Cache-Control: must-revalidate so the browser actually re-checks
+ * this file on each page load. Without that, Safari can sit on a
+ * cached /sw.js for hours.
+ *
+ * Body stays inline so the build pipeline doesn't need a custom
+ * loader. Edit the SW source here, NOT in public/.
  */
-const CACHE_VERSION = "fr-v1";
-const STATIC_CACHE = `${CACHE_VERSION}-static`;
-const IMAGE_CACHE = `${CACHE_VERSION}-img`;
+
+// Deployment identifier embedded into CACHE_VERSION. Vercel exposes
+// the commit SHA as VERCEL_GIT_COMMIT_SHA at runtime; locally + on
+// preview builds we fall back to a timestamped dev version so the
+// behaviour is still correct, just less stable.
+function buildVersion(): string {
+  return (
+    process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ??
+    process.env.NEXT_PUBLIC_BUILD_VERSION ??
+    `dev-${Date.now()}`
+  );
+}
+
+const SW_SOURCE = (version: string) => `/**
+ * Frederick Radius service worker. Hand-rolled, no build plugin.
+ * Served dynamically by app/sw.js/route.ts so CACHE_VERSION bumps
+ * on every deploy.
+ *
+ * Safety-first by design: navigations are NETWORK-FIRST. The cache
+ * and the offline page are only ever a fallback when the network
+ * actually fails. A bad deploy or a stale cache can therefore never
+ * trap a user on a broken page — the worst case offline is the
+ * explicit /offline screen, and online always shows live content.
+ *
+ * CACHE_VERSION is the build's deployment id, embedded at response
+ * time. When a new deploy lands, this string changes → the SW file's
+ * bytes change → the browser registers the new worker → the activate
+ * handler nukes any cache key that doesn't start with the new
+ * version. Post {type:'CLEAR_CACHES'} to nuke at runtime.
+ */
+const CACHE_VERSION = "fr-${version}";
+const STATIC_CACHE = CACHE_VERSION + "-static";
+const IMAGE_CACHE = CACHE_VERSION + "-img";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
-  // A5: do NOT call skipWaiting() here. We want a freshly deployed SW
+  // Do NOT call skipWaiting() here. We want a freshly deployed SW
   // to enter the "waiting" state so ServiceWorkerRegister can prompt
   // the user with an update toast. The user (or closing all tabs)
-  // triggers activation via the SKIP_WAITING message below. This
-  // avoids surprise mid-session worker swaps that can interleave
-  // with in-flight requests.
+  // triggers activation via the SKIP_WAITING message below.
   event.waitUntil(
     caches.open(STATIC_CACHE).then((c) => c.add(OFFLINE_URL)),
   );
@@ -31,7 +76,11 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => !k.startsWith(CACHE_VERSION)).map((k) => caches.delete(k))),
+        Promise.all(
+          keys
+            .filter((k) => !k.startsWith(CACHE_VERSION))
+            .map((k) => caches.delete(k)),
+        ),
       )
       .then(() => self.clients.claim()),
   );
@@ -48,7 +97,7 @@ function isImage(req, url) {
   return (
     req.destination === "image" ||
     url.pathname.startsWith("/_next/image") ||
-    /\.(?:png|jpg|jpeg|webp|avif|gif|svg)$/.test(url.pathname)
+    /\\.(?:png|jpg|jpeg|webp|avif|gif|svg)$/.test(url.pathname)
   );
 }
 
@@ -59,8 +108,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // never touch cross-origin
 
-  // 1. Navigations: NETWORK-FIRST. Live content always wins; cache then
-  //    the offline page are only used when the network truly fails.
+  // 1. Navigations: NETWORK-FIRST. Live content always wins.
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
@@ -112,15 +160,6 @@ self.addEventListener("fetch", (event) => {
 
 /* ─────────────────────────────────────────────────────
  * Web Push — opt-in notifications.
- *
- *   `push`              fires when the push service delivers a payload.
- *                       We expect the server to send valid JSON; if it
- *                       doesn't (an unauth ping, an empty test), we
- *                       fall back to a generic title so the user still
- *                       sees something rather than nothing.
- *   `notificationclick` focuses an existing tab at the payload's url
- *                       when possible (no extra tab spam); otherwise
- *                       opens a new one.
  * ───────────────────────────────────────────────────── */
 self.addEventListener("push", (event) => {
   let payload = {};
@@ -150,14 +189,32 @@ self.addEventListener("notificationclick", (event) => {
       .matchAll({ type: "window", includeUncontrolled: true })
       .then((clients) => {
         const target = new URL(url, self.location.origin).href;
-        // Reuse an existing tab when one is already on the right URL.
         for (const c of clients) {
           if (c.url === target) return c.focus();
         }
-        // Or any open tab — push it to the URL.
         const first = clients[0];
         if (first && "navigate" in first) return first.navigate(url).then(() => first.focus());
         return self.clients.openWindow(url);
       }),
   );
 });
+`;
+
+export function GET(_req: NextRequest) {
+  const body = SW_SOURCE(buildVersion());
+  return new Response(body, {
+    headers: {
+      "Content-Type": "application/javascript; charset=utf-8",
+      // must-revalidate so the browser actually re-checks /sw.js on
+      // each page load. Without this Safari can sit on a cached copy
+      // for hours and never realize a new version landed.
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "Service-Worker-Allowed": "/",
+    },
+  });
+}
+
+// Force runtime so the env var read happens per-request, not at
+// build time. (We want the value Vercel actually injected at deploy.)
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
