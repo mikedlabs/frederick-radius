@@ -176,6 +176,14 @@ const KNOWN: Array<[string, SourceMeta]> = [
     "fcc.edu",
     { lane: "community", mediaType: "civic", brandColor: "#3F5A6B", display: "Frederick CC", monogram: "FC" },
   ],
+  [
+    "delaplaine",
+    { lane: "community", mediaType: "civic", brandColor: "#7B5EA7", display: "Delaplaine Arts", monogram: "DA" },
+  ],
+  [
+    "weinberg",
+    { lane: "community", mediaType: "civic", brandColor: "#C4792A", display: "Weinberg Center", monogram: "WC" },
+  ],
 ];
 
 const PRESS_FALLBACK_COLOR = "#6F6A63";

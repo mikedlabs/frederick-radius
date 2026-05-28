@@ -60,15 +60,24 @@ export const LOCAL_NEWS_SOURCES: LocalNewsSource[] = [
     homeUrl: "https://mocoshow.com/",
     accent: "var(--app-accent)",
   },
-  // wfmd.com — Frederick's local radio station — was the obvious
-  // third candidate (Patch cites them too), but their /feed/ and
-  // /rss endpoints both ParseError. Likely a Wordpress site without
-  // RSS exposed publicly, or behind a paywall. Worth retrying if
-  // they ship a clean feed; their newsroom IS Frederick-local in a
-  // way the others aren't.
-  //
+  {
+    // WFMD 930 AM — Frederick's long-running local radio station.
+    // Their /category/local-news/feed/ is a clean WordPress RSS with
+    // Frederick-county-specific crime, court, politics, and business
+    // stories (verified live 2026-05-28). The generic /feed/ has too
+    // much national wire content from TownSquareMedia syndication; the
+    // category-scoped URL is the correct endpoint.
+    id: "wfmd",
+    label: "WFMD",
+    feedUrl: "https://wfmd.com/category/local-news/feed/",
+    homeUrl: "https://wfmd.com/",
+    accent: "var(--app-warm)",
+  },
   // Patch itself is intentionally NOT here. As of May 2026 their
   // town-level RSS endpoints either 404 or return 0 items — they
   // distribute via newsletter, not RSS. Loader is source-agnostic,
   // so adding any of these back later is a one-line change.
+  //
+  // Weinberg Center and Delaplaine Arts do not publish news RSS feeds;
+  // their events surface via the iCal feed path in ical-live.ts.
 ];

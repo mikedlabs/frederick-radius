@@ -16,7 +16,7 @@ import {
   resetFeedMetrics,
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
-import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
+import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 
 // Phase 1.6: drop venue open-status entries that are not events.
@@ -134,14 +134,46 @@ const FEEDS: FeedSpec[] = [
     default_venue: "Hood College",
     default_geom: { lng: -77.3997, lat: 39.4246 },
     default_municipality: "frederick",
-    // Source-based defaulting was the bug: a Hood College "Spring
-    // Family Day" or a county "Pancake Breakfast" doesn't become
-    // civic just because the feed is municipal. The keyword inference
-    // (CATEGORY_KEYWORDS above) still catches genuinely civic-titled
-    // entries; everything else falls through to the honest "community"
-    // catch-all.
     default_category: "community",
   },
+  {
+    // Delaplaine Arts Center — confirmed live iCal (verified 2026-05-28).
+    // 30+ events in a rolling window: gallery openings, art classes,
+    // youth programs, lectures. This is the richest arts/gallery feed
+    // in Frederick and the only venue-specific calendar we can pull
+    // cleanly without scraping. Keyword inference tags art/exhibit
+    // events as "gallery"; family/youth classes land as "family".
+    // URL overridable so a domain change needs no deploy.
+    source: "delaplaine",
+    source_label: "Delaplaine Arts Center",
+    url:
+      process.env.DELAPLAINE_CALENDAR_URL ||
+      "https://delaplaine.org/events/?ical=1",
+    format: "ical",
+    default_venue: "Delaplaine Arts Center",
+    default_geom: { lng: -77.4108, lat: 39.4167 },
+    default_municipality: "frederick",
+    default_category: "gallery",
+  },
+  // Weinberg Center for the Arts — Frederick's premier performing-arts
+  // theater. Their site (WordPress + custom theme) does not expose a
+  // standard iCal endpoint as of 2026-05-28. Wire the slot so that if
+  // they ever publish one (or we obtain a Ticketmaster venue filter),
+  // it drops in with zero extra code. The env var is the escape hatch.
+  ...(process.env.WEINBERG_CALENDAR_URL
+    ? ([
+        {
+          source: "weinberg" as const,
+          source_label: "Weinberg Center",
+          url: process.env.WEINBERG_CALENDAR_URL,
+          format: "ical" as const,
+          default_venue: "Weinberg Center for the Arts",
+          default_geom: { lng: -77.4104, lat: 39.4136 },
+          default_municipality: "frederick",
+          default_category: "theater",
+        },
+      ] as FeedSpec[])
+    : []),
 ];
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
@@ -694,13 +726,14 @@ export async function getLiveEvents(windowDays = 60): Promise<{
   // parallel. Ticketmaster is inert ([]) without TICKETMASTER_API_KEY,
   // so this path is unchanged until that key is set. Both yield the
   // same LiveEvent shape, so they share the dedupe/filter/sort below.
-  const [feedResults, ticketmasterEvents] = await Promise.all([
+  const [feedResults, ticketmasterMusic, ticketmasterSports] = await Promise.all([
     Promise.all(
       FEEDS.map((f) =>
         fetchFeed(f, windowDays).then((evts) => ({ source: f.source, evts })),
       ),
     ),
     fetchTicketmasterMusic(),
+    fetchTicketmasterSports(),
   ]);
 
   // Ticketmaster has no window parameter; clamp its results to the same
@@ -711,7 +744,7 @@ export async function getLiveEvents(windowDays = 60): Promise<{
     ...feedResults,
     {
       source: "ticketmaster",
-      evts: ticketmasterEvents.filter(
+      evts: [...ticketmasterMusic, ...ticketmasterSports].filter(
         (e) => +new Date(e.starts_at) <= horizonMs,
       ),
     },
