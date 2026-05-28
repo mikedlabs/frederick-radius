@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
+import CostTransparency from "@/components/trust/CostTransparency";
 
 /**
  * /trust — the plain-English explanation of where the data comes
@@ -244,6 +245,12 @@ export default function TrustPage() {
           things by hand.
         </p>
       </section>
+
+      {/* What this thing actually costs to run. Civic credibility:
+          a resident who reached /trust to figure out where the data
+          comes from gets one more honest read here — "here's what
+          keeps it online." */}
+      <CostTransparency />
 
       <p
         className="pt-2 text-center text-[11px]"
