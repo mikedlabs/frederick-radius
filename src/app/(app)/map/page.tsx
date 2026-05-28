@@ -7,6 +7,7 @@ import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
 import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent } from "@/lib/loaders/events";
+import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
@@ -232,6 +233,7 @@ export default async function MapPage({
     tmMusic,
     tmSports,
     bitEvents,
+    waterSites,
   ] = await Promise.all([
     getChartIncidentsFrederick().catch(() => []),
     getFixItIssues(30).catch(() => []),
@@ -246,6 +248,11 @@ export default async function MapPage({
     fetchTicketmasterMusic().catch(() => []),
     fetchTicketmasterSports().catch(() => []),
     fetchBandsintownForArtists([]).catch(() => []),
+    // USGS river gauges — surfaced as a map layer (kind="river_gauge")
+    // so the Rivers & creeks dataset isn't trapped on /rivers alone.
+    // Gauges report every ~15 min upstream; we cache for 30 min via
+    // the loader's revalidate. Light payload — no per-site history.
+    getFrederickWaterSites().catch(() => []),
   ]);
   const civic: CivicPin[] = [
     ...incidents
@@ -266,8 +273,23 @@ export default async function MapPage({
       })),
   ];
 
+  // Hydrate USGS gauges into Amenity shape so they ride the existing
+  // amenity layer system (Gauges chip in AMENITY_GROUPS). USGS site
+  // ids prefix with "usgs:" so they never collide with OSM-derived
+  // amenity ids. Failed fetches fall back to empty — the toggle
+  // simply renders zero points.
+  const riverGaugeAmenities = waterSites.map((s) => ({
+    id: `usgs:${s.id}`,
+    kind: "river_gauge" as const,
+    name: s.river ? `${s.river} gauge` : "USGS gauge",
+    detail: s.name,
+    municipality: s.municipality,
+    lng: s.lng,
+    lat: s.lat,
+  }));
+
   const amenities = dedupeAmenities(
-    allAmenities(),
+    [...allAmenities(), ...riverGaugeAmenities],
     OPEN_PLACES.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
   );
 

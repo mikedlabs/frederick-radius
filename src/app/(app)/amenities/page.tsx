@@ -59,6 +59,7 @@ const LIVE_ICONS = {
   picnic: Trees,
   playground: Baby,
   pool: Waves,
+  river_gauge: Waves,
 } as const;
 
 // What's NOT yet on the map but people ask the app for. These are the

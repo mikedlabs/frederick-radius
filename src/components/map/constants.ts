@@ -61,6 +61,7 @@ export const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
   picnic: "picnic",
   playground: "playground",
   pool: "pool",
+  river_gauge: "river-gauge",
 };
 
 /**
@@ -90,6 +91,10 @@ export const AMENITY_GROUPS: {
   // pool addresses + coords are collected. Layer appears in the
   // filter row immediately so the affordance is discoverable.
   { key: "pool", label: "Pools", glyph: "\u{1F3CA}", cats: ["pool"] },
+  // River gauges — USGS sites surfaced as a map layer so the
+  // "Rivers & creeks" data isn't trapped on /rivers alone. Tap a
+  // gauge pin to jump to /rivers for live readings + trend.
+  { key: "river_gauge", label: "Gauges", glyph: "\u{1F30A}", cats: ["river-gauge"] },
   { key: "safety", label: "AED & shelter", glyph: "\u{2795}", cats: ["defibrillator", "shelter"] },
 ];
 

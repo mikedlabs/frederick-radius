@@ -10,7 +10,8 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
  */
 export type AmenityKind =
   | "restroom" | "ev_charging" | "wifi" | "bike_parking" | "picnic" | "playground"
-  | "pool";
+  | "pool"
+  | "river_gauge";
 
 export type Amenity = {
   id: string;
@@ -40,6 +41,12 @@ export const AMENITY_KINDS: { kind: AmenityKind; label: string; blurb: string }[
   // surfaces automatically via amenitiesByKind's "only kinds that
   // actually have points" filter — no UI change needed.
   { kind: "pool", label: "Public pools", blurb: "City, county, and YMCA pools — seasonal hours" },
+  // River gauges — USGS sites on the Monocacy, Catoctin, Linganore,
+  // Potomac. Data lives in usgsWater.ts; the map page hydrates these
+  // into Amenity shape at request time so they ride the same layer
+  // toggle system as restrooms / EV / playgrounds. Tap a gauge to
+  // jump to /rivers for the live reading + 24-hour trend.
+  { kind: "river_gauge", label: "River gauges", blurb: "Live USGS gauges — Monocacy, Catoctin, Potomac, Linganore" },
 ];
 
 export const AMENITY_COUNT = AMENITIES.length;
