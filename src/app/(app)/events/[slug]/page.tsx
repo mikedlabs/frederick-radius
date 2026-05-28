@@ -32,7 +32,6 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
-import EventCalendarButton from "@/components/event/EventCalendarButton";
 import EventCard from "@/components/event/EventCard";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
@@ -70,8 +69,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   if (!event) notFound();
   // Reliable live-vs-seed signal: whether the static seed resolved it.
   // event.source is NOT usable here (hand-authored seed events also use
-  // "manual"). A live event has no static ICS endpoint and no editorial
-  // extras, so the calendar cell and the third action adapt off this.
+  // "manual"). Used by editorial extras (lineup, etc.) that only exist
+  // on seed events. Calendar action no longer branches on this — the
+  // ICS route serves both seed and live slugs.
   const isLive = seed === null;
 
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -303,30 +303,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
       </header>
 
       <div className="grid grid-cols-3 gap-2">
-        {isLive ? (
-          <EventCalendarButton
-            event={{
-              slug: event.slug,
-              title: event.title,
-              starts_at: event.starts_at,
-              ends_at: event.ends_at,
-              description: event.description,
-              venue_name: event.venue_name,
-              address: event.address,
-              is_all_day: event.is_all_day,
-            }}
-          />
-        ) : (
-          <a
-            href={icsUrl}
-            download
-            className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          >
-            <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-            Add to calendar
-          </a>
-        )}
+        <a
+          href={icsUrl}
+          download
+          className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+        >
+          <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
+          Add to calendar
+        </a>
         <a
           href={directionsUrl}
           target="_blank"
