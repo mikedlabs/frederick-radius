@@ -1,32 +1,36 @@
-import Link from "next/link";
 import Image from "next/image";
 import { BookOpen, ArrowRight } from "lucide-react";
 
 /**
- * FromAboveTile — the marquee for the From Above book preview.
+ * FromAboveTile — the marquee for the From Above book.
  *
- * The book lives at /from-above/preview but until now had no entry
- * point from anywhere in the main app. A whole hand-built brand
- * surface was a one-tap-after-knowing-the-URL away from being a
- * dead end. This is the surface that says "open the book."
+ * Links to the photographer's storefront at miked.store (external).
+ * The in-app /from-above/preview route used to be the destination,
+ * but the storefront is where the book is sold, kept current, and
+ * presented as a real product. Sending visitors there directly is
+ * the honest move — no in-app teaser layer, no double click-through.
  *
  * Photo-led magazine card. Brand-book voice: serif display title +
  * Instrument Serif italic subtitle, brick rule on the left side,
- * paper-cream backplate so the cover photo punches.
+ * paper-cream backplate so the cover photo punches. Opens in a new
+ * tab so the visitor doesn't lose their place inside Frederick
+ * Radius.
  *
  * Goes on /today so a daily visitor sees it; can also be embedded
  * on /about or in a footer brand strip later.
  */
 export default function FromAboveTile() {
   return (
-    <Link
-      href="/from-above/preview"
+    <a
+      href="http://www.miked.store"
+      target="_blank"
+      rel="noopener noreferrer"
       className="tactile tactile-interactive group relative block overflow-hidden rounded-[var(--app-radius-lg)]"
       style={{
         background: "var(--app-bg-elevated)",
         boxShadow: "var(--app-elev-2), var(--app-edge)",
       }}
-      aria-label="From above — a book of Frederick from the sky. Open the book."
+      aria-label="From above — a book of Frederick from the sky. Visit miked.store."
     >
       {/* Photo — the cover. 16:10 aspect ratio so it reads like a
           magazine spread, not a square tile. Subtle scale on hover
@@ -94,7 +98,7 @@ export default function FromAboveTile() {
           className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold"
           style={{ color: "var(--app-brand)" }}
         >
-          Open the book
+          Visit miked.store
           <ArrowRight
             className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"
             strokeWidth={2.25}
@@ -102,6 +106,6 @@ export default function FromAboveTile() {
           />
         </p>
       </div>
-    </Link>
+    </a>
   );
 }

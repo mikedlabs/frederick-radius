@@ -84,10 +84,15 @@ const BOOKS: Array<{
   external?: boolean;
 }> = [
   {
-    href: "/from-above/preview",
+    // Points to the photographer's storefront (miked.store) instead
+    // of the in-app /from-above/preview route. The book lives, sells,
+    // and updates at the storefront; the in-app preview was a teaser
+    // surface that double-tapped the visitor before they could buy.
+    href: "http://www.miked.store",
     label: "From Above",
     description: "Drone photography over Frederick",
     cover: "/from-above/cover-front.webp",
+    external: true,
   },
   {
     href: "https://www.colorfrederick.com",

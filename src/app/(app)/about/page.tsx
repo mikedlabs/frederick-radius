@@ -156,13 +156,15 @@ export default async function AboutPage() {
         </p>
         <p>
           Companion: a photo book of Frederick County from above.{" "}
-          <Link
-            href="/from-above/preview"
+          <a
+            href="http://www.miked.store"
+            target="_blank"
+            rel="noopener noreferrer"
             className="font-semibold underline-offset-2 hover:underline"
             style={{ color: "var(--app-brand)" }}
           >
             From Above →
-          </Link>
+          </a>
         </p>
       </footer>
     </div>
