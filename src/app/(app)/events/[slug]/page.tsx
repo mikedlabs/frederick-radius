@@ -86,9 +86,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 4);
 
+  // Distance cap: 1.5 km (~0.93 mi) — a reasonable walking
+  // distance for a downtown event. Without this cap, a parking
+  // record miscategorized 13 miles away (e.g. "US-40 Trailhead
+  // Parking") would surface as "nearby parking" and erode trust
+  // in the recommendation layer. Same pattern as nearbyFood above.
   const nearbyParking: PlaceCardData[] = publicPlaces()
     .filter((p) => p.category === "parking")
     .map((p) => decoratePlace(p, event.geom))
+    .filter((p) => (p.distance_m ?? Infinity) < 1500)
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 3);
 

@@ -152,6 +152,21 @@ function titlesMatch(a: string, b: string): boolean {
   return false;
 }
 
+/**
+ * Stronger version of titlesMatch — requires one title to FULLY contain
+ * the other (substring), not just share a 6-character run. Used as the
+ * confidence signal for cross-source dedup where venue names differ
+ * (e.g. an event listed as "Downtown Frederick Partnership-Alive @
+ * Five" by a municipal feed vs "Alive @ Five · The National Bohemians"
+ * by the curated set — same actual event, totally different feeds).
+ */
+function titlesMatchStrong(a: string, b: string): boolean {
+  const x = normLoose(a);
+  const y = normLoose(b);
+  if (!x || !y || x.length < 4 || y.length < 4) return false;
+  return x.includes(y) || y.includes(x);
+}
+
 function venuesMatch(a: string, b: string): boolean {
   const x = normLoose(a);
   const y = normLoose(b);
@@ -161,10 +176,19 @@ function venuesMatch(a: string, b: string): boolean {
 
 /**
  * Drops live or county-feed events that duplicate a curated event.
- * Curated always wins (P0-4). A live event is a duplicate when it is at
- * the same venue, starts within 60 minutes, and the titles match by
- * containment or a six character common run. Conservative on purpose:
- * all three signals must agree so distinct events are never merged.
+ * Curated always wins (P0-4). A live event is a duplicate when:
+ *
+ *   1. starts within 60 minutes AND venues + titles both match
+ *      (conservative, requires all three signals — original P0-4 rule)
+ *   OR
+ *   2. starts within 60 minutes AND titles match STRONGLY (one contains
+ *      the other, ≥4 chars) regardless of venue (May 2026 — catches
+ *      cross-source dupes where the municipal feed lists the venue as
+ *      "Frederick County Calendar" while curated lists "Carroll Creek
+ *      Amphitheater")
+ *
+ * Distinct events with similar names but different times never merge
+ * (the 60-minute window is non-negotiable).
  */
 export function dedupeLiveAgainstCurated(
   live: EventWithMeta[],
@@ -174,13 +198,59 @@ export function dedupeLiveAgainstCurated(
     const lt = +new Date(l.starts_at);
     return !curated.some((c) => {
       const within = Math.abs(+new Date(c.starts_at) - lt) <= 60 * 60 * 1000;
-      return (
-        within &&
-        venuesMatch(c.venue_name, l.venue_name) &&
-        titlesMatch(c.title, l.title)
-      );
+      if (!within) return false;
+      // Path 1: conservative all-three-signal match
+      if (venuesMatch(c.venue_name, l.venue_name) && titlesMatch(c.title, l.title)) {
+        return true;
+      }
+      // Path 2: strong title match — venue divergence is OK because
+      // municipal feeds use generic placeholders ("Frederick County
+      // Calendar") that won't match the curated specific venue.
+      if (titlesMatchStrong(c.title, l.title)) {
+        return true;
+      }
+      return false;
     });
   });
+}
+
+/**
+ * Curated-vs-curated dedup pass. Some "curated" events come in via the
+ * municipal calendar ingestion pipeline AND from the hand-curated set —
+ * same event, two sources. Without this pass, /events showed e.g.
+ * "Alive @ Five · The Learned Doctors" (hand-curated) alongside
+ * "Downtown Frederick Partnership-Alive @ Five" (municipal feed
+ * ingested as curated). Both rendered, same physical event.
+ *
+ * Picks the BETTER version from each cluster:
+ *   - Has hero_image > no hero_image (richer card)
+ *   - Has description > no description
+ *   - Otherwise keep the earlier entry (stable)
+ */
+export function dedupeCuratedClusters(events: EventWithMeta[]): EventWithMeta[] {
+  const out: EventWithMeta[] = [];
+  for (const e of events) {
+    const t = +new Date(e.starts_at);
+    const dupeIdx = out.findIndex((kept) => {
+      const kt = +new Date(kept.starts_at);
+      if (Math.abs(kt - t) > 60 * 60 * 1000) return false;
+      return titlesMatchStrong(kept.title, e.title);
+    });
+    if (dupeIdx === -1) {
+      out.push(e);
+      continue;
+    }
+    // Pick the richer record between the two.
+    const kept = out[dupeIdx];
+    const challengerScore =
+      (e.hero_image ? 2 : 0) + (e.description ? 1 : 0);
+    const keptScore =
+      (kept.hero_image ? 2 : 0) + (kept.description ? 1 : 0);
+    if (challengerScore > keptScore) {
+      out[dupeIdx] = e;
+    }
+  }
+  return out;
 }
 
 export function getEventBySlug(slug: string): (EventWithMeta & { venue_place_name?: string }) | null {

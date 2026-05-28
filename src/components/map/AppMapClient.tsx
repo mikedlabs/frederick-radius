@@ -126,7 +126,9 @@ export default function AppMapClient({
             In view
           </h2>
           <span className="text-xs tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {results.length === 0 ? "Move the map" : `${results.length} place${results.length === 1 ? "" : "s"}`}
+            {results.length === 0
+              ? "Loading viewport…"
+              : `${results.length} place${results.length === 1 ? "" : "s"}`}
           </span>
         </div>
 
@@ -135,7 +137,9 @@ export default function AppMapClient({
             className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
-            Pan or zoom the map — places here list below. Tap any to see details.
+            Showing Downtown Frederick. As you pan or zoom, places in
+            view list here — coffee, restaurants, parks, civic
+            buildings, the whole county.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -216,7 +220,7 @@ function InViewDrawer({
         />
         <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
           {results.length === 0
-            ? "Move the map to see places"
+            ? "Showing Downtown Frederick"
             : `${results.length} place${results.length === 1 ? "" : "s"} in view`}
         </p>
         {/* Category mix row — visible only in peek state. Each dot is

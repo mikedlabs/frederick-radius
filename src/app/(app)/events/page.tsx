@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Sparkles } from "lucide-react";
-import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
+import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, dedupeCuratedClusters, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
@@ -101,9 +101,17 @@ export default async function EventsIndexPage({
   for (const e of [...curatedUpcoming, ...liveCards]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
+  // Second-pass dedup catches CURATED-vs-CURATED duplicates that
+  // slip through dedupeLiveAgainstCurated — the case where the same
+  // event lands once as hand-curated data and again from a municipal
+  // calendar ingestion (e.g. "Alive @ Five · The Learned Doctors"
+  // vs "Downtown Frederick Partnership-Alive @ Five"). Picks the
+  // richer record (photo + description) from each cluster.
   const allEvents = withVenueThumbs(
-    [...bySlug.values()].sort(
-      (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+    dedupeCuratedClusters(
+      [...bySlug.values()].sort(
+        (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+      ),
     ),
   );
   const liveSlugs = seedLive.map((e) => e.slug);
