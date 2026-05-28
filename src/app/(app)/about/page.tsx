@@ -29,7 +29,7 @@ import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Frederick Radius is the pocket compass for Frederick County, Maryland. What's open, what's happening, where, and how to get there.",
+    "Frederick County, organized around your day. What's open, what's happening, where, and how to get there — every town and community, one app.",
 };
 
 export default async function AboutPage() {
@@ -88,8 +88,8 @@ export default async function AboutPage() {
           className="font-serif text-[36px] font-semibold leading-[1.05] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          The pocket compass for{" "}
-          <span style={{ color: "var(--app-brand)" }}>Frederick County.</span>
+          Frederick County, organized around{" "}
+          <span style={{ color: "var(--app-brand)" }}>your day.</span>
         </h1>
       </header>
 

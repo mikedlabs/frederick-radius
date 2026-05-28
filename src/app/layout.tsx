@@ -57,10 +57,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(BASE),
   title: {
     template: "%s · Frederick Radius",
-    default: "Frederick Radius: your compass for Frederick County",
+    default: "Frederick Radius — Frederick County, organized around your day",
   },
   description:
-    "Find what's nearby, happening, open, and worth your time across every town and community in Frederick County, Maryland. Places, events, parks, parking, civic services — one app.",
+    "Frederick County, organized around your day. What's open, what's happening, and what's worth your time — across every town and community in Frederick County, Maryland.",
   applicationName: "Frederick Radius",
   authors: [{ name: "Michael DeMattia" }],
   generator: "Next.js",
@@ -76,9 +76,9 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: BASE,
     siteName: "Frederick Radius",
-    title: "Frederick Radius: your compass for Frederick County",
+    title: "Frederick Radius — Frederick County, organized around your day",
     description:
-      "Find what's nearby, happening, open, and worth your time across every town and community in Frederick County, Maryland.",
+      "What's open, what's happening, and what's worth your time across every town and community in Frederick County, Maryland.",
     images: [{ url: `${BASE}/api/og`, width: 1200, height: 630 }],
   },
   twitter: {

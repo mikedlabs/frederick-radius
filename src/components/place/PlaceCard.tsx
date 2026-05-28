@@ -118,7 +118,7 @@ export default function PlaceCard({
                 )}
               </div>
               <p className="mt-0.5 truncate text-xs opacity-90">
-                {cat?.name ?? place.category} · {place.short_blurb}
+                {cat?.name ?? place.category} · {place.known_for?.[0] ?? place.short_blurb}
                 <BeenHereIndicator slug={place.slug} />
               </p>
             </div>
@@ -250,6 +250,14 @@ export default function PlaceCard({
               style={{ color: "var(--app-ink-3)" }}
             >
               {cat?.name ?? place.category}
+              {place.known_for?.[0] && (
+                <>
+                  {" · "}
+                  <span style={{ color: "var(--app-ink-2)" }}>
+                    {place.known_for[0]}
+                  </span>
+                </>
+              )}
               {place.distance_m !== undefined && (
                 <> · {formatDistance(place.distance_m)}</>
               )}
