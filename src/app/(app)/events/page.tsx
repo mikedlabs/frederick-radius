@@ -239,21 +239,39 @@ export default async function EventsIndexPage({
               Events
             </h1>
           </div>
-          <Link
-            href="/events/calendar"
-            className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-            style={{
-              background: "var(--app-bg-elevated)",
-              color: "var(--app-ink-2)",
-            }}
-          >
-            <CalendarDays
-              className="h-3.5 w-3.5"
-              strokeWidth={2.25}
-              aria-hidden
-            />
-            Month view
-          </Link>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {/* Primary intent CTA — moved up from the Field Guide
+                drawer's Tools cluster as part of the May 2026 IA
+                cleanup. The planner operates on the events list, so
+                its rightful home is here at the top of /events. */}
+            <Link
+              href="/plan"
+              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white shadow-[var(--app-shadow-1)]"
+              style={{ background: "var(--app-brand)" }}
+            >
+              <Sparkles
+                className="h-3.5 w-3.5"
+                strokeWidth={2.25}
+                aria-hidden
+              />
+              Plan tonight
+            </Link>
+            <Link
+              href="/events/calendar"
+              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+              style={{
+                background: "var(--app-bg-elevated)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              <CalendarDays
+                className="h-3.5 w-3.5"
+                strokeWidth={2.25}
+                aria-hidden
+              />
+              Month view
+            </Link>
+          </div>
         </header>
       )}
 
