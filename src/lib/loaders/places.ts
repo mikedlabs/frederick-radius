@@ -6,6 +6,7 @@ import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { isNonDiscoverable } from "@/lib/relevance";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
+import { parseGoogleWeekdayHours } from "@/lib/hours-parse";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
@@ -306,6 +307,13 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     p.source !== "seed" && p.source !== "manual" && e.editorial_summary?.trim()
       ? e.editorial_summary.trim()
       : p.short_blurb;
+  // Hours: curated wins; otherwise parse Google's weekday_hours into
+  // structured Hours so the OpenClosedDot at the top of the page
+  // matches the table below it. Previously the structured field stayed
+  // undefined when only Google data existed, so the page showed
+  // "Hours not posted" right above a fully-populated Google hours
+  // table — a visible contradiction.
+  const hours = p.hours ?? parseGoogleWeekdayHours(e.weekday_hours);
   return {
     ...p,
     geom,
@@ -316,6 +324,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     // (DFP scrapes with no phone/site) stay blank until enriched.
     phone: p.phone ?? e.phone,
     website: p.website ?? e.website,
+    hours,
     // If Google gave us hours, we consider hours verified.
     hours_verified: e.has_hours ? true : p.hours_verified,
     is_verified: e.business_status === "OPERATIONAL" ? true : p.is_verified,
