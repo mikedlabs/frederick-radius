@@ -483,7 +483,7 @@ export default function RadiusBuilder({
                   the stranger's "of what?" without forcing them to
                   trace back to the page name. */}
               <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                place{inside.length === 1 ? "" : "s"} in radius
+                {`${inside.length === 1 ? "place" : "places"} in radius`}
               </span>
             </span>
             {/* "farthest: Hill House Bed and Breakfast" was here.
@@ -690,7 +690,13 @@ export default function RadiusBuilder({
                 className="mt-1 text-[11px] tabular-nums"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                {inside.length.toLocaleString()} place{inside.length === 1 ? "" : "s"} · {groups.length} categor{groups.length === 1 ? "y" : "ies"}
+                {/* Single template literal so React renders this as
+                    ONE text node. Splitting it into JSX expressions
+                    (e.g. "place{N === 1 ? '' : 's'} · {C} categor...")
+                    creates multiple text nodes that screen readers
+                    and text extractors concatenate with whitespace,
+                    rendering "488 place s · 11 categor ies." */}
+                {`${inside.length.toLocaleString()} ${inside.length === 1 ? "place" : "places"} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
               </p>
             </div>
             <button
@@ -746,7 +752,7 @@ export default function RadiusBuilder({
                       className="block text-[10px] font-bold uppercase tracking-[0.08em]"
                       style={{ color }}
                     >
-                      {g.items.length} {g.items.length === 1 ? "place" : "places"}
+                      {`${g.items.length} ${g.items.length === 1 ? "place" : "places"}`}
                     </span>
                   </span>
                   <ChevronDown
