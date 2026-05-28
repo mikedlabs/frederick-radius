@@ -11,14 +11,22 @@
 
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import ClusteredSpires from "./ClusteredSpires";
 
-// RidgeLine (a soft mountain horizon) was removed pre-launch — the
-// silhouette read as "wavy" rather than "mountains" to actual users.
-// ClusteredSpires replaces it: sharp vertical steeples that
-// unambiguously read as architecture, AND name-check Frederick's
-// "City of the Clustered Spires" identity. Whittier's line, 1863.
-// RidgeLine.tsx is kept in the tree at ./RidgeLine for reference.
+// Two silhouette attempts have now been pulled from the SkyHero
+// bottom edge:
+//   1. RidgeLine (mountain horizon) — read as "wavy" instead of
+//      mountains. Kept at ./RidgeLine.tsx for reference.
+//   2. ClusteredSpires (downtown steeples) — the proportions read
+//      phallic in the rendered version, not as architecture. Kept
+//      at ./ClusteredSpires.tsx; if we revisit, a redesign needs
+//      wider tower bases, stepped belfry → spire silhouettes, and
+//      unambiguous cross finials (with horizontal arms) to break
+//      the "tall narrow shape" read.
+// The Frederick identity now lives in the COPY beats — the Monocacy
+// / Catoctin sun anchors in AlmanacFooter, the Carroll Creek / Market
+// Street / Catoctin trails proper nouns in BriefingLine. The sky
+// ends in its own bottom color and the first card below overlaps
+// cleanly into it (-mt-4 on the page wrapper).
 
 export type SkyTone = "light" | "dark";
 type Sky = { top: string; mid: string; bottom: string; tone: SkyTone };
@@ -197,15 +205,10 @@ export default async function SkyHero({
       data-sky-mood={mood}
     >
       {children}
-      {/* ClusteredSpires — the downtown Frederick skyline silhouette
-          that anchors the SkyHero's bottom edge. The sky gradient
-          flows down through the spires (var(--app-bg) fill means the
-          page bg pokes up into the sky to form the silhouette), so
-          the boundary between sky and page reads as "looking up at
-          Frederick" rather than as a gradient that runs out of
-          colors. See ClusteredSpires.tsx for why this works where
-          the earlier RidgeLine didn't. */}
-      <ClusteredSpires />
+      {/* No silhouette mounted here right now. See the import-area
+          comment for the history of attempts (mountains, spires).
+          Frederick identity lives in the AlmanacFooter + BriefingLine
+          copy until the silhouette gets a designed-from-scratch pass. */}
     </section>
   );
 }
