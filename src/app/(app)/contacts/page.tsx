@@ -1,11 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   AlertCircle,
   Phone,
   ExternalLink,
   Shield,
   Landmark,
+  Wrench,
+  CircleParking,
+  FileText,
+  Receipt,
+  PawPrint,
+  HeartHandshake,
+  Users,
+  Trash2,
+  type LucideIcon,
 } from "lucide-react";
 import { DEPARTMENTS, formatPhone, type DepartmentContact } from "@/data/departments";
 import PageBloom from "@/components/ui/PageBloom";
@@ -19,24 +27,100 @@ export const metadata: Metadata = {
 export const revalidate = 86_400;
 
 /**
- * /contacts — government department directory.
+ * /contacts — government directory reorganized BY INTENT, not by
+ * department.
  *
- * Three groups, top to bottom:
- *   1. Emergency / health — 911, 988, Poison Control, the hospital.
- *   2. City of Frederick — verified department names + URLs, phones
- *      only where verified.
- *   3. Frederick County — same shape.
+ * The page used to lead with a jurisdiction split (emergency / city /
+ * county) — accurate but useless to someone who has a specific
+ * question. "I need to report a pothole" doesn't map to a
+ * jurisdiction; it maps to a department most people don't know the
+ * name of.
  *
- * Honest sourcing: phone numbers are populated only where confirmed
+ * New top section: "What do you need?" — an intent-led grid that
+ * answers the most common asks (pothole, ticket, permit, water bill,
+ * animal complaint, etc.) by routing directly to the right
+ * department. Below that, the original jurisdiction directory stays
+ * as the comprehensive fallback for anyone who knows what they're
+ * looking for.
+ *
+ * Sourcing honesty: phone numbers are populated only where confirmed
  * from an official .gov page. Unverified phones are omitted rather
- * than guessed — the user clicks through to the website for the right
- * office's number. This is the same "never fabricate" rule the places
- * loader applies to hours and ratings.
+ * than guessed.
  */
+
+type Intent = {
+  label: string;
+  icon: LucideIcon;
+  accent: string;
+  /** Department slug this intent routes to. */
+  slug: string;
+  /** Short clarifier shown under the label. */
+  hint: string;
+};
+
+const INTENTS: Intent[] = [
+  {
+    label: "Pothole or sidewalk",
+    icon: Wrench,
+    accent: "var(--app-brand)",
+    slug: "city-public-works",
+    hint: "Streets, signs, signals, street trees",
+  },
+  {
+    label: "Parking ticket or tow",
+    icon: CircleParking,
+    accent: "var(--app-cool)",
+    slug: "city-parking",
+    hint: "Tickets, monthly permits, where your car went",
+  },
+  {
+    label: "Building permit",
+    icon: FileText,
+    accent: "var(--app-brand-2)",
+    slug: "city-building-permits",
+    hint: "Permits, inspections, certificates of occupancy",
+  },
+  {
+    label: "Water bill",
+    icon: Receipt,
+    accent: "var(--app-accent)",
+    slug: "city-utility-billing",
+    hint: "Pay, dispute, start, or stop service",
+  },
+  {
+    label: "Animal complaint",
+    icon: PawPrint,
+    accent: "var(--app-warning)",
+    slug: "county-animal-control",
+    hint: "Loose dog, lost pet, animal welfare",
+  },
+  {
+    label: "Rental or heating help",
+    icon: HeartHandshake,
+    accent: "var(--app-positive)",
+    slug: "city-housing-human-services",
+    hint: "Rental assistance, heating, low-income programs",
+  },
+  {
+    label: "City councilmember",
+    icon: Users,
+    accent: "var(--app-brand)",
+    slug: "city-public-affairs",
+    hint: "Talk to your district rep or attend a meeting",
+  },
+  {
+    label: "Trash or recycling",
+    icon: Trash2,
+    accent: "var(--app-ink-2)",
+    slug: "county-solid-waste",
+    hint: "Pickup schedule, large item, recycling rules",
+  },
+];
 export default function ContactsPage() {
   const emergency = DEPARTMENTS.filter((d) => d.jurisdiction === "emergency");
   const city = DEPARTMENTS.filter((d) => d.jurisdiction === "city");
   const county = DEPARTMENTS.filter((d) => d.jurisdiction === "county");
+  const bySlug = new Map(DEPARTMENTS.map((d) => [d.slug, d] as const));
 
   return (
     <div className="relative space-y-6">
@@ -47,18 +131,97 @@ export default function ContactsPage() {
           Contacts
         </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Who to call.
+          What do you need?
         </h1>
         <p
           className="text-[15px] leading-relaxed text-pretty"
           style={{ color: "var(--app-ink-2)" }}
         >
-          City of Frederick and Frederick County government departments
-          plus the emergency lines. Phone numbers shown only when
-          verified from the official source. When a department's number
-          isn't here, tap the link to find it on their page.
+          The right department to call, organized by what you&rsquo;re
+          trying to do. Emergency lines are at the top. The full
+          directory by jurisdiction is below.
         </p>
       </header>
+
+      {/* Intent grid — leads with what people ACTUALLY want to do,
+          not which jurisdiction owns it. Each tile resolves to one
+          of the verified DEPARTMENTS entries; the resolved card is
+          rendered with the same Row treatment used in the directory
+          below, just promoted to the top. */}
+      <section
+        aria-labelledby="contacts-intent-heading"
+        className="space-y-2.5"
+      >
+        <h2
+          id="contacts-intent-heading"
+          className="eyebrow px-1"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Common requests
+        </h2>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {INTENTS.map((intent) => {
+            const dept = bySlug.get(intent.slug);
+            if (!dept) return null;
+            const Icon = intent.icon;
+            const href = dept.phone ? `tel:${dept.phone}` : dept.website;
+            const external = !dept.phone;
+            return (
+              <li key={intent.slug}>
+                <a
+                  href={href}
+                  target={external ? "_blank" : undefined}
+                  rel={external ? "noopener noreferrer" : undefined}
+                  aria-label={`${intent.label} — ${intent.hint}${dept.phone ? ` · call ${formatPhone(dept.phone)}` : " · website"}`}
+                  className="hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    boxShadow:
+                      "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                    style={{
+                      background: `color-mix(in srgb, ${intent.accent} 14%, transparent)`,
+                    }}
+                  >
+                    <Icon
+                      className="h-4 w-4"
+                      strokeWidth={2}
+                      style={{ color: intent.accent }}
+                    />
+                  </span>
+                  <span className="min-w-0">
+                    <span
+                      className="block text-[13px] font-semibold leading-tight"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {intent.label}
+                    </span>
+                    <span
+                      className="mt-0.5 block text-[11px] leading-snug"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {intent.hint}
+                    </span>
+                    {dept.phone && (
+                      <span
+                        className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-semibold tabular-nums"
+                        style={{ color: intent.accent }}
+                      >
+                        <Phone className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                        {formatPhone(dept.phone)}
+                      </span>
+                    )}
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       <Section
         title="Emergency and health"
