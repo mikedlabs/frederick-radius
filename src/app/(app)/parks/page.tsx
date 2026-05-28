@@ -73,6 +73,7 @@ function ParkCard({ p }: { p: Park }) {
         style={{ background: "color-mix(in srgb, var(--app-brand-2) 8%, var(--app-bg-sunken))" }}
       >
         {mapUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- static Mapbox static-image URL per park; the next/image optimizer round-trip adds latency without saving bytes for already-rasterized map tiles
           <img
             src={mapUrl}
             alt=""

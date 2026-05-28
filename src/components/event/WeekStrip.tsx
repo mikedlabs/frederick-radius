@@ -24,8 +24,6 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
  */
 
 const RAIL_DAYS = 14;
-const BAR_MAX_PX = 36;
-const BAR_FLOOR_PX = 2;
 
 function dayKeyEastern(iso: string): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -118,9 +116,6 @@ export default function WeekStrip({
       barColor: dominantCategory(list) ?? "var(--app-border)",
     };
   });
-
-  // Normalize the activity bar against the busiest day in the window.
-  const maxCount = Math.max(1, ...days.map((d) => d.count));
 
   return (
     <section aria-label="Next two weeks" className="relative -mx-4 px-4">

@@ -68,6 +68,7 @@ export default function NearbyNow() {
 
   useEffect(() => {
     if (state.status !== "granted") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear stale ctx + spinner when geolocation drops (denied / unavailable mid-session) so we never render an old neighborhood
       setCtx(null);
       setLoading(false);
       return;

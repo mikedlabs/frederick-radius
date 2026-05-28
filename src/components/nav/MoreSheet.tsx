@@ -8,7 +8,6 @@ import {
   Bus,
   Mountain,
   Settings as SettingsIcon,
-  ExternalLink,
   ShieldCheck,
   Waves,
   TreeDeciduous,
@@ -206,79 +205,6 @@ function IconTile({
       style={style}
       aria-label={aria}
     >
-      {body}
-    </Link>
-  );
-}
-
-function DirectoryRow({
-  href,
-  label,
-  description,
-  icon: Icon,
-  color,
-  external,
-  onClose,
-}: Item & { onClose: () => void }) {
-  // Per-item color identity — was a sea of identical cool-tinted
-  // icons. Now each row carries its own accent so the eye can sort
-  // by type without reading every label.
-  const body = (
-    <>
-      <span
-        aria-hidden
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-        style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}
-      >
-        <Icon
-          className="h-[18px] w-[18px]"
-          strokeWidth={2}
-          style={{ color }}
-        />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span
-          className="block text-[13px] font-semibold"
-          style={{ color: "var(--app-ink)" }}
-        >
-          {label}
-        </span>
-        <span
-          className="block truncate text-[11px]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {description}
-        </span>
-      </span>
-      {external && (
-        <ExternalLink
-          aria-hidden
-          className="h-3.5 w-3.5 shrink-0"
-          strokeWidth={2}
-          style={{ color: "var(--app-ink-3)" }}
-        />
-      )}
-    </>
-  );
-  const className =
-    "hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition";
-  const style = {
-    borderColor: "var(--app-border)",
-    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-  };
-  return external ? (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onClose}
-      className={className}
-      style={style}
-    >
-      {body}
-    </a>
-  ) : (
-    <Link href={href} onClick={onClose} className={className} style={style}>
       {body}
     </Link>
   );

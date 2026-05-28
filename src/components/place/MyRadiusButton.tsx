@@ -84,9 +84,9 @@ export default function MyRadiusButton({
       const r = await fetch("/api/auth/me", { cache: "no-store" });
       const auth: { user: { id: string } | null } = await r.json();
       if (!auth.user) {
-        const next = `${window.location.pathname}${window.location.search}?follow=${encodeURIComponent(slug)}`;
-        // If the path already had a query string, "?follow=" above is
-        // wrong — fix it by using window.location.search properly.
+        // Build the post-login destination with proper query handling
+        // — concatenating "?follow=" would have stomped any existing
+        // query string. URLSearchParams gets it right.
         const url = new URL(window.location.href);
         url.searchParams.set("follow", slug);
         const safeNext = `${url.pathname}${url.search}`;

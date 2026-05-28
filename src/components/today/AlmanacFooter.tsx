@@ -18,7 +18,6 @@ import { FREDERICK_CENTER } from "@/lib/geo";
  * dedupes when the same fetch fires elsewhere in the page tree.
  */
 export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean } = {}) {
-  // eslint-disable-next-line react-hooks/purity
   const now = new Date();
   const delta = daylightDelta(now);
   if (!delta) return null;

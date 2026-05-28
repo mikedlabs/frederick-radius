@@ -128,6 +128,7 @@ export default function SearchOverlay({
   useEffect(() => {
     const q = query.trim();
     if (!q) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous fetch's results when the user empties the input, so the overlay never shows stale answers
       setResults([]);
       return;
     }

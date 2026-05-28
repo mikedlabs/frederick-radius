@@ -23,7 +23,7 @@ import {
   ToyBrick,
   X,
 } from "lucide-react";
-import { INTENTS, type Intent, type SubIntent } from "@/data/intents";
+import { INTENTS, type SubIntent } from "@/data/intents";
 
 const ICON: Record<NonNullable<SubIntent["icon"]>, typeof Coffee> = {
   Coffee,

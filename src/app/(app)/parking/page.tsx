@@ -523,7 +523,7 @@ export default function ParkingPage() {
           <span>
             Tow-and-impound is real downtown. If your car&rsquo;s gone, call
             the City Parking Department before you call the police —
-            most "thefts" downtown turn out to be tows from a snow
+            most &ldquo;thefts&rdquo; downtown turn out to be tows from a snow
             route or street-cleaning violation.
           </span>
         </p>

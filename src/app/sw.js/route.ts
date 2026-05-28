@@ -1,4 +1,3 @@
-import type { NextRequest } from "next/server";
 
 /**
  * /sw.js — the service worker, served dynamically so the CACHE_VERSION
@@ -200,7 +199,7 @@ self.addEventListener("notificationclick", (event) => {
 });
 `;
 
-export function GET(_req: NextRequest) {
+export function GET() {
   const body = SW_SOURCE(buildVersion());
   return new Response(body, {
     headers: {

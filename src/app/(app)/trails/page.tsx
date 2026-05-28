@@ -66,6 +66,7 @@ function TrailCard({ t }: { t: Trail }) {
         }}
       >
         {mapUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- static Mapbox static-image URL per trail; the next/image optimizer round-trip adds latency without saving bytes for already-rasterized map tiles
           <img
             src={mapUrl}
             alt=""

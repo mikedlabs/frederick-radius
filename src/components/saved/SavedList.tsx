@@ -86,6 +86,7 @@ export default function SavedList() {
   useEffect(() => {
     if (!mounted) return;
     if (slugsToFetch.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: when nothing is saved, render the "empty Map = fetched, no matches" branch so the skeleton stops spinning
       setPlacesBySlug(new Map());
       return;
     }
@@ -118,6 +119,7 @@ export default function SavedList() {
     try {
       const saved = window.localStorage.getItem(SAVED_SORT_STORAGE_KEY);
       if (saved === "category" || saved === "recent" || saved === "az" || saved === "distance") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of a localStorage preference; SSR can't read localStorage
         setSort(saved);
       }
     } catch {
@@ -143,6 +145,7 @@ export default function SavedList() {
       const slug = window.localStorage.getItem("fr_home_muni");
       if (slug) {
         const m = MUNICIPALITY_BY_SLUG[slug];
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of a localStorage preference; SSR can't read localStorage
         if (m) setHomeOrigin(m.centroid);
       }
     } catch {

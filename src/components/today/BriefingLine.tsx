@@ -111,7 +111,7 @@ function formatTime(iso: string): string {
  *  Returns null when nothing notable — the briefing doesn't need a
  *  weather line every single render.
  */
-async function weatherFragment(now: Date): Promise<string | null> {
+async function weatherFragment(): Promise<string | null> {
   const fc = await getNwsForecast(FREDERICK_CENTER);
   if (!fc || fc.hourly.length === 0) return null;
   const current = fc.hourly[0];
@@ -150,7 +150,7 @@ export default async function BriefingLine() {
   const band = timeBand(now);
   const openCount = openNowCount(now);
   const next = nextNotableEvent(now);
-  const weather = await weatherFragment(now);
+  const weather = await weatherFragment();
 
   // Compose. Each fragment is optional; we glue them with " · "
   // so the line stays human if one fragment isn't available.

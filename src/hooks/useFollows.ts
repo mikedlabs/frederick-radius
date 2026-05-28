@@ -154,7 +154,7 @@ export function useToggleFollow(slug: string, source?: string) {
     if (auth === "anonymous" || auth === "unknown") {
       // localStorage path (legacy)
       localToggle();
-      return useIsSaved_readSync(slug);
+      return readIsSavedSync(slug);
     }
     // Authed path: optimistic API call.
     const currentlyFollowed = await fetch("/api/follows", { cache: "no-store" })
@@ -182,7 +182,7 @@ export function useToggleFollow(slug: string, source?: string) {
 
 /** Module-level read of "is slug saved locally" — used by the toggle's
  *  return value when in anonymous mode. */
-function useIsSaved_readSync(slug: string): boolean {
+function readIsSavedSync(slug: string): boolean {
   if (typeof window === "undefined") return false;
   try {
     const raw = window.localStorage.getItem("fr:saved:v1");

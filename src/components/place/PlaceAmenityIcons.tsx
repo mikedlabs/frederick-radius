@@ -91,7 +91,7 @@ export default function PlaceAmenityIcons({
   return (
     <section aria-label="Amenities">
       <h2 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
-        What you'll find
+        What you&rsquo;ll find
       </h2>
       <ul
         // grid-cols layout instead of a wrapped flex row keeps every

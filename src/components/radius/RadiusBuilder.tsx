@@ -442,6 +442,7 @@ export default function RadiusBuilder({
   const [isochrone, setIsochrone] = useState<GeoJSON.FeatureCollection | null>(null);
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: clear the previous isochrone the moment center/mode/minutes change so the map doesn't show last query's polygon while the new one is fetching
     setIsochrone(null);
     const params = new URLSearchParams({
       lng: String(center.lng),

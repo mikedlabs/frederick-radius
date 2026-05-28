@@ -37,6 +37,7 @@ export default function NotificationsNudge() {
     if (!("Notification" in window) || !("PushManager" in window)) return;
     if (Notification.permission === "granted") return;
     if (Notification.permission === "denied") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount feature-detection gate; the server can't read Notification.permission or sessionStorage, so this must run after hydration
     setShow(true);
   }, []);
 
