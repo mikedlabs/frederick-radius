@@ -112,7 +112,15 @@ export default function MapIntentChips({
   return (
     <div
       className="pointer-events-none absolute inset-x-0 top-0 z-30 space-y-2 px-2.5 sm:px-3"
-      style={{ paddingTop: "calc(2.5rem + env(safe-area-inset-top, 0px) + 18px)" }}
+      // Pre-2026-05-28 this had paddingTop "calc(2.5rem + safe-area
+      // + 18px)" to clear the floating MapModes shelf + toggle that
+      // used to sit above it. Both have since moved into inline
+      // strips above and below the map (the map page's flow now
+      // handles the layout), so the chips can sit closer to the
+      // map's top edge. 8px of top-of-map breathing room is enough;
+      // TopBar's own safe-area-top is already absorbed in the page
+      // layout above this container.
+      style={{ paddingTop: "8px" }}
       aria-label="Filter map by intent"
     >
       {/* Active-intent banner — only present when a filter is on. A

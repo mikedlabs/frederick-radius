@@ -405,32 +405,33 @@ export default async function MapPage({
 
   return (
     <div className="-mx-4 -mt-4">
+      {/* MapModes preset shelf — inline ABOVE the map (no longer
+          floating). Putting it in normal flow gives clear separation
+          from TopBar so the chips can never sit under the search bar,
+          which is what was happening when MapModes floated absolute
+          at top-2 of the map div (the safe-area math was double-
+          counted on devices with a notch). */}
+      <div className="px-3 py-2 sm:px-4">
+        <MapModes
+          params={{ mode: "browse", open: openParam, intent: intentParam }}
+        />
+      </div>
       <div
         className="relative"
         style={{
-          // Leave ~56px of vertical room BELOW the map for the mode
-          // toggle strip. The page's bottom padding (set by the (app)
-          // layout) clears the floating BottomNav after that.
+          // 100dvh minus TopBar (56) minus the MapModes strip (~48)
+          // minus the bottom toggle strip (~48) minus the iOS safe
+          // area at top. Both inline strips use py-2 = 16px padding
+          // with ~32px chip height = ~48px each.
           height:
-            "calc(100dvh - 56px - 56px - env(safe-area-inset-top, 0px))",
+            "calc(100dvh - 56px - 48px - 48px - env(safe-area-inset-top, 0px))",
         }}
       >
-        {/* MapIntentChips owns the absolute positioning at the top of
-            the map; MapTimeChips renders as a child so the two strips
-            stack inside the same flow container. Previously they were
-            siblings with independent `top:` offsets, which overlapped
-            the moment the active-intent banner pushed the intent strip
-            down. */}
-        {/* Map Modes — preset "decision surface" deep links. Sits
-            ABOVE MapIntentChips so the hierarchy reads:
-              "What kind of browse?" (preset) → "What category?" (chips).
-            Per the May 2026 review: most maps show everything; this
-            app should show the RIGHT layer for the moment. */}
-        <div className="pointer-events-none absolute inset-x-0 top-2 z-30 px-3 sm:top-3 sm:px-4">
-          <MapModes
-            params={{ mode: "browse", open: openParam, intent: intentParam }}
-          />
-        </div>
+        {/* MapIntentChips still floats over the map — it's the
+            in-context filter UI; users tap chips to narrow what's
+            visible. The active-intent banner sits at the top of this
+            stack; the chips strip and the optional MapTimeChips
+            children sit below it in the same space-y-2 flow. */}
         <MapIntentChips
           active={intent?.key}
           activeCount={intent ? places.length : undefined}
@@ -458,11 +459,10 @@ export default async function MapPage({
           fullBleed
         />
       </div>
-      {/* Mode toggle sits BELOW the map in its own strip — out of the
-          map's own controls (Layers, drawer) and where the user
-          expects UI controls. Right-aligned to mirror RadiusBuilder's
-          placement so the toggle lives in the same spot across both
-          modes. */}
+      {/* Mode toggle BELOW the map in its own right-aligned strip,
+          mirroring the MapModes strip above. Toggle lives in the
+          same spot across both Radius and Browse so the affordance
+          is learnable. */}
       <div className="flex justify-end px-3 py-2 sm:px-4">
         <MapModeToggle mode="browse" />
       </div>
