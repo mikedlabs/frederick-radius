@@ -330,8 +330,15 @@ export default async function HomePage({
           gradient hero overlaps the panel's top edge by 8px so the two
           read as connected; the panel's own border holds the rest of
           the weather stack together. */}
-      <div>
-        <SkyHero>
+      {/* Wallet-card stack: SkyHero (weather) sits ON TOP of the
+          weather sub-card panel (hourly + weekly + more), like two
+          physical cards laying on each other. The sub-card panel
+          slides UP by -3 (12px) so its top edge tucks behind the
+          SkyHero's rounded bottom; a soft downward shadow on the
+          SkyHero casts depth onto the panel. Net visual: weather
+          card floats, week + hourly + more peeks from underneath. */}
+      <div className="relative">
+        <SkyHero className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
           <Suspense
             fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
           >
@@ -363,7 +370,7 @@ export default async function HomePage({
           const stackBg = `linear-gradient(180deg, color-mix(in srgb, ${sky.bottom} ${strength}%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 75%)`;
           return (
             <div
-              className="relative z-10 mt-2 overflow-hidden rounded-[var(--app-radius-lg)] border [&_>_*:not(:last-child)]:border-b"
+              className="relative -mt-3 z-0 overflow-hidden rounded-[var(--app-radius-lg)] border pt-3 [&_>_*:not(:last-child)]:border-b"
               style={{
                 borderColor: "var(--app-border)",
                 boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",

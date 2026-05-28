@@ -11,6 +11,7 @@ import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" }
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import KNOWN_FOR_RAW from "@/data/known-for.json" with { type: "json" };
+import SEASONAL_RAW from "@/data/seasonal-places.json" with { type: "json" };
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
@@ -18,6 +19,31 @@ import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
+
+// Seasonal-place gate. Keyed by slug; values are { months: number[],
+// label: string }. The _doc key in the JSON is metadata; skip it.
+// A place listed here is HIDDEN from public listings whenever the
+// current month isn't in its months array. /places/<slug> still
+// resolves so shared links / sitemap entries don't 404.
+type SeasonalEntry = { label?: string; months: number[] };
+const SEASONAL = Object.fromEntries(
+  Object.entries(SEASONAL_RAW as Record<string, unknown>).filter(
+    ([k]) => !k.startsWith("_"),
+  ),
+) as Record<string, SeasonalEntry>;
+
+/**
+ * Whether a place is currently in season. Non-seasonal places (the
+ * vast majority) are always in season — only entries in seasonal-
+ * places.json are gated. Pure: month is read from the injected
+ * `now`, so unit tests can advance the clock without mocking Date.
+ */
+export function isInSeason(p: Pick<Place, "slug">, now: Date = new Date()): boolean {
+  const s = SEASONAL[p.slug];
+  if (!s) return true;
+  const month = now.getMonth() + 1; // 1-indexed
+  return s.months.includes(month);
+}
 // Default ON by owner directive (2026-05-16: "ship everything"). The
 // dedupe is verified and all named venues fold. Set RADIUS_DEDUPE=0 to
 // disable without a code change (instant rollback).
@@ -541,7 +567,8 @@ export function publicPlaces(): Place[] {
     .filter(isOperational)
     .filter(isDiscoverable)
     .filter(isSubstantive)
-    .filter((p) => isValidCoord(p.geom));
+    .filter((p) => isValidCoord(p.geom))
+    .filter((p) => isInSeason(p));
 }
 
 /**

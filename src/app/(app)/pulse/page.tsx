@@ -48,9 +48,24 @@ import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
+import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
+import { publicPlaces } from "@/lib/loaders/places";
+import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleDashSection from "@/components/pulse/CollapsibleDashSection";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
+import {
+  Users,
+  Square,
+  CalendarHeart,
+  Building2,
+  Bus,
+  Trees,
+  Utensils,
+  Waves as WavesIcon,
+  Mountain,
+  type LucideIcon,
+} from "lucide-react";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -86,7 +101,7 @@ function nowClock(): string {
 }
 
 export default async function PulsePage() {
-  const [incidents, outages, fcps, fixit, safety, alerts, news] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes] = await Promise.all([
     getChartIncidentsFrederick(),
     getFrederickOutages(),
     getFcpsAlerts(),
@@ -99,7 +114,23 @@ export default async function PulsePage() {
     // Local headlines from Google News RSS — always-on city signal
     // even when the operational feeds are quiet.
     getLocalHeadlines().catch(() => []),
+    // TransIT route count for the "by the numbers" canon grid below.
+    // Same Socrata feed /transit uses; the loader caches weekly.
+    getFrederickTransitRoutes().catch(() => []),
   ]);
+
+  // ── "By the numbers" canon — pure / no fetch beyond the routes
+  // above. Computed once at request time. Numbers blend our LIVE
+  // directory counts with established Frederick County facts so the
+  // panel reads as a real snapshot of the place, not a marketing
+  // brochure. Population from US Census ACS 2023 estimate, land
+  // area from the official county profile.
+  const places = publicPlaces();
+  const parksCount = places.filter((p) => p.category === "park" || p.category === "trail" || p.category === "playground").length;
+  const restaurantsCount = places.filter((p) => p.category === "restaurant" || p.category === "pizza" || p.category === "bakery" || p.category === "coffee" || p.category === "bar" || p.category === "brewery").length;
+  // De-dupe route names so the count matches what /transit shows
+  // (variations of one route collapse to one entry there too).
+  const routesCount = new Set(transitRoutes.map((r) => r.name)).size;
 
   const sevRank = { High: 0, Medium: 1, Low: 2 } as const;
   const traffic = [...incidents].sort(
@@ -771,6 +802,105 @@ export default async function PulsePage() {
         </div>
       </section>
 
+      {/* By the numbers — county canon + live directory counts.
+          Sits BELOW the live ops sections because static reference
+          stats shouldn't compete with urgent live data, but ABOVE
+          the footer because it's still substantive content (not
+          legalese / sourcing). Mobile-first 2-col, sm 3-col,
+          lg 4-col so the tiles always read as a balanced grid. */}
+      <section
+        aria-labelledby="pulse-canon-heading"
+        className="space-y-3"
+      >
+        <div className="flex items-baseline gap-2">
+          <h2
+            id="pulse-canon-heading"
+            className="font-serif text-[20px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            By the numbers
+          </h2>
+          <span
+            className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Census + canon
+          </span>
+        </div>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          <CanonTile
+            icon={Users}
+            value="285,464"
+            label="Population"
+            note="2023 ACS estimate"
+            accent="var(--app-brand)"
+          />
+          <CanonTile
+            icon={Square}
+            value="663"
+            unit="mi²"
+            label="Land area"
+            note="From the Maryland line to the Potomac"
+            accent="var(--app-cool)"
+          />
+          <CanonTile
+            icon={CalendarHeart}
+            value="1748"
+            label="Founded"
+            note="Hessian fairs to Civil War crossroads"
+            accent="var(--app-accent)"
+          />
+          <CanonTile
+            icon={Building2}
+            value={MUNICIPALITIES.length}
+            label="Municipalities"
+            note="From Brunswick to Burkittsville"
+            accent="var(--app-brand-2)"
+          />
+          <CanonTile
+            icon={Trees}
+            value={parksCount.toLocaleString()}
+            label="Parks + trails mapped"
+            note="Public, free, in service"
+            accent="var(--app-positive)"
+            href="/parks"
+          />
+          <CanonTile
+            icon={Utensils}
+            value={restaurantsCount.toLocaleString()}
+            label="Eat + drink mapped"
+            note="Cafes, kitchens, taprooms, bakeries"
+            accent="var(--app-brand)"
+            href="/category/food"
+          />
+          <CanonTile
+            icon={Bus}
+            value={routesCount > 0 ? routesCount.toLocaleString() : "—"}
+            label="TransIT routes"
+            note="County bus network, every variation"
+            accent="var(--app-cool)"
+            href="/transit"
+          />
+          <CanonTile
+            icon={WavesIcon}
+            value="1.4"
+            unit="mi"
+            label="Carroll Creek"
+            note="Linear park, downtown spine"
+            accent="var(--app-cool)"
+            href="/places/carroll-creek-linear-park-frederick"
+          />
+          <CanonTile
+            icon={Mountain}
+            value="1,888"
+            unit="ft"
+            label="Catoctin Mountain"
+            note="High point of the western ridge"
+            accent="var(--app-ink-2)"
+          />
+        </ul>
+      </section>
+
       {/* Footer — disclaimer + sources at a glance */}
       <footer
         className="space-y-3 rounded-[var(--app-radius-md)] border p-4 text-[11px]"
@@ -1079,6 +1209,98 @@ function Row({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * CanonTile — a single stat in the "By the numbers" grid. Big serif
+ * number, small label, optional sub-line, optional unit suffix.
+ * When `href` is set the whole tile becomes a tappable link to the
+ * source surface (e.g. /transit, /parks). Otherwise it's a static
+ * fact card. Same visual rhythm as the existing /pulse StatusTile
+ * so the two grids feel like one family.
+ */
+function CanonTile({
+  icon: Icon,
+  value,
+  unit,
+  label,
+  note,
+  accent,
+  href,
+}: {
+  icon: LucideIcon;
+  value: string | number;
+  unit?: string;
+  label: string;
+  note?: string;
+  accent: string;
+  href?: string;
+}) {
+  const Body = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{
+            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+            color: accent,
+          }}
+        >
+          <Icon className="h-4 w-4" strokeWidth={2.25} />
+        </span>
+      </div>
+      <p className="mt-2 flex items-baseline gap-1 leading-none">
+        <span
+          className="font-serif text-[26px] font-semibold tabular-nums tracking-tight sm:text-[28px]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {value}
+        </span>
+        {unit && (
+          <span
+            className="text-[12px] font-semibold"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {unit}
+          </span>
+        )}
+      </p>
+      <p
+        className="mt-1 text-[12px] font-semibold leading-tight"
+        style={{ color: "var(--app-ink-2)" }}
+      >
+        {label}
+      </p>
+      {note && (
+        <p
+          className="mt-0.5 text-[10.5px] leading-snug"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {note}
+        </p>
+      )}
+    </>
+  );
+  const className =
+    "tactile-interactive flex h-full flex-col rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition";
+  const style = {
+    borderColor: "var(--app-border)",
+    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+  };
+  return (
+    <li>
+      {href ? (
+        <Link href={href} className={className} style={style}>
+          {Body}
+        </Link>
+      ) : (
+        <div className={className} style={style}>
+          {Body}
+        </div>
+      )}
+    </li>
   );
 }
 
