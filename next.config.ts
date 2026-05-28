@@ -120,6 +120,13 @@ const nextConfig: NextConfig = {
       // value. Redirect kills the duplication; the Field Guide
       // drawer's "Water" tile now points at /rivers directly.
       { source: "/water", destination: "/rivers", permanent: true },
+      // /radius → /map?mode=radius (May 2026 Radius-first /map). The
+      // brand review's Option A: Radius is the signature mode INSIDE
+      // /map, not a separate route. /map now defaults to radius mode
+      // (downtown pin + 10-min walk + immediate results); /radius
+      // stays as a redirect so existing deep links + shared URLs
+      // keep working but the canonical experience lives at /map.
+      { source: "/radius", destination: "/map?mode=radius", permanent: true },
       // /browse renamed back to /map — the spatial tab IS a map, so
       // the URL should say so. The old /browse remains permanently
       // redirected so deep links / cached search results don't 404.

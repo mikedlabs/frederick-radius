@@ -60,7 +60,7 @@ export default function NotFound() {
           </Button>
         </div>
         <Link
-          href="/radius"
+          href="/map?mode=radius"
           className="inline-flex items-center gap-1.5 text-[12px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >

@@ -116,7 +116,7 @@ export default function PlacesIndexPage() {
             {
               label: "Near me",
               nudge: "What's within reach",
-              href: "/radius",
+              href: "/map?mode=radius",
               icon: Navigation,
               color: "var(--app-brand)",
             },
@@ -242,7 +242,7 @@ export default function PlacesIndexPage() {
           </span>
         </Link>
         <Link
-          href="/radius"
+          href="/map?mode=radius"
           className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-4 py-3 transition"
           style={{ borderColor: "var(--app-border)" }}
         >

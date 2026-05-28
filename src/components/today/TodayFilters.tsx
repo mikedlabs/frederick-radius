@@ -113,7 +113,7 @@ export default function TodayFilters({ candidates }: { candidates: PlaceCardData
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
           Nothing matches that combination. Try a different vibe, or{" "}
-          <Link href="/radius" className="underline" style={{ color: "var(--app-cool)" }}>set a custom radius</Link>.
+          <Link href="/map?mode=radius" className="underline" style={{ color: "var(--app-cool)" }}>set a custom radius</Link>.
         </p>
       ) : (
         <ul className="space-y-2">

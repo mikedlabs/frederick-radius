@@ -87,7 +87,7 @@ const QUICK_ACTIONS: readonly QuickAction[] = [
     id: "action:radius",
     title: "What's near me",
     subtitle: "Set a point and a distance.",
-    href: "/radius",
+    href: "/map?mode=radius",
     keywords: ["near", "nearby", "radius", "around", "close", "walking"],
   },
   {

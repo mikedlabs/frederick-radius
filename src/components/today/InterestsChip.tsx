@@ -63,7 +63,7 @@ export default function InterestsChip() {
 
   return (
     <Link
-      href="/radius"
+      href="/map?mode=radius"
       className="inline-flex items-center gap-1.5 self-start rounded-full px-2.5 py-1 text-[11px] font-semibold transition active:scale-[0.96]"
       style={{
         background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",

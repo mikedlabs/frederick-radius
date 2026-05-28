@@ -14,6 +14,10 @@ import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
+import MapModeToggle from "@/components/map/MapModeToggle";
+import RadiusBuilder from "@/components/radius/RadiusBuilder";
+import PageBloom from "@/components/ui/PageBloom";
+import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
@@ -156,13 +160,68 @@ function isTimeMode(s: string | undefined): s is TimeMode {
   return s === "now" || s === "tonight" || s === "weekend" || s === "all";
 }
 
+// Slim places projection used to de-dupe amenities (same shape the
+// /radius route used to derive). Inlined here so the radius branch
+// can compute its amenity set without dragging the full Place loader
+// into the SSR payload — we only need name/category/geom for dedup.
+const CLIENT_PLACES_FOR_DEDUPE = (
+  CLIENT_PLACES_RAW as unknown as Array<{
+    name: string;
+    category: string;
+    geom: { lng: number; lat: number };
+  }>
+).map((p) => ({ name: p.name, category: p.category, geom: p.geom }));
+
 export default async function MapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ intent?: string; sub?: string; t?: string; open?: string }>;
+  searchParams: Promise<{
+    intent?: string;
+    sub?: string;
+    t?: string;
+    open?: string;
+    /** `radius` (default — Radius-first map per the May 2026 brand
+     *  review) or `browse` (classic intent + time chips, no
+     *  isochrone). When unset, defaults to radius. */
+    mode?: string;
+  }>;
 }) {
+  // Peek the mode param BEFORE doing the heavy browse-mode data
+  // loads. The radius branch only needs amenities — no need to
+  // fetch traffic / fixit / mapillary / trails / transit lines /
+  // event feeds when we're going to render RadiusBuilder.
+  const earlyParams = await searchParams;
+  const mode: "radius" | "browse" =
+    earlyParams.mode === "browse" ? "browse" : "radius";
+
+  if (mode === "radius") {
+    // Radius mode: minimal SSR payload (just amenities) — RadiusBuilder
+    // is a client component that reads clientPlaces() itself. Result:
+    // the radius surface ships ~⅒ the HTML the browse surface does.
+    const radiusAmenities = dedupeAmenities(
+      allAmenities(),
+      CLIENT_PLACES_FOR_DEDUPE,
+    );
+    return (
+      <div className="relative space-y-3">
+        <PageBloom variant="cool" />
+        {/* Mode toggle floats above the map at top-right so the user
+            can always flip back to Browse without leaving the page. */}
+        <div className="absolute right-3 top-3 z-40 sm:right-4 sm:top-4">
+          <MapModeToggle mode="radius" />
+        </div>
+        <RadiusBuilder amenities={radiusAmenities} />
+      </div>
+    );
+  }
+
+  // Browse mode — the original /map experience. The rest of this
+  // function is the pre-existing data-fetch + render pipeline. We
+  // already destructured the params for the mode peek above, so we
+  // reuse `earlyParams` here instead of awaiting searchParams again.
+  const { intent: intentParam, sub: subParam, t: tParam, open: openParam } =
+    earlyParams;
   const [
-    { intent: intentParam, sub: subParam, t: tParam, open: openParam },
     incidents,
     fixit,
     mapillaryTrash,
@@ -173,7 +232,6 @@ export default async function MapPage({
     tmSports,
     bitEvents,
   ] = await Promise.all([
-    searchParams,
     getChartIncidentsFrederick().catch(() => []),
     getFixItIssues(30).catch(() => []),
     fetchMapillaryTrash().catch(() => []),
@@ -334,6 +392,13 @@ export default async function MapPage({
           siblings with independent `top:` offsets, which overlapped
           the moment the active-intent banner pushed the intent strip
           down. */}
+      {/* Mode toggle — floats over the map so the user can flip
+          back to Radius mode without leaving the page. Same z-index
+          as MapIntentChips below; positioned at the opposite
+          (right) edge so the two strips don't collide. */}
+      <div className="absolute right-3 top-3 z-40 sm:right-4 sm:top-4">
+        <MapModeToggle mode="browse" />
+      </div>
       <MapIntentChips
         active={intent?.key}
         activeCount={intent ? places.length : undefined}

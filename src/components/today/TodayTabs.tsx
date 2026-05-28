@@ -192,7 +192,7 @@ export default function TodayTabs({
       icon: Footprints,
       accent: "var(--app-cool)",
       count: walkable.length,
-      href: "/radius",
+      href: "/map?mode=radius",
       hrefLabel: "Set a radius",
       meta: <span>Inside a 15-minute walk from downtown</span>,
       empty: "No nearby walkable spots right now.",
