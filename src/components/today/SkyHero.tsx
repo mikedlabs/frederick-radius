@@ -28,6 +28,23 @@ type SkyMood = "clear" | "partly" | "cloudy" | "rain" | "storm" | "fog" | "snow"
  * without re-deriving the hour. Mirrors paletteForHour's tone tier.
  */
 export function currentSkyTone(now: Date = new Date()): SkyTone {
+  return currentSkyPalette(now).tone;
+}
+
+/**
+ * Server-safe helper for the full current Eastern-time sky palette
+ * (top / mid / bottom + tone). Exposed so adjacent surfaces — the
+ * weather sub-card stack below SkyHero, alerts strips, etc. — can
+ * pick up a faint echo of the same sky without re-deriving the
+ * hour or the palette table.
+ *
+ * Note: this is the BASE time-of-day palette, NOT the weather-
+ * mood-adjusted one. Adjacent surfaces want the time signal, not
+ * the precipitation overlay (rain mood on a card stack would read
+ * as a weird gray wash; sky doesn't have that problem because the
+ * gradient is the whole canvas).
+ */
+export function currentSkyPalette(now: Date = new Date()): Sky {
   const h = parseInt(
     new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York",
@@ -36,7 +53,7 @@ export function currentSkyTone(now: Date = new Date()): SkyTone {
     }).format(now),
     10,
   );
-  return paletteForHour(h).tone;
+  return paletteForHour(h);
 }
 
 function paletteForHour(h: number): Sky {
