@@ -110,7 +110,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   const hoursConfirmed = place.hours_source
     ? `Hours from ${HOURS_SOURCE_LABEL[place.hours_source] ?? place.hours_source}, confirmed ${confirmedAgo(place.hours_updated_at) ?? "recently"}.`
     : null;
-  const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng, place.name);
+  const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng);
   const appleUrl = appleMapsDirections(place.geom.lat, place.geom.lng, place.name);
   const actions = actionsForPlace(place);
   const reserveActions = actions.filter((a) => a.category === "reserve");

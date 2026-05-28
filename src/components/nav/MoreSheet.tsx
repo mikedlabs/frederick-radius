@@ -88,7 +88,7 @@ export default function MoreSheet({
       open={open}
       onOpenChange={onOpenChange}
       title="Field guide"
-      subtitle="Tools and layers"
+      subtitle="Useful pages and settings"
     >
       <div className="space-y-5 px-4 pt-3 pb-6">
         {/* DISCOVER + TOOLS sections retired (Field Guide Phase 2,

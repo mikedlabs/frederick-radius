@@ -8,12 +8,16 @@ import type { Place } from "@/data/places";
 
 // ─── Maps / Directions ──────────────────────────────────────────────────
 
-export function googleMapsDirections(lat: number, lng: number, name?: string): string {
+export function googleMapsDirections(lat: number, lng: number): string {
+  // destination=lat,lng is the canonical, always-resolves form. We do NOT
+  // pass destination_place_id — that param requires a real Google Place ID
+  // (e.g. "ChIJ..."), and feeding it a place name (as this used to) is
+  // invalid per Google's URL spec and can make the pin fail to resolve.
+  // The coordinates alone give correct turn-by-turn.
   const params = new URLSearchParams({
     api: "1",
     destination: `${lat},${lng}`,
   });
-  if (name) params.set("destination_place_id", name);
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
