@@ -18,6 +18,7 @@ import SaveButton from "@/components/saved/SaveButton";
 import FollowButton from "@/components/place/FollowButton";
 import MyRadiusButton from "@/components/place/MyRadiusButton";
 import PendingFollowApplier from "@/components/place/PendingFollowApplier";
+import KnownForCard from "@/components/place/KnownForCard";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
@@ -211,6 +212,15 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               {desc}
             </p>
           )}
+          {/* "What people say" — the distilled signal from public
+              reviews: known_for chips + customers_loved items. Renders
+              nothing when neither array is populated. Sits above the
+              raw review snippet so the SCANNABLE answer comes before
+              the paragraph quote. */}
+          <KnownForCard
+            knownFor={place.known_for}
+            customersLoved={place.customers_loved}
+          />
           {place.review_snippet && (
             <figure
               className="border-l-2 pl-3"

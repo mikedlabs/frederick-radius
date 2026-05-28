@@ -1,0 +1,52 @@
+{
+  "dancing-bear-toys-and-games": {
+    "known_for": [
+      "puzzle games",
+      "plush toys",
+      "kid-friendly shopping"
+    ],
+    "customers_loved": [
+      "the new puzzle games",
+      "the new plushies"
+    ],
+    "source": "ai-gpt4o-mini",
+    "extracted_at": "2026-05-28T07:52:58.251Z"
+  },
+  "artistangle-gallery": {
+    "known_for": [],
+    "customers_loved": [
+      "custom framing",
+      "supporting local business"
+    ],
+    "source": "ai-gpt4o-mini",
+    "extracted_at": "2026-05-28T07:52:58.251Z"
+  },
+  "the-gw-team-of-compass": {
+    "known_for": [],
+    "customers_loved": [
+      "an advisor we know we can trust",
+      "working with them",
+      "referrals from others"
+    ],
+    "source": "ai-gpt4o-mini",
+    "extracted_at": "2026-05-28T07:52:58.251Z"
+  },
+  "vital-sources-psychological-services": {
+    "known_for": [],
+    "customers_loved": [
+      "2 therapist",
+      "knowledgeable and professional"
+    ],
+    "source": "ai-gpt4o-mini",
+    "extracted_at": "2026-05-28T07:53:28.256Z"
+  },
+  "law-offices-of-stanley-tashoff": {
+    "known_for": [],
+    "customers_loved": [
+      "experienced communicator",
+      "helping his clients seriously"
+    ],
+    "source": "ai-gpt4o-mini",
+    "extracted_at": "2026-05-28T07:53:28.256Z"
+  }
+}

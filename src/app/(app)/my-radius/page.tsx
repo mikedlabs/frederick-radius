@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Settings, ChevronRight, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
+import NotificationsNudge from "@/components/pwa/NotificationsNudge";
 import { getServerUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -95,6 +96,13 @@ export default async function MyRadiusPage() {
       )}
 
       <SavedList />
+
+      {/* Discreet doorway to /settings/notifications. The component
+          self-hides on browsers without PushManager, on already-
+          subscribed users, on blocked-permission users, and after
+          this session's dismissal. Lives at the BOTTOM so it never
+          competes with the saved-place list itself for attention. */}
+      <NotificationsNudge />
     </div>
   );
 }
