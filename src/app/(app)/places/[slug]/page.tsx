@@ -286,7 +286,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <div className="grid grid-cols-2 gap-2">
         <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
         <ActionButton href={googleUrl} icon={Navigation} label="Google Maps" external />
-        {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
+        {place.phone && (
+          <ActionButton
+            href={`tel:${place.phone.replace(/[^0-9+]/g, "")}`}
+            icon={Phone}
+            label="Call"
+            sublabel={place.phone}
+          />
+        )}
         {place.website && <ActionButton href={place.website} icon={Globe} label="Website" external />}
       </div>
 
@@ -459,9 +466,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 }
 
 function ActionButton({
-  href, icon: Icon, label, external,
-}: { href: string; icon: typeof Phone; label: string; external?: boolean }) {
-  const Comp = external ? "a" : Link;
+  href, icon: Icon, label, sublabel, external,
+}: { href: string; icon: typeof Phone; label: string; sublabel?: string; external?: boolean }) {
+  // tel:/mailto: get a plain anchor — Next's Link is for app routes,
+  // and these protocols don't open in a new tab.
+  const isProtocolLink = href.startsWith("tel:") || href.startsWith("mailto:");
+  const Comp = external || isProtocolLink ? "a" : Link;
   return (
     <Comp
       href={href}
@@ -470,7 +480,14 @@ function ActionButton({
       style={{ color: "var(--app-ink)" }}
     >
       <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-brand)" }} />
-      {label}
+      <span className="flex flex-col items-center gap-0.5">
+        <span>{label}</span>
+        {sublabel && (
+          <span className="text-[10px] font-normal" style={{ color: "var(--app-ink-3)" }}>
+            {sublabel}
+          </span>
+        )}
+      </span>
     </Comp>
   );
 }

@@ -571,12 +571,15 @@ const ACTION_ICON = {
 
 function ActionChip({ action }: { action: PlaceAction }) {
   const Icon = ACTION_ICON[action.icon];
+  // tel:/mailto: don't open in a new tab — opening _blank causes orphan
+  // tabs on desktop browsers without a handler.
+  const isProtocolLink = action.href.startsWith("tel:") || action.href.startsWith("mailto:");
+  const openInNewTab = action.external && !isProtocolLink;
   return (
     <a
       href={action.href}
       onClick={() => haptic("light")}
-      target="_blank"
-      rel="noopener noreferrer"
+      {...(openInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
       className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
       style={{
         borderColor: action.accent,
