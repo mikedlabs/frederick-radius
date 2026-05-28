@@ -145,6 +145,48 @@ export default function RootLayout({
           rel="dns-prefetch"
           href="https://ijszzixn2rzddhti.public.blob.vercel-storage.com"
         />
+        {/* Map + image origin preconnects. Mapbox tiles + the Google
+            Places photo CDN are the next-most-requested third-party
+            origins after the Vercel blob CDN, and they're hit
+            simultaneously on /map and any place detail page. Same
+            "save 50-150ms per first asset" logic as the blob host.
+            Crossorigin="anonymous" matches the actual fetch (Mapbox
+            tiles and Google photos are anonymous CORS); without it
+            the browser skips the warm connection. */}
+        <link
+          rel="preconnect"
+          href="https://api.mapbox.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://api.mapbox.com" />
+        <link
+          rel="preconnect"
+          href="https://events.mapbox.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preconnect"
+          href="https://places.googleapis.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://places.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://lh3.googleusercontent.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="dns-prefetch" href="https://lh3.googleusercontent.com" />
+        {/* Supabase project — auth + DB read/write origins. Only
+            useful once the user has a session (anon route handlers
+            still POST to the Supabase URL), but the cost of a
+            never-used preconnect is ~zero. */}
+        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
+          <link
+            rel="preconnect"
+            href={process.env.NEXT_PUBLIC_SUPABASE_URL}
+            crossOrigin="anonymous"
+          />
+        )}
       </head>
       <body
         suppressHydrationWarning
