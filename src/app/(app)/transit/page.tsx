@@ -4,6 +4,8 @@ import { ArrowLeft, Bus, ExternalLink, MapPin } from "lucide-react";
 import {
   getFrederickTransitRoutes,
   getFrederickTransitRouteShapes,
+  getFrederickTransitStops,
+  getTransitFreshness,
 } from "@/lib/integrations/transitFrederick";
 import TransitMap from "@/components/transit/TransitMap";
 import PageBloom from "@/components/ui/PageBloom";
@@ -44,11 +46,38 @@ export const revalidate = 604_800;
  * weekly revalidate window. TransitMap is the only client surface and
  * receives the GeoJSON as props.
  */
+/**
+ * Format an ISO timestamp as a relative "Updated X ago" string.
+ * Returns null on bad input so callers can decide whether to render
+ * the badge at all — we never claim a freshness we can't prove.
+ */
+function relativeAge(iso: string | null): string | null {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return null;
+  const days = Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24));
+  if (days < 0) return null;
+  if (days < 1) return "today";
+  if (days < 7) return `${days} day${days === 1 ? "" : "s"} ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks} week${weeks === 1 ? "" : "s"} ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} month${months === 1 ? "" : "s"} ago`;
+  const years = Math.floor(days / 365);
+  return `${years} year${years === 1 ? "" : "s"} ago`;
+}
+
 export default async function TransitPage() {
-  const [shapes, routes] = await Promise.all([
+  // All four fetches run in parallel. Each independently revalidates
+  // on its own schedule (routes + stops weekly, freshness daily).
+  const [shapes, routes, stops, freshness] = await Promise.all([
     getFrederickTransitRouteShapes(),
     getFrederickTransitRoutes(),
+    getFrederickTransitStops(),
+    getTransitFreshness(),
   ]);
+  const routesAge = relativeAge(freshness.routesUpdatedAt);
+  const stopsAge = relativeAge(freshness.stopsUpdatedAt);
 
   // Group routes by name so variations of one route (e.g. inbound +
   // outbound) collapse to one entry in the list. Variations stay
@@ -104,7 +133,39 @@ export default async function TransitPage() {
         </p>
       </header>
 
-      <TransitMap shapes={shapes} />
+      <TransitMap shapes={shapes} stops={stops} />
+
+      {/* Freshness disclosure — surfaces the upstream "rowsUpdatedAt"
+          timestamp from Socrata so the user can judge whether what
+          they're looking at is still current. Proposal D's gate: we
+          never PRETEND the network data is fresh — we tell the user
+          and let them decide. Renders only when the probe succeeded;
+          a failed probe means we don't claim a date we can't prove. */}
+      {(routesAge || stopsAge) && (
+        <p
+          className="text-[11px] tabular-nums"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Network data from Maryland Open Data.{" "}
+          {stopsAge && (
+            <>
+              <span style={{ color: "var(--app-ink-2)" }}>
+                Stops
+              </span>{" "}
+              updated {stopsAge}
+              {routesAge ? "; " : "."}
+            </>
+          )}
+          {routesAge && (
+            <>
+              <span style={{ color: "var(--app-ink-2)" }}>
+                routes
+              </span>{" "}
+              updated {routesAge}.
+            </>
+          )}
+        </p>
+      )}
 
       <section className="space-y-3">
         <header className="flex items-baseline gap-2">
@@ -203,11 +264,12 @@ export default async function TransitPage() {
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
         <p>
-          Route shapes from Maryland Open Data (Frederick County TransIT
-          Routes). Stops, schedules, and live vehicle positions need the
-          county&apos;s live GTFS feed, which isn&apos;t published yet.
-          When it is, that phase will add bus icons and real-time
-          arrivals to this map.
+          Route shapes and {stops.length > 0 ? `${stops.length} stops` : "stops"}{" "}
+          come from Maryland Open Data (Frederick County TransIT). Live
+          schedules and real-time vehicle positions need the county&apos;s
+          GTFS feed, which isn&apos;t published yet &mdash; when it is,
+          a future phase will add next-departure times and bus icons
+          to this map.
         </p>
         <p className="flex flex-wrap items-center gap-3 pt-1">
           <a

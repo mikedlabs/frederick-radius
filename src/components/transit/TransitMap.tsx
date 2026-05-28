@@ -6,7 +6,7 @@ import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
-import type { LineFC } from "@/lib/integrations/transitFrederick";
+import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 /**
@@ -35,9 +35,16 @@ import "mapbox-gl/dist/mapbox-gl.css";
  */
 export default function TransitMap({
   shapes,
+  stops = [],
   height = 380,
 }: {
   shapes: LineFC;
+  /** Real Frederick County TransIT stops (MD Open Data, 4zcx-89nc).
+   *  Each rendered as a small Carroll-Creek-slate dot. Pre-launch the
+   *  /transit page had only route lines; stops are the second half
+   *  of "what does the network look like" — the question "where do
+   *  I catch the bus" now has a visible answer. */
+  stops?: TransitStop[];
   height?: number;
 }) {
   const initial = useMemo(() => {
@@ -120,11 +127,54 @@ export default function TransitMap({
             }}
           />
         </Source>
+
+        {/* Stops — only rendered when the upstream feed returned a
+            non-empty list. Drawn AFTER the route lines so the dots
+            sit on top, with a thin white halo so they read on any
+            tile background. Tiny radius + zoom-scaled so the network
+            looks clean at county zoom and stops become readable when
+            the user zooms into a single corridor. */}
+        {stops.length > 0 && (
+          <Source
+            id="transit-stops"
+            type="geojson"
+            data={{
+              type: "FeatureCollection",
+              features: stops.map((s) => ({
+                type: "Feature",
+                properties: { name: s.name, id: s.id },
+                geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+              })),
+            }}
+          >
+            <Layer
+              id="transit-stops-dots"
+              type="circle"
+              paint={{
+                // Smaller at county zoom, larger zoomed in. Keeps the
+                // network legible at both scales.
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  8, 2,
+                  11, 3,
+                  14, 5,
+                ],
+                "circle-color": "#2F5470",
+                "circle-stroke-color": "#ffffff",
+                "circle-stroke-width": 1.2,
+                "circle-opacity": 0.92,
+              }}
+            />
+          </Source>
+        )}
       </Map>
 
       {/* Editorial badge — top-left. Tells the user what the painted
           lines represent without competing with the Mapbox attribution
-          in the bottom corner. */}
+          in the bottom corner. Count is route + stop when both are
+          present, route-only when stops failed to load. */}
       <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
         <span
           aria-hidden
@@ -132,6 +182,7 @@ export default function TransitMap({
           style={{ background: "var(--app-cool)" }}
         />
         TransIT Frederick · {shapes.features.length} routes
+        {stops.length > 0 && ` · ${stops.length} stops`}
       </span>
     </div>
   );
