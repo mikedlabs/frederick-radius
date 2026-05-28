@@ -49,6 +49,14 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
         </div>
 
         <div className="min-w-0 flex-1">
+          {series.presenter && (
+            <p
+              className="text-[10px] font-bold uppercase tracking-[0.1em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {series.presenter}
+            </p>
+          )}
           <h3 className="text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
             {series.title}
           </h3>

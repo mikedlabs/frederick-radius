@@ -12,6 +12,8 @@ import { getLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { cleanFeedText, formatAddress } from "@/lib/format/text";
+import { normalizeTitle, etYear } from "@/lib/events/normalize";
 
 /**
  * Adapt one live feed event to the EventWithMeta shape the card and
@@ -24,17 +26,23 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
  * route relies on that ordering, not on source.
  */
 export function liveToCardEvent(e: LiveEvent): EventWithMeta {
+  // Normalize feed strings at this boundary, never in the card. Title
+  // gets entity-decoded, presenter-split, and hyphen/year-cleaned;
+  // venue and address get decoded; the address also gets its
+  // suffix-into-city concatenation repaired.
+  const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
   return {
     slug: liveEventSlug(e),
-    title: e.title,
-    description: e.description,
+    title,
+    presenter,
+    description: cleanFeedText(e.description ?? ""),
     starts_at: e.starts_at,
     ends_at: e.ends_at,
     timezone: "America/New_York",
     is_all_day: false,
     is_recurring: false,
-    venue_name: e.venue_name,
-    address: e.address,
+    venue_name: cleanFeedText(e.venue_name ?? ""),
+    address: formatAddress(cleanFeedText(e.address ?? "")),
     geom: e.geom,
     municipality: e.municipality,
     category: e.category,

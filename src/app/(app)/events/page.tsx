@@ -12,6 +12,7 @@ import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
+import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
@@ -90,9 +91,11 @@ export default async function EventsIndexPage({
   // duplicates dropped (P0-4). Civic-meeting rows stripped so they
   // don't bury everything else.
   const liveCards = dedupeLiveAgainstCurated(
-    [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
-      .map(liveToCardEvent)
-      .filter((e) => !isCivicEvent(e)),
+    collapseRecurringEvents(
+      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
+        .map(liveToCardEvent)
+        .filter((e) => !isCivicEvent(e)),
+    ),
     curatedUpcoming,
   );
 

@@ -9,6 +9,7 @@
 
 import type { LngLat } from "@/lib/geo";
 import { easternWallToUtcISO } from "@/lib/tz";
+import { cleanFeedText } from "@/lib/format/text";
 import { cutAtWordBoundary } from "@/lib/slug";
 import { isVenueStatusNonEvent, isNonPublicListing } from "@/lib/event-noise";
 import {
@@ -415,38 +416,11 @@ function isExplicitlyFree(blob: string): boolean {
   );
 }
 
-/**
- * The Frederick County CivicEngage RSS feed entity-encodes its HTML
- * markup (e.g. `&lt;strong&gt;Event date:&lt;/strong&gt; … &lt;br&gt;`),
- * so a bare `<[^>]+>` strip misses every tag and the entities surface
- * as literal text on the explorer cards and the live-event detail page.
- * Decode entities FIRST — `&amp;` before `&lt;`/`&gt;` so a doubly
- * entity-encoded `&amp;lt;` still collapses to `<` in a single pass —
- * then strip the now-real tags and collapse whitespace. Callers still
- * apply the 300-char cap afterwards. Used by both feed paths since any
- * entity-encoded feed (RSS or iCal) hits the same failure mode.
- */
-export function cleanFeedText(raw: string): string {
-  const decoded = raw
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&apos;/gi, "'")
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&mdash;/gi, "—")
-    .replace(/&ndash;/gi, "–")
-    .replace(/&hellip;/gi, "…")
-    .replace(/&[lr]squo;/gi, "'")
-    .replace(/&[lr]dquo;/gi, '"')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)));
-  return decoded
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+// cleanFeedText moved to @/lib/format/text so the event normalization
+// layer can reuse it without importing this network-heavy module.
+// Imported locally for this module's own callers AND re-exported so
+// existing importers and the feed-sanitize test keep resolving it here.
+export { cleanFeedText };
 
 type ParsedVEvent = {
   uid?: string;

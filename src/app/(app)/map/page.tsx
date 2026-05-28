@@ -12,6 +12,7 @@ import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
+import { collapseRecurringEvents } from "@/lib/events/normalize";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
@@ -347,9 +348,11 @@ export default async function MapPage({
   // strip civic-meeting rows the same way /events does.
   const curatedWeek = allUpcoming(now, 200);
   const liveCards = dedupeLiveAgainstCurated(
-    [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
-      .map(liveToCardEvent)
-      .filter((e) => !isCivicEvent(e)),
+    collapseRecurringEvents(
+      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
+        .map(liveToCardEvent)
+        .filter((e) => !isCivicEvent(e)),
+    ),
     curatedWeek,
   );
   const eventsBySlug = new Map<string, (typeof curatedWeek)[number]>();

@@ -11,6 +11,8 @@
 import { unstable_cache } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { isVenueStatusNonEvent, isRoutineRecurringClass } from "@/lib/event-noise";
+import { cleanFeedText, formatAddress } from "@/lib/format/text";
+import { normalizeTitle, etYear } from "@/lib/events/normalize";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
 // sessions. Default ON by owner directive (2026-05-16: "ship
@@ -29,6 +31,8 @@ export type IngestedSeries = {
   /** stable key for routing/expansion */
   key: string;
   title: string;
+  /** Presenting org split from an "Org-Event" title by normalizeTitle. */
+  presenter?: string;
   venueName: string | null;
   address: string | null;
   municipality: string;
@@ -98,11 +102,19 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   for (const [key, rs] of groups) {
     rs.sort((a, b) => +new Date(a.starts_at_utc) - +new Date(b.starts_at_utc));
     const head = rs[0];
+    // Sanitize at this read boundary, never in SeriesCard. Title gets
+    // entity-decoded + presenter-split + hyphen/year-cleaned; venue and
+    // description get decoded; the address also gets its concatenated
+    // suffix-into-city repaired.
+    const { presenter, title } = normalizeTitle(head.title, {
+      year: etYear(head.starts_at_utc),
+    });
     series.push({
       key,
-      title: head.title,
-      venueName: head.venue_name,
-      address: head.address,
+      title,
+      presenter,
+      venueName: head.venue_name ? cleanFeedText(head.venue_name) : null,
+      address: head.address ? formatAddress(cleanFeedText(head.address)) : null,
       municipality: head.municipality,
       // Phase 1.5: the county catid mapping is unreliable (birthday
       // parties, theatre, and tasting rooms all arrive as "Workforce
@@ -111,7 +123,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       category: null,
       lat: head.lat != null ? Number(head.lat) : null,
       lng: head.lng != null ? Number(head.lng) : null,
-      description: head.description,
+      description: head.description ? cleanFeedText(head.description) : null,
       occurrences: rs.map((r) => ({
         sourceUid: r.source_uid,
         startsAtUtc: r.starts_at_utc,

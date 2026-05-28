@@ -23,6 +23,13 @@ export type Event = {
   ticket_url?: string;
   rsvp_url?: string;
   organizer?: string;
+  /**
+   * Presenting organization extracted from an "Organization-Event Name"
+   * feed title by the normalization layer (src/lib/events/normalize.ts).
+   * Rendered as a small presenter chip so the title reads as the event,
+   * not the org. Absent on titles with no org prefix.
+   */
+  presenter?: string;
   hero_image?: string;
   /** Know-before-you-go: admission, what to drink, what to eat on site. */
   info?: { admission?: string; drinks?: string; food?: string };
