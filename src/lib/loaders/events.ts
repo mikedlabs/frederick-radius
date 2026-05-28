@@ -159,12 +159,24 @@ function venuesMatch(a: string, b: string): boolean {
   return x === y || x.includes(y) || y.includes(x);
 }
 
+/** Same physical place within ~300m — used as a fallback when venue
+ *  name strings don't match but the events are clearly co-located.
+ *  Closes the Alive @ Five duplicate case where seed venue
+ *  "Carroll Creek Amphitheater" and feed venue "Carroll Creek Linear
+ *  Park" describe the same spot but share no substring. */
+const NEARBY_VENUE_M = 300;
+function nearbyVenues(a: EventWithMeta, b: EventWithMeta): boolean {
+  if (!a.geom || !b.geom) return false;
+  return haversineMeters(a.geom, b.geom) <= NEARBY_VENUE_M;
+}
+
 /**
  * Drops live or county-feed events that duplicate a curated event.
- * Curated always wins (P0-4). A live event is a duplicate when it is at
- * the same venue, starts within 60 minutes, and the titles match by
- * containment or a six character common run. Conservative on purpose:
- * all three signals must agree so distinct events are never merged.
+ * Curated always wins (P0-4). A live event is a duplicate when titles
+ * match, starts are within 60 minutes, and the venues are either name-
+ * matched OR geographically co-located (≤300m). Geo fallback closes the
+ * Alive @ Five case where seed "Carroll Creek Amphitheater" and feed
+ * "Carroll Creek Linear Park" are the same place under different names.
  */
 export function dedupeLiveAgainstCurated(
   live: EventWithMeta[],
@@ -174,11 +186,9 @@ export function dedupeLiveAgainstCurated(
     const lt = +new Date(l.starts_at);
     return !curated.some((c) => {
       const within = Math.abs(+new Date(c.starts_at) - lt) <= 60 * 60 * 1000;
-      return (
-        within &&
-        venuesMatch(c.venue_name, l.venue_name) &&
-        titlesMatch(c.title, l.title)
-      );
+      if (!within) return false;
+      if (!titlesMatch(c.title, l.title)) return false;
+      return venuesMatch(c.venue_name, l.venue_name) || nearbyVenues(c, l);
     });
   });
 }

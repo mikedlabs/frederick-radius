@@ -56,4 +56,30 @@ describe("dedupeLiveAgainstCurated", () => {
     ];
     expect(dedupeLiveAgainstCurated(live, curated)).toHaveLength(1);
   });
+
+  // Regression: a county-feed event for the same time + title but with a
+  // venue STRING that doesn't substring-match the seed should still
+  // dedupe when the two are geographically co-located. "Carroll Creek
+  // Amphitheater" (seed) vs "Carroll Creek Linear Park" (feed) — same
+  // physical place, no shared substring.
+  it("drops a same-time same-title event whose venue name differs but is geo-co-located", () => {
+    const curatedGeo = [
+      ev({
+        slug: "alive-at-five-2026-05-21",
+        title: "Alive @ Five · Glamour Kitty",
+        venue_name: "Carroll Creek Amphitheater",
+        starts_at: "2026-05-21T21:00:00Z",
+        geom: { lng: -77.4087681, lat: 39.4126271 },
+      }),
+    ];
+    const live = [
+      ev({
+        title: "Alive @ Five",
+        venue_name: "Carroll Creek Linear Park",
+        starts_at: "2026-05-21T21:00:00Z",
+        geom: { lng: -77.4085, lat: 39.4127 },
+      }),
+    ];
+    expect(dedupeLiveAgainstCurated(live, curatedGeo)).toHaveLength(0);
+  });
 });
