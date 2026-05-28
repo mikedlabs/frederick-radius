@@ -9,6 +9,7 @@ import EventCard from "@/components/event/EventCard";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
+import Image from "next/image";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import TownStrip from "@/components/municipality/TownStrip";
 
@@ -74,14 +75,22 @@ export default async function MunicipalityPage(
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
 
-  // The town hero is now an aerial drone photograph of Frederick County
-  // from the owner's seasonal collection (rotates daily, picks by
-  // current season). The page used to lead with the top venue's Google
-  // photo — usually a restaurant interior shot — which read as utility,
-  // not identity. An aerial reads as the PLACE; the venue photo then
-  // lives further down inside PlaceList and the "Looks like {town}"
-  // mosaic, where it belongs.
+  // Town hero — each town now gets its OWN identifiable photo
+  // instead of a daily-rotating aerial that looks the same in
+  // every municipality. We pick the top-scored photographed place
+  // in the town as the signature image (Brewer's Alley for
+  // Frederick, the railroad bridge for Brunswick, etc — whichever
+  // top-scored place actually has a Google photo). Attribution
+  // shows on the hero so it reads as "here's a real place in
+  // {town}" not "we slapped a generic photo here."
+  //
+  // SeasonalPhoto stays as the last-resort fallback for towns
+  // that don't have any photographed places yet — and as a slot
+  // we can override later by hardcoding a Wikimedia landmark
+  // photo per town when one is verified.
   const placesWithPhotos = places.filter((p) => p.google_photo_url);
+  const heroPlace = placesWithPhotos[0] ?? null;
+  const heroPhotoUrl = heroPlace?.google_photo_url ?? null;
 
   return (
     <div className="relative space-y-6">
@@ -97,23 +106,47 @@ export default async function MunicipalityPage(
       {/* Photo hero — the place as a place, not a row. The image
           carries identity; the overlay carries facts. */}
       <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
-        <div className="relative h-52 w-full sm:h-60">
-          <SeasonalPhoto
-            season="auto"
-            alt={`Frederick County (near ${m.name})`}
-            priority
-            sizes="(max-width: 720px) 100vw, 720px"
-            className="absolute inset-0"
-          />
+        <div className="relative h-52 w-full sm:h-72">
+          {heroPhotoUrl ? (
+            <Image
+              src={heroPhotoUrl}
+              alt={`${heroPlace?.name ?? m.name} in ${m.name}, MD`}
+              fill
+              sizes="(max-width: 720px) 100vw, 720px"
+              priority
+              unoptimized
+              className="object-cover"
+            />
+          ) : (
+            <SeasonalPhoto
+              season="auto"
+              alt={`Frederick County (near ${m.name})`}
+              priority
+              sizes="(max-width: 720px) 100vw, 720px"
+              className="absolute inset-0"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
-          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
+          {heroPlace && (
+            <span
+              className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur"
+              style={{
+                background: "rgba(255,255,255,0.18)",
+                color: "white",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
+              }}
+            >
+              Photo · {heroPlace.name}
+            </span>
+          )}
+          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75">
               {m.type} · est. {m.est} · pop. {m.population.toLocaleString()}
             </p>
-            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight text-white">
+            <h1 className="font-serif text-[34px] font-semibold leading-tight tracking-tight text-white sm:text-[40px]">
               {m.name}, Maryland
             </h1>
-            <p className="font-serif text-[15px] italic text-white/85">
+            <p className="font-serif text-[15px] italic leading-snug text-white/90 sm:text-[16px]">
               {m.hero_blurb}
             </p>
           </div>
