@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { CalendarDays } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import EmptyState from "@/components/ui/EmptyState";
 
 /**
  * A mobile agenda — the calendar that actually helps on a phone. Only
@@ -65,12 +67,12 @@ export default function EventAgenda({
 
   if (days.length === 0) {
     return (
-      <p
-        className="rounded-[var(--app-radius-lg)] border px-4 py-8 text-center text-sm"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-      >
-        Nothing on the calendar in this range.
-      </p>
+      <EmptyState
+        icon={CalendarDays}
+        title="Nothing on the calendar in this range."
+        body="Try a wider time window from the chips above, or jump to the weekend."
+        cta={{ label: "See this weekend", href: "/events?lens=weekend" }}
+      />
     );
   }
 
