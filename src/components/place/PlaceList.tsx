@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LayoutGrid, List } from "lucide-react";
+import { LayoutGrid, List, MapPin } from "lucide-react";
 import PlaceCard from "./PlaceCard";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
+import EmptyState from "@/components/ui/EmptyState";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 /**
@@ -107,17 +108,15 @@ export default function PlaceList({
   }
 
   if (places.length === 0) {
-    return emptyMessage ? (
-      <p
-        className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-        style={{
-          borderColor: "var(--app-border)",
-          color: "var(--app-ink-3)",
-        }}
-      >
-        {emptyMessage}
-      </p>
-    ) : null;
+    if (!emptyMessage) return null;
+    return (
+      <EmptyState
+        icon={MapPin}
+        title="Nothing here yet."
+        body={emptyMessage}
+        cta={{ label: "Submit a place", href: "/submit/place" }}
+      />
+    );
   }
 
   // Filter out the "distance" option when no place has a distance_m
