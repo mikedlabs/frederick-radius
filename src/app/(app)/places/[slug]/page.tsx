@@ -14,8 +14,6 @@ import HoursBlock from "@/components/place/HoursBlock";
 import GoogleHours from "@/components/place/GoogleHours";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
-import SaveButton from "@/components/saved/SaveButton";
-import FollowButton from "@/components/place/FollowButton";
 import MyRadiusButton from "@/components/place/MyRadiusButton";
 import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
@@ -176,19 +174,23 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           photoSrc={place.google_photo_url}
         />
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
-                {place.name}
-              </h1>
-              <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
-                {place.address} · {place.municipality_name}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <FollowButton slug={place.slug} name={place.name} />
-              <SaveButton refType="place" refId={place.slug} label={place.name} />
-            </div>
+          {/* Title row carries the place name + address only. The
+              previous design crowded a FollowButton + SaveButton
+              icon pair into the right of this row — both delegated
+              to the SAME useFollows hook as the prominent
+              "Add to My Radius" CTA below, so the visitor was
+              looking at three save controls for one action. v2
+              keeps just the text CTA below the title (the verb
+              that matches the "My Radius" nav tab) and lets the
+              title breathe. Sharing remains accessible from the
+              footer ShareButton. */}
+          <div className="min-w-0">
+            <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
+              {place.name}
+            </h1>
+            <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
+              {place.address} · {place.municipality_name}
+            </p>
           </div>
           {/* Prominent text-style follow CTA — Phase 1's
               "Add to My Radius" / "In My Radius" pattern. Sits below
