@@ -123,17 +123,17 @@ export default function PlaceHero({
         <span aria-hidden>{glyph}</span> {cat?.name ?? category}
       </div>
 
-      {/* Name overlay */}
-      {size === "hero" && (
+      {/* Hero overlay: blurb only. The place's H1 lives on the page
+          immediately below the hero, so re-rendering the name here as
+          an H2 (the 2026-05 review caught this) duplicated the heading
+          and made the layout feel doubled-up. The category pill at
+          top-left already anchors what the photo shows; the blurb adds
+          one line of editorial context when we have it. */}
+      {size === "hero" && blurb && (
         <div className="absolute inset-x-3 bottom-3 text-white">
-          <h2 className="font-serif text-2xl font-semibold leading-tight tracking-tight drop-shadow">
-            {name}
-          </h2>
-          {blurb && (
-            <p className="mt-1 line-clamp-2 text-[13px] leading-snug opacity-95 drop-shadow">
-              {blurb}
-            </p>
-          )}
+          <p className="line-clamp-2 text-[13px] leading-snug opacity-95 drop-shadow">
+            {blurb}
+          </p>
         </div>
       )}
     </div>
