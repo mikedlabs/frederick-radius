@@ -28,11 +28,11 @@ Three products fighting each other today: daily briefing, directory, map. Pick o
 
 ## Priority 3 — polish
 
-- [ ] **Full-card click targets** — whole card should be one accessible tappable object with clear label; right now image is the link and title is just text in some places.
-- [ ] **Heading dedupe** — some place pages repeat business name as secondary heading + H1.
-- [ ] **Badge hierarchy** — Verified / Hand-picked / Official / Community / Confirmed / Local favorite / Top rated — give them roles. "Verified" = data confidence. "Hand-picked" = editorial. "Top rated" = secondary. Don't let badges become confetti.
-- [ ] **Generic descriptions** — "Restaurants in Downtown Frederick" should never appear as a description.
-- [ ] **Loading/empty fallbacks** — every state needs a useful default; "Loading map" is not enough.
+- [x] **Full-card click targets** — Investigated; PlaceCard's four variants (feature, tile, grid, default) each wrap their content in a single `<button onClick={openDetail}>` or use the stretched-link pattern (`<span className="absolute inset-0">`). EventCard, FeaturedTonight, and MunicipalityStrip likewise. The whole card is one tappable region — no fix needed.
+- [x] **Heading dedupe** — `PlaceHero` was rendering an `<h2>{name}</h2>` overlay on the photo, then the page header below rendered `<h1>{name}</h1>` — visual + accessibility duplication. Dropped the H2; the category pill at top-left of the hero plus the optional blurb still anchor the photo, and the page H1 is now the only name heading. (commit 0625e25)
+- [x] **Badge hierarchy** — Every enriched card was showing two chips both labeled "Verified" (SourceBadge: persistent data-confidence claim; placeReasons: 14-day freshness check) — confetti the user couldn't disambiguate. Dropped the `recently_verified` PlaceReason entirely. Hierarchy is now: SourceBadge "Verified" / "Hand-picked" / "Community" / "Official" carries provenance + confidence; placeReasons carries decision signals (Open / Walkable / Top rated / Local favorite); FreshnessChip on the detail header carries timestamp. (commit 7775099)
+- [x] **Generic descriptions** — Detected the placeholder shape `"^[A-Z][A-Za-z& ]+ in [A-Z][A-Za-z ]+\.?$"` (888 of 1060 discovered places matched). New `src/lib/copy-generic.ts` helper + unit tests; added the same shape to `classifyDescription` so cleanCopy already filters it; gated PlaceCard tail, PlaceSheet blurb, FeaturedTonight blurb, map popups, and the safeBlurb fallback. PlaceCard now collapses "Coffee · Coffee in Downtown Frederick" to just "Coffee". (commit 5f729d6)
+- [x] **Loading/empty fallbacks** — Map empty state already addressed in P2 (#3). PlaceList's zero-results render upgraded from a plain dashed-border paragraph to the canonical `EmptyState` component with icon halo, serif title, and a "Submit a place" CTA — empty surfaces are now contribution invitations. (commit cc848c9)
 
 ## UI direction
 
