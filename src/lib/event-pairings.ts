@@ -1,0 +1,129 @@
+/**
+ * Smart-pairing synthesizers for the event detail page.
+ *
+ * Per the mobile review (May 2026): the event detail page already
+ * has the data joins (nearbyFood, nearbyParking, NWS forecast), but
+ * it presents them as separate scattered sections at the bottom.
+ * The reviewer's example pointed at the connective copy:
+ *
+ *   "Alive @ Five · 5pm at Carroll Creek · Weather looks good
+ *    through sunset · Parking 200ft south · Eat at Cellar Door"
+ *
+ * These helpers produce ONE LINE each for the three signals so the
+ * detail page can render a small `<EventSmartPairings>` card high up,
+ * giving the user the entire decision context at a glance.
+ *
+ * Pure functions, isomorphic, no network. The component calling them
+ * fetches NWS once and passes the forecast in.
+ */
+
+import type { NwsForecast, NwsHourly } from "@/lib/integrations/nws";
+import type { PlaceCardData } from "@/lib/loaders/places";
+import { formatDistance } from "@/lib/geo";
+
+// ── Weather ───────────────────────────────────────────────────────
+
+/**
+ * Find the NWS hourly period that contains a given Date. NWS periods
+ * are wall-clock-aligned with explicit startTime/endTime ISO strings.
+ * Returns null when the event is outside the forecast horizon (the
+ * hourly endpoint only covers ~7 days).
+ */
+export function findHourlyAt(
+  forecast: NwsForecast | null,
+  at: Date,
+): NwsHourly | null {
+  if (!forecast || !forecast.hourly || forecast.hourly.length === 0) return null;
+  const t = at.getTime();
+  if (!Number.isFinite(t)) return null;
+  for (const h of forecast.hourly) {
+    const s = Date.parse(h.startTime);
+    const e = Date.parse(h.endTime);
+    if (Number.isFinite(s) && Number.isFinite(e) && s <= t && t < e) {
+      return h;
+    }
+  }
+  return null;
+}
+
+/**
+ * Synthesize a one-line weather phrase for an event start. Returns
+ * null when no useful signal is available (event outside forecast
+ * window, no data). Priority order:
+ *
+ *   1. Rain at start (precip ≥ 50% in the start hour)
+ *   2. Cold (< 45°F)
+ *   3. Hot (> 88°F)
+ *   4. Clear + comfortable (60-82°F, clear/sunny/partly)
+ *   5. Generic temp + cond fallback for anything else
+ *
+ * Editorial: the phrase should sound like local-paper copy, not
+ * weather-channel copy. No "expected precipitation chance 60%" —
+ * we just say "rain by start." Decision tool, not data dump.
+ */
+export function weatherPhrase(period: NwsHourly | null): string | null {
+  if (!period) return null;
+  const cond = (period.shortForecast || "").toLowerCase();
+  const temp = period.temperature;
+  const precip = period.probabilityOfPrecipitation ?? 0;
+  const isRaining = /rain|shower|drizzle|storm|thunder/.test(cond);
+
+  if (isRaining || precip >= 60) {
+    if (/storm|thunder/.test(cond)) return "Storms at start — keep an eye on the radar";
+    return "Rain expected at start — bring an umbrella";
+  }
+  if (precip >= 40) {
+    return `Chance of rain at start — ${temp}°F, ${cond}`;
+  }
+  if (temp <= 40) {
+    return `Cold start — ${temp}°F. Bring layers.`;
+  }
+  if (temp <= 50 && /clear|sunny|fair/.test(cond)) {
+    return `Cool and clear — low ${Math.round(temp / 10) * 10}s. Bring a layer.`;
+  }
+  if (temp >= 90) {
+    return `Hot at start — ${temp}°F. Bring water.`;
+  }
+  if (temp >= 60 && temp <= 82 && /clear|sunny|fair|partly/.test(cond)) {
+    return `Looks good through start — ${temp}°F, ${cond}.`;
+  }
+  // Generic fallback: still useful — names temp and condition.
+  if (Number.isFinite(temp) && cond) {
+    return `${temp}°F at start — ${cond}.`;
+  }
+  return null;
+}
+
+// ── Parking ───────────────────────────────────────────────────────
+
+/**
+ * Synthesize a parking-nearby phrase from the pre-decorated list of
+ * nearby parking places (already sorted by distance, distance_m
+ * populated). Returns null when there's nothing useful within range.
+ */
+export function parkingPhrase(nearbyParking: PlaceCardData[]): string | null {
+  const closest = nearbyParking[0];
+  if (!closest) return null;
+  const d = closest.distance_m ?? Infinity;
+  if (!Number.isFinite(d)) return null;
+  const dist = formatDistance(d);
+  return `Parking ${dist} away at ${closest.name}`;
+}
+
+// ── Eat before ────────────────────────────────────────────────────
+
+/**
+ * Synthesize an "eat before" phrase from the pre-decorated nearby
+ * food list. Names the single closest spot and counts the rest, so
+ * the line reads as a recommendation rather than a list dump.
+ */
+export function eatBeforePhrase(nearbyFood: PlaceCardData[]): string | null {
+  const lead = nearbyFood[0];
+  if (!lead) return null;
+  const d = lead.distance_m ?? Infinity;
+  if (!Number.isFinite(d)) return null;
+  const distMin = Math.max(1, Math.round(d / 80)); // 80 m/min walking pace
+  const tail = nearbyFood.length - 1;
+  const more = tail > 0 ? ` or ${tail} more nearby` : "";
+  return `Eat before at ${lead.name} (${distMin} min walk)${more}`;
+}

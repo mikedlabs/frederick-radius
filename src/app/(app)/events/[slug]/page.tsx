@@ -34,6 +34,7 @@ import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import EventCard from "@/components/event/EventCard";
+import EventSmartPairings from "@/components/event/EventSmartPairings";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
@@ -307,6 +308,17 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
         </div>
       </header>
+
+      {/* Smart pairings — the editorial decision layer the mobile
+          review called out as the killer feature. Synthesizes
+          weather at the event start, closest parking, and the
+          nearest food spot into one card. Self-hides if none of
+          the three signals are available. */}
+      <EventSmartPairings
+        event={event}
+        nearbyFood={nearbyFood}
+        nearbyParking={nearbyParking}
+      />
 
       <div className="grid grid-cols-3 gap-2">
         {isLive ? (
