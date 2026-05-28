@@ -68,6 +68,13 @@ export type AppMapDeckProps = {
   showTrails: boolean;
   setShowTrails: SetState<boolean>;
 
+  // Aerial photo overlay — the Frederick Radius–only moat. 100+
+  // georeferenced drone shots from the user's seasonal archive
+  // plotted on the map; off until the user opts in.
+  showAerial: boolean;
+  setShowAerial: SetState<boolean>;
+  aerialCount: number;
+
   // Preview-only demo layers (gated by SHOW_DEMO_LAYERS).
   setDemo: SetState<null | "food-truck" | "transit" | "rewards">;
 };
@@ -107,6 +114,9 @@ export default function AppMapDeck({
   trailLines,
   showTrails,
   setShowTrails,
+  showAerial,
+  setShowAerial,
+  aerialCount,
   setDemo,
 }: AppMapDeckProps) {
   return (
@@ -249,7 +259,8 @@ export default function AppMapDeck({
           activeAmenityGroupCount > 0 ||
           showCivic ||
           showTransit ||
-          showTrails) && (
+          showTrails ||
+          showAerial) && (
           <ul
             className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="Active filters"
@@ -354,9 +365,27 @@ export default function AppMapDeck({
                 </button>
               </li>
             )}
+            {showAerial && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowAerial(false)}
+                  aria-label="Hide aerial photos"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-accent)",
+                    color: "white",
+                    boxShadow: "var(--app-shadow-1)",
+                  }}
+                >
+                  Aerial photos
+                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </li>
+            )}
             {/* Clear-all escape hatch — only worth the row when there
                 are multiple filters to clear. */}
-            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) > 1 && (
+            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) > 1 && (
               <li className="shrink-0">
                 <button
                   type="button"
@@ -366,6 +395,7 @@ export default function AppMapDeck({
                     setShowCivic(false);
                     setShowTransit(false);
                     setShowTrails(false);
+                    setShowAerial(false);
                   }}
                   className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
                   style={{
@@ -595,6 +625,26 @@ export default function AppMapDeck({
               >
                 <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showTrails ? "white" : "var(--app-positive)" }} />
                 Trails · {trailLines.features.length}
+              </button>
+            </li>
+          )}
+          {aerialCount > 0 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowAerial((v) => !v)}
+                aria-pressed={showAerial}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: showAerial ? "var(--app-accent)" : "var(--app-bg-elevated)",
+                  color: showAerial ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${showAerial ? "var(--app-accent)" : "var(--app-border)"}`,
+                  boxShadow: showAerial ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Drone photos from the Frederick Radius seasonal archive — each pin marks where a shot was taken"
+              >
+                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showAerial ? "white" : "var(--app-accent)" }} />
+                Aerial photos · {aerialCount}
               </button>
             </li>
           )}
