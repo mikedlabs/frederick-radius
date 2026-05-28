@@ -17,6 +17,7 @@ import EventCard from "@/components/event/EventCard";
 import MyRadiusButton from "@/components/place/MyRadiusButton";
 import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
+import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
@@ -148,6 +149,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
   return (
     <div className="space-y-6 stagger">
+      {/* Records this slug into the device-local recent-places list
+          so /my-radius can show "Recently viewed". Client island so
+          the rest of the page stays a server component. */}
+      <PlaceVisitTracker slug={place.slug} />
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
           <li><Link href="/" className="hover:underline">Today</Link></li>

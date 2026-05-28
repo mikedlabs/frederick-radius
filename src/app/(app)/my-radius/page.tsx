@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Settings, ChevronRight, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
+import RecentlyViewedRail from "@/components/saved/RecentlyViewedRail";
 import NotificationsNudge from "@/components/pwa/NotificationsNudge";
 import { getServerUser } from "@/lib/auth";
 
@@ -97,11 +98,17 @@ export default async function MyRadiusPage() {
 
       <SavedList />
 
+      {/* Recently viewed — device-local trail of the last 6 places
+          the user opened (via PlaceSheet OR direct /places/[slug]).
+          Self-hides when empty. Sits below the saved list because
+          the saved list is the user's intentional shortlist;
+          recents are passive context underneath. */}
+      <RecentlyViewedRail />
+
       {/* Discreet doorway to /settings/notifications. The component
           self-hides on browsers without PushManager, on already-
           subscribed users, on blocked-permission users, and after
-          this session's dismissal. Lives at the BOTTOM so it never
-          competes with the saved-place list itself for attention. */}
+          this session's dismissal. */}
       <NotificationsNudge />
     </div>
   );
