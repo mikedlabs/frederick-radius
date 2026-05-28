@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/useSaved";
+import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -16,8 +17,17 @@ export default function SaveButton({
   label: string;
 }) {
   const mounted = useMounted();
-  const isSaved = useIsSaved(refType, refId);
-  const toggle = useToggleSave(refType, refId);
+  // For places, route through the auth-aware useFollows hook: writes
+  // hit the DB when signed in, fall back to localStorage when signed
+  // out. Events + radii stay on the legacy useSaved hook by design
+  // (Phase 1 brief framed sync as "follow PLACES"; broader sync later).
+  const placeFollowed = useIsFollowed(refType === "place" ? refId : "");
+  const togglePlace = useToggleFollow(refId, "icon");
+  const legacyIsSaved = useIsSaved(refType, refId);
+  const legacyToggle = useToggleSave(refType, refId);
+  const isSaved = refType === "place" ? placeFollowed : legacyIsSaved;
+  const toggle =
+    refType === "place" ? () => void togglePlace() : legacyToggle;
   // Pre-toggle total. Used to detect the user's first save ever —
   // when totalBefore is 0 AND the user is about to save, the next
   // tap is the moment that promotes a stranger into someone who has

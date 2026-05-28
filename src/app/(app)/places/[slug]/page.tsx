@@ -15,6 +15,8 @@ import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import SaveButton from "@/components/saved/SaveButton";
 import FollowButton from "@/components/place/FollowButton";
+import MyRadiusButton from "@/components/place/MyRadiusButton";
+import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
@@ -185,6 +187,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               <FollowButton slug={place.slug} name={place.name} />
               <SaveButton refType="place" refId={place.slug} label={place.name} />
             </div>
+          </div>
+          {/* Prominent text-style follow CTA — Phase 1's
+              "Add to My Radius" / "In My Radius" pattern. Sits below
+              the title row so it reads as the primary action on the
+              place, not a header chrome icon. PendingFollowApplier
+              consumes ?follow=<slug> from a post-sign-in redirect
+              and applies it once before clearing the query param. */}
+          <PendingFollowApplier slug={place.slug} name={place.name} />
+          <div className="-mt-1">
+            <MyRadiusButton slug={place.slug} name={place.name} />
           </div>
           {desc && (
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
