@@ -19,6 +19,7 @@ import {
   ArrowUpRight,
   Sparkles,
   ShieldCheck,
+  Waves,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -63,6 +64,7 @@ const USEFUL: Item[] = [
   { href: "/trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain },
   { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: Mountain },
   { href: "/water",     label: "Water",     description: "Public drinking fountains and water bottle refills", icon: Droplets },
+  { href: "/rivers",    label: "Rivers",    description: "Live creek and river gauges with 24-hour trend",     icon: Waves },
 ];
 
 /** Editorial surfaces. The two books get visual cards above the

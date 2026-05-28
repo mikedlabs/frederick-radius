@@ -136,22 +136,30 @@ export function normalizeTrails(raw: unknown): Trail[] {
 }
 
 export async function getFrederickTrails(): Promise<Trail[]> {
+  // The live ENDPOINT above points at gis.frederickco.gov — turns out
+  // that's Frederick, COLORADO. Every feature falls outside the
+  // Frederick County, MD bbox and gets dropped, so the live fetch
+  // returns []. Keeping the fetch in place so a fix-up to the right
+  // MD endpoint flows through unchanged; falling back to the curated
+  // list keeps the page useful in the meantime.
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  let live: Trail[] = [];
   try {
     const res = await fetch(ENDPOINT, {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
-      // Trails change rarely; weekly is plenty and keeps it cheap.
       next: { revalidate: 604800 },
     });
-    if (!res.ok) return [];
-    return normalizeTrails(await res.json());
+    if (res.ok) live = normalizeTrails(await res.json());
   } catch {
-    return []; // feed hiccup / network — degrade silently, never fabricate
+    /* feed hiccup / wrong endpoint — fall through to curated */
   } finally {
     clearTimeout(timer);
   }
+  if (live.length > 0) return live;
+  const { CURATED_TRAILS } = await import("@/data/curated-trails");
+  return CURATED_TRAILS;
 }
 
 // ── #3 phase 1: geometry-preserving accessor (foundation for the map

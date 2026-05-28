@@ -39,7 +39,7 @@ import Link from "next/link";
 import {
   Activity, Construction, Zap, School, AlertTriangle, Siren,
   CheckCircle2, ExternalLink, MapPin, Clock, ChevronRight,
-  CloudAlert, Newspaper,
+  CloudAlert, Newspaper, Radio, Waves,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
@@ -50,6 +50,7 @@ import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleDashSection from "@/components/pulse/CollapsibleDashSection";
+import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -477,6 +478,105 @@ export default async function PulsePage() {
           ))}
         </CollapsibleDashSection>
       )}
+
+      {/* Frederick Scanner — Twitter/X timeline embed. Sits between
+          the operational feeds and the editorial news section because
+          the scanner is operational-news in feel (raw incidents)
+          but lives on a third-party surface. Self-falls-back to an
+          "open on X" link card if the widget can't load. */}
+      <section
+        id="scanner"
+        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+          borderLeftWidth: 3,
+          borderLeftColor: "var(--app-cool)",
+        }}
+      >
+        <header
+          className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <h2
+            className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            <span
+              aria-hidden
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-cool) 13%, transparent)",
+                color: "var(--app-cool)",
+              }}
+            >
+              <Radio className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </span>
+            Frederick Scanner
+          </h2>
+          <span
+            className="text-[11px]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Live on X
+          </span>
+        </header>
+        <div className="px-3 py-3">
+          <ScannerTimeline />
+        </div>
+        <a
+          href="https://twitter.com/FrederickMDScan"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 px-4 pb-3 pt-1 text-[10px] uppercase tracking-wide"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Source: @FrederickMDScan
+          <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
+        </a>
+      </section>
+
+      {/* Rivers & streams quick link — full dashboard lives at /rivers,
+          here we just surface a count + last-reading pulse so a user
+          watching the pulse page sees water levels alongside the
+          operational feeds. */}
+      <Link
+        href="/rivers"
+        className="group flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.995]"
+        style={{
+          borderColor: "var(--app-border)",
+          borderLeftWidth: 3,
+          borderLeftColor: "var(--app-cool)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+          style={{
+            background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
+            color: "var(--app-cool)",
+          }}
+        >
+          <Waves className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className="block font-serif text-[15px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Rivers &amp; streams
+          </span>
+          <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+            Live USGS gauges · Monocacy · Potomac · Catoctin · 24-hour trend
+          </span>
+        </span>
+        <ChevronRight
+          className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
+          strokeWidth={2.25}
+          style={{ color: "var(--app-cool)" }}
+          aria-hidden
+        />
+      </Link>
 
       {/* City signal — Local news. Always-on city data even when the
           operational feeds are quiet. Top headlines from Google News
