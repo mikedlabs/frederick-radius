@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import PlanBuilder from "@/components/plan/PlanBuilder";
 import { decodeSpec, reconstructPlan } from "@/lib/integrations/planner";
-import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
@@ -50,17 +50,23 @@ export default async function PlanPage({
 
       {!shared && (
         <header className="relative -mx-4 mb-5 overflow-hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)]">
-          {/* Atmospheric Frederick photo — sets the mood before any
-              UI loads. Aspect-locked so the rest of the page doesn't
-              jump on first paint; falls back to a quiet gradient if
-              the seasonal manifest hasn't been generated yet. */}
+          {/* Hardcoded Frederick photo — sets the mood before any UI
+              loads. Was a SeasonalPhoto auto-rotation, but the daily
+              pick was landing on a Nymeo Field (Frederick Keys
+              stadium) shot that read as "go to a baseball game"
+              instead of "plan a downtown evening." A single
+              deliberate downtown shot is the right signal for the
+              planner's job. Swap if a better evening-vibe shot
+              shows up; SeasonalPhoto stays available for surfaces
+              where daily rotation IS the point. */}
           <div className="relative h-44 w-full sm:h-52" aria-hidden>
-            <SeasonalPhoto
-              season="auto"
+            <Image
+              src="/images/seasons/fall/010.jpg"
               alt=""
+              fill
               priority
               sizes="(max-width: 768px) 100vw, 640px"
-              className="absolute inset-0"
+              className="object-cover"
             />
             <div
               className="absolute inset-0"

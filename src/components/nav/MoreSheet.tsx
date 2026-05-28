@@ -24,23 +24,26 @@ import {
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
 /**
- * MoreSheet v3 — tools first, books shown like books.
+ * MoreSheet v4 — colored, scannable, less repetitive.
  *
- * v2 stacked a plan-hero, a 3-card right-now grid, and a time-aware
- * banner on top of the directory. The user's read: the sheet should
- * "start with the tools and remove the other things above that" —
- * the action surface in /now already covers Plan / Open-now /
- * Tonight; the More menu shouldn't reproduce them.
+ * v3 listed 13+ rows that all used the same cool-color icon
+ * background, so the sheet read as one undifferentiated wall of
+ * grey-blue chips. v4:
  *
- * Order:
- *   1. TOOLS — Plan, Within reach, Pulse. The verbs.
- *   2. USEFUL — Amenities / Transit / Trails / Parks / Water /
- *      Contacts. The nouns the city carries.
- *   3. DISCOVER — the editorial surface. The two physical books
- *      (From Above + Color Frederick) get real photo cards using
- *      their cover art so a tap reads as opening a book, not a
- *      menu row. History and Collections sit as rows beneath.
- *   4. APP — About + Trust & data + Settings. The chrome.
+ *   1. TOOLS — promoted to a 3-up brand-color tile grid (the
+ *      MoodTiles intent-tile pattern, scaled down). Plan / Within
+ *      reach / Pulse get their own saturated colors so the action
+ *      verbs visually pop above the noun list.
+ *   2. USEFUL — stays as rows BUT each row gets its own intent
+ *      color (parks = Catoctin green, water = slate, trails =
+ *      forest, contacts = ink, transit = cool, amenities = brick).
+ *      No more sea of identical rows.
+ *   3. DISCOVER — book cards on top (unchanged), History +
+ *      Collections rows beneath with their own colors.
+ *   4. APP — About / Trust / Settings as compact rows, each
+ *      with its own subtle color.
+ *
+ * Same TABS schema, just per-item color identity.
  */
 
 type Item = {
@@ -48,28 +51,30 @@ type Item = {
   label: string;
   description: string;
   icon: typeof Wrench;
+  /** Accent color for the icon background — one per item so the
+   *  sheet reads as a colored list instead of a wall of blue. */
+  color: string;
   external?: boolean;
 };
 
+/** Tools — the action verbs. Surface them as full-color tiles
+ *  (3-up) so they read above the noun rows below. */
 const TOOLS: Item[] = [
-  { href: "/plan",   label: "Plan a night",  description: "Dinner, drinks, somewhere to land late",         icon: CalendarRange },
-  { href: "/radius", label: "Within reach",  description: "What's reachable on foot, by bike, or by car",   icon: MapPinned },
-  { href: "/pulse",  label: "Pulse",          description: "What's open, busy, or moving across the county", icon: Activity },
+  { href: "/plan",   label: "Plan",        description: "Dinner, drinks, late",       icon: CalendarRange, color: "var(--app-brand)" },
+  { href: "/radius", label: "Within reach", description: "Walkable · bikable · car",  icon: MapPinned,     color: "var(--app-cool)" },
+  { href: "/pulse",  label: "Pulse",       description: "Live county status",         icon: Activity,      color: "var(--app-accent)" },
 ];
 
 const USEFUL: Item[] = [
-  { href: "/amenities", label: "Amenities", description: "Restrooms, water, wifi, EV charging, bike parking", icon: Wrench },
-  { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2 },
-  { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus },
-  { href: "/trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain },
-  { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: Mountain },
-  { href: "/water",     label: "Water",     description: "Public drinking fountains and water bottle refills", icon: Droplets },
-  { href: "/rivers",    label: "Rivers",    description: "Live creek and river gauges with 24-hour trend",     icon: Waves },
+  { href: "/amenities", label: "Amenities", description: "Restrooms, water, wifi, EV charging, bike parking", icon: Wrench,        color: "var(--app-brand)" },
+  { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2,     color: "var(--app-ink-2)" },
+  { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus,           color: "var(--app-cool)" },
+  { href: "/trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain,      color: "var(--app-positive)" },
+  { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: Mountain,      color: "var(--app-brand-2)" },
+  { href: "/rivers",    label: "Rivers",    description: "Live creek and river gauges with 24-hour trend",     icon: Waves,         color: "var(--app-cool)" },
+  { href: "/water",     label: "Water",     description: "Public drinking fountains and water bottle refills", icon: Droplets,      color: "var(--app-info)" },
 ];
 
-/** Editorial surfaces. The two books get visual cards above the
- *  History row — they ARE objects, so they should look like objects,
- *  not menu entries. */
 const BOOKS: Array<{
   href: string;
   label: string;
@@ -87,27 +92,28 @@ const BOOKS: Array<{
     href: "https://www.colorfrederick.com",
     label: "Color Frederick",
     description: "The Frederick coloring book",
-    // Actual cover art from miked.store's Shopify CDN, downloaded
-    // and converted to webp in /public/images. Mirroring the asset
-    // locally avoids a remote-domain image config and keeps the card
-    // loading instantly.
     cover: "/images/color-frederick-cover.webp",
     external: true,
   },
 ];
 
-/** Discover rows that sit beneath the book cards. History first
- *  (the heaviest editorial surface), then Collections. */
 const DISCOVER_ROWS: Item[] = [
-  { href: "/history",     label: "History",     description: "Frederick County, one story at a time",       icon: Landmark },
-  { href: "/collections", label: "Collections", description: "Editorial lists — date nights, rainy days, kid energy", icon: Sparkles },
+  { href: "/history",     label: "History",     description: "Frederick County, one story at a time",                icon: Landmark, color: "var(--app-brand-2)" },
+  { href: "/collections", label: "Collections", description: "Editorial lists — date nights, rainy days, kid energy", icon: Sparkles, color: "var(--app-accent)" },
 ];
 
 const APP: Item[] = [
-  { href: "/about",    label: "About",    description: "What this app is and how it stays honest",     icon: Info },
-  { href: "/trust",    label: "Trust & data", description: "Where the data comes from and what the badges mean", icon: ShieldCheck },
-  { href: "/settings", label: "Settings", description: "Persona, home spot, interests, notifications", icon: SettingsIcon },
+  { href: "/about",    label: "About",        description: "What this app is and how it stays honest",     icon: Info,        color: "var(--app-ink-2)" },
+  { href: "/trust",    label: "Trust & data", description: "Where the data comes from and what the badges mean", icon: ShieldCheck, color: "var(--app-cool)" },
+  { href: "/settings", label: "Settings",     description: "Persona, home spot, interests, notifications", icon: SettingsIcon, color: "var(--app-ink-3)" },
 ];
+
+/** Gradient recipe shared with MoodTiles — lighter top-left into
+ *  saturated bottom-right — so the Tools tiles sit in the same
+ *  visual family as /now's intent tiles. */
+function gradientFor(color: string): string {
+  return `linear-gradient(155deg, color-mix(in srgb, ${color} 76%, white) 0%, ${color} 65%, color-mix(in srgb, ${color} 90%, black) 100%)`;
+}
 
 export default function MoreSheet({
   open,
@@ -126,11 +132,70 @@ export default function MoreSheet({
       subtitle="Tools, the city's bits, and the books"
     >
       <div className="space-y-5 px-4 pt-3 pb-6">
-        <Cluster heading="Tools" items={TOOLS} onClose={close} />
+        {/* TOOLS — the action verbs as a 3-up color tile grid. The
+            visual analog of MoodTiles on /now: short label, glass
+            icon pill, saturated brand-color gradient. */}
+        <section className="space-y-2">
+          <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
+            Tools
+          </h3>
+          <ul className="grid grid-cols-3 gap-2">
+            {TOOLS.map((it) => {
+              const Icon = it.icon;
+              return (
+                <li key={it.href}>
+                  <Link
+                    href={it.href}
+                    onClick={close}
+                    aria-label={`${it.label} — ${it.description}`}
+                    className="tactile tactile-interactive relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] border p-2 text-center transition active:scale-[0.96]"
+                    style={{
+                      borderColor: `color-mix(in srgb, ${it.color} 40%, black)`,
+                      background: gradientFor(it.color),
+                      boxShadow: `var(--app-elev-1), 0 4px 12px -6px color-mix(in srgb, ${it.color} 30%, transparent)`,
+                    }}
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute -right-4 -bottom-4 h-16 w-16 rounded-full"
+                      style={{
+                        background:
+                          "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)",
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      className="grid h-9 w-9 place-items-center rounded-full"
+                      style={{
+                        background: "rgba(255,255,255,0.96)",
+                        backdropFilter: "blur(8px)",
+                        WebkitBackdropFilter: "blur(8px)",
+                        boxShadow:
+                          "0 2px 6px -1px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.7)",
+                      }}
+                    >
+                      <Icon
+                        className="h-[18px] w-[18px]"
+                        strokeWidth={2.25}
+                        style={{ color: it.color }}
+                      />
+                    </span>
+                    <span
+                      className="block max-w-full truncate text-[11.5px] font-semibold leading-none text-white"
+                      style={{ textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}
+                    >
+                      {it.label}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+
         <Cluster heading="Useful" items={USEFUL} onClose={close} />
 
-        {/* Discover — books shown as books, then History + Collections
-            as rows beneath. */}
+        {/* Discover — book cards then editorial rows. */}
         <section className="space-y-2">
           <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
             Discover
@@ -187,20 +252,24 @@ function DirectoryRow({
   label,
   description,
   icon: Icon,
+  color,
   external,
   onClose,
 }: Item & { onClose: () => void }) {
+  // Per-item color identity — was a sea of identical cool-tinted
+  // icons. Now each row carries its own accent so the eye can sort
+  // by type without reading every label.
   const body = (
     <>
       <span
         aria-hidden
         className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-        style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)" }}
+        style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}
       >
         <Icon
           className="h-[18px] w-[18px]"
           strokeWidth={2}
-          style={{ color: "var(--app-cool)" }}
+          style={{ color }}
         />
       </span>
       <span className="min-w-0 flex-1">
@@ -251,10 +320,8 @@ function DirectoryRow({
   );
 }
 
-/** Visual book card — full-bleed cover photo with the title and a
- *  one-line gloss reading from a dark gradient at the bottom. The
- *  external arrow appears in the top-right when the destination
- *  leaves the app. */
+/** Visual book card — unchanged from v3 (full-bleed cover, "Book"
+ *  pill top-left, external arrow when applicable). */
 function BookCard({
   href,
   label,
