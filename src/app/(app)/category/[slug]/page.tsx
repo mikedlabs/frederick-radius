@@ -77,6 +77,24 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     : places
   ).slice(0, 3);
 
+  // Decision-helping slices, between top picks and the full directory.
+  // The 2026-05 review flagged 206-restaurant raw lists as "database
+  // exhaust" — these sections give users a faster path to a decision.
+  // Only render a slice when it actually has results, so the page
+  // doesn't carry empty headings.
+  const openNow = places
+    .filter((p) => p.open_status.state === "open" || p.open_status.state === "closing-soon")
+    .slice(0, 6);
+  const townOrder = ["frederick", "urbana", "mount-airy", "middletown", "thurmont", "brunswick", "new-market", "walkersville"];
+  const townSlices: { slug: string; name: string; places: typeof places }[] = [];
+  for (const m of townOrder) {
+    const slice = places.filter((p) => p.municipality === m).slice(0, 3);
+    if (slice.length >= 2 && townSlices.length < 4) {
+      const name = MUNICIPALITY_BY_SLUG[m]?.name ?? m;
+      townSlices.push({ slug: m, name, places: slice });
+    }
+  }
+
   // A quiet "you are here" line so a user in Thurmont understands
   // why the picks are not downtown-Frederick-first. Only renders
   // when there is a home muni and it has a centroid.
@@ -169,6 +187,53 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <section className="space-y-3">
           <SectionHeading title={`Looks like ${c.name}`} accent={c.color} />
           <PhotoMosaic places={placesWithPhotos} />
+        </section>
+      )}
+
+      {openNow.length > 0 && (
+        <section className="space-y-2.5">
+          <SectionHeading title="Open now" accent={c.color} />
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {openNow.map((p) => (
+              <li key={p.slug}>
+                <PlaceCard place={p} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {townSlices.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeading title="By town" accent={c.color} />
+          <div className="space-y-4">
+            {townSlices.map((t) => (
+              <div key={t.slug} className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <h3
+                    className="font-serif text-base font-semibold"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {t.name}
+                  </h3>
+                  <Link
+                    href={`/m/${t.slug}`}
+                    className="text-xs font-medium"
+                    style={{ color: c.color }}
+                  >
+                    See more →
+                  </Link>
+                </div>
+                <ul className="grid gap-2 sm:grid-cols-3">
+                  {t.places.map((p) => (
+                    <li key={p.slug}>
+                      <PlaceCard place={p} variant="tile" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
