@@ -12,8 +12,8 @@ describe("eventTrust", () => {
   it("seed is curated/verified-level with editorial basis", () => {
     const t = eventTrust({ source: "seed", is_verified: false });
     expect(t.level).toBe("verified");
-    expect(t.label).toBe("Curated");
-    expect(t.basis).toMatch(/Curated/);
+    expect(t.label).toBe("Hand-picked");
+    expect(t.basis).toMatch(/Picked/);
   });
 
   it("partner feeds are 'official' with a named source", () => {
