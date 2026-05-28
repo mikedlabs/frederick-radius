@@ -9,11 +9,14 @@ import type { ReasonTone } from "@/components/ui/ReasonChip";
  * Capped at 3 reasons per card so the row stays scannable. The order
  * here is the priority order — earlier reasons survive the cap.
  *
- * Priority rationale:
+ * Priority rationale (after the 2026-05 badge-hierarchy review):
  *   1. Open / verified open — answers "can I go right now?"
  *   2. Distance — answers "how much effort?"
  *   3. Top rated / local favorite — answers "is it good?"
- *   4. Recently verified — answers "is the data current?"
+ *
+ * Data confidence ("Verified") is the SourceBadge's job — leaving it
+ * out of the reasons row prevents a "Verified … Verified" double-chip
+ * on every enriched card, which the review flagged as confetti.
  */
 export type PlaceReason =
   | "verified_open"
@@ -21,8 +24,7 @@ export type PlaceReason =
   | "near"
   | "walkable"
   | "top_rated"
-  | "local_favorite"
-  | "recently_verified";
+  | "local_favorite";
 
 export type PlaceReasonChip = { kind: PlaceReason; label: string; tone: ReasonTone };
 
@@ -33,12 +35,8 @@ const WALK_SPEED_M_PER_MIN = 80; // 4.8 km/h
 const TOP_RATED_MIN_STARS = 4.5;
 const TOP_RATED_MIN_COUNT = 50;
 const LOCAL_FAVORITE_MIN_FEATURE = 9;
-const FRESH_WITHIN_DAYS = 14;
 
-export function placeReasons(
-  p: PlaceCardData,
-  now: Date = new Date(),
-): PlaceReasonChip[] {
+export function placeReasons(p: PlaceCardData): PlaceReasonChip[] {
   const out: PlaceReasonChip[] = [];
 
   // 1. Open status — the strongest single signal. Prefer the verified
@@ -73,15 +71,10 @@ export function placeReasons(
     out.push({ kind: "top_rated", label: "Top rated", tone: "rated" });
   }
 
-  // 4. Freshness — only worth surfacing if it's recent. A stale
-  // "verified March" chip would lower trust, not raise it.
-  if (p.last_verified_at) {
-    const daysOld =
-      (now.getTime() - Date.parse(p.last_verified_at)) / (24 * 3600_000);
-    if (daysOld <= FRESH_WITHIN_DAYS) {
-      out.push({ kind: "recently_verified", label: "Verified", tone: "verified" });
-    }
-  }
+  // Freshness is no longer a chip — the SourceBadge already carries
+  // "Verified" for that meaning, and the 2026-05 review flagged the
+  // duplicate as visual confetti. The freshness timestamp is still
+  // surfaced by FreshnessChip on the detail page header.
 
   return out.slice(0, 3);
 }
