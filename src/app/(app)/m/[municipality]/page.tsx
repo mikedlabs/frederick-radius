@@ -40,6 +40,21 @@ export const revalidate = 600;
  * The page is about the town, not about the directory's shape.
  */
 
+/**
+ * Per-town hero photo overrides — hand-curated "this is THE photo of
+ * {town}" slug map. Used when the auto-pick keeps landing on a
+ * restaurant interior that doesn't say "this is the town."
+ *
+ * Add a town here only after verifying the override place actually
+ * has a recognizable photo (district park, train station, main
+ * street, town hall) AND it's in places-client.json.
+ */
+const HERO_OVERRIDES: Record<string, string> = {
+  // Urbana → District Park instead of "Monocacy Crossing Restaurant"
+  // (a Frederick-side restaurant that DFP filed under Urbana).
+  urbana: "urbana-district-park-new-market",
+};
+
 export async function generateStaticParams() {
   return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
 }
@@ -75,21 +90,30 @@ export default async function MunicipalityPage(
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
 
-  // Town hero — each town now gets its OWN identifiable photo
-  // instead of a daily-rotating aerial that looks the same in
-  // every municipality. We pick the top-scored photographed place
-  // in the town as the signature image (Brewer's Alley for
-  // Frederick, the railroad bridge for Brunswick, etc — whichever
-  // top-scored place actually has a Google photo). Attribution
-  // shows on the hero so it reads as "here's a real place in
-  // {town}" not "we slapped a generic photo here."
+  // Town hero — each town gets its OWN identifiable photo instead of
+  // a generic rotating aerial. The picker has three tiers:
   //
-  // SeasonalPhoto stays as the last-resort fallback for towns
-  // that don't have any photographed places yet — and as a slot
-  // we can override later by hardcoding a Wikimedia landmark
-  // photo per town when one is verified.
+  //   1. HERO_OVERRIDES — hand-curated "this is THE photo of {town}"
+  //      mapping by slug. Used when the auto-pick keeps landing on a
+  //      restaurant interior that doesn't say "this is the town"
+  //      (Urbana → district park instead of "Monocacy Crossing").
+  //   2. The top-scored photographed place WHOSE name actually
+  //      references the town (e.g. "Urbana Library Farmers' Market",
+  //      "Brunswick Railroad Bridge"). Better signal than the raw
+  //      feature_score winner, since DFP rolls plenty of restaurants
+  //      from neighboring towns under each municipality slug.
+  //   3. The top-scored photographed place in the town, as before.
+  //
+  // SeasonalPhoto remains the last-resort fallback for towns with no
+  // photographed places.
   const placesWithPhotos = places.filter((p) => p.google_photo_url);
-  const heroPlace = placesWithPhotos[0] ?? null;
+  const override = HERO_OVERRIDES[m.slug];
+  const overrideHero = override
+    ? placesWithPhotos.find((p) => p.slug === override) ?? null
+    : null;
+  const townNameRe = new RegExp(`\\b${m.name}\\b`, "i");
+  const namedHero = placesWithPhotos.find((p) => townNameRe.test(p.name)) ?? null;
+  const heroPlace = overrideHero ?? namedHero ?? placesWithPhotos[0] ?? null;
   const heroPhotoUrl = heroPlace?.google_photo_url ?? null;
 
   return (

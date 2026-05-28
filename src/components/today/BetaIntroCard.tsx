@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, MessageSquare } from "lucide-react";
+import { ArrowRight, MessageSquare, Compass, X } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
 /**
@@ -87,56 +87,110 @@ export default function BetaIntroCard() {
       title="Welcome to Frederick Radius"
       subtitle="Beta · May 2026"
     >
-      <div className="space-y-4 px-5 py-4">
-        {/* Eyebrow — brand-color tag echoes the drawer subtitle so a
-            user who skips the header still anchors on the beta call. */}
-        <p
-          className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em]"
-          style={{ color: "var(--app-brand)" }}
-        >
-          <span
-            aria-hidden
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--app-brand)" }}
-          />
-          Beta · May 2026
-        </p>
+      {/* Close X — absolute, top-right of the drawer body. Replaces
+          the old "Got it" outline button so the only secondary
+          action is the X (Vaul's drag-down and backdrop tap still
+          work). Same tap-target size as iOS sheet dismiss. */}
+      <button
+        type="button"
+        onClick={dismiss}
+        aria-label="Close welcome"
+        className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full transition active:scale-[0.94]"
+        style={{
+          background: "color-mix(in srgb, var(--app-ink) 6%, transparent)",
+          color: "var(--app-ink-2)",
+        }}
+      >
+        <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+      </button>
 
-        <div
-          className="space-y-3 text-[14px] leading-relaxed"
-          style={{ color: "var(--app-ink-2)" }}
-        >
-          <p
-            className="font-serif text-[18px] font-semibold leading-snug"
-            style={{ color: "var(--app-ink)" }}
+      <div className="relative overflow-hidden">
+        {/* Decorative blooms — soft brand-color glow in two corners,
+            behind everything. Adds depth + a "this place is ours"
+            warmth without competing with the copy. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in srgb, var(--app-brand) 35%, transparent) 0%, color-mix(in srgb, var(--app-brand) 0%, transparent) 70%)",
+          }}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -left-20 bottom-0 h-48 w-48 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in srgb, var(--app-brand-2) 28%, transparent) 0%, color-mix(in srgb, var(--app-brand-2) 0%, transparent) 70%)",
+          }}
+        />
+
+        <div className="relative space-y-4 px-5 py-5">
+          {/* Compass crest + Beta pill — visual anchor that ties the
+              card to the product's "compass for Frederick County"
+              tagline. Brand-color tint, glass-pill backing. */}
+          <div className="flex items-start justify-between gap-3">
+            <span
+              aria-hidden
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--app-brand) 28%, transparent)",
+                color: "var(--app-brand)",
+              }}
+            >
+              <Compass className="h-6 w-6" strokeWidth={1.75} />
+            </span>
+            <p
+              className="inline-flex shrink-0 items-center gap-1.5 self-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 12%, transparent)",
+                color: "var(--app-brand)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ background: "var(--app-brand)" }}
+              />
+              Beta · May 2026
+            </p>
+          </div>
+
+          <div
+            className="space-y-3 text-[14px] leading-relaxed"
+            style={{ color: "var(--app-ink-2)" }}
           >
-            Frederick Radius is the start of a dedicated home base for Frederick County.
-          </p>
+            <p
+              className="font-serif text-[19px] font-semibold leading-snug tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Frederick Radius is the start of a dedicated home base for Frederick County.
+            </p>
 
-          <p>
-            Local information is everywhere right now: city pages, county pages,
-            business websites, Facebook, Instagram, Reddit, event calendars, and
-            posts people only see if the algorithm happens to show them.
-          </p>
+            <p>
+              Local information is everywhere right now: city pages, county pages,
+              business websites, Facebook, Instagram, Reddit, event calendars, and
+              posts people only see if the algorithm happens to show them.
+            </p>
 
-          <p>
-            This is an attempt to bring the city, the county&rsquo;s 12 municipalities,
-            local businesses, events, services, and everyday updates into one
-            clearer place.
-          </p>
+            <p>
+              This is an attempt to bring the city, the county&rsquo;s 12 municipalities,
+              local businesses, events, services, and everyday updates into one
+              clearer place.
+            </p>
 
-          <p>
-            It is still early, and it will keep changing. That is why feedback
-            matters now.
-          </p>
+            <p>
+              It is still early, and it will keep changing. That is why feedback
+              matters now.
+            </p>
 
-          <p>
-            If something feels off, if a place is missing, or if you have an
-            idea, send it over.
-          </p>
-        </div>
+            <p>
+              If something feels off, if a place is missing, or if you have an
+              idea, send it over.
+            </p>
+          </div>
 
-        <div className="flex flex-wrap gap-2 pt-1">
           <a
             href={mailto}
             className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold transition active:scale-[0.98]"
@@ -150,26 +204,14 @@ export default function BetaIntroCard() {
             Send feedback
             <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           </a>
-          <button
-            type="button"
-            onClick={dismiss}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold transition active:scale-[0.98]"
-            style={{
-              background: "transparent",
-              color: "var(--app-ink-3)",
-              border: "1px solid var(--app-border)",
-            }}
-          >
-            Got it
-          </button>
-        </div>
 
-        <p
-          className="pt-1 text-[12px] italic"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Made by Michael DeMattia, a downtown Frederick resident.
-        </p>
+          <p
+            className="pt-1 text-[12px] italic"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Made by Michael DeMattia, a downtown Frederick resident.
+          </p>
+        </div>
       </div>
     </BottomDrawer>
   );
