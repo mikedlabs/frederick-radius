@@ -13,9 +13,100 @@ import {
   Zap,
   ExternalLink,
   AlertTriangle,
+  Music,
+  Theater,
+  ShoppingBag,
+  Moon,
+  KeyRound,
+  Receipt,
+  type LucideIcon,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import { PARKING_GARAGES } from "@/data/parking-garages";
+
+// "Common requests" — intent-led entry tiles, same pattern as
+// /contacts. Each tile routes to either the specific garage best
+// suited to the activity (links to /places/<slug>) or to an
+// external action (the City of Frederick's parking page for
+// tickets / permits / tow info, ParkMobile for the app itself).
+// The list intentionally answers the user's QUESTION, not the
+// directory's structure — most people arrive at /parking with a
+// destination in mind, not a garage name.
+type ParkIntent = {
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  accent: string;
+  /** Either an internal href ("/places/...") or an external URL. */
+  href: string;
+  /** Skip rel/target wiring when false. */
+  external?: boolean;
+};
+
+const CITY_PARKING_URL = "https://www.cityoffrederickmd.gov/207/Parking";
+
+const PARK_INTENTS: ParkIntent[] = [
+  {
+    label: "Carroll Creek concert",
+    hint: "Alive @ Five, summer movies — Carroll Creek Deck is closest",
+    icon: Music,
+    accent: "var(--app-brand)",
+    href: "/places/carroll-creek-parking-deck",
+  },
+  {
+    label: "Weinberg or theaters",
+    hint: "Weinberg Center, Maryland Ensemble — Church Street Garage",
+    icon: Theater,
+    accent: "var(--app-accent)",
+    href: "/places/church-street-garage",
+  },
+  {
+    label: "Market Street shopping",
+    hint: "Boutiques, restaurants, the heart of downtown — Court Street Garage",
+    icon: ShoppingBag,
+    accent: "var(--app-brand-2)",
+    href: "/places/court-street-garage",
+  },
+  {
+    label: "Late dinner, easy exit",
+    hint: "All garages run 24/7 — West Patrick is the quickest off-ramp out",
+    icon: Moon,
+    accent: "var(--app-cool)",
+    href: "/places/west-patrick-street-garage",
+  },
+  {
+    label: "Get the ParkMobile app",
+    hint: "Pay every meter + every garage by zone number from your phone",
+    icon: Smartphone,
+    accent: "var(--app-positive)",
+    href: "https://parkmobile.io/parking-app",
+    external: true,
+  },
+  {
+    label: "Pay a parking ticket",
+    hint: "Pay, dispute, or look up a citation online",
+    icon: Receipt,
+    accent: "var(--app-ink-2)",
+    href: CITY_PARKING_URL,
+    external: true,
+  },
+  {
+    label: "Car was towed",
+    hint: "Call the City Parking Department BEFORE the police — most tows are routine",
+    icon: AlertTriangle,
+    accent: "var(--app-warning)",
+    href: CITY_PARKING_URL,
+    external: true,
+  },
+  {
+    label: "Monthly permit",
+    hint: "Set up a monthly garage permit for downtown commuters",
+    icon: KeyRound,
+    accent: "var(--app-brand)",
+    href: CITY_PARKING_URL,
+    external: true,
+  },
+];
 
 export const metadata: Metadata = {
   title: "Parking",
@@ -78,6 +169,73 @@ export default function ParkingPage() {
           right garage saves a five-minute walk.
         </p>
       </header>
+
+      {/* Common requests — intent-led entry tiles, same pattern as
+          /contacts. Routes the user straight to the right garage
+          for what they're doing OR to the City's parking page for
+          tickets/permits/tows. Sits ABOVE the comprehensive garage
+          list so people who know what they want skip the directory. */}
+      <section
+        aria-labelledby="parking-intent-heading"
+        className="space-y-2.5"
+      >
+        <h2
+          id="parking-intent-heading"
+          className="eyebrow px-1"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Common requests
+        </h2>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {PARK_INTENTS.map((intent) => {
+            const Icon = intent.icon;
+            return (
+              <li key={intent.label}>
+                <a
+                  href={intent.href}
+                  target={intent.external ? "_blank" : undefined}
+                  rel={intent.external ? "noopener noreferrer" : undefined}
+                  aria-label={`${intent.label} — ${intent.hint}`}
+                  className="hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    boxShadow:
+                      "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                    style={{
+                      background: `color-mix(in srgb, ${intent.accent} 14%, transparent)`,
+                    }}
+                  >
+                    <Icon
+                      className="h-4 w-4"
+                      strokeWidth={2}
+                      style={{ color: intent.accent }}
+                    />
+                  </span>
+                  <span className="min-w-0">
+                    <span
+                      className="block text-[13px] font-semibold leading-tight"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {intent.label}
+                    </span>
+                    <span
+                      className="mt-0.5 block text-[11px] leading-snug"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {intent.hint}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       {/* Method tile row — quick glance at HOW the city's parking
           system works before listing where the garages are. */}

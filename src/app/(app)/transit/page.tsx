@@ -1,6 +1,102 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Bus, ExternalLink, MapPin } from "lucide-react";
+import {
+  ArrowLeft,
+  Bus,
+  ExternalLink,
+  MapPin,
+  Clock,
+  Navigation,
+  TrainFront,
+  Accessibility,
+  Ticket,
+  Bike,
+  Users,
+  Search,
+  type LucideIcon,
+} from "lucide-react";
+
+const COUNTY_TRANSIT_URL = "https://frederickcountymd.gov/105/Transit-Services";
+
+// Common requests — intent-led entry tiles, same pattern as /contacts
+// and /parking. Routes users by what they're trying to DO (catch the
+// MARC, ride paratransit, buy a pass) instead of forcing them to read
+// 36 route names hoping one looks right. The list intentionally
+// answers the question, not the data's structure.
+type TransitIntent = {
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  accent: string;
+  href: string;
+  external?: boolean;
+};
+
+const TRANSIT_INTENTS: TransitIntent[] = [
+  {
+    label: "Schedules + fares",
+    hint: "Current TransIT schedules, fare table, holiday changes",
+    icon: Clock,
+    accent: "var(--app-cool)",
+    href: COUNTY_TRANSIT_URL,
+    external: true,
+  },
+  {
+    label: "Plan a trip with the bus",
+    hint: "Google Maps with transit mode — drop in any Frederick address",
+    icon: Navigation,
+    accent: "var(--app-brand)",
+    href: "https://www.google.com/maps/dir/?api=1&travelmode=transit&origin=Frederick%2C+MD",
+    external: true,
+  },
+  {
+    label: "MARC to DC",
+    hint: "Brunswick line — Brunswick + Point of Rocks → Silver Spring + DC",
+    icon: TrainFront,
+    accent: "var(--app-accent)",
+    href: "https://www.mta.maryland.gov/schedule/marc-brunswick",
+    external: true,
+  },
+  {
+    label: "TransIT-plus (paratransit)",
+    hint: "Door-to-door rides for disabled riders — book 1+ business days ahead",
+    icon: Accessibility,
+    accent: "var(--app-positive)",
+    href: "https://frederickcountymd.gov/108/TransIT-Plus",
+    external: true,
+  },
+  {
+    label: "Bus pass + tickets",
+    hint: "Daily, weekly, monthly, and reduced-fare passes",
+    icon: Ticket,
+    accent: "var(--app-brand-2)",
+    href: COUNTY_TRANSIT_URL,
+    external: true,
+  },
+  {
+    label: "Bike on the bus",
+    hint: "Every TransIT bus has a 2-bike front rack — first-come, no fee",
+    icon: Bike,
+    accent: "var(--app-cool)",
+    href: COUNTY_TRANSIT_URL,
+    external: true,
+  },
+  {
+    label: "Senior reduced fare",
+    hint: "Half-price for riders 60+, ADA-eligible, or Medicare cardholders",
+    icon: Users,
+    accent: "var(--app-warning)",
+    href: COUNTY_TRANSIT_URL,
+    external: true,
+  },
+  {
+    label: "Lost something on the bus",
+    hint: "Call the TransIT office — items held at the maintenance facility",
+    icon: Search,
+    accent: "var(--app-ink-2)",
+    href: "/contacts",
+  },
+];
 import {
   getFrederickTransitRoutes,
   getFrederickTransitRouteShapes,
@@ -132,6 +228,74 @@ export default async function TransitPage() {
           schedules live on the county&apos;s site for now.
         </p>
       </header>
+
+      {/* Common requests — intent-led entry tiles for the things
+          people actually arrive needing (MARC connection,
+          paratransit booking, lost-item recovery). Routes them
+          straight to the right destination instead of making them
+          guess from 36 route names. Same pattern as /contacts and
+          /parking. */}
+      <section
+        aria-labelledby="transit-intent-heading"
+        className="space-y-2.5"
+      >
+        <h2
+          id="transit-intent-heading"
+          className="eyebrow px-1"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Common requests
+        </h2>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {TRANSIT_INTENTS.map((intent) => {
+            const Icon = intent.icon;
+            return (
+              <li key={intent.label}>
+                <a
+                  href={intent.href}
+                  target={intent.external ? "_blank" : undefined}
+                  rel={intent.external ? "noopener noreferrer" : undefined}
+                  aria-label={`${intent.label} — ${intent.hint}`}
+                  className="hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    boxShadow:
+                      "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                    style={{
+                      background: `color-mix(in srgb, ${intent.accent} 14%, transparent)`,
+                    }}
+                  >
+                    <Icon
+                      className="h-4 w-4"
+                      strokeWidth={2}
+                      style={{ color: intent.accent }}
+                    />
+                  </span>
+                  <span className="min-w-0">
+                    <span
+                      className="block text-[13px] font-semibold leading-tight"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {intent.label}
+                    </span>
+                    <span
+                      className="mt-0.5 block text-[11px] leading-snug"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {intent.hint}
+                    </span>
+                  </span>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       <TransitMap shapes={shapes} stops={stops} />
 

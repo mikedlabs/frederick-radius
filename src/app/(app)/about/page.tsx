@@ -9,10 +9,76 @@ import {
   Landmark,
   ShieldCheck,
   Sparkles,
+  MapPin,
+  CalendarPlus,
+  Mail,
+  Pencil,
+  Scroll,
+  type LucideIcon,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+
+// Common requests — action-oriented intents for the curious reader.
+// /about is meant to convert a stranger into a user; this grid gives
+// them the six concrete next moves (submit, correct, write in) the
+// pitch invites. Same shape as the /contacts + /parking grids.
+type AboutIntent = {
+  label: string;
+  hint: string;
+  icon: LucideIcon;
+  accent: string;
+  href: string;
+  external?: boolean;
+};
+
+const ABOUT_INTENTS: AboutIntent[] = [
+  {
+    label: "Submit a place",
+    hint: "A spot we're missing — a cafe, a trail, a hidden gem",
+    icon: MapPin,
+    accent: "var(--app-brand)",
+    href: "/submit/place",
+  },
+  {
+    label: "Submit an event",
+    hint: "Something happening — a market, a show, a fundraiser",
+    icon: CalendarPlus,
+    accent: "var(--app-accent)",
+    href: "/submit/event",
+  },
+  {
+    label: "Send a correction",
+    hint: "Wrong hours, wrong phone, closed location — tell us",
+    icon: Pencil,
+    accent: "var(--app-warning)",
+    href: "mailto:miked@madproductions.io?subject=Frederick%20Radius%20correction",
+    external: true,
+  },
+  {
+    label: "How we verify data",
+    hint: "Sourcing rules, freshness signals, the trust we won't fake",
+    icon: ShieldCheck,
+    accent: "var(--app-cool)",
+    href: "/trust",
+  },
+  {
+    label: "Email Michael",
+    hint: "Partnerships, press, or just a hello from a downtown neighbor",
+    icon: Mail,
+    accent: "var(--app-brand-2)",
+    href: "mailto:miked@madproductions.io",
+    external: true,
+  },
+  {
+    label: "Frederick history",
+    hint: "The essays — Civil War, Spires, the C&O, what built downtown",
+    icon: Scroll,
+    accent: "var(--app-ink-2)",
+    href: "/history",
+  },
+];
 
 /**
  * /about — the 30-second pitch.
@@ -149,6 +215,92 @@ export default async function AboutPage() {
           <ArrowRight className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         </Link>
       </div>
+
+      {/* Common requests — action tiles for the visitor who wants
+          to participate. Submit a place, send a correction, email
+          the editor. Sits between the pitch CTA and the editorial
+          companion content (books, history) so the page reads as
+          pitch → use → contribute → explore. */}
+      <section
+        aria-labelledby="about-intent-heading"
+        className="space-y-2.5 pt-2"
+      >
+        <h2
+          id="about-intent-heading"
+          className="eyebrow px-1"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Common requests
+        </h2>
+        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {ABOUT_INTENTS.map((intent) => {
+            const Icon = intent.icon;
+            const isInternal = !intent.external && intent.href.startsWith("/");
+            const Body = (
+              <>
+                <span
+                  aria-hidden
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                  style={{
+                    background: `color-mix(in srgb, ${intent.accent} 14%, transparent)`,
+                  }}
+                >
+                  <Icon
+                    className="h-4 w-4"
+                    strokeWidth={2}
+                    style={{ color: intent.accent }}
+                  />
+                </span>
+                <span className="min-w-0">
+                  <span
+                    className="block text-[13px] font-semibold leading-tight"
+                    style={{ color: "var(--app-ink)" }}
+                  >
+                    {intent.label}
+                  </span>
+                  <span
+                    className="mt-0.5 block text-[11px] leading-snug"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {intent.hint}
+                  </span>
+                </span>
+              </>
+            );
+            const className =
+              "hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition";
+            const style = {
+              borderColor: "var(--app-border)",
+              boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+            };
+            return (
+              <li key={intent.label}>
+                {isInternal ? (
+                  <Link
+                    href={intent.href}
+                    aria-label={`${intent.label} — ${intent.hint}`}
+                    className={className}
+                    style={style}
+                  >
+                    {Body}
+                  </Link>
+                ) : (
+                  <a
+                    href={intent.href}
+                    target={intent.external ? "_blank" : undefined}
+                    rel={intent.external ? "noopener noreferrer" : undefined}
+                    aria-label={`${intent.label} — ${intent.hint}`}
+                    className={className}
+                    style={style}
+                  >
+                    {Body}
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       {/* Companion content — Books + editorial collections + history.
           Moved here from the Field Guide drawer (May 2026 IA cleanup,
