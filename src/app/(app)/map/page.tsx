@@ -209,7 +209,10 @@ export default async function MapPage({
         <PageBloom variant="cool" />
         {/* Mode toggle floats above the map at top-right so the user
             can always flip back to Browse without leaving the page. */}
-        <div className="absolute right-3 top-3 z-40 sm:right-4 sm:top-4">
+        {/* Mode toggle floats at top-LEFT so it stays clear of the
+            RadiusMap's right-side camera controls (Fit radius / Show
+            county) and the top-center "current center" pill. */}
+        <div className="absolute left-3 top-3 z-40 sm:left-4 sm:top-4">
           <MapModeToggle mode="radius" />
         </div>
         <RadiusBuilder amenities={radiusAmenities} />
@@ -416,10 +419,10 @@ export default async function MapPage({
           the moment the active-intent banner pushed the intent strip
           down. */}
       {/* Mode toggle — floats over the map so the user can flip
-          back to Radius mode without leaving the page. Same z-index
-          as MapIntentChips below; positioned at the opposite
-          (right) edge so the two strips don't collide. */}
-      <div className="absolute right-3 top-3 z-40 sm:right-4 sm:top-4">
+          back to Radius mode without leaving the page. Positioned
+          at top-LEFT so it clears Mapbox's compass/scale controls
+          and any future right-side overlays. */}
+      <div className="absolute left-3 top-3 z-40 sm:left-4 sm:top-4">
         <MapModeToggle mode="browse" />
       </div>
       {/* Map Modes — preset "decision surface" deep links. Sits

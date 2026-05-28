@@ -22,6 +22,7 @@ export type IntentKey =
   | "outdoor"
   | "family"
   | "arts"
+  | "wellness"
   | "civic";
 
 export type Intent = {
@@ -41,7 +42,8 @@ export type Intent = {
     | "Trees"
     | "Baby"
     | "Palette"
-    | "Landmark";
+    | "Landmark"
+    | "Heart";
   /** Match predicate against a place's category slug — kept simple so
    *  the matcher is fast across the full ~2,400 row set. */
   match: (p: PlaceCardData) => boolean;
@@ -95,7 +97,11 @@ export type SubIntent = {
     | "Church"
     | "Theater"
     | "ImageIcon"
-    | "ToyBrick";
+    | "ToyBrick"
+    | "Heart"
+    | "Activity"
+    | "Dumbbell"
+    | "Sparkles";
 };
 
 const COFFEE = new Set(["coffee", "bakery"]);
@@ -149,6 +155,36 @@ const CIVIC = new Set([
   "transit",
   "civic",
 ]);
+
+// Wellness — Frederick has a real yoga + boutique-fitness scene that
+// the directory categorizes as "wellness" (the noisy 270-row bucket
+// that also includes lash extensions, nail salons, barbershops, and
+// other appearance services). The directory category is honest but
+// not directly useful as a "where can I do yoga right now" chip, so
+// the intent narrows it via name regex to the three actual move-the-
+// body sub-experiences: yoga, gyms/fitness, and spas. Every matcher
+// is gated on WELLNESS_CATS so a restaurant called "Yoga Cafe" or
+// a hardware store called "Spa Hardware" can't sneak in via the
+// name regex alone. The parent intent's match is the UNION of the
+// sub matchers so the parent count and the chip behavior stay
+// consistent (parent never matches more than its subs combined).
+const WELLNESS_CATS = new Set(["yoga", "wellness"]);
+const YOGA_NAME_RE = /\byoga\b/i;
+// Fitness-only regex — excludes "yoga" so the same studio doesn't
+// double-count in both Yoga and Gyms sub-chips. A studio that runs
+// yoga + pilates lands in Yoga (the stronger signal) by category;
+// pure-fitness places land in Gyms.
+const GYM_NAME_RE = /\b(gym|fitness|crossfit|pilates|barre|spin|cycle|cardio)\b/i;
+const SPA_NAME_RE = /\b(spa|massage|sauna|salt(?:\s*cave|\s*room)?|bath\s*house)\b/i;
+const isYoga = (p: PlaceCardData): boolean =>
+  WELLNESS_CATS.has(p.category) &&
+  (p.category === "yoga" || YOGA_NAME_RE.test(p.name));
+const isGymFitness = (p: PlaceCardData): boolean =>
+  WELLNESS_CATS.has(p.category) &&
+  GYM_NAME_RE.test(p.name) &&
+  !YOGA_NAME_RE.test(p.name);
+const isSpa = (p: PlaceCardData): boolean =>
+  WELLNESS_CATS.has(p.category) && SPA_NAME_RE.test(p.name);
 
 export const INTENTS: Intent[] = [
   {
@@ -270,6 +306,21 @@ export const INTENTS: Intent[] = [
       { key: "theaters",   type: "category", label: "Theaters",   icon: "Theater",   match: (p) => p.category === "theater" },
       { key: "live-music", type: "category", label: "Live music", icon: "Music",     match: (p) => p.category === "music" },
       { key: "public-art", type: "category", label: "Public art", icon: "Palette",   match: (p) => p.category === "public-art" },
+    ],
+  },
+  {
+    key: "wellness",
+    label: "Wellness",
+    blurb:
+      "Yoga, gyms, and spas — the everyday wellness map. Filtered down from the broader directory so the chip stays useful.",
+    color: "#A02929",
+    icon: "Heart",
+    match: (p) => isYoga(p) || isGymFitness(p) || isSpa(p),
+    preferOpen: true,
+    subIntents: [
+      { key: "yoga",    type: "category", label: "Yoga",         icon: "Activity", match: isYoga },
+      { key: "gyms",    type: "category", label: "Gyms",         icon: "Dumbbell", match: isGymFitness },
+      { key: "spas",    type: "category", label: "Spas",         icon: "Sparkles", match: isSpa },
     ],
   },
   {

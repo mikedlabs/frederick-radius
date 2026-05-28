@@ -296,9 +296,19 @@ export default function RadiusMap({
         }}
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle={STYLE_URL}
+        // Initial frame: center on the active preset (Frederick downtown
+        // by default) at neighborhood zoom. The previous fit-to-county
+        // opened the map at ~zoom 9, which made every radius circle
+        // look like a tiny dot in the middle of empty pasture. Starting
+        // at zoom 13 puts downtown on screen at human scale so the
+        // 10-min-walk default is immediately legible. The user can
+        // still tap "Show county" (the camera button in the top-right)
+        // for the wider view; the easeTo effect below glides the camera
+        // when the user picks a different preset.
         initialViewState={{
-          bounds: COUNTY_BOUNDS,
-          fitBoundsOptions: { padding: 32 },
+          longitude: center.lng,
+          latitude: center.lat,
+          zoom: 13,
         }}
         dragRotate={false}
         pitchWithRotate={false}
