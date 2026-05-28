@@ -2,34 +2,26 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Coffee, Trees, UtensilsCrossed, Baby, Toilet, ParkingCircle, X } from "lucide-react";
 import { INTENT_BY_KEY, INTENTS, type IntentKey, type SubIntent } from "@/data/intents";
 
 /**
- * MoodTiles v3 — photo-led intent tiles + a tight utility row.
+ * MoodTiles v4 — illustration-on-color tiles, Klarna/Uber pattern.
  *
- * Inspired by the mobile reference batch (Postmates, Airbnb, Snoonu):
- * categories should read as PHOTOS first and labels second. v2 was a
- * 6-up grid of small icon-on-tint chips; v3 splits the surface into
+ * We tried photo backgrounds twice (random aerials, then From Above
+ * book pages) and neither could differentiate Coffee from Eat from
+ * Outdoors at a glance — same category of image carrying every tile.
  *
- *   • 4 photo-led intent tiles (Coffee · Eat · Outdoors · With kids).
- *     Full-bleed seasonal photo from /public/images/seasons/, dark
- *     gradient pulling a serif label up from the bottom, intent icon
- *     in a white glass pill top-left. Aspect 4:5 (taller than wide)
- *     so each tile reads like a magazine cover.
+ * v4 drops the photo entirely and leans on each intent's brand color
+ * as the visual identity: coffee = warm brown, eat = terra-cotta,
+ * outdoor = forest green, family = warm gold. Each tile is a saturated
+ * gradient in its intent color with a large white glass icon pill
+ * floating top-left and a serif headline anchored bottom-left.
  *
- *   • 2 utility chips below (Restroom · Parking). Functional, not
- *     aspirational — tight icon+label rows in a single row, no photo.
- *
- *   • Sub-intent expand strip below the grid — unchanged behavior from
- *     v2. Tapping a photo tile expands the sub-tiles inline.
- *
- * Photos are hardcoded paths against known files in the manifest so
- * the component stays a client component (the expand state lives here)
- * without needing a server wrapper. Each mood gets a deliberately
- * different season so the four tiles together carry a year of
- * Frederick at a glance.
+ *   • Bolder than v2's icon-on-tint chip — the tile IS the color.
+ *   • More differentiated than v3's photo tiles — color identity per
+ *     category, not a generic "Frederick aerial" feel.
+ *   • Same expand-in-place sub-intent behavior as v2/v3.
  */
 
 type IntentMood = {
@@ -39,7 +31,6 @@ type IntentMood = {
   icon: typeof Coffee;
   color: string;
   intentKey: IntentKey;
-  photo: string;
 };
 
 type UtilityMood = {
@@ -53,12 +44,6 @@ type UtilityMood = {
 const intentColor = (k: IntentKey) =>
   INTENT_BY_KEY[k]?.color ?? "var(--app-brand)";
 
-// Photos drawn from the From Above book (interior pages, by season
-// order in the manifest). The book runs roughly winter → spring →
-// summer → autumn across pg-001 → pg-133, so each mood gets a photo
-// from its season's quarter for a year of Frederick across the four
-// tiles. From Above photos are 1200px curated drone shots — the
-// /images/seasons/ folder had less consistent content for this use.
 const INTENT_MOODS: IntentMood[] = [
   {
     intentKey: "coffee",
@@ -67,7 +52,6 @@ const INTENT_MOODS: IntentMood[] = [
     href: "/browse?intent=coffee",
     icon: Coffee,
     color: intentColor("coffee"),
-    photo: "/from-above/photos/pg-025-470a@1200.webp",
   },
   {
     intentKey: "eat",
@@ -76,7 +60,6 @@ const INTENT_MOODS: IntentMood[] = [
     href: "/browse?intent=eat",
     icon: UtensilsCrossed,
     color: intentColor("eat"),
-    photo: "/from-above/photos/pg-055-59f5@1200.webp",
   },
   {
     intentKey: "outdoor",
@@ -85,7 +68,6 @@ const INTENT_MOODS: IntentMood[] = [
     href: "/browse?intent=outdoor",
     icon: Trees,
     color: intentColor("outdoor"),
-    photo: "/from-above/photos/pg-090-5356@1200.webp",
   },
   {
     intentKey: "family",
@@ -94,7 +76,6 @@ const INTENT_MOODS: IntentMood[] = [
     href: "/browse?intent=family",
     icon: Baby,
     color: intentColor("family"),
-    photo: "/from-above/photos/pg-115-a5f4@1200.webp",
   },
 ];
 
@@ -103,8 +84,19 @@ const UTILITY_MOODS: UtilityMood[] = [
   { label: "Parking",  nudge: "Garages, lots, on-street", href: "/category/parking", icon: ParkingCircle, color: "var(--app-ink-2)" },
 ];
 
+/** Diagonal gradient using the intent color — a slightly lighter
+ *  top-left into the saturated color bottom-right. Produces depth
+ *  without needing a photo. */
+function gradientFor(color: string, active: boolean): string {
+  if (active) {
+    // Active state: even more saturated, with a darker base so the
+    // tile reads as "engaged" without changing color identity.
+    return `linear-gradient(155deg, color-mix(in srgb, ${color} 78%, white) 0%, ${color} 50%, color-mix(in srgb, ${color} 78%, black) 100%)`;
+  }
+  return `linear-gradient(155deg, color-mix(in srgb, ${color} 86%, white) 0%, ${color} 60%, color-mix(in srgb, ${color} 88%, black) 100%)`;
+}
+
 export default function MoodTiles() {
-  // Track which intent tile is expanded. Null = no expansion.
   const [openIntent, setOpenIntent] = useState<IntentKey | null>(null);
 
   const activeIntent =
@@ -120,7 +112,7 @@ export default function MoodTiles() {
         What do you need right now
       </h2>
 
-      {/* 4 photo-led intent tiles — magazine-cover treatment. */}
+      {/* 4 color-led intent tiles. */}
       <ul className="reveal-up grid grid-cols-2 gap-2">
         {INTENT_MOODS.map((m) => {
           const Icon = m.icon;
@@ -137,61 +129,65 @@ export default function MoodTiles() {
                 aria-controls={isActive ? "mood-sub-tiles" : undefined}
                 className="tactile tactile-interactive relative block aspect-[4/5] w-full overflow-hidden rounded-[var(--app-radius-lg)] border text-left transition active:scale-[0.98]"
                 style={{
-                  borderColor: isActive ? m.color : "var(--app-border)",
+                  borderColor: isActive
+                    ? `color-mix(in srgb, ${m.color} 60%, black)`
+                    : "var(--app-border)",
+                  background: gradientFor(m.color, isActive),
                   boxShadow: isActive
-                    ? `var(--app-elev-2), 0 0 0 1.5px ${m.color}`
-                    : "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-                  opacity: isDimmed ? 0.5 : 1,
+                    ? `var(--app-elev-2), 0 0 0 1.5px ${m.color}, 0 14px 32px -10px color-mix(in srgb, ${m.color} 50%, transparent)`
+                    : `var(--app-elev-1), 0 8px 22px -10px color-mix(in srgb, ${m.color} 40%, transparent)`,
+                  opacity: isDimmed ? 0.55 : 1,
                 }}
               >
-                <Image
-                  src={m.photo}
-                  alt=""
-                  fill
-                  sizes="(max-width: 640px) 50vw, 280px"
-                  className="object-cover"
-                />
-                {/* Dark gradient pulls the title up from the bottom and
-                    leaves the photo readable at the top. Intent-color
-                    tint bleeds in subtly when the tile is active. */}
+                {/* Decorative scatter circles — large translucent rings
+                    in the bottom-right that soften the solid gradient
+                    and give the tile a hint of texture without
+                    competing with the icon. Pure CSS, no asset weight. */}
                 <span
                   aria-hidden
-                  className="absolute inset-0"
+                  className="absolute -right-8 -bottom-10 h-32 w-32 rounded-full"
                   style={{
-                    background: isActive
-                      ? `linear-gradient(to top, color-mix(in srgb, ${m.color} 70%, rgba(0,0,0,0.85)) 0%, color-mix(in srgb, ${m.color} 28%, rgba(0,0,0,0.35)) 55%, transparent 100%)`
-                      : "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, transparent 100%)",
+                    background:
+                      "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)",
+                  }}
+                />
+                <span
+                  aria-hidden
+                  className="absolute -right-2 -top-8 h-20 w-20 rounded-full"
+                  style={{
+                    background:
+                      "radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 65%)",
                   }}
                 />
 
-                {/* Glass icon pill top-left — the chip from Airbnb's
-                    "Guest favorite" pattern. Stays a constant white so
-                    the icon reads on any photo. */}
+                {/* Big glass icon pill — top-left. White at high opacity
+                    so the icon reads boldly on any intent color. */}
                 <span
                   aria-hidden
-                  className="absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-full"
+                  className="absolute left-3 top-3 grid h-12 w-12 place-items-center rounded-full"
                   style={{
-                    background: "rgba(255,255,255,0.92)",
+                    background: "rgba(255,255,255,0.96)",
                     backdropFilter: "blur(8px)",
                     WebkitBackdropFilter: "blur(8px)",
-                    boxShadow: "var(--app-shadow-1)",
+                    boxShadow:
+                      "0 6px 14px -4px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.7)",
                   }}
                 >
                   <Icon
-                    className="h-[16px] w-[16px]"
+                    className="h-6 w-6"
                     strokeWidth={2.25}
                     style={{ color: m.color }}
                   />
                 </span>
 
-                {/* Active-state X in top-right so a second tap reads as
-                    "close" rather than "tap again to do something else". */}
+                {/* Active-state X in top-right — second tap reads as
+                    "close" rather than another action. */}
                 {isActive && (
                   <span
                     aria-hidden
                     className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full"
                     style={{
-                      background: "rgba(0,0,0,0.55)",
+                      background: "rgba(0,0,0,0.42)",
                       backdropFilter: "blur(8px)",
                       WebkitBackdropFilter: "blur(8px)",
                     }}
@@ -200,18 +196,19 @@ export default function MoodTiles() {
                   </span>
                 )}
 
-                {/* Headline + nudge anchored to bottom. Serif headline,
-                    sans nudge — same hierarchy as the page heros. */}
+                {/* Headline + nudge anchored to bottom-left. Cream-white
+                    text on the colored gradient — same serif as the
+                    rest of the editorial surface. */}
                 <span className="absolute inset-x-0 bottom-0 space-y-0.5 p-3">
                   <span
-                    className="block font-serif text-[19px] font-semibold leading-tight text-white sm:text-[20px]"
-                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
+                    className="block font-serif text-[20px] font-semibold leading-tight text-white sm:text-[22px]"
+                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.35)" }}
                   >
                     {m.label}
                   </span>
                   <span
-                    className="block truncate text-[11px] leading-snug text-white/85"
-                    style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
+                    className="block truncate text-[11.5px] font-medium leading-snug text-white/90"
+                    style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
                   >
                     {m.nudge}
                   </span>
@@ -222,9 +219,9 @@ export default function MoodTiles() {
         })}
       </ul>
 
-      {/* Utility row — Restroom + Parking. These are functional, not
-          aspirational, so they stay as compact icon chips below the
-          photo grid. Two-up so they take only one row of vertical space. */}
+      {/* Utility row — Restroom + Parking. These stay compact and
+          functional; the photo / color treatment is for aspirational
+          choices, not utilities. */}
       <ul className="mt-2 grid grid-cols-2 gap-2">
         {UTILITY_MOODS.map((m) => {
           const Icon = m.icon;
@@ -272,10 +269,8 @@ export default function MoodTiles() {
         })}
       </ul>
 
-      {/* Sub-intent expand strip — pops below both grids when a photo
-          tile is active. Unchanged behavior from v2; visual treatment
-          tweaked so it reads as a continuation of the active tile's
-          color identity. */}
+      {/* Sub-intent expand strip — unchanged behavior; visual tinted
+          with the active tile's color. */}
       {activeIntent && activeMood && activeSubIntents.length > 0 && (
         <div
           id="mood-sub-tiles"
