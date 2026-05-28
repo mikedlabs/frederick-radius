@@ -104,7 +104,9 @@ import {
   getTransitFreshness,
 } from "@/lib/integrations/transitFrederick";
 import TransitMap from "@/components/transit/TransitMap";
+import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import PageBloom from "@/components/ui/PageBloom";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Transit",
@@ -112,8 +114,11 @@ export const metadata: Metadata = {
     "Frederick County TransIT routes — the local bus network, where it runs, where it goes.",
 };
 
-// Route shapes change rarely; weekly revalidate matches the loader.
-export const revalidate = 604_800;
+// Was weekly (route shapes change rarely). Lowered to 60s so the live
+// MARC next-train board stays fresh; the route + stop loaders keep
+// their own weekly fetch cache, so the page regen does not refetch
+// them, and the MARC realtime fetch carries its own 30s cache.
+export const revalidate = 60;
 
 /**
  * /transit — the local bus network at a glance.
@@ -296,6 +301,23 @@ export default async function TransitPage() {
           })}
         </ul>
       </section>
+
+      {/* Live MARC next-train board — the capability locals cannot get
+          from MTA's system-wide site: a Frederick-scoped "when is the
+          next train" view across the four county stations. Suspense so
+          the realtime fetch never blocks the rest of the page. */}
+      <Suspense
+        fallback={
+          <div
+            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-5 text-center text-[13px]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            Checking the MARC live feed…
+          </div>
+        }
+      >
+        <NextTrainBoard />
+      </Suspense>
 
       <TransitMap shapes={shapes} stops={stops} />
 

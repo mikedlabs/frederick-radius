@@ -7,6 +7,7 @@ import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
 import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
+import { MARC_STATIONS } from "@/data/marc-stations";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 /**
@@ -169,6 +170,50 @@ export default function TransitMap({
             />
           </Source>
         )}
+
+        {/* MARC Brunswick Line stations — the four county rail stops,
+            distinct from the bus dots: larger, brick-accent squares with
+            a label, so the rail network reads as its own layer. Static
+            (always present), unlike the live-fetched bus stops. */}
+        <Source
+          id="marc-stations"
+          type="geojson"
+          data={{
+            type: "FeatureCollection",
+            features: MARC_STATIONS.map((s) => ({
+              type: "Feature",
+              properties: { name: s.name },
+              geometry: { type: "Point", coordinates: [s.lng, s.lat] },
+            })),
+          }}
+        >
+          <Layer
+            id="marc-stations-dots"
+            type="circle"
+            paint={{
+              "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 4, 12, 7],
+              "circle-color": "#A8462C",
+              "circle-stroke-color": "#ffffff",
+              "circle-stroke-width": 2,
+            }}
+          />
+          <Layer
+            id="marc-stations-labels"
+            type="symbol"
+            layout={{
+              "text-field": ["concat", ["get", "name"], " MARC"],
+              "text-size": 11,
+              "text-offset": [0, 1.1],
+              "text-anchor": "top",
+              "text-optional": true,
+            }}
+            paint={{
+              "text-color": "#A8462C",
+              "text-halo-color": "#ffffff",
+              "text-halo-width": 1.5,
+            }}
+          />
+        </Source>
       </Map>
 
       {/* Editorial badge — top-left. Tells the user what the painted

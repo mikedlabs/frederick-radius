@@ -42,6 +42,7 @@
     "pipeline:freshness": "tsx --tsconfig tsconfig.json pipeline/freshness_check.ts",
     "build:amenities": "tsx --tsconfig tsconfig.json scripts/build-amenities.ts",
     "build:client-places": "tsx --tsconfig tsconfig.json scripts/build-client-places.ts",
+    "build:marc-schedule": "tsx --tsconfig tsconfig.json scripts/build-marc-schedule.ts",
     "optimize:images": "tsx --tsconfig tsconfig.json scripts/optimize-images.ts",
     "optimize:seasons": "tsx --tsconfig tsconfig.json scripts/optimize-seasonal-photos.ts",
     "download:photos": "tsx --tsconfig tsconfig.json scripts/download-photos.ts"
@@ -62,6 +63,7 @@
     "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^5.8.0",
     "framer-motion": "^12.23.24",
+    "gtfs-realtime-bindings": "^2.0.0",
     "ical.js": "^2.2.1",
     "leaflet": "^1.9.4",
     "leaflet-defaulticon-compatibility": "^0.1.2",
