@@ -328,6 +328,171 @@ export const submissions = pgTable(
   }),
 );
 
+// ════════════════════════════════════════════════════════════════════
+//                    Phase 1 — User profiles + follows
+// ════════════════════════════════════════════════════════════════════
+//
+// Auth is owned by Supabase (auth.users). The app extends that with:
+//   - user_profiles   1:1 with auth.users(id); app-specific preferences
+//   - follows         m:n between users and places (by slug)
+//   - place_claims    one-per-place business-owner claim lifecycle
+//   - business_updates posts a claimed business can publish to its
+//                      followers (Phase 3 — schema lands now, UI later)
+//
+// Why slug-based FKs to `places`? The runtime source of truth for the
+// place catalog is still the merged JSON in `src/data/places.ts`
+// (places-dfp.json + places-discovered.json + curated seeds). The
+// existing `places` table in this file is a future-prep mirror that
+// isn't populated at write time. Following the `submissions` table's
+// existing pattern, the new tables key off `place_slug TEXT` instead
+// of a UUID FK to `places.id`. When the static→DB migration happens,
+// these can be promoted to proper FKs in one alter-table.
+//
+// Why no FK to auth.users? `auth.users` lives in Supabase's `auth`
+// schema, which Drizzle doesn't reflect natively. The app validates
+// `user_id` via the session before every write; uniqueness +
+// authorization both live at the API-route layer, not the DB.
+//
+// RLS: NOT enabled in this migration. All writes flow through
+// /api/* routes which check auth + ownership before touching the
+// table. A follow-up migration will add RLS policies as belt-and-
+// suspenders once those routes are wired and tested.
+
+/**
+ * Per-user app-side profile. One row per Supabase auth user. Created
+ * on demand at first sign-in by the /api/auth/callback handler.
+ */
+export const user_profiles = pgTable(
+  "user_profiles",
+  {
+    // = auth.users.id from Supabase. Not an FK at the DB level for the
+    // reason above; the API layer asserts the session before write.
+    id: uuid("id").primaryKey(),
+    display_name: text("display_name"),
+    home_muni_slug: text("home_muni_slug"),
+    notification_prefs: jsonb("notification_prefs").$type<{
+      // Pending Phase 3 surfaces. Empty by default; populated through
+      // /settings as preferences accumulate. Keeping this as JSONB keeps
+      // the migration footprint small — new prefs are app-side only.
+      digest?: "off" | "weekly" | "daily";
+      new_followed_update?: boolean;
+      open_now_nudges?: boolean;
+    }>(),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+);
+
+/**
+ * A user's follow relationship to a place. Replaces the localStorage
+ * `fr:saved:v1` bookmark when the user is authenticated; the
+ * /api/follows endpoints sync localStorage in on first sign-in so
+ * existing /my-radius lists don't get lost.
+ *
+ * One-tap data model:
+ *   - (user_id, place_slug) is unique — duplicates not allowed
+ *   - Deletes by composite key, not by id, so the API can be slug-only
+ *   - `source` records where the follow originated, useful for product
+ *     analytics ("Saved before sign-in" vs "Followed after viewing
+ *     map detail")
+ */
+export const follows = pgTable(
+  "follows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    user_id: uuid("user_id").notNull(),
+    place_slug: text("place_slug").notNull(),
+    source: text("source"), // "synced" | "place_detail" | "map" | "search" | etc.
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    userPlaceUq: uniqueIndex("follows_user_place_uq").on(t.user_id, t.place_slug),
+    userIdx: index("follows_user_idx").on(t.user_id),
+    placeIdx: index("follows_place_idx").on(t.place_slug),
+  }),
+);
+
+/**
+ * Business-owner claim of a specific place. Owners verify they
+ * represent the place via the existing /business/claim form; the
+ * submission lands as a `submissions` row with kind="claim", and
+ * once approved, a `place_claims` row is created here linking the
+ * claimer's auth.users.id to the place_slug.
+ *
+ * Why a separate table from `submissions`? `submissions` is the
+ * INTAKE queue (one row per request, may be rejected). `place_claims`
+ * is the LEDGER (one row per active claim, exists only when verified).
+ * This keeps the read path for "is this place claimed?" a clean
+ * SELECT on one indexed column instead of joining on status filters.
+ */
+export const place_claims = pgTable(
+  "place_claims",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    place_slug: text("place_slug").notNull(),
+    claimed_by_user_id: uuid("claimed_by_user_id").notNull(),
+    claimed_at: timestamp("claimed_at", { withTimezone: true }).defaultNow(),
+    // The originating submissions.id, for an audit trail back to the
+    // verification evidence the owner provided.
+    submission_id: uuid("submission_id"),
+    // "active" | "revoked" — set to "revoked" if a claim is later
+    // contested or the owner relinquishes; never DELETE so we keep
+    // the history.
+    status: text("status").notNull().default("active"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    // One ACTIVE claim per slug; revoked ones can coexist.
+    placeActiveUq: uniqueIndex("place_claims_active_uq")
+      .on(t.place_slug)
+      .where(sql`${t.status} = 'active'`),
+    userIdx: index("place_claims_user_idx").on(t.claimed_by_user_id),
+  }),
+);
+
+/**
+ * Updates a claimed business publishes to its followers. Phase 3 —
+ * the schema lands now so it's stable, the UI is intentionally NOT
+ * built in this migration (per the brief: "do not build a full SaaS
+ * dashboard yet unless the current app structure already supports it
+ * cleanly").
+ *
+ * The PlaceDetail page and /my-radius will render published updates
+ * in a "Recent updates from places you follow" rail once admin-only
+ * authoring is added in a follow-up.
+ */
+export const business_updates = pgTable(
+  "business_updates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    place_slug: text("place_slug").notNull(),
+    // The author. References auth.users.id (not FK-enforced at the
+    // DB level for the reason above). At Phase 3 publish-time the API
+    // verifies this matches an ACTIVE place_claims row for the slug.
+    created_by_user_id: uuid("created_by_user_id").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    // "announcement" | "event" | "special" | "closure" | "hours" | "general"
+    // Kept as a text column rather than an enum so adding a new kind
+    // doesn't require a migration — small product flexibility win.
+    update_type: text("update_type").notNull().default("general"),
+    // "draft" | "published" | "archived"
+    status: text("status").notNull().default("draft"),
+    published_at: timestamp("published_at", { withTimezone: true }),
+    expires_at: timestamp("expires_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    placePublishedIdx: index("business_updates_place_published_idx").on(
+      t.place_slug,
+      t.published_at,
+    ),
+    statusIdx: index("business_updates_status_idx").on(t.status),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- CREATE EXTENSION IF NOT EXISTS pg_trgm;
