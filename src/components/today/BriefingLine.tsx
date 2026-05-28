@@ -128,19 +128,25 @@ async function weatherFragment(): Promise<string | null> {
   );
   const hoursToRain = rainSoonIdx >= 0 ? rainSoonIdx + 1 : null;
 
-  if (isRaining) return "raining now — indoor picks below";
+  // Frederick-lexicon weather fragments — name actual landmarks so
+  // the briefing reads as written FROM Frederick, not as generic
+  // weather copy. Carroll Creek, Market Street, Catoctin, the
+  // Monocacy, Baker Park are the recurring proper nouns. Each
+  // fragment is short enough to glue to the rest of the briefing
+  // with " · " on a phone line.
+  if (isRaining) return "raining now — duck into a Market Street cafe";
   if (hoursToRain !== null && hoursToRain <= 2) {
-    return `rain in ~${hoursToRain}h — finish errands or grab a coffee`;
+    return `rain in ~${hoursToRain}h — finish on Market Street before it lands`;
   }
   // Muggy heuristic: warm + cloudy/overcast/hazy in summer.
   if (temp >= 78 && /cloud|overcast|haze|fog|humid/i.test(cond)) {
-    return "muggy — try indoor or shaded picks";
+    return "muggy — Carroll Creek's shaded paths help by 4";
   }
   if (temp <= 45 && /clear|sunny|fair/i.test(cond)) {
-    return "cold and clear — trails will be quiet";
+    return "cold and clear — Catoctin trails will be photographer-quiet";
   }
   if (temp >= 60 && temp <= 80 && /clear|sunny|fair|partly/i.test(cond)) {
-    return "patio weather";
+    return "patio weather — Carroll Creek's full of it";
   }
   return null;
 }

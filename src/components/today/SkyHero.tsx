@@ -11,10 +11,14 @@
 
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import ClusteredSpires from "./ClusteredSpires";
 
-// RidgeLine no longer mounted (see comment at the end of SkyHero
-// for context). Kept in the codebase at ./RidgeLine if we want to
-// resurrect a horizon silhouette later.
+// RidgeLine (a soft mountain horizon) was removed pre-launch — the
+// silhouette read as "wavy" rather than "mountains" to actual users.
+// ClusteredSpires replaces it: sharp vertical steeples that
+// unambiguously read as architecture, AND name-check Frederick's
+// "City of the Clustered Spires" identity. Whittier's line, 1863.
+// RidgeLine.tsx is kept in the tree at ./RidgeLine for reference.
 
 export type SkyTone = "light" | "dark";
 type Sky = { top: string; mid: string; bottom: string; tone: SkyTone };
@@ -193,19 +197,15 @@ export default async function SkyHero({
       data-sky-mood={mood}
     >
       {children}
-      {/* The RidgeLine silhouette (stylized Catoctin + Sugarloaf
-          horizon) was removed pre-launch — the user kept reading
-          its peaks as "wavy" rather than "mountains," even after
-          the bottom sky color was moved into the horizon-blue
-          family. Without the ridge, the sky ends in its own color
-          and the first card below overlaps cleanly into it
-          (the -mt-4 in /now/page.tsx makes the card top sit inside
-          the sky's bottom, so the visible transition is:
-          horizon-blue sky → rounded cream card top → page bg).
-          Local-recognition was a nice touch but it wasn't reading
-          to actual users; the simpler boundary wins. The RidgeLine
-          component is kept in src/components/today/ in case we ever
-          want to bring it back, but is no longer mounted. */}
+      {/* ClusteredSpires — the downtown Frederick skyline silhouette
+          that anchors the SkyHero's bottom edge. The sky gradient
+          flows down through the spires (var(--app-bg) fill means the
+          page bg pokes up into the sky to form the silhouette), so
+          the boundary between sky and page reads as "looking up at
+          Frederick" rather than as a gradient that runs out of
+          colors. See ClusteredSpires.tsx for why this works where
+          the earlier RidgeLine didn't. */}
+      <ClusteredSpires />
     </section>
   );
 }

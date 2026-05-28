@@ -95,16 +95,31 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
       style={{ color: baseColor, opacity: baseOpacity }}
       aria-label="Today in Frederick"
     >
-      <span className="inline-flex items-center gap-1 tabular-nums">
+      {/* Sunrise + sunset are anchored to actual Frederick geography:
+          the sun comes up over the Monocacy (east of downtown) and
+          drops behind Catoctin (the ridge to the west of the city).
+          Both are year-round true — Catoctin is always west of
+          Frederick; the Monocacy is always east. Names are always
+          visible (mobile included) because they're the whole point —
+          the page should read as Frederick from the first glance. */}
+      <span
+        className="inline-flex items-center gap-1 tabular-nums"
+        title={`Sun rises over the Monocacy at ${sunriseStr}`}
+      >
         <Sunrise className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-        {sunriseStr}
+        <span>{sunriseStr}</span>
+        <span style={{ opacity: 0.7 }}> over Monocacy</span>
       </span>
       <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
         ·
       </span>
-      <span className="inline-flex items-center gap-1 tabular-nums">
+      <span
+        className="inline-flex items-center gap-1 tabular-nums"
+        title={`Sun sets behind Catoctin at ${sunsetStr}`}
+      >
         <Sunset className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-        {sunsetStr}
+        <span>{sunsetStr}</span>
+        <span style={{ opacity: 0.7 }}> behind Catoctin</span>
       </span>
       {/* "+2m" delta dropped from the in-sky variant — it was cryptic
           on a tight row. When AlmanacFooter mounts in its old
