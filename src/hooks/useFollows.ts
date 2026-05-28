@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
 
 /**
@@ -13,7 +13,20 @@ import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
  *   - When the user is signed in: reads/writes via /api/follows so
  *     the list lives in the DB and syncs across devices.
  *
- * One-shot localStorage → DB sync: the first time we detect (signed
+ * Shared store + optimistic writes (the premium-feel path):
+ *   Authed follow slugs live in ONE module-level store, mirrored into
+ *   React via useSyncExternalStore — the same pattern useSaved uses.
+ *   That buys two things the previous component-state design couldn't:
+ *     1. A toggle in any control (the place-page CTA, an icon button,
+ *        a card) updates EVERY follow control on screen at once.
+ *     2. The toggle flips the store immediately and reconciles with
+ *        the server in the background, so there's no spinner and no
+ *        GET-then-write round trip. A failed write reverts the flip.
+ *   The previous design re-rendered only the button that was tapped
+ *   and left every other `useFollowedSlugs()` reader showing stale
+ *   membership until the page remounted.
+ *
+ * One-shot localStorage -> DB sync: the first time we detect (signed
  * in + non-empty localStorage), POST the cache to /api/follows/sync.
  * Subsequent renders don't re-sync (a flag stored in localStorage
  * prevents repeated imports). Idempotent on the server side via
@@ -21,8 +34,8 @@ import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
  *
  * Why a hook and not React Query / SWR? The app doesn't ship a
  * client-side data-fetching library; introducing one for this single
- * feature is overkill. The cache lives in component state, refreshed
- * on the mount that follows a successful follow/unfollow.
+ * feature is overkill. The shared store covers the cross-component
+ * consistency a cache library would otherwise provide.
  *
  * Events + Radii continue to use useSaved directly — only the place
  * follow path goes through the DB. The product framing in the brief
@@ -59,6 +72,48 @@ function clearSyncedFlag() {
 }
 
 /**
+ * Pure helper: return the follow set with `slug` toggled, plus whether
+ * it was followed before the toggle. Never mutates the input set — the
+ * optimistic path and the revert path both rely on the original
+ * staying intact. Exported for unit tests.
+ */
+export function toggleSlug(
+  set: Set<string>,
+  slug: string,
+): { next: Set<string>; wasFollowed: boolean } {
+  const wasFollowed = set.has(slug);
+  const next = new Set(set);
+  if (wasFollowed) next.delete(slug);
+  else next.add(slug);
+  return { next, wasFollowed };
+}
+
+/* ----------------------------------------------------------------------
+ * Shared remote-follow store. `null` means "not yet hydrated from
+ * /api/follows" (distinct from "hydrated and empty"). Reads return a
+ * stable reference between writes so useSyncExternalStore's Object.is
+ * check doesn't loop.
+ * -------------------------------------------------------------------- */
+let remoteStore: Set<string> | null = null;
+const remoteListeners = new Set<() => void>();
+function readRemote(): Set<string> | null {
+  return remoteStore;
+}
+function readServerRemote(): Set<string> | null {
+  return null;
+}
+function writeRemote(next: Set<string> | null) {
+  remoteStore = next;
+  remoteListeners.forEach((l) => l());
+}
+const subscribeRemote = (cb: () => void) => {
+  remoteListeners.add(cb);
+  return () => {
+    remoteListeners.delete(cb);
+  };
+};
+
+/**
  * Detects auth state once on mount. We hit /api/auth/me which is
  * the lightweight "who am I?" endpoint. Result cached in module
  * state for the page lifetime so multiple useFollows() callers
@@ -77,8 +132,30 @@ function detectAuth(): Promise<AuthState> {
   return authPromise;
 }
 
+/**
+ * Hydrate the shared store from /api/follows exactly once per signed-in
+ * session. Deduped via a module promise so simultaneous hook mounts
+ * don't each fire the fetch.
+ */
+let hydratePromise: Promise<void> | null = null;
+function ensureRemoteHydrated(localSlugs: Set<string>): Promise<void> {
+  if (hydratePromise) return hydratePromise;
+  hydratePromise = fetch("/api/follows", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : { slugs: [] }))
+    .then((data: { slugs: string[] }) => {
+      const set = new Set(data.slugs);
+      writeRemote(set);
+      // First-time sync: push any localStorage follows not yet remote.
+      void maybeSync(localSlugs, set);
+    })
+    .catch(() => {
+      writeRemote(new Set());
+    });
+  return hydratePromise;
+}
+
 /** Hook-internal helper: list of slugs the user follows.
- *  Reads from API when authed, localStorage when not. */
+ *  Reads from the shared store when authed, localStorage when not. */
 export function useFollowedSlugs(): {
   slugs: Set<string>;
   loading: boolean;
@@ -90,7 +167,7 @@ export function useFollowedSlugs(): {
     [localList],
   );
   const [auth, setAuth] = useState<AuthState>("unknown");
-  const [remoteSlugs, setRemoteSlugs] = useState<Set<string> | null>(null);
+  const remoteSlugs = useSyncExternalStore(subscribeRemote, readRemote, readServerRemote);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,20 +175,7 @@ export function useFollowedSlugs(): {
       if (cancelled) return;
       setAuth(a);
       if (a === "anonymous" || a === "unknown") return;
-      // Authed: hydrate from /api/follows.
-      void fetch("/api/follows", { cache: "no-store" })
-        .then((r) => (r.ok ? r.json() : { slugs: [] }))
-        .then((data: { slugs: string[] }) => {
-          if (cancelled) return;
-          setRemoteSlugs(new Set(data.slugs));
-          // First-time sync: if there are localStorage follows that
-          // aren't yet in the remote set, push them up.
-          void maybeSync(localSlugs, new Set(data.slugs));
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setRemoteSlugs(new Set());
-        });
+      void ensureRemoteHydrated(localSlugs);
     });
     return () => {
       cancelled = true;
@@ -148,7 +212,6 @@ export function useIsFollowed(slug: string): boolean {
 /** Toggle a follow for a place. Returns the new state (true = followed). */
 export function useToggleFollow(slug: string, source?: string) {
   const localToggle = useToggleSave("place", slug);
-  const [, force] = useState({});
   return useCallback(async (): Promise<boolean> => {
     const auth = await detectAuth();
     if (auth === "anonymous" || auth === "unknown") {
@@ -156,27 +219,35 @@ export function useToggleFollow(slug: string, source?: string) {
       localToggle();
       return readIsSavedSync(slug);
     }
-    // Authed path: optimistic API call.
-    const currentlyFollowed = await fetch("/api/follows", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { slugs: [] }))
-      .then((d: { slugs: string[] }) => new Set(d.slugs).has(slug))
-      .catch(() => false);
-    if (currentlyFollowed) {
-      await fetch("/api/follows", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug }),
-      });
-      force({});
-      return false;
-    }
-    await fetch("/api/follows", {
-      method: "POST",
+    // Authed path: optimistic. Flip the shared store immediately so
+    // every follow control re-renders to the new state with no spinner
+    // and no read-before-write round trip, then reconcile with the
+    // server in the background. A failed write reverts the flip.
+    const current = remoteStore ?? new Set<string>();
+    const { next, wasFollowed } = toggleSlug(current, slug);
+    writeRemote(next);
+
+    void fetch("/api/follows", {
+      method: wasFollowed ? "DELETE" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug, source: source ?? "place_detail" }),
-    });
-    force({});
-    return true;
+      body: JSON.stringify(
+        wasFollowed ? { slug } : { slug, source: source ?? "place_detail" },
+      ),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error("follow write failed");
+      })
+      .catch(() => {
+        // Revert to pre-toggle membership against the LATEST store
+        // value (another toggle may have landed meanwhile).
+        const live = remoteStore ?? new Set<string>();
+        const reverted = new Set(live);
+        if (wasFollowed) reverted.add(slug);
+        else reverted.delete(slug);
+        writeRemote(reverted);
+      });
+
+    return !wasFollowed;
   }, [slug, source, localToggle]);
 }
 
@@ -212,14 +283,25 @@ async function maybeSync(localSlugs: Set<string>, remoteSlugs: Set<string>) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slugs: toUpload }),
     });
-    if (res.ok) setSyncedFlag();
+    if (res.ok) {
+      setSyncedFlag();
+      // Fold the just-synced slugs into the shared store so the UI
+      // reflects them without waiting for a remount.
+      const merged = new Set(remoteStore ?? remoteSlugs);
+      toUpload.forEach((s) => merged.add(s));
+      writeRemote(merged);
+    }
   } catch {
     /* try again next mount */
   }
 }
 
-/** Exported for the sign-out path to reset the sync flag so a
- *  different account on the same device starts fresh. */
+/** Exported for the sign-out path to reset session caches so a
+ *  different account on the same device starts fresh instead of
+ *  showing the previous session's follow set. */
 export function resetFollowsSyncFlag() {
   clearSyncedFlag();
+  authPromise = null;
+  hydratePromise = null;
+  writeRemote(null);
 }
