@@ -30,6 +30,7 @@ import WeeklySummary from "@/components/today/WeeklySummary";
 import WeatherMore from "@/components/today/WeatherMore";
 import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
+import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
 import FromAboveCta from "@/components/today/FromAboveCta";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
@@ -445,6 +446,12 @@ export default async function HomePage({
       <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
         <WorthALook />
       </Suspense>
+
+      {/* Visitor "Stay" door — Proposal B. Only renders when the
+          active mode is Visitor (StayDeepLinks self-hides for
+          Residents — they live here). Defaults to Frederick city
+          since that's the visitor's most common entry point. */}
+      <VisitorStayPrompt />
 
       {/* When? — the brand-defining temporal control. Pivots the
        *  events section between Now / Tonight / Tomorrow / Weekend.

@@ -7,7 +7,9 @@ import InstallPrompt from "@/components/pwa/InstallPrompt";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
+import ModeParamSync from "@/components/mode/ModeParamSync";
 import CommandPalette from "@/components/cmdk/CommandPalette";
+import { Suspense } from "react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,6 +29,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               default mode immediately and quietly flips to Resident
               only when the user is inside the Frederick County bbox. */}
           <ModeBootstrap />
+          {/* Reads ?for=visitor | ?for=resident off the URL on every
+              navigation and applies it to the persisted mode, then
+              strips the param. Lets marketing / partner deep links
+              set the lens without a hunt for the toggle. Wrapped in
+              Suspense because useSearchParams suspends during the
+              streaming render. */}
+          <Suspense fallback={null}>
+            <ModeParamSync />
+          </Suspense>
           {/* Native-feeling pull-to-refresh — touch-only, fires only
               when scrollY === 0. Reduced-motion users see no spinner. */}
           <PullToRefresh />
