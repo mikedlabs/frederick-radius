@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
 import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
@@ -527,7 +528,14 @@ export default function EventsExplorer({
         <div className="space-y-6">
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
-            const PEEK = 9;
+            // Tighter peek + expanded cap (was PEEK=9, no expanded
+            // cap). Users were getting walls of 30-100 event tiles
+            // when a group expanded — felt endless and undermined
+            // the horizon-grouping work. Now each group shows 6 at
+            // first, expands to a max of 24, and links to the
+            // calendar for the long tail.
+            const PEEK = 6;
+            const EXPANDED_CAP = 24;
             // Pull the first photo-backed event out of the FIRST group
             // as a feature card. One per page — gives the index a focal
             // point instead of a uniform stack of tiles.
@@ -543,7 +551,10 @@ export default function EventsExplorer({
             // grid (the "browse" mode) — best of both. Hidden behind a
             // toggle (`isOpen`) where the user wants to see everything.
             const useShelf = groupIdx === 0 && !isOpen;
-            const shown = isOpen ? rest : rest.slice(0, PEEK);
+            const shown = isOpen
+              ? rest.slice(0, EXPANDED_CAP)
+              : rest.slice(0, PEEK);
+            const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading
@@ -600,6 +611,23 @@ export default function EventsExplorer({
                         <EventCard event={e} variant="tile" />
                       </div>
                     ))}
+                  </div>
+                )}
+                {/* Overflow nudge — when an expanded group hit the
+                    EXPANDED_CAP, point the long tail at the calendar
+                    instead of dumping every remaining tile inline. */}
+                {overflow > 0 && (
+                  <div className="px-1 pt-1 text-center">
+                    <Link
+                      href="/events/calendar"
+                      className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+                      style={{
+                        borderColor: "var(--app-border)",
+                        color: "var(--app-cool)",
+                      }}
+                    >
+                      {overflow} more on the calendar →
+                    </Link>
                   </div>
                 )}
               </section>
