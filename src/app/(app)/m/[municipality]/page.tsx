@@ -12,6 +12,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import Image from "next/image";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import TownStrip from "@/components/municipality/TownStrip";
+import StayDeepLinks from "@/components/municipality/StayDeepLinks";
 
 export const revalidate = 600;
 
@@ -251,6 +252,12 @@ export default async function MunicipalityPage(
           )}
         </section>
       )}
+
+      {/* Footer card — visitor's "where do I sleep?" answer in one
+          tap. Three platform search deep links, pre-filtered to the
+          town. Not an affiliate program; the URLs are clean. A
+          curated local-rental list will land here later. */}
+      <StayDeepLinks townName={m.name} townSlug={m.slug} />
     </div>
   );
 }
