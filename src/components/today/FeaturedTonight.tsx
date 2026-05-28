@@ -4,6 +4,7 @@ import { ArrowUpRight, Star } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { nonGenericBlurb } from "@/lib/copy-generic";
 
 /**
  * Full-bleed photo hero card — the single most compelling place right now.
@@ -69,9 +70,11 @@ export default function FeaturedTonight({ place }: { place: PlaceCardData | null
               aria-hidden
             />
           </h2>
-          <p className="mt-1 line-clamp-2 max-w-lg text-[13px] leading-snug opacity-85">
-            {place.short_blurb}
-          </p>
+          {nonGenericBlurb(place.short_blurb) && (
+            <p className="mt-1 line-clamp-2 max-w-lg text-[13px] leading-snug opacity-85">
+              {place.short_blurb}
+            </p>
+          )}
         </div>
       </div>
     </Link>

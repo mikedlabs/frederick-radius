@@ -21,6 +21,7 @@ import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { placeHoursTrust, formatChecked } from "@/lib/trust";
 import { knownFor } from "@/lib/cuisine";
+import { nonGenericBlurb } from "@/lib/copy-generic";
 import type { ParcelContext } from "@/lib/loaders/cofParcels";
 
 /**
@@ -456,10 +457,14 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
           </div>
         )}
 
-        {/* Blurb */}
-        <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {place.short_blurb}
-        </p>
+        {/* Blurb — suppressed when it's the generic "Category in Town"
+            placeholder the discovery pipeline writes, so the sheet doesn't
+            carry filler the 2026-05 review flagged. */}
+        {nonGenericBlurb(place.short_blurb) && (
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            {place.short_blurb}
+          </p>
+        )}
 
         {/* Photo strip — more of what the place actually looks like */}
         {photos.length > 1 && (
@@ -511,7 +516,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
           </Link>
           <ShareButton
             title={place.name}
-            text={place.short_blurb}
+            text={nonGenericBlurb(place.short_blurb)}
             url={`/places/${place.slug}`}
           />
         </div>

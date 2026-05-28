@@ -9,6 +9,7 @@
  */
 import Link from "next/link";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { nonGenericBlurb } from "@/lib/copy-generic";
 import type { DemoFoodTruck } from "@/data/food-trucks-demo";
 import type { DemoPointsPartner } from "@/data/radius-points-demo";
 import type { EventPin, SelectedOsm, SelectedPlace } from "./types";
@@ -171,9 +172,11 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
       <strong style={{ display: "block", fontSize: 15, color: "#1A1A1A", fontFamily: "var(--font-plex-serif)" }}>
         {p.name}
       </strong>
-      <p style={{ fontSize: 12, margin: "6px 0", color: "#4A4A48", lineHeight: 1.45 }}>
-        {p.short_blurb}
-      </p>
+      {nonGenericBlurb(p.short_blurb) && (
+        <p style={{ fontSize: 12, margin: "6px 0", color: "#4A4A48", lineHeight: 1.45 }}>
+          {p.short_blurb}
+        </p>
+      )}
       <Link
         href={`/places/${p.slug}`}
         style={{ fontSize: 12, fontWeight: 600, color: "var(--app-brand)" }}

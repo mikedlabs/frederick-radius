@@ -11,6 +11,7 @@ import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
+import { nonGenericBlurb } from "@/lib/copy-generic";
 import { Star } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
@@ -118,7 +119,15 @@ export default function PlaceCard({
                 )}
               </div>
               <p className="mt-0.5 truncate text-xs opacity-90">
-                {cat?.name ?? place.category} · {place.known_for?.[0] ?? place.short_blurb}
+                {cat?.name ?? place.category}
+                {(() => {
+                  // Don't render the "category in town" placeholder copy
+                  // the discovery pipeline writes — it duplicates the
+                  // category we just printed and the 2026-05 review
+                  // flagged it as making the product feel unfinished.
+                  const tail = place.known_for?.[0] ?? nonGenericBlurb(place.short_blurb);
+                  return tail ? ` · ${tail}` : null;
+                })()}
                 <BeenHereIndicator slug={place.slug} />
               </p>
             </div>

@@ -40,6 +40,12 @@ export function classifyDescription(
   if (MARKETING.test(t)) return "scraped";
   if (NOISE.test(t)) return "scraped";
 
+  // Discovery-pipeline placeholder shape ("Category in Town.") — not
+  // editorial copy, just a filler the pipeline writes when no real
+  // blurb exists. Flagged in the 2026-05 review as the most visible
+  // "feels unfinished" leak.
+  if (/^[A-Z][A-Za-z& ]+ in [A-Z][A-Za-z ]+\.?$/.test(t)) return "scraped";
+
   // Single run-on: long with fewer than two sentence stops.
   const stops = (t.match(/[.!?](\s|$)/g) ?? []).length;
   if (t.length > 320 && stops < 2) return "scraped";

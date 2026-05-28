@@ -39,9 +39,10 @@ function cleanCopy(name: string, raw: string | undefined): string | null {
 }
 
 /**
- * Clean copy for metadata, JSON-LD, and share text. Falls back to a
- * complete STYLE.md sentence so scraped copy never leaks into SEO or
- * share previews either.
+ * Clean copy for metadata, JSON-LD, and share text. When no real
+ * editorial copy exists, fall back to a name-led sentence — never the
+ * "Category in Town" filler the 2026-05 review flagged as making the
+ * product feel unfinished.
  */
 function safeBlurb(p: {
   name: string;
@@ -52,7 +53,7 @@ function safeBlurb(p: {
 }): string {
   return (
     cleanCopy(p.name, p.description ?? p.short_blurb) ??
-    `${p.category_name} in ${p.municipality_name}.`
+    `${p.name} in ${p.municipality_name}.`
   );
 }
 
