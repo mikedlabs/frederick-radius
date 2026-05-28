@@ -1,0 +1,2894 @@
+{
+  "summary": {
+    "generated": "2026-05-28T03:37:01.580Z",
+    "scanned": 1694,
+    "clusters": 87,
+    "affected_records": 189,
+    "counts": {
+      "TRUE_DUPE": 53,
+      "MAYBE_MULTI_TENANT_OR_DUPE": 9,
+      "MULTI_TENANT": 22,
+      "REVIEW": 2,
+      "WRONG_PHOTO": 1
+    }
+  },
+  "clusters": [
+    {
+      "chij": "ChIJ-c0uHVrayYkRTEoacuJ390Q",
+      "size": 3,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "court-street-parking-garage-frederick",
+          "name": "Court Street Parking Deck",
+          "address": "2 S Court St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41204739999999,
+            "lat": 39.4135367
+          },
+          "source": "seed",
+          "category": "parking"
+        },
+        {
+          "slug": "city-of-frederick-parking-department",
+          "name": "City of Frederick Parking Department",
+          "address": "2 S Court St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41204739999999,
+            "lat": 39.4135367
+          },
+          "source": "dfp",
+          "category": "parking"
+        },
+        {
+          "slug": "court-street-garage",
+          "name": "Court Street Garage",
+          "address": "2 S Court St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41204739999999,
+            "lat": 39.4135367
+          },
+          "source": "dfp",
+          "category": "parking"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJo39zsFnayYkR4q-mvQbOpP4",
+      "size": 3,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "brewers-alley-frederick",
+          "name": "Brewer's Alley",
+          "address": "124 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4104615,
+            "lat": 39.4160924
+          },
+          "source": "manual",
+          "category": "brewery"
+        },
+        {
+          "slug": "fountain-rock",
+          "name": "Fountain Rock",
+          "address": "124 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4104615,
+            "lat": 39.4160924
+          },
+          "source": "dfp",
+          "category": "brewery"
+        },
+        {
+          "slug": "the-alley-wagon",
+          "name": "The Alley Wagon",
+          "address": "124 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4104615,
+            "lat": 39.4160924
+          },
+          "source": "dfp",
+          "category": "brewery"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJYR5QW1nayYkR7wakx8y077o",
+      "size": 3,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "thatsa-wrapp-frederick",
+          "name": "That's-A-Wrapp Cafe",
+          "address": "112 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4083177,
+            "lat": 39.4138865
+          },
+          "source": "manual",
+          "category": "shopping"
+        },
+        {
+          "slug": "emporium-antiques",
+          "name": "Emporium Antiques",
+          "address": "112 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4083177,
+            "lat": 39.4138865
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "worthington-antiques",
+          "name": "Worthington Antiques",
+          "address": "112 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4083177,
+            "lat": 39.4138865
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ0YmlpfnayYkRAKI6gkl5Gy8",
+      "size": 3,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "frederick-health-hospital",
+          "name": "Frederick Health Hospital",
+          "address": "400 W 7th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4146128,
+            "lat": 39.4226989
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "emergency-room",
+          "name": "Emergency Room",
+          "address": "400 W 7th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4146128,
+            "lat": 39.4226989
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "frederick-health",
+          "name": "Frederick Health",
+          "address": "400 W 7th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4146128,
+            "lat": 39.4226989
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJDY2roFfayYkR1rwV9ZwZHfQ",
+      "size": 3,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "city-of-frederick-parks-and-rec",
+          "name": "City of Frederick Parks and Rec",
+          "address": "121 N Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41421749999999,
+            "lat": 39.416682
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "william-r-talley-recreation-center",
+          "name": "William R Talley Recreation Center",
+          "address": "121 N Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41421749999999,
+            "lat": 39.416682
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "william-talley-recreation-center-armory",
+          "name": "William Talley Recreation Center Armory",
+          "address": "121 N Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41421749999999,
+            "lat": 39.416682
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJQQ024r_ayYkRb0_55d_UjIk",
+      "size": 3,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "the-banner-school",
+          "name": "The Banner School",
+          "address": "217 Dill Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4139543,
+            "lat": 39.419596399999996
+          },
+          "source": "dfp",
+          "category": "family"
+        },
+        {
+          "slug": "clubhouse-kids-at-monocacy-valley-montessori-public-school",
+          "name": "Clubhouse Kids at Monocacy Valley Montessori Public School",
+          "address": "217 Dill Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4139543,
+            "lat": 39.419596399999996
+          },
+          "source": "dfp",
+          "category": "family"
+        },
+        {
+          "slug": "mmci",
+          "name": "Mmci",
+          "address": "217 Dill Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4139543,
+            "lat": 39.419596399999996
+          },
+          "source": "dfp",
+          "category": "family"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJT6cIm_XayYkRF4Md1QwQZhs",
+      "size": 3,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "w-a-tolbard-heating-and-ac-llc",
+          "name": "W a Tolbard Heating and Ac LLC",
+          "address": "413 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40486299999999,
+            "lat": 39.419478999999995
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "tolbard-w-a-heating-and-air-conditioning",
+          "name": "Tolbard W a Heating and Air Conditioning",
+          "address": "413 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40486299999999,
+            "lat": 39.419478999999995
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "wa-tolbard",
+          "name": "Wa Tolbard",
+          "address": "413 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40486299999999,
+            "lat": 39.419478999999995
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ_z_X51vayYkRno9t-xx7ULg",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "carroll-creek-linear-park-frederick",
+          "name": "Carroll Creek Linear Park",
+          "address": "Carroll Creek between East St and Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4083747,
+            "lat": 39.412786499999996
+          },
+          "source": "seed",
+          "category": "park"
+        },
+        {
+          "slug": "community-bridge",
+          "name": "Community Bridge",
+          "address": "S Carroll St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4083747,
+            "lat": 39.412786499999996
+          },
+          "source": "dfp",
+          "category": "park"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJER4iJRPNyYkRA9B9Bk4s1u0",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "milkhouse-brewery-mt-airy",
+          "name": "Milkhouse Brewery at Stillpoint Farm",
+          "address": "8253 Dollyhyde Rd",
+          "municipality": "mount-airy",
+          "geom": {
+            "lng": -77.184,
+            "lat": 39.4063
+          },
+          "source": "manual",
+          "category": "brewery"
+        },
+        {
+          "slug": "milkhouse-brewery-new-market",
+          "name": "Milkhouse Brewery",
+          "address": "8253 Dollyhyde Rd, Mt Airy, MD 21771",
+          "municipality": "new-market",
+          "geom": {
+            "lng": -77.2246904,
+            "lat": 39.4592945
+          },
+          "source": "google",
+          "category": "brewery"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJQX01417ayYkREFYwtViYX9Q",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "frederick-coffee-company-frederick",
+          "name": "Frederick Coffee Company",
+          "address": "100 East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.405065,
+            "lat": 39.415299
+          },
+          "source": "manual",
+          "category": "coffee"
+        },
+        {
+          "slug": "frederick-coffee-co-cafe",
+          "name": "Frederick Coffee Co Cafe",
+          "address": "100 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.405065,
+            "lat": 39.415299
+          },
+          "source": "dfp",
+          "category": "coffee"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJAW6gvVnayYkRg5-fjTQLm5M",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "isabellas-taverna-tapas-bar-frederick",
+          "name": "Isabella's Taverna & Tapas Bar",
+          "address": "44 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4107362,
+            "lat": 39.4150409
+          },
+          "source": "manual",
+          "category": "restaurant"
+        },
+        {
+          "slug": "immersion-active",
+          "name": "Immersion Active",
+          "address": "44 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4107362,
+            "lat": 39.4150409
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJNx7cWljayYkRPcNzeeWQIaE",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "lebherz-oil-and-vinegar-frederick",
+          "name": "Lebherz Oil & Vinegar Emporium",
+          "address": "214 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4104613,
+            "lat": 39.4168936
+          },
+          "source": "manual",
+          "category": "market"
+        },
+        {
+          "slug": "love-lebherz-oil-vinegar-emporium-downtown-frederick-md",
+          "name": "Love Lebherz Oil Vinegar Emporium Downtown Frederick MD",
+          "address": "214 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4104613,
+            "lat": 39.4168936
+          },
+          "source": "dfp",
+          "category": "market"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJYUxiDCIetokRK7Z4pNWhXSQ",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "smoketown-brewing-brunswick",
+          "name": "Smoketown Brewing Station",
+          "address": "223 W Potomac St",
+          "municipality": "brunswick",
+          "geom": {
+            "lng": -77.630299,
+            "lat": 39.3137964
+          },
+          "source": "manual",
+          "category": "brewery"
+        },
+        {
+          "slug": "smoketown-brewing-brunswick-2",
+          "name": "Smoketown Brewing",
+          "address": "223 W Potomac St, Brunswick, MD 21716",
+          "municipality": "brunswick",
+          "geom": {
+            "lng": -77.630299,
+            "lat": 39.3137964
+          },
+          "source": "google",
+          "category": "brewery"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJn9GoRkXayYkRgqAmSwlIGpE",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "hollerstown-hill-bed-and-breakfast",
+          "name": "Hollerstown Hill Bed and Breakfast",
+          "address": "4 Clarke Pl",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4114517,
+            "lat": 39.4075979
+          },
+          "source": "dfp",
+          "category": "lodging"
+        },
+        {
+          "slug": "hill-house-bed-and-breakfast",
+          "name": "Hill House Bed and Breakfast",
+          "address": "12 W 3rd St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4114517,
+            "lat": 39.4075979
+          },
+          "source": "dfp",
+          "category": "lodging"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJUUTnjFnayYkRZ2KgcjIPn1Q",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "verbena-salon-spa",
+          "name": "Verbena Salon Spa",
+          "address": "15 W 7th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4103046,
+            "lat": 39.423396499999996
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "verbena-day-spa",
+          "name": "Verbena Day Spa",
+          "address": "14 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4103046,
+            "lat": 39.423396499999996
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJN3sCcefbyYkRggOV1JmJgDQ",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "7th-sister",
+          "name": "7th Sister",
+          "address": "228 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4102699,
+            "lat": 39.4172222
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "he-vox-lounge",
+          "name": "He Vox Lounge",
+          "address": "228 North Market Street Frederick",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4102699,
+            "lat": 39.4172222
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJJUZU617ayYkRPL70CrTQ6Sk",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "rare-morsel",
+          "name": "Rare Morsel",
+          "address": "25 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4110184,
+            "lat": 39.4148463
+          },
+          "source": "dfp",
+          "category": "bakery"
+        },
+        {
+          "slug": "perfect-truffle",
+          "name": "Perfect Truffle",
+          "address": "25 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4110184,
+            "lat": 39.4148463
+          },
+          "source": "dfp",
+          "category": "bakery"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJz4dPj4zbyYkRSo2klbMXOHc",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "agave-137-tequila-bar-and-kitchen",
+          "name": "Agave 137 Tequila Bar and Kitchen",
+          "address": "137 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.411085,
+            "lat": 39.4161706
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "taco-daddy-cantina-tequila-bar",
+          "name": "Taco Daddy Cantina Tequila Bar",
+          "address": "137 North Market Street",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.411085,
+            "lat": 39.4161706
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJeaN7QfrayYkRQJ0zHLTIAFo",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "red-canyon-physical-therapy",
+          "name": "Red Canyon Physical Therapy",
+          "address": "801 Toll House Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4150877,
+            "lat": 39.4257972
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "red-canyon-toll-house",
+          "name": "Red Canyon Toll House",
+          "address": "801 Toll House Ave Ste H3",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4150877,
+            "lat": 39.4257972
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJJ39NY1zayYkRn1j97E1xGeg",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "visit-frederick",
+          "name": "Visit Frederick",
+          "address": "151 S East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4064053,
+            "lat": 39.4110144
+          },
+          "source": "dfp",
+          "category": "civic"
+        },
+        {
+          "slug": "frederick-visitor-center",
+          "name": "Frederick Visitor Center",
+          "address": "151 S East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4064053,
+            "lat": 39.4110144
+          },
+          "source": "dfp",
+          "category": "civic"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ56UCW1rayYkRQ_wFa4AROek",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "frederick-county-coalition-for-the-homeless",
+          "name": "Frederick County Coalition for the Homeless",
+          "address": "100 S Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4110668,
+            "lat": 39.4117898
+          },
+          "source": "dfp",
+          "category": "civic"
+        },
+        {
+          "slug": "frederick-housing-and-human-services",
+          "name": "Frederick Housing and Human Services",
+          "address": "100 S Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4110668,
+            "lat": 39.4117898
+          },
+          "source": "dfp",
+          "category": "civic"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJWRC0mVvayYkRrp7fGc8ZiVE",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "clue-iq-an-escape-room-experience",
+          "name": "Clue Iq an Escape Room Experience",
+          "address": "103 S Carroll St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40833669999999,
+            "lat": 39.411406199999995
+          },
+          "source": "dfp",
+          "category": "family"
+        },
+        {
+          "slug": "clue-iq",
+          "name": "Clue Iq",
+          "address": "103 S Carroll St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40833669999999,
+            "lat": 39.411406199999995
+          },
+          "source": "dfp",
+          "category": "family"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJMbP_s1DayYkRzm7J_fkK7Sc",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "west-patrick-street-garage",
+          "name": "West Patrick Street Garage",
+          "address": "138 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4137744,
+            "lat": 39.4132628
+          },
+          "source": "dfp",
+          "category": "parking"
+        },
+        {
+          "slug": "west-patrick-street-parking-deck",
+          "name": "West Patrick Street Parking Deck",
+          "address": "138 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4137744,
+            "lat": 39.4132628
+          },
+          "source": "dfp",
+          "category": "parking"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJq4qg1GNLtokRgnG9u-4t1eI",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "frederick-county-public-schools",
+          "name": "Frederick County Public Schools",
+          "address": "191 S East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40626569999999,
+            "lat": 39.410529
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "fcps-maryland",
+          "name": "Fcps Maryland",
+          "address": "191 S East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40626569999999,
+            "lat": 39.410529
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJm6tDHFHayYkRyly31VTzYYQ",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "diggs-pool",
+          "name": "Diggs Pool",
+          "address": "125 W All Saints St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4133749,
+            "lat": 39.412131099999996
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "william-r-diggs-memorial-swimming-pool",
+          "name": "William R Diggs Memorial Swimming Pool",
+          "address": "125 W All Saints St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4133749,
+            "lat": 39.412131099999996
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJwXPFFVjayYkRty8_7b_D474",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "the-cadillac-counselor",
+          "name": "The Cadillac Counselor",
+          "address": "20 W 3rd St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41163209999999,
+            "lat": 39.4177197
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "brooks-behavioral-health-services-llc",
+          "name": "Brooks Behavioral Health Services LLC",
+          "address": "20 W 3rd St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41163209999999,
+            "lat": 39.4177197
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ6ROfbWbbyYkRZE_uMGl3x9k",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "roros-mexican-grill-and-cantina",
+          "name": "Roros Mexican Grill and Cantina",
+          "address": "50 Carroll Creek Way Ste 130",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4099626,
+            "lat": 39.4130426
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "plaza-mexico",
+          "name": "Plaza Mexico",
+          "address": "50 Carroll Creek Way",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4099626,
+            "lat": 39.4130426
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJuzclpkzbyYkROeXCnpzSFCE",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "hydro-designs",
+          "name": "Hydro Designs",
+          "address": "3 College Ave Ste 8",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41856539999999,
+            "lat": 39.4137207
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "bloom-health-np",
+          "name": "Bloom Health Np",
+          "address": "3 College Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41856539999999,
+            "lat": 39.4137207
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJdeoXv5LbyYkRkPTAIx8rXD0",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "y-arts-center",
+          "name": "Y Arts Center",
+          "address": "115 E Church St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4080731,
+            "lat": 39.4152724
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "artomaticfrederick",
+          "name": "Artomaticfrederick",
+          "address": "115 E Church St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4080731,
+            "lat": 39.4152724
+          },
+          "source": "dfp",
+          "category": "gallery"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJCyS8EO3ayYkRHsS3CdDsLsk",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "asian-cafe",
+          "name": "Asian Cafe",
+          "address": "1303 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4036806,
+            "lat": 39.4297916
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "freez-king",
+          "name": "Freez King",
+          "address": "1303 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4036806,
+            "lat": 39.4297916
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJLVXhXFjayYkRvyf00f7Msl0",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "celerate",
+          "name": "Celerate",
+          "address": "228 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4101739,
+            "lat": 39.4172322
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "enforme-interactive",
+          "name": "Enforme Interactive",
+          "address": "228 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4101739,
+            "lat": 39.4172322
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJwSubKEXayYkRhh6osVIHk84",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "maryland-school-for-the-deaf",
+          "name": "Maryland School for the Deaf",
+          "address": "101 Clarke Pl",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4101338,
+            "lat": 39.4088646
+          },
+          "source": "dfp",
+          "category": "civic"
+        },
+        {
+          "slug": "maryland-deaf-center",
+          "name": "Maryland Deaf Center",
+          "address": "Frederick",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4101338,
+            "lat": 39.4088646
+          },
+          "source": "dfp",
+          "category": "civic"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ3_p-WnHZyYkR0m-X2TtARXk",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "sknfit-by-marissa",
+          "name": "Sknfit by Marissa",
+          "address": "23 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.410074,
+            "lat": 39.4142128
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "skin-care-shop",
+          "name": "Skin Care Shop",
+          "address": "23 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.410074,
+            "lat": 39.4142128
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ6yVo2F3byYkRxLfNIMcQ8FU",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "lucky-corner-vietnamese-cuisine",
+          "name": "Lucky Corner Vietnamese Cuisine",
+          "address": "700 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4092099,
+            "lat": 39.4228442
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "tin-corner",
+          "name": "Tin Corner",
+          "address": "700 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4092099,
+            "lat": 39.4228442
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJM4fY0_fayYkR5W76IpoizN4",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "4th-street-laundromat",
+          "name": "4th Street Laundromat",
+          "address": "401 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41064089999999,
+            "lat": 39.419169499999995
+          },
+          "source": "dfp",
+          "category": "services"
+        },
+        {
+          "slug": "wash-dry-and-fold",
+          "name": "Wash Dry and Fold",
+          "address": "401 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41064089999999,
+            "lat": 39.419169499999995
+          },
+          "source": "dfp",
+          "category": "services"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ7wqwqVbayYkRFTUM0Pmmxd4",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "frederick-county-public-school",
+          "name": "Frederick County Public School",
+          "address": "300 Carroll Pkwy",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4195246,
+            "lat": 39.4143282
+          },
+          "source": "dfp",
+          "category": "family"
+        },
+        {
+          "slug": "parkway-elementary-school",
+          "name": "Parkway Elementary School",
+          "address": "300 Carroll Pkwy",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4195246,
+            "lat": 39.4143282
+          },
+          "source": "dfp",
+          "category": "family"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ4yPlurzbyYkRz7_q0oSrQAc",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "a",
+          "name": "A",
+          "address": "301 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41062699999999,
+            "lat": 39.417988
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "up-on-market",
+          "name": "Up on Market",
+          "address": "301 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41062699999999,
+            "lat": 39.417988
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ7018FADbyYkRS9cIQbkrOsQ",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "mirage-cafe-grill-restaurant",
+          "name": "Mirage Cafe Grill Restaurant",
+          "address": "243 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4107353,
+            "lat": 39.4177325
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "bloom-asian-haus",
+          "name": "Bloom Asian Haus",
+          "address": "243 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4107353,
+            "lat": 39.4177325
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJf74kk1nayYkRSuJkBqvb5Xg",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "frederick-performing-arts",
+          "name": "Frederick Performing Arts",
+          "address": "15 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4115686,
+            "lat": 39.4143464
+          },
+          "source": "dfp",
+          "category": "theater"
+        },
+        {
+          "slug": "new-spire-arts",
+          "name": "New Spire Arts",
+          "address": "15 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4115686,
+            "lat": 39.4143464
+          },
+          "source": "dfp",
+          "category": "theater"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJs4hK-lnayYkRBbHX1hARHvw",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "frederick-county-public-defender",
+          "name": "Frederick County Public Defender",
+          "address": "100 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41290889999999,
+            "lat": 39.4136666
+          },
+          "source": "dfp",
+          "category": "government"
+        },
+        {
+          "slug": "john-hanson-national-memorial",
+          "name": "John Hanson National Memorial",
+          "address": "100 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41290889999999,
+            "lat": 39.4136666
+          },
+          "source": "dfp",
+          "category": "government"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJQbbFZvnayYkRXFfFO3O5zpg",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "ronald-j-volpe-athletic-center",
+          "name": "Ronald J Volpe Athletic Center",
+          "address": "601 Blazer Trl",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41688309999999,
+            "lat": 39.4241743
+          },
+          "source": "dfp",
+          "category": "family"
+        },
+        {
+          "slug": "bbt-arena",
+          "name": "Bbt Arena",
+          "address": "601 Blazer Trl",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41688309999999,
+            "lat": 39.4241743
+          },
+          "source": "dfp",
+          "category": "family"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJs2qK8FXbyYkRGhgRHGAY4iM",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "pho-52",
+          "name": "Pho 52",
+          "address": "701 Motter Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41185970000001,
+            "lat": 39.423263
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "white-star-lunch-n-ette",
+          "name": "White Star Lunch N Ette",
+          "address": "701 Motter Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41185970000001,
+            "lat": 39.423263
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJpzLZ2vHayYkRBTvRAkWaH20",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "staley-field",
+          "name": "Staley Field",
+          "address": "Motter Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40887359999999,
+            "lat": 39.4284447
+          },
+          "source": "dfp",
+          "category": "park"
+        },
+        {
+          "slug": "staley-park",
+          "name": "Staley Park",
+          "address": "11 W 10th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40887359999999,
+            "lat": 39.4284447
+          },
+          "source": "dfp",
+          "category": "park"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ8zKRxSrbyYkRyF6vhwlkdZM",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "the-goddess-group",
+          "name": "The Goddess Group",
+          "address": "401 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4104653,
+            "lat": 39.4191966
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "the-home-of-everything-frederick",
+          "name": "The Home of Everything Frederick",
+          "address": "401 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4104653,
+            "lat": 39.4191966
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJo1pX-lDayYkRAiwpy4j6ao0",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "elks-w-all-saints-street",
+          "name": "Elks W All Saints Street",
+          "address": "173 W All Saints St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4150164,
+            "lat": 39.412183999999996
+          },
+          "source": "dfp",
+          "category": "civic"
+        },
+        {
+          "slug": "mountain-city-lodge",
+          "name": "Mountain City Lodge",
+          "address": "173 W All Saints St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4150164,
+            "lat": 39.412183999999996
+          },
+          "source": "dfp",
+          "category": "civic"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJt2UJuPXayYkRT-8lmIOP2dI",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "redmans-club",
+          "name": "Redmans Club",
+          "address": "235 E 5th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4053564,
+            "lat": 39.420118699999996
+          },
+          "source": "dfp",
+          "category": "civic"
+        },
+        {
+          "slug": "improved-order-of-redmens-chippewa-tribe-19",
+          "name": "Improved Order of Redmens Chippewa Tribe 19",
+          "address": "235 E 5th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4053564,
+            "lat": 39.420118699999996
+          },
+          "source": "dfp",
+          "category": "civic"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJVVw-pFnayYkR6PUjBfllhG8",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "the-historical-society-of-frederick-county",
+          "name": "The Historical Society of Frederick County",
+          "address": "24 E Church St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4090799,
+            "lat": 39.4151076
+          },
+          "source": "dfp",
+          "category": "museum"
+        },
+        {
+          "slug": "heritage-frederick",
+          "name": "Heritage Frederick",
+          "address": "24 E Church St Frederick",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4090799,
+            "lat": 39.4151076
+          },
+          "source": "dfp",
+          "category": "museum"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJbSV8CmDayYkR-mEin20GYXk",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "tenth-ward-distilling-company",
+          "name": "Tenth Ward Distilling Company",
+          "address": "55 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40917879999999,
+            "lat": 39.414151
+          },
+          "source": "dfp",
+          "category": "bar"
+        },
+        {
+          "slug": "tenth-wards-wedding-event-venue",
+          "name": "Tenth Wards Wedding Event Venue",
+          "address": "55 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40917879999999,
+            "lat": 39.414151
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJb4HZHUbbyYkRB8O976xmdP0",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "pride-on-the-patio",
+          "name": "Pride on the Patio",
+          "address": "882 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40323649999999,
+            "lat": 39.425156199999996
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "showroom-frederick",
+          "name": "Showroom",
+          "address": "882 N East St, Frederick, MD 21701",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40323649999999,
+            "lat": 39.425156199999996
+          },
+          "source": "google",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ50SbS-XbyYkRf-_sig-BC0I",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "city-of-frederick-dog-park",
+          "name": "City of Frederick Dog Park",
+          "address": "100 S Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41527239999999,
+            "lat": 39.4147113
+          },
+          "source": "dfp",
+          "category": "park"
+        },
+        {
+          "slug": "doggie-park",
+          "name": "Doggie Park",
+          "address": "Doggie Park",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41527239999999,
+            "lat": 39.4147113
+          },
+          "source": "dfp",
+          "category": "park"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJaW2zPFrayYkR879zensKX3k",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "alive-five",
+          "name": "Alive Five",
+          "address": "19 E Church St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40985909999999,
+            "lat": 39.4153727
+          },
+          "source": "dfp",
+          "category": "civic"
+        },
+        {
+          "slug": "city-of-frederick-hpc",
+          "name": "City of Frederick Hpc",
+          "address": "Frederick",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40985909999999,
+            "lat": 39.4153727
+          },
+          "source": "dfp",
+          "category": "civic"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ1SRZ1n3byYkR61P70dgH9d8",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "trinity-chapel",
+          "name": "Trinity Chapel",
+          "address": "10 W Church St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4112724,
+            "lat": 39.4151411
+          },
+          "source": "dfp",
+          "category": "worship"
+        },
+        {
+          "slug": "liberty-community-church-inc",
+          "name": "Liberty Community Church Inc",
+          "address": "10 W Church St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4112724,
+            "lat": 39.4151411
+          },
+          "source": "dfp",
+          "category": "worship"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJAUATRVnayYkRg8-fLz1N_S4",
+      "size": 2,
+      "verdict": "TRUE_DUPE",
+      "records": [
+        {
+          "slug": "holistic-family-medicine",
+          "name": "Holistic Family Medicine",
+          "address": "120 W Church St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4137111,
+            "lat": 39.4154092
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "holistic-family-medicine_dolma-johanison-lac",
+          "name": "Holistic Family Medicine_dolma Johanison Lac",
+          "address": "127 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4137111,
+            "lat": 39.4154092
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ7YIIQPrayYkR61r6faPqclw",
+      "size": 3,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "manhattan-mens-grooming-lounge",
+          "name": "Manhattan Mens Grooming Lounge",
+          "address": "1201 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40712479999999,
+            "lat": 39.4294083
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "new-york-new-york-hair-salon-and-day-spa",
+          "name": "New York New York Hair Salon and Day Spa",
+          "address": "1201 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40712479999999,
+            "lat": 39.4294083
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "new-york-new-york-hair-salon-spa",
+          "name": "New York New York Hair Salon Spa",
+          "address": "808 Toll House Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.40712479999999,
+            "lat": 39.4294083
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJRRVXCBLbyYkR4BPtaSvg-Xs",
+      "size": 3,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "earth-and-space-science-lab",
+          "name": "Earth and Space Science Lab",
+          "address": "210 Madison St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.416765,
+            "lat": 39.4082709
+          },
+          "source": "dfp",
+          "category": "family"
+        },
+        {
+          "slug": "the-earth-and-space-science-laboratory-essl",
+          "name": "The Earth and Space Science Laboratory Essl",
+          "address": "210 Madison St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.416765,
+            "lat": 39.4082709
+          },
+          "source": "dfp",
+          "category": "family"
+        },
+        {
+          "slug": "south-frederick-arboretum",
+          "name": "South Frederick Arboretum",
+          "address": "250 Madison St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.416765,
+            "lat": 39.4082709
+          },
+          "source": "dfp",
+          "category": "family"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ_d2v417ayYkRsfNof04NruI",
+      "size": 3,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "shab-row-tea-emporium",
+          "name": "Shab Row Tea Emporium",
+          "address": "112 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4050255,
+            "lat": 39.415405299999996
+          },
+          "source": "dfp",
+          "category": "coffee"
+        },
+        {
+          "slug": "serenity-tearoom",
+          "name": "Serenity Tearoom",
+          "address": "119 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4050255,
+            "lat": 39.415405299999996
+          },
+          "source": "dfp",
+          "category": "coffee"
+        },
+        {
+          "slug": "serenity-tearoom-fine-dining",
+          "name": "Serenity Tearoom Fine Dining",
+          "address": "162 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4050255,
+            "lat": 39.415405299999996
+          },
+          "source": "dfp",
+          "category": "coffee"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJl9YbjCzbyYkR1dg9IfemNN0",
+      "size": 2,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "marianne-riley-psychotherapy",
+          "name": "Marianne Riley Psychotherapy",
+          "address": "10 N Jefferson St #203",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4176844,
+            "lat": 39.4134129
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "clarity-psychotherapy",
+          "name": "Clarity Psychotherapy",
+          "address": "263 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4176844,
+            "lat": 39.4134129
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJP7kiRVHayYkR_0AF6wA3-Bw",
+      "size": 2,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "appalachian-bodywork",
+          "name": "Appalachian Bodywork",
+          "address": "208 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4176591,
+            "lat": 39.4134248
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "frederick-bodywork",
+          "name": "Frederick Bodywork",
+          "address": "263 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4176591,
+            "lat": 39.4134248
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJM6vZolfayYkRSNRnJN0_2E0",
+      "size": 2,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "memorial-park-13",
+          "name": "Memorial Park 13",
+          "address": "199 N Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4142622,
+            "lat": 39.4172216
+          },
+          "source": "dfp",
+          "category": "park"
+        },
+        {
+          "slug": "memorial-grounds",
+          "name": "Memorial Grounds",
+          "address": "201 N Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4142622,
+            "lat": 39.4172216
+          },
+          "source": "dfp",
+          "category": "park"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJF_IlkcnbyYkRhx8ajEuKnI4",
+      "size": 2,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "francis-scott-key-memorial-foundation",
+          "name": "Francis Scott Key Memorial Foundation",
+          "address": "121 S Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4127627,
+            "lat": 39.4062196
+          },
+          "source": "dfp",
+          "category": "park"
+        },
+        {
+          "slug": "francis-scott-key-grave-and-monument",
+          "name": "Francis Scott Key Grave and Monument",
+          "address": "515 S Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4127627,
+            "lat": 39.4062196
+          },
+          "source": "dfp",
+          "category": "park"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJNfvn5lbayYkRnh-6CsC7dqs",
+      "size": 2,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "bell-tower-baker-park",
+          "name": "Bell Tower Baker Park",
+          "address": "E 2nd St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4161324,
+            "lat": 39.4156826
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "joseph-dill-baker-memorial-carillon-bell-tower",
+          "name": "Joseph Dill Baker Memorial Carillon Bell Tower",
+          "address": "Frederick",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4161324,
+            "lat": 39.4156826
+          },
+          "source": "dfp",
+          "category": "civic"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJHTp8aAQfyIkRzjnjaLqAXKo",
+      "size": 2,
+      "verdict": "MAYBE_MULTI_TENANT_OR_DUPE",
+      "records": [
+        {
+          "slug": "the-center-for-holistic-wellness",
+          "name": "The Center for Holistic Wellness",
+          "address": "6 W 2nd St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4111233,
+            "lat": 39.4165093
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "om-chakra-holistic-healing-and-massage-center",
+          "name": "Om Chakra Holistic Healing and Massage Center",
+          "address": "8 E 2nd St Ste 102",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4111233,
+            "lat": 39.4165093
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJhTqk5He4yYkR2rPE3OQAro0",
+      "size": 3,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "moms-kitchen-thurmont",
+          "name": "Mom's Kitchen Restaurant",
+          "address": "16 N Church St",
+          "municipality": "thurmont",
+          "geom": {
+            "lng": -77.411839,
+            "lat": 39.6229209
+          },
+          "source": "manual",
+          "category": "restaurant"
+        },
+        {
+          "slug": "the-cozy-creamery-thurmont",
+          "name": "Cozy Family Restaurant",
+          "address": "103 Frederick Rd",
+          "municipality": "thurmont",
+          "geom": {
+            "lng": -77.411839,
+            "lat": 39.6229209
+          },
+          "source": "manual",
+          "category": "restaurant"
+        },
+        {
+          "slug": "thurmont-kountry-kitchen-thurmont",
+          "name": "Thurmont Kountry Kitchen",
+          "address": "17 Water St, Thurmont, MD 21788",
+          "municipality": "thurmont",
+          "geom": {
+            "lng": -77.411839,
+            "lat": 39.6229209
+          },
+          "source": "google",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJafn0XYHbyYkRUmdllXcwUlU",
+      "size": 3,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "focus-recovery-center",
+          "name": "Focus Recovery Center",
+          "address": "801 Toll House Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4144007,
+            "lat": 39.426086999999995
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "drug-detox-frederick",
+          "name": "Drug Detox Frederick",
+          "address": "27 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4144007,
+            "lat": 39.426086999999995
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "addiction-rehab-frederick",
+          "name": "Addiction Rehab Frederick",
+          "address": "27 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4144007,
+            "lat": 39.426086999999995
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJvb6Qsl7ayYkR1NKLGiZpzXw",
+      "size": 3,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "eagles-aeire-1067",
+          "name": "Eagles Aeire 1067",
+          "address": "216 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41550699999999,
+            "lat": 39.4138234
+          },
+          "source": "dfp",
+          "category": "bar"
+        },
+        {
+          "slug": "fraternal-order-of-eagles-4",
+          "name": "Fraternal Order of Eagles 4",
+          "address": "216 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41550699999999,
+            "lat": 39.4138234
+          },
+          "source": "dfp",
+          "category": "bar"
+        },
+        {
+          "slug": "frederick-eagles-club",
+          "name": "Frederick Eagles Club",
+          "address": "207 W Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41550699999999,
+            "lat": 39.4138234
+          },
+          "source": "dfp",
+          "category": "bar"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJrc2GIH7byYkR-4E1FsYUuoo",
+      "size": 3,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "dash-hair-studio",
+          "name": "Dash Hair Studio",
+          "address": "246 E 6th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4048337,
+            "lat": 39.421088499999996
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "deannadashhairstudio",
+          "name": "Deannadashhairstudio",
+          "address": "246 E 6th St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4048337,
+            "lat": 39.421088499999996
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "bad-hair-day",
+          "name": "Bad Hair Day",
+          "address": "1197 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4048337,
+            "lat": 39.421088499999996
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJr2QCpA3byYkRQdd-cf8NHGc",
+      "size": 3,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "post-office-4",
+          "name": "Post Office 4",
+          "address": "200 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4069516,
+            "lat": 39.414201
+          },
+          "source": "dfp",
+          "category": "government"
+        },
+        {
+          "slug": "united-states-postal-service-66",
+          "name": "United States Postal Service 66",
+          "address": "201 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4069516,
+            "lat": 39.414201
+          },
+          "source": "dfp",
+          "category": "government"
+        },
+        {
+          "slug": "cm3-solutions",
+          "name": "Cm3 Solutions",
+          "address": "201 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4069516,
+            "lat": 39.414201
+          },
+          "source": "dfp",
+          "category": "government"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ3_EgeADbyYkRJk7TvtDLtAo",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "acacia-house-frederick",
+          "name": "Acacia Fusion Bistro",
+          "address": "129 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4110321,
+            "lat": 39.415633500000006
+          },
+          "source": "manual",
+          "category": "restaurant"
+        },
+        {
+          "slug": "fireoak-culinary-tavern-frederick",
+          "name": "Fire&Oak Culinary Tavern",
+          "address": "105 N Market St, Frederick, MD 21701",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4110321,
+            "lat": 39.415633500000006
+          },
+          "source": "google",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJI9m4Z1jayYkR40QwM-kwVFI",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "north-market-pop-shop-frederick",
+          "name": "North Market Pop Shop",
+          "address": "237 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41075289999999,
+            "lat": 39.4176334
+          },
+          "source": "manual",
+          "category": "restaurant"
+        },
+        {
+          "slug": "best-of-business-listings",
+          "name": "Best of Business Listings",
+          "address": "124 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41075289999999,
+            "lat": 39.4176334
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJrW-Ksk3byYkRFieoezpSRoM",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "south-market-creamery-frederick",
+          "name": "Bantam & Biddy",
+          "address": "401 Carroll Creek Way",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41520419999999,
+            "lat": 39.4133121
+          },
+          "source": "manual",
+          "category": "restaurant"
+        },
+        {
+          "slug": "bentztown",
+          "name": "Bentztown",
+          "address": "6 S Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41520419999999,
+            "lat": 39.4133121
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJebX4liMetokRuJ67Wp9S6us",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "the-trolley-stop-brunswick",
+          "name": "The Trolley Stop",
+          "address": "210 W Potomac St",
+          "municipality": "brunswick",
+          "geom": {
+            "lng": -77.62591909999999,
+            "lat": 39.3126277
+          },
+          "source": "manual",
+          "category": "restaurant"
+        },
+        {
+          "slug": "potomac-street-grill-brunswick",
+          "name": "Potomac Street Grill",
+          "address": "31 E Potomac St, Brunswick, MD 21716",
+          "municipality": "brunswick",
+          "geom": {
+            "lng": -77.62591909999999,
+            "lat": 39.3126277
+          },
+          "source": "google",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJsb0JvVnayYkRLFxIMZU5n68",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "wastlers-barber-shop",
+          "name": "Wastlers Barber Shop",
+          "address": "48 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.410696,
+            "lat": 39.4151382
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "drewskiithebarber",
+          "name": "Drewskiithebarber",
+          "address": "410 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.410696,
+            "lat": 39.4151382
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJVdoDZlnayYkRklG0ZPVVwhM",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "red-winged-blackbird-records",
+          "name": "Red Winged Blackbird Records",
+          "address": "122 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.408497,
+            "lat": 39.414133
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "rock-roll-graveyard",
+          "name": "Rock Roll Graveyard",
+          "address": "115 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.408497,
+            "lat": 39.414133
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJKcSZJlrbyYkRpu4ma7r2Fys",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "manoushe",
+          "name": "Manoushe",
+          "address": "300 E 2nd St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41136209999999,
+            "lat": 39.4124413
+          },
+          "source": "dfp",
+          "category": "bakery"
+        },
+        {
+          "slug": "bakehouse",
+          "name": "Bakehouse",
+          "address": "69 S Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41136209999999,
+            "lat": 39.4124413
+          },
+          "source": "dfp",
+          "category": "bakery"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJF3Zj-jbbyYkRgEES1i8X2b0",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "the-station-market-and-cafe",
+          "name": "The Station Market and Cafe",
+          "address": "629 N Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4121713,
+            "lat": 39.4227358
+          },
+          "source": "dfp",
+          "category": "market"
+        },
+        {
+          "slug": "new-hope-cafe",
+          "name": "New Hope Cafe",
+          "address": "605 N Bentz St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4121713,
+            "lat": 39.4227358
+          },
+          "source": "dfp",
+          "category": "market"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJKbgcYKDbyYkRRmNa64cHE_Y",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "the-affiliated-barbershop",
+          "name": "The Affiliated Barbershop",
+          "address": "500 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41044289999999,
+            "lat": 39.425150599999995
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "a-different-blend",
+          "name": "A Different Blend",
+          "address": "820 Motter Ave Unit 3",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41044289999999,
+            "lat": 39.425150599999995
+          },
+          "source": "dfp",
+          "category": "wellness"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJv-zmUKDXyYkRkpFDZuP6Q0A",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "tattoo-alchemy",
+          "name": "Tattoo Alchemy",
+          "address": "415 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4103881,
+            "lat": 39.4196834
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "the-inkery",
+          "name": "The Inkery",
+          "address": "220 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4103881,
+            "lat": 39.4196834
+          },
+          "source": "dfp",
+          "category": "shopping"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJtzM8vvHbyYkRkW2REHY12Gk",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "downtown-hotel-at-carroll-creek",
+          "name": "Downtown Hotel at Carroll Creek",
+          "address": "201 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4071317,
+            "lat": 39.4161527
+          },
+          "source": "dfp",
+          "category": "lodging"
+        },
+        {
+          "slug": "visitation-hotel",
+          "name": "Visitation Hotel",
+          "address": "211 E Church St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4071317,
+            "lat": 39.4161527
+          },
+          "source": "dfp",
+          "category": "lodging"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJnWr_YgDbyYkRLJE-9Y7vzps",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "jraymonds-steakhouse",
+          "name": "Jraymonds Steakhouse",
+          "address": "50 Carroll Creek Way",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4069978,
+            "lat": 39.4161991
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "wye-oak-tavern-frederick",
+          "name": "Wye Oak Tavern",
+          "address": "211 E Church St, Frederick, MD 21701",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4069978,
+            "lat": 39.4161991
+          },
+          "source": "google",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJSdHGkVnayYkRLCtyaKfn7Us",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "cafe-anglais-british-tearoom",
+          "name": "Cafe Anglais British Tearoom",
+          "address": "238 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4107885,
+            "lat": 39.4144034
+          },
+          "source": "dfp",
+          "category": "coffee"
+        },
+        {
+          "slug": "voila-in-frederick",
+          "name": "Voila in Frederick",
+          "address": "10 N Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4107885,
+            "lat": 39.4144034
+          },
+          "source": "dfp",
+          "category": "coffee"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ_TG3Z1rayYkRuOyLzrpg2Ko",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "south-market-sandwich-co",
+          "name": "South Market Sandwich Co",
+          "address": "105 S Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4114161,
+            "lat": 39.411698
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "subway-197",
+          "name": "Subway 197",
+          "address": "69 S Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4114161,
+            "lat": 39.411698
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJVZObrQjbyYkR2aKbVP-Ghoc",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "mdtix",
+          "name": "Mdtix",
+          "address": "Frederick",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41228610000002,
+            "lat": 39.4147707
+          },
+          "source": "dfp",
+          "category": "shopping"
+        },
+        {
+          "slug": "frederick-magic-theater-lounge-frederick",
+          "name": "Frederick Magic Theater & Lounge",
+          "address": "19 N Court St #100, Frederick, MD 21701",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.41228610000002,
+            "lat": 39.4147707
+          },
+          "source": "google",
+          "category": "theater"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJabjLCGnbyYkRS3n6VZSSuG0",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "bhangers",
+          "name": "Bhangers",
+          "address": "119 E Patrick St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4068782,
+            "lat": 39.413786099999996
+          },
+          "source": "dfp",
+          "category": "restaurant"
+        },
+        {
+          "slug": "the-banyan-frederick",
+          "name": "The Banyan",
+          "address": "216 E Patrick St, Frederick, MD 21701",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4068782,
+            "lat": 39.413786099999996
+          },
+          "source": "google",
+          "category": "restaurant"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ491hN53ZyYkRsbksLK7ubvw",
+      "size": 2,
+      "verdict": "MULTI_TENANT",
+      "records": [
+        {
+          "slug": "ananda-shala-yoga",
+          "name": "Ananda Shala Yoga",
+          "address": "34 S Market St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4108019,
+            "lat": 39.4172618
+          },
+          "source": "dfp",
+          "category": "worship"
+        },
+        {
+          "slug": "brandartyoga-frederick",
+          "name": "BrandArtYoga",
+          "address": "227 N Market St, Frederick, MD 21701",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4108019,
+            "lat": 39.4172618
+          },
+          "source": "google",
+          "category": "worship"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJwwuuG_PayYkR5J6gi168I5w",
+      "size": 2,
+      "verdict": "REVIEW",
+      "records": [
+        {
+          "slug": "rockwell-brewery-frederick",
+          "name": "Rockwell Brewery — Riverside",
+          "address": "880 N East St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.3985,
+            "lat": 39.4253
+          },
+          "source": "manual",
+          "category": "brewery"
+        },
+        {
+          "slug": "rockwell-brewery-frederick-2",
+          "name": "Rockwell Brewery",
+          "address": "8411 Broadband Drive k, Frederick, MD 21701",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.3808825,
+            "lat": 39.4401824
+          },
+          "source": "google",
+          "category": "brewery"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJ0R7rDPjayYkRbKsWDt122Yo",
+      "size": 2,
+      "verdict": "REVIEW",
+      "records": [
+        {
+          "slug": "first-baptist-church-5",
+          "name": "First Baptist Church 5",
+          "address": "217 Dill Ave",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.413982072537,
+            "lat": 39.419644961291
+          },
+          "source": "dfp",
+          "category": "worship"
+        },
+        {
+          "slug": "first-baptist-church-maryland-center-middletown",
+          "name": "First Baptist Church, Maryland CENTER",
+          "address": "7040 Bowers Rd, Frederick, MD 21702",
+          "municipality": "middletown",
+          "geom": {
+            "lng": -77.47870979999999,
+            "lat": 39.4307442
+          },
+          "source": "google",
+          "category": "worship"
+        }
+      ]
+    },
+    {
+      "chij": "ChIJx3UWVOzbyYkRqTMyR5Qb6Qg",
+      "size": 2,
+      "verdict": "WRONG_PHOTO",
+      "records": [
+        {
+          "slug": "cyclefit-frederick",
+          "name": "Cyclefit Frederick",
+          "address": "125 E All Saints St",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.407415283587,
+            "lat": 39.411930674649
+          },
+          "source": "dfp",
+          "category": "wellness"
+        },
+        {
+          "slug": "lifecycle-fitness-studio-frederick",
+          "name": "LifeCYCLE Fitness Studio",
+          "address": "470C Prospect Blvd Suite C, Frederick, MD 21701",
+          "municipality": "frederick",
+          "geom": {
+            "lng": -77.4303031,
+            "lat": 39.4044508
+          },
+          "source": "google",
+          "category": "wellness"
+        }
+      ]
+    }
+  ]
+}

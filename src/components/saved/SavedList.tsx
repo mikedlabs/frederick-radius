@@ -15,6 +15,19 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
 import { Bookmark, MapPin, Sparkles, Calendar, UtensilsCrossed } from "lucide-react";
 import Skeleton from "@/components/ui/Skeleton";
+import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
+import { haversineMeters } from "@/lib/geo";
+
+type SavedSortKey = "category" | "recent" | "az" | "distance";
+
+const SORT_OPTIONS: ReadonlyArray<SortOption<SavedSortKey>> = [
+  { key: "category", label: "By category", hint: "Group by what kind of place" },
+  { key: "recent", label: "Recent", hint: "Most recently saved first" },
+  { key: "az", label: "A→Z", hint: "Alphabetical by name" },
+  { key: "distance", label: "Distance", hint: "From your home town" },
+];
+
+const SAVED_SORT_STORAGE_KEY = "fr.saved-sort";
 
 type DecoratedEvent = ReturnType<typeof decorateEvent>;
 
@@ -97,6 +110,46 @@ export default function SavedList() {
     return () => ctrl.abort();
   }, [mounted, slugsKey, slugsToFetch.length]);
 
+  // Persisted sort preference (defaults to "category" — the original
+  // grouping behavior). Read on mount so SSR + first paint stay
+  // consistent (mounted gate above already prevents server/client mismatch).
+  const [sort, setSort] = useState<SavedSortKey>("category");
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(SAVED_SORT_STORAGE_KEY);
+      if (saved === "category" || saved === "recent" || saved === "az" || saved === "distance") {
+        setSort(saved);
+      }
+    } catch {
+      /* localStorage unavailable; keep default */
+    }
+  }, []);
+  function setSortAndStore(next: SavedSortKey) {
+    setSort(next);
+    try {
+      window.localStorage.setItem(SAVED_SORT_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // The "distance" sort needs an origin. Read the user's home muni
+  // from localStorage (the same key PreferencesPanel writes); fall
+  // back to no-origin (places-without-geom safely sort last via the
+  // Infinity sentinel below).
+  const [homeOrigin, setHomeOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    try {
+      const slug = window.localStorage.getItem("fr_home_muni");
+      if (slug) {
+        const m = MUNICIPALITY_BY_SLUG[slug];
+        if (m) setHomeOrigin(m.centroid);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const { places, events, byCategory, townTally } = useMemo(() => {
     if (!placesBySlug) {
       return {
@@ -106,12 +159,39 @@ export default function SavedList() {
         townTally: new Map<string, number>(),
       };
     }
-    const places = items
+    // Build (ref, place) tuples so we can sort by saved_at when the
+    // user picks "Recent". Other sorts only need the place itself.
+    const placeRefs = items
       .filter((i) => i.type === "place")
       .map((i) => ({ ref: i, place: placesBySlug.get(i.id) }))
-      .filter((x): x is { ref: typeof x.ref; place: PlaceCardData } => Boolean(x.place))
-      .sort((a, b) => +new Date(b.ref.saved_at) - +new Date(a.ref.saved_at))
-      .map((x) => x.place);
+      .filter((x): x is { ref: typeof x.ref; place: PlaceCardData } => Boolean(x.place));
+
+    // Apply the user's sort. "category" keeps the original recent-first
+    // order before bucketing (so within each category, the freshest
+    // saves still come first).
+    let sorted: typeof placeRefs;
+    switch (sort) {
+      case "az":
+        sorted = [...placeRefs].sort((a, b) =>
+          a.place.name.localeCompare(b.place.name, undefined, { sensitivity: "base" }),
+        );
+        break;
+      case "distance":
+        sorted = [...placeRefs].sort((a, b) => {
+          const da = homeOrigin && a.place.geom ? haversineMeters(homeOrigin, a.place.geom) : Infinity;
+          const db = homeOrigin && b.place.geom ? haversineMeters(homeOrigin, b.place.geom) : Infinity;
+          return da - db;
+        });
+        break;
+      case "category":
+      case "recent":
+      default:
+        sorted = [...placeRefs].sort(
+          (a, b) => +new Date(b.ref.saved_at) - +new Date(a.ref.saved_at),
+        );
+        break;
+    }
+    const places = sorted.map((x) => x.place);
 
     const events = items
       .filter((i) => i.type === "event")
@@ -121,7 +201,8 @@ export default function SavedList() {
 
     // Bucket places by their top-level category — gives the page a
     // "shape" so the user can scan what kind of Frederick they're
-    // collecting (mostly food, mostly outdoors, a mix).
+    // collecting (mostly food, mostly outdoors, a mix). Only used
+    // when sort === "category"; other sorts render a flat list.
     const byCategory = new Map<string, PlaceCardData[]>();
     for (const p of places) {
       const top = CATEGORY_BY_SLUG[p.category]?.parent ?? p.category;
@@ -139,7 +220,7 @@ export default function SavedList() {
     }
 
     return { places, events, byCategory, townTally };
-  }, [items, placesBySlug]);
+  }, [items, placesBySlug, sort, homeOrigin]);
 
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
@@ -231,7 +312,7 @@ export default function SavedList() {
             {summarySentence(places.length, events.length, townTally.size)}
           </p>
           <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-            Saved on this device · sync coming soon
+            On this device · sign-in to sync across devices coming soon
           </p>
         </div>
       </section>
@@ -239,7 +320,7 @@ export default function SavedList() {
       {/* Smart suggestion strip — only when there's a real cluster. */}
       {dominantMuni && (
         <Link
-          href={`/plan?from=saved`}
+          href={`/plan?from=my-radius`}
           className="group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
           style={{ borderColor: "var(--app-border)" }}
         >
@@ -258,7 +339,7 @@ export default function SavedList() {
               className="block text-[13px] font-semibold leading-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {dominantTown![1]} of your saves are in {dominantMuni.name}
+              {dominantTown![1]} of your Radius is in {dominantMuni.name}
             </span>
             <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
               Build a route from these → Planner
@@ -274,50 +355,93 @@ export default function SavedList() {
         </Link>
       )}
 
-      {/* Places, grouped by their top-level category. The reader scans
-          the shape of their collection — mostly food, or a mix. */}
-      {byCategory.size > 0 && (
-        <div className="space-y-5">
-          {[...byCategory.entries()]
-            .sort((a, b) => b[1].length - a[1].length)
-            .map(([catSlug, group]) => {
-              const cat = CATEGORY_BY_SLUG[catSlug];
-              const color = cat?.color ?? "var(--app-cool)";
-              return (
-                <section key={catSlug} className="space-y-2">
-                  <header className="flex items-baseline gap-2.5">
-                    <span
-                      aria-hidden
-                      className="block h-[3px] w-7 rounded-full"
-                      style={{ background: color }}
-                    />
-                    <h2
-                      className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                      style={{ color }}
-                    >
-                      {cat?.name ?? catSlug}
-                    </h2>
-                    <span
-                      className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-                      style={{
-                        background: `color-mix(in srgb, ${color} 14%, transparent)`,
-                        color,
-                      }}
-                    >
-                      {group.length}
-                    </span>
-                  </header>
-                  <ul className="space-y-2">
-                    {group.map((p) => (
-                      <li key={p.slug}>
-                        <PlaceCard place={p} />
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              );
-            })}
-        </div>
+      {/* Places — grouped by top-level category when sort is "category"
+          (default), or rendered as a flat sorted list otherwise. The
+          sort dropdown sits next to the section label so a returning
+          user sees their current preference in one glance. */}
+      {places.length > 0 && (
+        <section aria-label="Saved places" className="space-y-3">
+          <header className="flex items-center justify-between gap-3">
+            <div className="flex items-baseline gap-2.5">
+              <span
+                aria-hidden
+                className="block h-[3px] w-7 rounded-full"
+                style={{ background: "var(--app-cool)" }}
+              />
+              <h2
+                className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                style={{ color: "var(--app-cool)" }}
+              >
+                Places
+              </h2>
+              <span
+                className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+                style={{
+                  background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
+                  color: "var(--app-cool)",
+                }}
+              >
+                {places.length}
+              </span>
+            </div>
+            <SortDropdown
+              options={SORT_OPTIONS}
+              value={sort}
+              onChange={setSortAndStore}
+            />
+          </header>
+          {sort === "category" ? (
+            <div className="space-y-5">
+              {[...byCategory.entries()]
+                .sort((a, b) => b[1].length - a[1].length)
+                .map(([catSlug, group]) => {
+                  const cat = CATEGORY_BY_SLUG[catSlug];
+                  const color = cat?.color ?? "var(--app-cool)";
+                  return (
+                    <section key={catSlug} className="space-y-2">
+                      <header className="flex items-baseline gap-2.5">
+                        <span
+                          aria-hidden
+                          className="block h-[3px] w-7 rounded-full"
+                          style={{ background: color }}
+                        />
+                        <h3
+                          className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                          style={{ color }}
+                        >
+                          {cat?.name ?? catSlug}
+                        </h3>
+                        <span
+                          className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+                          style={{
+                            background: `color-mix(in srgb, ${color} 14%, transparent)`,
+                            color,
+                          }}
+                        >
+                          {group.length}
+                        </span>
+                      </header>
+                      <ul className="space-y-2">
+                        {group.map((p) => (
+                          <li key={p.slug}>
+                            <PlaceCard place={p} />
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  );
+                })}
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {places.map((p) => (
+                <li key={p.slug}>
+                  <PlaceCard place={p} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       {/* Recently viewed — soft signal. Surfaces places the user has
@@ -369,7 +493,7 @@ export default function SavedList() {
       )}
 
       {events.length > 0 && (
-        <section aria-label="Saved events" className="space-y-2">
+        <section aria-label="Events in your Radius" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
             <span
               aria-hidden
@@ -406,13 +530,13 @@ export default function SavedList() {
 }
 
 function summarySentence(placeN: number, eventN: number, townN: number): string {
-  if (placeN === 0 && eventN === 0) return "Start building a list of places to come back to.";
+  if (placeN === 0 && eventN === 0) return "Start building your Radius.";
   const parts: string[] = [];
   if (placeN > 0) parts.push(`${placeN} place${placeN === 1 ? "" : "s"}`);
   if (eventN > 0) parts.push(`${eventN} event${eventN === 1 ? "" : "s"}`);
   let body = parts.join(" and ");
   if (placeN > 0 && townN > 1) body += ` across ${townN} town${townN === 1 ? "" : "s"}`;
-  return `${body}, waiting for your next visit.`;
+  return `${body} in your Radius.`;
 }
 
 /**
@@ -430,7 +554,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   return (
     <div className="space-y-5">
       <section
-        aria-label="What is Saved?"
+        aria-label="What is My Radius?"
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 shadow-[var(--app-shadow-1)]"
         style={{ borderColor: "var(--app-border)" }}
       >
@@ -457,13 +581,14 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
             className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Your Frederick list starts here.
+            Start building your Radius.
           </p>
           <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-            Save places, events, trails, and ideas for later. Tap the bookmark
-            on anything in the field guide and it lands here. The list is yours
-            — things you&apos;ve been meaning to try, dates worth a return visit,
-            or a short list to send a friend who&apos;s coming through town.
+            Follow the places you care about, and this page becomes your
+            personal view of Frederick County. Tap the bookmark on anything in
+            the field guide and it lands here — things you&apos;ve been meaning
+            to try, dates worth a return visit, or a short list to send a
+            friend who&apos;s coming through town.
           </p>
           {/* Three primary entry points so the empty page suggests three
               different starting paths (explore the map, see what's on,
@@ -472,7 +597,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
               still reads "one main move, two alternatives." */}
           <div className="flex flex-wrap gap-2 pt-1">
             <Link
-              href="/browse"
+              href="/map"
               className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ background: "var(--app-brand)", color: "white" }}
             >
@@ -488,7 +613,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
               Browse events
             </Link>
             <Link
-              href="/browse?intent=eat"
+              href="/map?intent=eat"
               className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             >

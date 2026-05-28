@@ -44,6 +44,23 @@ import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarker
 import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
 import { DEMO_POINTS_PARTNERS, type DemoPointsPartner } from "@/data/radius-points-demo";
 import { RADIUS_COIN } from "@/data/city-data-engine";
+// Aerial photo manifest — extracted from EXIF GPS by
+// scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
+// across the seasons folders. Powers the "Aerial photos" overlay,
+// which is unique to Frederick Radius — no other map shows where
+// each photo was taken in the county.
+import AERIAL_MANIFEST from "@/../public/images/seasons/aerial-manifest.json";
+
+type AerialPhoto = {
+  src: string;
+  lat: number;
+  lng: number;
+  altM: number | null;
+  bearing: number | null;
+  takenAt: string | null;
+  season: "spring" | "summer" | "fall" | "winter";
+};
+const AERIAL_PHOTOS = AERIAL_MANIFEST as AerialPhoto[];
 
 // Types, constants, and popup components were carved off into siblings
 // to keep this file focused on state + effects + layout. No behavior
@@ -182,6 +199,11 @@ export default function AppMap({
   const [showCivic, setShowCivic] = useState(initialDefaults.civic);
   const [showTrails, setShowTrails] = useState(initialDefaults.lineLayers.includes("trails"));
   const [showTransit, setShowTransit] = useState(initialDefaults.lineLayers.includes("transit"));
+  // Aerial photo overlay — the Frederick Radius moat. Off by default
+  // since 104 pins is a lot to render until the user opts in. Tapping
+  // one opens a Popup with the photo thumbnail + season + date.
+  const [showAerial, setShowAerial] = useState(false);
+  const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(null);
 
   // On mode flip (user tapped the toggle, or geo suggestion landed):
   // reset every layer-toggle to the new mode's defaults. We deliberately
@@ -542,7 +564,7 @@ export default function AppMap({
       return;
     }
 
-    if (layer === "curated-icons") {
+    if (layer === "curated-icons" || layer === "curated-hit") {
       const props = feature.properties as Record<string, string>;
       const place = places.find((p) => p.slug === props.slug);
       setSelectedSlug(props.slug);
@@ -550,6 +572,16 @@ export default function AppMap({
       // Google-Maps-style: tap a pin → full card slides up from the bottom
       // (photo, rating, hours, directions, save) instead of a cramped popup.
       if (place) openSheet({ ...place, distance_m: haversineMeters(FREDERICK_CENTER, place.geom) });
+      return;
+    }
+
+    if (layer === "aerial-icons") {
+      const idx = Number(feature.properties?.idx);
+      const photo = AERIAL_PHOTOS[idx];
+      if (photo) {
+        haptic("light");
+        setSelectedAerial(photo);
+      }
       return;
     }
 
@@ -585,7 +617,7 @@ export default function AppMap({
     let next: { lng: number; lat: number; label: string; sub?: string } | null = null;
     if (f.layer.id === "clusters" || f.layer.id === "curated-clusters") {
       next = { lng, lat, label: "A cluster of places", sub: "Zoom in to see them" };
-    } else if (f.layer.id === "curated-icons") {
+    } else if (f.layer.id === "curated-icons" || f.layer.id === "curated-hit") {
       const p = places.find((x) => x.slug === props.slug);
       if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };
     } else {
@@ -697,6 +729,19 @@ export default function AppMap({
     })),
   }), [scopedCivic]);
 
+  // Aerial photo GeoJSON. Built once at module mount since the
+  // manifest doesn't change between renders. The `idx` carried in
+  // properties lets the click handler resolve back to the manifest
+  // entry without storing each photo's URL in feature properties.
+  const aerialGeoJson = useMemo(() => ({
+    type: "FeatureCollection" as const,
+    features: AERIAL_PHOTOS.map((p, idx) => ({
+      type: "Feature" as const,
+      properties: { idx, season: p.season },
+      geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
+    })),
+  }), []);
+
   const goNearMe = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     setLocating(true);
@@ -774,6 +819,9 @@ export default function AppMap({
         trailLines={trailLines}
         showTrails={showTrails}
         setShowTrails={setShowTrails}
+        showAerial={showAerial}
+        setShowAerial={setShowAerial}
+        aerialCount={AERIAL_PHOTOS.length}
         setDemo={setDemo}
       />
 
@@ -953,7 +1001,7 @@ export default function AppMap({
           // LAYER that paints relief over the Catoctin + South Mountain
           // ridges. The result reads as terrain-aware without the cost
           // of a 3D mesh, and keeps wayfinding crisp at every zoom.
-          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
@@ -1393,6 +1441,24 @@ export default function AppMap({
                 "icon-anchor": "center",
               }}
             />
+            {/* Invisible tap-target pad — expands each curated pin's
+                hit area to a Fitts-friendly ~36px regardless of how
+                tiny the rendered icon gets at street zoom. The single-
+                place pins shrink under the iOS 44pt floor; this layer
+                keeps the touchable region usable without making the
+                visual pins themselves bigger. Same source as
+                curated-icons so the click handler can resolve back to
+                the same slug via props.slug. */}
+            <Layer
+              id="curated-hit"
+              type="circle"
+              filter={["!", ["has", "point_count"]]}
+              paint={{
+                "circle-color": "#000000",
+                "circle-opacity": 0,
+                "circle-radius": 18,
+              }}
+            />
             {/* Names reveal as you get closer — fade in past street zoom */}
             <Layer
               id="curated-labels"
@@ -1520,6 +1586,58 @@ export default function AppMap({
             />
           </Source>
 
+          {/* Aerial photo overlay — every georeferenced drone shot
+              in /public/images/seasons/ as a season-tinted pin. Tap
+              one and the Popup below shows the actual photo + the
+              date it was taken. No other map can show this; it's
+              powered by the EXIF GPS in the user's own photo
+              archive. Halo + core matches the civic-pin pattern so
+              the styling reads as part of the same family. */}
+          <Source
+            id="aerial"
+            type="geojson"
+            data={(showAerial ? aerialGeoJson : { type: "FeatureCollection", features: [] }) as unknown as GeoJSON.FeatureCollection}
+          >
+            <Layer
+              id="aerial-halo"
+              type="circle"
+              paint={{
+                "circle-radius": 10,
+                // Tint by season — spring sage, summer warm-gold,
+                // fall brick, winter cool-slate. Reads as a year of
+                // Frederick instead of a uniform pin set.
+                "circle-color": [
+                  "match",
+                  ["get", "season"],
+                  "spring", "#859076",
+                  "summer", "#C99632",
+                  "fall", "#A8462C",
+                  "winter", "#2F5470",
+                  "#A8462C",
+                ],
+                "circle-opacity": 0.22,
+              }}
+            />
+            <Layer
+              id="aerial-icons"
+              type="circle"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": [
+                  "match",
+                  ["get", "season"],
+                  "spring", "#859076",
+                  "summer", "#C99632",
+                  "fall", "#A8462C",
+                  "winter", "#2F5470",
+                  "#A8462C",
+                ],
+                "circle-stroke-color": "#FFFFFF",
+                "circle-stroke-width": 1.6,
+              }}
+            />
+          </Source>
+
           {/* Food-truck beacons — a labeled demo layer, on only while the
               food-truck demo is selected. Each is a pulsing pin; tapping
               one opens a card with the menu and the order-ahead preview. */}
@@ -1590,6 +1708,67 @@ export default function AppMap({
               maxWidth="280px"
             >
               <FoodTruckPopup t={truck} />
+            </Popup>
+          )}
+
+          {/* Aerial photo popup — fires when the user taps a pin in
+              the Aerial photos overlay. Shows the photo thumbnail at
+              a generous size + the season tag + the capture date.
+              Designed to feel like opening a postcard from the spot
+              the pin marks. */}
+          {selectedAerial && (
+            <Popup
+              longitude={selectedAerial.lng}
+              latitude={selectedAerial.lat}
+              anchor="bottom"
+              offset={20}
+              closeOnClick={true}
+              onClose={() => setSelectedAerial(null)}
+              maxWidth="320px"
+            >
+              <div className="space-y-2">
+                <div
+                  className="relative w-full overflow-hidden rounded-[var(--app-radius-md)]"
+                  style={{ aspectRatio: "16/9" }}
+                >
+                  {/* Plain <img> — Mapbox popup content sits outside
+                      Next's image optimizer pipeline and these are
+                      already 1920×1080 jpegs of the right resolution. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedAerial.src}
+                    alt={`Aerial photo, ${selectedAerial.season}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                </div>
+                <div className="flex items-baseline justify-between gap-2 px-0.5">
+                  <p
+                    className="text-[11px] font-bold uppercase tracking-[0.12em]"
+                    style={{
+                      color: ({
+                        spring: "#859076",
+                        summer: "#C99632",
+                        fall: "#A8462C",
+                        winter: "#2F5470",
+                      }[selectedAerial.season]) ?? "#A8462C",
+                    }}
+                  >
+                    {selectedAerial.season}
+                  </p>
+                  {selectedAerial.takenAt && (
+                    <p
+                      className="text-[11px] tabular-nums"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {new Intl.DateTimeFormat("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      }).format(new Date(selectedAerial.takenAt))}
+                    </p>
+                  )}
+                </div>
+              </div>
             </Popup>
           )}
 

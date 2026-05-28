@@ -6,8 +6,8 @@ import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
-import WeekStrip from "@/components/event/WeekStrip";
 import TonightRail from "@/components/event/TonightRail";
+import NowDayStrip from "@/components/today/NowDayStrip";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
@@ -257,10 +257,34 @@ export default async function EventsIndexPage({
         </header>
       )}
 
-      {/* ── 3. Week strip — 14 days, activity-bar density.
-          Tap a day to filter the explorer. No tile borders; visual
-          rhythm comes from the activity bars. */}
-      <WeekStrip events={allEvents} activeDay={initialDay} />
+      {/* ── 3. Week strip — same NowDayStrip pattern as /now, but
+          tuned for events: clickable days that filter the explorer
+          (?d=YYYY-MM-DD) and an event-count badge per day instead
+          of the weather hi/lo. Same visual rhythm as /now so the
+          two pages read as one product. The 14-day WeekStrip with
+          activity-bar density retired here — 7 days is the right
+          horizon for "what's happening this week" and the
+          per-day count badge replaces the bar's information role. */}
+      {(() => {
+        // Tally events per Eastern-time calendar date so each day
+        // pill shows a real count.
+        const eventCountByDate = new Map<string, number>();
+        for (const e of allEvents) {
+          const d = new Date(e.starts_at);
+          const key = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "America/New_York",
+            year: "numeric", month: "2-digit", day: "2-digit",
+          }).format(d);
+          eventCountByDate.set(key, (eventCountByDate.get(key) ?? 0) + 1);
+        }
+        return (
+          <NowDayStrip
+            hrefForDate={(dk) => `/events?d=${dk}`}
+            activeDateKey={initialDay}
+            eventCountByDate={eventCountByDate}
+          />
+        );
+      })()}
 
       {/* ── 4. Tonight rail — editorial marquee of next ~6 hours.
           Photo-led horizontal rail; this is the answer to "what's

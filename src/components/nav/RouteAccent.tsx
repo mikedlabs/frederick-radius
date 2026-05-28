@@ -24,11 +24,11 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
  */
 const ROUTE_ACCENTS: Record<string, string> = {
   "/now": "var(--app-brand)",     // warm — daily landing
-  "/browse": "var(--app-cool)",   // civic blue — the spatial tab
+  "/map": "var(--app-cool)",   // civic blue — the spatial tab
   "/radius": "var(--app-cool)",   // still routable; deep links survive
-  "/map": "var(--app-cool)",      // legacy — 301'd to /browse but
-                                  // included so a stale link's pre-
-                                  // redirect render still tints right
+  "/browse": "var(--app-cool)",   // legacy — 301'd to /map but tinted
+                                  // so a stale link's pre-redirect
+                                  // render still feels on-brand
   "/events": "var(--app-brand)",  // warm — culture
   "/plan": "var(--app-brand-2)",  // catoctin green — outdoors-leaning
   "/saved": "var(--app-cool)",    // civic blue

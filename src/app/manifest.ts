@@ -24,7 +24,7 @@ export default function manifest(): MetadataRoute.Manifest {
       // targets. /radius collapses into /map in a later push; keep
       // the shortcut working via the next.config redirect chain.
       { name: "Now", url: "/now", short_name: "Now" },
-      { name: "Browse", url: "/browse", short_name: "Browse" },
+      { name: "Map", url: "/map", short_name: "Map" },
       { name: "Events", url: "/events", short_name: "Events" },
     ],
   };

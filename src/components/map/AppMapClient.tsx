@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { MapPin } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
 
 const AppMap = dynamic(() => import("./AppMap"), {
@@ -168,10 +169,29 @@ function InViewDrawer({
 }) {
   const [snap, setSnap] = useState<"peek" | "half" | "full">("peek");
   const heights: Record<typeof snap, string> = {
-    peek: "84px",
+    peek: "100px",
     half: "55%",
     full: "82%",
   };
+
+  // Category mix for the peek pill — shows the dominant categories
+  // in the visible viewport as colored dots sized by share. Lets the
+  // user read "mostly food + arts" at a glance without expanding.
+  const categoryMix = useMemo(() => {
+    if (results.length === 0) return [];
+    const counts = new Map<string, number>();
+    for (const p of results) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
+    return [...counts.entries()]
+      .map(([slug, count]) => ({
+        slug,
+        count,
+        color: CATEGORY_BY_SLUG[slug]?.color ?? "#A8462C",
+        name: CATEGORY_BY_SLUG[slug]?.name ?? slug,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+  }, [results]);
+
   return (
     <div
       className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3"
@@ -187,7 +207,7 @@ function InViewDrawer({
           setSnap((s) => (s === "peek" ? "half" : s === "half" ? "full" : "peek"))
         }
         aria-label={snap === "full" ? "Collapse list" : "Expand list"}
-        className="flex shrink-0 cursor-grab flex-col items-center justify-center gap-1 pb-2 pt-2.5"
+        className="flex shrink-0 cursor-grab flex-col items-center justify-center gap-1.5 pb-2.5 pt-2.5"
       >
         <span
           aria-hidden
@@ -199,6 +219,35 @@ function InViewDrawer({
             ? "Move the map to see places"
             : `${results.length} place${results.length === 1 ? "" : "s"} in view`}
         </p>
+        {/* Category mix row — visible only in peek state. Each dot is
+            a category present in the visible viewport; size scales
+            with that category's share of the total visible places.
+            Gives the user a "what's here" read without expanding. */}
+        {snap === "peek" && categoryMix.length > 0 && (
+          <span
+            aria-hidden
+            className="flex items-center gap-1.5"
+            title={categoryMix.map((c) => `${c.name} · ${c.count}`).join("\n")}
+          >
+            {categoryMix.map((c) => {
+              // 6–14px range — biggest dot for the dominant category.
+              const top = categoryMix[0].count;
+              const size = Math.max(6, Math.min(14, Math.round(6 + (c.count / top) * 8)));
+              return (
+                <span
+                  key={c.slug}
+                  className="inline-block rounded-full"
+                  style={{
+                    width: size,
+                    height: size,
+                    background: c.color,
+                    boxShadow: `0 0 0 1.5px ${c.color}22`,
+                  }}
+                />
+              );
+            })}
+          </span>
+        )}
       </button>
       {snap !== "peek" && (
         <ul

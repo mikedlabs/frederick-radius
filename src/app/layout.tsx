@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import {
   Newsreader,
-  Instrument_Serif,
   Public_Sans,
   JetBrains_Mono,
 } from "next/font/google";
@@ -17,14 +16,17 @@ import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 
 /**
  * Brand Book No. 01 — Voice Guide v1 typography (May 2026).
- * Newsreader for display + body display, Instrument Serif as the
- * italic-only voice (taglines, pull-quotes), Public Sans as the
- * working sans, JetBrains Mono for metadata + tabular numerics.
+ * Newsreader for display + body display, Public Sans as the working
+ * sans, JetBrains Mono for metadata + tabular numerics.
  *
- * Variable names are kept generic (sans-base / display / italic /
- * mono-base) so downstream tokens (--font-sans / --font-serif /
- * --font-mono in globals.css) stay stable if we swap typefaces
- * again.
+ * Instrument Serif was dropped during the May 2026 design-token
+ * audit — it was loaded just for one italic tagline on /about, and
+ * Newsreader's own italic carries the editorial voice with one
+ * fewer font fetch (~50KB + a round trip saved).
+ *
+ * Variable names are kept generic (sans-base / display / mono-base)
+ * so downstream tokens (--font-sans / --font-serif / --font-mono in
+ * globals.css) stay stable if we swap typefaces again.
  */
 const sans = Public_Sans({
   variable: "--font-sans-base",
@@ -38,16 +40,6 @@ const display = Newsreader({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
-
-const italicDisplay = Instrument_Serif({
-  variable: "--font-italic",
-  subsets: ["latin"],
-  // Instrument Serif ships a single weight (400). Italic style is the
-  // signature use — taglines, pull-quotes, the "field guide" feel.
-  weight: "400",
   style: ["normal", "italic"],
   display: "swap",
 });
@@ -159,7 +151,6 @@ export default function RootLayout({
         className={cn(
           sans.variable,
           display.variable,
-          italicDisplay.variable,
           mono.variable,
           "antialiased min-h-screen selection:bg-[color:var(--app-brand)] selection:text-white",
         )}

@@ -11,7 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const top: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${BASE}/now`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
-    { url: `${BASE}/browse`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/radius`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/history`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
@@ -19,7 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // /tonight, /discover, /markets, /historic, /art, /amenities all
     // 301 to canonical homes (next.config.ts) and are intentionally
     // dropped from the sitemap so crawlers index the canonical paths.
-    // /saved is user-state, not content; intentionally excluded.
+    // /my-radius is user-state, not content; intentionally excluded.
     // /submit, /welcome, /settings are forms/onboarding, disallowed
     // in robots.ts so they don't need a sitemap entry either.
   ];

@@ -137,23 +137,20 @@ export default async function HourlyForecast() {
 
   return (
     <article
-      className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
+      className="px-4 pb-3"
       aria-label={`Next ${hours.length} hours`}
     >
-      <header className="mb-2 flex items-baseline justify-between gap-2 px-1">
-        <h3
-          className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Hourly forecast
-        </h3>
-      </header>
+      {/* Outer card chrome (border + shadow + padding) and the
+          "Hourly forecast" header BOTH stripped here — the parent
+          HourlyDisclosure now provides the disclosure header, and
+          this component sits flat inside the consolidated weather
+          panel so it shares the panel's border/shadow/rounding
+          instead of double-bordering. */}
 
-      {/* Horizontal scroll. -mx-3 + px-3 lets the rail edge-fade past
-          the card's padding the way the iOS Weather card does. */}
+      {/* Horizontal scroll. -mx-4 + px-4 lets the rail edge-fade past
+          the panel's padding the way the iOS Weather card does. */}
       <div
-        className="-mx-3 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="list"
       >
         <ol className="flex min-w-max gap-3">

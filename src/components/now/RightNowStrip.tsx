@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, Calendar, Sparkles, ArrowRight } from "lucide-react";
+import { Clock, Calendar, Sparkles } from "lucide-react";
 import { type PlaceCardData } from "@/lib/loaders/places";
 import { eventsNext24h, type EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -143,14 +143,26 @@ export default async function RightNowStrip({
   if (!open && !soon && !weekend) return null;
 
   return (
-    <section aria-label="Right now" className="space-y-2">
+    <section aria-label="On deck" className="space-y-2">
+      {/* Was "Right now" — pre-fix the eyebrow read as a literal
+          time claim but the three cards mix three different windows:
+          something open now, something starting in the next 24h, and
+          a place worth visiting this weekend. The new "On deck"
+          label is honest about the mix without losing the "what
+          should I do" urgency. */}
       <h2
         className="eyebrow"
         style={{ color: "var(--app-ink-3)" }}
       >
-        Right now
+        On deck
       </h2>
-      <ul className="reveal-up space-y-2">
+      {/* 3-column grid (was a vertical space-y-2 list of full-width
+          cards). At narrow widths the trio reads as three different
+          answers side-by-side — open / starting / weekend — instead of
+          three stacked rows that scroll out of frame. Each card is
+          vertical (icon stamp on top, eyebrow + title + meta below)
+          so the layout survives 360px viewports. */}
+      <ul className="reveal-up grid grid-cols-3 gap-2">
         {open && <li><OpenNowCard place={open} /></li>}
         {soon && <li><StartingSoonCard event={soon} now={now} /></li>}
         {weekend && <li><WeekendBetCard place={weekend} /></li>}
@@ -166,6 +178,17 @@ export default async function RightNowStrip({
  * scan the three cards as "three different answers."
  * ───────────────────────────────────────────────────── */
 
+/**
+ * CardShell — vertical card for the 3-col grid.
+ *
+ * Was a horizontal "icon + text + arrow" row that lived in a vertical
+ * full-width stack. Now each card stacks its content top-to-bottom so
+ * three of them fit side-by-side on a 360px viewport without the title
+ * getting crushed. Whole card is a tap target (no arrow).
+ *
+ * Title clamps to 2 lines so a long venue name doesn't push neighbors
+ * around; meta is one line, truncated.
+ */
 function CardShell({
   href,
   stampColor,
@@ -173,6 +196,7 @@ function CardShell({
   eyebrow,
   title,
   meta,
+  photoUrl,
 }: {
   href: string;
   stampColor: string;
@@ -180,11 +204,86 @@ function CardShell({
   eyebrow: string;
   title: string;
   meta: string;
+  /** Optional photo URL — when set, the card becomes a magazine-
+   *  style tile: photo fills the background, a dark gradient overlay
+   *  keeps the eyebrow / title / meta readable, and the icon stamp
+   *  sits in the top-left corner. When omitted the card falls back
+   *  to the paper-cream styled column with the icon at top. */
+  photoUrl?: string;
 }) {
+  // Photo-led variant — magazine card. Full-bleed photo background +
+  // bottom-to-top dark gradient + white text overlay. The accent
+  // color (stampColor) tints the eyebrow + the icon stamp pill so
+  // the three cards still scan as three different answers.
+  if (photoUrl) {
+    return (
+      <Link
+        href={href}
+        className="tactile tactile-interactive relative flex h-full min-h-[150px] flex-col overflow-hidden rounded-[var(--app-radius-lg)] border transition active:scale-[0.97]"
+        style={{
+          borderColor: "var(--app-border)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          // Photo fills the entire card. background-image avoids a
+          // separate <img> element so layout is one paint.
+          backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.25) 55%, transparent 100%), url("${photoUrl}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        {/* Stamp in the top-left corner — small glass pill with the
+            accent color so the row still reads as three answers. */}
+        <span
+          aria-hidden
+          className="absolute left-2 top-2 grid h-7 w-7 place-items-center rounded-full"
+          style={{
+            background: "rgba(255,255,255,0.85)",
+            backdropFilter: "blur(8px)",
+            WebkitBackdropFilter: "blur(8px)",
+          }}
+        >
+          <StampIcon className="h-[14px] w-[14px]" strokeWidth={2.25} style={{ color: stampColor }} />
+        </span>
+        {/* Text bottom-anchored on the dark gradient. */}
+        <span className="mt-auto flex min-w-0 flex-col gap-0.5 p-2.5 text-white">
+          <span
+            className="block text-[9px] font-bold uppercase tracking-[0.1em]"
+            style={{
+              color: stampColor,
+              filter: "brightness(1.6) saturate(1.2)",
+              textShadow: "0 1px 2px rgba(0,0,0,0.45)",
+            }}
+          >
+            {eyebrow}
+          </span>
+          <span
+            className="block text-[13px] font-semibold leading-snug"
+            style={{
+              textShadow: "0 1px 2px rgba(0,0,0,0.55)",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {title}
+          </span>
+          <span
+            className="block truncate text-[11px] opacity-85"
+            style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
+          >
+            {meta}
+          </span>
+        </span>
+      </Link>
+    );
+  }
+
+  // Text-only fallback — same layout as before, used when the picked
+  // event/place doesn't carry a hero photo.
   return (
     <Link
       href={href}
-      className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3.5 transition active:scale-[0.99]"
+      className="tactile tactile-interactive flex h-full flex-col gap-2 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.97]"
       style={{
         borderColor: "var(--app-border)",
         boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
@@ -192,43 +291,37 @@ function CardShell({
     >
       <span
         aria-hidden
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
-        style={{
-          background: `color-mix(in srgb, ${stampColor} 14%, transparent)`,
-        }}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+        style={{ background: `color-mix(in srgb, ${stampColor} 14%, transparent)` }}
       >
-        <StampIcon
-          className="h-[18px] w-[18px]"
-          strokeWidth={2}
-          style={{ color: stampColor }}
-        />
+        <StampIcon className="h-[16px] w-[16px]" strokeWidth={2} style={{ color: stampColor }} />
       </span>
-      <span className="min-w-0 flex-1">
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
-          className="block text-[10px] font-bold uppercase tracking-[0.12em]"
+          className="block text-[9px] font-bold uppercase tracking-[0.1em]"
           style={{ color: stampColor }}
         >
           {eyebrow}
         </span>
         <span
-          className="block truncate text-[15px] font-semibold leading-tight"
-          style={{ color: "var(--app-ink)" }}
+          className="block text-[13px] font-semibold leading-snug"
+          style={{
+            color: "var(--app-ink)",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
         >
           {title}
         </span>
         <span
-          className="block truncate text-[12px]"
+          className="mt-auto block truncate text-[11px]"
           style={{ color: "var(--app-ink-3)" }}
         >
           {meta}
         </span>
       </span>
-      <ArrowRight
-        aria-hidden
-        className="h-4 w-4 shrink-0"
-        strokeWidth={2.25}
-        style={{ color: "var(--app-ink-3)" }}
-      />
     </Link>
   );
 }
@@ -236,25 +329,25 @@ function CardShell({
 function OpenNowCard({ place }: { place: PlaceCardData }) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const closes = openUntilLabel(place);
-  // Build the meta line: distance + category + (close time). The
-  // pieces below are what the user actually wants to know about an
-  // "open right now" pick — how far, what kind, and how long they
-  // have. Skip pieces that don't have data.
-  const parts: string[] = [];
-  if (typeof place.distance_m === "number") {
+  // Narrow 3-col cards mean meta gets truncated fast. Prefer the
+  // most relevant tidbit (closing time when known, else distance,
+  // else category) instead of joining all three with separators that
+  // get cut off mid-word.
+  let meta = "Open";
+  if (closes) meta = `Until ${closes}`;
+  else if (typeof place.distance_m === "number") {
     const km = place.distance_m / 1000;
-    parts.push(km < 1 ? `${Math.round(place.distance_m)}m` : `${km.toFixed(1)}km`);
-  }
-  if (cat?.name) parts.push(cat.name);
-  if (closes) parts.push(`open until ${closes}`);
+    meta = km < 1 ? `${Math.round(place.distance_m)}m away` : `${km.toFixed(1)}km away`;
+  } else if (cat?.name) meta = cat.name;
   return (
     <CardShell
       href={`/places/${place.slug}`}
       stampColor="var(--app-positive)"
       StampIcon={Clock}
-      eyebrow="Open right now"
+      eyebrow="Open now"
       title={place.name}
-      meta={parts.join(" · ") || "Open"}
+      meta={meta}
+      photoUrl={place.google_photo_url}
     />
   );
 }
@@ -267,9 +360,10 @@ function StartingSoonCard({ event, now }: { event: EventWithMeta; now: Date }) {
       href={`/events/${event.slug}`}
       stampColor="var(--app-brand)"
       StampIcon={Calendar}
-      eyebrow={`Starts ${when}`}
+      eyebrow={when === "now" ? "Happening now" : `In ${when.replace(/^in /, "")}`}
       title={event.title}
       meta={venue || "Frederick County"}
+      photoUrl={event.hero_image}
     />
   );
 }
@@ -278,10 +372,14 @@ function WeekendBetCard({ place }: { place: PlaceCardData }) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const rating = place.google_rating ? `${place.google_rating.toFixed(1)}★` : null;
   const muniName = MUNICIPALITY_BY_SLUG[place.municipality]?.name;
-  const parts: string[] = [];
-  if (cat?.name) parts.push(cat.name);
-  if (rating) parts.push(rating);
-  if (muniName) parts.push(muniName);
+  // Prefer the most distinctive line for a narrow card: town + rating
+  // > category + rating > town > category. Two pieces max so the line
+  // stays one-truncation-safe.
+  let meta = "Editorial pick";
+  if (muniName && rating) meta = `${muniName} · ${rating}`;
+  else if (cat?.name && rating) meta = `${cat.name} · ${rating}`;
+  else if (muniName) meta = muniName;
+  else if (cat?.name) meta = cat.name;
   return (
     <CardShell
       href={`/places/${place.slug}`}
@@ -289,7 +387,8 @@ function WeekendBetCard({ place }: { place: PlaceCardData }) {
       StampIcon={Sparkles}
       eyebrow="Weekend bet"
       title={place.name}
-      meta={parts.join(" · ") || "Editorial pick"}
+      meta={meta}
+      photoUrl={place.google_photo_url}
     />
   );
 }

@@ -52,8 +52,16 @@ const nextConfig: NextConfig = {
     //      the wildcard restores the default behavior for the public
     //      folder while keeping non-image static paths gated.
     localPatterns: [
-      { pathname: "/api/place-photo", search: "?**" },
+      // /api/place-photo — same-origin Google photo proxy. Carries a
+      // query string (?name=...&w=...&slug=...). Next 16 made the
+      // glob matcher stricter: the earlier "?**" search pattern
+      // started rejecting valid URLs. Omitting `search` allows any
+      // query string for this path, which is what we want — the API
+      // route validates its own params and rejects bad input there.
+      { pathname: "/api/place-photo" },
       { pathname: "/images/**", search: "" },
+      { pathname: "/from-above/**", search: "" },
+      { pathname: "/history-photos/**", search: "" },
     ],
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
@@ -100,10 +108,16 @@ const nextConfig: NextConfig = {
       { source: "/discover", destination: "/now", permanent: true },
       // /today renamed to /now (the home page is about NOW, not "today").
       { source: "/today", destination: "/now", permanent: true },
-      // /map renamed to /browse (one spatial tab — Browse — that
-      // hosts both the pan map and the within-reach radius mode in
-      // a single mental model).
-      { source: "/map", destination: "/browse", permanent: true },
+      // /browse renamed back to /map — the spatial tab IS a map, so
+      // the URL should say so. The old /browse remains permanently
+      // redirected so deep links / cached search results don't 404.
+      { source: "/browse", destination: "/map", permanent: true },
+      // /saved → /my-radius rename (Phase 0 of the profile/follow
+      // system). Same content, new editorial framing — "My Radius" is
+      // the user's personal corner of the field guide. The old /saved
+      // remains permanently redirected so bookmarks + iOS Share Sheet
+      // saves don't 404.
+      { source: "/saved", destination: "/my-radius", permanent: true },
     ];
   },
 };

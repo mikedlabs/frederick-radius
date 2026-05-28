@@ -40,6 +40,11 @@ type PalettePlace = {
   name: string;
   category: string;
   municipality?: string | null;
+  /**
+   * Same field SearchOverlay uses for its thumbnail. Optional — when
+   * absent the place row falls back to the MapPin icon stamp.
+   */
+  google_photo_url?: string;
 };
 
 // Towns surfaced as quick targets. Kept short — the long-tail towns
@@ -58,10 +63,10 @@ const TOWNS: { slug: string; name: string }[] = [
 
 const ROUTES: { href: string; label: string; description: string; icon: typeof Home }[] = [
   { href: "/now", label: "Today", description: "Weather + what's open + what's happening", icon: Home },
-  { href: "/browse", label: "Browse", description: "The map — pan, layers, filters", icon: Compass },
+  { href: "/map", label: "Browse", description: "The map — pan, layers, filters", icon: Compass },
   { href: "/radius", label: "Within reach", description: "What's reachable from a point", icon: MapPin },
   { href: "/events", label: "Events", description: "Tonight, weekend, this week", icon: Calendar },
-  { href: "/saved", label: "Saved", description: "Your bookmarks", icon: Bookmark },
+  { href: "/my-radius", label: "My Radius", description: "Places you follow", icon: Bookmark },
   { href: "/about", label: "About", description: "What this app is", icon: Info },
 ];
 
@@ -213,7 +218,26 @@ export default function CommandPalette() {
                   onSelect={() => go(`/places/${p.slug}`)}
                   className="cmdk-item"
                 >
-                  <MapPin className="cmdk-item-icon" strokeWidth={2} aria-hidden />
+                  {/* Thumbnail when the place has a Google photo,
+                      else fall back to the MapPin stamp. Matches the
+                      SearchOverlay pattern so the two surfaces read as
+                      the same product. Plain <img> (not next/image)
+                      because these are tiny 28px tiles inside an
+                      already-rendered overlay; the optimizer round-
+                      trip would add a request per row for negligible
+                      bytes saved. */}
+                  {p.google_photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.google_photo_url}
+                      alt=""
+                      loading="lazy"
+                      decoding="async"
+                      className="cmdk-item-thumb"
+                    />
+                  ) : (
+                    <MapPin className="cmdk-item-icon" strokeWidth={2} aria-hidden />
+                  )}
                   <span className="cmdk-item-body">
                     <span className="cmdk-item-title">{p.name}</span>
                     <span className="cmdk-item-sub">

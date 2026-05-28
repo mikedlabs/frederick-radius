@@ -1,4 +1,5 @@
 import BottomNav from "@/components/nav/BottomNav";
+import SideRail from "@/components/nav/SideRail";
 import TopBar from "@/components/nav/TopBar";
 import RouteAccent from "@/components/nav/RouteAccent";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
@@ -30,15 +31,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               when scrollY === 0. Reduced-motion users see no spinner. */}
           <PullToRefresh />
           <TopBar />
+          {/* Default reading column: max-w-screen-md (768) up to lg,
+              then max-w-screen-lg (1024) at desktop for breathing
+              room. Pages that need full-bleed (map, photo book) can
+              break out with their own wrappers. The lg:pl-20 clears
+              the desktop SideRail (≈80px floating on the left). */}
           <main
-            className="mx-auto max-w-screen-md px-4 pt-4"
+            className="mx-auto max-w-screen-md px-4 pt-4 lg:max-w-screen-lg lg:pl-24"
             style={{
               paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))",
             }}
           >
             <ErrorBoundary>{children}</ErrorBoundary>
           </main>
+          {/* Two navs, one shows at a time:
+              - BottomNav: floating pill at bottom, < lg
+              - SideRail: floating rail on left edge, ≥ lg */}
           <BottomNav />
+          <SideRail />
           <InstallPrompt />
           {/* Global ⌘K / Ctrl+K palette — jumps to pages, categories,
               towns, and places without leaving the keyboard. Mounted

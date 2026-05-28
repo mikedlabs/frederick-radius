@@ -1,68 +1,74 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, ArrowRight, MessageSquare } from "lucide-react";
+import { ArrowRight, MessageSquare, Compass, X } from "lucide-react";
+import BottomDrawer from "@/components/ui/BottomDrawer";
 
 /**
- * BetaIntroCard — the first-visit "what is this and where it's going"
- * card that sits above SkyHero on /now until the user dismisses it.
+ * BetaIntroCard — first-visit welcome.
  *
- * The framing turns "early and unfinished" into "shape this with me"
- * — sets expectations, names the trajectory, asks for the feedback
- * that actually changes what gets built next. Designed to be the
- * first thing a friend-of-a-friend sees when this gets shared, so
- * the right people land oriented instead of confused.
+ * v3 (May 2026): converted from an inline /now card to a true
+ * first-visit POPUP via BottomDrawer. The drawer slides in on the
+ * first visit (no localStorage key yet) and never opens again once
+ * dismissed. On desktop Vaul centers the sheet; on mobile it
+ * bottom-sheets — same component, viewport-appropriate.
  *
- * Behavior:
- *   - Default hidden until mount (avoids SSR hydration flash).
- *   - On mount, reads localStorage. Shows ONLY when the dismiss key
- *     hasn't been set.
- *   - "Got it" dismisses + persists. "Send feedback" opens a mailto.
- *   - Version-keyed (`v1`) so a future revision of the message can
- *     re-show the card to everyone.
+ * Why a popup over an inline card: the welcome explains what the
+ * product IS. Sliding past it on first paint defeats the purpose;
+ * an overlay forces a moment of orientation, then gets out of the
+ * way forever.
  *
- * Copy intentionally short. The longer the card, the lower the read
- * rate. The honest sentence is "this is early, your feedback shapes
- * what gets built next" — everything else exists to earn the right
- * to say that.
+ * Copy is plain. The job here is honesty, not a marketing pitch:
+ * say what this is, why it exists, that it's early, and how to
+ * push back.
+ *
+ * Version-keyed (`v4`) so a future copy revision re-shows the
+ * popup to everyone.
  */
 
-// Bump the version suffix any time the message copy meaningfully changes,
-// so a previously-dismissed user sees the updated welcome on next visit.
-//   v1 — initial launch (food trucks, business profiles, more event feeds)
-//   v2 — added "refined map with details other maps don't show" bullet
-//   v3 — added trash & recycling pickup schedules + movie showtimes
-const KEY = "fr:beta-intro-dismissed:v3";
+const KEY = "fr:beta-intro-dismissed:v4";
 const FEEDBACK_EMAIL = "miked@madproductions.io";
 const FEEDBACK_SUBJECT = "Frederick Radius feedback";
 
 export default function BetaIntroCard() {
-  const [show, setShow] = useState(false);
+  const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     try {
       const dismissed = window.localStorage.getItem(KEY) === "true";
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate dismiss state after mount; localStorage isn't readable during SSR
-      if (!dismissed) setShow(true);
+      if (!dismissed) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate dismiss state after mount; localStorage isn't readable during SSR
+        setOpen(true);
+      }
     } catch {
-      // localStorage unavailable; default to showing (a single
-      // missed dismiss across a session is fine).
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- fallback when localStorage isn't readable
-      setShow(true);
+      // localStorage unavailable — open as a one-time fallback so
+      // the user at least sees the intro once.
+      setOpen(true);
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag for the SSR hydration guard
     setMounted(true);
   }, []);
 
-  if (!mounted || !show) return null;
+  if (!mounted) return null;
 
   const dismiss = () => {
-    setShow(false);
+    setOpen(false);
     try {
       window.localStorage.setItem(KEY, "true");
     } catch {
-      // ignore
+      /* ignore */
+    }
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) {
+      // Treat any close (X / drag-down / backdrop tap) as a dismiss.
+      try {
+        window.localStorage.setItem(KEY, "true");
+      } catch {
+        /* ignore */
+      }
     }
   };
 
@@ -75,107 +81,116 @@ export default function BetaIntroCard() {
     )}`;
 
   return (
-    <article
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 shadow-[var(--app-shadow-2)]"
-      style={{ borderColor: "var(--app-border)" }}
-      aria-label="Welcome to Frederick Radius beta"
+    <BottomDrawer
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Welcome to Frederick Radius"
+      subtitle="Beta · May 2026"
     >
-      {/* Quiet brand wash so the card reads as the welcome moment,
-          not yet another stat tile. Subtle gradient from brick
-          (top-left) into the page bg. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(80% 100% at 0% 0%, color-mix(in srgb, var(--app-brand) 14%, transparent), transparent 60%)",
-        }}
-      />
-
-      {/* Top-right dismiss × — small, low-contrast, always available
-          so a user who's read it once can close at any moment. */}
+      {/* Close X — absolute, top-right of the drawer body. Replaces
+          the old "Got it" outline button so the only secondary
+          action is the X (Vaul's drag-down and backdrop tap still
+          work). Same tap-target size as iOS sheet dismiss. */}
       <button
         type="button"
         onClick={dismiss}
-        aria-label="Dismiss intro"
-        className="absolute right-2 top-2 z-10 grid h-7 w-7 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)]"
-        style={{ color: "var(--app-ink-3)" }}
+        aria-label="Close welcome"
+        className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full transition active:scale-[0.94]"
+        style={{
+          background: "color-mix(in srgb, var(--app-ink) 6%, transparent)",
+          color: "var(--app-ink-2)",
+        }}
       >
-        <X className="h-4 w-4" strokeWidth={2} aria-hidden />
+        <X className="h-4 w-4" strokeWidth={2.25} aria-hidden />
       </button>
 
-      <div className="relative space-y-3">
-        <p
-          className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.14em]"
-          style={{ color: "var(--app-brand)" }}
-        >
-          <span
-            aria-hidden
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ background: "var(--app-brand)" }}
-          />
-          Beta · May 2026
-        </p>
+      <div className="relative overflow-hidden">
+        {/* Decorative blooms — soft brand-color glow in two corners,
+            behind everything. Adds depth + a "this place is ours"
+            warmth without competing with the copy. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in srgb, var(--app-brand) 35%, transparent) 0%, color-mix(in srgb, var(--app-brand) 0%, transparent) 70%)",
+          }}
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -left-20 bottom-0 h-48 w-48 rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, color-mix(in srgb, var(--app-brand-2) 28%, transparent) 0%, color-mix(in srgb, var(--app-brand-2) 0%, transparent) 70%)",
+          }}
+        />
 
-        <h2
-          className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
-          style={{ color: "var(--app-ink)", textWrap: "balance" } as React.CSSProperties}
-        >
-          One place for what&apos;s happening in Frederick County. For locals and visitors.
-        </h2>
+        <div className="relative space-y-4 px-5 py-5">
+          {/* Compass crest + Beta pill — visual anchor that ties the
+              card to the product's "compass for Frederick County"
+              tagline. Brand-color tint, glass-pill backing. */}
+          <div className="flex items-start justify-between gap-3">
+            <span
+              aria-hidden
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--app-brand) 28%, transparent)",
+                color: "var(--app-brand)",
+              }}
+            >
+              <Compass className="h-6 w-6" strokeWidth={1.75} />
+            </span>
+            <p
+              className="inline-flex shrink-0 items-center gap-1.5 self-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em]"
+              style={{
+                background: "color-mix(in srgb, var(--app-brand) 12%, transparent)",
+                color: "var(--app-brand)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                style={{ background: "var(--app-brand)" }}
+              />
+              Beta · May 2026
+            </p>
+          </div>
 
-        <p
-          className="text-[14px] leading-relaxed"
-          style={{ color: "var(--app-ink-2)", textWrap: "pretty" } as React.CSSProperties}
-        >
-          Today it pulls live data from the National Weather Service, the
-          county and city governments, downtown Frederick, Hood College,
-          Celebrate Frederick, and a few other sources, and stitches it
-          into one daily briefing. There are 1,300+ places mapped across
-          the 12 municipalities.
-        </p>
-
-        <div className="space-y-1.5 rounded-[var(--app-radius-md)] border-l-2 pl-3"
-             style={{ borderColor: "var(--app-brand)" }}>
-          <p
-            className="text-[11px] font-bold uppercase tracking-[0.1em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Coming next
-          </p>
-          <ul
-            className="space-y-1 text-[13.5px] leading-snug"
+          <div
+            className="space-y-3 text-[14px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
-            <li>
-              <span style={{ color: "var(--app-ink)" }}>A refined map with the details other
-              maps don&apos;t show.</span> Food truck beacons when they&apos;re parked, trash cans,
-              restrooms, free WiFi, EV charging, mailboxes, FedEx and UPS drop-offs, and more.
-            </li>
-            <li>
-              <span style={{ color: "var(--app-ink)" }}>Trash and recycling pickup schedules</span>
-              {" "}so you actually know when your day is, without digging through the county PDF.
-            </li>
-            <li>
-              <span style={{ color: "var(--app-ink)" }}>Deeper business profiles</span> so owners
-              can talk to their customers directly, not through someone else&apos;s algorithm.
-            </li>
-            <li>
-              <span style={{ color: "var(--app-ink)" }}>More live event feeds</span> from
-              Weinberg, Delaplaine, local athletics, the libraries, and the local movie theaters.
-            </li>
-          </ul>
-        </div>
+            <p
+              className="font-serif text-[19px] font-semibold leading-snug tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              Frederick Radius is the start of a dedicated home base for Frederick County.
+            </p>
 
-        <p
-          className="text-[13.5px] leading-snug"
-          style={{ color: "var(--app-ink-2)", textWrap: "balance" } as React.CSSProperties}
-        >
-          This is early. The more feedback the community sends, the better this gets. If something
-          feels off, if a place is missing, or if you have an idea, send it.
-        </p>
+            <p>
+              Local information is everywhere right now: city pages, county pages,
+              business websites, Facebook, Instagram, Reddit, event calendars, and
+              posts people only see if the algorithm happens to show them.
+            </p>
 
-        <div className="flex flex-wrap gap-2 pt-1">
+            <p>
+              This is an attempt to bring the city, the county&rsquo;s 12 municipalities,
+              local businesses, events, services, and everyday updates into one
+              clearer place.
+            </p>
+
+            <p>
+              It is still early, and it will keep changing. That is why feedback
+              matters now.
+            </p>
+
+            <p>
+              If something feels off, if a place is missing, or if you have an
+              idea, send it over.
+            </p>
+          </div>
+
           <a
             href={mailto}
             className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold transition active:scale-[0.98]"
@@ -189,27 +204,15 @@ export default function BetaIntroCard() {
             Send feedback
             <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           </a>
-          <button
-            type="button"
-            onClick={dismiss}
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold transition active:scale-[0.98]"
-            style={{
-              background: "transparent",
-              color: "var(--app-ink-3)",
-              border: "1px solid var(--app-border)",
-            }}
-          >
-            Got it, hide
-          </button>
-        </div>
 
-        <p
-          className="pt-1 text-[11px] italic"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Made by Michael DeMattia, a downtown Frederick resident.
-        </p>
+          <p
+            className="pt-1 text-[12px] italic"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Made by Michael DeMattia, a downtown Frederick resident.
+          </p>
+        </div>
       </div>
-    </article>
+    </BottomDrawer>
   );
 }

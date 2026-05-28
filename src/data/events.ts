@@ -149,10 +149,16 @@ function aliveAtFiveSeason(): Event[] {
       timezone: "America/New_York",
       is_recurring: true,
       recurrence_text: "Every Thursday, May 7 – September 24, 2026",
-      venue_place_slug: "carroll-creek-linear-park-frederick",
+      venue_place_slug: "carroll-creek-outdoor-amphitheater",
       venue_name: "Carroll Creek Amphitheater",
       address: "Carroll Creek Park, Frederick, MD 21701",
-      geom: { lng: -77.4109, lat: 39.4137 },
+      // Exact coordinates of the Carroll Creek Outdoor Amphitheater
+      // venue pin from places-client.json. Earlier passes used the
+      // Linear Park centroid (-77.4084, 39.4128) which is in the
+      // right neighborhood but still ~30m off the amphitheater's
+      // actual stage. The new venue_place_slug also matches so the
+      // event detail page's place lookup resolves cleanly.
+      geom: { lng: -77.4087681, lat: 39.4126271 },
       municipality: "frederick",
       category: "music",
       audience: ["adults", "groups"],
@@ -167,6 +173,13 @@ function aliveAtFiveSeason(): Event[] {
       organizer: "Downtown Frederick Partnership",
       source: "dfp",
       is_verified: true,
+      // hero_image intentionally omitted. The earlier SUMMER FIREWORKS
+      // pick was the wrong shot — fireworks-over-Carroll-Creek is a
+      // 4th-of-July image, not Alive @ Five. Falling through to
+      // withVenueThumbs() lets the Carroll Creek Outdoor Amphitheater's
+      // venue photo carry the card, which IS an actual amphitheater
+      // shot from Google. If we get a real Alive @ Five action shot
+      // from DFP later, set hero_image here.
       // Only attach the lineup when we've actually entered it for this
       // week. Empty/undefined → the event detail falls back to the
       // generic "rotating food vendors" line.

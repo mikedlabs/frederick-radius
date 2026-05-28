@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import WeatherHero from "@/components/today/WeatherHero";
-import PrimaryActionCard from "@/components/today/PrimaryActionCard";
-import SkyHero from "@/components/today/SkyHero";
-// AdaptiveGreeting import removed — the day/time dateline + serif
-// headline ("Sun for now" / "Wet afternoon") used to sit inside
-// SkyHero alongside WeatherHero; it competed with the actual
-// weather card and made the hero feel cluttered. Component still
-// lives at src/components/today/AdaptiveGreeting.tsx in case we
-// want to surface it elsewhere later.
+import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
+import DateLine from "@/components/today/DateLine";
+import NowDayStrip from "@/components/today/NowDayStrip";
+// AdaptiveGreeting (serif headline like "Sun for now") was removed
+// from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
+// header above the hero now carries the temporal anchor — weekday +
+// time + week strip — without a second editorial verdict on top of
+// the WeatherHero's own conditions line. AdaptiveGreeting still
+// lives at src/components/today/AdaptiveGreeting.tsx if we want to
+// surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MoodTiles from "@/components/today/MoodTiles";
-import RightNowStrip from "@/components/now/RightNowStrip";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -19,53 +20,57 @@ import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 import AlmanacFooter from "@/components/today/AlmanacFooter";
 import HourlyForecast from "@/components/today/HourlyForecast";
+import HourlyDisclosure from "@/components/today/HourlyDisclosure";
+import HourlySummary from "@/components/today/HourlySummary";
 import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
 import WeatherMore from "@/components/today/WeatherMore";
 import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
-import TuneForYou from "@/components/today/TuneForYou";
 import WorthALook from "@/components/today/WorthALook";
-import CreekHairline from "@/components/ui/CreekHairline";
+import FromAboveCta from "@/components/today/FromAboveCta";
+import PartnerAppsRow from "@/components/today/PartnerAppsRow";
+// CreekHairline removed in the pleasant-layout pass — it was a
+// decorative divider between weather/discovery and action; the
+// reorder makes the divider unnecessary.
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
+import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
 
 /**
  * Now — the daily briefing.
  *
- * Strict 5-section spine (down from 7 in the previous pass, 11 before
- * that). Every section answers a question; nothing decorative.
+ * Spine (post-cleanup pass):
  *
- *   1. Hero          → greeting + sun + civic alert + weather + plan
- *   2. MoodTiles     → "in the mood for" 4-up affordance row
- *   3. When?         → temporal toggle: Now / Tonight / Tomorrow / Weekend
- *   4. Upcoming      → featured event hero + the queue (mode-scoped)
- *   5. Worth tonight → one editorial place card (kept under review;
- *                      retires if RightNowStrip covers it)
+ *   1. Hero          → DateLine + day strip + SkyHero + weather panel
+ *   2. MoodTiles     → "in the mood for" 6-up affordance row
+ *   3. PartnerApps   → ParkMobile + OpenTable handoffs
+ *   4. WorthALook    → one editorial place card
+ *   5. When?         → temporal toggle: Now / Tonight / Tomorrow / Weekend
+ *   6. Upcoming      → featured event hero + the queue (mode-scoped)
+ *   7. From Above    → quiet exit beat → photography book
  *
- * What got cut in this push:
+ * What got cut in this pass:
+ *   • RightNowStrip (On deck)    — overlapped the Upcoming events
+ *                                  section and TimeToggle below
+ *   • PrimaryActionCard (Plan)   — overlapped MoreSheet's Plan tool
+ *
+ * What got cut in earlier passes (preserved here for archeology):
  *   • LocalNewsStrip   — news belongs on its own surface, not the briefing
- *   • RightNow         — time-aware places overlap MoodTiles and the
- *                        upcoming events shelf
  *   • HistoryPulse     — editorial filler; one rotating fact ≠ daily utility
- *   • FromAboveTile    — the photography book has its own home
+ *   • FromAboveTile    — the photography book has its own home (kept the
+ *                        FromAboveCta footer)
  *   • HiddenSectionsBar — managing hidden sections is a feature for a page
- *                        that has too many; a page with 5 sections doesn't
+ *                        that has too many; a page with 7 sections doesn't
  *   • The /discover crosslink + "More around Frederick" divider
  *   • Hidden Frederick footer doors
- *
- * What got cut in prior passes (preserved here for archeology):
  *   • StatStrip "Across Frederick County"  — generic counts, no signal
  *   • PhotoMosaic "Looks like Frederick"   — pretty but redundant
  *   • RedditPulse                          — noisy subreddit posts
  *   • MunicipalityStrip                    — towns reachable via /m
  *   • DecorativeDivider variants           — visual filler
- *
- * Push 2 will replace the FeaturedTonightPicker with a proper
- * RightNowStrip — three direct answers (open now / starting soon /
- * weekend bet). At that point the editorial picker block retires too.
  */
 export const metadata: Metadata = {
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
@@ -96,7 +101,12 @@ const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal
 const FEATURED_EVENT_WINDOW_HOURS = 72;
 function pickFeaturedEvent(now: Date) {
   const windowEnd = now.getTime() + FEATURED_EVENT_WINDOW_HOURS * 3_600_000;
-  const upcoming = allUpcoming(now).filter(
+  // withVenueThumbs borrows each event's venue photo onto hero_image
+  // when the event has no image of its own. Without this, Alive @ Five
+  // (and any other DFP event without a hardcoded photo) lost out to
+  // the "must have hero_image" check below and missed the photo path
+  // /events shows. Cheap on a small list — just a slug lookup per event.
+  const upcoming = withVenueThumbs(allUpcoming(now)).filter(
     (e) =>
       !NON_PUBLIC_EVENT.test(e.title ?? "") &&
       Date.parse(e.starts_at) <= windowEnd,
@@ -193,7 +203,10 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
   }
   return {
     title,
-    items: allUpcoming(now).filter((e) => {
+    // withVenueThumbs again here — the Upcoming shelf cards need the
+    // venue photo too, otherwise an Alive @ Five tile sits as a
+    // text-only card next to events that DO carry a hero image.
+    items: withVenueThumbs(allUpcoming(now)).filter((e) => {
       const ms = Date.parse(e.starts_at);
       return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
     }),
@@ -241,7 +254,7 @@ export default async function HomePage({
     ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
     : sliceItems;
   return (
-    <div className="relative space-y-6">
+    <div className="relative">
       <PageBloom />
 
       {/* First-visit beta intro — explains what Frederick Radius is,
@@ -249,26 +262,53 @@ export default async function HomePage({
           feedback. Renders only when the dismiss cookie hasn't been
           set; once dismissed, never shows again until we ship a v2
           message and bump the key. Client component so the SSR HTML
-          is empty and there's no hydration flash. */}
-      <BetaIntroCard />
+          is empty and there's no hydration flash. Full-width above
+          the desktop split so it spans both columns. */}
+      <div className="space-y-6">
+        <BetaIntroCard />
+      </div>
 
-      {/* Tune this for you — three small persona pills (I live here /
-          I'm visiting / I own a business) linking to /welcome. Replaces
-          the killed onboarding redirect's purpose: the field guide is
-          useful immediately, but a user who wants it tuned can opt in
-          in one tap. Independent dismissal so a user can hide the beta
-          card and keep the tune-for-you affordance (or vice versa). */}
-      <TuneForYou />
+      {/* RESPONSIVE SPLIT (desktop only):
+       *   mobile  : everything stacks single-column (space-y-6).
+       *   lg+     : two-column grid — LEFT carries the day/weather
+       *             stack (the "what's it like outside" answer);
+       *             RIGHT carries the action stack (mood tiles,
+       *             partner apps, WorthALook, events, From Above).
+       * Each column keeps its own internal space-y-6 spine so the
+       * vertical rhythm doesn't collapse at the breakpoint. */}
+      <div className="mt-6 space-y-6 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
+        {/* ── LEFT column: the day + weather block ───────────── */}
+        <div className="space-y-6">
 
-      {/* 1 — Sky-tinted hero. Greeting + sun countdown + weather (now
-          and the 7-day, on one card) + plan card, layered on the
-          time-of-day gradient. */}
+      {/* DateLine + NowDayStrip — the slim header that replaces the
+          old AdaptiveGreeting block. Sits ABOVE SkyHero on the page
+          background (paper-cream) so it reads as page metadata, not as
+          a competing editorial line stacked on top of the weather.
+          The dateline + week strip together answer "what day is it?"
+          glanceably; HomeMuniChip lands "Your spot: Brunswick" as the
+          first sign that personalization stuck. Visually they sit in
+          a tight space-y-2 container with about an 8px gap to the
+          SkyHero below. */}
+      <div className="space-y-2">
+        <DateLine />
+        {/* NowDayStrip became async (fetches NWS daily forecast to
+            render a weather glyph + hi/lo per day). Suspense so the
+            header above SkyHero doesn't block — fallback is a slim
+            placeholder matching the day-strip's height. */}
+        <Suspense fallback={<Skeleton.Block height={86} round="var(--app-radius-sm)" />}>
+          <NowDayStrip />
+        </Suspense>
+      </div>
+
+      {/* 1 — Sky-tinted hero. Sun countdown + weather (now and the
+          7-day, on one card) + plan card, layered on the time-of-day
+          gradient. */}
       {/* WEATHER BLOCK — one cohesive unit. SkyHero + CivicAlerts
           (when active) + Hourly + 7-day + Almanac all sit in a tight
           `space-y-2` (8px) container so they read as a connected
           stack instead of four floating cards. The parent's
           space-y-6 only kicks back in BELOW this group, when
-          PrimaryActionCard and the rest of /now take over. */}
+          MoodTiles and the rest of /now take over. */}
       {/* CivicAlerts placement: moved OUT of SkyHero (where it lived
           on the sky gradient and visually competed with the weather
           hero) to its own row between SkyHero and HourlyForecast.
@@ -278,114 +318,130 @@ export default async function HomePage({
           getting absorbed into the sky gradient. When no alert is
           active CivicAlerts renders nothing and the stack collapses
           (Suspense fallback={null}). */}
+      {/* WEATHER BLOCK — one cohesive unit. SkyHero is the visual hero;
+          everything below (CivicAlerts when active, Hourly, More-details
+          disclosure, 7-day disclosure, Almanac) lives in ONE bordered
+          container with internal hairline dividers so the four sub-cards
+          read as ONE weather panel instead of four floating cards. The
+          gradient hero overlaps the panel's top edge by 8px so the two
+          read as connected; the panel's own border holds the rest of
+          the weather stack together. */}
       <div>
-        {/* AdaptiveGreeting (the day/time dateline + serif headline
-            "Sun for now" / "Wet afternoon") was removed from the
-            sky-hero pre-launch. The weather IS the weather; a second
-            editorial verdict above it competed with the WeatherHero
-            card directly below ("60° Mostly sunny H 78 L 54") and
-            made the hero feel cluttered. The greeting still lives in
-            the codebase (src/components/today/AdaptiveGreeting.tsx)
-            if we want to surface it elsewhere later — just not
-            stacked on top of the weather. */}
         <SkyHero>
           <Suspense
             fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
           >
             <WeatherHero />
           </Suspense>
+          {/* AlmanacFooter moved INSIDE the SkyHero gradient as a
+              quiet footer line under the weather hero. Used to live
+              at the bottom of the consolidated weather panel; pulled
+              up here so sunrise/sunset/daylight-delta/AQI/comfort
+              read as part of the sky scene the user is looking at,
+              not a separate strip you scroll past. Inherits the
+              sky's currentColor for tone-aware ink. */}
+          <Suspense fallback={null}>
+            <AlmanacFooter inSky />
+          </Suspense>
         </SkyHero>
-        {/* Post-sky stack is pulled UP 16px (-mt-4) so the first card
-            sits IN FRONT OF the lower edge of the ridge silhouette,
-            killing the "cream band" between sky-hero and the hourly
-            card. Without this, three near-identical cream tones stack
-            in series (RidgeLine paper-cream → 8px page-bg cream →
-            card cream-elevated) and read as a flat band.
-            relative z-10 keeps the card painted ABOVE sky-hero's
-            isolated stacking context. Inner space-y-2 preserves
-            existing gaps between the cards below. */}
-        <div className="relative z-10 -mt-4 space-y-2">
-        <Suspense fallback={null}>
-          <CivicAlerts />
-        </Suspense>
-        <Suspense fallback={<Skeleton.Block height={92} round="var(--app-radius-lg)" />}>
-          <HourlyForecast />
-        </Suspense>
-        {/* More weather details — iOS-style 2-up grid (Sun arc, Wind,
-            Humidity, Feels Like, Pressure, Visibility, Moon, Daylight).
-            Collapsed by default. Sits ABOVE the 7-day pill so the
-            two disclosures stack as one "details" cluster between the
-            visible hourly rail and the always-on almanac strip. */}
-        <WeatherMore>
-          <Suspense fallback={<Skeleton.Block height={280} round="var(--app-radius-md)" />}>
-            <WeatherMoreGrid />
+        {(() => {
+          // Sky-aware wash on the weather sub-card stack so the
+          // supplemental cards (Hourly / Weekly / More Details) read
+          // as part of the same atmospheric scene as the SkyHero
+          // above instead of a flat paper break. Tint is the BOTTOM
+          // stop of the current time-of-day sky (the most-desaturated
+          // stop, so it doesn't fight the chrome inside the cards),
+          // mixed at 9-14% into the elevated paper bg. Fades to plain
+          // elevated by ~75% so the bottom of the stack stays neutral
+          // and dividers + ink stay easy to read.
+          const sky = currentSkyPalette();
+          const strength = sky.tone === "dark" ? 14 : 10;
+          const stackBg = `linear-gradient(180deg, color-mix(in srgb, ${sky.bottom} ${strength}%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 75%)`;
+          return (
+            <div
+              className="relative z-10 mt-2 overflow-hidden rounded-[var(--app-radius-lg)] border [&_>_*:not(:last-child)]:border-b"
+              style={{
+                borderColor: "var(--app-border)",
+                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                background: stackBg,
+              }}
+            >
+          <Suspense fallback={null}>
+            <CivicAlerts />
           </Suspense>
-        </WeatherMore>
-        <WeeklyCard
-          summary={
-            <Suspense fallback={<>Loading…</>}>
-              <WeeklySummary />
+          {/* All three weather subsections (Hourly · 7-Day · More
+              Details) are now disclosure pills for visual uniformity.
+              Hourly defaults open (it's the most-glanced piece); the
+              other two default closed. Each one carries a real
+              summary so the collapsed pill reads as informative, not
+              a "we hid stuff" placeholder. */}
+          <HourlyDisclosure
+            summary={
+              <Suspense fallback={<>Loading…</>}>
+                <HourlySummary />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<Skeleton.Block height={92} round="0" />}>
+              <HourlyForecast />
             </Suspense>
-          }
-        >
-          <Suspense fallback={<Skeleton.Block height={260} round="var(--app-radius-md)" />}>
-            <WeeklyForecast />
-          </Suspense>
-        </WeeklyCard>
-        <Suspense fallback={null}>
-          <AlmanacFooter />
-        </Suspense>
+          </HourlyDisclosure>
+          <WeeklyCard
+            summary={
+              <Suspense fallback={<>Loading…</>}>
+                <WeeklySummary />
+              </Suspense>
+            }
+          >
+            <Suspense fallback={<Skeleton.Block height={260} round="0" />}>
+              <WeeklyForecast />
+            </Suspense>
+          </WeeklyCard>
+          <WeatherMore>
+            <Suspense fallback={<Skeleton.Block height={280} round="0" />}>
+              <WeatherMoreGrid />
+            </Suspense>
+          </WeatherMore>
         </div>
+          );
+        })()}
       </div>
 
-      {/* Worth a look today — photo-led discovery rail. Six tiles
-          rotated by day so the page rewards return visits. The only
-          surprise-me surface on /now; the rest of the page answers
-          specific questions, this one says "here's something you
-          might not have known about." */}
+        </div>{/* /LEFT column */}
+
+        {/* ── RIGHT column: the action stack ─────────────────── */}
+        <div className="space-y-6">
+
+      {/* SPINE REORDER (cleanup pass):
+       *
+       *   weather (left, above on mobile) → MOOD → PARTNER APPS →
+       *   DISCOVERY (WorthALook) → events → from above
+       *
+       * Earlier passes carried two more surfaces here —
+       * RightNowStrip ("On deck") and PrimaryActionCard ("Plan
+       * tonight"). Both were retired: the events section +
+       * TimeToggle below already cover the "what's happening
+       * tonight" job; the MoreSheet's Tools cluster carries Plan,
+       * Within Reach, and Pulse. Keeping these on /now meant the
+       * page repeated itself across three scroll-screens.
+       *
+       * On desktop, this column rides alongside the weather column
+       * — both visible without scrolling. On mobile, it stacks
+       * after the weather block.
+       */}
+
+      {/* MoodTiles — what do you need right now, with sub-tile expand. */}
+      <MoodTiles />
+
+      {/* PartnerAppsRow — ParkMobile + OpenTable. */}
+      <PartnerAppsRow />
+
+      {/* Worth a look today — the page's surprise-me block now lives
+          AFTER the action surfaces, so it earns return visits without
+          burying the actually-useful answers above it. */}
       <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
         <WorthALook />
       </Suspense>
-
-      {/* Section break between "what's the day" (weather + discovery)
-          and "what should I do" (action card + RightNowStrip + mood
-          tiles + events). The hairline traces Carroll Creek — too
-          small to read on a quick scan, recognized by a local on a
-          second look. The page's one small wink. */}
-      <CreekHairline />
-
-      {/* PrimaryActionCard — the primary call to action ("What is open
-          near you" / "What's open right now"). Sits BELOW the weather
-          block on paper-cream so the weather reads as a single unit
-          and the CTA lands as the page's "now what?" answer. */}
-      <PrimaryActionCard now={now} />
-
-      {/* RightNowStrip: three direct answers to the questions a
-       *  stranger opens the app to ask: what's open near me, what's
-       *  starting soon, what's worth this weekend. Each card is a
-       *  full-width tap target into the canonical detail page.
-       *
-       *  Wrapped in Suspense so PPR streams the static shell of the
-       *  page (hero, MoodTiles, time toggle) immediately while the
-       *  ranked picks resolve from the cached helpers in src/lib/
-       *  now-picks.ts. */}
-      <Suspense
-        fallback={
-          <div className="space-y-2" aria-busy="true">
-            <Skeleton.Block height={20} round="var(--app-radius-sm)" />
-            <Skeleton.Block height={96} round="var(--app-radius-md)" />
-            <Skeleton.Block height={96} round="var(--app-radius-md)" />
-            <Skeleton.Block height={96} round="var(--app-radius-md)" />
-          </div>
-        }
-      >
-        <RightNowStrip now={now} />
-      </Suspense>
-
-      {/* In the mood for — 4-up affordance tiles (Coffee / Outdoors /
-       *  Eat / With kids) that deep-link into the category page with
-       *  the right scope. */}
-      <MoodTiles />
 
       {/* When? — the brand-defining temporal control. Pivots the
        *  events section between Now / Tonight / Tomorrow / Weekend.
@@ -436,6 +492,17 @@ export default async function HomePage({
           </p>
         )}
       </DismissibleSection>
+
+      {/* From Above — the page's quiet exit beat. After the daily
+          utility surfaces (weather + events + places) finish their
+          work, the user is invited into the photography book. The
+          card carries a seasonal thumbnail from the same /images/
+          seasons collection that backs /about's hero, so the visual
+          identity stays consistent end-to-end. */}
+      <FromAboveCta />
+
+        </div>{/* /RIGHT column */}
+      </div>{/* /responsive split */}
     </div>
   );
 }

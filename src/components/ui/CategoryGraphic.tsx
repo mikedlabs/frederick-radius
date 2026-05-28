@@ -59,18 +59,20 @@ function resolve(slug: string): { color: string; Icon: typeof Coffee } {
   return { color, Icon };
 }
 
-/** One of four textures — dots is the most common (40%), the others
- *  split the remainder. Kept in this proportion because dots reads
- *  cleanest at small card sizes; the editorial textures (topo, hatch,
- *  mesh) earn their slot by adding variety to a long scroll. */
-type Texture = "dots" | "topo" | "hatch" | "mesh";
+/** Seven textures now — was four, expanded so a shelf of no-photo
+ *  cards reads as a real set instead of repeating. Each variant uses
+ *  white at low alpha + mix-blend so it works against any hue. */
+type Texture = "dots" | "topo" | "hatch" | "mesh" | "confetti" | "wave" | "stripes";
 
 function pickTexture(h: number): Texture {
-  const r = (h >> 17) % 10;
-  if (r < 4) return "dots";
-  if (r < 6) return "topo";
-  if (r < 8) return "hatch";
-  return "mesh";
+  const r = (h >> 17) % 14;
+  if (r < 3) return "dots";
+  if (r < 5) return "topo";
+  if (r < 7) return "hatch";
+  if (r < 9) return "mesh";
+  if (r < 11) return "confetti";
+  if (r < 13) return "wave";
+  return "stripes";
 }
 
 /** The texture sits over the colored gradient. Each variant uses
@@ -102,6 +104,36 @@ function textureStyle(texture: Texture): React.CSSProperties {
           "repeating-linear-gradient(0deg, rgba(255,255,255,0.10) 0 1px, transparent 1px 14px)",
           "repeating-linear-gradient(90deg, rgba(255,255,255,0.10) 0 1px, transparent 1px 14px)",
         ].join(","),
+        mixBlendMode: "overlay",
+      };
+    case "confetti":
+      // Scattered offset dots — bigger dots on an angled grid that
+      // adds movement without obvious repetition. Good for "fun"
+      // categories (events, music, brewery) where pinstripe feels
+      // too restrained.
+      return {
+        backgroundImage: [
+          "radial-gradient(rgba(255,255,255,0.30) 2px, transparent 2.5px)",
+          "radial-gradient(rgba(255,255,255,0.18) 1px, transparent 1.5px)",
+        ].join(","),
+        backgroundSize: "22px 22px, 14px 14px",
+        backgroundPosition: "0 0, 7px 11px",
+        mixBlendMode: "overlay",
+      };
+    case "wave":
+      // Soft sine bands — broad horizontal stripes with feathered
+      // edges that suggest motion across the card.
+      return {
+        backgroundImage:
+          "repeating-linear-gradient(0deg, transparent 0 12px, rgba(255,255,255,0.10) 12px 18px, transparent 18px 30px)",
+        mixBlendMode: "overlay",
+      };
+    case "stripes":
+      // Vertical wide stripes — quiet rhythm, reads as ticket
+      // stub or letterhead.
+      return {
+        backgroundImage:
+          "repeating-linear-gradient(90deg, rgba(255,255,255,0.10) 0 2px, transparent 2px 16px)",
         mixBlendMode: "overlay",
       };
     case "dots":

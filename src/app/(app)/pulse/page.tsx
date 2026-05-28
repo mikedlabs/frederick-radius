@@ -39,13 +39,18 @@ import Link from "next/link";
 import {
   Activity, Construction, Zap, School, AlertTriangle, Siren,
   CheckCircle2, ExternalLink, MapPin, Clock, ChevronRight,
+  CloudAlert, Newspaper, Radio, Waves,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
 import { getFcpsAlerts } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
+import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
+import { getLocalHeadlines } from "@/lib/integrations/news";
 import PageBloom from "@/components/ui/PageBloom";
+import CollapsibleDashSection from "@/components/pulse/CollapsibleDashSection";
+import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -81,12 +86,19 @@ function nowClock(): string {
 }
 
 export default async function PulsePage() {
-  const [incidents, outages, fcps, fixit, safety] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news] = await Promise.all([
     getChartIncidentsFrederick(),
     getFrederickOutages(),
     getFcpsAlerts(),
     getFixItIssues(15),
     getPulsePointIncidents(),
+    // NWS active alerts for Frederick County, MD. When something's
+    // up (severe storm, flood, heat advisory) this is the most
+    // actionable feed in the dashboard and rides at the top.
+    getNwsAlerts().catch(() => []),
+    // Local headlines from Google News RSS — always-on city signal
+    // even when the operational feeds are quiet.
+    getLocalHeadlines().catch(() => []),
   ]);
 
   const sevRank = { High: 0, Medium: 1, Low: 2 } as const;
@@ -100,15 +112,35 @@ export default async function PulsePage() {
   const outagesActive = outages.total_out >= 25;
   const outagesCount = outagesActive ? outages.munis.length || 1 : 0;
 
+  // Only count NWS alerts that haven't already expired. The feed
+  // includes alerts with `ends_at` in the past until the cache cycles,
+  // so we filter here to avoid double-counting a tornado watch the
+  // page still knows about but the weather has moved past.
+  // eslint-disable-next-line react-hooks/purity -- per-request expiry filter; hoisting Date.now would defeat the freshness check
+  const nowMs = Date.now();
+  const activeAlerts = alerts.filter(
+    (a) => !a.ends_at || Date.parse(a.ends_at) > nowMs,
+  );
+
   const totals = {
+    alerts: activeAlerts.length,
     safety: safety.length,
     traffic: traffic.length,
     power: outagesCount,
     schools: schoolAlerts.length,
     fixit: fixit.length,
   };
+  // totalActive rolls up every urgent feed — alerts included — so the
+  // hero line reads truthfully when an NWS alert is up but the
+  // operational feeds are calm. 311 reports are excluded: they're
+  // collapsed by default and don't count as "situations" — most are
+  // potholes and tree-limb requests, not emergencies.
   const totalActive =
-    totals.safety + totals.traffic + totals.power + totals.schools + totals.fixit;
+    totals.alerts +
+    totals.safety +
+    totals.traffic +
+    totals.power +
+    totals.schools;
   const allClear = totalActive === 0;
 
   // Hero copy varies with state. The verb is the read.
@@ -118,8 +150,8 @@ export default async function PulsePage() {
       ? "1 situation across the county"
       : `${totalActive} situations across the county`;
   const heroSub = allClear
-    ? "No active traffic, outages, school alerts, or open hotspots right now."
-    : "Traffic, power, schools, and citizen reports — combined from four county and state feeds.";
+    ? "No weather alerts, traffic, outages, or school alerts right now."
+    : "Weather alerts, traffic, power, schools, fire & rescue — combined from six county and state feeds.";
 
   const pct =
     outages.total_served > 0
@@ -192,7 +224,7 @@ export default async function PulsePage() {
       {/* ── Status tile grid ───────────────────────────────────── */}
       <section
         aria-label="At-a-glance county status"
-        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3"
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6"
       >
         <StatusTile
           href="#safety"
@@ -236,17 +268,78 @@ export default async function PulsePage() {
           activeCopy={totals.fixit === 1 ? "Open report" : "Open reports"}
           accent="var(--app-cool)"
         />
-        <StatusTile
-          href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
-          external
-          icon={Siren}
-          label="Police"
-          accent="var(--app-cool)"
-          subtitle="Daily CFS map"
-        />
+        {/* Sixth tile: alerts beat police when something's up — a
+            tornado watch is more actionable than yesterday's CFS map.
+            Falls back to Police (external CFS map) when no alerts. */}
+        {totals.alerts > 0 ? (
+          <StatusTile
+            href="#alerts"
+            icon={CloudAlert}
+            label="Weather alerts"
+            count={totals.alerts}
+            activeCopy={totals.alerts === 1 ? "Active alert" : "Active alerts"}
+            accent="var(--app-danger)"
+          />
+        ) : (
+          <StatusTile
+            href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
+            external
+            icon={Siren}
+            label="Police"
+            accent="var(--app-cool)"
+            subtitle="Daily CFS map"
+          />
+        )}
       </section>
 
       {/* ── Active sections only ──────────────────────────────── */}
+      {/* Desktop multi-column: at lg+ the operational sections fall
+          into a 2-col grid so traffic, power, schools, alerts, news
+          read side-by-side instead of as long single-column rows.
+          Mobile keeps the natural vertical stack. The grid is on the
+          parent <div>; conditional children populate cells in source
+          order so urgency stays top-left. */}
+      <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
+      {/* Weather alerts — NWS active alerts for Frederick County, MD.
+          Top-of-page placement when active: a flood warning or severe
+          thunderstorm watch beats every other feed for urgency. */}
+      {activeAlerts.length > 0 && (
+        <DashSection
+          id="alerts"
+          icon={CloudAlert}
+          title="Weather alerts"
+          count={activeAlerts.length}
+          accent="var(--app-danger)"
+          source={{ label: "NWS · weather.gov", href: "https://www.weather.gov/" }}
+        >
+          {activeAlerts.slice(0, 6).map((a) => {
+            const tone =
+              a.severity === "Extreme" || a.severity === "Severe"
+                ? "danger"
+                : a.severity === "Moderate"
+                  ? "warning"
+                  : "cool";
+            const endsLabel = a.ends_at
+              ? `Through ${new Date(a.ends_at).toLocaleString("en-US", {
+                  timeZone: "America/New_York",
+                  weekday: "short",
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}`
+              : undefined;
+            return (
+              <Row
+                key={a.id}
+                tone={tone}
+                title={a.event}
+                body={a.headline}
+                meta={[a.area, endsLabel]}
+              />
+            );
+          })}
+        </DashSection>
+      )}
+
       {/* Safety — public fire & rescue scanner */}
       {safety.length > 0 && (
         <DashSection
@@ -363,32 +456,228 @@ export default async function PulsePage() {
         </DashSection>
       )}
 
-      {/* 311 */}
+      {/* 311 — collapsed by default. The feed is always SOMETHING
+          (potholes, sign-down requests, tree-limb cleanups) and was
+          pushing the urgent feeds below the fold on every visit.
+          User can expand for the long-tail civic queue; the
+          preference sticks via localStorage. */}
       {fixit.length > 0 && (
-        <DashSection
+        <CollapsibleDashSection
           id="fixit"
-          icon={AlertTriangle}
+          icon={<AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
           title="Citizen 311 reports"
           count={fixit.length}
           accent="var(--app-cool)"
           source={{ label: "FCG FixIT · SeeClickFix", href: "https://www.frederickcountymd.gov/8235/FCG-FixIT" }}
+          summary="Potholes, signs, tree limbs"
+          defaultOpen={false}
         >
           {fixit.slice(0, 10).map((i) => (
             <Row
               key={i.id}
               tone={i.status === "closed" ? "muted" : "cool"}
               title={i.summary}
-              // SeeClickFix often sets `summary` and `category` to the
-              // same string ("Roadway Tree Maintenance"). Only render
-              // body when it actually adds information.
               body={
                 i.category && i.category !== i.summary ? i.category : undefined
               }
               meta={[i.address, timeAgo(i.reported_at), i.status]}
             />
           ))}
-        </DashSection>
+        </CollapsibleDashSection>
       )}
+
+      {/* Frederick Scanner — Twitter/X timeline embed. Sits between
+          the operational feeds and the editorial news section because
+          the scanner is operational-news in feel (raw incidents)
+          but lives on a third-party surface. Self-falls-back to an
+          "open on X" link card if the widget can't load. */}
+      <section
+        id="scanner"
+        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
+        style={{
+          borderColor: "var(--app-border)",
+          background: "var(--app-bg-elevated)",
+          borderLeftWidth: 3,
+          borderLeftColor: "var(--app-cool)",
+        }}
+      >
+        <header
+          className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
+          style={{ borderColor: "var(--app-border)" }}
+        >
+          <h2
+            className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            <span
+              aria-hidden
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-cool) 13%, transparent)",
+                color: "var(--app-cool)",
+              }}
+            >
+              <Radio className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </span>
+            Frederick Scanner
+          </h2>
+          <span
+            className="text-[11px]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Live on X
+          </span>
+        </header>
+        <div className="px-3 py-3">
+          <ScannerTimeline />
+        </div>
+        <a
+          href="https://twitter.com/FredScanner"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 px-4 pb-3 pt-1 text-[10px] uppercase tracking-wide"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Source: @FredScanner
+          <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
+        </a>
+      </section>
+
+      {/* Rivers & streams quick link — full dashboard lives at /rivers,
+          here we just surface a count + last-reading pulse so a user
+          watching the pulse page sees water levels alongside the
+          operational feeds. */}
+      <Link
+        href="/rivers"
+        className="group flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.995]"
+        style={{
+          borderColor: "var(--app-border)",
+          borderLeftWidth: 3,
+          borderLeftColor: "var(--app-cool)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+          style={{
+            background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
+            color: "var(--app-cool)",
+          }}
+        >
+          <Waves className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className="block font-serif text-[15px] font-semibold tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Rivers &amp; streams
+          </span>
+          <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+            Live USGS gauges · Monocacy · Potomac · Catoctin · 24-hour trend
+          </span>
+        </span>
+        <ChevronRight
+          className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
+          strokeWidth={2.25}
+          style={{ color: "var(--app-cool)" }}
+          aria-hidden
+        />
+      </Link>
+
+      {/* City signal — Local news. Always-on city data even when the
+          operational feeds are quiet. Top headlines from Google News
+          RSS for Frederick County + the four named towns. Each row
+          links out; rendering quiet headline text + source +
+          published-ago meta. */}
+      {news.length > 0 && (
+        <section
+          id="news"
+          className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-elevated)",
+            borderLeftWidth: 3,
+            borderLeftColor: "var(--app-ink-2)",
+          }}
+        >
+          <header
+            className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
+            style={{ borderColor: "var(--app-border)" }}
+          >
+            <h2
+              className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              <span
+                aria-hidden
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+                style={{
+                  background: "color-mix(in srgb, var(--app-ink-2) 10%, transparent)",
+                  color: "var(--app-ink-2)",
+                }}
+              >
+                <Newspaper className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              </span>
+              In the news
+            </h2>
+            <span
+              className="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
+              style={{
+                background: "color-mix(in srgb, var(--app-ink-2) 10%, transparent)",
+                color: "var(--app-ink-2)",
+              }}
+            >
+              {Math.min(news.length, 6)}
+            </span>
+          </header>
+          <ul className="divide-y px-1" style={{ borderColor: "var(--app-border)" }}>
+            {news.slice(0, 6).map((h) => (
+              <li key={h.url}>
+                <a
+                  href={h.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-3 rounded-[var(--app-radius-md)] px-3 py-2.5 transition hover:bg-[var(--app-bg-sunken)]"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className="block text-[13px] font-semibold leading-snug"
+                      style={{ color: "var(--app-ink)" }}
+                    >
+                      {h.title}
+                    </span>
+                    <span
+                      className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px]"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      <span className="font-semibold">{h.source}</span>
+                      <span>·</span>
+                      <span className="inline-flex items-center gap-1 tabular-nums">
+                        <Clock className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
+                        {timeAgo(h.published_at)}
+                      </span>
+                    </span>
+                  </span>
+                  <ExternalLink
+                    aria-hidden
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
+                    strokeWidth={2}
+                    style={{ color: "var(--app-ink-3)" }}
+                  />
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p
+            className="px-4 pb-3 pt-2 text-[10px] uppercase tracking-wide"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Source: Google News · Frederick County
+          </p>
+        </section>
+      )}
+      </div>{/* /active-sections grid */}
 
       {/* All-clear card — only renders when literally every feed is
           quiet. Celebratory, not just empty. Catoctin-green wash
@@ -496,11 +785,13 @@ export default async function PulsePage() {
           emergency broadcasts.
         </p>
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          <SourceLine label="Weather alerts" source="NWS · weather.gov" href="https://www.weather.gov/" />
           <SourceLine label="Fire & rescue" source="PulsePoint" href="https://web.pulsepoint.org/" />
           <SourceLine label="Traffic" source="MDOT CHART" href="https://chart.maryland.gov/" />
           <SourceLine label="Power" source="FirstEnergy" href="https://outages-mdwv.firstenergycorp.com/" />
           <SourceLine label="Schools" source="FCPS RSS" href="https://www.fcps.org/" />
           <SourceLine label="311 reports" source="FCG FixIT · SeeClickFix" href="https://www.frederickcountymd.gov/8235/FCG-FixIT" />
+          <SourceLine label="News" source="Google News · Frederick" href="https://news.google.com/search?q=Frederick%20County%20Maryland" />
           <SourceLine label="Police" source="Frederick PD" href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map" />
         </div>
       </footer>

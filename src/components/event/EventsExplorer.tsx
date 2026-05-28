@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
 import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
@@ -8,11 +9,19 @@ import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Sheet from "@/components/ui/Sheet";
+import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
+type EventSortKey = "time" | "az" | "venue";
+
+const EVENT_SORT_OPTIONS: ReadonlyArray<SortOption<EventSortKey>> = [
+  { key: "time", label: "Soonest", hint: "Next event first (grouped by horizon)" },
+  { key: "az", label: "A→Z", hint: "Alphabetical by event title" },
+  { key: "venue", label: "Venue", hint: "Cluster by venue name" },
+];
 
 type Props = {
   events: EventWithMeta[];
@@ -91,6 +100,14 @@ export default function EventsExplorer({
     "free",
     parseAsBoolean.withDefault(false),
   );
+  // Sort order (?sort=time|az|venue). "time" keeps the horizon
+  // grouping ("Tonight / This weekend / This week / Later"); the
+  // alphabetical and by-venue sorts drop the grouping and render
+  // a flat list so the order the user picked is the order the user sees.
+  const [sort, setSort] = useQueryState<EventSortKey>(
+    "sort",
+    parseAsStringEnum<EventSortKey>(["time", "az", "venue"]).withDefault("time"),
+  );
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (k: string) =>
@@ -103,6 +120,30 @@ export default function EventsExplorer({
 
   const live = useMemo(() => new Set(liveSlugs), [liveSlugs]);
   const now = +new Date(nowISO);
+
+  // Apply user-chosen sort AFTER filtering. "time" preserves the
+  // server-provided chronological order (and feeds the horizon
+  // grouping below). The other keys produce a flat re-sort.
+  const sortFn = useMemo(() => {
+    switch (sort) {
+      case "az":
+        return (a: EventWithMeta, b: EventWithMeta) =>
+          (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
+      case "venue":
+        return (a: EventWithMeta, b: EventWithMeta) => {
+          const va = (a.venue_name ?? "").toLowerCase();
+          const vb = (b.venue_name ?? "").toLowerCase();
+          if (va !== vb) return va.localeCompare(vb);
+          // Within a venue, fall back to chronological so a venue
+          // cluster reads top-to-bottom as a venue schedule.
+          return +new Date(a.starts_at) - +new Date(b.starts_at);
+        };
+      case "time":
+      default:
+        return (a: EventWithMeta, b: EventWithMeta) =>
+          +new Date(a.starts_at) - +new Date(b.starts_at);
+    }
+  }, [sort]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -128,8 +169,8 @@ export default function EventsExplorer({
       )
         return false;
       return true;
-    });
-  }, [events, day, time, cat, town, q, freeOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+    }).sort(sortFn);
+  }, [events, day, time, cat, town, q, freeOnly, now, next24ISO, weekendStartISO, weekendEndISO, sortFn]);
 
   // Group the filtered list into human horizons so the default view is
   // navigable at a glance instead of a 400-row chronological scroll.
@@ -319,7 +360,7 @@ export default function EventsExplorer({
             aria-hidden
           />
         </button>
-        <span className="ml-auto text-xs" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>
           {filtered.length} {filtered.length === 1 ? "event" : "events"}
           {anyFilter && (
             <button
@@ -332,6 +373,12 @@ export default function EventsExplorer({
             </button>
           )}
         </span>
+        <SortDropdown
+          className="ml-auto"
+          options={EVENT_SORT_OPTIONS}
+          value={sort}
+          onChange={setSort}
+        />
       </div>
 
       {/* Filters bottom sheet — same wiring, app-grade presentation.
@@ -519,6 +566,26 @@ export default function EventsExplorer({
             </button>
           )}
         </div>
+      ) : sort !== "time" ? (
+        // User-driven sort (A→Z or by venue): drop the horizon
+        // grouping so the order the user chose is the order they see.
+        // Capped at 100 to keep the page snappy; the rest are reachable
+        // by tightening filters or switching to the calendar/map view.
+        <ul className="space-y-2">
+          {filtered.slice(0, 100).map((e) => (
+            <li key={e.slug}>
+              <EventCard event={e} />
+            </li>
+          ))}
+          {filtered.length > 100 && (
+            <li
+              className="pt-2 text-center text-[11px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Showing the first 100. Use filters or the calendar view to narrow further.
+            </li>
+          )}
+        </ul>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
@@ -527,7 +594,14 @@ export default function EventsExplorer({
         <div className="space-y-6">
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
-            const PEEK = 9;
+            // Tighter peek + expanded cap (was PEEK=9, no expanded
+            // cap). Users were getting walls of 30-100 event tiles
+            // when a group expanded — felt endless and undermined
+            // the horizon-grouping work. Now each group shows 6 at
+            // first, expands to a max of 24, and links to the
+            // calendar for the long tail.
+            const PEEK = 6;
+            const EXPANDED_CAP = 24;
             // Pull the first photo-backed event out of the FIRST group
             // as a feature card. One per page — gives the index a focal
             // point instead of a uniform stack of tiles.
@@ -543,7 +617,10 @@ export default function EventsExplorer({
             // grid (the "browse" mode) — best of both. Hidden behind a
             // toggle (`isOpen`) where the user wants to see everything.
             const useShelf = groupIdx === 0 && !isOpen;
-            const shown = isOpen ? rest : rest.slice(0, PEEK);
+            const shown = isOpen
+              ? rest.slice(0, EXPANDED_CAP)
+              : rest.slice(0, PEEK);
+            const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading
@@ -600,6 +677,23 @@ export default function EventsExplorer({
                         <EventCard event={e} variant="tile" />
                       </div>
                     ))}
+                  </div>
+                )}
+                {/* Overflow nudge — when an expanded group hit the
+                    EXPANDED_CAP, point the long tail at the calendar
+                    instead of dumping every remaining tile inline. */}
+                {overflow > 0 && (
+                  <div className="px-1 pt-1 text-center">
+                    <Link
+                      href="/events/calendar"
+                      className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+                      style={{
+                        borderColor: "var(--app-border)",
+                        color: "var(--app-cool)",
+                      }}
+                    >
+                      {overflow} more on the calendar →
+                    </Link>
                   </div>
                 )}
               </section>

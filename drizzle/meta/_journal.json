@@ -36,6 +36,13 @@
       "when": 1779474376205,
       "tag": "0005_friendly_marten_broadcloak",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779943893889,
+      "tag": "0006_robust_miss_america",
+      "breakpoints": true
     }
   ]
 }

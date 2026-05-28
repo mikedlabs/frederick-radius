@@ -88,7 +88,7 @@ export default function RightNow({
     <DismissibleSection
       id="right-now"
       title={slot.title}
-      href="/browse"
+      href="/map"
       cta="See all"
       meta={picks.length > 0 ? "Open or likely open across the county right now" : undefined}
     >
@@ -98,7 +98,7 @@ export default function RightNow({
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
           Quiet hours. Most spots are closed.{" "}
-          <Link href="/browse" className="font-medium" style={{ color: "var(--app-brand)" }}>
+          <Link href="/map" className="font-medium" style={{ color: "var(--app-brand)" }}>
             Browse the map
           </Link>
           .

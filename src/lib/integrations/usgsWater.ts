@@ -32,6 +32,8 @@ const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
 const PARAM_GAGE_HEIGHT = "00065"; // feet
 const PARAM_STREAMFLOW = "00060"; // cubic feet per second
 
+export type Reading = { value: number; at: string };
+
 export type WaterSite = {
   /** USGS site code, e.g. "01643000". */
   id: string;
@@ -45,6 +47,11 @@ export type WaterSite = {
   streamflowCfs?: number;
   /** ISO timestamp of the most recent reading used. */
   observedAt?: string;
+  /** Time-series history of gage height readings (newest last), when
+   *  fetched via getFrederickWaterSitesWithHistory(). Each gauge
+   *  reports every ~15 min, so a 24h window has ~96 readings. */
+  gageHistory?: Reading[];
+  streamflowHistory?: Reading[];
   municipality: string;
   lng: number;
   lat: number;
@@ -173,4 +180,108 @@ export async function getFrederickWaterSites(): Promise<WaterSite[]> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Same as getFrederickWaterSites() but each WaterSite also carries
+ * gageHistory / streamflowHistory arrays for the last `period`
+ * window. Period is a USGS ISO-8601 duration: "P1D" = 1 day,
+ * "P7D" = 7 days. The 24h variant returns ~96 readings per gauge
+ * (every 15 min) and is what the /rivers dashboard sparklines render.
+ *
+ * History readings are sorted oldest-first so a sparkline can draw
+ * left-to-right without re-sorting.
+ */
+export async function getFrederickWaterSitesWithHistory(
+  period: "P1D" | "P7D" = "P1D",
+): Promise<WaterSite[]> {
+  const endpoint = `${ENDPOINT}&period=${period}`;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  try {
+    const res = await fetch(endpoint, {
+      signal: ctrl.signal,
+      headers: { Accept: "application/json" },
+      next: { revalidate: 900 },
+    });
+    if (!res.ok) return [];
+    return normalizeWaterSitesWithHistory(await res.json());
+  } catch {
+    return [];
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Same grouping as normalizeWaterSites but every series's full
+ *  history is captured (sorted oldest-first), and the latest reading
+ *  populates the headline fields. */
+export function normalizeWaterSitesWithHistory(raw: unknown): WaterSite[] {
+  const series = (raw as { value?: { timeSeries?: IvTimeSeries[] } })?.value
+    ?.timeSeries;
+  if (!Array.isArray(series)) return [];
+  const [s, w, n, e] = BBOX;
+
+  const bySite = new Map<string, WaterSite>();
+  for (const ts of series) {
+    const si = ts?.sourceInfo;
+    const code =
+      typeof si?.siteCode?.[0]?.value === "string"
+        ? (si.siteCode[0].value as string)
+        : undefined;
+    const name = typeof si?.siteName === "string" ? si.siteName.trim() : "";
+    if (!code || !name) continue;
+    const lat = num(si?.geoLocation?.geogLocation?.latitude);
+    const lng = num(si?.geoLocation?.geogLocation?.longitude);
+    if (lat == null || lng == null) continue;
+    if (lat < s || lat > n || lng < w || lng > e) continue;
+
+    const paramCode =
+      typeof ts?.variable?.variableCode?.[0]?.value === "string"
+        ? (ts.variable.variableCode[0].value as string)
+        : "";
+    const noData = num(ts?.variable?.noDataValue) ?? -999999;
+    const block = ts?.values?.[0]?.value ?? [];
+
+    const history: Reading[] = [];
+    for (const v of block) {
+      const value = num(v?.value);
+      const at = typeof v?.dateTime === "string" ? v.dateTime : "";
+      if (value == null || !at) continue;
+      if (value === noData || value <= -99999) continue;
+      const t = +new Date(at);
+      if (!Number.isFinite(t)) continue;
+      history.push({ value, at });
+    }
+    if (history.length === 0) continue;
+    history.sort((a, b) => +new Date(a.at) - +new Date(b.at));
+    const latest = history[history.length - 1];
+
+    let site = bySite.get(code);
+    if (!site) {
+      site = {
+        id: code,
+        name,
+        river: riverOf(name),
+        municipality: resolveMunicipality({ lng, lat }).municipality.slug,
+        lng,
+        lat,
+      };
+      bySite.set(code, site);
+    }
+    if (paramCode === PARAM_GAGE_HEIGHT) {
+      site.gageHeightFt = latest.value;
+      site.gageHistory = history;
+    } else if (paramCode === PARAM_STREAMFLOW) {
+      site.streamflowCfs = latest.value;
+      site.streamflowHistory = history;
+    }
+    if (!site.observedAt || +new Date(latest.at) > +new Date(site.observedAt)) {
+      site.observedAt = latest.at;
+    }
+  }
+
+  return [...bySite.values()]
+    .filter((x) => x.gageHeightFt != null || x.streamflowCfs != null)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }

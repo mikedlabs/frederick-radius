@@ -205,20 +205,27 @@ export function normalizeParks(raw: unknown): Park[] {
 }
 
 export async function getFrederickParks(): Promise<Park[]> {
+  // The live ENDPOINT points at gis.frederickco.gov — turns out
+  // that's Frederick, COLORADO, not MD. Every feature gets dropped
+  // by the MD bbox filter. Keeping the fetch in place so a fix-up
+  // to the right MD endpoint flows through unchanged; falling back
+  // to the curated list keeps the page useful in the meantime.
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  let live: Park[] = [];
   try {
     const res = await fetch(ENDPOINT, {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
-      // Parks change rarely; weekly is plenty and keeps it cheap.
       next: { revalidate: 604800 },
     });
-    if (!res.ok) return [];
-    return normalizeParks(await res.json());
+    if (res.ok) live = normalizeParks(await res.json());
   } catch {
-    return []; // feed hiccup / network — degrade silently, never fabricate
+    /* feed hiccup / wrong endpoint — fall through to curated */
   } finally {
     clearTimeout(timer);
   }
+  if (live.length > 0) return live;
+  const { CURATED_PARKS } = await import("@/data/curated-parks");
+  return CURATED_PARKS;
 }

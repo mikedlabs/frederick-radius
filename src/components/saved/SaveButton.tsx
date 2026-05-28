@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useIsSaved, useToggleSave, useMounted, useSavedList } from "@/hooks/useSaved";
+import { useIsFollowed, useToggleFollow } from "@/hooks/useFollows";
 import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
@@ -16,8 +17,17 @@ export default function SaveButton({
   label: string;
 }) {
   const mounted = useMounted();
-  const isSaved = useIsSaved(refType, refId);
-  const toggle = useToggleSave(refType, refId);
+  // For places, route through the auth-aware useFollows hook: writes
+  // hit the DB when signed in, fall back to localStorage when signed
+  // out. Events + radii stay on the legacy useSaved hook by design
+  // (Phase 1 brief framed sync as "follow PLACES"; broader sync later).
+  const placeFollowed = useIsFollowed(refType === "place" ? refId : "");
+  const togglePlace = useToggleFollow(refId, "icon");
+  const legacyIsSaved = useIsSaved(refType, refId);
+  const legacyToggle = useToggleSave(refType, refId);
+  const isSaved = refType === "place" ? placeFollowed : legacyIsSaved;
+  const toggle =
+    refType === "place" ? () => void togglePlace() : legacyToggle;
   // Pre-toggle total. Used to detect the user's first save ever —
   // when totalBefore is 0 AND the user is about to save, the next
   // tap is the moment that promotes a stranger into someone who has
@@ -67,27 +77,27 @@ export default function SaveButton({
         // is missed at a glance. Undo action mirrors the toggle so
         // a mistaken save is one tap to reverse.
         if (isSaved) {
-          toast(`Removed from saved`, {
+          toast(`Removed from My Radius`, {
             action: { label: "Undo", onClick: () => toggle() },
           });
         } else if (totalBefore === 0) {
-          // First save ever — moment worth marking. Editorial copy
+          // First add ever — moment worth marking. Editorial copy
           // instead of the routine acknowledgement, plus a longer
           // dwell so the user has time to read what just happened.
-          toast.success("Saved your first one", {
-            description: "Build the list you'd send a friend.",
+          toast.success("Your Radius starts here", {
+            description: "Follow places you care about — they'll live in My Radius.",
             duration: 5000,
             action: { label: "Undo", onClick: () => toggle() },
           });
         } else {
-          toast.success(`Saved · ${label.replace(/^Save\s+/, "")}`, {
+          toast.success(`Added to My Radius · ${label.replace(/^Save\s+/, "")}`, {
             action: { label: "Undo", onClick: () => toggle() },
           });
         }
       }}
       aria-pressed={isSaved}
-      aria-label={isSaved ? `Unsave ${label}` : `Save ${label}`}
-      title={isSaved ? "Saved" : "Save"}
+      aria-label={isSaved ? `Remove ${label} from My Radius` : `Add ${label} to My Radius`}
+      title={isSaved ? "In My Radius" : "Add to My Radius"}
       className="relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"
       style={{
         color: isSaved ? "var(--app-cool)" : "var(--app-ink-3)",

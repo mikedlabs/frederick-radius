@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
 import PlaceList from "@/components/place/PlaceList";
@@ -11,6 +9,9 @@ import EventCard from "@/components/event/EventCard";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
+import Image from "next/image";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import TownStrip from "@/components/municipality/TownStrip";
 
 export const revalidate = 600;
 
@@ -38,6 +39,21 @@ export const revalidate = 600;
  *
  * The page is about the town, not about the directory's shape.
  */
+
+/**
+ * Per-town hero photo overrides — hand-curated "this is THE photo of
+ * {town}" slug map. Used when the auto-pick keeps landing on a
+ * restaurant interior that doesn't say "this is the town."
+ *
+ * Add a town here only after verifying the override place actually
+ * has a recognizable photo (district park, train station, main
+ * street, town hall) AND it's in places-client.json.
+ */
+const HERO_OVERRIDES: Record<string, string> = {
+  // Urbana → District Park instead of "Monocacy Crossing Restaurant"
+  // (a Frederick-side restaurant that DFP filed under Urbana).
+  urbana: "urbana-district-park-new-market",
+};
 
 export async function generateStaticParams() {
   return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
@@ -74,46 +90,87 @@ export default async function MunicipalityPage(
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
 
-  // A real photo FROM this town for the hero (highest feature score
-  // with a Google photo). Never stock or fabricated — if none, a
-  // System-Black gradient carries the name instead.
-  const heroPhoto = places.find((p) => p.google_photo_url)?.google_photo_url ?? null;
+  // Town hero — each town gets its OWN identifiable photo instead of
+  // a generic rotating aerial. The picker has three tiers:
+  //
+  //   1. HERO_OVERRIDES — hand-curated "this is THE photo of {town}"
+  //      mapping by slug. Used when the auto-pick keeps landing on a
+  //      restaurant interior that doesn't say "this is the town"
+  //      (Urbana → district park instead of "Monocacy Crossing").
+  //   2. The top-scored photographed place WHOSE name actually
+  //      references the town (e.g. "Urbana Library Farmers' Market",
+  //      "Brunswick Railroad Bridge"). Better signal than the raw
+  //      feature_score winner, since DFP rolls plenty of restaurants
+  //      from neighboring towns under each municipality slug.
+  //   3. The top-scored photographed place in the town, as before.
+  //
+  // SeasonalPhoto remains the last-resort fallback for towns with no
+  // photographed places.
   const placesWithPhotos = places.filter((p) => p.google_photo_url);
+  const override = HERO_OVERRIDES[m.slug];
+  const overrideHero = override
+    ? placesWithPhotos.find((p) => p.slug === override) ?? null
+    : null;
+  const townNameRe = new RegExp(`\\b${m.name}\\b`, "i");
+  const namedHero = placesWithPhotos.find((p) => townNameRe.test(p.name)) ?? null;
+  const heroPlace = overrideHero ?? namedHero ?? placesWithPhotos[0] ?? null;
+  const heroPhotoUrl = heroPlace?.google_photo_url ?? null;
 
   return (
     <div className="relative space-y-6">
       <PageBloom variant="single" />
 
+      {/* Sibling-town nav — horizontal pill strip with the active
+          town pinned first. Pre-launch the only way to switch towns
+          was via /browse + search; this lets a user jump directly
+          between municipalities while staying in the town-page
+          mental model. */}
+      <TownStrip activeSlug={m.slug} />
+
       {/* Photo hero — the place as a place, not a row. The image
           carries identity; the overlay carries facts. */}
       <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
-        <div className="relative h-52 w-full sm:h-60">
-          {heroPhoto ? (
+        <div className="relative h-52 w-full sm:h-72">
+          {heroPhotoUrl ? (
             <Image
-              src={heroPhoto}
-              alt=""
+              src={heroPhotoUrl}
+              alt={`${heroPlace?.name ?? m.name} in ${m.name}, MD`}
               fill
-              priority
               sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
+              priority
+              unoptimized
               className="object-cover"
             />
           ) : (
-            <div
-              className="h-full w-full"
-              style={{ background: "linear-gradient(150deg,#1A1A1A,#2A2A2A 60%,#3A2E1E)" }}
+            <SeasonalPhoto
+              season="auto"
+              alt={`Frederick County (near ${m.name})`}
+              priority
+              sizes="(max-width: 720px) 100vw, 720px"
+              className="absolute inset-0"
             />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
-          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70">
+          {heroPlace && (
+            <span
+              className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur"
+              style={{
+                background: "rgba(255,255,255,0.18)",
+                color: "white",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
+              }}
+            >
+              Photo · {heroPlace.name}
+            </span>
+          )}
+          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75">
               {m.type} · est. {m.est} · pop. {m.population.toLocaleString()}
             </p>
-            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight text-white">
+            <h1 className="font-serif text-[34px] font-semibold leading-tight tracking-tight text-white sm:text-[40px]">
               {m.name}, Maryland
             </h1>
-            <p className="font-serif text-[15px] italic text-white/85">
+            <p className="font-serif text-[15px] italic leading-snug text-white/90 sm:text-[16px]">
               {m.hero_blurb}
             </p>
           </div>

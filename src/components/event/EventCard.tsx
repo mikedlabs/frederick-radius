@@ -136,10 +136,16 @@ export default function EventCard({
   // differently from a planning meeting at a glance.
   if (variant === "tile") {
     return (
-      <article className="tactile tactile-interactive group relative flex h-full flex-col overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)]">
-        {/* Banner — photo, or category-tinted gradient with the date in
-            big serif. Same height in both modes so the grid stays aligned. */}
-        <div className="relative h-[112px] w-full overflow-hidden">
+      <article className="tactile tactile-interactive group relative flex h-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
+        style={{
+          borderColor: "var(--app-border)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        }}
+      >
+        {/* Banner — taller (152px) and more cinematic than v1 (112).
+            Photo, or category-tinted CategoryGraphic when no hero.
+            Same height in both modes so a grid never wobbles. */}
+        <div className="relative h-[152px] w-full overflow-hidden">
           {hasPhoto && event.hero_image ? (
             <Image
               src={event.hero_image}
@@ -148,7 +154,7 @@ export default function EventCard({
               sizes="(max-width: 720px) 50vw, 360px"
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
             />
           ) : (
             <CategoryGraphic
@@ -157,43 +163,86 @@ export default function EventCard({
               className="absolute inset-0"
             />
           )}
+          {/* Stronger bottom gradient pulls the date/status pills off
+              the photo cleanly without darkening the upper image. */}
           {hasPhoto && (
-            <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/10" />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(180deg, rgba(0,0,0,0.30) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.65) 100%)",
+              }}
+            />
           )}
-          {/* Date badge — top-left. Photo: white pill, category color
-              text. No photo: white text directly on the now-darker
-              gradient, with a soft drop shadow so it's legible. */}
+
+          {/* Date glass pill — top-left. Was a stickered white card;
+              now a true glass pill with backdrop blur, sitting on the
+              photo like an editorial date stamp. The category color
+              tints the day number subtly so type signal carries here. */}
           <div
-            className={
-              hasPhoto
-                ? "absolute left-2.5 top-2.5 inline-flex items-baseline gap-1 rounded-[var(--app-radius-sm)] bg-white/95 px-1.5 py-0.5 leading-none shadow-[var(--app-shadow-1)]"
-                : "absolute left-3 top-3 inline-flex items-baseline gap-1 leading-none"
-            }
-            style={
-              hasPhoto
-                ? { color: accent }
-                : { color: "white", textShadow: "0 1px 2px rgba(0,0,0,0.5)" }
-            }
+            className="absolute left-2 top-2 inline-flex items-baseline gap-1 rounded-full px-2 py-1 leading-none"
+            style={{
+              background: hasPhoto ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.45)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              boxShadow: hasPhoto
+                ? "0 2px 6px -1px rgba(0,0,0,0.30)"
+                : "inset 0 0 0 1px rgba(255,255,255,0.12)",
+              color: hasPhoto ? "var(--app-ink)" : "white",
+            }}
           >
-            <span className="text-[9px] font-bold uppercase tracking-wider">
+            <span
+              className="text-[9px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: hasPhoto ? accent : "white" }}
+            >
               {date.month}
             </span>
-            <span className="font-serif text-[18px] font-semibold">{date.day}</span>
-            <span className="text-[9px] font-medium opacity-80">{date.weekday}</span>
+            <span
+              className="font-serif text-[16px] font-semibold"
+              style={{ color: hasPhoto ? "var(--app-ink)" : "white" }}
+            >
+              {date.day}
+            </span>
+            <span className="text-[9px] font-medium opacity-75">{date.weekday}</span>
           </div>
-          {/* Category chip — top-right, ALWAYS shown so users can tell
-              event type at a glance. White-on-translucent for no-photo
-              so it reads on the dark poster gradient. */}
+
+          {/* Category chip — top-right. Filled with category color
+              when on a photo (the way Airbnb's "Guest favorite" chip
+              calls out a status), glass when no photo so it reads
+              against the CategoryGraphic. */}
           <span
-            className="absolute right-2.5 top-2.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider backdrop-blur"
+            className="absolute right-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
             style={{
-              background: hasPhoto ? accent : "rgba(255,255,255,0.20)",
+              background: hasPhoto ? accent : "rgba(255,255,255,0.22)",
               color: "white",
-              boxShadow: hasPhoto ? "none" : "inset 0 0 0 1px rgba(255,255,255,0.22)",
+              boxShadow: hasPhoto
+                ? "0 2px 6px -1px rgba(0,0,0,0.30)"
+                : "inset 0 0 0 1px rgba(255,255,255,0.22)",
+              backdropFilter: hasPhoto ? "none" : "blur(8px)",
+              WebkitBackdropFilter: hasPhoto ? "none" : "blur(8px)",
             }}
           >
             {categoryLabel}
           </span>
+
+          {/* Status pill — bottom-left ON THE PHOTO (the Airbnb
+              pattern). Only renders when there's a real status to
+              call out: Tonight / Live / Sold out / Cancelled. White
+              glass on photo, colored backdrop on no-photo. */}
+          {statusText && (
+            <span
+              className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
+              style={{
+                background: statusBg,
+                color: "white",
+                boxShadow: "0 2px 6px -1px rgba(0,0,0,0.30)",
+              }}
+            >
+              {statusText}
+            </span>
+          )}
+
           {/* Category color band on the bottom edge — the through-line
               that makes a music tile visually distinct from a civic one. */}
           <div
@@ -202,16 +251,10 @@ export default function EventCard({
             style={{ background: accent }}
           />
         </div>
-        {/* Body */}
+
+        {/* Body — slimmer than v1. Title + meta + reasons row.
+            Status pill moved onto the photo so the body stays clean. */}
         <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
-          {statusText && (
-            <span
-              className="inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-white"
-              style={{ background: statusBg }}
-            >
-              {statusText}
-            </span>
-          )}
           <Link
             href={`/events/${event.slug}`}
             className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
@@ -224,11 +267,8 @@ export default function EventCard({
             <span style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
             {event.venue_name ? <> · {event.venue_name}</> : null}
           </p>
-          {/* Reason chips — "Tonight · Free · 5 min walk" — decision
-              context the master UI brief asks for. Derived from
-              fields the loader already produces, capped at 3 per card.
-              Falls back to the legacy price / distance row only if
-              the producer returns nothing (rare). */}
+          {/* Reason chips — same producer as before. Stay below the
+              meta line, capped at 3, as the decision-context row. */}
           <div className="mt-auto pt-1">
             {(() => {
               const reasons = eventReasons(event);

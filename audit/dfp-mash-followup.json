@@ -1,0 +1,109 @@
+[
+  {
+    "slug": "the-stern-group",
+    "query": "The Stern Group Frederick MD",
+    "display_name": "Stern Life Assisted Living",
+    "formatted_address": "228 Thames Dr, Frederick, MD 21702, USA",
+    "business_status": "OPERATIONAL",
+    "website": "http://sternlifeassistedliving.com/",
+    "lat": 39.428713599999995,
+    "lng": -77.4461065,
+    "primary_type": "health",
+    "google_place_id": "ChIJw5m24d3byYkR7KQKP2OOK3Q"
+  },
+  {
+    "slug": "the-stern-group",
+    "query": "Stern Group financial advisor Frederick MD",
+    "display_name": "Turning Point Financial",
+    "formatted_address": "7210 Corporate Ct a, Frederick, MD 21703, USA",
+    "business_status": "OPERATIONAL",
+    "website": "http://www.tpfinancial.com/",
+    "lat": 39.3793888,
+    "lng": -77.41492889999999,
+    "primary_type": "consultant",
+    "google_place_id": "ChIJFb0PF1nayYkR0RT9O3w_JQ4"
+  },
+  {
+    "slug": "new-horizon-title",
+    "query": "New Horizon Title Frederick MD",
+    "display_name": "New Horizon Title",
+    "formatted_address": "205 E Ridgeville Blvd, Mt Airy, MD 21771, USA",
+    "business_status": "OPERATIONAL",
+    "lat": 39.36487940000001,
+    "lng": -77.16240359999999,
+    "primary_type": "insurance_agency",
+    "google_place_id": "ChIJ2Vh8mpEsyIkRCXYRIMha19w"
+  },
+  {
+    "slug": "creekside-house",
+    "query": "Creekside House vacation rental Frederick MD",
+    "display_name": "Woodland Creek Farm Short Term Rental Frederick, MD",
+    "formatted_address": "Weller Rd, Monrovia, MD 21770, USA",
+    "business_status": "OPERATIONAL",
+    "website": "https://www.frederickfarmstay.com/?utm_source=google&utm_medium=wix_google_business_profile&utm_campaign=14103838996458132605",
+    "lat": 39.3532416,
+    "lng": -77.24515629999999,
+    "primary_type": "real_estate_agency",
+    "google_place_id": "ChIJsxzICzLVyYkR4VbLGXyvNZA"
+  },
+  {
+    "slug": "creekside-house",
+    "query": "Creekside House 24 S Court Street Frederick MD",
+    "display_name": "Creekside at Taskers Chance",
+    "formatted_address": "100 Burgess Hill Way, Frederick, MD 21702, USA",
+    "business_status": "OPERATIONAL",
+    "website": "https://www.creeksideattaskers.com/",
+    "lat": 39.4230136,
+    "lng": -77.4433497,
+    "primary_type": "service",
+    "google_place_id": "ChIJubLIQwrbyYkRkO_PJmqtaMw"
+  },
+  {
+    "slug": "ben-jerrys-14",
+    "query": "Ben & Jerry's Frederick MD",
+    "display_name": "Ben & Jerry’s",
+    "formatted_address": "199-F E Montgomery Ave, Rockville, MD 20850, USA",
+    "business_status": "OPERATIONAL",
+    "website": "https://www.benjerry.com/rockvillectr",
+    "lat": 39.083976899999996,
+    "lng": -77.150241,
+    "primary_type": "ice_cream_shop",
+    "google_place_id": "ChIJeetCRnXNt4kRslhpbZXNeKk"
+  },
+  {
+    "slug": "ben-jerrys-14",
+    "query": "Ben Jerry's ice cream 30 N Market St Frederick",
+    "display_name": "Frederick Fudge & Ice Cream Co",
+    "formatted_address": "253 E Church St, Frederick, MD 21701, USA",
+    "business_status": "OPERATIONAL",
+    "website": "https://www.fredicecream.com/",
+    "lat": 39.4151033,
+    "lng": -77.4053332,
+    "primary_type": "ice_cream_shop",
+    "google_place_id": "ChIJBZdSxV7ayYkRqG73mwimgrs"
+  },
+  {
+    "slug": "rick-ridgely-allstate-insurance",
+    "query": "Rick Ridgely Allstate Frederick MD",
+    "display_name": "Gary W. Kelley: Allstate Insurance",
+    "formatted_address": "10 N Jefferson St Ste A, Frederick, MD 21701, USA",
+    "business_status": "OPERATIONAL",
+    "website": "https://agents.allstate.com/gary-w-kelley-frederick-md.html?utm_source=GMB&utm_medium=Website",
+    "lat": 39.413290499999995,
+    "lng": -77.4207553,
+    "primary_type": "insurance_agency",
+    "google_place_id": "ChIJgYFCbKLbyYkRDJxGywO1gR8"
+  },
+  {
+    "slug": "rick-ridgely-allstate-insurance",
+    "query": "Rick Ridgely Insurance Frederick Maryland",
+    "display_name": "Lindquist Insurance",
+    "formatted_address": "7430 New Technology Way Suite 120, Frederick, MD 21703, USA",
+    "business_status": "OPERATIONAL",
+    "website": "https://lindquistinsurance.com/",
+    "lat": 39.3771738,
+    "lng": -77.40142999999999,
+    "primary_type": "insurance_agency",
+    "google_place_id": "ChIJi5cC_-nTyYkRIB9dEgZiug4"
+  }
+]

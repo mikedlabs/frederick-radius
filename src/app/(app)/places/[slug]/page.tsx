@@ -15,6 +15,8 @@ import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import SaveButton from "@/components/saved/SaveButton";
 import FollowButton from "@/components/place/FollowButton";
+import MyRadiusButton from "@/components/place/MyRadiusButton";
+import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
@@ -186,6 +188,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               <SaveButton refType="place" refId={place.slug} label={place.name} />
             </div>
           </div>
+          {/* Prominent text-style follow CTA — Phase 1's
+              "Add to My Radius" / "In My Radius" pattern. Sits below
+              the title row so it reads as the primary action on the
+              place, not a header chrome icon. PendingFollowApplier
+              consumes ?follow=<slug> from a post-sign-in redirect
+              and applies it once before clearing the query param. */}
+          <PendingFollowApplier slug={place.slug} name={place.name} />
+          <div className="-mt-1">
+            <MyRadiusButton slug={place.slug} name={place.name} />
+          </div>
           {desc && (
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               {desc}
@@ -258,13 +270,28 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           glyph form before any text. Self-hides when no amenities
           are curated for the place. Accent matches the place's
           category color so the row reads as part of the place's
-          identity, not as decoration. */}
-      {place.amenities && place.amenities.length > 0 && (
-        <PlaceAmenityIcons
-          amenities={place.amenities}
-          accent={cat?.color ?? "var(--app-brand)"}
-        />
-      )}
+          identity, not as decoration.
+          Source: prefer the curated `amenities` array, fall back to
+          the amenity-facet subset of `tags` so dog-friendly parks /
+          patios / outdoor-seating venues surface their icons without
+          a manual `amenities` curation pass per record. */}
+      {(() => {
+        const AMENITY_TAG_SLUGS = new Set([
+          "wifi", "outdoor-seating", "dog-friendly", "patio", "live-music",
+          "byob", "takeout", "delivery", "reservations", "walk-in",
+          "parking-lot", "bike-rack", "restroom",
+        ]);
+        const amenities =
+          place.amenities && place.amenities.length > 0
+            ? place.amenities
+            : (place.tags ?? []).filter((t) => AMENITY_TAG_SLUGS.has(t));
+        return amenities.length > 0 ? (
+          <PlaceAmenityIcons
+            amenities={amenities}
+            accent={cat?.color ?? "var(--app-brand)"}
+          />
+        ) : null;
+      })()}
 
       {reserveActions.length > 0 && (
         <IntegrationRow

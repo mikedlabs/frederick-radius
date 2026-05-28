@@ -34,7 +34,10 @@ export const metadata: Metadata = {
 
 export default async function AboutPage() {
   return (
-    <div className="relative mx-auto max-w-md space-y-7 py-6">
+    // Widened from max-w-md (28rem) to a real reading column — was
+    // rendering as a postcard in the middle of a desktop viewport.
+    // Centered, capped at the same 768 the rest of the app uses.
+    <div className="relative mx-auto w-full max-w-screen-md space-y-7 py-6">
       <PageBloom variant="warm-cool" />
 
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -91,11 +94,12 @@ export default async function AboutPage() {
       </header>
 
       {/* The pitch — four paragraphs, no more. Read top to bottom in
-          about 30 seconds. The italic body type is the Brand Book No.
-          01 editorial voice (Instrument Serif italic on Public Sans). */}
+          about 30 seconds. The italic tagline uses Newsreader's
+          italic (the display serif) on Public Sans body — Instrument
+          Serif was dropped in the May 2026 audit. */}
       <section className="space-y-4 text-[16px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         <p>
-          <span className="font-italic italic text-[18px]" style={{ color: "var(--app-ink)" }}>
+          <span className="font-serif italic text-[18px]" style={{ color: "var(--app-ink)" }}>
             What&apos;s open, what&apos;s happening, where, and how to get there
           </span>
           {" "}— across every town and community in Frederick County, Maryland. One app.
@@ -153,7 +157,7 @@ export default async function AboutPage() {
         <p>
           Companion: a photo book of Frederick County from above.{" "}
           <Link
-            href="/from-above"
+            href="/from-above/preview"
             className="font-semibold underline-offset-2 hover:underline"
             style={{ color: "var(--app-brand)" }}
           >

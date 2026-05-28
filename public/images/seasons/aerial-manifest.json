@@ -1,0 +1,938 @@
+[
+  {
+    "src": "/images/seasons/winter/WINTER 3.jpg",
+    "lat": 39.41412,
+    "lng": -77.410563,
+    "altM": 97.7,
+    "bearing": null,
+    "takenAt": "2024-11-12T08:15:14.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/fall/FALL LOOKING DOWN.jpg",
+    "lat": 39.417245,
+    "lng": -77.414387,
+    "altM": 82.4,
+    "bearing": null,
+    "takenAt": "2024-10-29T22:26:15.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/FALL COLORS.jpg",
+    "lat": 39.416312,
+    "lng": -77.410188,
+    "altM": 15.3,
+    "bearing": null,
+    "takenAt": "2024-10-29T22:21:25.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/054.jpg",
+    "lat": 39.414707,
+    "lng": -77.425646,
+    "altM": 210.8,
+    "bearing": null,
+    "takenAt": "2024-10-06T19:23:08.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/053.jpg",
+    "lat": 39.416015,
+    "lng": -77.42636,
+    "altM": 177.9,
+    "bearing": null,
+    "takenAt": "2024-10-06T19:21:54.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/058.jpg",
+    "lat": 39.414728,
+    "lng": -77.399759,
+    "altM": 47,
+    "bearing": null,
+    "takenAt": "2024-09-16T00:58:16.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/052.jpg",
+    "lat": 39.422716,
+    "lng": -77.409834,
+    "altM": 30.3,
+    "bearing": null,
+    "takenAt": "2024-09-14T20:35:40.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/summer/SUMMER MUST USE.jpg",
+    "lat": 39.41603,
+    "lng": -77.42355,
+    "altM": 181.5,
+    "bearing": null,
+    "takenAt": "2024-08-18T23:05:32.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/085.jpg",
+    "lat": 39.416735,
+    "lng": -77.422072,
+    "altM": 129.2,
+    "bearing": null,
+    "takenAt": "2024-08-11T15:24:39.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/084.jpg",
+    "lat": 39.412691,
+    "lng": -77.412131,
+    "altM": 145.6,
+    "bearing": null,
+    "takenAt": "2024-06-22T18:53:10.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/083.jpg",
+    "lat": 39.417207,
+    "lng": -77.410715,
+    "altM": 8.6,
+    "bearing": null,
+    "takenAt": "2023-09-22T10:48:23.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/079.jpg",
+    "lat": 39.416306,
+    "lng": -77.40831,
+    "altM": 99.5,
+    "bearing": null,
+    "takenAt": "2023-08-01T00:51:23.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/SUMMER POWER LINES.jpg",
+    "lat": 39.420424,
+    "lng": -77.411109,
+    "altM": 122.7,
+    "bearing": null,
+    "takenAt": "2023-07-27T23:11:31.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/SUMMER FIREWORKS.jpg",
+    "lat": 39.4157694444444,
+    "lng": -77.4063666666667,
+    "altM": 124.4,
+    "bearing": null,
+    "takenAt": "2023-07-05T01:39:52.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/074.jpg",
+    "lat": 39.415742,
+    "lng": -77.416139,
+    "altM": 90.8,
+    "bearing": null,
+    "takenAt": "2023-06-30T10:02:10.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/hazardous-air-quality-city.jpg",
+    "lat": 39.414983,
+    "lng": -77.41916,
+    "altM": 254.9,
+    "bearing": null,
+    "takenAt": "2023-06-08T11:07:31.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/city-skyline-at-sunset.jpg",
+    "lat": 39.415339,
+    "lng": -77.409163,
+    "altM": 219.8,
+    "bearing": null,
+    "takenAt": "2023-06-07T23:49:54.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/summer/SUMMER CARROL CREEK.jpg",
+    "lat": 39.412551,
+    "lng": -77.401617,
+    "altM": 151.9,
+    "bearing": null,
+    "takenAt": "2023-06-05T00:17:21.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/aerial-view-baseball-field.jpg",
+    "lat": 39.409769,
+    "lng": -77.425119,
+    "altM": 159.5,
+    "bearing": null,
+    "takenAt": "2023-06-01T10:42:08.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/summer/SUMMER NEW 7.jpg",
+    "lat": 39.419572,
+    "lng": -77.4097,
+    "altM": 154.5,
+    "bearing": null,
+    "takenAt": "2023-05-30T00:07:03.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/056.jpg",
+    "lat": 39.448513,
+    "lng": -77.386515,
+    "altM": 87.4,
+    "bearing": null,
+    "takenAt": "2023-05-19T13:16:59.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/089.jpg",
+    "lat": 39.412644,
+    "lng": -77.407067,
+    "altM": 91.5,
+    "bearing": null,
+    "takenAt": "2023-05-15T00:11:56.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/SUMMER STREETS.jpg",
+    "lat": 39.421137,
+    "lng": -77.406677,
+    "altM": 98.9,
+    "bearing": null,
+    "takenAt": "2023-05-10T23:48:56.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/008.jpg",
+    "lat": 39.419365,
+    "lng": -77.417737,
+    "altM": 226.7,
+    "bearing": null,
+    "takenAt": "2023-05-04T11:28:06.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/summer/SUMMER NEW 9.jpg",
+    "lat": 39.415816,
+    "lng": -77.408144,
+    "altM": 110,
+    "bearing": null,
+    "takenAt": "2023-04-14T10:45:45.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/017.jpg",
+    "lat": 39.416356,
+    "lng": -77.41481,
+    "altM": 95.4,
+    "bearing": null,
+    "takenAt": "2023-03-28T11:20:01.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/016.jpg",
+    "lat": 39.415338,
+    "lng": -77.410203,
+    "altM": 36.7,
+    "bearing": null,
+    "takenAt": "2023-03-28T11:04:10.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/fall/023.jpg",
+    "lat": 39.41586,
+    "lng": -77.412936,
+    "altM": 151.5,
+    "bearing": null,
+    "takenAt": "2023-01-20T12:38:21.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER NEW 5.jpg",
+    "lat": 39.412743,
+    "lng": -77.407451,
+    "altM": 50.8,
+    "bearing": null,
+    "takenAt": "2023-01-10T12:13:03.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/fall/030.jpg",
+    "lat": 39.415634,
+    "lng": -77.416603,
+    "altM": 142,
+    "bearing": null,
+    "takenAt": "2023-01-05T20:53:24.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/056.jpg",
+    "lat": 39.415614,
+    "lng": -77.415259,
+    "altM": 141.9,
+    "bearing": null,
+    "takenAt": "2023-01-05T20:51:16.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/010.jpg",
+    "lat": 39.4156944444444,
+    "lng": -77.4154527777778,
+    "altM": 122.1,
+    "bearing": null,
+    "takenAt": "2023-01-03T22:30:30.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/029.jpg",
+    "lat": 39.41729,
+    "lng": -77.41181,
+    "altM": -78.3,
+    "bearing": null,
+    "takenAt": "2022-11-08T11:38:30.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/049.jpg",
+    "lat": 39.416044,
+    "lng": -77.41924,
+    "altM": 147.2,
+    "bearing": null,
+    "takenAt": "2022-10-31T11:51:40.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/022.jpg",
+    "lat": 39.418705,
+    "lng": -77.420437,
+    "altM": 90.6,
+    "bearing": null,
+    "takenAt": "2022-10-27T11:59:51.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/018.jpg",
+    "lat": 39.416043,
+    "lng": -77.416089,
+    "altM": 0.5,
+    "bearing": null,
+    "takenAt": "2022-10-23T11:54:14.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/016.jpg",
+    "lat": 39.415418,
+    "lng": -77.412938,
+    "altM": -8.2,
+    "bearing": null,
+    "takenAt": "2022-10-23T11:29:59.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/028.jpg",
+    "lat": 39.415962,
+    "lng": -77.420052,
+    "altM": 53.6,
+    "bearing": null,
+    "takenAt": "2022-10-16T11:47:29.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/015.jpg",
+    "lat": 39.415722,
+    "lng": -77.419173,
+    "altM": 201.2,
+    "bearing": null,
+    "takenAt": "2022-10-14T12:04:15.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/013.jpg",
+    "lat": 39.416223,
+    "lng": -77.414379,
+    "altM": 207.6,
+    "bearing": null,
+    "takenAt": "2022-10-13T20:04:15.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/012.jpg",
+    "lat": 39.418137,
+    "lng": -77.415861,
+    "altM": 204.1,
+    "bearing": null,
+    "takenAt": "2022-10-13T19:57:34.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/summer/042.jpg",
+    "lat": 39.420921,
+    "lng": -77.417205,
+    "altM": 235.6,
+    "bearing": null,
+    "takenAt": "2022-09-25T18:49:00.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/SPRING NEW 1.jpg",
+    "lat": 39.415395,
+    "lng": -77.41774,
+    "altM": 117.1,
+    "bearing": null,
+    "takenAt": "2022-04-27T11:03:19.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/winter/015.jpg",
+    "lat": 39.415834,
+    "lng": -77.407603,
+    "altM": 77.7,
+    "bearing": null,
+    "takenAt": "2022-03-16T23:18:13.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER BOATS.jpg",
+    "lat": 39.413398,
+    "lng": -77.412162,
+    "altM": 92.5,
+    "bearing": null,
+    "takenAt": "2022-01-19T12:21:04.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/001.jpg",
+    "lat": 39.41592,
+    "lng": -77.40756,
+    "altM": 64.2,
+    "bearing": null,
+    "takenAt": "2022-01-18T22:03:07.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/020.jpg",
+    "lat": 39.412774,
+    "lng": -77.409218,
+    "altM": 129.9,
+    "bearing": null,
+    "takenAt": "2022-01-07T12:39:10.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER NEW 7.jpg",
+    "lat": 39.415247,
+    "lng": -77.41147,
+    "altM": 199.1,
+    "bearing": null,
+    "takenAt": "2022-01-02T12:41:25.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/019.jpg",
+    "lat": 39.412804,
+    "lng": -77.409273,
+    "altM": 203.1,
+    "bearing": null,
+    "takenAt": "2022-01-01T02:40:47.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/018.jpg",
+    "lat": 39.415759,
+    "lng": -77.416226,
+    "altM": 92.4,
+    "bearing": null,
+    "takenAt": "2021-12-21T23:29:29.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/017.jpg",
+    "lat": 39.414777,
+    "lng": -77.423532,
+    "altM": 126.8,
+    "bearing": null,
+    "takenAt": "2021-12-21T23:19:25.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/011.jpg",
+    "lat": 39.414502,
+    "lng": -77.410524,
+    "altM": 89.9,
+    "bearing": null,
+    "takenAt": "2021-12-10T23:50:13.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/009.jpg",
+    "lat": 39.415952,
+    "lng": -77.410176,
+    "altM": 91,
+    "bearing": null,
+    "takenAt": "2021-12-10T23:47:16.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/005.jpg",
+    "lat": 39.412536,
+    "lng": -77.412289,
+    "altM": 65.8,
+    "bearing": null,
+    "takenAt": "2021-12-01T12:04:56.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/fall/039.jpg",
+    "lat": 39.414879,
+    "lng": -77.403716,
+    "altM": 38.8,
+    "bearing": null,
+    "takenAt": "2021-11-17T12:11:15.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/021.jpg",
+    "lat": 39.415324,
+    "lng": -77.416785,
+    "altM": 64.8,
+    "bearing": null,
+    "takenAt": "2021-11-14T12:04:16.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/007.jpg",
+    "lat": 39.418679,
+    "lng": -77.413651,
+    "altM": 124.9,
+    "bearing": null,
+    "takenAt": "2021-11-12T14:04:07.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/FALL NEW 6.jpg",
+    "lat": 39.415769,
+    "lng": -77.412605,
+    "altM": 128.3,
+    "bearing": null,
+    "takenAt": "2021-11-12T13:51:19.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/001.jpg",
+    "lat": 39.417198,
+    "lng": -77.414047,
+    "altM": 127.3,
+    "bearing": null,
+    "takenAt": "2021-11-12T13:48:31.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/024.jpg",
+    "lat": 39.416192,
+    "lng": -77.41901,
+    "altM": 82,
+    "bearing": null,
+    "takenAt": "2021-11-03T11:49:21.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/043.jpg",
+    "lat": 39.412673,
+    "lng": -77.407093,
+    "altM": 224.8,
+    "bearing": null,
+    "takenAt": "2021-10-26T11:56:45.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/spring/circular-park-layout.jpg",
+    "lat": 39.412608,
+    "lng": -77.4065,
+    "altM": 93.6,
+    "bearing": null,
+    "takenAt": "2021-10-14T12:07:41.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/summer/098.jpg",
+    "lat": 39.41267,
+    "lng": -77.407367,
+    "altM": 113,
+    "bearing": null,
+    "takenAt": "2021-09-23T23:58:04.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/SPRING NEW 3.jpg",
+    "lat": 39.412759,
+    "lng": -77.409238,
+    "altM": 49.8,
+    "bearing": null,
+    "takenAt": "2021-08-15T10:37:57.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/summer/004.jpg",
+    "lat": 39.424646,
+    "lng": -77.417612,
+    "altM": 166.5,
+    "bearing": null,
+    "takenAt": "2021-07-18T12:50:17.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/PG40-41 Replacement.jpg",
+    "lat": 39.422763,
+    "lng": -77.418709,
+    "altM": 166.3,
+    "bearing": null,
+    "takenAt": "2021-07-18T12:44:37.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/summer/036.jpg",
+    "lat": 39.412601,
+    "lng": -77.405025,
+    "altM": 130.3,
+    "bearing": null,
+    "takenAt": "2021-07-09T01:00:27.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/018.jpg",
+    "lat": 39.409657,
+    "lng": -77.408697,
+    "altM": 129.5,
+    "bearing": null,
+    "takenAt": "2021-07-01T13:25:54.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/015.jpg",
+    "lat": 39.415655,
+    "lng": -77.414966,
+    "altM": 121,
+    "bearing": null,
+    "takenAt": "2021-06-14T17:26:58.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/summer/024.jpg",
+    "lat": 39.412619,
+    "lng": -77.406481,
+    "altM": 140.4,
+    "bearing": null,
+    "takenAt": "2021-06-13T10:28:00.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/021.jpg",
+    "lat": 39.413341,
+    "lng": -77.398211,
+    "altM": 20,
+    "bearing": null,
+    "takenAt": "2021-05-31T01:16:51.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/016.jpg",
+    "lat": 39.413817,
+    "lng": -77.412224,
+    "altM": 150.5,
+    "bearing": null,
+    "takenAt": "2021-05-26T23:56:09.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/001.jpg",
+    "lat": 39.401373,
+    "lng": -77.412015,
+    "altM": 64.7,
+    "bearing": null,
+    "takenAt": "2021-05-11T20:28:12.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/summer/030.jpg",
+    "lat": 39.408651,
+    "lng": -77.409922,
+    "altM": 156.4,
+    "bearing": null,
+    "takenAt": "2021-05-07T23:27:28.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/SPRING NEW 2.jpg",
+    "lat": 39.415712,
+    "lng": -77.418958,
+    "altM": 253.8,
+    "bearing": null,
+    "takenAt": "2021-04-30T10:57:28.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/002.jpg",
+    "lat": 39.412962,
+    "lng": -77.403639,
+    "altM": 175.5,
+    "bearing": null,
+    "takenAt": "2021-04-25T12:57:40.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/004.jpg",
+    "lat": 39.41304,
+    "lng": -77.401777,
+    "altM": 174.5,
+    "bearing": null,
+    "takenAt": "2021-04-25T12:50:28.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/013.jpg",
+    "lat": 39.412492,
+    "lng": -77.409666,
+    "altM": 115.6,
+    "bearing": null,
+    "takenAt": "2021-04-22T22:37:00.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/010.jpg",
+    "lat": 39.406645,
+    "lng": -77.450094,
+    "altM": 156.8,
+    "bearing": null,
+    "takenAt": "2021-04-20T10:53:51.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/009.jpg",
+    "lat": 39.406627,
+    "lng": -77.450444,
+    "altM": 122.2,
+    "bearing": null,
+    "takenAt": "2021-04-20T10:27:44.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER NEW 8.jpg",
+    "lat": 39.415111,
+    "lng": -77.4208,
+    "altM": 119.3,
+    "bearing": null,
+    "takenAt": "2021-02-18T17:43:51.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER NEW 9.jpg",
+    "lat": 39.416078,
+    "lng": -77.42108,
+    "altM": 117.3,
+    "bearing": null,
+    "takenAt": "2021-02-18T17:31:44.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER SNOW.jpg",
+    "lat": 39.415354,
+    "lng": -77.412774,
+    "altM": 61.1,
+    "bearing": null,
+    "takenAt": "2021-02-11T17:12:29.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER NEW 4.jpg",
+    "lat": 39.416647,
+    "lng": -77.414549,
+    "altM": 60.6,
+    "bearing": null,
+    "takenAt": "2021-02-11T17:01:43.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/014.jpg",
+    "lat": 39.415769,
+    "lng": -77.412503,
+    "altM": 70.3,
+    "bearing": null,
+    "takenAt": "2021-02-02T12:42:39.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/013.jpg",
+    "lat": 39.415676,
+    "lng": -77.411674,
+    "altM": 40.9,
+    "bearing": null,
+    "takenAt": "2021-02-02T12:41:53.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/012.jpg",
+    "lat": 39.414187,
+    "lng": -77.410957,
+    "altM": 41.7,
+    "bearing": null,
+    "takenAt": "2021-02-02T12:37:04.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/010.jpg",
+    "lat": 39.414158,
+    "lng": -77.410963,
+    "altM": 41.5,
+    "bearing": null,
+    "takenAt": "2021-02-02T12:36:56.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/summer/017.jpg",
+    "lat": 39.416644,
+    "lng": -77.41768,
+    "altM": 101.2,
+    "bearing": null,
+    "takenAt": "2021-01-27T22:41:37.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/winter/007.jpg",
+    "lat": 39.411525,
+    "lng": -77.408835,
+    "altM": 60.4,
+    "bearing": null,
+    "takenAt": "2021-01-22T22:36:22.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/006.jpg",
+    "lat": 39.414324,
+    "lng": -77.411117,
+    "altM": 33.4,
+    "bearing": null,
+    "takenAt": "2021-01-17T12:36:40.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/004.jpg",
+    "lat": 39.413724,
+    "lng": -77.409578,
+    "altM": 60.8,
+    "bearing": null,
+    "takenAt": "2020-12-17T12:45:58.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER NEW 6.jpg",
+    "lat": 39.416293,
+    "lng": -77.415217,
+    "altM": 59.2,
+    "bearing": null,
+    "takenAt": "2020-12-17T12:36:03.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/winter/WINTER COLOR.jpg",
+    "lat": 39.410973,
+    "lng": -77.410534,
+    "altM": 68.8,
+    "bearing": null,
+    "takenAt": "2020-12-16T18:30:34.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/summer/105.jpg",
+    "lat": 39.412579,
+    "lng": -77.41135,
+    "altM": 6.1,
+    "bearing": null,
+    "takenAt": "2020-12-09T12:34:30.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/winter/PG134 Replacement.jpg",
+    "lat": 39.416178,
+    "lng": -77.407561,
+    "altM": 43.3,
+    "bearing": null,
+    "takenAt": "2020-12-07T22:05:33.000Z",
+    "season": "winter"
+  },
+  {
+    "src": "/images/seasons/fall/025.jpg",
+    "lat": 39.416332,
+    "lng": -77.407533,
+    "altM": 45.9,
+    "bearing": null,
+    "takenAt": "2020-12-05T13:15:53.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/027.jpg",
+    "lat": 39.417128,
+    "lng": -77.409226,
+    "altM": 46.5,
+    "bearing": null,
+    "takenAt": "2020-11-15T21:23:45.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/fall/002.jpg",
+    "lat": 39.415731,
+    "lng": -77.407519,
+    "altM": 27.7,
+    "bearing": null,
+    "takenAt": "2020-11-10T21:22:47.000Z",
+    "season": "fall"
+  },
+  {
+    "src": "/images/seasons/summer/011.jpg",
+    "lat": 39.416015,
+    "lng": -77.415267,
+    "altM": 34.6,
+    "bearing": null,
+    "takenAt": "2020-06-05T21:46:37.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/summer/087.jpg",
+    "lat": 39.416617,
+    "lng": -77.410706,
+    "altM": 52.5,
+    "bearing": null,
+    "takenAt": "2019-08-07T18:35:03.000Z",
+    "season": "summer"
+  },
+  {
+    "src": "/images/seasons/spring/Frederick Night.jpg",
+    "lat": 39.41565,
+    "lng": -77.4159194444444,
+    "altM": 118.3000031,
+    "bearing": null,
+    "takenAt": "2019-06-14T00:59:02.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/aerial-view-of-town.jpg",
+    "lat": 39.41565,
+    "lng": -77.4159222222222,
+    "altM": 111.9000015,
+    "bearing": null,
+    "takenAt": "2019-06-14T00:58:22.000Z",
+    "season": "spring"
+  },
+  {
+    "src": "/images/seasons/spring/HDR_0002.jpg",
+    "lat": 39.4173166666667,
+    "lng": -77.411175,
+    "altM": 72.5,
+    "bearing": null,
+    "takenAt": "2019-05-15T00:01:21.000Z",
+    "season": "spring"
+  }
+]

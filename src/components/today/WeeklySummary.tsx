@@ -77,7 +77,12 @@ export default async function WeeklySummary() {
       {wet > 0 && (
         <>
           <span aria-hidden style={{ color: "var(--app-border)" }}>·</span>
-          <span style={{ color: "var(--app-cool)" }}>
+          {/* Was var(--app-cool) (link-blue), the only saturated cool
+              color on the screen — pulled the eye toward a secondary
+              detail. Switched to ink-2 (the same warm-dark base text
+              everything else on the row uses) so the rain count
+              reads as part of the summary, not as an active link. */}
+          <span style={{ color: "var(--app-ink-2)", fontWeight: 600 }}>
             {wet} {wet === 1 ? "day" : "days"} of rain
           </span>
         </>

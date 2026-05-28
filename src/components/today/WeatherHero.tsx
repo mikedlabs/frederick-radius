@@ -71,56 +71,105 @@ export default async function WeatherHero() {
 
   const curVariant: SkyVariant = iconForShortForecast(cur.shortForecast);
 
+  // Sentence-case the NWS shortForecast. Raw NWS sends Title Case
+  // ("Chance Showers And Thunderstorms") which reads like XML output.
+  // First letter capitalized, everything else lowercased — except
+  // the words we WANT capitalized (proper nouns rarely appear in
+  // NWS short forecasts, so plain sentence case is safe).
+  const condition = (cur.shortForecast || "")
+    .toLowerCase()
+    .replace(/^\w/, (c) => c.toUpperCase());
+
+  // Forecast freshness — quiet "Updated · 6:38 PM" under the location.
+  // Reads as accountability ("this isn't stale") without competing
+  // with the temp.
+  const asOf = forecast?.asOf
+    ? new Date(forecast.asOf)
+    : null;
+  const updatedAt = asOf
+    ? new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(asOf)
+    : null;
+
   return (
     <section
-      className="flex flex-col items-center text-center"
-      aria-label={`Current weather: ${cur.temperature}°F, ${cur.shortForecast}`}
+      className="flex flex-col gap-3"
+      aria-label={`Current weather in Frederick, Maryland: ${cur.temperature}°F, ${condition}`}
       style={{ color: "currentColor" }}
     >
-      {/* Atmospheric sky glyph — small, sits above the temp like
-          the iOS sun in its lens flare. */}
-      <AnimatedSkyGlyph variant={curVariant} size={56} />
-
-      {/* Huge thin temperature — the headline. Serif at light weight
-          reads as editorial / almanac, in contrast to iOS's sans-thin
-          but the same gestalt: the number is the page. */}
-      <p
-        className="mt-1 font-serif font-light leading-none tabular-nums"
-        style={{
-          fontSize: "clamp(72px, 22vw, 104px)",
-          letterSpacing: "-0.03em",
-        }}
-      >
-        {cur.temperature}&deg;
-      </p>
-
-      {/* Condition — one line. */}
-      <p className="mt-1 text-[15px] font-medium opacity-90">
-        {cur.shortForecast}
-      </p>
-
-      {/* H/L — tabular-nums so the colon and degree symbols align
-          visually with the temperature above. */}
-      {(high !== undefined || low !== undefined) && (
-        <p className="mt-1 text-[13px] font-semibold tabular-nums opacity-75">
-          {high !== undefined && <>H:{high}&deg;</>}
-          {high !== undefined && low !== undefined && (
-            <span className="mx-1.5 opacity-50">·</span>
-          )}
-          {low !== undefined && <>L:{low}&deg;</>}
-        </p>
-      )}
-
-      {/* nextChange — quiet, optional. Only renders when there's a
-          real time-stamped heads-up worth saying. */}
-      {nextChange && (
+      {/* LOCATION HEADER — A weather screen's first job is telling
+          you where the forecast applies. Sits ABOVE the temperature
+          so a quick glance answers "this is Frederick" before the
+          eye reaches anything else. Updated-at lives just under,
+          small and quiet, as accountability. */}
+      <div className="flex flex-col gap-0.5">
         <p
-          className="mt-2 max-w-[280px] text-[12.5px] leading-snug opacity-70"
-          style={{ textWrap: "balance" } as React.CSSProperties}
+          className="text-[15px] font-semibold leading-tight tracking-tight"
+          style={{ color: "currentColor" }}
         >
-          {nextChange}
+          Frederick, MD
         </p>
-      )}
+        {updatedAt && (
+          <p
+            className="text-[10.5px] font-medium tracking-wide opacity-70"
+          >
+            Updated · {updatedAt}
+          </p>
+        )}
+      </div>
+
+      {/* HERO ROW — temperature unit (number + H/L stacked under it)
+          on the LEFT, paired with condition unit (sky glyph + text +
+          nextChange) on the RIGHT. Each column is internally tight
+          so the eye doesn't drift between five anchor points anymore:
+          read the number + its range, then read the condition + its
+          schedule. Two beats. */}
+      <div className="flex items-start gap-4">
+        <div className="shrink-0">
+          <p
+            className="font-serif font-light leading-none tabular-nums"
+            style={{
+              fontSize: "clamp(76px, 26vw, 120px)",
+              letterSpacing: "-0.04em",
+            }}
+          >
+            {cur.temperature}&deg;
+          </p>
+          {(high !== undefined || low !== undefined) && (
+            <p className="mt-1 text-[12px] font-semibold tabular-nums opacity-75 sm:text-[13px]">
+              {high !== undefined && <>H {high}&deg;</>}
+              {high !== undefined && low !== undefined && (
+                <span className="mx-1.5 opacity-50">·</span>
+              )}
+              {low !== undefined && <>L {low}&deg;</>}
+            </p>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-2 pt-2">
+          {/* Glyph scaled up from 48 → 72 so it matches the optical
+              weight of the temperature next to it. The lightning
+              bolt was reading as a tiny accent before; at 72 it
+              carries the warning cue properly. */}
+          <AnimatedSkyGlyph variant={curVariant} size={72} />
+          <p
+            className="text-[14px] font-medium leading-snug opacity-95"
+            style={{ textWrap: "balance" } as React.CSSProperties}
+          >
+            {condition}
+          </p>
+          {nextChange && (
+            <p
+              className="text-[12px] leading-snug opacity-75"
+              style={{ textWrap: "balance" } as React.CSSProperties}
+            >
+              {nextChange}
+            </p>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
