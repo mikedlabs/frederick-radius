@@ -22,7 +22,7 @@ import { BookOpen, ArrowRight } from "lucide-react";
 export default function FromAboveTile() {
   return (
     <a
-      href="http://www.miked.store"
+      href="https://www.miked.store"
       target="_blank"
       rel="noopener noreferrer"
       className="tactile tactile-interactive group relative block overflow-hidden rounded-[var(--app-radius-lg)]"

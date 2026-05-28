@@ -25,7 +25,7 @@ import { ArrowRight } from "lucide-react";
 export default function FromAboveCta() {
   return (
     <a
-      href="http://www.miked.store"
+      href="https://www.miked.store"
       target="_blank"
       rel="noopener noreferrer"
       className="tactile tactile-interactive group relative flex items-center gap-3.5 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
