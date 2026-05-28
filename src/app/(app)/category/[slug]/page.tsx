@@ -243,7 +243,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           ("show me all the breweries") and want to compare. Their
           layout preference persists across surfaces via localStorage. */}
       <section className="space-y-3">
-        <SectionHeading title="Browse" accent={c.color} />
+        <SectionHeading title={`All ${c.name.toLowerCase()}`} accent={c.color} />
         <PlaceList
           places={places}
           initialLayout="list"

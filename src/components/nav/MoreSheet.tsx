@@ -93,7 +93,7 @@ export default function MoreSheet({
     <BottomDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="Field guide"
+      title="More"
       subtitle="Tools and layers"
     >
       <div className="space-y-5 px-4 pt-3 pb-6">
