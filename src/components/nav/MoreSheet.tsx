@@ -20,30 +20,36 @@ import {
   Sparkles,
   ShieldCheck,
   Waves,
+  TreeDeciduous,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
 /**
- * MoreSheet v4 — colored, scannable, less repetitive.
+ * MoreSheet v5 — Field Guide cleanup pass (May 2026).
  *
- * v3 listed 13+ rows that all used the same cool-color icon
- * background, so the sheet read as one undifferentiated wall of
- * grey-blue chips. v4:
+ * v4 worked but had three problems the brand review surfaced:
+ *   1. Title said "More" while the nav label said "Field guide"
+ *      — a one-step inconsistency that made the product feel
+ *      unfinished on the first interaction.
+ *   2. The TOOLS row used aspect-square tiles that ate ~40% of
+ *      visible drawer height for three items. Visual weight didn't
+ *      match the actual information they carried.
+ *   3. The USEFUL section was seven identical-shaped rows in a
+ *      single column — a wall of repetition.
  *
- *   1. TOOLS — promoted to a 3-up brand-color tile grid (the
- *      MoodTiles intent-tile pattern, scaled down). Plan / Within
- *      reach / Pulse get their own saturated colors so the action
- *      verbs visually pop above the noun list.
- *   2. USEFUL — stays as rows BUT each row gets its own intent
- *      color (parks = Catoctin green, water = slate, trails =
- *      forest, contacts = ink, transit = cool, amenities = brick).
- *      No more sea of identical rows.
- *   3. DISCOVER — book cards on top (unchanged), History +
- *      Collections rows beneath with their own colors.
- *   4. APP — About / Trust / Settings as compact rows, each
- *      with its own subtle color.
+ * v5 fixes:
+ *   - Drawer title is now "Field guide" (matches the nav label).
+ *     Subtitle is short, declarative, no cute filler.
+ *   - TOOLS are short horizontal tiles (~80px tall) instead of
+ *     aspect-square. Same color identity, ~½ the vertical real
+ *     estate, more breathing room for the rest.
+ *   - USEFUL is a 2-column grid, so seven items become four rows
+ *     instead of seven. Per-item color identity is kept.
+ *   - Parks gets a distinct icon (TreeDeciduous) so it doesn't
+ *     collide visually with Trails (Mountain).
  *
- * Same TABS schema, just per-item color identity.
+ * Same TABS schema, same per-item color identity. The cleanup is
+ * spatial + verbal, not structural.
  */
 
 type Item = {
@@ -70,7 +76,7 @@ const USEFUL: Item[] = [
   { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2,     color: "var(--app-ink-2)" },
   { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus,           color: "var(--app-cool)" },
   { href: "/trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain,      color: "var(--app-positive)" },
-  { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: Mountain,      color: "var(--app-brand-2)" },
+  { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: TreeDeciduous, color: "var(--app-brand-2)" },
   { href: "/rivers",    label: "Rivers",    description: "Live creek and river gauges with 24-hour trend",     icon: Waves,         color: "var(--app-cool)" },
   { href: "/water",     label: "Water",     description: "Public drinking fountains and water bottle refills", icon: Droplets,      color: "var(--app-info)" },
 ];
@@ -128,8 +134,8 @@ export default function MoreSheet({
     <BottomDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="More"
-      subtitle="Tools, the city's bits, and the books"
+      title="Field guide"
+      subtitle="Tools, layers, books, and the rest"
     >
       <div className="space-y-5 px-4 pt-3 pb-6">
         {/* TOOLS — the action verbs as a 3-up color tile grid. The
@@ -148,7 +154,7 @@ export default function MoreSheet({
                     href={it.href}
                     onClick={close}
                     aria-label={`${it.label} — ${it.description}`}
-                    className="tactile tactile-interactive relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] border p-2 text-center transition active:scale-[0.96]"
+                    className="tactile tactile-interactive relative flex h-20 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-md)] border p-2 text-center transition active:scale-[0.96]"
                     style={{
                       borderColor: `color-mix(in srgb, ${it.color} 40%, black)`,
                       background: gradientFor(it.color),
@@ -157,7 +163,7 @@ export default function MoreSheet({
                   >
                     <span
                       aria-hidden
-                      className="absolute -right-4 -bottom-4 h-16 w-16 rounded-full"
+                      className="absolute -right-4 -bottom-4 h-12 w-12 rounded-full"
                       style={{
                         background:
                           "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)",
@@ -165,7 +171,7 @@ export default function MoreSheet({
                     />
                     <span
                       aria-hidden
-                      className="grid h-9 w-9 place-items-center rounded-full"
+                      className="grid h-7 w-7 place-items-center rounded-full"
                       style={{
                         background: "rgba(255,255,255,0.96)",
                         backdropFilter: "blur(8px)",
@@ -175,7 +181,7 @@ export default function MoreSheet({
                       }}
                     >
                       <Icon
-                        className="h-[18px] w-[18px]"
+                        className="h-[15px] w-[15px]"
                         strokeWidth={2.25}
                         style={{ color: it.color }}
                       />
@@ -193,7 +199,7 @@ export default function MoreSheet({
           </ul>
         </section>
 
-        <Cluster heading="Useful" items={USEFUL} onClose={close} />
+        <Cluster heading="Useful" items={USEFUL} onClose={close} columns={2} />
 
         {/* Discover — book cards then editorial rows. */}
         <section className="space-y-2">
@@ -226,17 +232,26 @@ function Cluster({
   heading,
   items,
   onClose,
+  columns = 1,
 }: {
   heading: string;
   items: Item[];
   onClose: () => void;
+  /** 1 = full-width rows (small clusters); 2 = side-by-side grid
+   *  (used for the big USEFUL cluster so seven items don't read as
+   *  a wall of seven identical rows). */
+  columns?: 1 | 2;
 }) {
+  const ulClass =
+    columns === 2
+      ? "grid grid-cols-1 gap-1.5 sm:grid-cols-2"
+      : "space-y-1.5";
   return (
     <section className="space-y-1.5">
       <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
         {heading}
       </h3>
-      <ul className="space-y-1.5">
+      <ul className={ulClass}>
         {items.map((it) => (
           <li key={it.href}>
             <DirectoryRow {...it} onClose={onClose} />
