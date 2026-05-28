@@ -6,6 +6,7 @@ import { Search, Bookmark, Settings as SettingsIcon, MoreHorizontal } from "luci
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
 import MoreSheet from "./MoreSheet";
+import PulseIndicator from "./PulseIndicator";
 import { usePathname } from "next/navigation";
 
 /**
@@ -195,6 +196,12 @@ export default function TopBar() {
               so it has to be one tap from anywhere. LocationChip
               stays mobile-hidden because the search modal carries
               the same affordance. */}
+          {/* Live county pulse indicator — lights up when there's
+              an active NWS alert, school alert, traffic incident, or
+              significant power outage. Quiet by default so it never
+              competes with the rest of the header chrome. */}
+          <PulseIndicator />
+
           <Link
             href="/settings"
             aria-label="Settings"
