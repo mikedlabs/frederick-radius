@@ -151,7 +151,7 @@ export default function TodayTabs({
       ) : (
         <span>{todayEvents.length} in the next 24 hours</span>
       ),
-      empty: "Nothing on tonight's calendar yet — pull the planner.",
+      empty: "Nothing on tonight's calendar yet. Open the planner — we'll build one from what's open and what's near you.",
       content: tonight.length === 0 ? null : (
         <ul className="space-y-2">
           {tonight.map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
@@ -167,7 +167,7 @@ export default function TodayTabs({
       href: "/events",
       hrefLabel: "All events",
       meta: <span>Friday evening through Sunday</span>,
-      empty: "No events on the weekend yet.",
+      empty: "Nothing booked for the weekend yet. Most Frederick events post late — check back Thursday, or try tonight.",
       content: weekendEvents.length === 0 ? null : (
         <ul className="space-y-2">
           {weekendEvents.slice(0, 6).map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
@@ -195,7 +195,7 @@ export default function TodayTabs({
       href: "/map?mode=radius",
       hrefLabel: "Set a radius",
       meta: <span>Inside a 15-minute walk from downtown</span>,
-      empty: "No nearby walkable spots right now.",
+      empty: "Nothing walkable inside 15 minutes from downtown. Try the Radius map and widen to bike or drive.",
       content: renderPlaces(walkable),
     },
     {
@@ -207,7 +207,7 @@ export default function TodayTabs({
       href: "/map?filter=family",
       hrefLabel: "Family map",
       meta: <span>Kid-friendly places + family events</span>,
-      empty: "No family picks loaded.",
+      empty: "No family picks loaded right now. Try Walkable, or Baker Park is always a safe one.",
       content: renderPlaces(familyPicks),
     },
   ];

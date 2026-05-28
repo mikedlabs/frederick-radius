@@ -143,7 +143,7 @@ export default function CommandPalette() {
           </kbd>
         </div>
         <Command.List className="cmdk-list">
-          <Command.Empty className="cmdk-empty">No matches. Try a different word.</Command.Empty>
+          <Command.Empty className="cmdk-empty">Nothing matches. Try a town name, a category like &ldquo;coffee&rdquo;, or a place you remember.</Command.Empty>
 
           <Command.Group heading="Pages" className="cmdk-group">
             {ROUTES.map((r) => {

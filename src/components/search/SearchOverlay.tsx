@@ -296,8 +296,8 @@ export default function SearchOverlay({
             />
           ) : results.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
-              <p>No matches for <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>“{query}”</span>.</p>
-              <p className="mt-1 text-xs">Try a different word, a category like &quot;coffee&quot;, or a town.</p>
+              <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
+              <p className="mt-1 text-xs">Try a town (Brunswick, Thurmont), a category (&ldquo;coffee&rdquo;, &ldquo;parks&rdquo;), or a partial place name.</p>
             </div>
           ) : (
             // Grouped results — group order follows relevance (the
