@@ -3,15 +3,11 @@
 import Link from "next/link";
 import {
   Info,
-  MapPinned,
   Wrench,
   Building2,
   Bus,
   Mountain,
   Settings as SettingsIcon,
-  Activity,
-  CalendarRange,
-  Droplets,
   ExternalLink,
   ShieldCheck,
   Waves,
@@ -53,13 +49,12 @@ type Item = {
   external?: boolean;
 };
 
-/** Tools — the action verbs. Surface them as full-color tiles
- *  (3-up) so they read above the noun rows below. */
-const TOOLS: Item[] = [
-  { href: "/plan",   label: "Plan",        description: "Dinner, drinks, late",       icon: CalendarRange, color: "var(--app-brand)" },
-  { href: "/map?mode=radius", label: "Within reach", description: "Walkable · bikable · car",  icon: MapPinned,     color: "var(--app-cool)" },
-  { href: "/pulse",  label: "Pulse",       description: "Live county status",         icon: Activity,      color: "var(--app-accent)" },
-];
+// TOOLS section retired May 2026 (Field Guide Phase 2):
+//   - Plan now lives as a "Plan tonight" CTA at the top of /events
+//   - Within reach IS the default /map experience (Radius mode)
+//   - Pulse lives as an active-alert indicator in the header
+// All three action verbs have better, more-contextual homes than a
+// hidden drawer; the drawer no longer needs a Tools section.
 
 const USEFUL: Item[] = [
   { href: "/amenities", label: "Amenities", description: "Restrooms, water, wifi, EV charging, bike parking", icon: Wrench,        color: "var(--app-brand)" },
@@ -97,15 +92,16 @@ export default function MoreSheet({
       subtitle="Tools and layers"
     >
       <div className="space-y-5 px-4 pt-3 pb-6">
-        {/* DISCOVER section retired May 2026 (Field Guide Phase 2):
-            Books (From Above, Color Frederick) and editorial rows
-            (History, Collections) moved to /about as "Companion
-            content." Editorial / reading destinations don't belong
-            in a launcher drawer — /about is where someone learning
-            about the project goes and the books are natural
-            neighbors. The drawer now leads with the action verbs. */}
+        {/* DISCOVER + TOOLS sections retired (Field Guide Phase 2,
+            May 2026). Discover items (books, History, Collections)
+            moved to /about as Companion content. Tools (Plan,
+            Within reach, Pulse) moved to their natural homes —
+            /events CTA, /map default mode, header indicator
+            respectively. The drawer now leads with USEFUL — the
+            secondary destinations that don't yet have a primary
+            surface to live on. APP closes out the sheet so About,
+            Trust, Settings stay reachable. */}
 
-        <IconCluster heading="Tools" items={TOOLS} onClose={close} columns={3} />
         <IconCluster heading="Useful" items={USEFUL} onClose={close} columns={4} />
         <IconCluster heading="App" items={APP} onClose={close} columns={3} />
       </div>

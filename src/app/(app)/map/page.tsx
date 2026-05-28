@@ -15,6 +15,7 @@ import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/App
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
 import MapModeToggle from "@/components/map/MapModeToggle";
+import MapModes from "@/components/map/MapModes";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
 import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
@@ -398,6 +399,17 @@ export default async function MapPage({
           (right) edge so the two strips don't collide. */}
       <div className="absolute right-3 top-3 z-40 sm:right-4 sm:top-4">
         <MapModeToggle mode="browse" />
+      </div>
+      {/* Map Modes — preset "decision surface" deep links. Sits
+          BELOW the mode toggle and ABOVE MapIntentChips so the
+          hierarchy reads: "Radius vs Browse" (toggle) → "What kind
+          of browse?" (preset) → "What category?" (intent chips).
+          Per the May 2026 review: most maps show everything;
+          this app should show the RIGHT layer for the moment. */}
+      <div className="pointer-events-none absolute inset-x-0 top-14 z-30 px-3 sm:top-16 sm:px-4">
+        <MapModes
+          params={{ mode: "browse", open: openParam, intent: intentParam }}
+        />
       </div>
       <MapIntentChips
         active={intent?.key}
