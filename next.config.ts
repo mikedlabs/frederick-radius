@@ -113,6 +113,13 @@ const nextConfig: NextConfig = {
       // redirected so PWA installs, push notifications, and crawler
       // links never 404.
       { source: "/now", destination: "/today", permanent: true },
+      // /water → /rivers (May 2026). Both rendered "Rivers & streams"
+      // USGS gauge data but /rivers is the canonical richer surface
+      // (trend sparklines, 24h history, MetricCards). /water was a
+      // stripped-down list that duplicated the data without adding
+      // value. Redirect kills the duplication; the Field Guide
+      // drawer's "Water" tile now points at /rivers directly.
+      { source: "/water", destination: "/rivers", permanent: true },
       // /browse renamed back to /map — the spatial tab IS a map, so
       // the URL should say so. The old /browse remains permanently
       // redirected so deep links / cached search results don't 404.

@@ -72,8 +72,11 @@ const USEFUL: Item[] = [
   { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus,           color: "var(--app-cool)" },
   { href: "/trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain,      color: "var(--app-positive)" },
   { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: TreeDeciduous, color: "var(--app-brand-2)" },
-  { href: "/rivers",    label: "Rivers",    description: "Live creek and river gauges with 24-hour trend",     icon: Waves,         color: "var(--app-cool)" },
-  { href: "/water",     label: "Water",     description: "Public drinking fountains and water bottle refills", icon: Droplets,      color: "var(--app-info)" },
+  // "Water" tile collapsed into Rivers (May 2026 IA cleanup). The
+  // /water page redirected to /rivers because both rendered the same
+  // USGS gauge data; the intended "drinking fountains" surface lives
+  // under the Pools/Amenities map filter when curated data lands.
+  { href: "/rivers",    label: "Rivers & creeks", description: "Live USGS gauges · gage height + flow + 24-hour trend", icon: Waves, color: "var(--app-cool)" },
 ];
 
 const BOOKS: Array<{
