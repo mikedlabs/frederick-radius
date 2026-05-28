@@ -15,7 +15,14 @@ const AppMap = dynamic(() => import("./AppMap"), {
       className="grid h-[78vh] place-items-center rounded-[var(--app-radius-lg)] border"
       style={{ borderColor: "var(--app-border)" }}
     >
-      <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>Loading map…</p>
+      <div className="text-center">
+        <p className="font-serif text-base font-semibold" style={{ color: "var(--app-ink-2)" }}>
+          Frederick on the map
+        </p>
+        <p className="mt-1 text-xs" style={{ color: "var(--app-ink-3)" }}>
+          Places, events, and parking — loading…
+        </p>
+      </div>
     </div>
   ),
 });
@@ -126,7 +133,9 @@ export default function AppMapClient({
             In view
           </h2>
           <span className="text-xs tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {results.length === 0 ? "Move the map" : `${results.length} place${results.length === 1 ? "" : "s"}`}
+            {results.length === 0
+              ? `${places.length} on the map`
+              : `${results.length} place${results.length === 1 ? "" : "s"}`}
           </span>
         </div>
 
@@ -135,7 +144,8 @@ export default function AppMapClient({
             className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
-            Pan or zoom the map — places here list below. Tap any to see details.
+            {places.length} places across Frederick County are pinned on the map.
+            Pan or zoom into an area and they'll list here.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -216,7 +226,7 @@ function InViewDrawer({
         />
         <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
           {results.length === 0
-            ? "Move the map to see places"
+            ? "Pan or zoom — places list here"
             : `${results.length} place${results.length === 1 ? "" : "s"} in view`}
         </p>
         {/* Category mix row — visible only in peek state. Each dot is
