@@ -31,17 +31,21 @@ export default function HourlyDisclosure({
   summary?: ReactNode;
   children: ReactNode;
 }) {
-  // Defaults open. Hydration-safe: SSR renders open; the effect
-  // pulls the user's stored preference and closes if they'd shut it.
-  const [expanded, setExpanded] = useState(true);
+  // Defaults CLOSED (changed May 2026 to reduce /today above-the-fold
+  // density per the brand/UX review). The collapsed summary pill
+  // already says "12 hours, peaks 80° at 7 PM" — that's enough for
+  // most glances. Users who want the full grid can expand and the
+  // preference persists in localStorage. SSR-safe: starts closed,
+  // effect upgrades to open ONLY if the user explicitly stored "true".
+  const [expanded, setExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(KEY);
-      if (stored === "false") {
+      if (stored === "true") {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate user preference from localStorage after mount
-        setExpanded(false);
+        setExpanded(true);
       }
     } catch {
       // ignore — localStorage may be unavailable
