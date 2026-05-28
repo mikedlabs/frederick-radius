@@ -64,6 +64,7 @@ export default function MapIntentChips({
   activeCount,
   activeSub,
   subCounts,
+  openNow,
   children,
 }: {
   active?: string;
@@ -76,6 +77,10 @@ export default function MapIntentChips({
   /** Per-sub-intent place counts so the sub-chips can show "Pizza · 12"
    *  and the user doesn't tap into an empty filter. */
   subCounts?: Record<string, number>;
+  /** Whether the ?open=now place filter is active. Preserved across
+   *  intent / sub-intent chip taps so the temporal lens doesn't
+   *  reset when the user switches categories. */
+  openNow?: boolean;
   /** Slot at the BOTTOM of the chips stack — used by /browse to render
    *  the MapTimeChips strip directly below the intent chips. Used to be
    *  two siblings with independent `top: calc(...)` positions, which
@@ -91,6 +96,11 @@ export default function MapIntentChips({
     activeIntent && activeSub
       ? activeIntent.subIntents?.find((s) => s.key === activeSub)
       : null;
+  // Suffix attached to every intent/sub chip href so a tap keeps the
+  // Open-now lens active. Empty string when openNow is off so we don't
+  // pollute URLs with stray params.
+  const openSuffix = openNow ? "&open=now" : "";
+  const clearHref = openNow ? "/browse?open=now" : "/browse";
   return (
     <div
       className="pointer-events-none absolute inset-x-0 top-0 z-30 space-y-2 px-2.5 sm:px-3"
@@ -123,7 +133,7 @@ export default function MapIntentChips({
             </span>
           )}
           <Link
-            href="/browse"
+            href={clearHref}
             aria-label="Clear filter"
             className="-mr-1.5 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-white/22 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.08em] backdrop-blur transition active:scale-[0.96]"
             prefetch={false}
@@ -155,7 +165,7 @@ export default function MapIntentChips({
               parent intent active. Same shape as the parent's "All"
               chip but smaller. */}
           <Link
-            href={`/browse?intent=${activeIntent.key}`}
+            href={`/browse?intent=${activeIntent.key}${openSuffix}`}
             aria-current={!activeSub ? "page" : undefined}
             className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.97]"
             style={{
@@ -177,7 +187,7 @@ export default function MapIntentChips({
             return (
               <Link
                 key={sub.key}
-                href={`/browse?intent=${activeIntent.key}&sub=${sub.key}`}
+                href={`/browse?intent=${activeIntent.key}&sub=${sub.key}${openSuffix}`}
                 aria-current={isActive ? "page" : undefined}
                 className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
                 style={{
@@ -205,7 +215,7 @@ export default function MapIntentChips({
         }}
       >
         <Link
-          href="/browse"
+          href={clearHref}
           aria-current={!active ? "page" : undefined}
           className="shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] transition active:scale-[0.97]"
           style={{
@@ -231,7 +241,7 @@ export default function MapIntentChips({
           return (
             <Link
               key={intent.key}
-              href={`/browse?intent=${intent.key}`}
+              href={`/browse?intent=${intent.key}${openSuffix}`}
               aria-current={isActive ? "page" : undefined}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
               style={{

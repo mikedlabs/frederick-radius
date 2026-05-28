@@ -180,7 +180,7 @@ export default function TodayTabs({
       icon: Clock,
       accent: "var(--app-positive)",
       count: openNow.length,
-      href: "/map?filter=open-now",
+      href: "/browse?open=now",
       hrefLabel: "See all open",
       meta: <span>Open now, or likely open by listed hours</span>,
       empty: "",

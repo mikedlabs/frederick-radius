@@ -1,6 +1,7 @@
 "use client";
 
-import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal, X } from "lucide-react";
+import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal, X, Clock } from "lucide-react";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -119,6 +120,22 @@ export default function AppMapDeck({
   aerialCount,
   setDemo,
 }: AppMapDeckProps) {
+  // Open-now state lives in the URL (?open=now), not in client state —
+  // the server filters the place pool, so the deck just reads the
+  // param to render the active-filters chip and a clear link. Building
+  // a "strip ?open" href client-side keeps the chip's X consistent
+  // with how /browse interprets the URL.
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const openNow = searchParams?.get("open") === "now";
+  const clearOpenHref = (() => {
+    if (!searchParams) return pathname ?? "/browse";
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("open");
+    const qs = next.toString();
+    return qs ? `${pathname}?${qs}` : (pathname ?? "/browse");
+  })();
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-2.5 pt-2.5 sm:px-3 sm:pt-3">
       <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
@@ -260,7 +277,8 @@ export default function AppMapDeck({
           showCivic ||
           showTransit ||
           showTrails ||
-          showAerial) && (
+          showAerial ||
+          openNow) && (
           <ul
             className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             aria-label="Active filters"
@@ -383,9 +401,28 @@ export default function AppMapDeck({
                 </button>
               </li>
             )}
+            {openNow && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => router.push(clearOpenHref)}
+                  aria-label="Show all places (not just open)"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-positive)",
+                    color: "white",
+                    boxShadow: "var(--app-shadow-1)",
+                  }}
+                >
+                  <Clock className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                  Open now
+                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </li>
+            )}
             {/* Clear-all escape hatch — only worth the row when there
                 are multiple filters to clear. */}
-            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) > 1 && (
+            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) + (openNow ? 1 : 0) > 1 && (
               <li className="shrink-0">
                 <button
                   type="button"
@@ -396,6 +433,7 @@ export default function AppMapDeck({
                     setShowTransit(false);
                     setShowTrails(false);
                     setShowAerial(false);
+                    if (openNow) router.push(clearOpenHref);
                   }}
                   className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
                   style={{

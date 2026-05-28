@@ -159,10 +159,10 @@ function isTimeMode(s: string | undefined): s is TimeMode {
 export default async function MapPage({
   searchParams,
 }: {
-  searchParams: Promise<{ intent?: string; sub?: string; t?: string }>;
+  searchParams: Promise<{ intent?: string; sub?: string; t?: string; open?: string }>;
 }) {
   const [
-    { intent: intentParam, sub: subParam, t: tParam },
+    { intent: intentParam, sub: subParam, t: tParam, open: openParam },
     incidents,
     fixit,
     mapillaryTrash,
@@ -234,9 +234,25 @@ export default async function MapPage({
   // a stale ?sub= param from a parent switch doesn't quietly wipe the
   // result set.
   const activeSub = intent?.subIntents?.find((s) => s.key === subParam);
-  const places = activeSub
+  const subFiltered = activeSub
     ? intentPlaces.filter(activeSub.match)
     : intentPlaces;
+  // Third-tier filter: ?open=now collapses the pool to places that are
+  // verifiably open right this minute (open or closing-soon). The
+  // brief's "time as a first-class dimension" applied to places —
+  // Google's map answers "is it open?" one place at a time; this
+  // answers it across the whole viewport. The count next to the chip
+  // is computed AFTER intent/sub filtering so it reflects what the
+  // user is actually browsing.
+  const openNow = openParam === "now";
+  const openNowCount = subFiltered.filter(
+    (p) => p.open_status.state === "open" || p.open_status.state === "closing-soon",
+  ).length;
+  const places = openNow
+    ? subFiltered.filter(
+        (p) => p.open_status.state === "open" || p.open_status.state === "closing-soon",
+      )
+    : subFiltered;
 
   // Events as map pins, scoped to the active temporal window. The
   // brief's "what's happening now / tonight / this weekend" filter
@@ -323,11 +339,15 @@ export default async function MapPage({
         activeCount={intent ? places.length : undefined}
         activeSub={activeSub?.key}
         subCounts={subCounts}
+        openNow={openNow}
       >
         <MapTimeChips
           active={timeMode}
           intent={intent?.key}
+          sub={activeSub?.key}
           counts={counts}
+          openNow={openNow}
+          openNowCount={openNowCount}
         />
       </MapIntentChips>
       <AppMapClient
