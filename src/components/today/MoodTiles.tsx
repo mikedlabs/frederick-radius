@@ -34,10 +34,10 @@ const intentColor = (k: IntentKey) =>
   INTENT_BY_KEY[k]?.color ?? "var(--app-brand)";
 
 const MOODS: Mood[] = [
-  { intentKey: "coffee",  label: "Coffee",    nudge: "Roasters and cafes",        href: "/browse?intent=coffee",  icon: Coffee,          color: intentColor("coffee")  },
-  { intentKey: "eat",     label: "Eat",       nudge: "Restaurants and breweries", href: "/browse?intent=eat",     icon: UtensilsCrossed, color: intentColor("eat")     },
-  { intentKey: "outdoor", label: "Outdoors",  nudge: "Parks, trails, water",      href: "/browse?intent=outdoor", icon: Trees,           color: intentColor("outdoor") },
-  { intentKey: "family",  label: "With kids", nudge: "Family-friendly",           href: "/browse?intent=family",  icon: Baby,            color: intentColor("family")  },
+  { intentKey: "coffee",  label: "Coffee",    nudge: "Roasters and cafes",        href: "/map?intent=coffee",  icon: Coffee,          color: intentColor("coffee")  },
+  { intentKey: "eat",     label: "Eat",       nudge: "Restaurants and breweries", href: "/map?intent=eat",     icon: UtensilsCrossed, color: intentColor("eat")     },
+  { intentKey: "outdoor", label: "Outdoors",  nudge: "Parks, trails, water",      href: "/map?intent=outdoor", icon: Trees,           color: intentColor("outdoor") },
+  { intentKey: "family",  label: "With kids", nudge: "Family-friendly",           href: "/map?intent=family",  icon: Baby,            color: intentColor("family")  },
   // Utility moods use muted civic colors (slate + warm ink) so they
   // sit in the same row visually but read as the utility group.
   { label: "Restroom", nudge: "Public restrooms nearby",  href: "/amenities",        icon: Toilet,        color: "#2F5470" },
@@ -198,7 +198,7 @@ export default function MoodTiles() {
           <ul className="flex flex-wrap gap-1.5">
             <li>
               <Link
-                href={`/browse?intent=${activeIntent.key}`}
+                href={`/map?intent=${activeIntent.key}`}
                 className="inline-flex items-center rounded-full px-3 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
                 style={{ background: activeMood.color, color: "#fff" }}
               >
@@ -208,7 +208,7 @@ export default function MoodTiles() {
             {activeSubIntents.map((sub: SubIntent) => (
               <li key={sub.key}>
                 <Link
-                  href={`/browse?intent=${activeIntent.key}&sub=${sub.key}`}
+                  href={`/map?intent=${activeIntent.key}&sub=${sub.key}`}
                   className="inline-flex items-center rounded-full border px-3 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
                   style={{
                     borderColor: activeMood.color,

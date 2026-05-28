@@ -564,7 +564,7 @@ export default function AppMap({
       return;
     }
 
-    if (layer === "curated-icons") {
+    if (layer === "curated-icons" || layer === "curated-hit") {
       const props = feature.properties as Record<string, string>;
       const place = places.find((p) => p.slug === props.slug);
       setSelectedSlug(props.slug);
@@ -617,7 +617,7 @@ export default function AppMap({
     let next: { lng: number; lat: number; label: string; sub?: string } | null = null;
     if (f.layer.id === "clusters" || f.layer.id === "curated-clusters") {
       next = { lng, lat, label: "A cluster of places", sub: "Zoom in to see them" };
-    } else if (f.layer.id === "curated-icons") {
+    } else if (f.layer.id === "curated-icons" || f.layer.id === "curated-hit") {
       const p = places.find((x) => x.slug === props.slug);
       if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };
     } else {
@@ -1001,7 +1001,7 @@ export default function AppMap({
           // LAYER that paints relief over the Catoctin + South Mountain
           // ridges. The result reads as terrain-aware without the cost
           // of a 3D mesh, and keeps wayfinding crisp at every zoom.
-          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "aerial-icons"]}
+          interactiveLayerIds={["clusters", "osm-icons", "amenity-icons", "curated-clusters", "curated-icons", "curated-hit", "aerial-icons"]}
           onClick={onClick}
           onLoad={(e) => {
             installCategoryMarkers(e.target);
@@ -1439,6 +1439,24 @@ export default function AppMap({
                 "icon-ignore-placement": true,
                 "symbol-sort-key": ["get", "pri"],
                 "icon-anchor": "center",
+              }}
+            />
+            {/* Invisible tap-target pad — expands each curated pin's
+                hit area to a Fitts-friendly ~36px regardless of how
+                tiny the rendered icon gets at street zoom. The single-
+                place pins shrink under the iOS 44pt floor; this layer
+                keeps the touchable region usable without making the
+                visual pins themselves bigger. Same source as
+                curated-icons so the click handler can resolve back to
+                the same slug via props.slug. */}
+            <Layer
+              id="curated-hit"
+              type="circle"
+              filter={["!", ["has", "point_count"]]}
+              paint={{
+                "circle-color": "#000000",
+                "circle-opacity": 0,
+                "circle-radius": 18,
               }}
             />
             {/* Names reveal as you get closer — fade in past street zoom */}

@@ -17,7 +17,8 @@ import {
  *   - "Map" reads more naturally than "Browse" (the spatial view
  *     IS what users open the tab for)
  *   - "Events" reads more naturally than "Plan"
- * Routes stay /now, /browse, /events so every existing deep link,
+ * Routes are /now, /map, /events. The map tab used to live at
+ * /browse; that path now 301s to /map so every old deep link,
  * bookmark, and shared URL still resolves.
  *
  * The fifth tab, "More", doesn't navigate — it opens a sheet/drawer
@@ -36,7 +37,7 @@ export type Tab = {
 
 export const TABS: readonly Tab[] = [
   { href: "/now",    label: "Today",  icon: Sun,            fillOnActive: true,  kind: "link"   },
-  { href: "/browse", label: "Map",    icon: MapIcon,        fillOnActive: false, kind: "link"   },
+  { href: "/map", label: "Map",    icon: MapIcon,        fillOnActive: false, kind: "link"   },
   { href: "/events", label: "Events", icon: Calendar,       fillOnActive: false, kind: "link"   },
   { href: "/saved",  label: "Saved",  icon: Bookmark,       fillOnActive: true,  kind: "link"   },
   { href: "#more",   label: "More",   icon: MoreHorizontal, fillOnActive: false, kind: "drawer" },

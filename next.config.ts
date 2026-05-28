@@ -108,10 +108,10 @@ const nextConfig: NextConfig = {
       { source: "/discover", destination: "/now", permanent: true },
       // /today renamed to /now (the home page is about NOW, not "today").
       { source: "/today", destination: "/now", permanent: true },
-      // /map renamed to /browse (one spatial tab — Browse — that
-      // hosts both the pan map and the within-reach radius mode in
-      // a single mental model).
-      { source: "/map", destination: "/browse", permanent: true },
+      // /browse renamed back to /map — the spatial tab IS a map, so
+      // the URL should say so. The old /browse remains permanently
+      // redirected so deep links / cached search results don't 404.
+      { source: "/browse", destination: "/map", permanent: true },
     ];
   },
 };

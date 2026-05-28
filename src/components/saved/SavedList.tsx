@@ -472,7 +472,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
               still reads "one main move, two alternatives." */}
           <div className="flex flex-wrap gap-2 pt-1">
             <Link
-              href="/browse"
+              href="/map"
               className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ background: "var(--app-brand)", color: "white" }}
             >
@@ -488,7 +488,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
               Browse events
             </Link>
             <Link
-              href="/browse?intent=eat"
+              href="/map?intent=eat"
               className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             >

@@ -100,7 +100,7 @@ export default function MapIntentChips({
   // Open-now lens active. Empty string when openNow is off so we don't
   // pollute URLs with stray params.
   const openSuffix = openNow ? "&open=now" : "";
-  const clearHref = openNow ? "/browse?open=now" : "/browse";
+  const clearHref = openNow ? "/map?open=now" : "/map";
   return (
     <div
       className="pointer-events-none absolute inset-x-0 top-0 z-30 space-y-2 px-2.5 sm:px-3"
@@ -165,7 +165,7 @@ export default function MapIntentChips({
               parent intent active. Same shape as the parent's "All"
               chip but smaller. */}
           <Link
-            href={`/browse?intent=${activeIntent.key}${openSuffix}`}
+            href={`/map?intent=${activeIntent.key}${openSuffix}`}
             aria-current={!activeSub ? "page" : undefined}
             className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.97]"
             style={{
@@ -187,7 +187,7 @@ export default function MapIntentChips({
             return (
               <Link
                 key={sub.key}
-                href={`/browse?intent=${activeIntent.key}&sub=${sub.key}${openSuffix}`}
+                href={`/map?intent=${activeIntent.key}&sub=${sub.key}${openSuffix}`}
                 aria-current={isActive ? "page" : undefined}
                 className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
                 style={{
@@ -241,7 +241,7 @@ export default function MapIntentChips({
           return (
             <Link
               key={intent.key}
-              href={`/browse?intent=${intent.key}${openSuffix}`}
+              href={`/map?intent=${intent.key}${openSuffix}`}
               aria-current={isActive ? "page" : undefined}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
               style={{

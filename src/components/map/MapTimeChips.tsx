@@ -60,9 +60,7 @@ export default function MapTimeChips({
     if (sub) qs.set("sub", sub);
     qs.set("t", mode);
     if (openNow) qs.set("open", "now");
-    // /map is a legacy redirect to /browse — point chip taps directly
-    // at /browse to avoid the extra 308 hop on every filter change.
-    return `/browse?${qs.toString()}`;
+    return `/map?${qs.toString()}`;
   };
   const openHref = (): string => {
     const qs = new URLSearchParams();
@@ -71,7 +69,7 @@ export default function MapTimeChips({
     qs.set("t", active);
     // Toggle: present → remove; absent → set
     if (!openNow) qs.set("open", "now");
-    return `/browse?${qs.toString()}`;
+    return `/map?${qs.toString()}`;
   };
 
   // No outer absolute wrapper anymore — MapIntentChips renders this

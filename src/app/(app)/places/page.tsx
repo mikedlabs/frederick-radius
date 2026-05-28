@@ -123,21 +123,21 @@ export default function PlacesIndexPage() {
             {
               label: "Food and drink",
               nudge: "Restaurants and breweries",
-              href: "/browse?intent=eat",
+              href: "/map?intent=eat",
               icon: UtensilsCrossed,
               color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)",
             },
             {
               label: "Coffee",
               nudge: "Roasters and cafes",
-              href: "/browse?intent=coffee",
+              href: "/map?intent=coffee",
               icon: Coffee,
               color: INTENT_BY_KEY.coffee?.color ?? "var(--app-brand)",
             },
             {
               label: "With kids",
               nudge: "Family-friendly",
-              href: "/browse?intent=family",
+              href: "/map?intent=family",
               icon: Baby,
               color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)",
             },
@@ -209,7 +209,7 @@ export default function PlacesIndexPage() {
           or browse the whole map → or browse by category / town." */}
       <div className="grid grid-cols-2 gap-2">
         <Link
-          href="/browse"
+          href="/map"
           className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-4 py-3 transition"
           style={{ borderColor: "var(--app-border)" }}
         >

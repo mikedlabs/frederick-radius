@@ -101,7 +101,7 @@ const QUICK_ACTIONS: readonly QuickAction[] = [
     id: "action:map",
     title: "Open the map",
     subtitle: "Everything visible at a glance.",
-    href: "/browse",
+    href: "/map",
     keywords: ["map", "where", "view"],
   },
   {
