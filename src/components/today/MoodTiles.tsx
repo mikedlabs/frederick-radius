@@ -6,22 +6,21 @@ import { Coffee, Trees, UtensilsCrossed, Baby, Toilet, ParkingCircle, X } from "
 import { INTENT_BY_KEY, INTENTS, type IntentKey, type SubIntent } from "@/data/intents";
 
 /**
- * MoodTiles v4 — illustration-on-color tiles, Klarna/Uber pattern.
+ * MoodTiles v5 — compact 4-up illustration-on-color tiles.
  *
- * We tried photo backgrounds twice (random aerials, then From Above
- * book pages) and neither could differentiate Coffee from Eat from
- * Outdoors at a glance — same category of image carrying every tile.
+ * v4 went big with 4:5 magazine-cover tiles — beautiful but the
+ * color dominated the page. v5 keeps the same identity (intent
+ * color + glass icon + serif label) but compresses to a single
+ * 4-up row of square tiles so all four intents fit in one scroll
+ * unit with way less visual weight. Same Klarna app-row pattern
+ * but tuned for our four intents.
  *
- * v4 drops the photo entirely and leans on each intent's brand color
- * as the visual identity: coffee = warm brown, eat = terra-cotta,
- * outdoor = forest green, family = warm gold. Each tile is a saturated
- * gradient in its intent color with a large white glass icon pill
- * floating top-left and a serif headline anchored bottom-left.
+ * Color gradients are slightly less saturated than v4 (more white
+ * top-left, less black bottom-right) so the row reads as accent
+ * cards rather than a wall of brand color.
  *
- *   • Bolder than v2's icon-on-tint chip — the tile IS the color.
- *   • More differentiated than v3's photo tiles — color identity per
- *     category, not a generic "Frederick aerial" feel.
- *   • Same expand-in-place sub-intent behavior as v2/v3.
+ * Utility row (Restroom + Parking) sits below in the existing
+ * compact icon style.
  */
 
 type IntentMood = {
@@ -84,16 +83,14 @@ const UTILITY_MOODS: UtilityMood[] = [
   { label: "Parking",  nudge: "Garages, lots, on-street", href: "/category/parking", icon: ParkingCircle, color: "var(--app-ink-2)" },
 ];
 
-/** Diagonal gradient using the intent color — a slightly lighter
- *  top-left into the saturated color bottom-right. Produces depth
- *  without needing a photo. */
+/** Diagonal gradient using the intent color — lighter top-left into
+ *  saturated bottom-right. v5 dials the gradient back from v4 so the
+ *  compact tiles read as accent cards, not blocks of brand color. */
 function gradientFor(color: string, active: boolean): string {
   if (active) {
-    // Active state: even more saturated, with a darker base so the
-    // tile reads as "engaged" without changing color identity.
-    return `linear-gradient(155deg, color-mix(in srgb, ${color} 78%, white) 0%, ${color} 50%, color-mix(in srgb, ${color} 78%, black) 100%)`;
+    return `linear-gradient(155deg, color-mix(in srgb, ${color} 70%, white) 0%, ${color} 55%, color-mix(in srgb, ${color} 82%, black) 100%)`;
   }
-  return `linear-gradient(155deg, color-mix(in srgb, ${color} 86%, white) 0%, ${color} 60%, color-mix(in srgb, ${color} 88%, black) 100%)`;
+  return `linear-gradient(155deg, color-mix(in srgb, ${color} 76%, white) 0%, ${color} 65%, color-mix(in srgb, ${color} 90%, black) 100%)`;
 }
 
 export default function MoodTiles() {
@@ -112,8 +109,11 @@ export default function MoodTiles() {
         What do you need right now
       </h2>
 
-      {/* 4 color-led intent tiles. */}
-      <ul className="reveal-up grid grid-cols-2 gap-2">
+      {/* 4-up compact intent tiles — single row, square aspect, all
+          four intents visible in one scroll unit. Color identity
+          stays via the gradient + icon tint; label sits centered
+          under the icon. */}
+      <ul className="reveal-up grid grid-cols-4 gap-2">
         {INTENT_MOODS.map((m) => {
           const Icon = m.icon;
           const isActive = openIntent === m.intentKey;
@@ -127,92 +127,73 @@ export default function MoodTiles() {
                 }
                 aria-expanded={isActive}
                 aria-controls={isActive ? "mood-sub-tiles" : undefined}
-                className="tactile tactile-interactive relative block aspect-[4/5] w-full overflow-hidden rounded-[var(--app-radius-lg)] border text-left transition active:scale-[0.98]"
+                aria-label={`${m.label} — ${m.nudge}`}
+                className="tactile tactile-interactive relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] border p-2 text-center transition active:scale-[0.96]"
                 style={{
                   borderColor: isActive
                     ? `color-mix(in srgb, ${m.color} 60%, black)`
                     : "var(--app-border)",
                   background: gradientFor(m.color, isActive),
                   boxShadow: isActive
-                    ? `var(--app-elev-2), 0 0 0 1.5px ${m.color}, 0 14px 32px -10px color-mix(in srgb, ${m.color} 50%, transparent)`
-                    : `var(--app-elev-1), 0 8px 22px -10px color-mix(in srgb, ${m.color} 40%, transparent)`,
+                    ? `var(--app-elev-2), 0 0 0 1.5px ${m.color}, 0 10px 22px -8px color-mix(in srgb, ${m.color} 50%, transparent)`
+                    : `var(--app-elev-1), 0 4px 12px -6px color-mix(in srgb, ${m.color} 35%, transparent)`,
                   opacity: isDimmed ? 0.55 : 1,
                 }}
               >
-                {/* Decorative scatter circles — large translucent rings
-                    in the bottom-right that soften the solid gradient
-                    and give the tile a hint of texture without
-                    competing with the icon. Pure CSS, no asset weight. */}
+                {/* Soft white scatter — bottom-right, much smaller than
+                    v4 since the whole tile is smaller. */}
                 <span
                   aria-hidden
-                  className="absolute -right-8 -bottom-10 h-32 w-32 rounded-full"
+                  className="absolute -right-4 -bottom-4 h-16 w-16 rounded-full"
                   style={{
                     background:
-                      "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)",
-                  }}
-                />
-                <span
-                  aria-hidden
-                  className="absolute -right-2 -top-8 h-20 w-20 rounded-full"
-                  style={{
-                    background:
-                      "radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 65%)",
+                      "radial-gradient(circle, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 70%)",
                   }}
                 />
 
-                {/* Big glass icon pill — top-left. White at high opacity
-                    so the icon reads boldly on any intent color. */}
+                {/* White glass icon pill — centered, smaller than v4. */}
                 <span
                   aria-hidden
-                  className="absolute left-3 top-3 grid h-12 w-12 place-items-center rounded-full"
+                  className="grid h-9 w-9 place-items-center rounded-full"
                   style={{
                     background: "rgba(255,255,255,0.96)",
                     backdropFilter: "blur(8px)",
                     WebkitBackdropFilter: "blur(8px)",
                     boxShadow:
-                      "0 6px 14px -4px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.7)",
+                      "0 3px 8px -2px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.7)",
                   }}
                 >
                   <Icon
-                    className="h-6 w-6"
+                    className="h-[18px] w-[18px]"
                     strokeWidth={2.25}
                     style={{ color: m.color }}
                   />
                 </span>
 
-                {/* Active-state X in top-right — second tap reads as
-                    "close" rather than another action. */}
+                {/* Label — one line, sans serif, on the color. The
+                    nudge drops at this size; aria-label carries the
+                    full description for screen readers. */}
+                <span
+                  className="block max-w-full truncate text-[11.5px] font-semibold leading-none text-white"
+                  style={{ textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}
+                >
+                  {m.label}
+                </span>
+
+                {/* Active-state X in top-right corner. */}
                 {isActive && (
                   <span
                     aria-hidden
-                    className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full"
+                    className="absolute right-1 top-1 grid h-5 w-5 place-items-center rounded-full"
                     style={{
-                      background: "rgba(0,0,0,0.42)",
+                      background: "rgba(0,0,0,0.5)",
                       backdropFilter: "blur(8px)",
                       WebkitBackdropFilter: "blur(8px)",
                     }}
                   >
-                    <X className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
+                    <X className="h-2.5 w-2.5 text-white" strokeWidth={2.5} />
                   </span>
                 )}
-
-                {/* Headline + nudge anchored to bottom-left. Cream-white
-                    text on the colored gradient — same serif as the
-                    rest of the editorial surface. */}
-                <span className="absolute inset-x-0 bottom-0 space-y-0.5 p-3">
-                  <span
-                    className="block font-serif text-[20px] font-semibold leading-tight text-white sm:text-[22px]"
-                    style={{ textShadow: "0 1px 3px rgba(0,0,0,0.35)" }}
-                  >
-                    {m.label}
-                  </span>
-                  <span
-                    className="block truncate text-[11.5px] font-medium leading-snug text-white/90"
-                    style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
-                  >
-                    {m.nudge}
-                  </span>
-                </span>
               </button>
             </li>
           );
