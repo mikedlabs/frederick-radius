@@ -67,3 +67,5 @@ scripts/.lighthouse/
 .perf/
 scripts/.lighthouse/
 .env*.local
+/index.mjs
+/index.ts
