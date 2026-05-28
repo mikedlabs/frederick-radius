@@ -254,7 +254,7 @@ export default async function HomePage({
     ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
     : sliceItems;
   return (
-    <div className="relative space-y-6">
+    <div className="relative">
       <PageBloom />
 
       {/* First-visit beta intro — explains what Frederick Radius is,
@@ -262,13 +262,23 @@ export default async function HomePage({
           feedback. Renders only when the dismiss cookie hasn't been
           set; once dismissed, never shows again until we ship a v2
           message and bump the key. Client component so the SSR HTML
-          is empty and there's no hydration flash. */}
-      <BetaIntroCard />
+          is empty and there's no hydration flash. Full-width above
+          the desktop split so it spans both columns. */}
+      <div className="space-y-6">
+        <BetaIntroCard />
+      </div>
 
-      {/* TuneForYou removed — the persona pills lived here as an
-          opt-in tune-up after we killed the welcome redirect.
-          /welcome is reachable from More / Settings; the briefing
-          doesn't need a chrome strip nudging users toward it. */}
+      {/* RESPONSIVE SPLIT (desktop only):
+       *   mobile  : everything stacks single-column (space-y-6).
+       *   lg+     : two-column grid — LEFT carries the day/weather
+       *             stack (the "what's it like outside" answer);
+       *             RIGHT carries the action stack (mood tiles,
+       *             partner apps, WorthALook, events, From Above).
+       * Each column keeps its own internal space-y-6 spine so the
+       * vertical rhythm doesn't collapse at the breakpoint. */}
+      <div className="mt-6 space-y-6 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0">
+        {/* ── LEFT column: the day + weather block ───────────── */}
+        <div className="space-y-6">
 
       {/* DateLine + NowDayStrip — the slim header that replaces the
           old AdaptiveGreeting block. Sits ABOVE SkyHero on the page
@@ -380,19 +390,27 @@ export default async function HomePage({
         </div>
       </div>
 
+        </div>{/* /LEFT column */}
+
+        {/* ── RIGHT column: the action stack ─────────────────── */}
+        <div className="space-y-6">
+
       {/* SPINE REORDER (cleanup pass):
        *
-       *   weather (above) → MOOD → PARTNER APPS → DISCOVERY (WorthALook)
-       *   → events → from above
+       *   weather (left, above on mobile) → MOOD → PARTNER APPS →
+       *   DISCOVERY (WorthALook) → events → from above
        *
-       * Earlier passes carried two more surfaces here — RightNowStrip
-       * ("On deck": open-now / starting-soon / weekend-bet) and
-       * PrimaryActionCard ("Plan tonight"). Both were retired in this
-       * pass: the events section + TimeToggle below already cover the
-       * "what's happening tonight" job; the MoreSheet's Tools cluster
-       * carries Plan, Within Reach, and Pulse. Keeping these on /now
-       * meant the page repeated itself across three scroll-screens.
-       * Removing them lets the briefing breathe.
+       * Earlier passes carried two more surfaces here —
+       * RightNowStrip ("On deck") and PrimaryActionCard ("Plan
+       * tonight"). Both were retired: the events section +
+       * TimeToggle below already cover the "what's happening
+       * tonight" job; the MoreSheet's Tools cluster carries Plan,
+       * Within Reach, and Pulse. Keeping these on /now meant the
+       * page repeated itself across three scroll-screens.
+       *
+       * On desktop, this column rides alongside the weather column
+       * — both visible without scrolling. On mobile, it stacks
+       * after the weather block.
        */}
 
       {/* MoodTiles — what do you need right now, with sub-tile expand. */}
@@ -465,6 +483,9 @@ export default async function HomePage({
           seasons collection that backs /about's hero, so the visual
           identity stays consistent end-to-end. */}
       <FromAboveCta />
+
+        </div>{/* /RIGHT column */}
+      </div>{/* /responsive split */}
     </div>
   );
 }
