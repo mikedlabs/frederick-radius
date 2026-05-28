@@ -9,7 +9,8 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
  * Pure data accessor; refresh via `npm run build:amenities`.
  */
 export type AmenityKind =
-  | "restroom" | "ev_charging" | "wifi" | "bike_parking" | "picnic" | "playground";
+  | "restroom" | "ev_charging" | "wifi" | "bike_parking" | "picnic" | "playground"
+  | "pool";
 
 export type Amenity = {
   id: string;
@@ -31,6 +32,14 @@ export const AMENITY_KINDS: { kind: AmenityKind; label: string; blurb: string }[
   { kind: "bike_parking", label: "Bike parking", blurb: "Racks and covered bike parking" },
   { kind: "picnic", label: "Picnic spots", blurb: "Tables and picnic sites" },
   { kind: "playground", label: "Playgrounds", blurb: "County-wide, for the kids" },
+  // Pools — scaffolding for public swimming pools (city, county
+  // recreation, Y branches). The kind is registered so the map's
+  // amenity layer + filter UI can carry it; the actual point data
+  // is empty until verified addresses + coords are collected. Once
+  // entries land in amenities.json (kind="pool"), the layer
+  // surfaces automatically via amenitiesByKind's "only kinds that
+  // actually have points" filter — no UI change needed.
+  { kind: "pool", label: "Public pools", blurb: "City, county, and YMCA pools — seasonal hours" },
 ];
 
 export const AMENITY_COUNT = AMENITIES.length;

@@ -7,6 +7,7 @@ import {
   Bike,
   Trees,
   Baby,
+  Waves,
   Trash2,
   PawPrint,
   Armchair,
@@ -57,6 +58,7 @@ const LIVE_ICONS = {
   bike_parking: Bike,
   picnic: Trees,
   playground: Baby,
+  pool: Waves,
 } as const;
 
 // What's NOT yet on the map but people ask the app for. These are the
