@@ -19,12 +19,12 @@ Three products fighting each other today: daily briefing, directory, map. Pick o
 
 ## Priority 2
 
-- [ ] **Nav vocabulary** — pick one set: **Today / Map / Events / Saved**. Radius becomes a feature inside Map or Today. Kill "Browse" vs "Places" overlap; use **Places**.
-- [ ] **Route structure** — canonical: `/today`, `/map`, `/places`, `/events`, `/saved`, `/about`, `/trust`. `/browse` returning a map-style page is conceptually messy.
-- [ ] **Map empty state** — replace "Loading map" / "Move the map to see places" with default Downtown view + "Tonight: N events", "Open now: N places", restrooms/parking/coffee/events pills ready.
-- [ ] **Category pages as decision pages** — 206 restaurants in one list is database exhaust. Sections: Top 6 hand-picked / Open now / Near me / By town / Good for groups / Quick bite / Worth the drive / Full directory below.
-- [ ] **"Nearby" logic** — Alive @ Five page shows US-40 Trailhead Parking 13mi away. Caps: 0.75mi for downtown event parking, drive-time for rural/trail, walking distance first for "near me". Never mix "technically in county" with "useful nearby".
-- [ ] **Place page contradictions** — "Hours not posted" + full hours table is broken-looking. One clean status line: "Open today, 3–8pm" or "Hours from Google, confirmed 7 days ago" or "Call unavailable". Never show a dead action.
+- [x] **Nav vocabulary** — Primary nav (Today/Map/Events/My Radius) was already aligned with the reviewer's recommendation. Cleaned up three label inconsistencies: CommandPalette listed /map as "Browse" → "Map"; MoreSheet drawer was titled "Field guide" (retired in May 2026) → "More"; category-page "Browse" section heading → "All {category}". "My Radius" vs "Saved" stays as a brand decision. (commit 9030b3a)
+- [x] **Route structure** — Investigated; structure is already clean. `/today`, `/map`, `/places`, `/events`, `/my-radius`, `/about`, `/trust` all exist as canonical routes. `/browse` is properly 301'd to `/map` via next.config.ts. `/radius` is a distinct tool (reachability) — not a duplicate of `/map`. No route changes needed.
+- [x] **Map empty state** — Copy-only fix: "Loading map…" → "Frederick on the map / Places, events, and parking — loading…"; count chip "Move the map" → "{N} on the map"; drawer peek "Move the map to see places" → "Pan or zoom — places list here"; non-fullBleed empty paragraph now states the place count. Bigger reviewer asks (Tonight: N events, Open now: N places, default Downtown chips) need data threading from the page and are deferred. (commit 0017551)
+- [x] **Category pages as decision pages** — Added two data-driven slices between "Worth your time" and the full directory: "Open now" (up to 6, uses the same hours pipeline as the OpenClosedDot) and "By town" (up to 4 towns, 3 places each, in populated-first order, with "See more" links to /m/{slug}). Bigger asks (Quick bite, Good for groups, Date night, Worth the drive) need tag work and are deferred. (commit 691c4ef)
+- [x] **"Nearby" logic** — Event-page nearby parking now caps at 0.75mi (1200m) for downtown events, widens to 3mi (5000m) only when nothing closer exists, and hides the section entirely if even that misses. Mirrors the existing nearbyFood pattern. (commit e88ef61)
+- [x] **Place page contradictions** — Built a Google-weekday-hours parser (`src/lib/hours-parse.ts`) so structured `hours` populates from Google enrichment when no curated schedule exists. OpenClosedDot now computes from the same source the table renders, eliminating the "Hours not posted" + full hours table contradiction. Hoffman Brothers now reads "Closed · Opens Thu 3pm" consistently. Parser unit-tested. (commit e236baf)
 
 ## Priority 3 — polish
 
