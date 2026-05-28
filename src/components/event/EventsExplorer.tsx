@@ -245,6 +245,12 @@ export default function EventsExplorer({
     { key: "music", label: "Live music", on: cat === "music", toggle: () => setCat(cat === "music" ? null : "music") },
     { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
     { key: "family", label: "Family", on: cat === "family", toggle: () => setCat(cat === "family" ? null : "family") },
+    // Civic / meetings — separated per the May 2026 product review:
+    // commission meetings, public hearings, and municipal agendas are
+    // useful data but emotionally distinct from "dinner and music."
+    // Surfacing this lane lets the user pull civic forward when they
+    // want it AND keeps it from cluttering the default browse.
+    { key: "civic", label: "Civic", on: cat === "civic", toggle: () => setCat(cat === "civic" ? null : "civic") },
   ];
 
   return (

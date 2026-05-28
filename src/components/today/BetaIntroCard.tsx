@@ -26,7 +26,7 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
  * popup to everyone.
  */
 
-const KEY = "fr:beta-intro-dismissed:v4";
+const KEY = "fr:beta-intro-dismissed:v5";
 const FEEDBACK_EMAIL = "miked@madproductions.io";
 const FEEDBACK_SUBJECT = "Frederick Radius feedback";
 
@@ -165,10 +165,11 @@ export default function BetaIntroCard() {
               className="font-serif text-[19px] font-semibold leading-snug tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              Frederick Radius is the start of a dedicated home base for Frederick County.
+              Thank you for taking the time to check this out.
             </p>
 
             <p>
+              Frederick Radius is the start of a dedicated home base for Frederick County.
               Local information is everywhere right now: city pages, county pages,
               business websites, Facebook, Instagram, Reddit, event calendars, and
               posts people only see if the algorithm happens to show them.
