@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Search, Bookmark, Settings as SettingsIcon } from "lucide-react";
+import { Search, Bookmark, Settings as SettingsIcon, MoreHorizontal } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
+import MoreSheet from "./MoreSheet";
+import { usePathname } from "next/navigation";
 
 /**
  * Auto-hide on scroll: the bar slides up out of view when the user
@@ -78,8 +80,17 @@ function useRotatingPrompt(paused: boolean) {
 
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const pathname = usePathname();
   const hidden = useHideOnScroll(searchOpen);
   const prompt = useRotatingPrompt(searchOpen);
+
+  // Close the More sheet on route change — the drawer would otherwise
+  // cover the new page after the user tapped one of its items.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: dismiss the drawer when the user navigates away
+    setMoreOpen(false);
+  }, [pathname]);
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
@@ -194,6 +205,26 @@ export default function TopBar() {
             <SettingsIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           </Link>
 
+          {/* "More" trigger — opens the Field Guide drawer (books,
+              History, Collections, Tools, Useful, App items). The
+              drawer USED to be a 5th bottom-nav tab; in the May 2026
+              IA cleanup it moved here. Smaller footprint, same
+              destinations reachable. The 4-tab BottomNav / SideRail
+              now own only the primary surfaces (Today / Map / Events
+              / My Radius). */}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-haspopup="dialog"
+            aria-expanded={moreOpen}
+            aria-label="More"
+            title="More"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            <MoreHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
+          </button>
+
           {/* LocationChip is hidden on the narrowest phones where the
               search bar needs the room; surfaces from sm: up. The user
               can still see/set location inside the search modal. */}
@@ -204,6 +235,7 @@ export default function TopBar() {
       </header>
 
       <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
     </>
   );
 }

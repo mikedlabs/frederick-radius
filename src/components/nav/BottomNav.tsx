@@ -4,20 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
-import MoreSheet from "./MoreSheet";
 import { TABS, tabIndexForPath } from "./tabs";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  // Close the More sheet on route change — otherwise it'd stick around
-  // covering the new page after a tap on one of its items.
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: dismiss the drawer when the user navigates away from whatever route they tapped a More item from
-    setMoreOpen(false);
-  }, [pathname]);
 
   // Real index from the current route. Falls back to 0 so the slider
   // still has a home on non-primary routes (e.g. /about, /settings).
@@ -112,14 +103,13 @@ export default function BottomNav() {
 
         <ul
           ref={stripRef}
-          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
+          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-4 px-1.5 py-1.5"
         >
-          {TABS.map(({ href, label, icon: Icon, fillOnActive, kind }, idx) => {
+          {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
             const isRealActive =
-              kind === "link" && (pathname === href || pathname.startsWith(href + "/"));
+              pathname === href || pathname.startsWith(href + "/");
             const isPendingActive = pendingIdx === idx;
-            const isDrawerActive = kind === "drawer" && moreOpen;
-            const active = isRealActive || isPendingActive || isDrawerActive;
+            const active = isRealActive || isPendingActive;
 
             const handleActivate = (e?: { preventDefault?: () => void }) => {
               if (isRealActive) return;
@@ -133,28 +123,6 @@ export default function BottomNav() {
                 doc.startViewTransition?.(() => router.push(href));
               }
             };
-
-            const chipBody = (
-              <>
-                <Icon
-                  className="transition-transform duration-200"
-                  width={active ? 22 : 20}
-                  height={active ? 22 : 20}
-                  strokeWidth={active ? 2.25 : 2}
-                  fill={active && fillOnActive ? "currentColor" : "none"}
-                  style={{
-                    transform: active ? "translateY(-1px) scale(1.04)" : "translateY(0)",
-                    transitionTimingFunction: "var(--app-ease-spring)",
-                  }}
-                />
-                <span
-                  className="text-[9.5px] font-semibold leading-none tracking-tight transition-opacity"
-                  style={{ opacity: active ? 1 : 0.78 }}
-                >
-                  {label}
-                </span>
-              </>
-            );
 
             const tabClass =
               "group relative flex h-12 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]";
@@ -172,39 +140,38 @@ export default function BottomNav() {
                 }}
                 className="flex"
               >
-                {kind === "drawer" ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      haptic("light");
-                      setMoreOpen((v) => !v);
+                <Link
+                  href={href}
+                  onPointerDown={() => {
+                    if (!isRealActive) setPendingIdx(idx);
+                  }}
+                  onClick={(e) => handleActivate(e)}
+                  className={tabClass + " w-full"}
+                  style={tabStyle}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <Icon
+                    className="transition-transform duration-200"
+                    width={active ? 22 : 20}
+                    height={active ? 22 : 20}
+                    strokeWidth={active ? 2.25 : 2}
+                    fill={active && fillOnActive ? "currentColor" : "none"}
+                    style={{
+                      transform: active ? "translateY(-1px) scale(1.04)" : "translateY(0)",
+                      transitionTimingFunction: "var(--app-ease-spring)",
                     }}
-                    aria-haspopup="dialog"
-                    aria-expanded={moreOpen}
-                    className={tabClass + " w-full bg-transparent"}
-                    style={tabStyle}
+                  />
+                  <span
+                    className="text-[9.5px] font-semibold leading-none tracking-tight transition-opacity"
+                    style={{ opacity: active ? 1 : 0.78 }}
                   >
-                    {chipBody}
-                  </button>
-                ) : (
-                  <Link
-                    href={href}
-                    onPointerDown={() => {
-                      if (!isRealActive) setPendingIdx(idx);
-                    }}
-                    onClick={(e) => handleActivate(e)}
-                    className={tabClass + " w-full"}
-                    style={tabStyle}
-                    aria-current={active ? "page" : undefined}
-                  >
-                    {chipBody}
-                  </Link>
-                )}
+                    {label}
+                  </span>
+                </Link>
               </li>
             );
           })}
         </ul>
-        <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
       </nav>
     </div>
   );

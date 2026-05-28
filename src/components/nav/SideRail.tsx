@@ -4,14 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
-import MoreSheet from "./MoreSheet";
 import { TABS, tabIndexForPath } from "./tabs";
 
 /**
  * SideRail — desktop primary nav (≥lg, 1024px+).
  *
  * Vertical mirror of BottomNav. Floating rounded-pill column on the
- * left edge with the same 5 tabs, the same glass treatment, and the
+ * left edge with the same 4 tabs, the same glass treatment, and the
  * same MOVING BRAND PILL behind the active tab (left/width became
  * top/height for the vertical axis). Hidden below lg; BottomNav
  * carries everything below that breakpoint.
@@ -22,17 +21,13 @@ import { TABS, tabIndexForPath } from "./tabs";
  *
  * TABS + tabIndexForPath are imported from `./tabs.ts` — same
  * source of truth as BottomNav, so adding/relabeling a tab updates
- * both navs at once.
+ * both navs at once. The retired "Field guide" drawer trigger moved
+ * to a More icon in TopBar (see TopBar.tsx) — both navs no longer
+ * carry a 5th drawer tab.
  */
 export default function SideRail() {
   const pathname = usePathname();
   const router = useRouter();
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: dismiss the drawer when the user navigates away
-    setMoreOpen(false);
-  }, [pathname]);
 
   const realIdx = Math.max(0, tabIndexForPath(pathname));
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
@@ -106,12 +101,11 @@ export default function SideRail() {
           ref={stripRef}
           className="relative z-10 flex flex-col items-stretch gap-1 px-1.5 py-1.5"
         >
-          {TABS.map(({ href, label, icon: Icon, fillOnActive, kind }, idx) => {
+          {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
             const isRealActive =
-              kind === "link" && (pathname === href || pathname.startsWith(href + "/"));
+              pathname === href || pathname.startsWith(href + "/");
             const isPendingActive = pendingIdx === idx;
-            const isDrawerActive = kind === "drawer" && moreOpen;
-            const active = isRealActive || isPendingActive || isDrawerActive;
+            const active = isRealActive || isPendingActive;
 
             const handleActivate = (e?: { preventDefault?: () => void }) => {
               if (isRealActive) return;
@@ -125,28 +119,6 @@ export default function SideRail() {
                 doc.startViewTransition?.(() => router.push(href));
               }
             };
-
-            const chipBody = (
-              <>
-                <Icon
-                  className="transition-transform duration-200"
-                  width={active ? 22 : 20}
-                  height={active ? 22 : 20}
-                  strokeWidth={active ? 2.25 : 2}
-                  fill={active && fillOnActive ? "currentColor" : "none"}
-                  style={{
-                    transform: active ? "scale(1.04)" : "scale(1)",
-                    transitionTimingFunction: "var(--app-ease-spring)",
-                  }}
-                />
-                <span
-                  className="text-[9.5px] font-semibold leading-none tracking-tight transition-opacity"
-                  style={{ opacity: active ? 1 : 0.78 }}
-                >
-                  {label}
-                </span>
-              </>
-            );
 
             const tabClass =
               "group relative flex h-14 w-14 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]";
@@ -164,39 +136,38 @@ export default function SideRail() {
                 }}
                 className="flex"
               >
-                {kind === "drawer" ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      haptic("light");
-                      setMoreOpen((v) => !v);
+                <Link
+                  href={href}
+                  onPointerDown={() => {
+                    if (!isRealActive) setPendingIdx(idx);
+                  }}
+                  onClick={(e) => handleActivate(e)}
+                  className={tabClass}
+                  style={tabStyle}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <Icon
+                    className="transition-transform duration-200"
+                    width={active ? 22 : 20}
+                    height={active ? 22 : 20}
+                    strokeWidth={active ? 2.25 : 2}
+                    fill={active && fillOnActive ? "currentColor" : "none"}
+                    style={{
+                      transform: active ? "scale(1.04)" : "scale(1)",
+                      transitionTimingFunction: "var(--app-ease-spring)",
                     }}
-                    aria-haspopup="dialog"
-                    aria-expanded={moreOpen}
-                    className={tabClass + " bg-transparent"}
-                    style={tabStyle}
+                  />
+                  <span
+                    className="text-[9.5px] font-semibold leading-none tracking-tight transition-opacity"
+                    style={{ opacity: active ? 1 : 0.78 }}
                   >
-                    {chipBody}
-                  </button>
-                ) : (
-                  <Link
-                    href={href}
-                    onPointerDown={() => {
-                      if (!isRealActive) setPendingIdx(idx);
-                    }}
-                    onClick={(e) => handleActivate(e)}
-                    className={tabClass}
-                    style={tabStyle}
-                    aria-current={active ? "page" : undefined}
-                  >
-                    {chipBody}
-                  </Link>
-                )}
+                    {label}
+                  </span>
+                </Link>
               </li>
             );
           })}
         </ul>
-        <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
       </nav>
     </div>
   );

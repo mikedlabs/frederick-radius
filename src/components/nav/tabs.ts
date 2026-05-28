@@ -3,7 +3,6 @@ import {
   Map as MapIcon,
   Calendar,
   Bookmark,
-  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
 
@@ -12,21 +11,18 @@ import {
  * (desktop). One source of truth — change a label here and both
  * navs follow.
  *
- * Route choices recap (Pre-launch §7):
- *   - "Today" reads more naturally than "Now"
- *   - "Map" reads more naturally than "Browse" (the spatial view
- *     IS what users open the tab for)
- *   - "Events" reads more naturally than "Plan"
- *   - "My Radius" claims the fourth tab as personal space — it's the
- *     user's view of the field guide, not a generic "Saved" list
- *     (Phase 0 of the profile/follow system).
- *   - "Field guide" reads as an editorial atlas of secondary routes;
- *     "More" sounded like a junk drawer.
- * Routes are /now, /map, /events, /my-radius. The old /saved and
- * /browse paths 301-redirect so existing deep links still resolve.
+ * Four tabs (May 2026 IA cleanup):
+ *   - Today    /today
+ *   - Map      /map
+ *   - Events   /events
+ *   - My Radius /my-radius
  *
- * The fifth tab, "Field guide", doesn't navigate — it opens a
- * sheet/drawer listing every secondary route.
+ * The fifth "Field guide" tab was retired — it housed four unrelated
+ * jobs (geographic data, alternate map/now views, app settings,
+ * editorial books) and a 5-tab nav couldn't articulate any of them.
+ * The drawer's CONTENT still exists; the trigger moved to a "More"
+ * icon button in the header so secondary destinations remain
+ * reachable without a tab-sized claim on the primary nav.
  */
 
 export type Tab = {
@@ -36,21 +32,18 @@ export type Tab = {
   /** Switch from outline to filled when this tab is active. Only the
    *  icons that have a clean filled variant in Lucide set this true. */
   fillOnActive: boolean;
-  kind: "link" | "drawer";
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/today",       label: "Today",       icon: Sun,            fillOnActive: true,  kind: "link"   },
-  { href: "/map",       label: "Map",         icon: MapIcon,        fillOnActive: false, kind: "link"   },
-  { href: "/events",    label: "Events",      icon: Calendar,       fillOnActive: false, kind: "link"   },
-  { href: "/my-radius", label: "My Radius",   icon: Bookmark,       fillOnActive: true,  kind: "link"   },
-  { href: "#more",      label: "Field guide", icon: MoreHorizontal, fillOnActive: false, kind: "drawer" },
+  { href: "/today",     label: "Today",     icon: Sun,      fillOnActive: true  },
+  { href: "/map",       label: "Map",       icon: MapIcon,  fillOnActive: false },
+  { href: "/events",    label: "Events",    icon: Calendar, fillOnActive: false },
+  { href: "/my-radius", label: "My Radius", icon: Bookmark, fillOnActive: true  },
 ] as const;
 
-/** Resolve a pathname to its tab index (or -1 if it isn't a tab).
- *  The drawer-kind "More" tab is excluded — it never owns a route. */
+/** Resolve a pathname to its tab index (or -1 if it isn't a tab). */
 export function tabIndexForPath(pathname: string): number {
   return TABS.findIndex(
-    (t) => t.kind === "link" && (pathname === t.href || pathname.startsWith(t.href + "/")),
+    (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
   );
 }
