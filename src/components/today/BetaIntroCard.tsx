@@ -44,7 +44,6 @@ export default function BetaIntroCard() {
     } catch {
       // localStorage unavailable — open as a one-time fallback so
       // the user at least sees the intro once.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- fallback when localStorage isn't readable
       setOpen(true);
     }
     setMounted(true);
