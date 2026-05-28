@@ -88,7 +88,7 @@ async function main() {
       const lum = await meanLuminance(t.buf);
       if (lum > 190) continue; // mostly-white = text page
       candidates.push({ f, ...t, long, ratio, lum });
-    } catch (e) {
+    } catch {
       // trim can fail on pure-white pages; skip them
     }
   }

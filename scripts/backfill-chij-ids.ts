@@ -149,6 +149,21 @@ type Verdict =
       distance_m?: number;
     };
 
+// A rejected candidate, recorded for the human review pass. Mirrors the
+// object pushed in patchFile(); fields are sourced from Row, the failing
+// Verdict branch, and the Google candidate (PlaceEnrichment).
+type UncertainRecord = {
+  slug: string;
+  name: string;
+  address?: string;
+  geom?: { lat: number; lng: number };
+  reason: Extract<Verdict, { ok: false }>["reason"];
+  google_distance_m?: number;
+  google_candidate_id?: PlaceEnrichment["google_place_id"];
+  google_candidate_name?: PlaceEnrichment["display_name"];
+  google_candidate_address?: PlaceEnrichment["formatted_address"];
+};
+
 async function verify(row: Row): Promise<Verdict> {
   if (!row.geom) return { ok: false, reason: "no-geom" };
   if (!isRealAddress(row.address)) return { ok: false, reason: "no-real-address" };
@@ -189,7 +204,7 @@ function detectPretty(text: string): boolean {
 async function patchFile(
   filePath: string,
   ranOnce: { done: boolean },
-): Promise<{ resolved: number; uncertain: any[]; skipped: number; calls: number }> {
+): Promise<{ resolved: number; uncertain: UncertainRecord[]; skipped: number; calls: number }> {
   const original = readFileSync(filePath, "utf8");
   const pretty = detectPretty(original);
   const rows = JSON.parse(original) as Row[];
@@ -203,7 +218,7 @@ async function patchFile(
   let resolved = 0;
   let skipped = 0;
   let calls = 0;
-  const uncertain: any[] = [];
+  const uncertain: UncertainRecord[] = [];
 
   for (const { r, i } of candidates) {
     // Sample-mode cap covers BOTH files combined.
@@ -264,7 +279,7 @@ async function main() {
   });
 
   const ranOnce = { done: false };
-  const totals = { resolved: 0, uncertain: [] as any[], skipped: 0, calls: 0 };
+  const totals = { resolved: 0, uncertain: [] as UncertainRecord[], skipped: 0, calls: 0 };
   for (const path of [
     "src/data/places-dfp.json",
     "src/data/places-discovered.json",
