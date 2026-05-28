@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import WeatherHero from "@/components/today/WeatherHero";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
+import BriefingLine from "@/components/today/BriefingLine";
 import NowDayStrip from "@/components/today/NowDayStrip";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
@@ -280,17 +281,18 @@ export default async function HomePage({
         {/* ── LEFT column: the day + weather block ───────────── */}
         <div className="space-y-6">
 
-      {/* DateLine + NowDayStrip — the slim header that replaces the
-          old AdaptiveGreeting block. Sits ABOVE SkyHero on the page
-          background (paper-cream) so it reads as page metadata, not as
-          a competing editorial line stacked on top of the weather.
-          The dateline + week strip together answer "what day is it?"
-          glanceably; HomeMuniChip lands "Your spot: Brunswick" as the
-          first sign that personalization stuck. Visually they sit in
-          a tight space-y-2 container with about an 8px gap to the
-          SkyHero below. */}
+      {/* DateLine + BriefingLine + NowDayStrip — the slim header
+          that replaces the old AdaptiveGreeting block. Sits ABOVE
+          SkyHero on the page background (paper-cream) so it reads
+          as page metadata, not as a competing editorial line
+          stacked on top of the weather. The BriefingLine answers
+          "so what should I do?" in one sentence (rule-based
+          synthesis of time-of-day, open places, and the next
+          notable event) — the centerpiece of the data → decisions
+          shift the review called for. */}
       <div className="space-y-2">
         <DateLine />
+        <BriefingLine />
         {/* NowDayStrip became async (fetches NWS daily forecast to
             render a weather glyph + hi/lo per day). Suspense so the
             header above SkyHero doesn't block — fallback is a slim
