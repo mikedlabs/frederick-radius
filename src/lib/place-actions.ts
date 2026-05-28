@@ -9,7 +9,7 @@
  * prefilled search is the graceful, always-correct fallback.
  */
 import type { Place } from "@/data/places";
-import { parkMobileWebUrl, parkMobileFindUrl } from "@/lib/integrations/deeplinks";
+import { parkMobileWebUrl, parkMobileFindUrl, openTableUrl, resyUrl } from "@/lib/integrations/deeplinks";
 
 export type PlaceAction = {
   key: string;
@@ -66,10 +66,14 @@ export function placeActions(p: Place): PlaceAction[] {
   // Reserve a table — restaurants/bars/breweries
   if (RESERVE_CATS.has(p.category)) {
     if (p.opentable_id) {
+      // opentable_id is the restref integer (per places.ts). It must go
+      // through the restref client redirect, NOT /r/restaurant/profile/
+      // — the latter expects a slug and 404s on a restref id. One source
+      // of truth for the URL lives in deeplinks.openTableUrl.
       actions.push({
         key: "reserve",
         label: "Reserve",
-        href: `https://www.opentable.com/r/restaurant/profile/${p.opentable_id}`,
+        href: openTableUrl(p.opentable_id),
         external: true,
         icon: "reserve",
         accent: "var(--app-brand)",
@@ -78,7 +82,7 @@ export function placeActions(p: Place): PlaceAction[] {
       actions.push({
         key: "reserve",
         label: "Reserve",
-        href: `https://resy.com/cities/frederick-md/venues/${p.resy_slug}`,
+        href: resyUrl(p.resy_slug),
         external: true,
         icon: "reserve",
         accent: "var(--app-brand)",
@@ -88,7 +92,7 @@ export function placeActions(p: Place): PlaceAction[] {
       actions.push({
         key: "reserve",
         label: "Reserve",
-        href: `https://www.opentable.com/s?term=${q(p.name)}&covers=2&metroId=&latitude=${p.geom.lat}&longitude=${p.geom.lng}`,
+        href: `https://www.opentable.com/s?term=${q(p.name)}&covers=2&latitude=${p.geom.lat}&longitude=${p.geom.lng}`,
         external: true,
         icon: "reserve",
         accent: "var(--app-brand)",
