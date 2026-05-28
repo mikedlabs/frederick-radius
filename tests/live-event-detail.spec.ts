@@ -17,7 +17,7 @@ vi.mock("@/lib/integrations/ical-live", async (importOriginal) => {
 });
 
 import { getLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
-import { liveToCardEvent, getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
+import { liveToCardEvent, getLiveCardEventBySlug, liveCleanSlug } from "@/lib/loaders/liveEvents";
 
 const mockGetLiveEvents = vi.mocked(getLiveEvents);
 
@@ -64,10 +64,13 @@ describe("liveEventSlug", () => {
 });
 
 describe("liveToCardEvent", () => {
-  it("uses the derived slug and carries the feed URL as source_url", () => {
+  it("emits the clean stored slug (Phase 2), not the legacy live- form", () => {
     const e = sample();
     const card = liveToCardEvent(e);
-    expect(card.slug).toBe(liveEventSlug(e));
+    // Clean, dated, shareable slug. 2026-05-21T22:00Z is 6pm ET on the 21st.
+    expect(card.slug).toBe(liveCleanSlug(e));
+    expect(card.slug).toBe("first-saturday-art-walk-2026-05-21");
+    expect(card.slug.startsWith("live-")).toBe(false);
     expect(card.slug).not.toBe(e.id);
     expect(card.source_url).toBe(e.url);
     expect(card.source).toBe("manual");
@@ -77,10 +80,35 @@ describe("liveToCardEvent", () => {
 });
 
 describe("getLiveCardEventBySlug", () => {
-  it("rejects a non-live slug with no network call (seed is resolved first, elsewhere)", async () => {
-    const result = await getLiveCardEventBySlug("alive-at-five-glamour-kitty");
+  it("consults the (cached) feed for an unmatched slug and returns null", async () => {
+    // Phase 2 removed the "starts-with-live-" fast path, because a clean
+    // live slug now looks like a seed slug. The resolver consults the
+    // feed (cached) and returns null when nothing matches.
+    mockGetLiveEvents.mockResolvedValue({
+      events: [sample()],
+      sources_succeeded: ["celebrate"],
+      sources_failed: [],
+    });
+    const result = await getLiveCardEventBySlug("not-a-real-event-2026-01-01");
     expect(result).toBeNull();
-    expect(mockGetLiveEvents).not.toHaveBeenCalled();
+    expect(mockGetLiveEvents).toHaveBeenCalled();
+  });
+
+  it("still resolves a legacy live- slug as a fallback, returning the clean slug", async () => {
+    const e = sample();
+    mockGetLiveEvents.mockResolvedValue({
+      events: [e],
+      sources_succeeded: ["celebrate"],
+      sources_failed: [],
+    });
+    // An old shared link in the legacy format still resolves, and the
+    // resolved event carries the CLEAN slug so the detail route can
+    // redirect the visitor to the canonical URL.
+    const legacy = liveEventSlug(e);
+    expect(legacy.startsWith("live-")).toBe(true);
+    const resolved = await getLiveCardEventBySlug(legacy);
+    expect(resolved).not.toBeNull();
+    expect(resolved?.slug).toBe(liveCleanSlug(e));
   });
 
   it("resolves the exact slug the card and Share emit (the 404 the fix removes)", async () => {
@@ -102,7 +130,7 @@ describe("getLiveCardEventBySlug", () => {
     expect(resolved?.source_url).toBe(e.url);
   });
 
-  it("returns null for a live-shaped slug no longer in the feed window", async () => {
+  it("returns null for a slug no longer in the feed window", async () => {
     mockGetLiveEvents.mockResolvedValue({
       events: [sample({ starts_at: "2026-09-01T22:00:00Z" })],
       sources_succeeded: ["celebrate"],

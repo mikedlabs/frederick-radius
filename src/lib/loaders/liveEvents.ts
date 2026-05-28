@@ -13,7 +13,19 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
-import { normalizeTitle, etYear } from "@/lib/events/normalize";
+import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
+
+/**
+ * The one clean-slug authority for a live event. Both liveToCardEvent
+ * (the slug it stamps on the card) and getLiveCardEventBySlug (the
+ * resolver) call this, so the link a card emits is exactly the link the
+ * detail route resolves. Form: kebab(presenter + title)-YYYY-MM-DD, no
+ * "live-" prefix, no mashed address, no timestamp.
+ */
+export function liveCleanSlug(e: Pick<LiveEvent, "title" | "starts_at">): string {
+  const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
+  return cleanEventSlug({ presenter, title, startsAt: e.starts_at });
+}
 
 /**
  * Adapt one live feed event to the EventWithMeta shape the card and
@@ -32,7 +44,9 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
   // suffix-into-city concatenation repaired.
   const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
   return {
-    slug: liveEventSlug(e),
+    // Clean, shareable slug (Phase 2). The legacy liveEventSlug is kept
+    // only as a fallback resolver for old shared links.
+    slug: liveCleanSlug(e),
     title,
     presenter,
     description: cleanFeedText(e.description ?? ""),
@@ -61,10 +75,13 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
 }
 
 /**
- * Resolve a single live event by its derived slug, for the detail route.
- * Returns null for any slug that is not a live slug (a fast path with no
- * network: seed events are resolved separately, and first) or that no
- * longer appears in the current feed window.
+ * Resolve a single live event by slug, for the detail route. Tries the
+ * clean stored slug first, then the legacy "live-..." slug as a
+ * fallback. Returns null when nothing matches or the event has left the
+ * feed window. The detail route resolves seed events first, so this only
+ * runs when the seed lookup missed; a clean live slug looks like a seed
+ * slug, so the old "starts-with-live-" fast path is gone and any
+ * unmatched slug now consults the (cached) feed.
  *
  * Window is 90 days: a superset of the index's 60-day card window so a
  * link shared the moment a card appears still resolves. The underlying
@@ -76,8 +93,14 @@ export async function getLiveCardEventBySlug(
   slug: string,
   windowDays = 90,
 ): Promise<EventWithMeta | null> {
-  if (!slug.startsWith("live-")) return null;
   const { events } = await getLiveEvents(windowDays);
-  const hit = events.find((e) => liveEventSlug(e) === slug);
+  // Clean stored slug first (the canonical form a card links to).
+  let hit = events.find((e) => liveCleanSlug(e) === slug);
+  // Legacy fallback: an old "live-..." shared link still resolves so it
+  // never 404s. The detail route notices the slug mismatch and redirects
+  // the visitor to the clean URL.
+  if (!hit && slug.startsWith("live-")) {
+    hit = events.find((e) => liveEventSlug(e) === slug);
+  }
   return hit ? liveToCardEvent(hit) : null;
 }

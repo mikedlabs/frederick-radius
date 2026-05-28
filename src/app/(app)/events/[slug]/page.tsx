@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Calendar, MapPin, Navigation, Ticket, ExternalLink, Wine, Utensils, Music, Ban } from "lucide-react";
@@ -69,6 +69,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   const seed = getEventBySlug(slug);
   const event = seed ?? (await getLiveCardEventBySlug(slug));
   if (!event) notFound();
+  // Canonicalize live-event URLs (Phase 2). A live event always carries
+  // its clean stored slug; if we resolved one through a legacy
+  // "live-..." link or any non-canonical form, send the visitor to the
+  // clean URL. Temporary (307) rather than permanent, because live-feed
+  // events are windowed and a permanently-cached redirect could outlive
+  // the event it points at. Seed events keep their hand-authored slug.
+  if (!seed && event.slug !== slug) {
+    redirect(`/events/${event.slug}`);
+  }
   // Reliable live-vs-seed signal: whether the static seed resolved it.
   // event.source is NOT usable here (hand-authored seed events also use
   // "manual"). A live event has no static ICS endpoint and no editorial
