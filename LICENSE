@@ -1,0 +1,38 @@
+Copyright (c) 2025–2026 Michael DeMattia. All Rights Reserved.
+
+This repository — including all source code, data, design assets,
+written content, and other materials — is the proprietary work of
+Michael DeMattia, doing business as Frederick Radius.
+
+NO PERMISSION IS GRANTED to copy, modify, publish, distribute,
+sublicense, sell, or use any part of this work for any purpose
+without prior written permission from the copyright holder.
+
+This restriction applies to, but is not limited to:
+  - Source code (TypeScript, JavaScript, SQL, configuration)
+  - Curated and verified place / event / amenity data, including
+    the original selection, arrangement, deduplication, and
+    enrichment work that converted public-source raw data into
+    the Frederick Radius database
+  - Photography in the From Above collection and any companion
+    image assets
+  - Brand identity (the "Frederick Radius" name and disc logo,
+    typography pairings, color tokens, editorial voice)
+  - User interface designs, component patterns, and screen
+    layouts
+  - Documentation, audits, and supporting written material
+
+Public data ingested from third-party sources (Frederick County
+GIS, National Weather Service, OpenStreetMap, Google Places, etc.)
+remains the property of those sources and is used under their
+respective terms. The CURATION, CLEANING, VERIFICATION, and
+PRESENTATION of that data within this project is original work
+covered by this notice.
+
+Machine learning training, automated scraping, and bulk extraction
+are expressly prohibited. See `/terms` for the public-facing
+terms of service and the project's `robots.txt` for the
+machine-readable equivalent.
+
+For licensing inquiries, partnership requests, or permission to
+use any portion of this work, contact miked@madproductions.io.
