@@ -86,11 +86,20 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 4);
 
-  const nearbyParking: PlaceCardData[] = publicPlaces()
+  // Distance-capped: a 13mi trailhead lot is not "nearby parking" for
+  // a downtown event. 1200m (0.75mi) covers downtown garages around
+  // Carroll Creek without dragging in distant lots. If nothing falls
+  // inside that, widen to 5km so a rural/trail event still surfaces
+  // its closest parking option — and show nothing if even that misses.
+  const allParking: PlaceCardData[] = publicPlaces()
     .filter((p) => p.category === "parking")
     .map((p) => decoratePlace(p, event.geom))
-    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
-    .slice(0, 3);
+    .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
+  const closeParking = allParking.filter((p) => (p.distance_m ?? Infinity) <= 1200);
+  const nearbyParking: PlaceCardData[] =
+    closeParking.length > 0
+      ? closeParking.slice(0, 3)
+      : allParking.filter((p) => (p.distance_m ?? Infinity) <= 5000).slice(0, 3);
 
   const jsonLd = {
     "@context": "https://schema.org",
