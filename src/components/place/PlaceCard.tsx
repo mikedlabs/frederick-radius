@@ -135,9 +135,21 @@ export default function PlaceCard({
   // same whether or not a photo exists — most DFP places have none, so a
   // tonal category panel stands in so a shelf never looks broken.
   if (variant === "tile") {
+    // Bottom-left "on-photo" status pill: the highest-priority
+    // placeReason ("Open · closes 9 PM", "Verified", etc) doubles
+    // as the Airbnb-style "Guest favorite" chip riding on the
+    // image. Picking the first reason keeps a single signal
+    // surfaced where the photo gradient is already paying for it.
+    const reasons = placeReasons(place);
+    const onPhotoReason = reasons[0];
+    const bodyReasons = reasons.slice(1);
     return (
       <article
-        className="tactile tactile-interactive group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
+        className="tactile tactile-interactive group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
+        style={{
+          borderColor: "var(--app-border)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        }}
       >
         <button
           type="button"
@@ -145,7 +157,9 @@ export default function PlaceCard({
           aria-label={`View ${place.name} details`}
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
-          <div className="relative h-40 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+          {/* Photo banner — 160 → 180px (more cinematic, room for
+              top + bottom chips without crowding the upper image). */}
+          <div className="relative h-[180px] w-full overflow-hidden bg-[var(--app-bg-sunken)]">
             {photoUrl ? (
               <>
                 <PlacePhoto
@@ -157,7 +171,17 @@ export default function PlaceCard({
                   className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.06]"
                   rounded="0"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
+                {/* Stronger bottom gradient pulls the on-photo status
+                    pill off the image cleanly; the upper image stays
+                    bright. Same recipe as EventCard tile. */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(0,0,0,0.30) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.65) 100%)",
+                  }}
+                />
               </>
             ) : (
               <CategoryGraphic
@@ -166,24 +190,42 @@ export default function PlaceCard({
                 className="absolute inset-0 transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
               />
             )}
-            {/* Category chip — top-left, always visible. Photo-backed
-                tiles get a filled chip in the category color; the no-
-                photo block gets a soft tinted chip. The "what is this"
-                signal makes a coffee shop visibly different from a park
-                tile at a glance, even when the photo is generic. */}
+            {/* Category chip — top-left. Glass treatment on photos,
+                soft tint when no photo. */}
             {cat && (
               <span
-                className="absolute left-2 top-2 inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
                 style={{
                   background: photoUrl ? color : `color-mix(in srgb, ${color} 22%, var(--app-bg-elevated))`,
                   color: photoUrl ? "white" : color,
+                  boxShadow: photoUrl
+                    ? "0 2px 6px -1px rgba(0,0,0,0.30)"
+                    : "none",
                 }}
               >
                 {cat.name}
               </span>
             )}
-            {/* Category color band along the bottom edge of the banner
-                — the through-line that ties cards to their type. */}
+            {/* On-photo status pill, bottom-left. The Airbnb "Guest
+                favorite" pattern — the single most useful decision
+                signal sits ON the photo so the user reads it without
+                scanning the body. */}
+            {photoUrl && onPhotoReason && (
+              <span
+                className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                style={{
+                  background: "rgba(255,255,255,0.95)",
+                  color: "var(--app-ink)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  boxShadow: "0 2px 6px -1px rgba(0,0,0,0.30)",
+                }}
+              >
+                {onPhotoReason.label}
+              </span>
+            )}
+            {/* Category color band along the bottom edge — the
+                through-line that ties cards to their type. */}
             <div
               aria-hidden
               className="absolute inset-x-0 bottom-0 h-[3px]"
@@ -199,10 +241,8 @@ export default function PlaceCard({
                 {place.name}
               </h3>
               {/* SourceBadge — surfaces trust tier (Curated / Verified
-                  / Community / Official) at the card level. Self-hides
-                  when there's no honest claim, so most rows aren't
-                  affected. Sits next to the name so the reader sees
-                  *where the data came from* without scanning. */}
+                  / Community / Official). Self-hides when there's no
+                  honest claim. */}
               <SourceBadge place={place} size="sm" />
             </div>
             <p
@@ -215,14 +255,15 @@ export default function PlaceCard({
               )}
               <BeenHereIndicator slug={place.slug} />
             </p>
-            {/* Reason chips on the tile variant — same producer as the
-                grid variant. Falls back to the legacy status+rating
-                row only if placeReasons() returns empty. */}
+            {/* Body reasons — REMAINING reasons after the on-photo
+                pill (or all reasons when no photo to ride on). Falls
+                back to the legacy status+rating row if placeReasons
+                returns empty. */}
             {(() => {
-              const reasons = placeReasons(place);
-              return reasons.length > 0 ? (
-                <ReasonChipRow reasons={reasons} className="pt-0.5" />
-              ) : (
+              const remaining = photoUrl ? bodyReasons : reasons;
+              return remaining.length > 0 ? (
+                <ReasonChipRow reasons={remaining} className="pt-0.5" />
+              ) : !photoUrl && reasons.length === 0 ? (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <PlaceStatus status={place.open_status} className="!text-[12px]" />
                   <Rave
@@ -231,7 +272,7 @@ export default function PlaceCard({
                     className="!text-[12px]"
                   />
                 </div>
-              );
+              ) : null;
             })()}
           </div>
         </button>
