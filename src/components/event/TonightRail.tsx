@@ -1,21 +1,7 @@
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import {
-  Clock, Music, Palette, Theater, Baby, Apple, Landmark, Image as ImageIcon,
-  Utensils, Trees, ShoppingBag, Activity, Heart, Building, GraduationCap,
-  CalendarDays, BookOpen, Wine, Beer, Coffee, Sparkles,
-} from "lucide-react";
-
-// Lookup for category-icon names → component. We resolve the
-// `icon` string from src/data/categories.ts (each entry lists a
-// lucide icon name as a string) to the actual component, so the
-// photo-less fallback can display the category's mark as a large
-// ghosted watermark — editorial poster feel instead of a flat block.
-const ICON_BY_NAME: Record<string, typeof Music> = {
-  Music, Palette, Theater, Baby, Apple, Landmark, ImageIcon,
-  Utensils, Trees, ShoppingBag, Activity, Heart, Building,
-  GraduationCap, BookOpen, Wine, Beer, Coffee, Sparkles,
-};
+import { Clock } from "lucide-react";
+import CategoryGraphic from "@/components/ui/CategoryGraphic";
 
 /**
  * "Tonight at a glance" — the editorial marquee of what's starting
@@ -108,7 +94,6 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                 color: "var(--app-ink-2)",
               }}
             >
-              <CalendarDays className="hidden" aria-hidden />
               <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>→</span>
             </span>
           </div>
@@ -118,10 +103,6 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
             const cat = CATEGORY_BY_SLUG[e.category ?? ""];
             const accent = cat?.color ?? "var(--app-brand)";
             const photo = e.hero_image ?? null;
-            // Icon for the photo-less fallback: resolve the category's
-            // icon string to a lucide component, fall back to a generic
-            // calendar mark if the category is unknown or unmapped.
-            const CatIcon = cat ? (ICON_BY_NAME[cat.icon] ?? CalendarDays) : CalendarDays;
             return (
               <a
                 key={e.slug}
@@ -129,49 +110,29 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                 className="tactile tactile-interactive group relative block w-[220px] shrink-0 snap-start overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
                 style={{ borderColor: "var(--app-border)" }}
               >
-                {/* Photo or editorial poster fallback. Photo cards get
-                    a dark gradient overlay for chip legibility; photo-
-                    less cards get a category-tinted poster: two-stop
-                    diagonal gradient + a large ghosted category icon +
-                    a subtle dot-grid texture overlay. */}
-                <div
-                  className="relative h-[140px] w-full overflow-hidden"
-                  style={
-                    photo
-                      ? {
-                          background: `linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55) 100%), url(${photo}) center/cover no-repeat`,
-                        }
-                      : {
-                          background: `linear-gradient(140deg, color-mix(in srgb, ${accent} 70%, #1a1820) 0%, color-mix(in srgb, ${accent} 32%, #1a1820) 55%, color-mix(in srgb, ${accent} 8%, #1a1820) 100%)`,
-                        }
-                  }
-                >
-                  {!photo && (
-                    <>
-                      {/* Dot-grid texture — subtle, editorial. */}
-                      <span
-                        aria-hidden
-                        className="absolute inset-0"
-                        style={{
-                          backgroundImage:
-                            "radial-gradient(rgba(255,255,255,0.10) 1px, transparent 1px)",
-                          backgroundSize: "12px 12px",
-                          mixBlendMode: "overlay",
-                        }}
-                      />
-                      {/* Category icon as ghosted watermark — visual
-                          identity for the card without a photo. */}
-                      <CatIcon
-                        aria-hidden
-                        className="absolute -bottom-2 -right-2 h-[110px] w-[110px]"
-                        strokeWidth={1.25}
-                        style={{
-                          color: "white",
-                          opacity: 0.22,
-                          transform: "rotate(-6deg)",
-                        }}
-                      />
-                    </>
+                {/* Photo or CategoryGraphic poster fallback. The
+                    inline poster used to render a single Calendar
+                    icon when the event's category had no icon
+                    mapping — every photo-less event looked
+                    identical and stamped. Switching to the shared
+                    CategoryGraphic component pulls in the proper
+                    icon lookup (28 categories), seeded variation
+                    (hue shift, rotation, scale, anchor), and 7
+                    texture patterns — so a shelf of photo-less
+                    tiles reads as varied, not duplicated. */}
+                <div className="relative h-[140px] w-full overflow-hidden">
+                  {photo ? (
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background: `linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.55) 100%), url(${photo}) center/cover no-repeat`,
+                      }}
+                    />
+                  ) : (
+                    <CategoryGraphic
+                      category={e.category ?? ""}
+                      seed={e.slug}
+                    />
                   )}
                   {/* Category chip */}
                   {cat && (

@@ -20,7 +20,14 @@ export default function EventCard({
   variant = "row",
 }: {
   event: EventWithMeta;
-  variant?: "row" | "tile" | "feature";
+  /**
+   * Layout density. `row` is the workhorse list card with thumbnail
+   * + chips; `tile` is the grid/rail card with photo banner; `feature`
+   * is the editorial lead; `compact` is the Rolodex row — single
+   * 48px line with time pill + title + venue + category dot. Compact
+   * mode fits 4-5× more events per viewport on mobile.
+   */
+  variant?: "row" | "tile" | "feature" | "compact";
 }) {
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -40,6 +47,105 @@ export default function EventCard({
   const accent: string = cat?.color ?? "#2F5470";
   const hasPhoto = Boolean(event.hero_image);
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Civic");
+
+  // Compact variant — the Rolodex row. Single ~48px line: date pill
+  // (left, fixed width) + title + venue/time meta + category color
+  // dot. No photo, no chips, no actions. Built for dense scanning,
+  // not browsing: 4-5x more events per mobile viewport than the
+  // default row variant. Surfaced via the /events density toggle.
+  if (variant === "compact") {
+    return (
+      <article
+        className="tactile-interactive group relative flex items-center gap-3 border-b px-3 py-2"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        {/* Date / time pill — anchors each row. Date numerals first
+            so a scan-by-day pattern works. Smaller text for venue
+            time below if we have it. */}
+        <div className="flex shrink-0 flex-col items-center gap-0.5 leading-none">
+          <span
+            className="text-[9px] font-bold uppercase tracking-[0.1em]"
+            style={{ color: accent }}
+          >
+            {date.month}
+          </span>
+          <span
+            className="font-serif text-[17px] font-semibold"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {date.day}
+          </span>
+          <span
+            className="text-[8.5px] font-medium uppercase"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {date.weekday}
+          </span>
+        </div>
+
+        {/* Category color dot — quiet visual cue tying the row to a
+            type. Small enough to scan past, distinct enough that a
+            shelf of compact rows shows category rhythm at a glance. */}
+        <span
+          aria-hidden
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ background: accent }}
+          title={categoryLabel}
+        />
+
+        {/* Title + meta — title is the link target, meta line below
+            carries time + venue + free chip. Status badge inline
+            when the event is cancelled / postponed (rare). */}
+        <div className="min-w-0 flex-1">
+          <Link
+            href={`/events/${event.slug}`}
+            className={`block truncate text-[13.5px] font-semibold tracking-tight outline-none focus-visible:underline ${
+              isCancelled ? "line-through opacity-70" : ""
+            }`}
+            style={{ color: "var(--app-ink)" }}
+          >
+            <span className="absolute inset-0" aria-hidden />
+            {event.title}
+          </Link>
+          <p
+            className="truncate text-[11px] leading-tight"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {date.time}
+            {event.venue_name && (
+              <>
+                {" · "}
+                {event.venue_name}
+              </>
+            )}
+            {event.is_free && (
+              <>
+                {" · "}
+                <span style={{ color: "var(--app-positive)" }}>Free</span>
+              </>
+            )}
+            {statusText && (
+              <>
+                {" · "}
+                <span style={{ color: statusBg }}>{statusText}</span>
+              </>
+            )}
+          </p>
+        </div>
+
+        {/* Distance — only when we have a user origin. Tabular nums
+            so a vertical scan stays aligned. */}
+        {event.distance_m !== undefined && (
+          <span
+            className="shrink-0 text-[11px] tabular-nums"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {formatDistance(event.distance_m)}
+          </span>
+        )}
+      </article>
+    );
+  }
 
   // Feature variant — the editorial lead card for a horizon group when
   // we have a real photo. Full-bleed image, big serif headline, scrim

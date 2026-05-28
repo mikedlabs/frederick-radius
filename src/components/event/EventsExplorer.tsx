@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
-import { Search, List as ListIcon, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
+import { Search, List as ListIcon, Rows3, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
@@ -89,7 +89,7 @@ export default function EventsExplorer({
   const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
   const [day, setDay] = useState<string | null>(initialDay ?? null);
   const [q, setQ] = useState("");
-  const [view, setView] = useState<"list" | "calendar" | "map">("list");
+  const [view, setView] = useState<"list" | "compact" | "calendar" | "map">("list");
   // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
   // collapsed by default so the page leads with events, not controls.
   const [showFilters, setShowFilters] = useState(false);
@@ -325,6 +325,11 @@ export default function EventsExplorer({
           {(
             [
               ["list", ListIcon, "List"],
+              // Compact "Rolodex" mode — 48px rows, ~5x more events
+              // visible per viewport than the default feature-card
+              // list. Added May 2026 in response to the "cards too
+              // big, one-at-a-time on mobile" review feedback.
+              ["compact", Rows3, "Compact"],
               ["calendar", CalendarDays, "Agenda"],
               ["map", MapIcon, "Map"],
             ] as const
@@ -541,6 +546,32 @@ export default function EventsExplorer({
         <EventAgenda events={filtered} nowMs={now} />
       ) : view === "map" ? (
         <EventsMap events={mapPins} />
+      ) : view === "compact" && filtered.length > 0 ? (
+        // Compact "Rolodex" mode — flat list of 48px rows, no horizon
+        // grouping, no feature card. Capped at 200 since each row is
+        // ~⅕ the height of a feature card. The user is here for
+        // density, not browsing.
+        <ol
+          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+          style={{
+            borderColor: "var(--app-border)",
+            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          }}
+        >
+          {filtered.slice(0, 200).map((e) => (
+            <li key={e.slug}>
+              <EventCard event={e} variant="compact" />
+            </li>
+          ))}
+          {filtered.length > 200 && (
+            <li
+              className="px-3 py-3 text-center text-[11px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Showing the first 200. Tighten filters or switch to the calendar view for the long tail.
+            </li>
+          )}
+        </ol>
       ) : filtered.length === 0 ? (
         // Composed empty state — soft category-tinted block, serif line,
         // one quiet sentence, primary action. Replaces the bare bordered

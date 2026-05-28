@@ -1,11 +1,11 @@
 import {
   Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building,
-  Church, Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart,
-  HeartPulse, Hotel, Image as ImageIcon, Lamp, Landmark, Library,
-  Mountain, Music, Palette, ParkingCircle, PawPrint, Pill,
-  Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater, ToyBrick,
-  Train, Trees, Truck, Utensils, UtensilsCrossed, Vote, Wifi, Wine,
-  Wrench, MapPin,
+  CalendarDays, Church, Coffee, Cookie, DoorOpen, Droplets, GraduationCap,
+  Hammer, Heart, HeartPulse, Hotel, Image as ImageIcon, Lamp, Landmark,
+  Library, Mountain, Music, Palette, ParkingCircle, PawPrint, Pill,
+  Pizza, Recycle, ShieldCheck, ShoppingBag, Sparkles, Tent, Theater,
+  ToyBrick, Train, Trees, Truck, Utensils, UtensilsCrossed, Vote, Wifi,
+  Wine, Wrench, MapPin,
 } from "lucide-react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
@@ -33,12 +33,26 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 const ICONS: Record<string, typeof Coffee> = {
   Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building,
-  Church, Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart, HeartPulse,
-  Hotel, ImageIcon, Lamp, Landmark, Library, Mountain, Music, Palette,
-  ParkingCircle, PawPrint, Pill, Pizza, Recycle, ShieldCheck,
-  ShoppingBag, Tent, Theater, ToyBrick, Train, Trees, Truck, Utensils,
-  UtensilsCrossed, Vote, Wifi, Wine, Wrench,
+  CalendarDays, Church, Coffee, Cookie, DoorOpen, Droplets, GraduationCap,
+  Hammer, Heart, HeartPulse, Hotel, ImageIcon, Lamp, Landmark, Library,
+  Mountain, Music, Palette, ParkingCircle, PawPrint, Pill, Pizza, Recycle,
+  ShieldCheck, ShoppingBag, Sparkles, Tent, Theater, ToyBrick, Train,
+  Trees, Truck, Utensils, UtensilsCrossed, Vote, Wifi, Wine, Wrench,
 };
+
+// Fallback palette for events / places with no matching category in
+// CATEGORY_BY_SLUG. Picked by seed so a shelf of unknown-category
+// cards still reads as a varied set of POSTERS instead of "we don't
+// know" grey rectangles. Pulls brand-aligned colors only (no
+// red/yellow that read as warnings).
+const FALLBACK_PALETTE = [
+  { color: "#2F5470", icon: Sparkles },    // cool — events
+  { color: "#A04A3E", icon: GraduationCap }, // brick — civic / graduations
+  { color: "#1E6B3A", icon: Trees },        // catoctin green — outdoor
+  { color: "#C99632", icon: Music },        // amber — music
+  { color: "#5B4B7C", icon: Theater },      // plum — arts
+  { color: "#3F6E7F", icon: BookOpen },     // teal — community
+];
 
 /** Deterministic hash of a seed string → 32-bit int. djb2 variant. */
 function seedHash(s: string): number {
@@ -49,14 +63,26 @@ function seedHash(s: string): number {
   return Math.abs(h);
 }
 
-/** Resolve a category slug to its color + icon component, with sane
- *  fallbacks so an unknown slug never breaks the graphic. */
-function resolve(slug: string): { color: string; Icon: typeof Coffee } {
+/** Resolve a category slug + seed to its color + icon component. Known
+ *  categories get their declared identity; unknown / empty slugs pick
+ *  from a brand-aligned fallback palette by seed so a shelf of
+ *  category-less cards still reads as varied posters, not "unknown"
+ *  grey blanks. */
+function resolve(
+  slug: string,
+  seedH: number,
+): { color: string; Icon: typeof Coffee } {
   const def = CATEGORY_BY_SLUG[slug];
-  const color = def?.color ?? "#7A7975";
-  const iconName = def?.icon;
-  const Icon = (iconName && ICONS[iconName]) || MapPin;
-  return { color, Icon };
+  if (def) {
+    const color = def.color ?? "#7A7975";
+    const iconName = def.icon;
+    const Icon = (iconName && ICONS[iconName]) || MapPin;
+    return { color, Icon };
+  }
+  // Unknown category — pick a fallback poster by seed so each row in
+  // a shelf gets its own color/glyph identity instead of grey + pin.
+  const pick = FALLBACK_PALETTE[seedH % FALLBACK_PALETTE.length];
+  return { color: pick.color, Icon: pick.icon };
 }
 
 /** Seven textures now — was four, expanded so a shelf of no-photo
@@ -165,8 +191,8 @@ export default function CategoryGraphic({
    *  graphic IS conveying meaning (rare). */
   ariaHidden?: boolean;
 }) {
-  const { color, Icon } = resolve(category);
   const h = seedHash(seed);
+  const { color, Icon } = resolve(category, h);
 
   // Pull a sibling hue rotation in [-25, +25] for the gradient's
   // second stop so the card has depth without going off-brand.
