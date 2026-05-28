@@ -1,0 +1,912 @@
+{
+  "summary": {
+    "seed": 20260527,
+    "sample_size": 50,
+    "agree": 39,
+    "disagree": 11,
+    "no_result": 0,
+    "disagreement_rate_pct": 22,
+    "threshold_pct": 5,
+    "breach": true
+  },
+  "rows": [
+    {
+      "slug": "the-center-for-holistic-wellness",
+      "name": "The Center for Holistic Wellness",
+      "dfp_address": "6 W 2nd St",
+      "dfp_geom": {
+        "lng": -77.4111204,
+        "lat": 39.416507
+      },
+      "google_place_id_field": "bc6c8bb2-368b-44f3-bd8d-3245eef75f14",
+      "google_address": "6 W 2nd St 1st Floor, Frederick, MD 21701, USA",
+      "google_lat": 39.4165093,
+      "google_lng": -77.4111233,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "The Center for Holistic Wellness",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "sho-lung-dojo-martial-arts",
+      "name": "Sho Lung Dojo Martial Arts",
+      "dfp_address": "40 W Patrick St",
+      "dfp_geom": {
+        "lng": -77.4114965,
+        "lat": 39.4140704
+      },
+      "google_place_id_field": "8c5456d4-f3cd-49e4-b393-ed836c08fd9d",
+      "google_address": "1080 W Patrick St #5, Frederick, MD 21703, USA",
+      "google_lat": 39.415078099999995,
+      "google_lng": -77.44509,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Choi's Martial Arts USA",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "brent-hawkins",
+      "name": "Brent Hawkins",
+      "dfp_address": "514 N Market St",
+      "dfp_geom": {
+        "lng": -77.4100677,
+        "lat": 39.4207635
+      },
+      "google_place_id_field": "66c78257-74e0-420f-8bac-2ca0d749f6e0",
+      "google_address": "514 N Market St, Frederick, MD 21701, USA",
+      "google_lat": 39.4207585,
+      "google_lng": -77.410011,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Brent Hawkins - L.P. Calomeris Realty, LLC",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "frederick-gastroenterology-associates",
+      "name": "Frederick Gastroenterology Associates",
+      "dfp_address": "310 W 9th St",
+      "dfp_geom": {
+        "lng": -77.413068,
+        "lat": 39.426617
+      },
+      "google_place_id_field": "b414881c-0b7f-4cd5-a3f5-df33454a1efe",
+      "google_address": "7109 Guilford Dr Unit 300, Frederick, MD 21704, USA",
+      "google_lat": 39.3950925,
+      "google_lng": -77.4188033,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Frederick Gastroenterology Associates",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "true-standard-distilling",
+      "name": "True Standard Distilling",
+      "dfp_address": "10 N Carroll St",
+      "dfp_geom": {
+        "lng": -77.4073062,
+        "lat": 39.4146066
+      },
+      "google_address": "10 N Carroll St, Frederick, MD 21701, USA",
+      "google_lat": 39.4146067,
+      "google_lng": -77.4073042,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "True Standard Distilling",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "sa-design-art-tattoo",
+      "name": "Sa Design Art Tattoo",
+      "dfp_address": "216 N Market St",
+      "dfp_geom": {
+        "lng": -77.4105483,
+        "lat": 39.4169553
+      },
+      "google_place_id_field": "0fdb1dba-eaca-42ab-b783-b4bcfb334fb6",
+      "google_address": "216 N Market St, Frederick, MD 21701, USA",
+      "google_lat": 39.4169465,
+      "google_lng": -77.4104792,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Sacred Arts",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "stone-hearth-bakery",
+      "name": "Stone Hearth Bakery",
+      "dfp_address": "138 N East St",
+      "dfp_geom": {
+        "lng": -77.4049547,
+        "lat": 39.4160958
+      },
+      "google_place_id_field": "0f58d3d1-e1bd-41ff-b1eb-6733c64e663d",
+      "google_address": "138 N East St, Frederick, MD 21701, USA",
+      "google_lat": 39.416081899999995,
+      "google_lng": -77.4048485,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Stone Hearth Bakery",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "yanina-wendy-cutsail-allstate-insurance",
+      "name": "Yanina Wendy Cutsail Allstate Insurance",
+      "dfp_address": "1201 N East St",
+      "dfp_geom": {
+        "lng": -77.403704,
+        "lat": 39.4281767
+      },
+      "google_place_id_field": "26ef9c96-499a-4f21-96f6-8faf142c62a0",
+      "google_address": "1201 N East St, Frederick, MD 21701, USA",
+      "google_lat": 39.4281633,
+      "google_lng": -77.4038484,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Cutsail Insurance Agency Yanina \" Wendy\" Cutsail",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "smoley-engineers-consultants",
+      "name": "Smoley Engineers Consultants",
+      "dfp_address": "19 N Court St",
+      "dfp_geom": {
+        "lng": -77.412293,
+        "lat": 39.414789
+      },
+      "google_place_id_field": "3f0932ca-f790-4c58-971a-318cc9b771ce",
+      "google_address": "19 N Court St # 102, Frederick, MD 21701, USA",
+      "google_lat": 39.4147582,
+      "google_lng": -77.4124033,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Smoley Engineers & Consultants",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "mrs-sophia-wilmot-rn-msn-crnp-family-nurse-practitioner",
+      "name": "Mrs Sophia Wilmot Rn Msn Crnp Family Nurse Practitioner",
+      "dfp_address": "100 W Patrick St",
+      "dfp_geom": {
+        "lng": -77.41291,
+        "lat": 39.41367
+      },
+      "google_place_id_field": "57aa57c9-1abf-4c1b-b94d-2c4db536fec0",
+      "google_address": "1611 Rosemont Ave, Frederick, MD 21702, USA",
+      "google_lat": 39.4272588,
+      "google_lng": -77.4306987,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "NP Nicole’s Wellness Clinic",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "treasures-of-the-heart-worship-center",
+      "name": "Treasures of the Heart Worship Center",
+      "dfp_address": "Bernard W Brown Community Center",
+      "dfp_geom": {
+        "lng": -77.4100419,
+        "lat": 39.4225911
+      },
+      "google_place_id_field": "b7273ca7-5077-485f-ba8b-262b810e106e",
+      "google_address": "Bernard Brown Community Center, 629 N Market St, Frederick, MD 21701, USA",
+      "google_lat": 39.422387,
+      "google_lng": -77.410011,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "TREASURES OF THE HEART WORSHIP CENTER",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "hamiltons-unlimited",
+      "name": "Hamiltons Unlimited",
+      "dfp_address": "6500 Morningside Ct",
+      "dfp_geom": {
+        "lng": -77.4132285,
+        "lat": 39.410767
+      },
+      "google_place_id_field": "739f4c38-4dd7-48f9-965d-03b8cf066202",
+      "google_address": "6500 Morningside Ct, Middletown, MD 21769, USA",
+      "google_lat": 39.4109195,
+      "google_lng": -77.5901717,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Hamilton's Unlimited",
+      "text_agree": true,
+      "geom_agree_150m": false,
+      "verdict": "agree"
+    },
+    {
+      "slug": "frederick-cosmetic-family-dentistry",
+      "name": "Frederick Cosmetic Family Dentistry",
+      "dfp_address": "337 W Patrick St",
+      "dfp_geom": {
+        "lng": -77.4194882,
+        "lat": 39.4129741
+      },
+      "google_place_id_field": "ebb4f72e-3e42-4478-83c7-5d35b064376b",
+      "google_address": "198 Thomas Johnson Dr #20, Frederick, MD 21702, USA",
+      "google_lat": 39.4391485,
+      "google_lng": -77.4096674,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Frederick Cosmetic & Family Dentistry",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "frederick-title-group",
+      "name": "Frederick Title Group",
+      "dfp_address": "117 W Patrick St Ste 300",
+      "dfp_geom": {
+        "lng": -77.412849614352,
+        "lat": 39.414440278461
+      },
+      "google_place_id_field": "c5b7c411-afc4-42e0-9ec9-12eaca09f9e0",
+      "google_address": "617 W Patrick St Suite 100, Frederick, MD 21701, USA",
+      "google_lat": 39.4147654,
+      "google_lng": -77.4301923,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "United Title Services LLC",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "surelocked-in-escape-games",
+      "name": "Surelocked in Escape Games",
+      "dfp_address": "220 N Market St",
+      "dfp_geom": {
+        "lng": -77.410386,
+        "lat": 39.417009
+      },
+      "google_place_id_field": "c38108dd-facc-4bbe-9047-03302f004733",
+      "google_address": "13 E Patrick St, Frederick, MD 21701, USA",
+      "google_lat": 39.4142029,
+      "google_lng": -77.4103564,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Surelocked In Escape Games",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "lusk-law",
+      "name": "Lusk Law",
+      "dfp_address": "113 E Church St",
+      "dfp_geom": {
+        "lng": -77.4083473,
+        "lat": 39.4152551
+      },
+      "google_place_id_field": "ce1c32f0-73bb-4b75-93d8-313b5a5daf1b",
+      "google_address": "113 E Church St, Frederick, MD 21701, USA",
+      "google_lat": 39.4154467,
+      "google_lng": -77.4083192,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Lusk Law, LLC: Business, Landlord, and Real Estate Lawyers",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "cranberryjade-services-middletown-md",
+      "name": "Cranberryjade Services Middletown MD",
+      "dfp_address": "Frederick",
+      "dfp_geom": {
+        "lng": -77.4093846,
+        "lat": 39.419034
+      },
+      "google_place_id_field": "83ace993-7ea3-4f3c-953f-9dba11b67bda",
+      "google_address": "1614 Dahlgren Rd, Middletown, MD 21769, USA",
+      "google_lat": 39.4852284,
+      "google_lng": -77.61387839999999,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Honey Do Services",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "boys-girls-club-of-frederick-county",
+      "name": "Boys Girls Club of Frederick County",
+      "dfp_address": "413 Burck St",
+      "dfp_geom": {
+        "lng": -77.42243,
+        "lat": 39.4088398
+      },
+      "google_place_id_field": "9e1ae1cd-c6a5-4670-828c-9e4d5f93da94",
+      "google_address": "413 Burck St, Frederick, MD 21701, USA",
+      "google_lat": 39.408753,
+      "google_lng": -77.4226321,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Boys & Girls Club of Frederick County",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "wealthflow-financial",
+      "name": "Wealthflow Financial",
+      "dfp_address": "50 Carroll Creek Way",
+      "dfp_geom": {
+        "lng": -77.4096046,
+        "lat": 39.4131033
+      },
+      "google_place_id_field": "a2e588c2-b850-47fe-8fe8-ea0d1a5b2bf0",
+      "google_address": "50 Carroll Creek Way UNIT 220, Frederick, MD 21701, USA",
+      "google_lat": 39.4130423,
+      "google_lng": -77.4095246,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "WealthFlow Financial",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "young-money",
+      "name": "Young Money",
+      "dfp_address": "235 W South St",
+      "dfp_geom": {
+        "lng": -77.416282554514,
+        "lat": 39.411209632737
+      },
+      "google_place_id_field": "b24c30b4-87e6-4a70-becb-6ac2a33a0cc5",
+      "google_address": "235 W South St, Frederick, MD 21701, USA",
+      "google_lat": 39.4111754,
+      "google_lng": -77.4163253,
+      "google_status": "UNKNOWN",
+      "google_display_name": "235 W South St",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "post-office-4",
+      "name": "Post Office 4",
+      "dfp_address": "200 E Patrick St",
+      "dfp_geom": {
+        "lng": -77.4073707,
+        "lat": 39.4141361
+      },
+      "google_place_id_field": "455a4f63-4781-44a4-8ba0-4fcc04a61391",
+      "google_address": "201 E Patrick St, Frederick, MD 21701, USA",
+      "google_lat": 39.414201,
+      "google_lng": -77.4069516,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "US Postal Service",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "leroux-winik-llc",
+      "name": "Leroux Winik LLC",
+      "dfp_address": "203 W Patrick St Ste B",
+      "dfp_geom": {
+        "lng": -77.4155768,
+        "lat": 39.413939
+      },
+      "google_place_id_field": "c991f645-9d7a-4a04-8aa4-42541b4cece8",
+      "google_address": "203 W Patrick St, Frederick, MD 21701, USA",
+      "google_lat": 39.4138993,
+      "google_lng": -77.4154671,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "LeRoux & Winik, LLC",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "hair-by-redz-barber-shop",
+      "name": "Hair by Redz Barber Shop",
+      "dfp_address": "327 W Patrick St",
+      "dfp_geom": {
+        "lng": -77.4191675,
+        "lat": 39.4130089
+      },
+      "google_place_id_field": "2e4b0a1b-e15a-4e82-8fd7-888765b1c36c",
+      "google_address": "327 W Patrick St, Frederick, MD 21701, USA",
+      "google_lat": 39.4130635,
+      "google_lng": -77.41914109999999,
+      "google_status": "CLOSED_TEMPORARILY",
+      "google_display_name": "Hair by Redz Barber Shop of Frederick",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "citizens-truck-co",
+      "name": "Citizens Truck Co",
+      "dfp_address": "15 S Court St",
+      "dfp_geom": {
+        "lng": -77.412531,
+        "lat": 39.4131186
+      },
+      "google_place_id_field": "dc443b58-3a47-4c39-aa5d-782c3db31414",
+      "google_address": "15 S Court St n ste, Frederick, MD 21701, USA",
+      "google_lat": 39.4131677,
+      "google_lng": -77.4126301,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Citizens Truck Co",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "presidential-bank-mortgage",
+      "name": "Presidential Bank Mortgage",
+      "dfp_address": "50 Citizens Way",
+      "dfp_geom": {
+        "lng": -77.4119203,
+        "lat": 39.413005
+      },
+      "google_place_id_field": "fba21794-3a07-4c45-8c46-08069fa169c2",
+      "google_address": "50 Citizen's Way Suite 401, Frederick, MD 21701, USA",
+      "google_lat": 39.4129086,
+      "google_lng": -77.4119128,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Presidential Bank Mortgage",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "pain-management-massage-studio",
+      "name": "Pain Management Massage Studio",
+      "dfp_address": "205 Broadway St",
+      "dfp_geom": {
+        "lng": -77.41309,
+        "lat": 39.41027
+      },
+      "google_place_id_field": "382a4833-1cad-4304-b79a-66d73a0f359c",
+      "google_address": "4 McCain Dr Suite 13, Frederick, MD 21703, USA",
+      "google_lat": 39.4176524,
+      "google_lng": -77.453167,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Pain Management Massage & Studio LLC",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "law-office-of-mary-anne-day",
+      "name": "Law Office of Mary Anne Day",
+      "dfp_address": "50 Carroll Creek Way",
+      "dfp_geom": {
+        "lng": -77.4077505,
+        "lat": 39.4124246
+      },
+      "google_place_id_field": "6219d946-6bc2-403c-bfc3-3d2dd5118940",
+      "google_address": "141 W Patrick St, Frederick, MD 21701, USA",
+      "google_lat": 39.4152257,
+      "google_lng": -77.4123032,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Drawbaugh Mary M",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "frederick-county-human-resources-office",
+      "name": "Frederick County Human Resources Office",
+      "dfp_address": "12 E Church St",
+      "dfp_geom": {
+        "lng": -77.4097231,
+        "lat": 39.4151429
+      },
+      "google_place_id_field": "584237c6-56e2-4139-817c-fb17b352b329",
+      "google_address": "12 E Church St, Frederick, MD 21701, USA",
+      "google_lat": 39.4150132,
+      "google_lng": -77.4097996,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Frederick County Human Resources Office",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "escape-this-frederick",
+      "name": "Escape This Frederick",
+      "dfp_address": "924 N East St",
+      "dfp_geom": {
+        "lng": -77.4027371,
+        "lat": 39.4273202
+      },
+      "google_place_id_field": "5da13033-db51-4f7b-abd2-e6d077025a40",
+      "google_address": "924 N East St, Frederick, MD 21701, USA",
+      "google_lat": 39.4273117,
+      "google_lng": -77.4025944,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Escape This Frederick",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "transplant-lgbt-relocation-resources",
+      "name": "Transplant Lgbt Relocation Resources",
+      "dfp_address": "8 E 2nd St",
+      "dfp_geom": {
+        "lng": -77.4102527,
+        "lat": 39.4163674
+      },
+      "google_place_id_field": "43724323-e1c6-4961-a6bc-19c40c45082d",
+      "google_address": "8 E 2nd St #100, Frederick, MD 21701, USA",
+      "google_lat": 39.416367099999995,
+      "google_lng": -77.4102563,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Trans/plant LGBT Relocation Resources",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "the-banner-school",
+      "name": "The Banner School",
+      "dfp_address": "217 Dill Ave",
+      "dfp_geom": {
+        "lng": -77.4139558,
+        "lat": 39.4195955
+      },
+      "google_place_id_field": "b6944212-b905-4136-8b53-f6f4e89307c1",
+      "google_address": "217 Dill Ave, Frederick, MD 21701, USA",
+      "google_lat": 39.419596399999996,
+      "google_lng": -77.4139543,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "The Banner School",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "davita-ballenger-creek-dialysis",
+      "name": "Davita Ballenger Creek Dialysis",
+      "dfp_address": "5205 Chairmans Ct Ste 101",
+      "dfp_geom": {
+        "lng": -77.4138935,
+        "lat": 39.4236875
+      },
+      "google_place_id_field": "5ba71092-6783-4abd-abc9-3af18d0a401f",
+      "google_address": "5205 Chairmans Ct Ste 101, Frederick, MD 21703, USA",
+      "google_lat": 39.3765408,
+      "google_lng": -77.4189978,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "DaVita Ballenger Creek Dialysis",
+      "text_agree": true,
+      "geom_agree_150m": false,
+      "verdict": "agree"
+    },
+    {
+      "slug": "mt-bank-6",
+      "name": "Mt Bank 6",
+      "dfp_address": "26 N Court St",
+      "dfp_geom": {
+        "lng": -77.4120198,
+        "lat": 39.4149663
+      },
+      "google_place_id_field": "07a30570-42f5-4173-a1ce-fe2a388a7034",
+      "google_address": "26 N Court St, Frederick, MD 21701, USA",
+      "google_lat": 39.4149379,
+      "google_lng": -77.41188199999999,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "M&T Bank",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "tin-corner",
+      "name": "Tin Corner",
+      "dfp_address": "700 N Market St",
+      "dfp_geom": {
+        "lng": -77.4092094,
+        "lat": 39.4228482
+      },
+      "google_place_id_field": "27554cef-bf9b-478b-aeba-7cedc230d17b",
+      "google_address": "700 N Market St, Frederick, MD 21701, USA",
+      "google_lat": 39.4228442,
+      "google_lng": -77.4092099,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Tin Corner",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "catharine-fairley-cpa",
+      "name": "Catharine Fairley Cpa",
+      "dfp_address": "3 College Ave",
+      "dfp_geom": {
+        "lng": -77.4184471,
+        "lat": 39.4135419
+      },
+      "google_place_id_field": "bdbe0ef7-f422-44d3-a49a-e748df384f31",
+      "google_address": "3 College Ave STE 1, Frederick, MD 21701, USA",
+      "google_lat": 39.4135108,
+      "google_lng": -77.4184938,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Catharine Fairley CPA, LLC",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "the-law-office-of-arthur-w-boyce",
+      "name": "The Law Office of Arthur W Boyce",
+      "dfp_address": "308 W Patrick St",
+      "dfp_geom": {
+        "lng": -77.4186,
+        "lat": 39.41276
+      },
+      "google_place_id_field": "7019c1a7-3031-40d5-8e20-5f3aeffc4567",
+      "google_address": "308 W Patrick St, Frederick, MD 21701, USA",
+      "google_lat": 39.412853999999996,
+      "google_lng": -77.4186359,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "ARTHUR W. BOYCE, P.A.",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "aion-trauma-center",
+      "name": "Aion Trauma Center",
+      "dfp_address": "30 W Patrick St",
+      "dfp_geom": {
+        "lng": -77.4120177,
+        "lat": 39.4140473
+      },
+      "google_place_id_field": "a50e95fd-23e7-4b5f-acc3-69a08fee9441",
+      "google_address": "30 W Patrick St suite 320, Frederick, MD 21701, USA",
+      "google_lat": 39.4140467,
+      "google_lng": -77.4120123,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Aion Trauma Center",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "smoke-signals",
+      "name": "Smoke Signals",
+      "dfp_address": "328 N Market St",
+      "dfp_geom": {
+        "lng": -77.410307,
+        "lat": 39.4185619
+      },
+      "google_place_id_field": "baa40c94-3748-4342-bcc0-47dc87d7ca33",
+      "google_address": "328 N Market St, Frederick, MD 21701, USA",
+      "google_lat": 39.4185559,
+      "google_lng": -77.4102293,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Smoke Signals",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "capital-river-wealth-management",
+      "name": "Capital River Wealth Management",
+      "dfp_address": "150 S East St",
+      "dfp_geom": {
+        "lng": -77.4057199,
+        "lat": 39.4107668
+      },
+      "google_place_id_field": "9510b76b-607e-4bb1-ba79-e9115163d96f",
+      "google_address": "150 East St Ste 303, Frederick, MD 21701, USA",
+      "google_lat": 39.4074297,
+      "google_lng": -77.4047139,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Capital River Wealth Management",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "genes-lock-service",
+      "name": "Genes Lock Service",
+      "dfp_address": "601 N Market St",
+      "dfp_geom": {
+        "lng": -77.4101405,
+        "lat": 39.4217188
+      },
+      "google_place_id_field": "d0692d6d-9d6c-43a6-b84f-ca42e4e2ff39",
+      "google_address": "601 N Market St, Frederick, MD 21701, USA",
+      "google_lat": 39.421709899999996,
+      "google_lng": -77.4103106,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Gene's Lock Service",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "glass-factory",
+      "name": "Glass Factory",
+      "dfp_address": "241 E 4th St",
+      "dfp_geom": {
+        "lng": -77.4056569,
+        "lat": 39.4192024
+      },
+      "google_place_id_field": "81795a9c-3d90-4e7f-9f9d-4cee4be2842e",
+      "google_address": "241 E 4th St, Frederick, MD 21701, USA",
+      "google_lat": 39.419201099999995,
+      "google_lng": -77.4056674,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Glass Factory",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "north-market-farmers-market",
+      "name": "North Market Farmers Market",
+      "dfp_address": "331 N Market St",
+      "dfp_geom": {
+        "lng": -77.4105188,
+        "lat": 39.4186321
+      },
+      "google_place_id_field": "fe7644ad-e770-42a3-9e7f-7b60692952b2",
+      "google_address": "622 N Market St, Frederick, MD 21701, USA",
+      "google_lat": 39.4222301,
+      "google_lng": -77.4097129,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Frederick City Market",
+      "text_agree": false,
+      "geom_agree_150m": false,
+      "verdict": "disagree"
+    },
+    {
+      "slug": "beam-bethamy-n",
+      "name": "Beam Bethamy N",
+      "dfp_address": "1 W Church St",
+      "dfp_geom": {
+        "lng": -77.411007757953,
+        "lat": 39.41550390534
+      },
+      "google_place_id_field": "02ecdc33-f4f6-4d09-9806-2a710c93b01e",
+      "google_address": "1 W Church St, Frederick, MD 21701, USA",
+      "google_lat": 39.4155314,
+      "google_lng": -77.4110097,
+      "google_status": "UNKNOWN",
+      "google_display_name": "1 W Church St",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "hutchison-immigration",
+      "name": "Hutchison Immigration",
+      "dfp_address": "220 N Market St",
+      "dfp_geom": {
+        "lng": -77.4104719,
+        "lat": 39.41708
+      },
+      "google_place_id_field": "eba397ac-3bbd-4437-be83-7307fae78a6b",
+      "google_address": "220 N Market St Ste 201, Frederick, MD 21701, USA",
+      "google_lat": 39.4170352,
+      "google_lng": -77.4103757,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Hutchison Immigration",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "edward-jones-financial-advisor-jenifer-l-sutton",
+      "name": "Edward Jones Financial Advisor Jenifer L Sutton",
+      "dfp_address": "119 W Patrick St",
+      "dfp_geom": {
+        "lng": -77.412934293419,
+        "lat": 39.414435425206
+      },
+      "google_place_id_field": "9ec23ff7-e099-4ebc-af10-6964f75d18fe",
+      "google_address": "119 W Patrick St, Frederick, MD 21701, USA",
+      "google_lat": 39.4144401,
+      "google_lng": -77.41293,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Edward Jones - Financial Advisor: Jenifer L Sutton",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "price-benowitz-accident-injury-lawyers-llp",
+      "name": "Price Benowitz Accident Injury Lawyers Llp",
+      "dfp_address": "303 W Patrick St Ste 200",
+      "dfp_geom": {
+        "lng": -77.4184805,
+        "lat": 39.4131221
+      },
+      "google_place_id_field": "230b97df-25cc-4bfa-afb4-0268de0a8cdf",
+      "google_address": "303 W Patrick St #200, Frederick, MD 21701, USA",
+      "google_lat": 39.413208,
+      "google_lng": -77.4184027,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Price Benowitz Accident Injury Lawyers, LLP",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "department-of-housing-and-human-services",
+      "name": "Department of Housing and Human Services",
+      "dfp_address": "100 S Market St",
+      "dfp_geom": {
+        "lng": -77.411002,
+        "lat": 39.411778
+      },
+      "google_address": "100 S Market St, Frederick, MD 21701, USA",
+      "google_lat": 39.4117898,
+      "google_lng": -77.4110668,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Department of Housing and Human Services",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "the-tedrick-team",
+      "name": "The Tedrick Team",
+      "dfp_address": "50 Citizens Way",
+      "dfp_geom": {
+        "lng": -77.4120137,
+        "lat": 39.4129347
+      },
+      "google_place_id_field": "07d5074c-e8bf-4f7e-9497-a46dc8604dc7",
+      "google_address": "50 Citizen's Way, Frederick, MD 21701, USA",
+      "google_lat": 39.4129309,
+      "google_lng": -77.4120123,
+      "google_status": "CLOSED_PERMANENTLY",
+      "google_display_name": "The Tedrick Team with George Mason Mortgage",
+      "text_agree": true,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "dancingspine-chiropractic-in-frederick",
+      "name": "Dancingspine Chiropractic in Frederick",
+      "dfp_address": "129 W Patrick St",
+      "dfp_geom": {
+        "lng": -77.4135298,
+        "lat": 39.4143571
+      },
+      "google_place_id_field": "bdf4b4f6-5e98-4554-b65e-e12a1ac46740",
+      "google_address": "129-13 W Patrick St, Frederick, MD 21701, USA",
+      "google_lat": 39.4144612,
+      "google_lng": -77.41354919999999,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Dancingspine Chiropractic",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    },
+    {
+      "slug": "nideen-morrison",
+      "name": "Nideen Morrison",
+      "dfp_address": "241 E 4th St",
+      "dfp_geom": {
+        "lng": -77.4055751,
+        "lat": 39.4193103
+      },
+      "google_place_id_field": "3dc186db-9d70-4e2f-b7de-f81e3d926312",
+      "google_address": "241 E 4th St #205, Frederick, MD 21701, USA",
+      "google_lat": 39.4193162,
+      "google_lng": -77.40566369999999,
+      "google_status": "OPERATIONAL",
+      "google_display_name": "Nideen Morrison, MorrHomes",
+      "text_agree": false,
+      "geom_agree_150m": true,
+      "verdict": "agree"
+    }
+  ]
+}

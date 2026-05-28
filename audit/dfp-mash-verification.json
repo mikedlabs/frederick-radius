@@ -1,0 +1,316 @@
+[
+  {
+    "slug": "tony-little-jane-moore-real-estate-teams-llc",
+    "name": "Tony Little Jane Moore Real Estate Teams LLC",
+    "current_address": "50 Citizens Way Ste 400",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.411734610796,
+      "lat": 39.413033061174
+    },
+    "google_place_id_field": "b2d3d8d3-30e7-4429-8aea-16bc76bc1172",
+    "google_resolved_id": "ChIJt7M_D1rayYkRhJp4yii2Y7s",
+    "google_address": "50 Citizen's Way # 400, Frederick, MD 21701, USA",
+    "google_lat": 39.4129131,
+    "google_lng": -77.41197749999999,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "real_estate_agency",
+    "google_website": "http://littlemoore.com/",
+    "google_display_name": "Tony Little & Jane Moore Real Estate Teams LLC"
+  },
+  {
+    "slug": "the-stern-group",
+    "name": "The Stern Group",
+    "current_address": "127 W Patrick St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.412934293419,
+      "lat": 39.414435425206
+    },
+    "google_place_id_field": "a7659210-51d9-4e77-a459-196ebdf17c53",
+    "google_resolved_id": "ChIJr5f3POLbyYkR1r98gEVTEQo",
+    "google_address": "30 W Patrick St 7th Fl, Frederick, MD 21701, USA",
+    "google_lat": 39.4140048,
+    "google_lng": -77.4120252,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "consultant",
+    "google_website": "https://advisor.morganstanley.com/the-fredericktowne-group?y_source=1_MTA4MjQ4NTItNzE1LWxvY2F0aW9uLndlYnNpdGU%3D",
+    "google_display_name": "The Fredericktowne Group - Morgan Stanley"
+  },
+  {
+    "slug": "trina-wagner",
+    "name": "Trina Wagner",
+    "current_address": "50 Citizens Way",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.4120589,
+      "lat": 39.4130147
+    },
+    "google_place_id_field": "c2ce8b69-e242-4c71-b85e-212375c8616c",
+    "google_resolved_id": "ChIJq6rqEVrayYkRYxrEYXmX5d0",
+    "google_address": "50 Citizen's Way, Frederick, MD 21701, USA",
+    "google_lat": 39.4129309,
+    "google_lng": -77.4120123,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "service",
+    "google_website": "http://trinawagner.com/",
+    "google_display_name": "Trina Wagner, Realtor"
+  },
+  {
+    "slug": "eagles-aeire-1067",
+    "name": "Eagles Aeire 1067",
+    "current_address": "216 E Patrick St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.406921386719,
+      "lat": 39.413627624512
+    },
+    "google_place_id_field": "93c146af-899c-46f7-a76a-8d5f912eaefb",
+    "google_resolved_id": "ChIJvb6Qsl7ayYkR1NKLGiZpzXw",
+    "google_address": "207 W Patrick St, Frederick, MD 21701, USA",
+    "google_lat": 39.4138234,
+    "google_lng": -77.41550699999999,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "bar",
+    "google_website": "https://www.facebook.com/TheFrederickEaglesClub",
+    "google_display_name": "Frederick Eagles Club 1067"
+  },
+  {
+    "slug": "new-horizon-title",
+    "name": "New Horizon Title",
+    "current_address": "14 W Patrick St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.411170195242,
+      "lat": 39.41389780654
+    },
+    "google_place_id_field": "b53c37ba-55e8-44a8-8f46-cd49018930a2",
+    "google_resolved_id": "ChIJzylLUVfayYkRDhig4RKmwgI",
+    "google_address": "148 W Patrick St, Frederick, MD 21701, USA",
+    "google_lat": 39.41394390000001,
+    "google_lng": -77.4143271,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "insurance_agency",
+    "google_website": "http://www.retitleservice.com/",
+    "google_display_name": "Real Estate Title Service"
+  },
+  {
+    "slug": "creekside-house",
+    "name": "Creekside House",
+    "current_address": "24 S Court St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.412314,
+      "lat": 39.4123536
+    },
+    "google_place_id_field": "ChIJxRyxc1rayYkRXVi5Yq2qQ8g",
+    "notes": "no Google result"
+  },
+  {
+    "slug": "george-mason-mortgage-llc",
+    "name": "George Mason Mortgage LLC",
+    "current_address": "50 Citizens Way Ste 303",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.4119619,
+      "lat": 39.4131268
+    },
+    "google_place_id_field": "e801d0bc-b6eb-479b-806c-80cdd8958daa",
+    "google_resolved_id": "ChIJv3Jo3KXbyYkRbQoXS7x7RTk",
+    "google_address": "50 Citizen's Way, Frederick, MD 21701, USA",
+    "google_lat": 39.4129309,
+    "google_lng": -77.4120123,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "finance",
+    "google_website": "https://www.gmmllc.com/contact-us/find-a-loan-officer/frederick/",
+    "google_display_name": "George Mason Mortgage LLC"
+  },
+  {
+    "slug": "the-poole-law-group",
+    "name": "The Poole Law Group",
+    "current_address": "19 N Ct St Unit 101-A",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.4121688,
+      "lat": 39.4147071
+    },
+    "google_place_id_field": "7c5c18fb-950d-4303-a88c-17fa5fe0814e",
+    "google_resolved_id": "ChIJ2zodR2vbyYkRr1Vs4KWUIwc",
+    "google_address": "100-102 W Church St, Frederick, MD 21701, USA",
+    "google_lat": 39.415149199999995,
+    "google_lng": -77.4123644,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "lawyer",
+    "google_website": "https://www.poolelg.com/",
+    "google_display_name": "The Poole Law Group"
+  },
+  {
+    "slug": "schley-park",
+    "name": "Schley Park",
+    "current_address": "301 College Ave",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.4187124,
+      "lat": 39.4184251
+    },
+    "google_place_id_field": "885eac63-dbab-4013-a4c3-1d43fced3cce",
+    "google_resolved_id": "ChIJVVWV5lXayYkRiOBO4EFoyLI",
+    "google_address": "301 N College Pkwy, Frederick, MD 21701, USA",
+    "google_lat": 39.4186379,
+    "google_lng": -77.41900679999999,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "park",
+    "google_display_name": "Schley Park"
+  },
+  {
+    "slug": "ben-jerrys-14",
+    "name": "Ben Jerrys 14",
+    "current_address": "30 N Market St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.4111077,
+      "lat": 39.41298839
+    },
+    "google_place_id_field": "d0b1bf69-b689-4bd7-aa8b-f4c9bc253e88",
+    "google_resolved_id": "ChIJI9m4Z1jayYkR40QwM-kwVFI",
+    "google_address": "241 N Market St, Frederick, MD 21701, USA",
+    "google_lat": 39.4176334,
+    "google_lng": -77.41075289999999,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "ice_cream_shop",
+    "google_website": "http://northmarketpopshop.com/",
+    "google_display_name": "North Market Pop Shop"
+  },
+  {
+    "slug": "creekside-plaza-llc",
+    "name": "Creekside Plaza LLC",
+    "current_address": "50 Citizens Way",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.4119668,
+      "lat": 39.412933
+    },
+    "google_place_id_field": "e53f505e-0ee3-44ef-9da7-f823d685f873",
+    "google_resolved_id": "ChIJt7M_D1rayYkRA6vEhrFMkVc",
+    "google_address": "50 Citizen's Way # 400, Frederick, MD 21701, USA",
+    "google_lat": 39.412895299999995,
+    "google_lng": -77.41194879999999,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "condominium_complex",
+    "google_website": "https://www.prestonproperties.org/creekside-plaza.php",
+    "google_display_name": "Creekside Plaza LLC"
+  },
+  {
+    "slug": "emily-d-gordon-advanced-rolfer",
+    "name": "Emily D Gordon Advanced Rolfer",
+    "current_address": "245 W Patrick St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.416941660752,
+      "lat": 39.413659261964
+    },
+    "google_place_id_field": "fd14346f-8340-4fc3-b043-8c415ba36925",
+    "google_resolved_id": "ChIJMwU-OVHayYkRKJLfnWKcOv8",
+    "google_address": "Carriage house, 243 W Patrick St, Frederick, MD 21701, USA",
+    "google_lat": 39.4138551,
+    "google_lng": -77.4169172,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "consultant",
+    "google_website": "http://www.frederickrolfing.com/",
+    "google_display_name": "Emily D. Gordon, Advanced Rolfer®"
+  },
+  {
+    "slug": "gabe-fortmann-academy-mortgage",
+    "name": "Gabe Fortmann Academy Mortgage",
+    "current_address": "10 S Market St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.410901,
+      "lat": 39.4138345
+    },
+    "google_place_id_field": "6e8a4f58-a8fe-41e1-874e-a0ae13c389cb",
+    "google_resolved_id": "ChIJB3zxt5rbyYkRMDQ0LcJ-OzI",
+    "google_address": "10 S Market St, Frederick, MD 21701, USA",
+    "google_lat": 39.4137945,
+    "google_lng": -77.4108016,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "finance",
+    "google_website": "https://academymortgage.com/about-us/branches/frederick",
+    "google_display_name": "Academy Mortgage"
+  },
+  {
+    "slug": "green-advantage",
+    "name": "Green Advantage",
+    "current_address": "326 Park Ave",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.414774835721,
+      "lat": 39.421409362518
+    },
+    "google_place_id_field": "ccb65e4e-955f-4b1a-afb8-6c13c271164e",
+    "google_resolved_id": "ChIJ054MgbXbyYkRPj1AENpVPt4",
+    "google_address": "1726 Shookstown Rd, Frederick, MD 21702, USA",
+    "google_lat": 39.429765599999996,
+    "google_lng": -77.4478951,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "non_profit_organization",
+    "google_website": "https://greenadvantage.org/",
+    "google_display_name": "Green Advantage Inc"
+  },
+  {
+    "slug": "harmon-field",
+    "name": "Harmon Field",
+    "current_address": "40 Winchester St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.4071573,
+      "lat": 39.408785
+    },
+    "google_place_id_field": "65031aa0-6ac6-42a2-a107-0199df7bf406",
+    "google_resolved_id": "ChIJq6qqq1zayYkRPbn9rZ4ngLA",
+    "google_address": "42 Winchester St, Frederick, MD 21701, USA",
+    "google_lat": 39.4083063,
+    "google_lng": -77.4069006,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "park",
+    "google_website": "https://www.cityoffrederickmd.gov/facilities/facility/details/harmonpark-110",
+    "google_display_name": "Harmon Field Playground"
+  },
+  {
+    "slug": "rick-ridgely-allstate-insurance",
+    "name": "Rick Ridgely Allstate Insurance",
+    "current_address": "301 E Patrick St Fl 1",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.405134514856,
+      "lat": 39.41403058417
+    },
+    "google_place_id_field": "74aef4ad-d986-4d3f-95db-aed6b5d9f959",
+    "google_resolved_id": "ChIJgYFCbKLbyYkRDJxGywO1gR8",
+    "google_address": "10 N Jefferson St Ste A, Frederick, MD 21701, USA",
+    "google_lat": 39.413290499999995,
+    "google_lng": -77.4207553,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "insurance_agency",
+    "google_website": "https://agents.allstate.com/gary-w-kelley-frederick-md.html?utm_source=GMB&utm_medium=Website",
+    "google_display_name": "Gary W. Kelley: Allstate Insurance"
+  },
+  {
+    "slug": "elliott",
+    "name": "Elliott",
+    "current_address": "113 E Patrick St",
+    "current_postal": "21701",
+    "current_geom": {
+      "lng": -77.40808529862,
+      "lat": 39.414127752235
+    },
+    "google_place_id_field": "d2432c46-f8f6-4d9d-8606-8712e98601b6",
+    "google_resolved_id": "ChIJ98hwaFnayYkRVytfbN4c9rU",
+    "google_address": "123 E Patrick St, Frederick, MD 21701, USA",
+    "google_lat": 39.4140775,
+    "google_lng": -77.4081111,
+    "google_status": "OPERATIONAL",
+    "google_primary_type": "home_goods_store",
+    "google_display_name": "Elliotts"
+  }
+]
