@@ -129,6 +129,10 @@ type Props = {
    *  unchanged unless the user opts in. */
   trailLines?: MapLineFC;
   transitLines?: MapLineFC;
+  /** County GIS municipal boundary polygons, rendered as a quiet
+   *  always-on outline. Server-fetched (fcGis.getMunicipalBoundaries),
+   *  empty FC when the county server is unreachable. */
+  municipalBoundaries?: MapLineFC;
   /** Upcoming events as map pins — phase 1 differentiator vs Google /
    *  Apple Maps (they don't have local event ↔ venue joins). Already
    *  geo-deduped and scoped to "happening soon" server-side. */
@@ -149,6 +153,7 @@ export default function AppMap({
   amenities = [],
   trailLines = EMPTY_LINE_FC,
   transitLines = EMPTY_LINE_FC,
+  municipalBoundaries = EMPTY_LINE_FC,
   events = [],
 }: Props) {
   const mapRef = useRef<MapRef>(null);
@@ -1081,6 +1086,28 @@ export default function AppMap({
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 14, 2.5, 17, 4],
                 "line-opacity": 0.7,
                 "line-dasharray": [2, 1.5],
+              }}
+            />
+          </Source>
+          {/* Municipal boundaries — authoritative county GIS polygons,
+              rendered as a quiet always-on outline so a user can see
+              which town they are panning through (replacing the old
+              centroid-label-only orientation). Drawn BELOW the place
+              pins, low opacity, so it orients without competing. */}
+          <Source
+            id="municipal-boundaries"
+            type="geojson"
+            data={municipalBoundaries as unknown as GeoJSON.FeatureCollection}
+          >
+            <Layer
+              id="municipal-boundary-line"
+              type="line"
+              layout={{ "line-join": "round" }}
+              paint={{
+                "line-color": "var(--app-ink-3, #7A828C)",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 13, 1.4],
+                "line-opacity": 0.35,
+                "line-dasharray": [3, 2],
               }}
             />
           </Source>

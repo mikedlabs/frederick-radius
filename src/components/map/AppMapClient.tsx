@@ -66,6 +66,7 @@ export default function AppMapClient({
   amenities = [],
   trailLines = EMPTY_FC,
   transitLines = EMPTY_FC,
+  municipalBoundaries = EMPTY_FC,
   events = [],
   fullBleed = false,
 }: {
@@ -84,6 +85,8 @@ export default function AppMapClient({
   /** Server-fetched toggleable line overlays (#3). */
   trailLines?: MapLineFC;
   transitLines?: MapLineFC;
+  /** County GIS municipal boundary polygons — quiet always-on outline. */
+  municipalBoundaries?: MapLineFC;
   /** Upcoming events as photo pins — passed through to AppMap. The
    *  /map page filters to "happening soon" server-side so this stays a
    *  small (≤30 item) array. */
@@ -128,6 +131,7 @@ export default function AppMapClient({
           amenities={amenities}
           trailLines={trailLines}
           transitLines={transitLines}
+          municipalBoundaries={municipalBoundaries}
           events={events}
           fullBleed
         />
@@ -144,7 +148,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} events={events} />
+      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} events={events} />
 
       <section className="space-y-2">
         <div className="flex items-baseline justify-between">

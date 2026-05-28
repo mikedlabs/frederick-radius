@@ -5,6 +5,7 @@ import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
+import { getMunicipalBoundaries } from "@/lib/integrations/fcGis";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
 import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent } from "@/lib/loaders/events";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
@@ -232,6 +233,7 @@ export default async function MapPage({
     mapillaryTrash,
     trailLines,
     transitLines,
+    municipalBoundaries,
     liveEventsRaw,
     tmMusic,
     tmSports,
@@ -243,6 +245,9 @@ export default async function MapPage({
     fetchMapillaryTrash().catch(() => []),
     getFrederickTrailShapes().catch(() => EMPTY_FC),
     getFrederickTransitRouteShapes().catch(() => EMPTY_FC),
+    // County GIS municipal boundary polygons — quiet always-on map
+    // outline. Fail-soft to empty so the county server never blocks.
+    getMunicipalBoundaries().catch(() => EMPTY_FC),
     // Live event feeds — same set /events uses. Pre-fix the map only
     // pulled `allUpcoming` (curated seed events.ts), so the event
     // layer showed 2 pins when /events listed dozens. Joining the
@@ -458,6 +463,7 @@ export default async function MapPage({
           amenities={amenities}
           trailLines={trailLines}
           transitLines={transitLines}
+          municipalBoundaries={municipalBoundaries}
           events={events}
           fullBleed
         />
