@@ -82,3 +82,73 @@ describe("transitRouteShapesFC (geometry foundation)", () => {
     expect(transitRouteShapesFC(null)).toEqual({ type: "FeatureCollection", features: [] });
   });
 });
+
+// Stops loader (added Proposal D — MD Open Data 4zcx-89nc).
+import { normalizeTransitStops } from "@/lib/integrations/transitFrederick";
+
+const stopsRaw = {
+  type: "FeatureCollection",
+  features: [
+    // Point geometry, lowercased Socrata keys — standard happy path.
+    {
+      geometry: { type: "Point", coordinates: [-77.41, 39.41] },
+      properties: { objectid: "1", stop_name: "South Market @ Patrick" },
+    },
+    // Title-case keys (defensive path)
+    {
+      geometry: { type: "Point", coordinates: [-77.42, 39.42] },
+      properties: { "Stop ID": "2", "Stop Name": "Carroll Creek @ East St" },
+    },
+    // Out of county — dropped
+    {
+      geometry: { type: "Point", coordinates: [-76.61, 39.29] },
+      properties: { objectid: "3", stop_name: "Baltimore Stop" },
+    },
+    // Missing name — dropped
+    {
+      geometry: { type: "Point", coordinates: [-77.4, 39.4] },
+      properties: { objectid: "4" },
+    },
+    // Wrong geometry type — dropped
+    {
+      geometry: { type: "LineString", coordinates: [[-77.4, 39.4]] },
+      properties: { objectid: "5", stop_name: "Linestring Stop" },
+    },
+    // Duplicate id — kept once
+    {
+      geometry: { type: "Point", coordinates: [-77.41, 39.41] },
+      properties: { objectid: "1", stop_name: "Duplicate" },
+    },
+  ],
+};
+
+describe("normalizeTransitStops", () => {
+  it("keeps in-county named stops with point geometry", () => {
+    const out = normalizeTransitStops(stopsRaw);
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({
+      id: "1",
+      name: "South Market @ Patrick",
+      lng: -77.41,
+      lat: 39.41,
+    });
+    expect(out[1]).toMatchObject({
+      id: "2",
+      name: "Carroll Creek @ East St",
+    });
+  });
+
+  it("drops out-of-county / nameless / non-point / duplicate", () => {
+    const out = normalizeTransitStops(stopsRaw);
+    const names = out.map((s) => s.name);
+    expect(names).not.toContain("Baltimore Stop");
+    expect(names).not.toContain("Linestring Stop");
+    expect(names).not.toContain("Duplicate");
+  });
+
+  it("returns [] for junk", () => {
+    expect(normalizeTransitStops(null)).toEqual([]);
+    expect(normalizeTransitStops({})).toEqual([]);
+    expect(normalizeTransitStops({ features: "nope" })).toEqual([]);
+  });
+});

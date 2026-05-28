@@ -42,8 +42,11 @@ const HEADING_BY_TYPE: Record<SearchResultType, string> = {
  * Returns a list of {type, items} pairs whose concatenated items
  * preserve the original flat result indices — so keyboard nav and
  * activeIdx keep working across the grouped layout.
+ *
+ * Exported only for unit tests; the SearchOverlay JSX is the only
+ * runtime consumer in the app.
  */
-function groupByTypePreservingOrder(
+export function groupByTypePreservingOrder(
   results: SearchResult[],
 ): { type: SearchResultType; items: Array<{ r: SearchResult; idx: number }> }[] {
   const order: SearchResultType[] = [];

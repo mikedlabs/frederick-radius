@@ -9,11 +9,14 @@ describe("eventTrust", () => {
     expect(t.label).toBe("Verified");
   });
 
-  it("seed is curated/verified-level with editorial basis", () => {
+  it("seed is hand-picked/verified-level with editorial basis", () => {
     const t = eventTrust({ source: "seed", is_verified: false });
     expect(t.level).toBe("verified");
-    expect(t.label).toBe("Curated");
-    expect(t.basis).toMatch(/Curated/);
+    // Editorial: "Hand-picked" lands warmer than "Curated" (which
+    // reads as Pinterest-corporate). Basis is "Picked by Frederick
+    // Radius" — first-person, local-paper voice.
+    expect(t.label).toBe("Hand-picked");
+    expect(t.basis).toMatch(/Picked by Frederick Radius/);
   });
 
   it("partner feeds are 'official' with a named source", () => {

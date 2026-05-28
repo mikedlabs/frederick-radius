@@ -169,7 +169,11 @@ const CIVIC = new Set([
 // sub matchers so the parent count and the chip behavior stay
 // consistent (parent never matches more than its subs combined).
 const WELLNESS_CATS = new Set(["yoga", "wellness"]);
-const YOGA_NAME_RE = /\byoga\b/i;
+// Leading word boundary only — "Yogamour" / "Yogashala" are real
+// Frederick studios whose name starts with "Yoga"; a trailing \b
+// would miss them. The leading \b still keeps "Bayoga" / "Frogayoga"
+// out (no word boundary before "yoga" when it's mid-word).
+const YOGA_NAME_RE = /\byoga/i;
 // Fitness-only regex — excludes "yoga" so the same studio doesn't
 // double-count in both Yoga and Gyms sub-chips. A studio that runs
 // yoga + pilates lands in Yoga (the stronger signal) by category;
