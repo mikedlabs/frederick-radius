@@ -1,6 +1,8 @@
 import { PLACES } from "@/data/places";
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { getOpenStatus } from "@/lib/hours";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 /**
  * BriefingLine — one-sentence synthesis sitting at the very top of
@@ -11,18 +13,18 @@ import { getOpenStatus } from "@/lib/hours";
  * that for the next few hours in a single line.
  *
  * Rule-based on purpose (no AI dependency yet). The composer looks
- * at three signals every page render already has:
+ * at four signals every page render already has:
  *   - the current time-of-day window (morning / midday / afternoon
  *     / evening / late)
+ *   - the NWS forecast — current temperature + conditions + the
+ *     next 3 hours of precipitation chance, used to suggest indoor
+ *     options when rain is incoming or muggy
  *   - how many curated places are open right now
  *   - the next event happening within ~5 hours, with a soonest-start
  *     priority over a more-featured-but-later event
  *
  * Output is intentionally small and quiet — a smart kicker line, not
- * a hero. The visual hero (SkyHero) still sits below it. If we
- * later wire weather signals into this composer, "muggy → indoor
- * options" / "rain in 2h → finish errands now" become natural
- * additions without changing the placement.
+ * a hero. The visual hero (SkyHero) still sits below it.
  */
 
 type TimeBand = "morning" | "midday" | "afternoon" | "evening" | "late";
@@ -98,16 +100,65 @@ function formatTime(iso: string): string {
   });
 }
 
-export default function BriefingLine() {
+/** Pick a weather fragment from the NWS forecast. Looks at the
+ *  current period + the next 3 hours. Priorities:
+ *    1. Incoming rain (next 3h precip ≥ 50%) → finish errands /
+ *       indoor suggestion, with hours-to-rain when concrete
+ *    2. Active rain / storm → indoor options
+ *    3. Muggy + warm (>78°F + cloudy) → cool indoor + creek
+ *    4. Cold + clear → trails read clean
+ *    5. Beautiful baseline (mild + clear) → patio weather
+ *  Returns null when nothing notable — the briefing doesn't need a
+ *  weather line every single render.
+ */
+async function weatherFragment(now: Date): Promise<string | null> {
+  const fc = await getNwsForecast(FREDERICK_CENTER);
+  if (!fc || fc.hourly.length === 0) return null;
+  const current = fc.hourly[0];
+  if (!current) return null;
+
+  const cond = current.shortForecast.toLowerCase();
+  const temp = current.temperature;
+  const isRaining = /rain|shower|drizzle|storm|thunder/i.test(cond);
+
+  // Hours until precip chance crosses 50% in the next 3 periods.
+  const ahead = fc.hourly.slice(1, 4);
+  const rainSoonIdx = ahead.findIndex(
+    (h) => (h.probabilityOfPrecipitation ?? 0) >= 50,
+  );
+  const hoursToRain = rainSoonIdx >= 0 ? rainSoonIdx + 1 : null;
+
+  if (isRaining) return "raining now — indoor picks below";
+  if (hoursToRain !== null && hoursToRain <= 2) {
+    return `rain in ~${hoursToRain}h — finish errands or grab a coffee`;
+  }
+  // Muggy heuristic: warm + cloudy/overcast/hazy in summer.
+  if (temp >= 78 && /cloud|overcast|haze|fog|humid/i.test(cond)) {
+    return "muggy — try indoor or shaded picks";
+  }
+  if (temp <= 45 && /clear|sunny|fair/i.test(cond)) {
+    return "cold and clear — trails will be quiet";
+  }
+  if (temp >= 60 && temp <= 80 && /clear|sunny|fair|partly/i.test(cond)) {
+    return "patio weather";
+  }
+  return null;
+}
+
+export default async function BriefingLine() {
   const now = new Date();
   const band = timeBand(now);
   const openCount = openNowCount(now);
   const next = nextNotableEvent(now);
+  const weather = await weatherFragment(now);
 
-  // Compose. Each fragment is optional; we glue them with em-dashes
+  // Compose. Each fragment is optional; we glue them with " · "
   // so the line stays human if one fragment isn't available.
   const greeting = bandGreeting(band);
   const fragments: string[] = [];
+
+  // Weather leads (most contextually useful) when available.
+  if (weather) fragments.push(weather);
 
   if (band === "morning" || band === "midday" || band === "afternoon") {
     if (openCount >= 3) {
@@ -123,7 +174,7 @@ export default function BriefingLine() {
       const when = formatTime(event.starts_at);
       fragments.push(`${event.title} at ${when}`);
     }
-  } else if (band === "evening" || band === "late") {
+  } else if ((band === "evening" || band === "late") && !weather) {
     fragments.push("a quiet night on the calendar");
   }
 
