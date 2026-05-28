@@ -210,7 +210,7 @@ export default async function RiversPage() {
                 {list.length} {list.length === 1 ? "gauge" : "gauges"}
               </span>
             </header>
-            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {list.map((site) => {
                 const dir = trendDirection(site.gageHistory) ?? trendDirection(site.streamflowHistory);
                 // Tone the status pill — "rising" reads as warning on

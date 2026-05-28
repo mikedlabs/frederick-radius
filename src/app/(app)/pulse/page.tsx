@@ -224,7 +224,7 @@ export default async function PulsePage() {
       {/* ── Status tile grid ───────────────────────────────────── */}
       <section
         aria-label="At-a-glance county status"
-        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3"
+        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6"
       >
         <StatusTile
           href="#safety"
@@ -293,6 +293,13 @@ export default async function PulsePage() {
       </section>
 
       {/* ── Active sections only ──────────────────────────────── */}
+      {/* Desktop multi-column: at lg+ the operational sections fall
+          into a 2-col grid so traffic, power, schools, alerts, news
+          read side-by-side instead of as long single-column rows.
+          Mobile keeps the natural vertical stack. The grid is on the
+          parent <div>; conditional children populate cells in source
+          order so urgency stays top-left. */}
+      <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
       {/* Weather alerts — NWS active alerts for Frederick County, MD.
           Top-of-page placement when active: a flood warning or severe
           thunderstorm watch beats every other feed for urgency. */}
@@ -670,6 +677,7 @@ export default async function PulsePage() {
           </p>
         </section>
       )}
+      </div>{/* /active-sections grid */}
 
       {/* All-clear card — only renders when literally every feed is
           quiet. Celebratory, not just empty. Catoctin-green wash
