@@ -4,6 +4,7 @@ import WeatherHero from "@/components/today/WeatherHero";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import BriefingLine from "@/components/today/BriefingLine";
+import LocalNewsRail from "@/components/today/LocalNewsRail";
 import NowDayStrip from "@/components/today/NowDayStrip";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
@@ -494,6 +495,15 @@ export default async function HomePage({
           </p>
         )}
       </DismissibleSection>
+
+      {/* Local news — RSS headlines from Patch / FNP / MD Matters
+          via getLocalNews(). Headlines + attribution + relative
+          timestamp; every card links OUT to the publisher. The
+          server component self-hides when every source errored,
+          so we never show a broken "Local news" section. */}
+      <Suspense fallback={null}>
+        <LocalNewsRail />
+      </Suspense>
 
       {/* From Above — the page's quiet exit beat. After the daily
           utility surfaces (weather + events + places) finish their
