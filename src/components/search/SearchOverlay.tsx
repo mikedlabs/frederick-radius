@@ -384,7 +384,7 @@ function EmptyHint({
   const suggestions = suggestionsForHour(hour);
 
   // Personalized quick-start tiles. The previous /tonight and
-  // /discover entries were duplicate paths to /now's content —
+  // /discover entries were duplicate paths to /today's content —
   // retired in the structural cuts. We point straight at /now with
   // a lens, plus /m/<home-muni> when set. Each tile is a real
   // destination, not a query — tapping closes the overlay and
@@ -392,7 +392,7 @@ function EmptyHint({
   const homeMuni = getHomeMuni();
   const homeMuniName = homeMuni ? MUNICIPALITY_BY_SLUG[homeMuni]?.name : null;
   const quickStart: Array<{ href: string; title: string; subtitle: string; Icon: typeof Sparkles }> = [
-    { href: "/now?t=tonight", title: "Plan tonight", subtitle: "What's happening this evening", Icon: Sparkles },
+    { href: "/today?t=tonight", title: "Plan tonight", subtitle: "What's happening this evening", Icon: Sparkles },
     { href: "/events", title: "All events", subtitle: "Tonight, weekend, this week", Icon: Sparkles },
     ...(homeMuniName && homeMuni
       ? [{ href: `/m/${homeMuni}`, title: homeMuniName, subtitle: "Your spot", Icon: MapPin }]

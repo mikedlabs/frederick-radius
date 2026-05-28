@@ -40,7 +40,7 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/now",       label: "Today",       icon: Sun,            fillOnActive: true,  kind: "link"   },
+  { href: "/today",       label: "Today",       icon: Sun,            fillOnActive: true,  kind: "link"   },
   { href: "/map",       label: "Map",         icon: MapIcon,        fillOnActive: false, kind: "link"   },
   { href: "/events",    label: "Events",      icon: Calendar,       fillOnActive: false, kind: "link"   },
   { href: "/my-radius", label: "My Radius",   icon: Bookmark,       fillOnActive: true,  kind: "link"   },

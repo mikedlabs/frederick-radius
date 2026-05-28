@@ -97,7 +97,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Editorial micro-pages → canonical category surfaces.
-      { source: "/tonight", destination: "/now?t=tonight", permanent: true },
+      { source: "/tonight", destination: "/today?t=tonight", permanent: true },
       { source: "/markets", destination: "/category/market", permanent: true },
       { source: "/historic", destination: "/category/museum", permanent: true },
       { source: "/art", destination: "/category/arts", permanent: true },
@@ -105,9 +105,14 @@ const nextConfig: NextConfig = {
       // page showing what amenity data we actually have (live counts)
       // plus the wishlist of what's coming (trash cans, dog bags,
       // benches, mailboxes, FedEx/UPS drop-offs).
-      { source: "/discover", destination: "/now", permanent: true },
-      // /today renamed to /now (the home page is about NOW, not "today").
-      { source: "/today", destination: "/now", permanent: true },
+      { source: "/discover", destination: "/today", permanent: true },
+      // /now → /today rename (May 2026). The route lived at /now for
+      // historical reasons (the page is about "right now") but the
+      // nav has always read "Today" and the URL/label mismatch was a
+      // small but consistent confusion. /now stays permanently
+      // redirected so PWA installs, push notifications, and crawler
+      // links never 404.
+      { source: "/now", destination: "/today", permanent: true },
       // /browse renamed back to /map — the spatial tab IS a map, so
       // the URL should say so. The old /browse remains permanently
       // redirected so deep links / cached search results don't 404.

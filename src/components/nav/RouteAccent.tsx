@@ -23,7 +23,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
  * the design system already speaks.
  */
 const ROUTE_ACCENTS: Record<string, string> = {
-  "/now": "var(--app-brand)",     // warm — daily landing
+  "/today": "var(--app-brand)",     // warm — daily landing
   "/map": "var(--app-cool)",   // civic blue — the spatial tab
   "/radius": "var(--app-cool)",   // still routable; deep links survive
   "/browse": "var(--app-cool)",   // legacy — 301'd to /map but tinted
@@ -59,7 +59,7 @@ function categorySlugFromPath(path: string): string | null {
 }
 
 export default function RouteAccent({ children }: { children: ReactNode }) {
-  const path = usePathname() ?? "/now";
+  const path = usePathname() ?? "/today";
 
   // /category/[slug]: use the category's own color when known. A
   // recognized child wins over the generic /category fallback.
@@ -70,7 +70,7 @@ export default function RouteAccent({ children }: { children: ReactNode }) {
   const matched =
     Object.keys(ROUTE_ACCENTS)
       .sort((a, b) => b.length - a.length)
-      .find((p) => path === p || path.startsWith(p + "/")) ?? "/now";
+      .find((p) => path === p || path.startsWith(p + "/")) ?? "/today";
 
   const accent = catColor ?? ROUTE_ACCENTS[matched];
   return (

@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
 // what's happening right now, what's coming up next. Old "/" bookmarks
 // and the PWA entry land on /now.
 export default function Home() {
-  redirect("/now");
+  redirect("/today");
 }

@@ -30,7 +30,7 @@ export default function TrustPage() {
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
-          href="/now"
+          href="/today"
           className="inline-flex items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >

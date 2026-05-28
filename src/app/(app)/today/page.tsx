@@ -488,7 +488,7 @@ export default async function HomePage({
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
-            <a href="/now?t=weekend" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+            <a href="/today?t=weekend" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
               See the weekend
             </a>
             .

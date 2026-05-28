@@ -42,12 +42,12 @@ export default async function AboutPage() {
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
-          href="/now"
+          href="/today"
           className="inline-flex items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Now
+          Back to Today
         </Link>
       </nav>
 
@@ -131,7 +131,7 @@ export default async function AboutPage() {
           page is to push the visitor to actually use the app. */}
       <div className="pt-2">
         <Link
-          href="/now"
+          href="/today"
           className="tactile tactile-lift tactile-glow-brand inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white"
           style={{ background: "var(--app-brand)" }}
         >

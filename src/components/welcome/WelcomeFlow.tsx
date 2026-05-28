@@ -28,7 +28,7 @@ import { haptic } from "@/lib/haptics";
  *
  * The two questions:
  *   1. In the mood for? — 3 mood tiles (Coffee · Outdoors · Family).
- *      Sets ONE initial interest so /now's MoodTiles and curated rails
+ *      Sets ONE initial interest so /today's MoodTiles and curated rails
  *      have a starting bias.
  *   2. Live here? — yes/no. Sets the Mode (resident vs visitor) which
  *      every other surface reads to pick defaults.
@@ -52,7 +52,7 @@ type Step = 1 | 2;
 
 // The three moods replace the previous 8-tile interest grid. They map
 // to top-level category slugs already used app-wide so a mood pick
-// here seeds /now's MoodTiles bias + the SkyHero personalization.
+// here seeds /today's MoodTiles bias + the SkyHero personalization.
 const MOOD_TILES: Array<{
   /** Maps to a top-level category slug stored in personalize state. */
   slug: string;
@@ -76,7 +76,7 @@ export default function WelcomeFlow() {
   // on every /now request, and a client-side router push can race
   // document.cookie on some Safari/cache states.
   function goToNow(): void {
-    window.location.assign("/now");
+    window.location.assign("/today");
   }
 
   const finish = useCallback(
