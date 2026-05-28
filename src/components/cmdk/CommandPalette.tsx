@@ -197,7 +197,7 @@ export default function CommandPalette() {
               <Command.Item
                 key={t.slug}
                 value={`town ${t.name}`}
-                onSelect={() => go(`/towns/${t.slug}`)}
+                onSelect={() => go(`/m/${t.slug}`)}
                 className="cmdk-item"
               >
                 <Building2 className="cmdk-item-icon" strokeWidth={2} aria-hidden />

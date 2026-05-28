@@ -24,6 +24,40 @@ const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
   action: ArrowRight,
 };
 
+const HEADING_BY_TYPE: Record<SearchResultType, string> = {
+  place: "Places",
+  event: "Events",
+  category: "Categories",
+  municipality: "Towns",
+  action: "Actions",
+};
+
+/**
+ * Group flat results by type WHILE preserving relevance ordering.
+ * The first occurrence of each type determines the group order, so
+ * if the top hit is a Place, the Places group shows first; if an
+ * Event leads, Events leads. Within each group, items stay in the
+ * order the API returned (which is already relevance-scored).
+ *
+ * Returns a list of {type, items} pairs whose concatenated items
+ * preserve the original flat result indices — so keyboard nav and
+ * activeIdx keep working across the grouped layout.
+ */
+function groupByTypePreservingOrder(
+  results: SearchResult[],
+): { type: SearchResultType; items: Array<{ r: SearchResult; idx: number }> }[] {
+  const order: SearchResultType[] = [];
+  const buckets = new Map<SearchResultType, Array<{ r: SearchResult; idx: number }>>();
+  results.forEach((r, idx) => {
+    if (!buckets.has(r.type)) {
+      buckets.set(r.type, []);
+      order.push(r.type);
+    }
+    buckets.get(r.type)!.push({ r, idx });
+  });
+  return order.map((type) => ({ type, items: buckets.get(type)! }));
+}
+
 /**
  * Wrap each occurrence of `needle` in the haystack with a <mark> span.
  * Case-insensitive; preserves the original casing of the haystack so
@@ -262,74 +296,88 @@ export default function SearchOverlay({
               <p className="mt-1 text-xs">Try a different word, a category like &quot;coffee&quot;, or a town.</p>
             </div>
           ) : (
+            // Grouped results — group order follows relevance (the
+            // type of the top hit appears first), items within a group
+            // keep the API's relevance ordering. The flat `activeIdx`
+            // is preserved across groups via the `idx` recorded in each
+            // bucket, so arrow-key nav still walks the full result list.
             <ul ref={listRef} role="listbox" className="py-1">
-              {results.map((r, i) => {
-                const Icon = ICON_BY_TYPE[r.type];
-                const color = COLOR_BY_TYPE[r.type];
-                const active = i === activeIdx;
-                const trust = r.trust ?? null;
+              {groupByTypePreservingOrder(results).map((group, gi) => {
+                const color = COLOR_BY_TYPE[group.type];
                 return (
-                  <li key={r.id} role="option" aria-selected={active} data-idx={i}>
-                    <Link
-                      href={r.href}
-                      onClick={onClose}
-                      onMouseEnter={() => setActiveIdx(i)}
-                      className="flex items-start gap-3 px-4 py-2.5 outline-none"
-                      style={{
-                        background: active ? "var(--app-bg-sunken)" : "transparent",
-                      }}
+                  <li key={group.type} className={gi > 0 ? "mt-1" : ""}>
+                    {/* Group header — small, all-caps, tinted by type
+                        so the eye can pick out the section it wants
+                        without reading individual rows. Single source
+                        of "what kind of thing is this" — the per-item
+                        type pill is gone now that the header carries
+                        it. */}
+                    <div
+                      className="px-4 pb-1 pt-2 text-[10px] font-bold uppercase tracking-[0.12em]"
+                      style={{ color }}
                     >
-                      {/* Thumbnail when the result has a photo (places +
-                          events) — a 36px rounded square that reads as
-                          "this is a real thing" much faster than a
-                          generic icon stamp. Falls back to the typed
-                          round icon when no photo is available (every
-                          category / municipality / action, plus place +
-                          event rows that lack a hero). The image is
-                          loaded as plain <img>: no next/image optimizer
-                          round-trip just for a 32px tile inside an
-                          already-rendered overlay. */}
-                      {r.thumbnail ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={r.thumbnail}
-                          alt=""
-                          loading="lazy"
-                          decoding="async"
-                          className="mt-0.5 h-9 w-9 shrink-0 rounded-[var(--app-radius-sm)] object-cover"
-                          style={{
-                            background: `${color}1A`,
-                            boxShadow: `inset 0 0 0 1px var(--app-border)`,
-                          }}
-                        />
-                      ) : (
-                        <span
-                          aria-hidden
-                          className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-sm)]"
-                          style={{ background: `${color}1A`, color }}
-                        >
-                          <Icon className="h-4 w-4" strokeWidth={1.75} />
-                        </span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-                          {r.type === "action" ? r.title : highlight(r.title, query)}
-                        </p>
-                        <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                          {r.subtitle}
-                        </p>
-                        {trust && <TrustChip signal={trust} className="mt-1" />}
-                      </div>
-                      <span
-                        className="ml-2 shrink-0 self-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
-                        style={{
-                          background: `${color}14`,
-                          color,
-                        }}
-                      >
-                        {r.type}
-                      </span>
-                    </Link>
+                      {HEADING_BY_TYPE[group.type]} · {group.items.length}
+                    </div>
+                    <ul role="group" aria-label={HEADING_BY_TYPE[group.type]}>
+                      {group.items.map(({ r, idx }) => {
+                        const Icon = ICON_BY_TYPE[r.type];
+                        const active = idx === activeIdx;
+                        const trust = r.trust ?? null;
+                        return (
+                          <li key={r.id} role="option" aria-selected={active} data-idx={idx}>
+                            <Link
+                              href={r.href}
+                              onClick={onClose}
+                              onMouseEnter={() => setActiveIdx(idx)}
+                              className="flex items-start gap-3 px-4 py-2.5 outline-none"
+                              style={{
+                                background: active ? "var(--app-bg-sunken)" : "transparent",
+                              }}
+                            >
+                              {/* Thumbnail when the result has a photo
+                                  (places + events) — a 36px rounded
+                                  square that reads as "this is a real
+                                  thing" faster than a generic icon
+                                  stamp. Falls back to the typed round
+                                  icon when no photo is available. Plain
+                                  <img>: no next/image optimizer round-
+                                  trip just for a 32px tile. */}
+                              {r.thumbnail ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={r.thumbnail}
+                                  alt=""
+                                  loading="lazy"
+                                  decoding="async"
+                                  className="mt-0.5 h-9 w-9 shrink-0 rounded-[var(--app-radius-sm)] object-cover"
+                                  style={{
+                                    background: `${color}1A`,
+                                    boxShadow: `inset 0 0 0 1px var(--app-border)`,
+                                  }}
+                                />
+                              ) : (
+                                <span
+                                  aria-hidden
+                                  className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-sm)]"
+                                  style={{ background: `${color}1A`, color }}
+                                >
+                                  <Icon className="h-4 w-4" strokeWidth={1.75} />
+                                </span>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                                  {r.type === "action" ? r.title : highlight(r.title, query)}
+                                </p>
+                                <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                                  {r.subtitle}
+                                </p>
+                                {trust && <TrustChip signal={trust} className="mt-1" />}
+                              </div>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </li>
                 );
               })}
