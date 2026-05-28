@@ -1,6 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 
 /**
  * FromAboveCta — a quiet doorway from /now into the From Above book
@@ -11,12 +11,12 @@ import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
  * This card sits at the very end of /now as a deliberate "exit
  * beat" — once the user has the day's utility (weather, events,
  * places), this is the page's invitation to stay a little longer
- * in the county's photography. Daily-rotated seasonal thumbnail
- * carries the visual identity; the copy keeps the offer plain.
+ * in the county's photography. The thumbnail is the ACTUAL book
+ * cover (a daily-rotating seasonal photo read like marketing for
+ * a generic gallery — the cover IS the book's identity and the
+ * link target).
  *
- * Server component. SeasonalPhoto reads the same manifest as the
- * /about hero so this card can never get out of sync with what's
- * actually on disk.
+ * Server component, no fetches.
  */
 export default function FromAboveCta() {
   return (
@@ -28,14 +28,23 @@ export default function FromAboveCta() {
         boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
       }}
     >
-      {/* Square seasonal thumbnail on the left. Aspect-locked so the
-          next/image fill works against a sized parent. */}
-      <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[var(--app-radius-md)] sm:h-20 sm:w-20">
-        <SeasonalPhoto
-          season="auto"
-          alt="Frederick from above"
+      {/* Book-cover thumbnail. Portrait aspect matches the actual
+          hardcover (1200 × 1496 ≈ 4:5), so it reads as a book
+          rather than a square photo. Subtle inner ring + lift gives
+          it the "object" feel of a hardcover spine catching light. */}
+      <div
+        className="relative h-[92px] w-[74px] shrink-0 overflow-hidden rounded-[6px] sm:h-[100px] sm:w-[80px]"
+        style={{
+          boxShadow:
+            "0 4px 10px -2px rgba(20,20,18,0.28), inset 0 0 0 1px rgba(20,20,18,0.18)",
+        }}
+      >
+        <Image
+          src="/from-above/cover-front.webp"
+          alt="From Above book cover"
+          fill
           sizes="80px"
-          className="absolute inset-0"
+          className="object-cover"
         />
       </div>
       <span className="min-w-0 flex-1">

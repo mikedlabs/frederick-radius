@@ -1,20 +1,20 @@
 import HomeMuniChip from "./HomeMuniChip";
 
 /**
- * DateLine — slim, calm header that sits ABOVE the SkyHero on /now.
+ * DateLine v2 — calmer typographic header above the SkyHero on /now.
  *
- * Replaces the verbose AdaptiveGreeting (dateline + serif headline +
- * personal greeting line + interests chip) with a much quieter
- * dateline-only header. The weather has its own voice in the
- * WeatherHero card directly below; the page header doesn't need to
- * editorialize on top of that.
+ * v1 was a single uppercase tracked line ("WEDNESDAY · MAY 27 · 7:30
+ * PM") that read as a quiet metadata strip. v2 keeps the same role
+ * (no editorial verb on top of the weather) but gives each piece
+ * its own typographic register:
  *
- * Renders on the page background (paper-cream), not the sky gradient,
- * so styling can use the regular ink tokens instead of sky-toned
- * currentColor. HomeMuniChip stays — when a user has chosen their
- * home municipality during /welcome, surfacing "Your spot: Brunswick"
- * here lands the personalization as the very first thing they see on
- * the page.
+ *   - Weekday: big serif (Newsreader) — anchors the page in time.
+ *   - Date: small caps under the weekday — calendar fact.
+ *   - Time: monospace + live pulse dot on the right — "right now".
+ *
+ * HomeMuniChip still rides bottom-right when a home muni is set.
+ * The strip stays on paper-cream (NOT the sky gradient) so styling
+ * uses the regular ink tokens instead of sky-toned currentColor.
  */
 export default function DateLine() {
   const now = new Date();
@@ -22,10 +22,6 @@ export default function DateLine() {
     timeZone: "America/New_York",
     weekday: "long",
   }).format(now);
-  // Date — month name + day number ("May 27"). Sits in the same line
-  // as the weekday so users see weekday + calendar date + clock time
-  // in one glance instead of having to read the day strip below to
-  // confirm the date.
   const date = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     month: "long",
@@ -38,14 +34,35 @@ export default function DateLine() {
   }).format(now);
 
   return (
-    <header className="flex items-center justify-between gap-3">
-      <p
-        className="truncate text-[11px] font-medium uppercase tracking-[0.12em] sm:text-[12px]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        {weekday} · {date} · {time}
-      </p>
-      <HomeMuniChip />
+    <header className="flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h1
+          className="font-serif text-[26px] font-semibold leading-none tracking-tight sm:text-[30px]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {weekday}
+        </h1>
+        <p
+          className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {date}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <span
+          aria-hidden
+          className="live-dot inline-block"
+          style={{ color: "var(--app-brand)" }}
+        />
+        <span
+          className="font-mono text-[14px] font-semibold tabular-nums sm:text-[15px]"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          {time}
+        </span>
+        <HomeMuniChip />
+      </div>
     </header>
   );
 }
