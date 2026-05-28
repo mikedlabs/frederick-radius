@@ -67,7 +67,7 @@ export default function EventCard({
             time below if we have it. */}
         <div className="flex shrink-0 flex-col items-center gap-0.5 leading-none">
           <span
-            className="text-[9px] font-bold uppercase tracking-[0.1em]"
+            className="text-[10px] font-bold uppercase tracking-[0.1em]"
             style={{ color: accent }}
           >
             {date.month}
@@ -186,7 +186,7 @@ export default function EventCard({
             <span className="text-[10px] font-medium opacity-80">{date.weekday}</span>
           </div>
           <span
-            className="absolute right-3 top-3 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white"
+            className="absolute right-3 top-3 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white"
             style={{ background: accent }}
           >
             {categoryLabel}
@@ -302,7 +302,7 @@ export default function EventCard({
             }}
           >
             <span
-              className="text-[9px] font-bold uppercase tracking-[0.12em]"
+              className="text-[10px] font-bold uppercase tracking-[0.12em]"
               style={{ color: hasPhoto ? accent : "white" }}
             >
               {date.month}
@@ -313,7 +313,7 @@ export default function EventCard({
             >
               {date.day}
             </span>
-            <span className="text-[9px] font-medium opacity-75">{date.weekday}</span>
+            <span className="text-[10px] font-medium opacity-75">{date.weekday}</span>
           </div>
 
           {/* Category chip — top-right. Filled with category color
@@ -321,7 +321,7 @@ export default function EventCard({
               calls out a status), glass when no photo so it reads
               against the CategoryGraphic. */}
           <span
-            className="absolute right-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+            className="absolute right-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
             style={{
               background: hasPhoto ? accent : "rgba(255,255,255,0.22)",
               color: "white",
@@ -540,7 +540,7 @@ export default function EventCard({
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 flex items-baseline justify-center gap-1 px-1 pb-1 text-white">
-              <span className="text-[9px] font-bold uppercase tracking-wide">{date.month}</span>
+              <span className="text-[10px] font-bold uppercase tracking-wide">{date.month}</span>
               <span className="font-serif text-[15px] font-semibold leading-none">{date.day}</span>
             </div>
           </>
@@ -562,7 +562,7 @@ export default function EventCard({
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           {statusText && (
             <span
-              className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-white"
+              className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
               style={{ background: statusBg }}
             >
               {statusText}

@@ -33,7 +33,7 @@ const MEDIA_ICON: Record<NewsMediaType, typeof Tv> = {
  * the desk reads as plural — many publishers, not one feed dump.
  */
 function BrandPip({ meta, size = "sm" }: { meta: ReturnType<typeof sourceMeta>; size?: "sm" | "md" }) {
-  const dim = size === "md" ? "h-9 w-9 text-[11px]" : "h-7 w-7 text-[9.5px]";
+  const dim = size === "md" ? "h-9 w-9 text-[11px]" : "h-7 w-7 text-[10.5px]";
   return (
     <span
       aria-hidden
@@ -138,7 +138,7 @@ export default async function LocalNewsStrip() {
             <div className="min-w-0 flex-1">
               <div className="mb-1.5 flex items-center gap-2">
                 <span
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em]"
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em]"
                   style={{
                     background: `color-mix(in srgb, ${LANE_META[lead.lane].color} 15%, transparent)`,
                     color: LANE_META[lead.lane].color,

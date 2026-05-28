@@ -365,7 +365,7 @@ export default async function AboutPage() {
               </span>
               <span
                 aria-hidden
-                className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]"
+                className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]"
                 style={{
                   background: "rgba(255,255,255,0.88)",
                   color: "var(--app-ink)",
@@ -437,7 +437,7 @@ export default async function AboutPage() {
               </span>
               <span
                 aria-hidden
-                className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]"
+                className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]"
                 style={{
                   background: "rgba(255,255,255,0.88)",
                   color: "var(--app-ink)",

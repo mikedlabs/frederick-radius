@@ -62,7 +62,7 @@ export default async function RedditPulse() {
               >
                 <span
                   aria-hidden
-                  className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+                  className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
                   style={{ background: `${cat.color}1A`, color: cat.color }}
                 >
                   {cat.label}

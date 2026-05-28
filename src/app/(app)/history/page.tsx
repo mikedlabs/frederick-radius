@@ -173,7 +173,7 @@ export default async function HistoryPage() {
           >
             #{t.tag}
             <span
-              className="rounded-full px-1 text-[9px] tabular-nums"
+              className="rounded-full px-1 text-[10px] tabular-nums"
               style={{ color: "var(--app-ink-3)" }}
             >
               {t.count}
@@ -333,7 +333,7 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
             you which period it lives in. */}
         {era && (
           <span
-            className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] backdrop-blur"
+            className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur"
             style={{
               background: "rgba(0,0,0,0.45)",
               color: "white",
@@ -447,7 +447,7 @@ function HistoryArticle({
         <div className="relative">
           <div className="flex items-center gap-2">
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
               style={{
                 background: `color-mix(in srgb, ${meta.color} 18%, transparent)`,
                 color: meta.color,
@@ -466,7 +466,7 @@ function HistoryArticle({
             )}
             {era && (
               <span
-                className="text-[9px] font-bold uppercase tracking-[0.1em]"
+                className="text-[10px] font-bold uppercase tracking-[0.1em]"
                 style={{ color: `color-mix(in srgb, ${era.color} 70%, var(--app-ink-2))` }}
               >
                 · {era.label}

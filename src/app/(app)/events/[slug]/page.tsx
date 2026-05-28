@@ -526,9 +526,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                     style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
                     aria-hidden
                   >
-                    <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: "var(--app-brand)" }}>{db.month}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-brand)" }}>{db.month}</span>
                     <span className="font-serif text-base font-semibold leading-none" style={{ color: "var(--app-ink)" }}>{db.day}</span>
-                    <span className="text-[9px]" style={{ color: "var(--app-ink-3)" }}>{db.weekday}</span>
+                    <span className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>{db.weekday}</span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold" style={{ color: "var(--app-ink)" }}>
@@ -537,17 +537,17 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                     <p className="flex flex-wrap items-center gap-x-2 text-xs" style={{ color: "var(--app-ink-3)" }}>
                       <span>{db.time} · {s.venue_name}</span>
                       {tag && (
-                        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}>
+                        <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}>
                           {tag}
                         </span>
                       )}
                       {isCurrent && (
-                        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white" style={{ background: cat?.color ?? "var(--app-brand)" }}>
+                        <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white" style={{ background: cat?.color ?? "var(--app-brand)" }}>
                           You&apos;re here
                         </span>
                       )}
                       {isPast && !isCurrent && (
-                        <span className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider" style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}>
+                        <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider" style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}>
                           Past
                         </span>
                       )}

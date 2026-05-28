@@ -706,7 +706,7 @@ export default function EventsExplorer({
                         <div key={e.slug} className="relative w-[260px] shrink-0">
                           {live.has(e.slug) && (
                             <span
-                              className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                              className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
                               style={{ background: "var(--app-positive)" }}
                             >
                               <span className="live-dot" /> Live
@@ -723,7 +723,7 @@ export default function EventsExplorer({
                       <div key={e.slug} className="relative">
                         {live.has(e.slug) && (
                           <span
-                            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
+                            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
                             style={{ background: "var(--app-positive)" }}
                           >
                             <span className="live-dot" /> Live

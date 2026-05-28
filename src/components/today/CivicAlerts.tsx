@@ -135,7 +135,7 @@ export default async function CivicAlerts() {
                 <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-tight">
                   {a.title}
                 </p>
-                <span className="shrink-0 rounded-full bg-white/22 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider backdrop-blur">
+                <span className="shrink-0 rounded-full bg-white/22 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider backdrop-blur">
                   {a.source}
                 </span>
               </div>

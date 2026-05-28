@@ -137,7 +137,7 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                   {/* Category chip */}
                   {cat && (
                     <span
-                      className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] backdrop-blur"
+                      className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] backdrop-blur"
                       style={{
                         background: photo
                           ? `color-mix(in srgb, ${accent} 90%, transparent)`

@@ -194,7 +194,7 @@ export default function PlaceCard({
                 soft tint when no photo. */}
             {cat && (
               <span
-                className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
+                className="absolute left-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
                 style={{
                   background: photoUrl ? color : `color-mix(in srgb, ${color} 22%, var(--app-bg-elevated))`,
                   color: photoUrl ? "white" : color,

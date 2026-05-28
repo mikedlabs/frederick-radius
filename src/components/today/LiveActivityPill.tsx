@@ -78,7 +78,7 @@ export default function LiveActivityPill({ activities }: { activities: Activity[
               <Icon className="h-3.5 w-3.5" strokeWidth={2.5} />
             </span>
             <div className="relative min-w-0 flex-1">
-              <p className="flex items-center gap-1.5 text-[9px] font-semibold uppercase tracking-[0.15em]" style={{ color: current.accent }}>
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: current.accent }}>
                 {current.kind === "live-event" && <LiveDot />}
                 {current.label}
               </p>

@@ -167,7 +167,7 @@ export default function HistoryTimeline() {
                 style={{ background: "var(--app-ink-3)" }}
               />
               <span
-                className="absolute left-1/2 top-3 -translate-x-1/2 text-[9px] font-semibold tabular-nums"
+                className="absolute left-1/2 top-3 -translate-x-1/2 text-[10px] font-semibold tabular-nums"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 {y}

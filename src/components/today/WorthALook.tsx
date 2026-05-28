@@ -106,7 +106,7 @@ export default async function WorthALook() {
                       {p.name}
                     </p>
                     <p
-                      className="mt-0.5 truncate text-[9.5px] font-medium uppercase tracking-[0.08em] opacity-80"
+                      className="mt-0.5 truncate text-[10.5px] font-medium uppercase tracking-[0.08em] opacity-80"
                     >
                       {cat?.name ?? p.category}
                     </p>

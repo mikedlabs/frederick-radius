@@ -95,7 +95,7 @@ export default async function LocalNewsRail() {
                   className="inline-block h-1.5 w-1.5 rounded-full"
                   style={{ background: item.source.accent }}
                 />
-                <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]">
+                <span className="text-[10.5px] font-bold uppercase tracking-[0.1em]">
                   {item.source.label}
                 </span>
               </span>

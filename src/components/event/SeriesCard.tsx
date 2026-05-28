@@ -67,14 +67,14 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             {series.category && (
               <span
-                className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+                className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
                 style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
               >
                 {series.category}
               </span>
             )}
             <span
-              className="rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider"
+              className="rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
               style={{ background: "var(--app-bg-sunken)", color: "var(--app-ink-3)" }}
             >
               {series.municipality}

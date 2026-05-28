@@ -185,7 +185,7 @@ export default async function NowDayStrip({
         const inner = (
           <>
             <span
-              className="text-[9px] font-semibold uppercase tracking-[0.08em]"
+              className="text-[10px] font-semibold uppercase tracking-[0.08em]"
               style={{
                 color: isActive
                   ? "var(--app-brand)"
@@ -246,7 +246,7 @@ export default async function NowDayStrip({
                 <AnimatedSkyGlyph variant={variant} size={20} />
                 {(info?.high !== undefined || info?.low !== undefined) && (
                   <span
-                    className="text-[9px] font-semibold tabular-nums leading-tight"
+                    className="text-[10px] font-semibold tabular-nums leading-tight"
                     style={{ color: "var(--app-ink-2)" }}
                   >
                     {info?.high !== undefined ? `${info.high}°` : ""}

@@ -57,7 +57,7 @@ export default function SourceBadge({
     <span
       className={`inline-flex items-center gap-1 rounded-full font-semibold tracking-tight ${
         isSm
-          ? "px-1.5 py-0.5 text-[9px] uppercase tracking-[0.08em]"
+          ? "px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em]"
           : "px-2.5 py-1 text-[11px]"
       }`}
       style={{

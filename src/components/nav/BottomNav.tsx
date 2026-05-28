@@ -162,7 +162,7 @@ export default function BottomNav() {
                     }}
                   />
                   <span
-                    className="text-[9.5px] font-semibold leading-none tracking-tight transition-opacity"
+                    className="text-[10.5px] font-semibold leading-none tracking-tight transition-opacity"
                     style={{ opacity: active ? 1 : 0.78 }}
                   >
                     {label}

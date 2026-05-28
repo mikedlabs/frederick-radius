@@ -934,7 +934,7 @@ export default function AppMap({
                 <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--app-ink)" }}>
                   {demo === "food-truck" ? "Food truck map" : demo === "rewards" ? "Radius Points" : "Live transit"}
                   <span
-                    className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                    className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
                     style={{ background: "var(--app-accent)", color: "white" }}
                   >
                     Preview

@@ -188,7 +188,7 @@ export default async function SearchPage({
                       )}
                     </span>
                     <span
-                      className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em]"
+                      className="shrink-0 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em]"
                       style={{
                         background: `color-mix(in srgb, ${d.badge.color} 10%, transparent)`,
                         color: d.badge.color,

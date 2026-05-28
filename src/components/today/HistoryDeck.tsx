@@ -131,7 +131,7 @@ export default function HistoryDeck({
               style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5), transparent)" }}
             />
             {fact.image.credit && (
-              <span className="absolute bottom-1 right-2 text-[9px] font-medium text-white/70">
+              <span className="absolute bottom-1 right-2 text-[10px] font-medium text-white/70">
                 {fact.image.credit}
               </span>
             )}

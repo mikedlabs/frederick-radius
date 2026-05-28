@@ -246,7 +246,7 @@ function CardShell({
         {/* Text bottom-anchored on the dark gradient. */}
         <span className="mt-auto flex min-w-0 flex-col gap-0.5 p-2.5 text-white">
           <span
-            className="block text-[9px] font-bold uppercase tracking-[0.1em]"
+            className="block text-[10px] font-bold uppercase tracking-[0.1em]"
             style={{
               color: stampColor,
               filter: "brightness(1.6) saturate(1.2)",
@@ -298,7 +298,7 @@ function CardShell({
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span
-          className="block text-[9px] font-bold uppercase tracking-[0.1em]"
+          className="block text-[10px] font-bold uppercase tracking-[0.1em]"
           style={{ color: stampColor }}
         >
           {eyebrow}

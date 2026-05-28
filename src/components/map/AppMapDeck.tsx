@@ -725,7 +725,7 @@ export default function AppMapDeck({
                     <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{d.glyph}</span>
                     {d.label}
                     <span
-                      className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                      className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
                       style={{ background: "var(--app-accent)", color: "white" }}
                     >
                       Soon

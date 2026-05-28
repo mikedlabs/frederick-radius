@@ -105,7 +105,7 @@ export default function MapTimeChips({
               {label}
               {typeof n === "number" && (
                 <span
-                  className="ml-0.5 rounded-full px-1.5 py-0 text-[9px] font-bold tabular-nums"
+                  className="ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-bold tabular-nums"
                   style={{
                     background: isActive
                       ? "color-mix(in srgb, var(--app-bg) 22%, transparent)"
@@ -144,7 +144,7 @@ export default function MapTimeChips({
           Open now
           {typeof openNowCount === "number" && (
             <span
-              className="ml-0.5 rounded-full px-1.5 py-0 text-[9px] font-bold tabular-nums"
+              className="ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-bold tabular-nums"
               style={{
                 background: openNow
                   ? "rgba(255,255,255,0.25)"

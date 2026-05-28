@@ -127,7 +127,7 @@ export default async function DriftReviewPage() {
                         </p>
                         {decision && (
                           <span
-                            className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-white"
+                            className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
                             style={{
                               background:
                                 decision === "accepted" ? "var(--app-positive)" : "var(--app-danger)",
