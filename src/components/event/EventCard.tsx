@@ -17,17 +17,20 @@ import { statusLabel } from "@/lib/event-status";
 
 export default function EventCard({
   event,
-  variant = "row",
+  variant = "glance",
 }: {
   event: EventWithMeta;
   /**
-   * Layout density. `row` is the workhorse list card with thumbnail
-   * + chips; `tile` is the grid/rail card with photo banner; `feature`
-   * is the editorial lead; `compact` is the Rolodex row — single
-   * 48px line with time pill + title + venue + category dot. Compact
-   * mode fits 4-5× more events per viewport on mobile.
+   * Layout density. `glance` is the default — a ~108px photo-less
+   * browsing card per the mobile review (date column left, title
+   * center, bottom meta row); fits 2.5-3 cards in a mobile viewport
+   * for fast comparison. `row` is the older list card with a 64px
+   * thumbnail + full chip row, kept for surfaces where the photo
+   * earns the extra height. `tile` is the grid/rail card with photo
+   * banner; `feature` is the editorial lead; `compact` is the
+   * single-line Rolodex row used in dense list views.
    */
-  variant?: "row" | "tile" | "feature" | "compact";
+  variant?: "row" | "tile" | "feature" | "compact" | "glance";
 }) {
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -396,6 +399,124 @@ export default function EventCard({
             })()}
           </div>
         </div>
+      </article>
+    );
+  }
+
+  // Glance variant — the new default browsing card per the mobile
+  // review. ~108px tall, photo-less, designed so 2.5-3 cards are
+  // visible at once on a 700px mobile viewport. Layout:
+  //
+  //   ┌────────────────────────────────────────────┐
+  //   │ THU · MAY 28                       5:00 PM │  ← top row
+  //   │                                            │
+  //   │ Alive @ Five · The Learned Doctors         │  ← title
+  //   │ Carroll Creek Amphitheater                 │  ← venue
+  //   │                                            │
+  //   │ Live Music · $5 · 21+                      │  ← meta row
+  //   └────────────────────────────────────────────┘
+  //
+  // The reviewer's spec was the trigger for adding this variant;
+  // the old "row" with its 64px thumbnail + chip row sits at ~150px
+  // and broke the "2.5-3 cards per viewport" target.
+  //
+  // The image is OPTIONAL by design (the reviewer's exact word) —
+  // browsing scans on text, then opens the detail page for visuals.
+  // Save / share actions also move to the detail page; the glance
+  // card is a Link to the event, full stop.
+  if (variant === "glance") {
+    const accentLabel = cat?.name ?? (event.category ? event.category : "Event");
+    return (
+      <article
+        className="tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3"
+        style={{
+          borderColor: "var(--app-border)",
+          // Faint left-edge accent in the category color so a stack
+          // of cards reads as "different kinds of events" at a
+          // glance without adding the visual weight of a chip.
+          boxShadow: `inset 3px 0 0 ${accent}`,
+        }}
+      >
+        <Link
+          href={`/events/${event.slug}`}
+          aria-label={`${event.title} on ${date.weekday} ${date.month} ${date.day} at ${date.time}`}
+          className={`block outline-none ${isCancelled ? "line-through opacity-70" : ""}`}
+          style={{ color: "var(--app-ink)" }}
+        >
+          {/* Absolute click target — keeps every part of the card
+              tappable while the inner spans render at normal text
+              flow. Standard Apple-cards pattern. */}
+          <span className="absolute inset-0" aria-hidden />
+          {/* Top row — date on left, time on right */}
+          <div className="flex items-baseline justify-between gap-3">
+            <span
+              className="text-[10.5px] font-bold uppercase tracking-[0.12em] tabular-nums"
+              style={{ color: accent }}
+            >
+              {date.weekday} · {date.month} {date.day}
+            </span>
+            <span
+              className="shrink-0 text-[11px] font-semibold tabular-nums"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              {date.time}
+              {statusText && (
+                <span className="ml-1.5 font-bold" style={{ color: statusBg }}>
+                  · {statusText}
+                </span>
+              )}
+            </span>
+          </div>
+          {/* Title — 16px, serif, leading-tight; line-clamp-2 so a
+              two-line title doesn't blow up the card height past
+              ~108px. */}
+          <h3
+            className="mt-1.5 font-serif text-[16px] font-semibold leading-snug tracking-tight line-clamp-2"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {event.title}
+          </h3>
+          {/* Venue line — small, calm, single-line truncate. */}
+          {event.venue_name && (
+            <p
+              className="mt-0.5 truncate text-[12px] leading-snug"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              {event.venue_name}
+            </p>
+          )}
+          {/* Meta row — category · price · distance. Free + price
+              live in the SAME slot (mutually exclusive). Distance
+              right-aligns when present, so a vertical scan keeps
+              its visual rhythm even with mixed signals. */}
+          <div className="mt-2 flex items-center gap-x-2 text-[11px]">
+            <span
+              className="font-semibold uppercase tracking-[0.06em]"
+              style={{ color: accent }}
+            >
+              {accentLabel}
+            </span>
+            {event.is_free ? (
+              <>
+                <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+                <span style={{ color: "var(--app-positive)" }}>Free</span>
+              </>
+            ) : event.price_text ? (
+              <>
+                <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+                <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
+              </>
+            ) : null}
+            {event.distance_m !== undefined && (
+              <span
+                className="ml-auto tabular-nums"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {formatDistance(event.distance_m)}
+              </span>
+            )}
+          </div>
+        </Link>
       </article>
     );
   }
