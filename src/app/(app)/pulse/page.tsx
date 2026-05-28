@@ -532,13 +532,13 @@ export default async function PulsePage() {
           <ScannerTimeline />
         </div>
         <a
-          href="https://twitter.com/FrederickMDScan"
+          href="https://twitter.com/FredScanner"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 px-4 pb-3 pt-1 text-[10px] uppercase tracking-wide"
           style={{ color: "var(--app-ink-3)" }}
         >
-          Source: @FrederickMDScan
+          Source: @FredScanner
           <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
         </a>
       </section>
