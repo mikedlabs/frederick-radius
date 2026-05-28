@@ -26,6 +26,10 @@ export type LocalNewsSource = {
   /** Optional canonical homepage — used for the "all from {source}"
    *  link in the rail footer when present. */
   homeUrl?: string;
+  /** Brand-token accent color — drives the left edge of each item
+   *  in the rail so the eye can sort by source at a glance. Values
+   *  are CSS color tokens, not raw hex, so theme swaps work. */
+  accent: string;
 };
 
 export const LOCAL_NEWS_SOURCES: LocalNewsSource[] = [
@@ -34,19 +38,37 @@ export const LOCAL_NEWS_SOURCES: LocalNewsSource[] = [
     label: "FNP",
     feedUrl: "https://www.fredericknewspost.com/search/?f=rss&t=article&l=25&s=start_time&sd=desc",
     homeUrl: "https://www.fredericknewspost.com/",
+    accent: "var(--app-brand)",
   },
   {
     id: "maryland-matters",
     label: "MD Matters",
     feedUrl: "https://www.marylandmatters.org/feed/",
     homeUrl: "https://www.marylandmatters.org/",
+    accent: "var(--app-cool)",
   },
-  // Patch is intentionally NOT here. As of May 2026, Patch has no
-  // working town-level RSS for Frederick MD: /maryland/frederick-md/
-  // rss.xml 404s, /feeds/maryland/frederick-md.rss returns a valid
-  // RSS envelope with 0 items, and the other obvious variants either
-  // 404 or serve HTML. Their newsletter-only distribution model
-  // means readers must subscribe via email (the URL you'd paste into
-  // an RSS reader doesn't exist). If they ship a real town feed,
-  // add it back here — the loader is source-agnostic.
+  {
+    // Discovered via Patch's own May 28 newsletter — they cite
+    // mocoshow for the Burlington-replacing-Staples story at
+    // 5557 Urbana Pike. Their feed has 25 items, mostly biz
+    // openings + closings in Montgomery County, but with strong
+    // Frederick-adjacent coverage (Urbana Pike, Riverview Plaza,
+    // etc.) since that corridor straddles the line.
+    id: "mocoshow",
+    label: "MoCo Show",
+    feedUrl: "https://mocoshow.com/feed/",
+    homeUrl: "https://mocoshow.com/",
+    accent: "var(--app-accent)",
+  },
+  // wfmd.com — Frederick's local radio station — was the obvious
+  // third candidate (Patch cites them too), but their /feed/ and
+  // /rss endpoints both ParseError. Likely a Wordpress site without
+  // RSS exposed publicly, or behind a paywall. Worth retrying if
+  // they ship a clean feed; their newsroom IS Frederick-local in a
+  // way the others aren't.
+  //
+  // Patch itself is intentionally NOT here. As of May 2026 their
+  // town-level RSS endpoints either 404 or return 0 items — they
+  // distribute via newsletter, not RSS. Loader is source-agnostic,
+  // so adding any of these back later is a one-line change.
 ];

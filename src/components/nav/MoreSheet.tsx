@@ -25,31 +25,26 @@ import {
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
 /**
- * MoreSheet v5 — Field Guide cleanup pass (May 2026).
+ * MoreSheet v7 — Discover-first + app-drawer icon grids.
  *
- * v4 worked but had three problems the brand review surfaced:
- *   1. Title said "More" while the nav label said "Field guide"
- *      — a one-step inconsistency that made the product feel
- *      unfinished on the first interaction.
- *   2. The TOOLS row used aspect-square tiles that ate ~40% of
- *      visible drawer height for three items. Visual weight didn't
- *      match the actual information they carried.
- *   3. The USEFUL section was seven identical-shaped rows in a
- *      single column — a wall of repetition.
+ * v6 had a coherent layout but the rhythm still privileged Tools at
+ * the top. The user's read: the books and editorial collections are
+ * the *destination* people came for; the utility surfaces (Tools /
+ * Useful / App) are launcher targets, not the lead.
  *
- * v5 fixes:
- *   - Drawer title is now "Field guide" (matches the nav label).
- *     Subtitle is short, declarative, no cute filler.
- *   - TOOLS are short horizontal tiles (~80px tall) instead of
- *     aspect-square. Same color identity, ~½ the vertical real
- *     estate, more breathing room for the rest.
- *   - USEFUL is a 2-column grid, so seven items become four rows
- *     instead of seven. Per-item color identity is kept.
- *   - Parks gets a distinct icon (TreeDeciduous) so it doesn't
- *     collide visually with Trails (Mountain).
+ * v7 inverts:
+ *   1. DISCOVER moves to the top. Two landscape book covers + a
+ *      pair of editorial-list icon tiles (History / Collections).
+ *      This is the surface that earns a return visit.
+ *   2. TOOLS, USEFUL, APP all collapse to the same icon-tile grid
+ *      — small label under a tinted-circle icon, no description.
+ *      One language for every launcher. The descriptions still
+ *      live in aria-label so screen-readers and search get them;
+ *      we just don't paint a paragraph next to every glyph.
  *
- * Same TABS schema, same per-item color identity. The cleanup is
- * spatial + verbal, not structural.
+ * This puts the heaviest visual weight on the surface with the most
+ * editorial richness and turns the utility clusters into a
+ * scannable home-screen-style grid.
  */
 
 type Item = {
@@ -131,62 +126,11 @@ export default function MoreSheet({
       subtitle="Tools, layers, books, and the rest"
     >
       <div className="space-y-5 px-4 pt-3 pb-6">
-        {/* TOOLS — action verbs as a 3-up centered tile grid. v6
-            puts visual weight back where it belongs: bigger icon
-            circle (44px), no description (action verbs read fine
-            without one), centered layout. These are the lead
-            actions, so they SHOULD be the heaviest items on the
-            sheet — earlier v5 made them visually weaker than
-            Useful rows, which inverted the hierarchy. */}
-        <section className="space-y-2">
-          <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
-            Tools
-          </h3>
-          <ul className="grid grid-cols-3 gap-1.5">
-            {TOOLS.map((it) => {
-              const Icon = it.icon;
-              return (
-                <li key={it.href}>
-                  <Link
-                    href={it.href}
-                    onClick={close}
-                    aria-label={`${it.label} — ${it.description}`}
-                    className="hover-lift flex h-24 w-full flex-col items-center justify-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-center transition"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      boxShadow:
-                        "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
-                      style={{
-                        background: `color-mix(in srgb, ${it.color} 14%, transparent)`,
-                      }}
-                    >
-                      <Icon
-                        className="h-[20px] w-[20px]"
-                        strokeWidth={2}
-                        style={{ color: it.color }}
-                      />
-                    </span>
-                    <span
-                      className="block text-[13px] font-semibold leading-none"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      {it.label}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-
-        <Cluster heading="Useful" items={USEFUL} onClose={close} columns={2} />
-
-        {/* Discover — book cards then editorial rows. */}
+        {/* DISCOVER — leads the sheet (v7). Books + editorial-list
+            tiles are the destination people came for; everything
+            else is a launcher. The two book covers stay landscape
+            (16:9); History / Collections collapse into the same
+            icon-tile language as the clusters below. */}
         <section className="space-y-2">
           <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
             Discover
@@ -198,52 +142,122 @@ export default function MoreSheet({
               </li>
             ))}
           </ul>
-          <ul className="grid grid-cols-1 gap-1.5 pt-1 sm:grid-cols-2">
+          <ul className="grid grid-cols-2 gap-1.5 pt-1">
             {DISCOVER_ROWS.map((it) => (
               <li key={it.href}>
-                <DirectoryRow {...it} onClose={close} />
+                <IconTile {...it} onClose={close} />
               </li>
             ))}
           </ul>
         </section>
 
-        <Cluster heading="App" items={APP} onClose={close} />
+        <IconCluster heading="Tools" items={TOOLS} onClose={close} columns={3} />
+        <IconCluster heading="Useful" items={USEFUL} onClose={close} columns={4} />
+        <IconCluster heading="App" items={APP} onClose={close} columns={3} />
       </div>
     </BottomDrawer>
   );
 }
 
-function Cluster({
+/**
+ * Icon-tile cluster used by Tools / Useful / App and (for symmetry)
+ * Discover's editorial rows. App-drawer pattern: tinted circle icon
+ * + small label beneath, no description. Descriptions still flow
+ * through aria-label so screen-readers and search keep the context.
+ *
+ * `columns` controls the grid density: 3 for verbs/launcher rows,
+ * 4 for the long USEFUL list so it doesn't sprawl.
+ */
+function IconCluster({
   heading,
   items,
   onClose,
-  columns = 1,
+  columns,
 }: {
   heading: string;
   items: Item[];
   onClose: () => void;
-  /** 1 = full-width rows (small clusters); 2 = side-by-side grid
-   *  (used for the big USEFUL cluster so seven items don't read as
-   *  a wall of seven identical rows). */
-  columns?: 1 | 2;
+  columns: 3 | 4;
 }) {
-  const ulClass =
-    columns === 2
-      ? "grid grid-cols-1 gap-1.5 sm:grid-cols-2"
-      : "space-y-1.5";
+  const gridClass = columns === 4 ? "grid-cols-4" : "grid-cols-3";
   return (
-    <section className="space-y-1.5">
+    <section className="space-y-2">
       <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
         {heading}
       </h3>
-      <ul className={ulClass}>
+      <ul className={`grid gap-1.5 ${gridClass}`}>
         {items.map((it) => (
           <li key={it.href}>
-            <DirectoryRow {...it} onClose={onClose} />
+            <IconTile {...it} onClose={onClose} />
           </li>
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Single icon tile — tinted circle icon, label below, no
+ *  description text. Shared by Discover editorial rows + the
+ *  three icon clusters so the visual language is consistent. */
+function IconTile({
+  href,
+  label,
+  description,
+  icon: Icon,
+  color,
+  external,
+  onClose,
+}: Item & { onClose: () => void }) {
+  const body = (
+    <>
+      <span
+        aria-hidden
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+        style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }}
+      >
+        <Icon
+          className="h-[18px] w-[18px]"
+          strokeWidth={2}
+          style={{ color }}
+        />
+      </span>
+      <span
+        className="block text-center text-[11.5px] font-semibold leading-tight"
+        style={{ color: "var(--app-ink)" }}
+      >
+        {label}
+      </span>
+    </>
+  );
+  const className =
+    "hover-lift flex h-[92px] w-full flex-col items-center justify-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2 transition";
+  const style = {
+    borderColor: "var(--app-border)",
+    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+  };
+  const aria = `${label} — ${description}`;
+  return external ? (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onClose}
+      className={className}
+      style={style}
+      aria-label={aria}
+    >
+      {body}
+    </a>
+  ) : (
+    <Link
+      href={href}
+      onClick={onClose}
+      className={className}
+      style={style}
+      aria-label={aria}
+    >
+      {body}
+    </Link>
   );
 }
 

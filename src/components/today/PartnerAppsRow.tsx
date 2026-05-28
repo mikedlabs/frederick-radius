@@ -53,6 +53,12 @@ export default function PartnerAppsRow() {
       <h2 className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
         Quick handoffs
       </h2>
+      {/* Compact pill row — was a 2-col stack of tall cards that
+          punched above its weight relative to the section's purpose
+          (these are just shortcuts, not destinations). Switching to
+          short horizontal pills keeps the partner-color hairline
+          identity but cuts the section's vertical real estate in
+          about half. */}
       <ul className="grid grid-cols-2 gap-2">
         {HANDOFFS.map((h) => {
           const Icon = h.icon;
@@ -63,59 +69,46 @@ export default function PartnerAppsRow() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`${h.label} — ${h.nudge}`}
-                className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-md)] border p-3 transition active:scale-[0.98]"
+                className="tactile-interactive relative flex items-center gap-2.5 overflow-hidden rounded-[var(--app-radius-md)] border px-3 py-2 transition active:scale-[0.98]"
                 style={{
                   borderColor: "var(--app-border)",
                   background: "var(--app-bg-elevated)",
-                  // Thin partner-color hairline on the left edge keeps
-                  // the identity readable without painting the whole
-                  // card. Cheap, calm, distinctive.
                   boxShadow: `inset 3px 0 0 ${h.brand}`,
                 }}
               >
-                {/* External-link badge — small, ink-toned. */}
                 <span
                   aria-hidden
-                  className="absolute right-2 top-2 inline-flex items-center"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  <ExternalLink
-                    className="h-2.5 w-2.5"
-                    strokeWidth={2.5}
-                    aria-hidden
-                  />
-                </span>
-
-                {/* Icon tile — brand-color tint at low opacity, brand
-                    icon on top. No glassmorphism / heavy shadow. */}
-                <span
-                  aria-hidden
-                  className="grid h-8 w-8 place-items-center rounded-full"
+                  className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
                   style={{
                     background: `color-mix(in srgb, ${h.brand} 14%, transparent)`,
                   }}
                 >
                   <Icon
-                    className="h-4 w-4"
+                    className="h-[14px] w-[14px]"
                     strokeWidth={2.25}
                     style={{ color: h.brand }}
                   />
                 </span>
-
-                <span className="mt-2 block">
+                <span className="min-w-0 flex-1">
                   <span
-                    className="block text-[14px] font-semibold leading-tight"
+                    className="block text-[13px] font-semibold leading-tight"
                     style={{ color: "var(--app-ink)" }}
                   >
                     {h.label}
                   </span>
                   <span
-                    className="mt-0.5 block truncate text-[11px]"
+                    className="mt-0.5 block truncate text-[10.5px] leading-tight"
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {h.nudge}
                   </span>
                 </span>
+                <ExternalLink
+                  className="h-3 w-3 shrink-0"
+                  strokeWidth={2.5}
+                  style={{ color: "var(--app-ink-3)" }}
+                  aria-hidden
+                />
               </a>
             </li>
           );
