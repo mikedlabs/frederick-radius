@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import WeatherHero from "@/components/today/WeatherHero";
-import SkyHero from "@/components/today/SkyHero";
+import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import NowDayStrip from "@/components/today/NowDayStrip";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
@@ -344,13 +344,28 @@ export default async function HomePage({
             <AlmanacFooter inSky />
           </Suspense>
         </SkyHero>
-        <div
-          className="relative z-10 mt-2 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_*:not(:last-child)]:border-b"
-          style={{
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          }}
-        >
+        {(() => {
+          // Sky-aware wash on the weather sub-card stack so the
+          // supplemental cards (Hourly / Weekly / More Details) read
+          // as part of the same atmospheric scene as the SkyHero
+          // above instead of a flat paper break. Tint is the BOTTOM
+          // stop of the current time-of-day sky (the most-desaturated
+          // stop, so it doesn't fight the chrome inside the cards),
+          // mixed at 9-14% into the elevated paper bg. Fades to plain
+          // elevated by ~75% so the bottom of the stack stays neutral
+          // and dividers + ink stay easy to read.
+          const sky = currentSkyPalette();
+          const strength = sky.tone === "dark" ? 14 : 10;
+          const stackBg = `linear-gradient(180deg, color-mix(in srgb, ${sky.bottom} ${strength}%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 75%)`;
+          return (
+            <div
+              className="relative z-10 mt-2 overflow-hidden rounded-[var(--app-radius-lg)] border [&_>_*:not(:last-child)]:border-b"
+              style={{
+                borderColor: "var(--app-border)",
+                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                background: stackBg,
+              }}
+            >
           <Suspense fallback={null}>
             <CivicAlerts />
           </Suspense>
@@ -388,6 +403,8 @@ export default async function HomePage({
             </Suspense>
           </WeatherMore>
         </div>
+          );
+        })()}
       </div>
 
         </div>{/* /LEFT column */}
