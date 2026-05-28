@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
-import { MapPin } from "lucide-react";
+import Link from "next/link";
+import { MapPin, Calendar } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -107,6 +108,7 @@ export default function AppMapClient({
         />
         <InViewDrawer
           results={results}
+          events={events}
           onPick={(slug) =>
             setFocus((f) => ({ slug, n: (f?.n ?? 0) + 1 }))
           }
@@ -159,16 +161,58 @@ export default function AppMapClient({
 }
 
 /**
+ * Filter events to those near the visible viewport. We use the set of
+ * places currently in view as a proxy for the viewport: an event is
+ * "nearby" if its venue sits within 1.5km of ANY place the user can
+ * see. This works without plumbing a separate onEventsInView signal
+ * out of AppMap, and degrades sensibly when the viewport is sparse
+ * (zero visible places → no nearby events, which is the right answer:
+ * if the user can't see anything to do, they can't see anywhere to
+ * go either).
+ *
+ * Exported for unit tests; the runtime consumer is InViewDrawer below.
+ */
+export function eventsNearVisiblePlaces(
+  events: EventPin[],
+  visible: { geom: { lng: number; lat: number } }[],
+  maxMeters = 1500,
+): EventPin[] {
+  if (events.length === 0 || visible.length === 0) return [];
+  const out: EventPin[] = [];
+  for (const e of events) {
+    if (!Number.isFinite(e.lng) || !Number.isFinite(e.lat)) continue;
+    for (const p of visible) {
+      const d = haversineMeters({ lng: e.lng, lat: e.lat }, p.geom);
+      if (d <= maxMeters) {
+        out.push(e);
+        break; // matched at least one — don't double-add
+      }
+    }
+  }
+  return out;
+}
+
+/**
  * InViewDrawer — slide-up bottom drawer inside the full-bleed map.
  * Three snap states (peek / half / full) tracked client-side. Peek
  * shows just the count + a grab handle; half + full reveal the
- * synced "places in view" list scrollable. Same shape as Apple Maps.
+ * synced "places + events in view" list scrollable. Apple Maps shape.
+ *
+ * The mobile review's #1 priority was making this the keystone mobile
+ * interaction. The drawer now surfaces BOTH places-in-view and events
+ * near those places, so a user panning to Carroll Creek immediately
+ * sees "12 places · 3 events nearby" — they can decide-by-day without
+ * leaving the map.
  */
 function InViewDrawer({
   results,
+  events = [],
   onPick,
 }: {
   results: PlaceCardData[];
+  /** Map's event pins. The drawer filters them down to events near
+   *  the visible places via eventsNearVisiblePlaces above. */
+  events?: EventPin[];
   onPick: (slug: string) => void;
 }) {
   const [snap, setSnap] = useState<"peek" | "half" | "full">("peek");
@@ -177,6 +221,15 @@ function InViewDrawer({
     half: "55%",
     full: "82%",
   };
+
+  // Events whose venue is within 1.5km of any visible place. Recomputed
+  // when either the visible places change OR the event prop changes,
+  // so a time-filter switch (Now / Tonight / Weekend) refreshes the
+  // drawer's event count cleanly.
+  const eventsHere = useMemo(
+    () => eventsNearVisiblePlaces(events, results),
+    [events, results],
+  );
 
   // Category mix for the peek pill — shows the dominant categories
   // in the visible viewport as colored dots sized by share. Lets the
@@ -219,9 +272,21 @@ function InViewDrawer({
           style={{ background: "rgba(0,0,0,0.18)" }}
         />
         <p className="text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-          {results.length === 0
-            ? "Showing Downtown Frederick"
-            : `${results.length} place${results.length === 1 ? "" : "s"} in view`}
+          {results.length === 0 ? (
+            "Showing Downtown Frederick"
+          ) : (
+            <>
+              {results.length} place{results.length === 1 ? "" : "s"}
+              {eventsHere.length > 0 && (
+                <>
+                  {" · "}
+                  <span style={{ color: "var(--app-brand)" }}>
+                    {eventsHere.length} event{eventsHere.length === 1 ? "" : "s"} nearby
+                  </span>
+                </>
+              )}
+            </>
+          )}
         </p>
         {/* Category mix row — visible only in peek state. Each dot is
             a category present in the visible viewport; size scales
@@ -274,14 +339,80 @@ function InViewDrawer({
               className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              Pan or zoom. Places here list above. Tap any to see details.
+              Pan or zoom to scan this area. Places list here; tap any to open details.
             </li>
           ) : (
-            results.map((p) => (
-              <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
-                <PlaceCard place={p} />
-              </li>
-            ))
+            <>
+              {/* Events nearby — promoted ABOVE the places list when
+                  the visible viewport has any. Time-sensitive surfaces
+                  beat time-flat surfaces; if there's a concert at
+                  Carroll Creek tonight, the user should see it before
+                  scrolling 12 restaurant rows. Tight cards (date pill
+                  + title + venue + time) — full event details live
+                  on the event detail page. */}
+              {eventsHere.length > 0 && (
+                <li>
+                  <p
+                    className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                    style={{ color: "var(--app-brand)" }}
+                  >
+                    <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                    Events nearby
+                  </p>
+                  <ul className="space-y-1.5">
+                    {eventsHere.slice(0, 5).map((e) => {
+                      const start = new Date(e.starts_at);
+                      const when = new Intl.DateTimeFormat("en-US", {
+                        timeZone: "America/New_York",
+                        weekday: "short",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      }).format(start);
+                      const color = e.category_color ?? "#A8462C";
+                      return (
+                        <li key={e.slug}>
+                          <Link
+                            href={`/events/${e.slug}`}
+                            className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
+                            style={{
+                              borderColor: "var(--app-border)",
+                              boxShadow: `inset 3px 0 0 ${color}`,
+                            }}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className="truncate text-[13px] font-semibold leading-tight"
+                                style={{ color: "var(--app-ink)" }}
+                              >
+                                {e.title}
+                              </p>
+                              <p
+                                className="truncate text-[11px]"
+                                style={{ color: "var(--app-ink-3)" }}
+                              >
+                                {when} · {e.venue_name}
+                              </p>
+                            </div>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p
+                    className="mt-3 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                    Places in view
+                  </p>
+                </li>
+              )}
+              {results.map((p) => (
+                <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
+                  <PlaceCard place={p} />
+                </li>
+              ))}
+            </>
           )}
         </ul>
       )}
