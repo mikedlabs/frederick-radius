@@ -28,7 +28,6 @@ import WeeklySummary from "@/components/today/WeeklySummary";
 import WeatherMore from "@/components/today/WeatherMore";
 import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
-import TuneForYou from "@/components/today/TuneForYou";
 import WorthALook from "@/components/today/WorthALook";
 import FromAboveCta from "@/components/today/FromAboveCta";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
@@ -266,13 +265,10 @@ export default async function HomePage({
           is empty and there's no hydration flash. */}
       <BetaIntroCard />
 
-      {/* Tune this for you — three small persona pills (I live here /
-          I'm visiting / I own a business) linking to /welcome. Replaces
-          the killed onboarding redirect's purpose: the field guide is
-          useful immediately, but a user who wants it tuned can opt in
-          in one tap. Independent dismissal so a user can hide the beta
-          card and keep the tune-for-you affordance (or vice versa). */}
-      <TuneForYou />
+      {/* TuneForYou removed — the persona pills lived here as an
+          opt-in tune-up after we killed the welcome redirect.
+          /welcome is reachable from More / Settings; the briefing
+          doesn't need a chrome strip nudging users toward it. */}
 
       {/* DateLine + NowDayStrip — the slim header that replaces the
           old AdaptiveGreeting block. Sits ABOVE SkyHero on the page
