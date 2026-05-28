@@ -9,11 +9,19 @@ import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Sheet from "@/components/ui/Sheet";
+import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
+type EventSortKey = "time" | "az" | "venue";
+
+const EVENT_SORT_OPTIONS: ReadonlyArray<SortOption<EventSortKey>> = [
+  { key: "time", label: "Soonest", hint: "Next event first (grouped by horizon)" },
+  { key: "az", label: "A→Z", hint: "Alphabetical by event title" },
+  { key: "venue", label: "Venue", hint: "Cluster by venue name" },
+];
 
 type Props = {
   events: EventWithMeta[];
@@ -92,6 +100,14 @@ export default function EventsExplorer({
     "free",
     parseAsBoolean.withDefault(false),
   );
+  // Sort order (?sort=time|az|venue). "time" keeps the horizon
+  // grouping ("Tonight / This weekend / This week / Later"); the
+  // alphabetical and by-venue sorts drop the grouping and render
+  // a flat list so the order the user picked is the order the user sees.
+  const [sort, setSort] = useQueryState<EventSortKey>(
+    "sort",
+    parseAsStringEnum<EventSortKey>(["time", "az", "venue"]).withDefault("time"),
+  );
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (k: string) =>
@@ -104,6 +120,30 @@ export default function EventsExplorer({
 
   const live = useMemo(() => new Set(liveSlugs), [liveSlugs]);
   const now = +new Date(nowISO);
+
+  // Apply user-chosen sort AFTER filtering. "time" preserves the
+  // server-provided chronological order (and feeds the horizon
+  // grouping below). The other keys produce a flat re-sort.
+  const sortFn = useMemo(() => {
+    switch (sort) {
+      case "az":
+        return (a: EventWithMeta, b: EventWithMeta) =>
+          (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
+      case "venue":
+        return (a: EventWithMeta, b: EventWithMeta) => {
+          const va = (a.venue_name ?? "").toLowerCase();
+          const vb = (b.venue_name ?? "").toLowerCase();
+          if (va !== vb) return va.localeCompare(vb);
+          // Within a venue, fall back to chronological so a venue
+          // cluster reads top-to-bottom as a venue schedule.
+          return +new Date(a.starts_at) - +new Date(b.starts_at);
+        };
+      case "time":
+      default:
+        return (a: EventWithMeta, b: EventWithMeta) =>
+          +new Date(a.starts_at) - +new Date(b.starts_at);
+    }
+  }, [sort]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -129,8 +169,8 @@ export default function EventsExplorer({
       )
         return false;
       return true;
-    });
-  }, [events, day, time, cat, town, q, freeOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+    }).sort(sortFn);
+  }, [events, day, time, cat, town, q, freeOnly, now, next24ISO, weekendStartISO, weekendEndISO, sortFn]);
 
   // Group the filtered list into human horizons so the default view is
   // navigable at a glance instead of a 400-row chronological scroll.
@@ -320,7 +360,7 @@ export default function EventsExplorer({
             aria-hidden
           />
         </button>
-        <span className="ml-auto text-xs" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>
           {filtered.length} {filtered.length === 1 ? "event" : "events"}
           {anyFilter && (
             <button
@@ -333,6 +373,12 @@ export default function EventsExplorer({
             </button>
           )}
         </span>
+        <SortDropdown
+          className="ml-auto"
+          options={EVENT_SORT_OPTIONS}
+          value={sort}
+          onChange={setSort}
+        />
       </div>
 
       {/* Filters bottom sheet — same wiring, app-grade presentation.
@@ -520,6 +566,26 @@ export default function EventsExplorer({
             </button>
           )}
         </div>
+      ) : sort !== "time" ? (
+        // User-driven sort (A→Z or by venue): drop the horizon
+        // grouping so the order the user chose is the order they see.
+        // Capped at 100 to keep the page snappy; the rest are reachable
+        // by tightening filters or switching to the calendar/map view.
+        <ul className="space-y-2">
+          {filtered.slice(0, 100).map((e) => (
+            <li key={e.slug}>
+              <EventCard event={e} />
+            </li>
+          ))}
+          {filtered.length > 100 && (
+            <li
+              className="pt-2 text-center text-[11px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Showing the first 100. Use filters or the calendar view to narrow further.
+            </li>
+          )}
+        </ul>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
