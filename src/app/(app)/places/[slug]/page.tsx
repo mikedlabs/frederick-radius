@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Utensils, ShoppingBag, Car, Instagram, ExternalLink } from "lucide-react";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
@@ -193,8 +194,15 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               the title row so it reads as the primary action on the
               place, not a header chrome icon. PendingFollowApplier
               consumes ?follow=<slug> from a post-sign-in redirect
-              and applies it once before clearing the query param. */}
-          <PendingFollowApplier slug={place.slug} name={place.name} />
+              and applies it once before clearing the query param.
+
+              Wrapped in <Suspense> because PendingFollowApplier calls
+              useSearchParams(), which Next 16 requires under a Suspense
+              boundary during static prerender of /places/[slug].
+              Without this, `next build` fails the entire page export. */}
+          <Suspense fallback={null}>
+            <PendingFollowApplier slug={place.slug} name={place.name} />
+          </Suspense>
           <div className="-mt-1">
             <MyRadiusButton slug={place.slug} name={place.name} />
           </div>
