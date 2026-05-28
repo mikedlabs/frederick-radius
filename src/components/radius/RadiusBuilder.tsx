@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, ChevronDown, Locate } from "lucide-react";
+import { Footprints, Bike, Car, MapPin, ChevronDown, Locate, X, Compass } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
 import BestNearbyMoves from "./BestNearbyMoves";
+import { resolveMunicipality } from "@/lib/location";
 // Read the same slim, pre-decorated set the rest of the app uses on
 // the client. The previous shape (places passed in via props from
 // radius/page) inlined ~4MB of redundant JSON into the SSR HTML for
@@ -23,7 +24,13 @@ import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
 import { MUNICIPALITIES } from "@/data/municipalities";
-import { minutesToMeters, haversineMeters, type TravelMode, formatDistance } from "@/lib/geo";
+import {
+  minutesToMeters,
+  haversineMeters,
+  isInsideFrederickCounty,
+  type TravelMode,
+  formatDistance,
+} from "@/lib/geo";
 
 // Center options: ALL 12 municipalities (Frederick first = default) +
 // a couple of landmark points. A dropdown, not a hidden horizontal
@@ -166,6 +173,23 @@ const SORT_KEY = "fr:radius:sort:v1";
 const PEEK: Record<ViewMode, number> = { grid: 8, list: 10 };
 const FOOD_GROUP = "food";
 
+// Geolocation cache + dismiss keys, hoisted so they're stable refs
+// across renders (the lint rule wants them out of the effect's
+// dependency array). Cache key matches useGeolocation's so the two
+// share a single sessionStorage entry — they're orthogonal entry
+// points into the same "where am I" state.
+const GEO_CACHE_KEY = "fr_geo_v1";
+const GEO_CACHE_TTL_MS = 1000 * 60 * 30; // 30 min — same as the hook
+const GEO_PROMPT_DISMISS_KEY = "fr:geo-prompt-dismissed:v1";
+
+type GeoStatus =
+  | "idle"
+  | "loading"
+  | "granted"
+  | "denied"
+  | "unavailable"
+  | "out-of-county";
+
 // Local label + glyph table for the 6 curated amenity kinds, in
 // most-asked-for order. Kept here (not imported from the loader) so
 // this client component stays loader-free; the points themselves
@@ -269,24 +293,140 @@ export default function RadiusBuilder({
 
   // "Use my location" — a custom center the user can opt into via
   // browser geolocation. Falls through to the preset list when null.
-  // Stored only in component state (not localStorage) so a returning
-  // user always sees the preset they last picked, not a stale GPS.
+  //
+  // The Radius redesign (May 2026) made this the SOUL of /map, but the
+  // experience still anchored on town centroids until a user discovered
+  // the small Locate button. Proposal A makes it the obvious first
+  // move: surface a one-tap invite on first visit, hydrate a fresh
+  // session-cached position so returning users skip the prompt, and
+  // gracefully handle denied + out-of-county states instead of failing
+  // silently.
   const [myLoc, setMyLoc] = useState<{ lng: number; lat: number } | null>(null);
   const [myLocLabel, setMyLocLabel] = useState<string>("Your location");
-  const [locating, setLocating] = useState(false);
+  const [geoStatus, setGeoStatus] = useState<GeoStatus>("idle");
+  const [promptDismissed, setPromptDismissed] = useState(false);
+
+  // Hydrate cached position + dismiss state on mount. SSR-safe: the
+  // server renders the idle state; the client overlays the cache if
+  // it's still fresh. A returning user inside the 30-min TTL skips
+  // the prompt entirely and lands on their own coordinates.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(GEO_CACHE_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw) as {
+          lng: number;
+          lat: number;
+          label?: string;
+          timestamp: number;
+        };
+        if (Date.now() - cached.timestamp <= GEO_CACHE_TTL_MS) {
+          const inCounty = isInsideFrederickCounty(cached.lat, cached.lng);
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: server renders idle; the client hydrates sessionStorage which is unavailable during SSR
+          setMyLoc({ lng: cached.lng, lat: cached.lat });
+          setMyLocLabel(cached.label || "Your location");
+          setGeoStatus(inCounty ? "granted" : "out-of-county");
+        } else {
+          sessionStorage.removeItem(GEO_CACHE_KEY);
+        }
+      }
+    } catch {
+      // sessionStorage unavailable — fall through to idle
+    }
+    try {
+      if (localStorage.getItem(GEO_PROMPT_DISMISS_KEY) === "1") {
+        setPromptDismissed(true);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const requestMyLocation = () => {
-    if (!("geolocation" in navigator)) return;
-    setLocating(true);
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setGeoStatus("unavailable");
+      return;
+    }
+    setGeoStatus("loading");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setMyLoc({ lng: pos.coords.longitude, lat: pos.coords.latitude });
-        setMyLocLabel("Your location");
-        setLocating(false);
+        const lng = pos.coords.longitude;
+        const lat = pos.coords.latitude;
+        const inCounty = isInsideFrederickCounty(lat, lng);
+        const hit = resolveMunicipality({ lng, lat });
+        // Inside a town → "Walkers Wood Park, MD"-style local label.
+        // In-county but not in a town → just "Your location" (the dots
+        // tell the story; we don't need to claim a neighborhood).
+        // Out of county → "Near {nearest town}" so the user knows the
+        // app sees them at the right distance.
+        const label = inCounty
+          ? hit.inside
+            ? `${hit.municipality.name}, MD`
+            : "Your location"
+          : `Near ${hit.municipality.name}`;
+        setMyLoc({ lng, lat });
+        setMyLocLabel(label);
+        setGeoStatus(inCounty ? "granted" : "out-of-county");
+        try {
+          sessionStorage.setItem(
+            GEO_CACHE_KEY,
+            JSON.stringify({
+              lng,
+              lat,
+              accuracy: pos.coords.accuracy,
+              label,
+              timestamp: Date.now(),
+            }),
+          );
+        } catch {
+          // sessionStorage unavailable — non-fatal
+        }
       },
-      () => setLocating(false),
-      { enableHighAccuracy: true, timeout: 8000 },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setGeoStatus("denied");
+        } else {
+          // Timeout / position unavailable — return to idle so the
+          // user can try again. We don't surface a hard error; the
+          // preset dropdown is still the working fallback.
+          setGeoStatus("idle");
+        }
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
     );
   };
+
+  // Permanent dismiss for the first-visit prompt. The Locate button in
+  // the control card stays the always-on opt-in path; we just stop
+  // pushing the big card at the top of the page.
+  const dismissPrompt = () => {
+    setPromptDismissed(true);
+    try {
+      localStorage.setItem(GEO_PROMPT_DISMISS_KEY, "1");
+    } catch {
+      // ignore
+    }
+  };
+
+  // Snap the center to the nearest municipality for an out-of-county
+  // user — surfaces the closest sensible jumping-off point.
+  const snapToNearestMuni = () => {
+    if (!myLoc) return;
+    const hit = resolveMunicipality(myLoc);
+    const idx = PRESETS.findIndex((p) => p.slug === `m-${hit.municipality.slug}`);
+    if (idx > -1) {
+      setMyLoc(null);
+      setMyLocLabel("Your location");
+      setGeoStatus("idle");
+      setPresetIdx(idx);
+    }
+  };
+
+  // Derived flag — show the big invite card only when there's no
+  // location yet, the user hasn't dismissed the prompt, and we're not
+  // mid-fetch. The control-card button stays available throughout.
+  const showGeoPrompt =
+    geoStatus === "idle" && !promptDismissed && !myLoc;
 
   const presetCenter = PRESETS[presetIdx];
   const center = myLoc ? { ...presetCenter, label: myLocLabel, lng: myLoc.lng, lat: myLoc.lat } : presetCenter;
@@ -429,6 +569,142 @@ export default function RadiusBuilder({
 
   return (
     <div className="space-y-3">
+      {/* First-visit invite card — the soul of the Radius redesign.
+          Showing "what's around you" is the most useful thing this
+          page can do, so we lead with it. Brand-orange CTA, soft
+          gradient, dismissable. Persists the dismiss across visits
+          via localStorage; the Locate button in the control card
+          remains the quiet always-on opt-in path for users who
+          dismissed the card but later change their mind. */}
+      {showGeoPrompt && (
+        <div
+          className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] border p-3.5 shadow-[var(--app-shadow-1)]"
+          style={{
+            borderColor: "color-mix(in srgb, var(--app-brand) 36%, var(--app-border))",
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 70%)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={dismissPrompt}
+            aria-label="Dismiss"
+            className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full transition active:scale-[0.94]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </button>
+          <div className="flex items-start gap-3 pr-7">
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full shadow-[var(--app-shadow-1)]"
+              style={{ background: "var(--app-brand)", color: "white" }}
+            >
+              <Locate className="h-[18px] w-[18px]" strokeWidth={2.5} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p
+                className="font-serif text-[16px] font-semibold leading-snug tracking-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                What&rsquo;s around you, right now.
+              </p>
+              <p
+                className="mt-0.5 text-[12px] leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Center the radius on your spot. Stays in your browser &mdash; we don&rsquo;t store it.
+              </p>
+              <button
+                type="button"
+                onClick={requestMyLocation}
+                className="tactile tactile-interactive mt-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-white shadow-[var(--app-shadow-1)] transition active:scale-[0.96]"
+                style={{ background: "var(--app-brand)" }}
+              >
+                <Locate className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+                Use my location
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Out-of-county banner — granted but outside Frederick County.
+          We still show the user's location on the map (so they can see
+          how far they are), but we surface the closest in-county town
+          as a one-tap fix so they're not stranded on an empty radius. */}
+      {geoStatus === "out-of-county" && myLoc && (() => {
+        const hit = resolveMunicipality(myLoc);
+        const distMi = (hit.distance_m / 1609.344).toFixed(1);
+        return (
+          <div
+            className="flex items-start gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-2.5"
+            style={{
+              borderColor: "var(--app-border)",
+              background:
+                "color-mix(in srgb, var(--app-ink-3) 6%, var(--app-bg-elevated))",
+            }}
+          >
+            <Compass
+              className="mt-0.5 h-4 w-4 shrink-0"
+              strokeWidth={2}
+              style={{ color: "var(--app-ink-3)" }}
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                You&rsquo;re about {distMi} mi outside Frederick County.
+              </p>
+              <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+                The whole app is built for the county. Closest town from you is {hit.municipality.name} &mdash; want to center there?
+              </p>
+              <button
+                type="button"
+                onClick={snapToNearestMuni}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: "var(--app-bg-elevated)",
+                  color: "var(--app-brand)",
+                  border: "1px solid color-mix(in srgb, var(--app-brand) 50%, var(--app-border))",
+                }}
+              >
+                <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                Center on {hit.municipality.name}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Denied banner — quiet, brief, with a clear "how to fix" line.
+          Self-dismisses the moment the user successfully grants
+          permission (geoStatus moves to granted/out-of-county). */}
+      {geoStatus === "denied" && (
+        <div
+          className="flex items-start gap-3 rounded-[var(--app-radius-md)] border px-3.5 py-2.5"
+          style={{
+            borderColor: "var(--app-border)",
+            background:
+              "color-mix(in srgb, var(--app-ink-3) 6%, var(--app-bg-elevated))",
+          }}
+        >
+          <Compass
+            className="mt-0.5 h-4 w-4 shrink-0"
+            strokeWidth={2}
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Couldn&rsquo;t access your location.
+            </p>
+            <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
+              Enable it in your browser settings, or pick a center below.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Map + floating ribbon. Wrapped in a relative container so the
           stats can overlay the map bottom (Apple Maps pattern). The
           previous standalone ribbon section ate ~50px and pushed the
@@ -572,9 +848,16 @@ export default function RadiusBuilder({
             type="button"
             onClick={requestMyLocation}
             aria-pressed={Boolean(myLoc)}
-            aria-busy={locating || undefined}
-            title={myLoc ? "Using your location" : "Center on your location"}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94]"
+            aria-busy={geoStatus === "loading" || undefined}
+            title={
+              geoStatus === "denied"
+                ? "Location blocked — enable in browser settings"
+                : myLoc
+                  ? "Using your location"
+                  : "Center on your location"
+            }
+            disabled={geoStatus === "unavailable"}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94] disabled:opacity-40"
             style={{
               borderColor: myLoc ? "var(--app-brand)" : "var(--app-border)",
               background: myLoc
@@ -584,7 +867,7 @@ export default function RadiusBuilder({
             }}
           >
             <Locate
-              className="h-4 w-4"
+              className={`h-4 w-4 ${geoStatus === "loading" ? "animate-pulse" : ""}`}
               strokeWidth={myLoc ? 2.5 : 2}
               fill={myLoc ? "currentColor" : "none"}
               aria-hidden
