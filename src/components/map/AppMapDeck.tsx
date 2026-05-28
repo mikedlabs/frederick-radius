@@ -1,6 +1,6 @@
 "use client";
 
-import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal } from "lucide-react";
+import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal, X } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -236,6 +236,150 @@ export default function AppMapDeck({
             )}
           </button>
         </div>
+
+        {/* Active-filters strip — chips for every category currently
+            ON, each tappable to remove. Sits directly under the
+            search bar so the user can see WHAT's filtering the map
+            without opening the drawer. Renders only when something
+            is filtered; on a clean map this row is hidden so the
+            deck stays minimal. Includes the overlays (Roads &
+            alerts, Transit, Trails) and Amenities group too — every
+            active layer surfaces here. */}
+        {(activeCats.size > 0 ||
+          activeAmenityGroupCount > 0 ||
+          showCivic ||
+          showTransit ||
+          showTrails) && (
+          <ul
+            className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="Active filters"
+          >
+            {[...activeCats].map((slug) => {
+              const cat = CATEGORY_BY_SLUG[slug];
+              if (!cat) return null;
+              return (
+                <li key={`f-${slug}`} className="shrink-0">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setActiveCats((prev) => {
+                        const next = new Set(prev);
+                        next.delete(slug);
+                        return next;
+                      })
+                    }
+                    aria-label={`Remove ${cat.name} filter`}
+                    className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                    style={{
+                      background: cat.color,
+                      color: "white",
+                      boxShadow: "var(--app-shadow-1)",
+                    }}
+                  >
+                    {cat.name}
+                    <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                  </button>
+                </li>
+              );
+            })}
+            {activeAmenityGroupCount > 0 && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setAmenityGroups(new Set())}
+                  aria-label="Clear all amenity filters"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-cool)",
+                    color: "white",
+                    boxShadow: "var(--app-shadow-1)",
+                  }}
+                >
+                  Amenities · {activeAmenityGroupCount}
+                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </li>
+            )}
+            {showCivic && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowCivic(false)}
+                  aria-label="Hide roads & alerts"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-warning)",
+                    color: "white",
+                    boxShadow: "var(--app-shadow-1)",
+                  }}
+                >
+                  Roads &amp; alerts
+                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </li>
+            )}
+            {showTransit && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowTransit(false)}
+                  aria-label="Hide transit"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-cool)",
+                    color: "white",
+                    boxShadow: "var(--app-shadow-1)",
+                  }}
+                >
+                  Transit
+                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </li>
+            )}
+            {showTrails && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowTrails(false)}
+                  aria-label="Hide trails"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-positive)",
+                    color: "white",
+                    boxShadow: "var(--app-shadow-1)",
+                  }}
+                >
+                  Trails
+                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </li>
+            )}
+            {/* Clear-all escape hatch — only worth the row when there
+                are multiple filters to clear. */}
+            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) > 1 && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCats(new Set());
+                    setAmenityGroups(new Set());
+                    setShowCivic(false);
+                    setShowTransit(false);
+                    setShowTrails(false);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    borderColor: "var(--app-border)",
+                    background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
+                    color: "var(--app-ink-2)",
+                  }}
+                >
+                  Clear all
+                </button>
+              </li>
+            )}
+          </ul>
+        )}
       </div>
       {/* Layers drawer — slides up from the bottom (Vaul). On mobile
           this reads as the native map app pattern; on desktop the
@@ -248,8 +392,16 @@ export default function AppMapDeck({
         title="Layers"
         subtitle="Choose what to show on the map"
       >
-        <div className="px-4 pt-3">
-        <ul className="flex flex-wrap items-center gap-2 py-0.5">
+        <div className="space-y-4 px-4 pt-3">
+        {/* CATEGORIES section — places by type. Was mixed in one flat
+            wrap with the overlays; pulling them into a labeled
+            cluster reads as "what kind of place" vs the OVERLAYS
+            cluster's "what infrastructure to show." */}
+        <section className="space-y-2">
+          <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
+            Categories
+          </h3>
+          <ul className="flex flex-wrap items-center gap-2 py-0.5">
           <li>
             <button
               type="button"
@@ -266,29 +418,6 @@ export default function AppMapDeck({
               All · {(places.length + trustedOsmCount).toLocaleString()}
             </button>
           </li>
-          {amenityCount > 0 && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setAmenityOpen((v) => !v)}
-                aria-pressed={amenityOpen || activeAmenityGroupCount > 0}
-                aria-expanded={amenityOpen}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: activeAmenityGroupCount > 0 ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                  color: activeAmenityGroupCount > 0 ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${activeAmenityGroupCount > 0 || amenityOpen ? "var(--app-cool)" : "var(--app-border)"}`,
-                  boxShadow: activeAmenityGroupCount > 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="Amenities — restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water, trash, AED"
-              >
-                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
-                Amenities
-                {activeAmenityGroupCount > 0 && ` · ${activeAmenityGroupCount}`}
-                <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>{amenityOpen ? "▲" : "▼"}</span>
-              </button>
-            </li>
-          )}
           <li>
             <button
               type="button"
@@ -339,6 +468,72 @@ export default function AppMapDeck({
               Churches
             </button>
           </li>
+          {TOP_CATEGORIES.map((c) => {
+            const active = activeCats.has(c.slug);
+            return (
+              <li key={c.slug}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCats((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(c.slug)) next.delete(c.slug);
+                      else next.add(c.slug);
+                      return next;
+                    });
+                  }}
+                  aria-pressed={active}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                  style={{
+                    background: active ? c.color : "var(--app-bg-elevated)",
+                    color: active ? "white" : "var(--app-ink-2)",
+                    border: `1px solid ${active ? c.color : "var(--app-border)"}`,
+                    boxShadow: active ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                  }}
+                >
+                  <span aria-hidden style={{ fontSize: 13, lineHeight: 1, color: active ? "rgba(255,255,255,0.92)" : c.color }}>
+                    {CHIP_GLYPH[c.slug] ?? "●"}
+                  </span>
+                  {c.name}
+                </button>
+              </li>
+            );
+          })}
+          </ul>
+        </section>
+
+        {/* OVERLAYS section — infrastructure / situation layers. Each
+            renders only if the underlying data exists, so the section
+            only appears when there's something to toggle. */}
+        {(amenityCount > 0 || civic.length > 0 || transitLines.features.length > 0 || trailLines.features.length > 0) && (
+          <section className="space-y-2">
+            <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
+              Overlays
+            </h3>
+            <ul className="flex flex-wrap items-center gap-2 py-0.5">
+          {amenityCount > 0 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setAmenityOpen((v) => !v)}
+                aria-pressed={amenityOpen || activeAmenityGroupCount > 0}
+                aria-expanded={amenityOpen}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: activeAmenityGroupCount > 0 ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                  color: activeAmenityGroupCount > 0 ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${activeAmenityGroupCount > 0 || amenityOpen ? "var(--app-cool)" : "var(--app-border)"}`,
+                  boxShadow: activeAmenityGroupCount > 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Amenities — restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water, trash, AED"
+              >
+                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
+                Amenities
+                {activeAmenityGroupCount > 0 && ` · ${activeAmenityGroupCount}`}
+                <span aria-hidden style={{ fontSize: 9, opacity: 0.7 }}>{amenityOpen ? "▲" : "▼"}</span>
+              </button>
+            </li>
+          )}
           {civic.length > 0 && (
             <li>
               <button
@@ -359,10 +554,6 @@ export default function AppMapDeck({
                   className="inline-block h-2 w-2 rounded-full"
                   style={{ background: showCivic ? "white" : "var(--app-warning)" }}
                 />
-                {/* "Roads & alerts" replaces "Traffic & 311". 311 is
-                    civic-tech jargon most users don't know; the new
-                    label says what the layer actually shows (road
-                    incidents + county-published issues). */}
                 Roads &amp; alerts
               </button>
             </li>
@@ -407,69 +598,51 @@ export default function AppMapDeck({
               </button>
             </li>
           )}
-          {TOP_CATEGORIES.map((c) => {
-            const active = activeCats.has(c.slug);
-            return (
-              <li key={c.slug}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveCats((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(c.slug)) next.delete(c.slug);
-                      else next.add(c.slug);
-                      return next;
-                    });
-                  }}
-                  aria-pressed={active}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                  style={{
-                    background: active ? c.color : "var(--app-bg-elevated)",
-                    color: active ? "white" : "var(--app-ink-2)",
-                    border: `1px solid ${active ? c.color : "var(--app-border)"}`,
-                    boxShadow: active ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                  }}
-                >
-                  <span aria-hidden style={{ fontSize: 13, lineHeight: 1, color: active ? "rgba(255,255,255,0.92)" : c.color }}>
-                    {CHIP_GLYPH[c.slug] ?? "●"}
-                  </span>
-                  {c.name}
-                </button>
-              </li>
-            );
-          })}
-          {SHOW_DEMO_LAYERS && (<>
-          {/* Preview-only demo layers — OFF in production (set NEXT_PUBLIC_RADIUS_DEMO_LAYERS=1 to enable). Sample data, not real coverage. */}
-          <li aria-hidden className="mx-1 h-5 w-px shrink-0 self-center" style={{ background: "var(--app-border)" }} />
-          {[
-            { key: "food-truck" as const, glyph: "\u{1F69A}", label: "Food Trucks" },
-            { key: "rewards" as const, glyph: "\u{2B50}", label: "Radius Points" },
-            { key: "transit" as const, glyph: "\u{1F68C}", label: "Live Transit" },
-          ].map((d) => (
-            <li key={d.key}>
-              <button
-                type="button"
-                onClick={() => setDemo(d.key)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: "var(--app-bg-elevated)",
-                  color: "var(--app-ink-3)",
-                  border: "1px dashed var(--app-border)",
-                }}
-              >
-                <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{d.glyph}</span>
-                {d.label}
-                <span
-                  className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-                  style={{ background: "var(--app-accent)", color: "white" }}
-                >
-                  Soon
-                </span>
-              </button>
-            </li>
-          ))}
-          </>)}
-        </ul>
+            </ul>
+          </section>
+        )}
+
+        {/* Preview-only demo layers — OFF in production (gated by
+            NEXT_PUBLIC_RADIUS_DEMO_LAYERS=1). Rendered as its own
+            "Coming soon" cluster so the demo chips don't visually
+            ride in the live Categories/Overlays rows. */}
+        {SHOW_DEMO_LAYERS && (
+          <section className="space-y-2">
+            <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
+              Coming soon
+            </h3>
+            <ul className="flex flex-wrap items-center gap-2 py-0.5">
+              {[
+                { key: "food-truck" as const, glyph: "\u{1F69A}", label: "Food Trucks" },
+                { key: "rewards" as const, glyph: "\u{2B50}", label: "Radius Points" },
+                { key: "transit" as const, glyph: "\u{1F68C}", label: "Live Transit" },
+              ].map((d) => (
+                <li key={d.key}>
+                  <button
+                    type="button"
+                    onClick={() => setDemo(d.key)}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                    style={{
+                      background: "var(--app-bg-elevated)",
+                      color: "var(--app-ink-3)",
+                      border: "1px dashed var(--app-border)",
+                    }}
+                  >
+                    <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{d.glyph}</span>
+                    {d.label}
+                    <span
+                      className="rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider"
+                      style={{ background: "var(--app-accent)", color: "white" }}
+                    >
+                      Soon
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* Amenities sub-tray — toggled by the Amenities chip,
             nested inside the same glass filter panel. */}
         {amenityOpen && (
