@@ -15,7 +15,7 @@ export default function robots(): MetadataRoute.Robots {
         //   /settings/       — per-device preferences (no content)
         //   /submit/         — submission forms (no content)
         //   /welcome         — first-run onboarding (no content)
-        //   /saved           — user-only state surface
+        //   /my-radius       — user-only state surface (renamed from /saved)
         disallow: [
           "/api/",
           "/admin/",
@@ -23,7 +23,7 @@ export default function robots(): MetadataRoute.Robots {
           "/settings/",
           "/submit/",
           "/welcome",
-          "/saved",
+          "/my-radius",
         ],
       },
     ],

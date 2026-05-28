@@ -19,7 +19,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // /tonight, /discover, /markets, /historic, /art, /amenities all
     // 301 to canonical homes (next.config.ts) and are intentionally
     // dropped from the sitemap so crawlers index the canonical paths.
-    // /saved is user-state, not content; intentionally excluded.
+    // /my-radius is user-state, not content; intentionally excluded.
     // /submit, /welcome, /settings are forms/onboarding, disallowed
     // in robots.ts so they don't need a sitemap entry either.
   ];

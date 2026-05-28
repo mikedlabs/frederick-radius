@@ -4,11 +4,26 @@ import { Settings, ChevronRight } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
 
 export const metadata: Metadata = {
-  title: "Saved",
-  description: "Your saved places, events, and radii.",
+  title: "My Radius",
+  description:
+    "Your personal Frederick Radius — the places, events, and routes you're keeping an eye on.",
 };
 
-export default function SavedPage() {
+/**
+ * /my-radius — the user's personal corner of the field guide.
+ *
+ * Renamed from /saved (Phase 0 of the profile/follow system). The
+ * underlying list mechanic is unchanged: SavedList renders bookmarks
+ * + recently-viewed + saved events from device localStorage. What
+ * changed is the framing — "Your list" is generic; "My Radius" is
+ * ownership. The page is the same shape the user already builds with
+ * Save buttons across the app; we just gave it a name worth claiming.
+ *
+ * Old /saved URL is 301-redirected to /my-radius in next.config.ts so
+ * existing bookmarks, iOS Share Sheet saves, and any cached search
+ * results keep working.
+ */
+export default function MyRadiusPage() {
   return (
     <div className="space-y-5">
       {/* Header trimmed: the SavedList component carries its own
@@ -17,15 +32,14 @@ export default function SavedPage() {
       <header className="flex items-end justify-between gap-3">
         <div>
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            Saved · on this device
+            My Radius · on this device
           </p>
           <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-            Your list
+            Your Frederick
           </h1>
         </div>
-        {/* Settings entry point — the /saved page is the user's
-            personal space, so settings naturally live one tap away
-            from here. */}
+        {/* Settings entry point — /my-radius is the user's personal
+            space, so settings naturally live one tap away from here. */}
         <Link
           href="/settings"
           aria-label="Settings"

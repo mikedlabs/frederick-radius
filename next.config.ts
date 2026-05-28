@@ -112,6 +112,12 @@ const nextConfig: NextConfig = {
       // the URL should say so. The old /browse remains permanently
       // redirected so deep links / cached search results don't 404.
       { source: "/browse", destination: "/map", permanent: true },
+      // /saved → /my-radius rename (Phase 0 of the profile/follow
+      // system). Same content, new editorial framing — "My Radius" is
+      // the user's personal corner of the field guide. The old /saved
+      // remains permanently redirected so bookmarks + iOS Share Sheet
+      // saves don't 404.
+      { source: "/saved", destination: "/my-radius", permanent: true },
     ];
   },
 };
