@@ -100,6 +100,15 @@ export default function EventsExplorer({
     "free",
     parseAsBoolean.withDefault(false),
   );
+  // Happy-hour-only toggle — URL-synced via ?happy=1. Predicate is a
+  // title/venue regex (no formal "happy hour" category in the schema).
+  // Added May 2026 in response to a competing iOS-only events app that
+  // led with happy hours; this surfaces the same use case from a
+  // broader product without bolting on a new event type.
+  const [happyOnly, setHappyOnly] = useQueryState(
+    "happy",
+    parseAsBoolean.withDefault(false),
+  );
   // Sort order (?sort=time|az|venue). "time" keeps the horizon
   // grouping ("Tonight / This weekend / This week / Later"); the
   // alphabetical and by-venue sorts drop the grouping and render
@@ -161,6 +170,13 @@ export default function EventsExplorer({
       if (cat && e.category !== cat) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
+      if (happyOnly) {
+        // Match against title + venue + description so we catch both
+        // event-level happy hours ("Tuesday happy hour at X") and the
+        // venue-level recurring lineups some publishers tag this way.
+        const hay = `${e.title} ${e.venue_name ?? ""} ${e.description ?? ""}`;
+        if (!/\bhappy\s*hour\b/i.test(hay)) return false;
+      }
       if (
         term &&
         !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""}`
@@ -170,7 +186,7 @@ export default function EventsExplorer({
         return false;
       return true;
     }).sort(sortFn);
-  }, [events, day, time, cat, town, q, freeOnly, now, next24ISO, weekendStartISO, weekendEndISO, sortFn]);
+  }, [events, day, time, cat, town, q, freeOnly, happyOnly, now, next24ISO, weekendStartISO, weekendEndISO, sortFn]);
 
   // Group the filtered list into human horizons so the default view is
   // navigable at a glance instead of a 400-row chronological scroll.
@@ -224,7 +240,7 @@ export default function EventsExplorer({
   }, [viewState, day]);
 
   const anyFilter =
-    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly || day !== null;
+    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly || happyOnly || day !== null;
   // Count only the panel facets (search is its own visible field).
   const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0);
   const clear = () => {
@@ -234,6 +250,7 @@ export default function EventsExplorer({
     setTime("all");
     setQ("");
     setFreeOnly(false);
+    setHappyOnly(false);
   };
 
   // One-tap intent chips — what people actually open an events page
@@ -244,6 +261,7 @@ export default function EventsExplorer({
     { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
     { key: "music", label: "Live music", on: cat === "music", toggle: () => setCat(cat === "music" ? null : "music") },
     { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
+    { key: "happy", label: "Happy hour", on: happyOnly, toggle: () => setHappyOnly((v) => !v) },
     { key: "family", label: "Family", on: cat === "family", toggle: () => setCat(cat === "family" ? null : "family") },
     // Civic / meetings — separated per the May 2026 product review:
     // commission meetings, public hearings, and municipal agendas are
