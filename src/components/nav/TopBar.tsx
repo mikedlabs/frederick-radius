@@ -166,9 +166,9 @@ export default function TopBar() {
           </button>
 
           <Link
-            href="/saved"
-            aria-label="Saved"
-            title="Saved"
+            href="/my-radius"
+            aria-label="My Radius"
+            title="My Radius"
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >

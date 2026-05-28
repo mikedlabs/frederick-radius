@@ -17,12 +17,16 @@ import {
  *   - "Map" reads more naturally than "Browse" (the spatial view
  *     IS what users open the tab for)
  *   - "Events" reads more naturally than "Plan"
- * Routes are /now, /map, /events. The map tab used to live at
- * /browse; that path now 301s to /map so every old deep link,
- * bookmark, and shared URL still resolves.
+ *   - "My Radius" claims the fourth tab as personal space — it's the
+ *     user's view of the field guide, not a generic "Saved" list
+ *     (Phase 0 of the profile/follow system).
+ *   - "Field guide" reads as an editorial atlas of secondary routes;
+ *     "More" sounded like a junk drawer.
+ * Routes are /now, /map, /events, /my-radius. The old /saved and
+ * /browse paths 301-redirect so existing deep links still resolve.
  *
- * The fifth tab, "More", doesn't navigate — it opens a sheet/drawer
- * listing every secondary route.
+ * The fifth tab, "Field guide", doesn't navigate — it opens a
+ * sheet/drawer listing every secondary route.
  */
 
 export type Tab = {
@@ -36,11 +40,11 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/now",    label: "Today",  icon: Sun,            fillOnActive: true,  kind: "link"   },
-  { href: "/map", label: "Map",    icon: MapIcon,        fillOnActive: false, kind: "link"   },
-  { href: "/events", label: "Events", icon: Calendar,       fillOnActive: false, kind: "link"   },
-  { href: "/saved",  label: "Saved",  icon: Bookmark,       fillOnActive: true,  kind: "link"   },
-  { href: "#more",   label: "More",   icon: MoreHorizontal, fillOnActive: false, kind: "drawer" },
+  { href: "/now",       label: "Today",       icon: Sun,            fillOnActive: true,  kind: "link"   },
+  { href: "/map",       label: "Map",         icon: MapIcon,        fillOnActive: false, kind: "link"   },
+  { href: "/events",    label: "Events",      icon: Calendar,       fillOnActive: false, kind: "link"   },
+  { href: "/my-radius", label: "My Radius",   icon: Bookmark,       fillOnActive: true,  kind: "link"   },
+  { href: "#more",      label: "Field guide", icon: MoreHorizontal, fillOnActive: false, kind: "drawer" },
 ] as const;
 
 /** Resolve a pathname to its tab index (or -1 if it isn't a tab).

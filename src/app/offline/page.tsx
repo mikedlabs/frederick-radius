@@ -27,8 +27,8 @@ export default function OfflinePage() {
         You are offline
       </h1>
       <p className="mt-2 max-w-xs text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-        Frederick Radius needs a connection for live conditions and events. Saved
-        places stay available offline.
+        Frederick Radius needs a connection for live conditions and events. Places
+        in your Radius stay available offline.
       </p>
       <button
         type="button"

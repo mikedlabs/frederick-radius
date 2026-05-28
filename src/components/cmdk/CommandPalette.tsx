@@ -66,7 +66,7 @@ const ROUTES: { href: string; label: string; description: string; icon: typeof H
   { href: "/map", label: "Browse", description: "The map — pan, layers, filters", icon: Compass },
   { href: "/radius", label: "Within reach", description: "What's reachable from a point", icon: MapPin },
   { href: "/events", label: "Events", description: "Tonight, weekend, this week", icon: Calendar },
-  { href: "/saved", label: "Saved", description: "Your bookmarks", icon: Bookmark },
+  { href: "/my-radius", label: "My Radius", description: "Places you follow", icon: Bookmark },
   { href: "/about", label: "About", description: "What this app is", icon: Info },
 ];
 

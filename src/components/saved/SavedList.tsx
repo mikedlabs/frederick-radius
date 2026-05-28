@@ -312,7 +312,7 @@ export default function SavedList() {
             {summarySentence(places.length, events.length, townTally.size)}
           </p>
           <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-            Saved on this device · sync coming soon
+            On this device · sign-in to sync across devices coming soon
           </p>
         </div>
       </section>
@@ -320,7 +320,7 @@ export default function SavedList() {
       {/* Smart suggestion strip — only when there's a real cluster. */}
       {dominantMuni && (
         <Link
-          href={`/plan?from=saved`}
+          href={`/plan?from=my-radius`}
           className="group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
           style={{ borderColor: "var(--app-border)" }}
         >
@@ -339,7 +339,7 @@ export default function SavedList() {
               className="block text-[13px] font-semibold leading-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {dominantTown![1]} of your saves are in {dominantMuni.name}
+              {dominantTown![1]} of your Radius is in {dominantMuni.name}
             </span>
             <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
               Build a route from these → Planner
@@ -493,7 +493,7 @@ export default function SavedList() {
       )}
 
       {events.length > 0 && (
-        <section aria-label="Saved events" className="space-y-2">
+        <section aria-label="Events in your Radius" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
             <span
               aria-hidden
@@ -530,13 +530,13 @@ export default function SavedList() {
 }
 
 function summarySentence(placeN: number, eventN: number, townN: number): string {
-  if (placeN === 0 && eventN === 0) return "Start building a list of places to come back to.";
+  if (placeN === 0 && eventN === 0) return "Start building your Radius.";
   const parts: string[] = [];
   if (placeN > 0) parts.push(`${placeN} place${placeN === 1 ? "" : "s"}`);
   if (eventN > 0) parts.push(`${eventN} event${eventN === 1 ? "" : "s"}`);
   let body = parts.join(" and ");
   if (placeN > 0 && townN > 1) body += ` across ${townN} town${townN === 1 ? "" : "s"}`;
-  return `${body}, waiting for your next visit.`;
+  return `${body} in your Radius.`;
 }
 
 /**
@@ -554,7 +554,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   return (
     <div className="space-y-5">
       <section
-        aria-label="What is Saved?"
+        aria-label="What is My Radius?"
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 shadow-[var(--app-shadow-1)]"
         style={{ borderColor: "var(--app-border)" }}
       >
@@ -581,13 +581,14 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
             className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Your Frederick list starts here.
+            Start building your Radius.
           </p>
           <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-            Save places, events, trails, and ideas for later. Tap the bookmark
-            on anything in the field guide and it lands here. The list is yours
-            — things you&apos;ve been meaning to try, dates worth a return visit,
-            or a short list to send a friend who&apos;s coming through town.
+            Follow the places you care about, and this page becomes your
+            personal view of Frederick County. Tap the bookmark on anything in
+            the field guide and it lands here — things you&apos;ve been meaning
+            to try, dates worth a return visit, or a short list to send a
+            friend who&apos;s coming through town.
           </p>
           {/* Three primary entry points so the empty page suggests three
               different starting paths (explore the map, see what's on,
