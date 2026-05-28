@@ -26,7 +26,7 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
  * popup to everyone.
  */
 
-const KEY = "fr:beta-intro-dismissed:v5";
+const KEY = "fr:beta-intro-dismissed:v6";
 const FEEDBACK_EMAIL = "miked@madproductions.io";
 const FEEDBACK_SUBJECT = "Frederick Radius feedback";
 
@@ -165,30 +165,29 @@ export default function BetaIntroCard() {
               className="font-serif text-[19px] font-semibold leading-snug tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              Thank you for taking the time to check this out.
+              One place to see what&rsquo;s open, what&rsquo;s happening,
+              and what&rsquo;s worth your time — across every town in
+              Frederick County.
             </p>
 
             <p>
-              Frederick Radius is the start of a dedicated home base for Frederick County.
-              Local information is everywhere right now: city pages, county pages,
-              business websites, Facebook, Instagram, Reddit, event calendars, and
-              posts people only see if the algorithm happens to show them.
+              I&rsquo;m Michael, a downtown Frederick resident. I built
+              this because the answer to &ldquo;is anything open near me
+              right now?&rdquo; shouldn&rsquo;t take seven tabs.
             </p>
 
             <p>
-              This is an attempt to bring the city, the county&rsquo;s 12 municipalities,
-              local businesses, events, services, and everyday updates into one
-              clearer place.
+              It&rsquo;s still being shaped in public. Data is being
+              cleaned, layers are being added, things will move around.
+              That&rsquo;s the point of showing it early.
             </p>
 
-            <p>
-              It is still early, and it will keep changing. That is why feedback
-              matters now.
-            </p>
-
-            <p>
-              If something feels off, if a place is missing, or if you have an
-              idea, send it over.
+            <p
+              className="text-[13px]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Thanks for taking a look. If a place is missing or
+              something looks off, send it over.
             </p>
           </div>
 

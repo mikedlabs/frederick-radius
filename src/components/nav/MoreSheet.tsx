@@ -114,13 +114,6 @@ const APP: Item[] = [
   { href: "/settings", label: "Settings",     description: "Persona, home spot, interests, notifications", icon: SettingsIcon, color: "var(--app-ink-3)" },
 ];
 
-/** Gradient recipe shared with MoodTiles — lighter top-left into
- *  saturated bottom-right — so the Tools tiles sit in the same
- *  visual family as /now's intent tiles. */
-function gradientFor(color: string): string {
-  return `linear-gradient(155deg, color-mix(in srgb, ${color} 76%, white) 0%, ${color} 65%, color-mix(in srgb, ${color} 90%, black) 100%)`;
-}
-
 export default function MoreSheet({
   open,
   onOpenChange,
@@ -138,14 +131,18 @@ export default function MoreSheet({
       subtitle="Tools, layers, books, and the rest"
     >
       <div className="space-y-5 px-4 pt-3 pb-6">
-        {/* TOOLS — the action verbs as a 3-up color tile grid. The
-            visual analog of MoodTiles on /now: short label, glass
-            icon pill, saturated brand-color gradient. */}
+        {/* TOOLS — action verbs as a 3-up centered tile grid. v6
+            puts visual weight back where it belongs: bigger icon
+            circle (44px), no description (action verbs read fine
+            without one), centered layout. These are the lead
+            actions, so they SHOULD be the heaviest items on the
+            sheet — earlier v5 made them visually weaker than
+            Useful rows, which inverted the hierarchy. */}
         <section className="space-y-2">
           <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
             Tools
           </h3>
-          <ul className="grid grid-cols-3 gap-2">
+          <ul className="grid grid-cols-3 gap-1.5">
             {TOOLS.map((it) => {
               const Icon = it.icon;
               return (
@@ -154,41 +151,29 @@ export default function MoreSheet({
                     href={it.href}
                     onClick={close}
                     aria-label={`${it.label} — ${it.description}`}
-                    className="tactile tactile-interactive relative flex h-20 w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-md)] border p-2 text-center transition active:scale-[0.96]"
+                    className="hover-lift flex h-24 w-full flex-col items-center justify-center gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-center transition"
                     style={{
-                      borderColor: `color-mix(in srgb, ${it.color} 40%, black)`,
-                      background: gradientFor(it.color),
-                      boxShadow: `var(--app-elev-1), 0 4px 12px -6px color-mix(in srgb, ${it.color} 30%, transparent)`,
+                      borderColor: "var(--app-border)",
+                      boxShadow:
+                        "var(--app-elev-1), var(--app-edge), var(--app-hi)",
                     }}
                   >
                     <span
                       aria-hidden
-                      className="absolute -right-4 -bottom-4 h-12 w-12 rounded-full"
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
                       style={{
-                        background:
-                          "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)",
-                      }}
-                    />
-                    <span
-                      aria-hidden
-                      className="grid h-7 w-7 place-items-center rounded-full"
-                      style={{
-                        background: "rgba(255,255,255,0.96)",
-                        backdropFilter: "blur(8px)",
-                        WebkitBackdropFilter: "blur(8px)",
-                        boxShadow:
-                          "0 2px 6px -1px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.7)",
+                        background: `color-mix(in srgb, ${it.color} 14%, transparent)`,
                       }}
                     >
                       <Icon
-                        className="h-[15px] w-[15px]"
-                        strokeWidth={2.25}
+                        className="h-[20px] w-[20px]"
+                        strokeWidth={2}
                         style={{ color: it.color }}
                       />
                     </span>
                     <span
-                      className="block max-w-full truncate text-[11.5px] font-semibold leading-none text-white"
-                      style={{ textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}
+                      className="block text-[13px] font-semibold leading-none"
+                      style={{ color: "var(--app-ink)" }}
                     >
                       {it.label}
                     </span>
@@ -213,7 +198,7 @@ export default function MoreSheet({
               </li>
             ))}
           </ul>
-          <ul className="space-y-1.5 pt-1">
+          <ul className="grid grid-cols-1 gap-1.5 pt-1 sm:grid-cols-2">
             {DISCOVER_ROWS.map((it) => (
               <li key={it.href}>
                 <DirectoryRow {...it} onClose={close} />
@@ -416,8 +401,13 @@ function BookCard({
       </span>
     </>
   );
+  // v6: book covers are decorative, not the point of the sheet.
+  // aspect-[16/9] reads as a wide thumbnail strip — same cover,
+  // same gradient, same "Book" pill, but ~⅔ less vertical weight
+  // than the v5 4/3 card. The field guide's primary job is
+  // Tools + Useful; the books should support, not dominate.
   const className =
-    "tactile tactile-interactive relative block aspect-[3/4] w-full overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.98]";
+    "tactile tactile-interactive relative block aspect-[16/9] w-full overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.98]";
   const style = {
     borderColor: "var(--app-border)",
     boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
