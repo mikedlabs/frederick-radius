@@ -35,7 +35,7 @@ export default function TrustPage() {
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Now
+          Back to Today
         </Link>
       </nav>
 

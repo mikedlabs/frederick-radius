@@ -112,7 +112,7 @@ export default function AmenitiesPage() {
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Browse
+          Back to Map
         </Link>
       </nav>
 
