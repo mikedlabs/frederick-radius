@@ -91,11 +91,12 @@ export default async function AboutPage() {
       </header>
 
       {/* The pitch — four paragraphs, no more. Read top to bottom in
-          about 30 seconds. The italic body type is the Brand Book No.
-          01 editorial voice (Instrument Serif italic on Public Sans). */}
+          about 30 seconds. The italic tagline uses Newsreader's
+          italic (the display serif) on Public Sans body — Instrument
+          Serif was dropped in the May 2026 audit. */}
       <section className="space-y-4 text-[16px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         <p>
-          <span className="font-italic italic text-[18px]" style={{ color: "var(--app-ink)" }}>
+          <span className="font-serif italic text-[18px]" style={{ color: "var(--app-ink)" }}>
             What&apos;s open, what&apos;s happening, where, and how to get there
           </span>
           {" "}— across every town and community in Frederick County, Maryland. One app.

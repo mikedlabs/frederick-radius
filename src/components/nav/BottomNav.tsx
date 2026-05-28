@@ -91,10 +91,14 @@ export default function BottomNav() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3"
-      // Lift the floating pill above the iOS safe-area inset so the
+      className="pointer-events-none fixed inset-x-0 bottom-0 px-3"
+      // Tokenized z-index (--z-nav) — see globals.css :root --z-*
+      // scale. Lift the pill above the iOS safe-area inset so the
       // nav doesn't sit on top of the home indicator.
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)" }}
+      style={{
+        zIndex: "var(--z-nav)",
+        paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
+      }}
     >
       <nav
         aria-label="Primary"

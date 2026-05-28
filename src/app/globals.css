@@ -66,8 +66,46 @@
 
   --app-positive: #1E6B3A;
   --app-warning: #B26B00;
-  --app-danger: #A02929;
+  /* Was #A02929 — too close to --app-brand (#A8462C, the brick) at
+     a glance, so a "danger" alert visually read as a brand-colored
+     content card. The new red is unambiguously stop-sign / alarm. */
+  --app-danger: #B4231E;
   --app-info: #2F5470;
+
+  /* ─────────────────────────────────────────────────────
+   * TINT UTILITIES — pre-computed color-mix variants of the most
+   * common semantic colors. Cuts inline `color-mix(in srgb, …)`
+   * calls (200+ instances in the codebase) and gives palette
+   * shifts a single source of truth.
+   *
+   * Naming: --app-<color>-tint-<percent>. Percent is the source
+   * color's share against transparent. Higher = more saturated.
+   * ───────────────────────────────────────────────────── */
+  --app-brand-tint-6:    color-mix(in srgb, var(--app-brand)    6%, transparent);
+  --app-brand-tint-14:   color-mix(in srgb, var(--app-brand)   14%, transparent);
+  --app-brand-tint-22:   color-mix(in srgb, var(--app-brand)   22%, transparent);
+  --app-cool-tint-6:     color-mix(in srgb, var(--app-cool)     6%, transparent);
+  --app-cool-tint-14:    color-mix(in srgb, var(--app-cool)    14%, transparent);
+  --app-cool-tint-22:    color-mix(in srgb, var(--app-cool)    22%, transparent);
+  --app-positive-tint-6: color-mix(in srgb, var(--app-positive) 6%, transparent);
+  --app-positive-tint-14: color-mix(in srgb, var(--app-positive) 14%, transparent);
+  --app-warning-tint-6:  color-mix(in srgb, var(--app-warning)  6%, transparent);
+  --app-warning-tint-14: color-mix(in srgb, var(--app-warning) 14%, transparent);
+  --app-danger-tint-6:   color-mix(in srgb, var(--app-danger)   6%, transparent);
+  --app-danger-tint-14:  color-mix(in srgb, var(--app-danger)  14%, transparent);
+  --app-ink-tint-6:      color-mix(in srgb, var(--app-ink)      6%, transparent);
+  --app-ink-tint-12:     color-mix(in srgb, var(--app-ink)     12%, transparent);
+
+  /* ─────────────────────────────────────────────────────
+   * Z-INDEX SCALE — five named levels so layering is intentional.
+   * Anything stacking above the page surface picks one of these.
+   * ───────────────────────────────────────────────────── */
+  --z-base:    0;     /* default flow */
+  --z-raised:  10;    /* sticky cards, popovers, in-page overlays */
+  --z-sticky:  30;    /* TopBar, sticky section headers */
+  --z-nav:     40;    /* BottomNav floating pill */
+  --z-overlay: 50;    /* modal backdrops, drawer backdrops, sheets */
+  --z-toast:   70;    /* sonner toaster — always on top */
 
   --app-radius-sm: 6px;
   --app-radius-md: 12px;
@@ -140,54 +178,12 @@
   --app-ease-spring: cubic-bezier(0.34, 1.4, 0.5, 1);
 }
 
-/* DARK MODE — opt-in only via `html.dark` class.
- *
- * Was auto-applied based on `prefers-color-scheme: dark`, but the
- * Brand Book No. 01 is paper-first: the warm-cream + brick + Catoctin
- * + Carroll Creek palette IS the brand. The dark palette below is
- * preserved (ink-on-paper inverted, warmer dark surfaces, paper-cream
- * ink, same accents) and ships as a future user toggle rather than
- * a system-preference auto-flip — so visitors on a phone set to dark
- * mode still see the canonical paper aesthetic. */
-html.dark {
-    --app-bg: #14130F;
-    --app-bg-elevated-solid: #1C1A16;
-    --app-bg-elevated: color-mix(in srgb, #1C1A16 88%, transparent);
-    --app-bg-sunken: #0D0C0A;
-    --app-border: #2A2823;       /* warm hairline-dark */
-    --app-border-strong: rgba(244, 239, 230, 0.10);
-    --app-ink: #F4EFE6;          /* paper cream */
-    --app-ink-2: #BFBAB1;
-    --app-ink-3: #8A8780;
-    /* Depth reads via darker ambient + a faint white top hairline. */
-    --app-elev-1:
-      0 1px 2px rgba(0, 0, 0, 0.5),
-      0 2px 6px -1px rgba(0, 0, 0, 0.4);
-    --app-elev-2:
-      0 2px 6px rgba(0, 0, 0, 0.55),
-      0 10px 22px -4px rgba(0, 0, 0, 0.5);
-    --app-elev-3:
-      0 4px 10px rgba(0, 0, 0, 0.55),
-      0 18px 36px -8px rgba(0, 0, 0, 0.55);
-    --app-elev-4:
-      0 8px 18px rgba(0, 0, 0, 0.55),
-      0 28px 56px -12px rgba(168, 70, 44, 0.35);
-    --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.09);
-    --app-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
-    --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.5);
-    --app-gloss: linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.08) 0%,
-      rgba(255, 255, 255, 0.02) 38%,
-      rgba(0, 0, 0, 0.18) 100%
-    );
-    --app-paper-light: radial-gradient(
-      140% 100% at 0% 0%,
-      rgba(255, 255, 255, 0.06) 0%,
-      rgba(255, 255, 255, 0) 60%
-    );
-    --app-brand-glow: 0 10px 28px -6px rgba(168, 70, 44, 0.55);
-}
+/* Dark mode CSS removed during the design-token audit. The paper-
+ * cream palette IS the brand and there's no user-facing toggle yet —
+ * the ~50 lines of dark overrides were dead CSS shipping on every
+ * page. When we wire a real toggle, regen the dark palette in a new
+ * .dark { … } block (and re-add the .aurora-grain / .shimmer
+ * dark-mode overrides further down). */
 
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -541,10 +537,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   /* Inline SVG noise — no extra HTTP request. */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
-html.dark .aurora-grain {
-  opacity: 0.05;
-  mix-blend-mode: screen;
-}
+/* Dark-mode aurora-grain override removed alongside the html.dark
+ * block above — restore when a real dark toggle ships. */
 
 /* ─────────────────────────────────────────────────────
  * Shimmer skeleton — used by loading states.
@@ -570,9 +564,8 @@ html.dark .aurora-grain {
 @keyframes shimmer-sweep {
   100% { transform: translateX(100%); }
 }
-html.dark .shimmer::after {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 50%, transparent);
-}
+/* Dark-mode shimmer override removed alongside the html.dark
+ * block above — restore when a real dark toggle ships. */
 
 /* ─────────────────────────────────────────────────────
  * Live dot — standardized "happening now" pulse.
@@ -987,6 +980,39 @@ html.dark .shimmer::after {
   text-transform: uppercase;
   color: var(--app-ink-3);
 }
+
+/* ─────────────────────────────────────────────────────
+ * TYPOGRAPHY SCALE — Brand Book No. 01 (May 2026 audit).
+ *
+ * Eight canonical sizes that replace the ~600 instances of
+ * `text-[Npx]` scattered across the codebase. Pick by SEMANTIC
+ * role, not by pixel value:
+ *
+ *   .text-caption   10px / 1.35   — tiny meta, attribution, timestamp tails
+ *   .text-meta      11px / 1.4    — eyebrow text without uppercase, helpers
+ *   .text-body      13px / 1.55   — default body in cards / drawer rows
+ *   .text-body-lg   14px / 1.6    — page intro paragraphs, dense reading
+ *   .text-lead      16px / 1.6    — pull-quotes, /about pitch body
+ *   .text-title-sm  15px / 1.25   — small card title (PlaceCard tile)
+ *   .text-title     18px / 1.2    — section title in a card header
+ *   .display-3      24px / 1.15   — page subhead (joins .display-1/.display-2)
+ *
+ * Line-height pairings are baked in — caller doesn't set leading.
+ * Color is NOT baked in (the same size reads as ink / ink-2 / ink-3
+ * depending on context) so callers still set their own color.
+ *
+ * After this PR ships, new code should pick from this scale. Old
+ * `text-[Npx]` usages get swept opportunistically as we touch files.
+ * ───────────────────────────────────────────────────── */
+.text-caption  { font-size: 10px; line-height: 1.35; }
+.text-meta     { font-size: 11px; line-height: 1.4;  }
+.text-body     { font-size: 13px; line-height: 1.55; }
+.text-body-lg  { font-size: 14px; line-height: 1.6;  }
+.text-lead     { font-size: 16px; line-height: 1.6;  }
+.text-title-sm { font-size: 15px; line-height: 1.25; font-weight: 600; }
+.text-title    { font-family: var(--font-display), ui-serif, Georgia, serif; font-size: 18px; line-height: 1.2;  font-weight: 600; letter-spacing: -0.01em; }
+.display-3     { font-family: var(--font-display), ui-serif, Georgia, serif; font-size: clamp(1.25rem, 1rem + 1.2vw, 1.5rem); line-height: 1.15; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
+
 .text-balance { text-wrap: balance; }
 .text-pretty { text-wrap: pretty; }
 

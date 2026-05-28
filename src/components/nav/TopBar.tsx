@@ -104,8 +104,10 @@ export default function TopBar() {
   return (
     <>
       <header
-        className="sticky top-0 z-30 border-b border-[var(--app-border)] bg-[var(--app-bg)]/85 backdrop-blur-md pt-[env(safe-area-inset-top)]"
+        className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)]/85 backdrop-blur-md pt-[env(safe-area-inset-top)]"
         style={{
+          // Tokenized z-index — see globals.css :root --z-* scale.
+          zIndex: "var(--z-sticky)",
           transform: hidden ? "translateY(-100%)" : "translateY(0)",
           transition: "transform 240ms var(--app-ease-out)",
           willChange: "transform",
