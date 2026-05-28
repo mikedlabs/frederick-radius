@@ -51,7 +51,7 @@ const PARK_INTENTS: ParkIntent[] = [
     hint: "Alive @ Five, summer movies — Carroll Creek Deck is closest",
     icon: Music,
     accent: "var(--app-brand)",
-    href: "/places/carroll-creek-parking-deck",
+    href: "/places/carroll-creek-parking-garage-frederick",
   },
   {
     label: "Weinberg or theaters",
@@ -65,14 +65,14 @@ const PARK_INTENTS: ParkIntent[] = [
     hint: "Boutiques, restaurants, the heart of downtown — Court Street Garage",
     icon: ShoppingBag,
     accent: "var(--app-brand-2)",
-    href: "/places/court-street-garage",
+    href: "/places/court-street-parking-garage-frederick",
   },
   {
     label: "Late dinner, easy exit",
     hint: "All garages run 24/7 — West Patrick is the quickest off-ramp out",
     icon: Moon,
     accent: "var(--app-cool)",
-    href: "/places/west-patrick-street-garage",
+    href: "/places/west-patrick-street-parking-deck",
   },
   {
     label: "Get the ParkMobile app",

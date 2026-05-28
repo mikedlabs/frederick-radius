@@ -15,10 +15,13 @@
  *   - "Second Chances Garage" — charity / vehicle-repair non-profit
  *     on N Market, not a public parking garage. Filtered out of
  *     this list at the place-record level.
- *   - "West Patrick Street Parking Deck" / "Court Street Parking
- *     Deck" — duplicate place records that resolve to the same
- *     physical garage as the "Garage" entries below. Use the
- *     canonical slug here.
+ *
+ * Slug note: each `slug` below MUST match the canonical place record
+ * in places-client.json — these strings build /places/<slug> links on
+ * /parking. The Phase 2 slug rebuild normalized the garage slugs to
+ * their longer forms (e.g. "court-street-parking-garage-frederick"),
+ * so the short forms used here originally went dead. parking-slugs.spec
+ * now guards every slug against the place data so this can't recur.
  */
 export type ParkingGarage = {
   slug: string;
@@ -42,7 +45,7 @@ export type ParkingGarage = {
 
 export const PARKING_GARAGES: ParkingGarage[] = [
   {
-    slug: "west-patrick-street-garage",
+    slug: "west-patrick-street-parking-deck",
     name: "West Patrick Street Garage",
     address: "138 W Patrick St, Frederick, MD",
     hours: "24/7",
@@ -51,7 +54,7 @@ export const PARKING_GARAGES: ParkingGarage[] = [
       "On the west side of downtown — closest to City Hall, the courthouse, and the W Patrick Street restaurant strip.",
   },
   {
-    slug: "court-street-garage",
+    slug: "court-street-parking-garage-frederick",
     name: "Court Street Garage",
     address: "2 S Court St, Frederick, MD",
     hours: "24/7",
@@ -60,7 +63,7 @@ export const PARKING_GARAGES: ParkingGarage[] = [
       "Adjacent to the City Hall and the courthouse complex. Most central garage for civic business.",
   },
   {
-    slug: "carroll-creek-parking-deck",
+    slug: "carroll-creek-parking-garage-frederick",
     name: "Carroll Creek Parking Deck",
     address: "44 E Patrick St, Frederick, MD",
     hours: "24/7",
