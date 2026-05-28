@@ -9,16 +9,13 @@ Three products fighting each other today: daily briefing, directory, map. Pick o
 
 ## Priority 1 — fix first
 
-- [ ] **From Above link 404** — About page link to From Above returns 404. Route exists at `src/app/from-above/`, so likely a stale href somewhere in nav/About.
-- [ ] **OpenTable CTA 404** — "Reserve a table tonight" on Today page. High-trust CTA, must work.
-- [ ] **Add to Calendar (Alive @ Five)** — crawler got "400 OK"; verify ICS download works in real browser.
-- [ ] **ParkMobile 403** — likely bot block, but replace with controlled handoff/explainer card instead of dumping users into a dead-feeling external link.
-- [ ] **Dead "Call" actions** — place pages show "Call" with no number or tel: link (Hoffman Brothers example).
-- [ ] **Duplicate events** — Alive @ Five appears as both curated/verified and municipal feed. Add dedupe layer; merge by title+date+venue overlap; show combined sources.
-- [ ] **Miscategorized restaurants:**
-  - The Original Popcorn House → labeled Markets but listed under Restaurants
-  - Lc Stylez → labeled Shopping but listed under Restaurants
-  - Immersion Active → shows Spanish-restaurant description (wrong place)
+- [x] **From Above link 404** — `http://www.miked.store` → `https://www.miked.store` in three places (About card, Today FromAboveTile, Today FromAboveCta). Crawler wasn't following the http→https redirect. (commit 78cfb84)
+- [x] **OpenTable CTA 404** — `/c/frederick-md-restaurants` collection URL deprecated by OpenTable; switched to the search endpoint pattern that `place-actions.ts` already uses as its "always lands correctly" fallback. (commit 29e47c2)
+- [x] **Add to Calendar (Alive @ Five)** — ICS route was force-static over seed slugs only, so live-feed events fell back to a client-side blob download (no crawlable URL). Dropped force-static, added live-event lookup; one anchor for both seed + live. (commit 0a0fd00)
+- [x] **ParkMobile 403** — Today's parking handoff now points at the in-app `/parking` guide (which has the ParkMobile launch on it) instead of dumping users into the bare app. Card now signals internal vs external via trailing icon. (commit 3d915d9)
+- [x] **Dead "Call" actions** — Call button now shows the formatted number as a sublabel; tel: URLs sanitized to digits-only; tel:/mailto: no longer get `target="_blank"`. (commit 66eb5a3)
+- [x] **Duplicate events** — Dedupe now falls back to ≤300m geo proximity when venue names don't substring-match. Closes the Alive @ Five case (Carroll Creek Amphitheater vs Carroll Creek Linear Park — same spot, no shared substring). Regression test added. (commit 3930f2d)
+- [x] **Miscategorized restaurants** — Removed `"restaurant"` from subcategories on Popcorn House + Lc Stylez. Removed the bad `places-enrichment.json` entry keyed `immersion-active` that held Isabella's Taverna's Google data (same building, enrichment-join bug bound the wrong slug). Regenerated client bundle: 206 → 203 restaurants. (commit d6150c3)
 
 ## Priority 2
 
