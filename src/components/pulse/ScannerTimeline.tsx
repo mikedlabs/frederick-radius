@@ -20,10 +20,9 @@ import { useEffect, useRef, useState } from "react";
  * the real Frederick Scanner account is on a different name.
  */
 
-// NOTE: confirm the correct Frederick Scanner handle. Common
-// candidates: @FrederickMDScan, @FrederickPDScan, @FrederickScanr.
-// Update this constant once verified.
-const SCANNER_HANDLE = "FrederickMDScan";
+// Confirmed handle (owner-verified 2026-05-28): @FredScanner.
+//   https://x.com/FredScanner
+const SCANNER_HANDLE = "FredScanner";
 
 declare global {
   interface Window {
