@@ -7,8 +7,12 @@ import {
   Clock,
   CreditCard,
   Smartphone,
+  Snowflake,
+  Sparkles,
+  Trash2,
   Zap,
   ExternalLink,
+  AlertTriangle,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import { PARKING_GARAGES } from "@/data/parking-garages";
@@ -284,6 +288,245 @@ export default function ParkingPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Street parking — the second-most-asked question after "where
+          do I park downtown". Covers metered zones, snow emergencies,
+          street cleaning, residential permits. Without official GIS
+          shapefile data we link out for specifics, but the rules
+          themselves are documented here so a visitor knows what to
+          look for. */}
+      <section className="space-y-3">
+        <h2
+          className="font-serif text-[22px] font-semibold tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Street parking
+        </h2>
+        <p
+          className="text-[14px] leading-relaxed"
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          The downtown street grid is metered via ParkMobile zones —
+          the zone number is printed on the sign at each block.
+          Open the ParkMobile app, enter the number, pay for the
+          duration you need. Time-limit and rate vary by zone; the
+          sign always carries the current limit.
+        </p>
+
+        <ul className="grid gap-2.5 sm:grid-cols-2">
+          {/* Snow emergency — biggest "you'll get towed" risk. */}
+          <li
+            className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+            style={{
+              borderColor: "var(--app-border)",
+              boxShadow:
+                "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+            }}
+          >
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--app-cool) 14%, transparent)",
+                color: "var(--app-cool)",
+              }}
+            >
+              <Snowflake className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span
+                className="block text-[14px] font-semibold leading-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                Snow emergency routes
+              </span>
+              <span
+                className="mt-1 block text-[12.5px] leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                When the city declares a snow emergency, parking is
+                BANNED on designated routes (Patrick, Market, 7th, and
+                others) — vehicles get ticketed and towed. Listen for
+                the declaration on local news or check the city
+                website during a storm.
+              </span>
+              <a
+                href="https://www.cityoffrederickmd.gov/179/Snow-Removal"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold"
+                style={{ color: "var(--app-cool)" }}
+              >
+                See snow-emergency route map
+                <ExternalLink className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
+              </a>
+            </span>
+          </li>
+
+          {/* Street cleaning — second-biggest tow risk. */}
+          <li
+            className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+            style={{
+              borderColor: "var(--app-border)",
+              boxShadow:
+                "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+            }}
+          >
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--app-accent) 14%, transparent)",
+                color: "var(--app-accent)",
+              }}
+            >
+              <Trash2 className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span
+                className="block text-[14px] font-semibold leading-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                Street cleaning days
+              </span>
+              <span
+                className="mt-1 block text-[12.5px] leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Downtown blocks have weekly cleaning windows posted
+                on the sign — typically a 2-3 hour AM block, one
+                weekday per side. Park on the wrong side that
+                morning and you&rsquo;ll find a ticket on the
+                windshield.
+              </span>
+              <a
+                href="https://www.cityoffrederickmd.gov/172/Street-Sweeping"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold"
+                style={{ color: "var(--app-cool)" }}
+              >
+                See street-sweeping schedule
+                <ExternalLink className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
+              </a>
+            </span>
+          </li>
+
+          {/* Residential permit zones. */}
+          <li
+            className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+            style={{
+              borderColor: "var(--app-border)",
+              boxShadow:
+                "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+            }}
+          >
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--app-brand-2) 14%, transparent)",
+                color: "var(--app-brand-2)",
+              }}
+            >
+              <Clock className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span
+                className="block text-[14px] font-semibold leading-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                Residential permit zones
+              </span>
+              <span
+                className="mt-1 block text-[12.5px] leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Several blocks bordering downtown (parts of
+                Carrollton, Carroll Creek South, and the Hill area)
+                are residential permit zones — visitors get 2 hours
+                free, then a ticket unless they have a guest pass
+                or zone permit. Signs always carry the rule.
+              </span>
+              <a
+                href="https://www.cityoffrederickmd.gov/142/Parking"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold"
+                style={{ color: "var(--app-cool)" }}
+              >
+                Residential parking info
+                <ExternalLink className="h-2.5 w-2.5" strokeWidth={2.25} aria-hidden />
+              </a>
+            </span>
+          </li>
+
+          {/* Event-day closures. */}
+          <li
+            className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+            style={{
+              borderColor: "var(--app-border)",
+              boxShadow:
+                "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+            }}
+          >
+            <span
+              aria-hidden
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+              style={{
+                background:
+                  "color-mix(in srgb, var(--app-brand) 14%, transparent)",
+                color: "var(--app-brand)",
+              }}
+            >
+              <Sparkles className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span
+                className="block text-[14px] font-semibold leading-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                Event-day closures
+              </span>
+              <span
+                className="mt-1 block text-[12.5px] leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                First Saturday, Alive @ Five, the In the Streets
+                festival, and a few other recurring events close
+                specific blocks. Move your car the night before if
+                you live or stay on one of those streets — signage
+                goes up Friday afternoon.
+              </span>
+            </span>
+          </li>
+        </ul>
+
+        <p
+          className="flex items-start gap-2 rounded-[var(--app-radius-md)] border px-3.5 py-3 text-[12px] leading-relaxed"
+          style={{
+            borderColor: "var(--app-border)",
+            background: "var(--app-bg-sunken)",
+            color: "var(--app-ink-2)",
+          }}
+        >
+          <AlertTriangle
+            className="mt-0.5 h-3.5 w-3.5 shrink-0"
+            strokeWidth={2}
+            style={{ color: "var(--app-warning)" }}
+            aria-hidden
+          />
+          <span>
+            Tow-and-impound is real downtown. If your car&rsquo;s gone, call
+            the City Parking Department before you call the police —
+            most "thefts" downtown turn out to be tows from a snow
+            route or street-cleaning violation.
+          </span>
+        </p>
       </section>
 
       <footer
