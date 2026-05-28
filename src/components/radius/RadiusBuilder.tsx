@@ -205,8 +205,15 @@ const AMENITY_META: { kind: AmenityKind; label: string; glyph: string }[] = [
 
 export default function RadiusBuilder({
   amenities = [],
+  modeToggle,
 }: {
   amenities?: Amenity[];
+  /** Optional element rendered immediately below the map, right-aligned.
+   *  The /map route passes its MapModeToggle (Radius / Browse) here so
+   *  the mode switch sits BELOW the map (not floating over it) — which
+   *  is where the user expects to find UI controls without competing
+   *  with the map's own camera affordances. */
+  modeToggle?: React.ReactNode;
 }) {
   // Places source: client-bundled, slim, already-decorated. Reading
   // here instead of taking via props removes ~4MB from /radius's SSR
@@ -771,6 +778,16 @@ export default function RadiusBuilder({
           </div>
         </div>
       </div>
+
+      {/* Mode toggle — sits BELOW the map, right-aligned. Out of the
+          map's own real estate (no collision with camera controls or
+          the floating stats ribbon) and where the user expects a UI
+          control. The /map route passes <MapModeToggle> in via the
+          modeToggle prop; nothing renders here when the prop is
+          omitted (e.g. shared-plan view). */}
+      {modeToggle && (
+        <div className="flex justify-end">{modeToggle}</div>
+      )}
 
       {/* Best nearby moves — three curated "you should do this right
           now" tiles (coffee within reach, public restroom, park

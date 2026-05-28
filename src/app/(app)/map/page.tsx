@@ -207,15 +207,14 @@ export default async function MapPage({
     return (
       <div className="relative space-y-3">
         <PageBloom variant="cool" />
-        {/* Mode toggle floats above the map at top-right so the user
-            can always flip back to Browse without leaving the page. */}
-        {/* Mode toggle floats at top-LEFT so it stays clear of the
-            RadiusMap's right-side camera controls (Fit radius / Show
-            county) and the top-center "current center" pill. */}
-        <div className="absolute left-3 top-3 z-40 sm:left-4 sm:top-4">
-          <MapModeToggle mode="radius" />
-        </div>
-        <RadiusBuilder amenities={radiusAmenities} />
+        {/* Mode toggle is rendered INSIDE RadiusBuilder, in the row
+            immediately below the map — clear of the map's own camera
+            controls and the floating stats ribbon, and where the user
+            expects a UI control to live. */}
+        <RadiusBuilder
+          amenities={radiusAmenities}
+          modeToggle={<MapModeToggle mode="radius" />}
+        />
       </div>
     );
   }
@@ -405,63 +404,68 @@ export default async function MapPage({
   }
 
   return (
-    <div
-      className="-mx-4 -mt-4 relative"
-      style={{
-        marginBottom: "calc(-6rem - env(safe-area-inset-bottom, 0px))",
-        height: "calc(100dvh - 56px - env(safe-area-inset-top, 0px))",
-      }}
-    >
-      {/* MapIntentChips owns the absolute positioning at the top of
-          the map; MapTimeChips renders as a child so the two strips
-          stack inside the same flow container. Previously they were
-          siblings with independent `top:` offsets, which overlapped
-          the moment the active-intent banner pushed the intent strip
-          down. */}
-      {/* Mode toggle — floats over the map so the user can flip
-          back to Radius mode without leaving the page. Positioned
-          at top-LEFT so it clears Mapbox's compass/scale controls
-          and any future right-side overlays. */}
-      <div className="absolute left-3 top-3 z-40 sm:left-4 sm:top-4">
+    <div className="-mx-4 -mt-4">
+      <div
+        className="relative"
+        style={{
+          // Leave ~56px of vertical room BELOW the map for the mode
+          // toggle strip. The page's bottom padding (set by the (app)
+          // layout) clears the floating BottomNav after that.
+          height:
+            "calc(100dvh - 56px - 56px - env(safe-area-inset-top, 0px))",
+        }}
+      >
+        {/* MapIntentChips owns the absolute positioning at the top of
+            the map; MapTimeChips renders as a child so the two strips
+            stack inside the same flow container. Previously they were
+            siblings with independent `top:` offsets, which overlapped
+            the moment the active-intent banner pushed the intent strip
+            down. */}
+        {/* Map Modes — preset "decision surface" deep links. Sits
+            ABOVE MapIntentChips so the hierarchy reads:
+              "What kind of browse?" (preset) → "What category?" (chips).
+            Per the May 2026 review: most maps show everything; this
+            app should show the RIGHT layer for the moment. */}
+        <div className="pointer-events-none absolute inset-x-0 top-2 z-30 px-3 sm:top-3 sm:px-4">
+          <MapModes
+            params={{ mode: "browse", open: openParam, intent: intentParam }}
+          />
+        </div>
+        <MapIntentChips
+          active={intent?.key}
+          activeCount={intent ? places.length : undefined}
+          activeSub={activeSub?.key}
+          subCounts={subCounts}
+          openNow={openNow}
+        >
+          <MapTimeChips
+            active={timeMode}
+            intent={intent?.key}
+            sub={activeSub?.key}
+            counts={counts}
+            openNow={openNow}
+            openNowCount={openNowCount}
+          />
+        </MapIntentChips>
+        <AppMapClient
+          places={places}
+          civic={civic}
+          extraAmenities={mapillaryTrash}
+          amenities={amenities}
+          trailLines={trailLines}
+          transitLines={transitLines}
+          events={events}
+          fullBleed
+        />
+      </div>
+      {/* Mode toggle sits BELOW the map in its own strip — out of the
+          map's own controls (Layers, drawer) and where the user
+          expects UI controls. Right-aligned to mirror RadiusBuilder's
+          placement so the toggle lives in the same spot across both
+          modes. */}
+      <div className="flex justify-end px-3 py-2 sm:px-4">
         <MapModeToggle mode="browse" />
       </div>
-      {/* Map Modes — preset "decision surface" deep links. Sits
-          BELOW the mode toggle and ABOVE MapIntentChips so the
-          hierarchy reads: "Radius vs Browse" (toggle) → "What kind
-          of browse?" (preset) → "What category?" (intent chips).
-          Per the May 2026 review: most maps show everything;
-          this app should show the RIGHT layer for the moment. */}
-      <div className="pointer-events-none absolute inset-x-0 top-14 z-30 px-3 sm:top-16 sm:px-4">
-        <MapModes
-          params={{ mode: "browse", open: openParam, intent: intentParam }}
-        />
-      </div>
-      <MapIntentChips
-        active={intent?.key}
-        activeCount={intent ? places.length : undefined}
-        activeSub={activeSub?.key}
-        subCounts={subCounts}
-        openNow={openNow}
-      >
-        <MapTimeChips
-          active={timeMode}
-          intent={intent?.key}
-          sub={activeSub?.key}
-          counts={counts}
-          openNow={openNow}
-          openNowCount={openNowCount}
-        />
-      </MapIntentChips>
-      <AppMapClient
-        places={places}
-        civic={civic}
-        extraAmenities={mapillaryTrash}
-        amenities={amenities}
-        trailLines={trailLines}
-        transitLines={transitLines}
-        events={events}
-        fullBleed
-      />
     </div>
   );
 }
