@@ -30,6 +30,20 @@ export async function updateSession(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return supabaseResponse; // Auth not configured; skip silently.
 
+  // Perf gate: if there's no Supabase session cookie on this request,
+  // there's nothing to refresh — return without touching cookies, so
+  // anonymous browsing stays edge-cacheable (Cache-Control survives,
+  // x-vercel-cache can HIT). The session cookie name shape is
+  // `sb-<ref>-auth-token...` per @supabase/ssr. Without this gate,
+  // every request kicked off a server-side getUser() round-trip and
+  // a Set-Cookie response, forcing `Cache-Control: no-store` on
+  // every page and tanking TTFB. Anonymous users are the majority of
+  // traffic; this single check unblocks ISR for them.
+  const hasSupabaseCookie = req.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+  if (!hasSupabaseCookie) return supabaseResponse;
+
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll() {
