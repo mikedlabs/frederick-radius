@@ -1,62 +1,30 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { CalendarDays, Sparkles } from "lucide-react";
-import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, dedupeCuratedClusters, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
+import { ExternalLink, CalendarDays } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, type EventWithMeta } from "@/lib/loaders/events";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
-import EventCard from "@/components/event/EventCard";
-import TonightRail from "@/components/event/TonightRail";
-import NowDayStrip from "@/components/today/NowDayStrip";
+import { getHoodEvents } from "@/lib/integrations/hood";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
-import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
+import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
-import PageBloom from "@/components/ui/PageBloom";
-import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import SectionHeading from "@/components/ui/SectionHeading";
+import { easternWallToUtcISO } from "@/lib/tz";
 
 export const metadata: Metadata = {
   title: "Events",
-  description:
-    "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, Hood College, and the Frederick Keys.",
+  description: "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, and Hood College.",
 };
 
 export const revalidate = 3600;
 
-/**
- * /events — the magazine-front-of-the-county.
- *
- * Mobile-first redesign matching the rest of the recent batch
- * (/now weather, /plan, /pulse). Same beats: a cinematic hero, a
- * tight editorial masthead, scannable secondary surfaces.
- *
- * Composition, top to bottom:
- *   1. CINEMATIC HERO — the next photo-backed featured event takes
- *      a full-bleed magazine card with serif overlay. If nothing
- *      photo-backed is on deck, a SeasonalPhoto + serif "Events"
- *      headline carries the moment so the page never opens cold.
- *   2. TIGHT MASTHEAD — eyebrow + serif H1 + a single meta strip
- *      (events / towns / live count) in tabular pills, plus a
- *      "Month view" pill on the right.
- *   3. WEEK STRIP — 14-day rail with activity bars per day. Tap a
- *      day to filter the explorer.
- *   4. TONIGHT RAIL — editorial marquee for events starting in the
- *      next ~6 hours (widens to 24h if the evening is thin).
- *   5. CATEGORY JUMP TILES — entry points to deeper category
- *      surfaces (music, arts, family, civic).
- *   6. EVENTS EXPLORER — the single primary browse surface with
- *      lens chips (Tonight / Weekend / Free) at the top.
- *   7. MUNICIPAL SERIES — quiet series-level summary block.
- *   8. HONESTY FOOTER — what feeds, where to submit.
- *
- * Server-rendered. Pure data composition; the explorer below is
- * the only client surface and owns all the filter state via URL
- * params for shareable deep links.
- */
 export default async function EventsIndexPage({
   searchParams,
 }: {
@@ -66,52 +34,35 @@ export default async function EventsIndexPage({
   const seedLive = eventsLive(now);
   const curatedUpcoming = allUpcoming(now);
 
-  const [
-    { events: liveEventsRaw },
-    ingestedSeries,
-    ingestedSummary,
-    tmMusic,
-    tmSports,
-    bitEvents,
-  ] = await Promise.all([
-    getLiveEvents(60),
-    getIngestedSeries(),
-    getIngestedSummary(),
-    fetchTicketmasterMusic().catch(() => []),
-    // Sports adds the Frederick Keys home schedule (Nymeo Field, MiLB)
-    // and any other Ticketmaster Sports entries inside the 25-mi geo
-    // window. Same fail-soft pattern as the other feeds — a
-    // Ticketmaster outage degrades the row, never the page.
-    fetchTicketmasterSports().catch(() => []),
-    fetchBandsintownForArtists([]).catch(() => []),
-  ]);
+  const [{ events: liveEventsRaw }, hood, ingestedSeries, ingestedSummary, tmEvents, bitEvents] =
+    await Promise.all([
+      getLiveEvents(60),
+      getHoodEvents(),
+      getIngestedSeries(),
+      getIngestedSummary(),
+      // Real live-music shows. Inert (returns []) until the owner sets
+      // TICKETMASTER_API_KEY / BANDSINTOWN_APP_ID — never fabricated.
+      fetchTicketmasterMusic().catch(() => []),
+      // Bandsintown public API is artist-scoped only (see the module):
+      // no curated local-artist list yet, so this is inert by design.
+      fetchBandsintownForArtists([]).catch(() => []),
+    ]);
 
-  // Live/county events + real live-music + sports feeds, with curated
-  // duplicates dropped (P0-4). Civic-meeting rows stripped so they
-  // don't bury everything else.
+  // Live/county events + real live-music feeds, with curated-duplicates
+  // dropped (P0-4).
   const liveCards = dedupeLiveAgainstCurated(
-    [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
-      .map(liveToCardEvent)
-      .filter((e) => !isCivicEvent(e)),
+    [...liveEventsRaw, ...tmEvents, ...bitEvents].map(liveToCardEvent),
     curatedUpcoming,
   );
 
-  // One unified, deduplicated, time-sorted set the explorer drives.
+  // One unified, de-duplicated, time-sorted set the explorer drives.
   const bySlug = new Map<string, EventWithMeta>();
   for (const e of [...curatedUpcoming, ...liveCards]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
-  // Second-pass dedup catches CURATED-vs-CURATED duplicates that
-  // slip through dedupeLiveAgainstCurated — the case where the same
-  // event lands once as hand-curated data and again from a municipal
-  // calendar ingestion (e.g. "Alive @ Five · The Learned Doctors"
-  // vs "Downtown Frederick Partnership-Alive @ Five"). Picks the
-  // richer record (photo + description) from each cluster.
   const allEvents = withVenueThumbs(
-    dedupeCuratedClusters(
-      [...bySlug.values()].sort(
-        (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-      ),
+    [...bySlug.values()].sort(
+      (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
     ),
   );
   const liveSlugs = seedLive.map((e) => e.slug);
@@ -137,197 +88,78 @@ export default async function EventsIndexPage({
   monday.setDate(monday.getDate() + 3);
   monday.setHours(0, 0, 0, 0);
 
+  // tonight boundaries: 4 PM to 4 AM next day, Eastern time.
+  const nyFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    hour12: false,
+  });
+  const nyParts = Object.fromEntries(
+    nyFormatter.formatToParts(now).map((p) => [p.type, p.value])
+  );
+  const nyYear = Number(nyParts.year);
+  const nyMonth = Number(nyParts.month);
+  const nyDay = Number(nyParts.day);
+  const nyHour = Number(nyParts.hour);
+
+  const startNY = new Date(Date.UTC(nyYear, nyMonth - 1, nyDay));
+  const endNY = new Date(Date.UTC(nyYear, nyMonth - 1, nyDay));
+
+  if (nyHour < 4) {
+    // Early morning: "tonight" refers to the night that started yesterday evening
+    startNY.setDate(startNY.getDate() - 1);
+  } else {
+    // Standard: tonight starts today, ends tomorrow morning
+    endNY.setDate(endNY.getDate() + 1);
+  }
+
+  const startYear = startNY.getUTCFullYear();
+  const startMonth = startNY.getUTCMonth() + 1;
+  const startDayVal = startNY.getUTCDate();
+
+  const endYear = endNY.getUTCFullYear();
+  const endMonth = endNY.getUTCMonth() + 1;
+  const endDayVal = endNY.getUTCDate();
+
+  const tonightStartISO = easternWallToUtcISO(startYear, startMonth, startDayVal, 16, 0);
+  const tonightEndISO = easternWallToUtcISO(endYear, endMonth, endDayVal, 4, 0);
+
   // Parse the deep-link view server-side so the explorer's first paint
-  // already reflects it.
+  // already reflects it (no post-mount setState, no hydration mismatch).
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(await searchParams)) {
     if (typeof v === "string") sp.set(k, v);
     else if (Array.isArray(v) && typeof v[0] === "string") sp.set(k, v[0]);
   }
   const initialView: ViewState = parseViewState(sp);
-  const dParam = sp.get("d");
-  const initialDay =
-    dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
-
-  // Hero feature — the next photo-backed upcoming event. If none, we
-  // fall back to a SeasonalPhoto + serif headline so the page never
-  // opens cold without imagery.
-  const heroEvent = allEvents.find((e) => Boolean(e.hero_image)) ?? null;
-
-  // "Tonight" rail — events starting in the next 6 hours (widening to
-  // next-24 after 8pm so the rail isn't empty at night).
-  const tonightEnd = new Date(now);
-  tonightEnd.setHours(tonightEnd.getHours() + 6);
-  const tonightEvents = allEvents.filter((e) => {
-    const t = +new Date(e.starts_at);
-    return t >= +now && t <= +tonightEnd;
-  });
-  const tonightFinal =
-    tonightEvents.length >= 3
-      ? tonightEvents
-      : allEvents
-          .filter((e) => {
-            const t = +new Date(e.starts_at);
-            return t >= +now && t <= +start24;
-          })
-          .slice(0, 8);
 
   return (
-    <div className="relative space-y-6">
-      <PageBloom variant="warm-cool" />
-
-      {/* ── 1. Cinematic hero ────────────────────────────────────────
-          When we have a photo-backed upcoming event, lead with the
-          feature-variant EventCard wrapped in a "Tonight's marquee"
-          eyebrow so the magazine intent is explicit. When we don't,
-          fall back to a SeasonalPhoto with a serif overlay so the
-          page never opens cold without imagery. */}
-      {heroEvent ? (
-        <section aria-label="Featured event" className="space-y-2">
-          <p
-            className="eyebrow inline-flex items-center gap-1.5"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <Sparkles
-              className="h-3 w-3"
-              strokeWidth={2.25}
-              style={{ color: "var(--app-brand)" }}
-              aria-hidden
-            />
-            Featured event
+    <div className="space-y-7 stagger">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+            Live across the county
           </p>
-          <EventCard event={heroEvent} variant="feature" />
-        </section>
-      ) : (
-        <header className="relative -mx-4 overflow-hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)]">
-          <div className="relative h-44 w-full sm:h-52" aria-hidden>
-            <SeasonalPhoto
-              season="auto"
-              alt=""
-              priority
-              sizes="(max-width: 768px) 100vw, 640px"
-              className="absolute inset-0"
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.18) 55%, transparent 90%)",
-              }}
-            />
-          </div>
-          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
-            <p className="eyebrow text-white/85">Live across the county</p>
-            <h1 className="font-serif text-[34px] font-semibold leading-[1.02] tracking-tight text-white">
-              Events
-            </h1>
-          </div>
-        </header>
-      )}
+          <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+            Events
+          </h1>
+          <p className="mt-0.5 text-[13px] text-pretty" style={{ color: "var(--app-ink-3)" }}>
+            What&apos;s on across Frederick County — now through the season.
+          </p>
+        </div>
+        <Button
+          href="/events/calendar"
+          size="sm"
+          className="shrink-0 rounded-full"
+          iconLeft={<CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
+        >
+          Calendar
+        </Button>
+      </header>
 
-      {/* ── 2. Editorial masthead ─────────────────────────────────────
-          Only renders when the cinematic hero used a real event card
-          (the SeasonalPhoto fallback already carries the H1).
-          Slimmed pre-launch (review §5): the four-pill stats row
-          (events / towns / weekend / live) was removed because it
-          read as an admin panel rather than a useful decision tool.
-          The same numbers surface naturally inside the explorer's
-          lens chips below. Only the page title + Month-view pivot
-          remain at the top. */}
-      {heroEvent && (
-        <header className="flex items-end justify-between gap-3">
-          <div>
-            <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-              Live across the county
-            </p>
-            <h1
-              className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Events
-            </h1>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {/* Primary intent CTA — moved up from the Field Guide
-                drawer's Tools cluster as part of the May 2026 IA
-                cleanup. The planner operates on the events list, so
-                its rightful home is here at the top of /events. */}
-            <Link
-              href="/plan"
-              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white shadow-[var(--app-shadow-1)]"
-              style={{ background: "var(--app-brand)" }}
-            >
-              <Sparkles
-                className="h-3.5 w-3.5"
-                strokeWidth={2.25}
-                aria-hidden
-              />
-              Plan tonight
-            </Link>
-            <Link
-              href="/events/calendar"
-              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-              style={{
-                background: "var(--app-bg-elevated)",
-                color: "var(--app-ink-2)",
-              }}
-            >
-              <CalendarDays
-                className="h-3.5 w-3.5"
-                strokeWidth={2.25}
-                aria-hidden
-              />
-              Month view
-            </Link>
-          </div>
-        </header>
-      )}
-
-      {/* ── 3. Week strip — same NowDayStrip pattern as /now, but
-          tuned for events: clickable days that filter the explorer
-          (?d=YYYY-MM-DD) and an event-count badge per day instead
-          of the weather hi/lo. Same visual rhythm as /now so the
-          two pages read as one product. The 14-day WeekStrip with
-          activity-bar density retired here — 7 days is the right
-          horizon for "what's happening this week" and the
-          per-day count badge replaces the bar's information role. */}
-      {(() => {
-        // Tally events per Eastern-time calendar date so each day
-        // pill shows a real count.
-        const eventCountByDate = new Map<string, number>();
-        for (const e of allEvents) {
-          const d = new Date(e.starts_at);
-          const key = new Intl.DateTimeFormat("en-CA", {
-            timeZone: "America/New_York",
-            year: "numeric", month: "2-digit", day: "2-digit",
-          }).format(d);
-          eventCountByDate.set(key, (eventCountByDate.get(key) ?? 0) + 1);
-        }
-        return (
-          <NowDayStrip
-            hrefForDate={(dk) => `/events?d=${dk}`}
-            activeDateKey={initialDay}
-            eventCountByDate={eventCountByDate}
-          />
-        );
-      })()}
-
-      {/* ── 4. Tonight rail — editorial marquee of next ~6 hours.
-          Photo-led horizontal rail; this is the answer to "what's
-          actually starting soon." */}
-      {tonightFinal.length > 0 && <TonightRail events={tonightFinal} />}
-
-      {/* CategoryJumpTiles was here. Removed pre-launch (review §5):
-          a six-tile category grid that linked out to /category/<slug>
-          duplicated the visual weight of the explorer's own category
-          facets below. Browsing by category lives ONE click deep
-          inside the explorer's lens row; the user doesn't need a
-          parallel surface that asks the same question. */}
-
-      {/* ── 5. Events explorer — the primary browse surface.
-          Lens chips (Tonight / Tomorrow / Weekend / This week / Free)
-          live at the top and own all the filter state via URL params.
-          One list, one filter row, one mental model. */}
       <EventsExplorer
         events={allEvents}
         liveSlugs={liveSlugs}
@@ -335,40 +167,73 @@ export default async function EventsIndexPage({
         towns={towns}
         nowISO={now.toISOString()}
         next24ISO={start24.toISOString()}
+        tonightStartISO={tonightStartISO}
+        tonightEndISO={tonightEndISO}
         weekendStartISO={friday.toISOString()}
         weekendEndISO={monday.toISOString()}
         initialView={initialView}
-        initialDay={initialDay}
       />
 
-      {/* ── 6. Municipal series — quiet series-level summary block. */}
       {ingestedSeries.length > 0 && (
         <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
       )}
 
-      {/* ── 7. Honesty footer ───────────────────────────────────────── */}
-      <footer
-        className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-      >
+      {hood.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeading 
+            title="Hood College" 
+            count={hood.length}
+            trailing={
+              <span className="text-xs font-semibold" style={{ color: "var(--app-ink-3)" }}>upcoming</span>
+            }
+          />
+          <ul className="stagger space-y-2">
+            {hood.map((e) => (
+              <li key={e.id}>
+                <a
+                  href={e.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="tactile tactile-interactive flex items-start gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3"
+                >
+                  <div
+                    aria-hidden
+                    className="flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
+                    style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-cool)" }}>
+                      {eventDateParts(e.starts_at).monthShortUpper}
+                    </span>
+                    <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
+                      {eventDateParts(e.starts_at).day}
+                    </span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+                      {e.title}
+                    </h3>
+                    <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
+                      {formatEventTime(e.starts_at)} · {e.location}
+                    </p>
+                  </div>
+                  <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <footer className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
         <p>
-          Live event data pulled from Downtown Frederick Partnership,
-          Celebrate Frederick, the Frederick County calendar, the Hood
-          College Trumba feed, and Ticketmaster (music + Frederick Keys
-          home games). Cached for one hour.
+          Live event data pulled from Downtown Frederick Partnership, Celebrate Frederick,
+          the Frederick County calendar, and the Hood College Trumba feed. Cached for one hour.
         </p>
         <p>
-          Missing an event?{" "}
-          <a
-            href="/submit/event"
-            className="underline"
-            style={{ color: "var(--app-cool)" }}
-          >
-            Submit it →
-          </a>
+          Missing an event? <a href="/submit/event" className="underline" style={{ color: "var(--app-cool)" }}>Submit it →</a>
         </p>
       </footer>
     </div>
   );
 }
-

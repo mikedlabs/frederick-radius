@@ -1,399 +1,298 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDateBlock } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import TrustChip from "@/components/ui/TrustChip";
 import { Chip } from "@/components/ui/Chip";
-import CategoryGraphic from "@/components/ui/CategoryGraphic";
-import { ReasonChipRow } from "@/components/ui/ReasonChip";
-import { eventReasons } from "@/lib/event-reasons";
 import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
-import { statusLabel } from "@/lib/event-status";
+import {
+  Music,
+  Palette,
+  Apple,
+  Baby,
+  Trees,
+  Utensils,
+  Theater,
+  Activity,
+  ShoppingBag,
+  CalendarDays,
+} from "lucide-react";
+
+function CategoryIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
+  switch (name) {
+    case "Music":
+      return <Music className={className} style={style} />;
+    case "Palette":
+      return <Palette className={className} style={style} />;
+    case "Apple":
+      return <Apple className={className} style={style} />;
+    case "Baby":
+      return <Baby className={className} style={style} />;
+    case "Trees":
+      return <Trees className={className} style={style} />;
+    case "Utensils":
+      return <Utensils className={className} style={style} />;
+    case "Theater":
+      return <Theater className={className} style={style} />;
+    case "Activity":
+      return <Activity className={className} style={style} />;
+    case "ShoppingBag":
+      return <ShoppingBag className={className} style={style} />;
+    default:
+      return <CalendarDays className={className} style={style} />;
+  }
+}
 
 export default function EventCard({
   event,
   variant = "row",
 }: {
   event: EventWithMeta;
-  /**
-   * Layout density. `row` is the workhorse list card with thumbnail
-   * + chips; `tile` is the grid/rail card with photo banner; `feature`
-   * is the editorial lead; `compact` is the Rolodex row — single
-   * 48px line with time pill + title + venue + category dot. Compact
-   * mode fits 4-5× more events per viewport on mobile.
-   */
-  variant?: "row" | "tile" | "feature" | "compact";
+  variant?: "row" | "tile" | "feature";
 }) {
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
-  // Lifecycle status — a cancelled or postponed event still shows
-  // (a user looking for it needs to KNOW), but with a loud badge and
-  // a struck-through title so it can never be mistaken for "on."
-  const status = event.status ?? "scheduled";
-  const statusText = statusLabel(status);
-  const isCancelled = status === "cancelled";
-  // Badge palette: red for cancelled, amber for postponed.
-  const statusBg = isCancelled ? "var(--app-negative, #C0392B)" : "var(--app-warning, #B8860B)";
-  // Accent MUST be a hex literal — used in templates like `${accent}38`
-  // to compose color-with-alpha. A CSS var() fallback would produce
-  // invalid CSS. Generic-category fallback uses the civic blue so
-  // county / civic-affairs items read as the quiet-utility category
-  // they are, instead of borrowing the brand brick.
-  const accent: string = cat?.color ?? "#2F5470";
-  const hasPhoto = Boolean(event.hero_image);
-  const categoryLabel = cat?.name ?? (event.category ? event.category : "Civic");
+  const now = new Date();
+  const isLive = new Date(event.starts_at) <= now && new Date(event.ends_at) >= now;
 
-  // Compact variant — the Rolodex row. Single ~48px line: date pill
-  // (left, fixed width) + title + venue/time meta + category color
-  // dot. No photo, no chips, no actions. Built for dense scanning,
-  // not browsing: 4-5x more events per mobile viewport than the
-  // default row variant. Surfaced via the /events density toggle.
-  if (variant === "compact") {
-    return (
-      <article
-        className="tactile-interactive group relative flex items-center gap-3 border-b px-3 py-2"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        {/* Date / time pill — anchors each row. Date numerals first
-            so a scan-by-day pattern works. Smaller text for venue
-            time below if we have it. */}
-        <div className="flex shrink-0 flex-col items-center gap-0.5 leading-none">
-          <span
-            className="text-[9px] font-bold uppercase tracking-[0.1em]"
-            style={{ color: accent }}
-          >
-            {date.month}
-          </span>
-          <span
-            className="font-serif text-[17px] font-semibold"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {date.day}
-          </span>
-          <span
-            className="text-[8.5px] font-medium uppercase"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {date.weekday}
-          </span>
-        </div>
-
-        {/* Category color dot — quiet visual cue tying the row to a
-            type. Small enough to scan past, distinct enough that a
-            shelf of compact rows shows category rhythm at a glance. */}
-        <span
-          aria-hidden
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: accent }}
-          title={categoryLabel}
-        />
-
-        {/* Title + meta — title is the link target, meta line below
-            carries time + venue + free chip. Status badge inline
-            when the event is cancelled / postponed (rare). */}
-        <div className="min-w-0 flex-1">
-          <Link
-            href={`/events/${event.slug}`}
-            className={`block truncate text-[13.5px] font-semibold tracking-tight outline-none focus-visible:underline ${
-              isCancelled ? "line-through opacity-70" : ""
-            }`}
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span className="absolute inset-0" aria-hidden />
-            {event.title}
-          </Link>
-          <p
-            className="truncate text-[11px] leading-tight"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {date.time}
-            {event.venue_name && (
-              <>
-                {" · "}
-                {event.venue_name}
-              </>
-            )}
-            {event.is_free && (
-              <>
-                {" · "}
-                <span style={{ color: "var(--app-positive)" }}>Free</span>
-              </>
-            )}
-            {statusText && (
-              <>
-                {" · "}
-                <span style={{ color: statusBg }}>{statusText}</span>
-              </>
-            )}
-          </p>
-        </div>
-
-        {/* Distance — only when we have a user origin. Tabular nums
-            so a vertical scan stays aligned. */}
-        {event.distance_m !== undefined && (
-          <span
-            className="shrink-0 text-[11px] tabular-nums"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {formatDistance(event.distance_m)}
-          </span>
-        )}
-      </article>
-    );
-  }
-
-  // Feature variant — the editorial lead card for a horizon group when
-  // we have a real photo. Full-bleed image, big serif headline, scrim
-  // overlay, date badge top-left. One per group, by design.
+  // Feature variant — the editorial lead card for a horizon group.
   if (variant === "feature") {
+    const accent = cat?.color ?? "var(--app-brand, #C4451C)";
+    const hasPhoto = Boolean(event.hero_image);
     return (
-      <article className="tactile tactile-feature tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]">
-        <div className="relative aspect-[16/10] w-full overflow-hidden">
-          {hasPhoto && event.hero_image ? (
-            <Image
-              src={event.hero_image}
-              alt=""
-              fill
-              sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-            />
+      <article className="tactile tactile-feature tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]">
+        <div className="relative aspect-[16/10] w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+          {hasPhoto ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo; plain img avoids a domain allowlist for the key-safe proxy */}
+              <img
+                src={event.hero_image}
+                alt=""
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-[700ms] ease-out group-hover:scale-105"
+              />
+            </>
           ) : (
-            <CategoryGraphic
-              category={event.category}
-              seed={event.slug}
-              className="absolute inset-0"
-            />
+            <div
+              aria-hidden
+              className="absolute inset-0 flex items-center justify-center transition-all duration-300"
+              style={{
+                background: `radial-gradient(120% 120% at 30% 20%, ${accent}25, ${accent}05 80%)`,
+              }}
+            >
+              <CategoryIcon
+                name={cat?.icon ?? "CalendarDays"}
+                className="h-16 w-16 opacity-[0.14] transition-transform duration-300 group-hover:scale-110"
+                style={{ color: accent }}
+              />
+            </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+          
+          {/* Dark Overlay for Text Legibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+          {/* Floating Date Badge (Top Left) */}
           <div
-            className="absolute left-3 top-3 inline-flex items-baseline gap-1.5 rounded-[var(--app-radius-sm)] bg-white/95 px-2 py-1 leading-none"
-            style={{ color: accent }}
+            className="absolute left-3 top-3 z-10 flex flex-col items-center justify-center rounded-[var(--app-radius-md)] px-2.5 py-1.5 text-center border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+            style={{
+              background: "rgba(20, 20, 18, 0.75)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+            }}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-white/95">
               {date.month}
             </span>
-            <span className="font-serif text-[18px] font-semibold">{date.day}</span>
-            <span className="text-[10px] font-medium opacity-80">{date.weekday}</span>
+            <span className="font-serif text-[18px] font-bold leading-none text-white my-0.5">
+              {date.day}
+            </span>
+            <span className="text-[9px] font-medium text-white/80">
+              {date.weekday}
+            </span>
           </div>
-          <span
-            className="absolute right-3 top-3 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white"
-            style={{ background: accent }}
-          >
-            {categoryLabel}
-          </span>
-          <div className="absolute inset-x-0 bottom-0 p-4">
-            {statusText && (
-              <span
-                className="mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
-                style={{ background: statusBg }}
-              >
-                {statusText}
-              </span>
-            )}
-            <Link
-              href={`/events/${event.slug}`}
-              className={`line-clamp-2 font-serif text-[22px] font-semibold leading-tight tracking-tight text-white outline-none focus-visible:underline ${isCancelled ? "line-through opacity-80" : ""}`}
+
+          {/* Floating Category Chip (Top Right) */}
+          {cat && (
+            <span
+              className="absolute right-3 top-3 z-10 inline-flex items-center rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-white border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.5)]"
+              style={{
+                background: "rgba(20, 20, 18, 0.75)",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                borderColor: `${accent}40`,
+              }}
             >
-              <span className="absolute inset-0" aria-hidden />
-              {event.title}
-            </Link>
-            <p className="mt-1 truncate text-[12px] text-white/85">
-              {date.time}
-              {event.venue_name ? ` · ${event.venue_name}` : ""}
-            </p>
-            <div className="mt-2 flex items-center gap-2 text-[11px] text-white/80">
+              <span className="mr-1.5 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent }} />
+              {cat.name}
+            </span>
+          )}
+
+          {/* Content Overlaid at Bottom */}
+          <div className="absolute inset-x-0 bottom-0 z-10 p-4">
+            <div className="flex items-center gap-2">
+              {isLive && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-danger)" }}>
+                  <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--app-danger)] animate-pulse" />
+                  Live
+                </span>
+              )}
               {event.is_free && (
-                <span
-                  className="rounded-full bg-white/15 px-2 py-0.5 font-semibold backdrop-blur-sm"
-                  style={{ color: "white" }}
-                >
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/90 bg-white/10 px-2 py-0.5 rounded-full backdrop-blur-sm">
                   Free
                 </span>
               )}
-              {event.price_text && !event.is_free && (
-                <span className="rounded-full bg-white/15 px-2 py-0.5 font-semibold backdrop-blur-sm">
-                  {event.price_text}
-                </span>
-              )}
+            </div>
+
+            <div className="mt-1.5">
+              <Link
+                href={`/events/${event.slug}`}
+                className="line-clamp-2 font-serif text-[20px] sm:text-[22px] font-semibold leading-tight tracking-tight text-white outline-none hover:underline"
+              >
+                <span className="absolute inset-x-0 top-0 bottom-0" aria-hidden />
+                {event.title}
+              </Link>
+              <p className="mt-1.5 line-clamp-1 text-[12px] text-white/80">
+                {date.time}
+                {event.venue_name ? ` · ${event.venue_name}` : ""}
+              </p>
+            </div>
+
+            {/* Card Footer: trust signals and optional distance */}
+            <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-2.5 text-white/70">
+              <TrustChip signal={eventTrust(event)} />
               {event.distance_m !== undefined && (
-                <span className="ml-auto tabular-nums">
+                <span className="text-[11px] tabular-nums text-white/80">
                   {formatDistance(event.distance_m)}
                 </span>
               )}
             </div>
           </div>
+          
+          {/* Floating Actions on upper right/bottom right */}
+          <div className="absolute right-3 bottom-3 z-20 flex items-center gap-1">
+            <SaveButton refType="event" refId={event.slug} label={`Save ${event.title}`} />
+          </div>
         </div>
       </article>
     );
   }
 
-  // Tile variant — the workhorse grid card. Three modes by data shape:
-  //   1. has photo: photo banner on top, date badge overlay, content below
-  //   2. no photo, civic/quiet category: typographic block with color band
-  //   3. no photo, marquee category: tinted gradient block
-  // The category color is visible in every state, so a music event reads
-  // differently from a planning meeting at a glance.
+  // Date-anchored compact card. ONE date instance (the left anchor) —
+  // no duplicated day number, no ~96px near-empty media box for the
+  // photo-less majority. A real photo backs the date anchor (still
+  // photographic, never fabricated); otherwise a category-tinted
+  // block. Uniform shape -> a clean, scannable grid; far less wasted
+  // space so more events fit per screen.
   if (variant === "tile") {
+    const accent = cat?.color ?? "var(--app-brand, #C4451C)";
+    const hasPhoto = Boolean(event.hero_image);
     return (
-      <article className="tactile tactile-interactive group relative flex h-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
-        style={{
-          borderColor: "var(--app-border)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
-      >
-        {/* Banner — taller (152px) and more cinematic than v1 (112).
-            Photo, or category-tinted CategoryGraphic when no hero.
-            Same height in both modes so a grid never wobbles. */}
-        <div className="relative h-[152px] w-full overflow-hidden">
-          {hasPhoto && event.hero_image ? (
-            <Image
-              src={event.hero_image}
-              alt=""
-              fill
-              sizes="(max-width: 720px) 50vw, 360px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-            />
+      <article className="tactile tactile-interactive group relative flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] h-full">
+        {/* Header Block with responsive aspect ratio (2/1 on mobile, 16/10 on tablet/desktop) */}
+        <div className="relative aspect-[2/1] sm:aspect-[16/10] w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+          {hasPhoto ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo; plain img avoids a domain allowlist for the key-safe proxy */}
+              <img
+                src={event.hero_image}
+                alt=""
+                loading="lazy"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-[600ms] ease-out group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15" />
+            </>
           ) : (
-            <CategoryGraphic
-              category={event.category}
-              seed={event.slug}
-              className="absolute inset-0"
-            />
-          )}
-          {/* Stronger bottom gradient pulls the date/status pills off
-              the photo cleanly without darkening the upper image. */}
-          {hasPhoto && (
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0"
+              className="absolute inset-0 flex items-center justify-center transition-all duration-300"
               style={{
-                background:
-                  "linear-gradient(180deg, rgba(0,0,0,0.30) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.65) 100%)",
+                background: `radial-gradient(120% 120% at 30% 20%, ${accent}1a, ${accent}02 80%)`,
               }}
-            />
+            >
+              <CategoryIcon
+                name={cat?.icon ?? "CalendarDays"}
+                className="h-10 w-10 opacity-[0.14] transition-transform duration-300 group-hover:scale-110"
+                style={{ color: accent }}
+              />
+            </div>
           )}
 
-          {/* Date glass pill — top-left. Was a stickered white card;
-              now a true glass pill with backdrop blur, sitting on the
-              photo like an editorial date stamp. The category color
-              tints the day number subtly so type signal carries here. */}
+          {/* Floating Date Badge (Top Left) */}
           <div
-            className="absolute left-2 top-2 inline-flex items-baseline gap-1 rounded-full px-2 py-1 leading-none"
+            className="absolute left-3 top-3 z-10 flex flex-col items-center justify-center rounded-[var(--app-radius-md)] px-2.5 py-1.5 text-center shadow-[var(--app-shadow-2)] border border-white/10"
             style={{
-              background: hasPhoto ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.45)",
+              background: "rgba(20, 20, 18, 0.75)",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
-              boxShadow: hasPhoto
-                ? "0 2px 6px -1px rgba(0,0,0,0.30)"
-                : "inset 0 0 0 1px rgba(255,255,255,0.12)",
-              color: hasPhoto ? "var(--app-ink)" : "white",
             }}
           >
-            <span
-              className="text-[9px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: hasPhoto ? accent : "white" }}
-            >
+            <span className="text-[9px] font-bold uppercase tracking-wider text-white/95">
               {date.month}
             </span>
-            <span
-              className="font-serif text-[16px] font-semibold"
-              style={{ color: hasPhoto ? "var(--app-ink)" : "white" }}
-            >
+            <span className="font-serif text-[18px] font-bold leading-none text-white my-0.5">
               {date.day}
             </span>
-            <span className="text-[9px] font-medium opacity-75">{date.weekday}</span>
+            <span className="text-[9px] font-medium text-white/80">
+              {date.weekday}
+            </span>
           </div>
 
-          {/* Category chip — top-right. Filled with category color
-              when on a photo (the way Airbnb's "Guest favorite" chip
-              calls out a status), glass when no photo so it reads
-              against the CategoryGraphic. */}
-          <span
-            className="absolute right-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em]"
-            style={{
-              background: hasPhoto ? accent : "rgba(255,255,255,0.22)",
-              color: "white",
-              boxShadow: hasPhoto
-                ? "0 2px 6px -1px rgba(0,0,0,0.30)"
-                : "inset 0 0 0 1px rgba(255,255,255,0.22)",
-              backdropFilter: hasPhoto ? "none" : "blur(8px)",
-              WebkitBackdropFilter: hasPhoto ? "none" : "blur(8px)",
-            }}
-          >
-            {categoryLabel}
-          </span>
-
-          {/* Status pill — bottom-left ON THE PHOTO (the Airbnb
-              pattern). Only renders when there's a real status to
-              call out: Tonight / Live / Sold out / Cancelled. White
-              glass on photo, colored backdrop on no-photo. */}
-          {statusText && (
-            <span
-              className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
-              style={{
-                background: statusBg,
-                color: "white",
-                boxShadow: "0 2px 6px -1px rgba(0,0,0,0.30)",
-              }}
-            >
-              {statusText}
-            </span>
-          )}
-
-          {/* Category color band on the bottom edge — the through-line
-              that makes a music tile visually distinct from a civic one. */}
-          <div
-            aria-hidden
-            className="absolute inset-x-0 bottom-0 h-[3px]"
-            style={{ background: accent }}
-          />
+          {/* Save Button (Top Right) */}
+          <div className="absolute right-3 top-3 z-10">
+            <SaveButton refType="event" refId={event.slug} label={`Save ${event.title}`} />
+          </div>
         </div>
 
-        {/* Body — slimmer than v1. Title + meta + reasons row.
-            Status pill moved onto the photo so the body stays clean. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
-          <Link
-            href={`/events/${event.slug}`}
-            className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span className="absolute inset-0" aria-hidden />
-            {event.title}
-          </Link>
-          <p className="truncate text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
-            <span style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
-            {event.venue_name ? <> · {event.venue_name}</> : null}
-          </p>
-          {/* Reason chips — same producer as before. Stay below the
-              meta line, capped at 3, as the decision-context row. */}
-          <div className="mt-auto pt-1">
-            {(() => {
-              const reasons = eventReasons(event);
-              if (reasons.length > 0) {
-                return <ReasonChipRow reasons={reasons} />;
-              }
-              return (
-                <div className="flex items-center gap-1.5 text-[10.5px]">
-                  {event.price_text && !event.is_free && (
-                    <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
-                  )}
-                  {event.distance_m !== undefined && (
-                    <span className="ml-auto tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                      {formatDistance(event.distance_m)}
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
+        {/* Content Area */}
+        <div className="flex flex-1 flex-col p-3.5">
+          <div className="flex items-center gap-2">
+            {isLive && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: "var(--app-danger)" }}>
+                <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--app-danger)] animate-pulse" />
+                Live
+              </span>
+            )}
+            {cat && (
+              <span
+                className="text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: cat.color }}
+              >
+                {cat.name}
+              </span>
+            )}
+            {event.is_free && (
+              <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--app-positive)" }}>
+                Free
+              </span>
+            )}
+          </div>
+
+          <div className="mt-1.5 flex-1">
+            <Link
+              href={`/events/${event.slug}`}
+              className="line-clamp-2 font-serif text-[15.5px] font-semibold leading-snug tracking-tight outline-none hover:underline"
+              style={{ color: "var(--app-ink)" }}
+            >
+              <span className="absolute inset-x-0 top-0 bottom-0" aria-hidden />
+              {event.title}
+            </Link>
+            <p className="mt-1.5 line-clamp-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              {date.time}
+              {event.venue_name ? ` · ${event.venue_name}` : ""}
+            </p>
+          </div>
+
+          {/* Card Footer: trust signals and optional distance */}
+          <div className="mt-3 flex items-center justify-between border-t pt-2.5" style={{ borderColor: "var(--app-border)" }}>
+            <TrustChip signal={eventTrust(event)} />
+            {event.distance_m !== undefined && (
+              <span className="text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {formatDistance(event.distance_m)}
+              </span>
+            )}
           </div>
         </div>
       </article>
@@ -408,14 +307,12 @@ export default function EventCard({
       >
         {event.hero_image ? (
           <>
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element -- proxied/remote venue photo; plain img avoids a domain allowlist for the key-safe proxy */}
+            <img
               src={event.hero_image}
               alt=""
-              fill
-              sizes="64px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
+              loading="lazy"
+              className="h-full w-full object-cover"
             />
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 flex items-baseline justify-center gap-1 px-1 pb-1 text-white">
@@ -438,18 +335,10 @@ export default function EventCard({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          {statusText && (
-            <span
-              className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-white"
-              style={{ background: statusBg }}
-            >
-              {statusText}
-            </span>
-          )}
+        <div className="flex items-baseline gap-2">
           <Link
             href={`/events/${event.slug}`}
-            className={`text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
+            className="text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
@@ -460,6 +349,12 @@ export default function EventCard({
           {date.time} · {event.venue_name}
         </p>
         <div className="mt-2 flex items-center gap-2">
+          {isLive && (
+            <span className="inline-flex items-center gap-1 rounded-[var(--app-radius-sm)] border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide" style={{ background: "color-mix(in srgb, var(--app-danger) 12%, transparent)", color: "var(--app-danger)", borderColor: "color-mix(in srgb, var(--app-danger) 20%, transparent)" }}>
+              <span className="h-1 w-1 rounded-full bg-[color:var(--app-danger)] animate-pulse" />
+              Live
+            </span>
+          )}
           {cat && (
             <Chip color={cat.color} className="uppercase tracking-wide">
               {cat.name}

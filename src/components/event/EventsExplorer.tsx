@@ -1,27 +1,60 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useQueryState, parseAsBoolean, parseAsStringEnum } from "nuqs";
-import { Search, List as ListIcon, Rows3, CalendarDays, Map as MapIcon, X, ChevronDown, SlidersHorizontal } from "lucide-react";
+import {
+  Search,
+  List as ListIcon,
+  CalendarDays,
+  Map as MapIcon,
+  X,
+  ChevronDown,
+  SlidersHorizontal,
+  Music,
+  Palette,
+  Apple,
+  Baby,
+  Trees,
+  Utensils,
+  Theater,
+  Activity,
+  ShoppingBag,
+} from "lucide-react";
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
+import SpotlightHero from "@/components/event/SpotlightHero";
 import SectionHeading from "@/components/ui/SectionHeading";
-import Sheet from "@/components/ui/Sheet";
-import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
+
+function CategoryIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
+  switch (name) {
+    case "Music":
+      return <Music className={className} style={style} />;
+    case "Palette":
+      return <Palette className={className} style={style} />;
+    case "Apple":
+      return <Apple className={className} style={style} />;
+    case "Baby":
+      return <Baby className={className} style={style} />;
+    case "Trees":
+      return <Trees className={className} style={style} />;
+    case "Utensils":
+      return <Utensils className={className} style={style} />;
+    case "Theater":
+      return <Theater className={className} style={style} />;
+    case "Activity":
+      return <Activity className={className} style={style} />;
+    case "ShoppingBag":
+      return <ShoppingBag className={className} style={style} />;
+    default:
+      return <CalendarDays className={className} style={style} />;
+  }
+}
 
 type TimeKey = "all" | "today" | "weekend" | "week";
-type EventSortKey = "time" | "az" | "venue";
-
-const EVENT_SORT_OPTIONS: ReadonlyArray<SortOption<EventSortKey>> = [
-  { key: "time", label: "Soonest", hint: "Next event first (grouped by horizon)" },
-  { key: "az", label: "A→Z", hint: "Alphabetical by event title" },
-  { key: "venue", label: "Venue", hint: "Cluster by venue name" },
-];
 
 type Props = {
   events: EventWithMeta[];
@@ -31,15 +64,12 @@ type Props = {
   /** Server-computed boundaries (avoids client TZ math + hydration drift). */
   nowISO: string;
   next24ISO: string;
+  tonightStartISO: string;
+  tonightEndISO: string;
   weekendStartISO: string;
   weekendEndISO: string;
   /** Deep-link view, parsed server-side so first paint matches the URL. */
   initialView?: ViewState;
-  /** Optional ?d=YYYY-MM-DD deep-link from WeekStrip — restricts the
-   *  list to a single Eastern calendar day. Coexists with the existing
-   *  time-window filter (Tonight / Weekend / This week); the day wins
-   *  when both are set. */
-  initialDay?: string;
 };
 
 // Facet <-> shared ViewState. Search text is intentionally excluded: a
@@ -51,17 +81,6 @@ const timeToWhen = (t: TimeKey): When | undefined =>
 const whenToTime = (w?: When): TimeKey =>
   w === "today" || w === "weekend" || w === "week" ? w : "all";
 
-// One-off Eastern-day key (YYYY-MM-DD) for the day filter. Mirrors
-// the helper in WeekStrip so the explorer matches its tile keys.
-function dayKeyEastern(iso: string): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(iso));
-}
-
 export default function EventsExplorer({
   events,
   liveSlugs,
@@ -69,54 +88,21 @@ export default function EventsExplorer({
   towns,
   nowISO,
   next24ISO,
+  tonightStartISO,
+  tonightEndISO,
   weekendStartISO,
   weekendEndISO,
   initialView,
-  initialDay,
 }: Props) {
   const [cat, setCat] = useState<string | null>(initialView?.cats?.[0] ?? null);
-  // Lens (Now / Tonight / Weekend / This week / All) — URL-synced via
-  // ?lens=foo so shared links restore the view, and the EventsCompartmented
-  // "See all" deep-links land on the right tab. nuqs handles the param
-  // codec (parseAsStringEnum) and rerenders on browser back/forward.
-  // Default falls through to the server-parsed initialView so first paint
-  // still matches the URL with no hydration flash.
-  const [time, setTime] = useQueryState<TimeKey>(
-    "lens",
-    parseAsStringEnum<TimeKey>(["all", "today", "weekend", "week"])
-      .withDefault(whenToTime(initialView?.when)),
-  );
+  const [time, setTime] = useState<TimeKey>(whenToTime(initialView?.when));
   const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
-  const [day, setDay] = useState<string | null>(initialDay ?? null);
   const [q, setQ] = useState("");
-  const [view, setView] = useState<"list" | "compact" | "calendar" | "map">("list");
+  const [view, setView] = useState<"list" | "calendar" | "map">("list");
   // Presentation only (NOT ViewState/lens/deeplink): the facet panel is
   // collapsed by default so the page leads with events, not controls.
   const [showFilters, setShowFilters] = useState(false);
-  // Free-only toggle — URL-synced via ?free=1 so a filtered view is
-  // shareable. Boolean codec maps 0/1 to false/true; default false so
-  // an empty URL = no filter (no extra param on first load).
-  const [freeOnly, setFreeOnly] = useQueryState(
-    "free",
-    parseAsBoolean.withDefault(false),
-  );
-  // Happy-hour-only toggle — URL-synced via ?happy=1. Predicate is a
-  // title/venue regex (no formal "happy hour" category in the schema).
-  // Added May 2026 in response to a competing iOS-only events app that
-  // led with happy hours; this surfaces the same use case from a
-  // broader product without bolting on a new event type.
-  const [happyOnly, setHappyOnly] = useQueryState(
-    "happy",
-    parseAsBoolean.withDefault(false),
-  );
-  // Sort order (?sort=time|az|venue). "time" keeps the horizon
-  // grouping ("Tonight / This weekend / This week / Later"); the
-  // alphabetical and by-venue sorts drop the grouping and render
-  // a flat list so the order the user picked is the order the user sees.
-  const [sort, setSort] = useQueryState<EventSortKey>(
-    "sort",
-    parseAsStringEnum<EventSortKey>(["time", "az", "venue"]).withDefault("time"),
-  );
+  const [freeOnly, setFreeOnly] = useState(false);
   // Which horizon groups are expanded past their scannable peek.
   const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
   const toggleGroup = (k: string) =>
@@ -130,53 +116,29 @@ export default function EventsExplorer({
   const live = useMemo(() => new Set(liveSlugs), [liveSlugs]);
   const now = +new Date(nowISO);
 
-  // Apply user-chosen sort AFTER filtering. "time" preserves the
-  // server-provided chronological order (and feeds the horizon
-  // grouping below). The other keys produce a flat re-sort.
-  const sortFn = useMemo(() => {
-    switch (sort) {
-      case "az":
-        return (a: EventWithMeta, b: EventWithMeta) =>
-          (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" });
-      case "venue":
-        return (a: EventWithMeta, b: EventWithMeta) => {
-          const va = (a.venue_name ?? "").toLowerCase();
-          const vb = (b.venue_name ?? "").toLowerCase();
-          if (va !== vb) return va.localeCompare(vb);
-          // Within a venue, fall back to chronological so a venue
-          // cluster reads top-to-bottom as a venue schedule.
-          return +new Date(a.starts_at) - +new Date(b.starts_at);
-        };
-      case "time":
-      default:
-        return (a: EventWithMeta, b: EventWithMeta) =>
-          +new Date(a.starts_at) - +new Date(b.starts_at);
-    }
-  }, [sort]);
-
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return events.filter((e) => {
-      // Day filter wins over time-window filters when both are set.
-      if (day && dayKeyEastern(e.starts_at) !== day) return false;
       const t = +new Date(e.starts_at);
-      if (!day && time === "today" && !(t >= now && t < +new Date(next24ISO))) return false;
+      if (time === "today") {
+        const start = +new Date(tonightStartISO);
+        const end = +new Date(tonightEndISO);
+        if (!(t >= start && t < end)) {
+          const endsAt = +new Date(e.ends_at);
+          if (!(endsAt > start && t <= start)) {
+            return false;
+          }
+        }
+      }
       if (
-        !day && time === "weekend" &&
+        time === "weekend" &&
         !(t >= +new Date(weekendStartISO) && t < +new Date(weekendEndISO))
       )
         return false;
-      if (!day && time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
+      if (time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
       if (cat && e.category !== cat) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
-      if (happyOnly) {
-        // Match against title + venue + description so we catch both
-        // event-level happy hours ("Tuesday happy hour at X") and the
-        // venue-level recurring lineups some publishers tag this way.
-        const hay = `${e.title} ${e.venue_name ?? ""} ${e.description ?? ""}`;
-        if (!/\bhappy\s*hour\b/i.test(hay)) return false;
-      }
       if (
         term &&
         !`${e.title} ${e.venue_name ?? ""} ${e.category_name ?? ""}`
@@ -185,8 +147,8 @@ export default function EventsExplorer({
       )
         return false;
       return true;
-    }).sort(sortFn);
-  }, [events, day, time, cat, town, q, freeOnly, happyOnly, now, next24ISO, weekendStartISO, weekendEndISO, sortFn]);
+    });
+  }, [events, time, cat, town, q, freeOnly, now, tonightStartISO, tonightEndISO, weekendStartISO, weekendEndISO]);
 
   // Group the filtered list into human horizons so the default view is
   // navigable at a glance instead of a 400-row chronological scroll.
@@ -228,29 +190,22 @@ export default function EventsExplorer({
   // effect is needed. history.replaceState, not router navigation:
   // filtering is fully client-side, so re-running the page's live-feed
   // loaders would be wasteful. Search text stays out of the URL by design.
-  // Day filter rides along as ?d= so a tap on the WeekStrip survives a
-  // share.
   useEffect(() => {
     const qs = toQuery(viewState);
-    const sp = new URLSearchParams(qs);
-    if (day) sp.set("d", day);
-    const full = sp.toString();
-    const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
+    const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
     window.history.replaceState(null, "", url);
-  }, [viewState, day]);
+  }, [viewState]);
 
   const anyFilter =
-    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly || happyOnly || day !== null;
+    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly;
   // Count only the panel facets (search is its own visible field).
-  const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0);
+  const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0);
   const clear = () => {
     setCat(null);
     setTown(null);
-    setDay(null);
     setTime("all");
     setQ("");
     setFreeOnly(false);
-    setHappyOnly(false);
   };
 
   // One-tap intent chips — what people actually open an events page
@@ -259,20 +214,63 @@ export default function EventsExplorer({
   const QUICK: { key: string; label: string; on: boolean; toggle: () => void }[] = [
     { key: "tonight", label: "Tonight", on: time === "today", toggle: () => setTime(time === "today" ? "all" : "today") },
     { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
-    { key: "music", label: "Live music", on: cat === "music", toggle: () => setCat(cat === "music" ? null : "music") },
     { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
-    { key: "happy", label: "Happy hour", on: happyOnly, toggle: () => setHappyOnly((v) => !v) },
-    { key: "family", label: "Family", on: cat === "family", toggle: () => setCat(cat === "family" ? null : "family") },
-    // Civic / meetings — separated per the May 2026 product review:
-    // commission meetings, public hearings, and municipal agendas are
-    // useful data but emotionally distinct from "dinner and music."
-    // Surfacing this lane lets the user pull civic forward when they
-    // want it AND keeps it from cluttering the default browse.
-    { key: "civic", label: "Civic", on: cat === "civic", toggle: () => setCat(cat === "civic" ? null : "civic") },
   ];
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
+      {/* Spotlight Hero Carousel - Flagship focal point at the top */}
+      {!anyFilter && view === "list" && (
+        <div className="stagger-item">
+          <SpotlightHero events={events} />
+        </div>
+      )}
+
+      {/* Visual Category Exploration Rail */}
+      <div className="stagger-item">
+        <div className="-mx-4 px-4 overflow-x-auto flex gap-5 pb-3 scrollbar-none" role="group" aria-label="Explore by category">
+          {categories.map((c) => {
+            const isSelected = cat === c.slug;
+            const catData = CATEGORY_BY_SLUG[c.slug];
+            const accentColor = catData?.color ?? "var(--app-brand)";
+            const iconName = catData?.icon ?? "CalendarDays";
+
+            return (
+              <button
+                key={c.slug}
+                type="button"
+                onClick={() => setCat(isSelected ? null : c.slug)}
+                className="flex flex-col items-center gap-1.5 shrink-0 select-none outline-none group cursor-pointer"
+                aria-pressed={isSelected}
+              >
+                <div
+                  className="h-14 w-14 rounded-full flex items-center justify-center border transition-all duration-300 relative shadow-[var(--app-shadow-1)] hover:scale-105 active:scale-95"
+                  style={{
+                    background: isSelected
+                      ? `color-mix(in srgb, ${accentColor} 12%, var(--app-bg-elevated))`
+                      : "var(--app-bg-elevated)",
+                    borderColor: isSelected ? accentColor : "var(--app-border)",
+                    boxShadow: isSelected ? `0 0 12px 0 color-mix(in srgb, ${accentColor} 20%, transparent)` : undefined,
+                  }}
+                >
+                  <CategoryIcon
+                    name={iconName}
+                    className="h-[22px] w-[22px] transition-transform duration-300 group-hover:scale-110"
+                    style={{ color: isSelected ? accentColor : "var(--app-ink-3)" }}
+                  />
+                </div>
+                <span
+                  className="text-[10px] font-bold tracking-wider uppercase text-center max-w-[70px] truncate"
+                  style={{ color: isSelected ? "var(--app-ink)" : "var(--app-ink-2)" }}
+                >
+                  {c.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Quick intent — the lead affordance. One tap for what people
           actually want; deeper facets stay tucked in Filters. */}
       <div className="flex flex-wrap gap-2" role="group" aria-label="Quick filters">
@@ -325,11 +323,6 @@ export default function EventsExplorer({
           {(
             [
               ["list", ListIcon, "List"],
-              // Compact "Rolodex" mode — 48px rows, ~5x more events
-              // visible per viewport than the default feature-card
-              // list. Added May 2026 in response to the "cards too
-              // big, one-at-a-time on mobile" review feedback.
-              ["compact", Rows3, "Compact"],
               ["calendar", CalendarDays, "Agenda"],
               ["map", MapIcon, "Map"],
             ] as const
@@ -389,7 +382,7 @@ export default function EventsExplorer({
             aria-hidden
           />
         </button>
-        <span className="text-xs" style={{ color: "var(--app-ink-3)" }}>
+        <span className="ml-auto text-xs" style={{ color: "var(--app-ink-3)" }}>
           {filtered.length} {filtered.length === 1 ? "event" : "events"}
           {anyFilter && (
             <button
@@ -402,354 +395,122 @@ export default function EventsExplorer({
             </button>
           )}
         </span>
-        <SortDropdown
-          className="ml-auto"
-          options={EVENT_SORT_OPTIONS}
-          value={sort}
-          onChange={setSort}
-        />
       </div>
 
-      {/* Filters bottom sheet — same wiring, app-grade presentation.
-          The deeper facets (type + town) live here so the page leads
-          with events, not controls. */}
-      <Sheet
-        open={showFilters}
-        onClose={() => setShowFilters(false)}
-        title="Filter events"
-        subtitle={
-          filterCount > 0
-            ? `${filterCount} active`
-            : "Refine by type or town"
-        }
-        footer={
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => {
-                clear();
-              }}
-              className="text-[13px] font-semibold"
-              style={{ color: "var(--app-ink-3)" }}
+      {showFilters && (
+        <div
+          id="evt-filter-panel"
+          className="tactile flex flex-wrap items-center gap-2 rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)] p-2.5"
+        >
+          <div className="relative">
+            <label htmlFor="evt-cat" className="sr-only">Filter by type</label>
+            <select
+              id="evt-cat"
+              value={cat ?? ""}
+              onChange={(e) => setCat(e.target.value || null)}
+              className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             >
-              Reset
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowFilters(false)}
-              className="tactile tactile-interactive tactile-lift tactile-glow-brand rounded-full px-5 py-2 text-[13px] font-semibold text-white"
-              style={{ backgroundColor: "var(--app-brand)" }}
-            >
-              Show {filtered.length} {filtered.length === 1 ? "event" : "events"}
-            </button>
+              <option value="">All types</option>
+              {categories.map((c) => (
+                <option key={c.slug} value={c.slug}>{c.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           </div>
-        }
-      >
-        <div className="space-y-5">
-          {/* Type */}
-          <div>
-            <h3
-              className="eyebrow mb-2"
-              style={{ color: "var(--app-ink-3)" }}
+          <div className="relative">
+            <label htmlFor="evt-town" className="sr-only">Filter by town</label>
+            <select
+              id="evt-town"
+              value={town ?? ""}
+              onChange={(e) => setTown(e.target.value || null)}
+              className="appearance-none rounded-full border bg-[var(--app-bg-elevated)] py-2 pl-3.5 pr-8 text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             >
-              Type
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setCat(null)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
-                  cat === null ? "" : "tactile"
-                }`}
-                style={{
-                  background: cat === null ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                  color: cat === null ? "white" : "var(--app-ink-2)",
-                  transitionTimingFunction: "var(--app-ease-spring)",
-                }}
-              >
-                All types
-              </button>
-              {categories.map((c) => {
-                const on = cat === c.slug;
-                return (
-                  <button
-                    key={c.slug}
-                    type="button"
-                    onClick={() => setCat(on ? null : c.slug)}
-                    aria-pressed={on}
-                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
-                      on ? "" : "tactile"
-                    }`}
-                    style={{
-                      background: on ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                      color: on ? "white" : "var(--app-ink-2)",
-                      transitionTimingFunction: "var(--app-ease-spring)",
-                    }}
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {/* Town */}
-          <div>
-            <h3
-              className="eyebrow mb-2"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Town
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setTown(null)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
-                  town === null ? "" : "tactile"
-                }`}
-                style={{
-                  background: town === null ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                  color: town === null ? "white" : "var(--app-ink-2)",
-                  transitionTimingFunction: "var(--app-ease-spring)",
-                }}
-              >
-                All towns
-              </button>
-              {towns.map((t) => {
-                const on = town === t.slug;
-                return (
-                  <button
-                    key={t.slug}
-                    type="button"
-                    onClick={() => setTown(on ? null : t.slug)}
-                    aria-pressed={on}
-                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
-                      on ? "" : "tactile"
-                    }`}
-                    style={{
-                      background: on ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                      color: on ? "white" : "var(--app-ink-2)",
-                      transitionTimingFunction: "var(--app-ease-spring)",
-                    }}
-                  >
-                    {t.name}
-                  </button>
-                );
-              })}
-            </div>
+              <option value="">All towns</option>
+              {towns.map((t) => (
+                <option key={t.slug} value={t.slug}>{t.name}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           </div>
         </div>
-      </Sheet>
+      )}
 
       {/* Results */}
       {view === "calendar" ? (
         <EventAgenda events={filtered} nowMs={now} />
       ) : view === "map" ? (
         <EventsMap events={mapPins} />
-      ) : view === "compact" && filtered.length > 0 ? (
-        // Compact "Rolodex" mode — flat list of 48px rows, no horizon
-        // grouping, no feature card. Capped at 200 since each row is
-        // ~⅕ the height of a feature card. The user is here for
-        // density, not browsing.
-        <ol
-          className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-          style={{
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-          }}
-        >
-          {filtered.slice(0, 200).map((e) => (
-            <li key={e.slug}>
-              <EventCard event={e} variant="compact" />
-            </li>
-          ))}
-          {filtered.length > 200 && (
-            <li
-              className="px-3 py-3 text-center text-[11px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Showing the first 200. Tighten filters or switch to the calendar view for the long tail.
-            </li>
-          )}
-        </ol>
       ) : filtered.length === 0 ? (
-        // Composed empty state — soft category-tinted block, serif line,
-        // one quiet sentence, primary action. Replaces the bare bordered
-        // text-only message.
-        <div
-          className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] px-6 py-10 text-center"
-          style={{
-            background:
-              "radial-gradient(80% 60% at 30% 20%, color-mix(in srgb, var(--section-accent, var(--app-brand)) 14%, var(--app-bg-elevated)), var(--app-bg-elevated))",
-          }}
+        <p
+          className="rounded-[var(--app-radius-lg)] border px-4 py-8 text-center text-sm"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          <span
-            aria-hidden
-            className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--section-accent, var(--app-brand)) 22%, var(--app-bg-elevated))",
-              color: "var(--section-accent, var(--app-brand))",
-            }}
-          >
-            <CalendarDays className="h-6 w-6" strokeWidth={1.5} />
-          </span>
-          <h3
-            className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Nothing fits these filters.
-          </h3>
-          <p
-            className="mx-auto mt-1 max-w-xs text-[13px] text-pretty"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            Try a wider time window or fewer types. The list updates as
-            soon as something matches.
-          </p>
+          No events match these filters yet.
           {anyFilter && (
-            <button
-              type="button"
-              onClick={clear}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
-              style={{
-                background: "var(--app-bg-elevated)",
-                color: "var(--section-accent, var(--app-brand))",
-              }}
-            >
-              <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            <button type="button" onClick={clear} className="ml-1 font-semibold" style={{ color: "var(--app-brand)" }}>
               Clear filters
             </button>
           )}
-        </div>
-      ) : sort !== "time" ? (
-        // User-driven sort (A→Z or by venue): drop the horizon
-        // grouping so the order the user chose is the order they see.
-        // Capped at 100 to keep the page snappy; the rest are reachable
-        // by tightening filters or switching to the calendar/map view.
-        <ul className="space-y-2">
-          {filtered.slice(0, 100).map((e) => (
-            <li key={e.slug}>
-              <EventCard event={e} />
-            </li>
-          ))}
-          {filtered.length > 100 && (
-            <li
-              className="pt-2 text-center text-[11px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Showing the first 100. Use filters or the calendar view to narrow further.
-            </li>
-          )}
-        </ul>
+        </p>
       ) : (
         // Grouped by human time horizon — "what's on now / today / this
         // weekend / later" — so the page is navigable at a glance, not
         // a 400-row chronological scroll. Each group shows a scannable
         // peek and expands in place; nothing is hidden.
         <div className="space-y-6">
-          {horizonGroups.map((g, groupIdx) => {
+          {horizonGroups.map((g) => {
             const isOpen = openGroups.has(g.key);
-            // Tighter peek + expanded cap (was PEEK=9, no expanded
-            // cap). Users were getting walls of 30-100 event tiles
-            // when a group expanded — felt endless and undermined
-            // the horizon-grouping work. Now each group shows 6 at
-            // first, expands to a max of 24, and links to the
-            // calendar for the long tail.
-            const PEEK = 6;
-            const EXPANDED_CAP = 24;
-            // Pull the first photo-backed event out of the FIRST group
-            // as a feature card. One per page — gives the index a focal
-            // point instead of a uniform stack of tiles.
-            const featureIdx =
-              groupIdx === 0 ? g.events.findIndex((e) => Boolean(e.hero_image)) : -1;
-            const feature = featureIdx >= 0 ? g.events[featureIdx] : null;
-            const rest = feature
-              ? g.events.filter((_, i) => i !== featureIdx)
-              : g.events;
-            // Mobile-first scannability: the FIRST horizon group renders
-            // as a horizontal swipeable shelf so users can graze without
-            // a long vertical scroll. Following groups stay as a vertical
-            // grid (the "browse" mode) — best of both. Hidden behind a
-            // toggle (`isOpen`) where the user wants to see everything.
-            const useShelf = groupIdx === 0 && !isOpen;
-            const shown = isOpen
-              ? rest.slice(0, EXPANDED_CAP)
-              : rest.slice(0, PEEK);
-            const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;
+            const PEEK = 9;
+            const shown = isOpen ? g.events : g.events.slice(0, PEEK);
+
+            // Immediate horizon groups are "Live now" (live) and "Today" (today).
+            // Under default view (no filter active) and when showing list view,
+            // render them as a horizontal scrolling shelf-rail.
+            const isImmediate = g.key === "live" || g.key === "today";
+            const renderAsShelf = !anyFilter && view === "list" && isImmediate;
+
             return (
               <section key={g.key} className="space-y-3">
-                <SectionHeading
-                  title={g.label}
-                  count={g.events.length}
-                  cta={rest.length > PEEK ? (isOpen ? "Show fewer" : "Show all") : undefined}
-                  onCtaClick={
-                    rest.length > PEEK ? () => toggleGroup(g.key) : undefined
-                  }
-                />
-                {feature && (
-                  <div className="relative">
-                    {live.has(feature.slug) && (
-                      <span
-                        className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                        style={{ background: "var(--app-positive)" }}
-                      >
-                        <span className="live-dot" /> Live
-                      </span>
-                    )}
-                    <EventCard event={feature} variant="feature" />
-                  </div>
-                )}
-                {useShelf ? (
+                <SectionHeading title={g.label} count={g.events.length} />
+                {renderAsShelf ? (
                   <div className="-mx-4 px-4">
-                    <div className="shelf-rail stagger gap-3 pb-1">
-                      {rest.slice(0, PEEK).map((e) => (
-                        <div key={e.slug} className="relative w-[260px] shrink-0">
-                          {live.has(e.slug) && (
-                            <span
-                              className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
-                              style={{ background: "var(--app-positive)" }}
-                            >
-                              <span className="live-dot" /> Live
-                            </span>
-                          )}
+                    <div className="shelf-rail gap-4 pb-2">
+                      {g.events.map((e) => (
+                        <div key={e.slug} className="w-[280px] shrink-0">
                           <EventCard event={e} variant="tile" />
                         </div>
                       ))}
                     </div>
                   </div>
                 ) : (
-                  <div className="stagger grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                    {shown.map((e) => (
-                      <div key={e.slug} className="relative">
-                        {live.has(e.slug) && (
-                          <span
-                            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white"
-                            style={{ background: "var(--app-positive)" }}
-                          >
-                            <span className="live-dot" /> Live
-                          </span>
-                        )}
-                        <EventCard event={e} variant="tile" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {/* Overflow nudge — when an expanded group hit the
-                    EXPANDED_CAP, point the long tail at the calendar
-                    instead of dumping every remaining tile inline. */}
-                {overflow > 0 && (
-                  <div className="px-1 pt-1 text-center">
-                    <Link
-                      href="/events/calendar"
-                      className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
-                      style={{
-                        borderColor: "var(--app-border)",
-                        color: "var(--app-cool)",
-                      }}
-                    >
-                      {overflow} more on the calendar →
-                    </Link>
-                  </div>
+                  <>
+                    <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {shown.map((e) => (
+                        <div key={e.slug} className="relative">
+                          <EventCard event={e} variant="tile" />
+                        </div>
+                      ))}
+                    </div>
+                    {g.events.length > PEEK && (
+                      <button
+                        type="button"
+                        onClick={() => toggleGroup(g.key)}
+                        className="inline-flex items-center gap-1.5 text-[13px] font-semibold transition active:opacity-70"
+                        style={{ color: "var(--app-brand)" }}
+                      >
+                        <ChevronDown
+                          className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                          strokeWidth={2.25}
+                          aria-hidden
+                        />
+                        {isOpen
+                          ? "Show fewer"
+                          : `Show all ${g.events.length} · ${g.label.toLowerCase()}`}
+                      </button>
+                    )}
+                  </>
                 )}
               </section>
             );
