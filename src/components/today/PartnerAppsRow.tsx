@@ -38,7 +38,12 @@ const HANDOFFS: Handoff[] = [
     brand: "#FF6900",
   },
   {
-    href: "https://www.opentable.com/c/frederick-md-restaurants",
+    // Search endpoint centered on Downtown Frederick — the /c/ city
+    // collection URL was returning 404 in crawlers as OpenTable has
+    // been deprecating those slugs. The search URL is the same pattern
+    // place-actions.ts uses as its "always lands correctly" fallback
+    // when a restaurant has no opentable_id.
+    href: "https://www.opentable.com/s?term=&covers=2&latitude=39.4143&longitude=-77.4105",
     label: "OpenTable",
     nudge: "Reserve a table tonight",
     icon: Utensils,
