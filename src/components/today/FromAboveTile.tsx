@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { BookOpen, ArrowRight } from "lucide-react";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * FromAboveTile — the marquee for the From Above book.
@@ -42,6 +43,8 @@ export default function FromAboveTile() {
           fill
           sizes="(max-width: 480px) 100vw, 480px"
           priority={false}
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
         />
         {/* Bottom-to-top scrim so the eyebrow lands on contrast */}

@@ -3,6 +3,7 @@ import Image from "next/image";
 import PlanBuilder from "@/components/plan/PlanBuilder";
 import { decodeSpec, reconstructPlan } from "@/lib/integrations/planner";
 import PageBloom from "@/components/ui/PageBloom";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 export const metadata: Metadata = {
   title: "Plan an evening",
@@ -66,6 +67,8 @@ export default async function PlanPage({
               fill
               priority
               sizes="(max-width: 768px) 100vw, 640px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
               className="object-cover"
             />
             <div

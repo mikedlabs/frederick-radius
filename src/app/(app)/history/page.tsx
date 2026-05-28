@@ -4,6 +4,7 @@ import { Landmark, Calendar, Sparkles, Users, ExternalLink } from "lucide-react"
 import { HISTORY, historyTopics, type HistoryEntry } from "@/data/history";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import DecorativeDivider from "@/components/ui/DecorativeDivider";
 import HistoryTimeline from "@/components/history/HistoryTimeline";
 import { eraForYear } from "@/lib/history-era";
@@ -315,6 +316,8 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
             alt={entry.image.alt ?? ""}
             fill
             sizes="(max-width: 768px) 280px, 320px"
+            placeholder="blur"
+            blurDataURL={PAPER_CREAM_BLUR}
             style={{ objectFit: "cover" }}
             priority={idx < 2}
           />

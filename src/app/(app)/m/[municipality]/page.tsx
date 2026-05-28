@@ -13,6 +13,7 @@ import Image from "next/image";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import TownStrip from "@/components/municipality/TownStrip";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 export const revalidate = 600;
 
@@ -139,6 +140,8 @@ export default async function MunicipalityPage(
               fill
               sizes="(max-width: 720px) 100vw, 720px"
               priority
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
               unoptimized
               className="object-cover"
             />

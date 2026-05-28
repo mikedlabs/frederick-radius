@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * FromAboveCta — a quiet doorway from /now to the From Above book
@@ -50,6 +51,8 @@ export default function FromAboveCta() {
           alt="From Above book cover"
           fill
           sizes="80px"
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
           className="object-cover"
         />
       </div>

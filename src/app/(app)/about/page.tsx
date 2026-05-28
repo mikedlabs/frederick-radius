@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * /about — the 30-second pitch.
@@ -186,6 +187,8 @@ export default async function AboutPage() {
                 alt=""
                 fill
                 sizes="(max-width: 480px) 100vw, 360px"
+                placeholder="blur"
+                blurDataURL={PAPER_CREAM_BLUR}
                 className="object-cover"
               />
               <span
@@ -256,6 +259,8 @@ export default async function AboutPage() {
                 alt=""
                 fill
                 sizes="(max-width: 480px) 100vw, 360px"
+                placeholder="blur"
+                blurDataURL={PAPER_CREAM_BLUR}
                 className="object-cover"
               />
               <span

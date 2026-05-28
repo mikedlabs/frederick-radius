@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * Wraps next/image with graceful failure: if the image fails to load,
@@ -49,6 +50,8 @@ export default function PlacePhoto({
       alt={alt}
       fill
       sizes={sizes}
+      placeholder="blur"
+      blurDataURL={PAPER_CREAM_BLUR}
       className={`object-cover ${className}`}
       onError={() => setFailed(true)}
       unoptimized
