@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { Mountain, Footprints, Bike, Dog, Accessibility, MapPin, ExternalLink } from "lucide-react";
+import { Mountain, Footprints, Bike, Dog, Accessibility, ExternalLink } from "lucide-react";
 import { getFrederickTrails, type Trail } from "@/lib/integrations/fcTrails";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { MAPBOX_TOKEN } from "@/lib/mapbox";
 
 export const metadata: Metadata = {
   // Orphan-by-design: this surface has real content but no
@@ -25,58 +26,127 @@ const USE_ICON: Record<string, typeof Footprints> = {
   dogs: Dog,
 };
 
-function TrailRow({ t }: { t: Trail }) {
+/** Mapbox static-image URL centered on the trail's start point.
+ *  Same outdoors style as /parks so the two surfaces read as one
+ *  family. Lazy-loaded by the consuming <img>. */
+function mapPreviewUrl(lng: number, lat: number): string | null {
+  if (!MAPBOX_TOKEN || typeof lng !== "number" || typeof lat !== "number") {
+    return null;
+  }
+  return (
+    `https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/` +
+    `pin-l+1E6B3A(${lng},${lat})/${lng},${lat},14/560x280@2x?` +
+    `access_token=${MAPBOX_TOKEN}`
+  );
+}
+
+function TrailCard({ t }: { t: Trail }) {
   const meta = [
     t.lengthMi ? `${t.lengthMi} mi` : null,
     t.surface || null,
     t.skill || null,
   ].filter(Boolean);
+  const mapUrl = mapPreviewUrl(t.lng, t.lat);
   return (
-    <li
-      className="border-t first:border-t-0"
-      style={{ borderColor: "var(--app-border)" }}
+    <article
+      className="tactile tactile-interactive group relative flex flex-col overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] transition"
+      style={{
+        borderColor: "var(--app-border)",
+        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+      }}
     >
+      {/* Terrain preview — Mapbox outdoors-v12 with a green pin at
+          the trailhead. Lazy-loaded so a hundred-card page doesn't
+          fire a hundred image fetches at once. */}
+      <div
+        className="relative aspect-[2/1] w-full overflow-hidden"
+        style={{
+          background:
+            "color-mix(in srgb, var(--app-positive) 8%, var(--app-bg-sunken))",
+        }}
+      >
+        {mapUrl ? (
+          <img
+            src={mapUrl}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div
+            aria-hidden
+            className="grid h-full w-full place-items-center"
+            style={{
+              background:
+                "linear-gradient(140deg, color-mix(in srgb, #1E6B3A 60%, white) 0%, #1E6B3A 100%)",
+            }}
+          >
+            <Mountain className="h-16 w-16 opacity-30" style={{ color: "white" }} />
+          </div>
+        )}
+        {/* Length chip top-left — primary fact people scan for */}
+        {t.lengthMi != null && (
+          <span
+            className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] backdrop-blur"
+            style={{ color: "var(--app-positive, #1E6B3A)" }}
+          >
+            <Mountain className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+            {t.lengthMi} mi
+          </span>
+        )}
+        {/* Difficulty / surface chip top-right when present */}
+        {t.skill && (
+          <span
+            className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-semibold capitalize backdrop-blur"
+            style={{ color: "var(--app-ink)" }}
+          >
+            {t.skill}
+          </span>
+        )}
+      </div>
+
       <a
         href={`/map?focus=${t.lat},${t.lng}`}
-        className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-[var(--app-bg-sunken)]"
+        className="flex flex-1 flex-col gap-1.5 px-3.5 pt-3 pb-3"
       >
+        <span className="absolute inset-0" aria-hidden />
         <span
-          className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-positive, #1E6B3A) 16%, transparent)" }}
-          aria-hidden
+          className="block font-serif text-[16px] font-semibold leading-tight tracking-tight"
+          style={{ color: "var(--app-ink)" }}
         >
-          <Mountain className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-positive, #1E6B3A)" }} />
+          {t.name}
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            {t.name}
+        {t.park && t.park !== t.name && (
+          <span
+            className="line-clamp-1 text-[12px]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            {t.park}
           </span>
-          {t.park && t.park !== t.name && (
-            <span className="block truncate text-[12px]" style={{ color: "var(--app-ink-2)" }}>
-              {t.park}
+        )}
+        <span
+          className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {meta.length > 0 && meta[0] !== `${t.lengthMi} mi` && <span>{meta.filter((m) => m !== `${t.lengthMi} mi`).join(" · ")}</span>}
+          {t.ada && (
+            <span className="inline-flex items-center gap-1">
+              <Accessibility className="h-3 w-3" strokeWidth={2} aria-hidden /> ADA
             </span>
           )}
-          <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            {meta.length > 0 && <span>{meta.join(" · ")}</span>}
-            {t.ada && (
-              <span className="inline-flex items-center gap-1">
-                <Accessibility className="h-3 w-3" strokeWidth={2} aria-hidden /> ADA
+          {t.uses.map((u) => {
+            const Icon = USE_ICON[u];
+            return (
+              <span key={u} className="inline-flex items-center gap-1 capitalize">
+                {Icon && <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />}
+                {u}
               </span>
-            )}
-            {t.uses.map((u) => {
-              const Icon = USE_ICON[u];
-              return (
-                <span key={u} className="inline-flex items-center gap-1 capitalize">
-                  {Icon && <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />}
-                  {u}
-                </span>
-              );
-            })}
-          </span>
+            );
+          })}
         </span>
-        <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
       </a>
-    </li>
+    </article>
   );
 }
 
@@ -182,19 +252,27 @@ export default async function TrailsPage() {
             trails across {groups.length} {groups.length === 1 ? "area" : "areas"}
           </p>
           {groups.map((g) => (
-            <section key={g.slug} className="space-y-2">
-              <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            <section key={g.slug} className="space-y-3">
+              <h2
+                className="font-serif text-lg font-semibold tracking-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
                 {g.name}{" "}
-                <span className="text-[12px] font-normal" style={{ color: "var(--app-ink-3)" }}>
+                <span
+                  className="text-[12px] font-normal"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
                   {g.list.length}
                 </span>
               </h2>
-              <ul
-                className="overflow-hidden rounded-[var(--app-radius-lg)] tactile bg-[var(--app-bg-elevated)]"
-                style={{ borderColor: "var(--app-border)" }}
-              >
+              {/* Photo-style grid with terrain preview per trail —
+                  same Mapbox outdoors-v12 family as /parks so the two
+                  aux surfaces read as one design system. */}
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {g.list.map((t) => (
-                  <TrailRow key={t.id} t={t} />
+                  <li key={t.id}>
+                    <TrailCard t={t} />
+                  </li>
                 ))}
               </ul>
             </section>
