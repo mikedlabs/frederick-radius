@@ -1298,6 +1298,7 @@ export function foodCategoryFix(name: string, category: string): string {
 
 const PLACES_DFP: Place[] = (PLACES_DFP_RAW as Array<{
   slug: string; name: string; category: string; subcategories?: string[];
+  tags?: string[];
   short_blurb: string; address: string; city: string; postal_code: string;
   municipality: string; geom: LngLat;
   website?: string; phone?: string; instagram?: string;
@@ -1310,6 +1311,7 @@ const PLACES_DFP: Place[] = (PLACES_DFP_RAW as Array<{
     name: p.name,
     category: foodCategoryFix(p.name, wellnessCategoryFix(p.name, p.category)),
     subcategories: p.subcategories && p.subcategories.length > 0 ? p.subcategories : undefined,
+    tags: p.tags && p.tags.length > 0 ? p.tags : undefined,
     short_blurb: p.short_blurb,
     address: p.address,
     city: p.city,
@@ -1346,6 +1348,7 @@ PLACES.push(...PLACES_DFP);
 const TAKEN_SLUGS = new Set(PLACES.map((p) => p.slug));
 const PLACES_DISCOVERED: Place[] = (PLACES_DISCOVERED_RAW as Array<{
   slug: string; name: string; category: string; short_blurb: string;
+  tags?: string[];
   address: string; city: string; postal_code: string; municipality: string;
   geom: LngLat; website?: string; phone?: string; google_place_id?: string;
   feature_score: number; updated_at: string;
@@ -1355,6 +1358,7 @@ const PLACES_DISCOVERED: Place[] = (PLACES_DISCOVERED_RAW as Array<{
     slug: p.slug,
     name: p.name,
     category: p.category,
+    tags: p.tags && p.tags.length > 0 ? p.tags : undefined,
     short_blurb: p.short_blurb,
     address: p.address,
     city: p.city,

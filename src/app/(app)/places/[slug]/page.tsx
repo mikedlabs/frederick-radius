@@ -258,13 +258,28 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           glyph form before any text. Self-hides when no amenities
           are curated for the place. Accent matches the place's
           category color so the row reads as part of the place's
-          identity, not as decoration. */}
-      {place.amenities && place.amenities.length > 0 && (
-        <PlaceAmenityIcons
-          amenities={place.amenities}
-          accent={cat?.color ?? "var(--app-brand)"}
-        />
-      )}
+          identity, not as decoration.
+          Source: prefer the curated `amenities` array, fall back to
+          the amenity-facet subset of `tags` so dog-friendly parks /
+          patios / outdoor-seating venues surface their icons without
+          a manual `amenities` curation pass per record. */}
+      {(() => {
+        const AMENITY_TAG_SLUGS = new Set([
+          "wifi", "outdoor-seating", "dog-friendly", "patio", "live-music",
+          "byob", "takeout", "delivery", "reservations", "walk-in",
+          "parking-lot", "bike-rack", "restroom",
+        ]);
+        const amenities =
+          place.amenities && place.amenities.length > 0
+            ? place.amenities
+            : (place.tags ?? []).filter((t) => AMENITY_TAG_SLUGS.has(t));
+        return amenities.length > 0 ? (
+          <PlaceAmenityIcons
+            amenities={amenities}
+            accent={cat?.color ?? "var(--app-brand)"}
+          />
+        ) : null;
+      })()}
 
       {reserveActions.length > 0 && (
         <IntegrationRow
