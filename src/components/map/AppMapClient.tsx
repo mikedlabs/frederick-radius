@@ -11,12 +11,37 @@ import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
+  // Map-like skeleton instead of a bare "Loading map" line. The Mapbox
+  // canvas cannot paint until its JS chunk arrives, but a tinted,
+  // softly-pulsing field with a centered pin reads as "the map is
+  // arriving" rather than "nothing has started," which makes the wait
+  // feel intentional and shorter.
   loading: () => (
     <div
-      className="grid h-[78vh] place-items-center rounded-[var(--app-radius-lg)] border"
-      style={{ borderColor: "var(--app-border)" }}
+      className="relative grid h-[78vh] w-full place-items-center overflow-hidden rounded-[var(--app-radius-lg)] border"
+      style={{
+        borderColor: "var(--app-border)",
+        background:
+          "radial-gradient(120% 90% at 50% 35%, color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-sunken)) 0%, var(--app-bg-sunken) 70%)",
+      }}
+      aria-busy="true"
+      aria-label="Loading the map"
     >
-      <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>Loading map…</p>
+      <div className="flex animate-pulse flex-col items-center gap-2">
+        <span
+          aria-hidden
+          className="grid h-11 w-11 place-items-center rounded-full"
+          style={{
+            background: "color-mix(in srgb, var(--app-cool) 18%, var(--app-bg-elevated))",
+            color: "var(--app-cool)",
+          }}
+        >
+          <MapPin className="h-5 w-5" strokeWidth={2} />
+        </span>
+        <p className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+          Bringing up the map
+        </p>
+      </div>
     </div>
   ),
 });

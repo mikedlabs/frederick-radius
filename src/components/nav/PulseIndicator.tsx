@@ -62,10 +62,10 @@ export default function PulseIndicator() {
       href="/pulse"
       aria-label={
         active
-          ? `Pulse — ${count} active ${count === 1 ? "item" : "items"} across the county`
-          : "Pulse — all clear across the county"
+          ? `County alerts: ${count} active ${count === 1 ? "item" : "items"}`
+          : "County alerts: all clear"
       }
-      title={active ? `Pulse · ${count}` : "Pulse · all clear"}
+      title={active ? `County alerts: ${count} active` : "County alerts: all clear"}
       className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
       style={{
         borderColor: "var(--app-border)",

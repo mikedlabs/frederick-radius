@@ -31,7 +31,12 @@ export async function GET(request: Request) {
   const slug = url.searchParams.get("slug") ?? "";
 
   let title = "Frederick Radius";
-  let kicker = "A smarter way to experience Frederick County";
+  // The homepage share card. Says what the product does rather than the
+  // old generic "smarter way to experience" line. Deliberately NOT
+  // time-baked (no "today" or a specific event): social platforms cache
+  // the card at share time, so a dated card would go stale in a feed
+  // within a day. The kicker has to read true a week from now.
+  let kicker = "What's open, what's happening, and what's worth your time";
   // `blurb` is the editorial one-liner shown below the title on place
   // and municipality cards. Stable per-record (not time-bound), so it
   // survives OG-image edge caching without going stale — which is why

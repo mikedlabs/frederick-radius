@@ -62,7 +62,12 @@ export const metadata: Metadata = {
   description:
     "Frederick County, organized around your day. What's open, what's happening, and what's worth your time — across every town and community in Frederick County, Maryland.",
   applicationName: "Frederick Radius",
-  authors: [{ name: "Michael DeMattia" }],
+  // Single author across all routes: the product is a MAD Productions
+  // tool. The personal maker credit lives in the /about body, not the
+  // metadata.
+  authors: [{ name: "MAD Productions" }],
+  creator: "MAD Productions",
+  publisher: "MAD Productions",
   generator: "Next.js",
   keywords: [
     "Frederick County", "Frederick MD", "Downtown Frederick",
@@ -84,7 +89,10 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Frederick Radius",
-    description: "A smarter way to experience Frederick County.",
+    // Match the OpenGraph description rather than the old generic
+    // marketing line, so the share card says what the product does.
+    description:
+      "What's open, what's happening, and what's worth your time across every town and community in Frederick County, Maryland.",
     images: [`${BASE}/api/og`],
   },
   robots: { index: true, follow: true },
