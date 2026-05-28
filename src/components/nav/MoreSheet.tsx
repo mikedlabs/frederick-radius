@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import {
   Info,
   MapPinned,
@@ -9,15 +8,11 @@ import {
   Building2,
   Bus,
   Mountain,
-  BookOpen,
   Settings as SettingsIcon,
   Activity,
   CalendarRange,
-  Landmark,
   Droplets,
   ExternalLink,
-  ArrowUpRight,
-  Sparkles,
   ShieldCheck,
   Waves,
   TreeDeciduous,
@@ -79,38 +74,6 @@ const USEFUL: Item[] = [
   { href: "/rivers",    label: "Rivers & creeks", description: "Live USGS gauges · gage height + flow + 24-hour trend", icon: Waves, color: "var(--app-cool)" },
 ];
 
-const BOOKS: Array<{
-  href: string;
-  label: string;
-  description: string;
-  cover: string;
-  external?: boolean;
-}> = [
-  {
-    // Points to the photographer's storefront (miked.store) instead
-    // of the in-app /from-above/preview route. The book lives, sells,
-    // and updates at the storefront; the in-app preview was a teaser
-    // surface that double-tapped the visitor before they could buy.
-    href: "http://www.miked.store",
-    label: "From Above",
-    description: "Drone photography over Frederick",
-    cover: "/from-above/cover-front.webp",
-    external: true,
-  },
-  {
-    href: "https://www.colorfrederick.com",
-    label: "Color Frederick",
-    description: "The Frederick coloring book",
-    cover: "/images/color-frederick-cover.webp",
-    external: true,
-  },
-];
-
-const DISCOVER_ROWS: Item[] = [
-  { href: "/history",     label: "History",     description: "Frederick County, one story at a time",                icon: Landmark, color: "var(--app-brand-2)" },
-  { href: "/collections", label: "Collections", description: "Editorial lists — date nights, rainy days, kid energy", icon: Sparkles, color: "var(--app-accent)" },
-];
-
 const APP: Item[] = [
   { href: "/about",    label: "About",        description: "What this app is and how it stays honest",     icon: Info,        color: "var(--app-ink-2)" },
   { href: "/trust",    label: "Trust & data", description: "Where the data comes from and what the badges mean", icon: ShieldCheck, color: "var(--app-cool)" },
@@ -131,33 +94,16 @@ export default function MoreSheet({
       open={open}
       onOpenChange={onOpenChange}
       title="Field guide"
-      subtitle="Tools, layers, books, and the rest"
+      subtitle="Tools and layers"
     >
       <div className="space-y-5 px-4 pt-3 pb-6">
-        {/* DISCOVER — leads the sheet (v7). Books + editorial-list
-            tiles are the destination people came for; everything
-            else is a launcher. The two book covers stay landscape
-            (16:9); History / Collections collapse into the same
-            icon-tile language as the clusters below. */}
-        <section className="space-y-2">
-          <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
-            Discover
-          </h3>
-          <ul className="grid grid-cols-2 gap-2">
-            {BOOKS.map((b) => (
-              <li key={b.href}>
-                <BookCard {...b} onClose={close} />
-              </li>
-            ))}
-          </ul>
-          <ul className="grid grid-cols-2 gap-1.5 pt-1">
-            {DISCOVER_ROWS.map((it) => (
-              <li key={it.href}>
-                <IconTile {...it} onClose={close} />
-              </li>
-            ))}
-          </ul>
-        </section>
+        {/* DISCOVER section retired May 2026 (Field Guide Phase 2):
+            Books (From Above, Color Frederick) and editorial rows
+            (History, Collections) moved to /about as "Companion
+            content." Editorial / reading destinations don't belong
+            in a launcher drawer — /about is where someone learning
+            about the project goes and the books are natural
+            neighbors. The drawer now leads with the action verbs. */}
 
         <IconCluster heading="Tools" items={TOOLS} onClose={close} columns={3} />
         <IconCluster heading="Useful" items={USEFUL} onClose={close} columns={4} />
@@ -342,119 +288,3 @@ function DirectoryRow({
   );
 }
 
-/** Visual book card — unchanged from v3 (full-bleed cover, "Book"
- *  pill top-left, external arrow when applicable). */
-function BookCard({
-  href,
-  label,
-  description,
-  cover,
-  external,
-  onClose,
-}: {
-  href: string;
-  label: string;
-  description: string;
-  cover: string;
-  external?: boolean;
-  onClose: () => void;
-}) {
-  const body = (
-    <>
-      <Image
-        src={cover}
-        alt=""
-        fill
-        sizes="(max-width: 480px) 50vw, 240px"
-        className="object-cover"
-      />
-      <span
-        aria-hidden
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, transparent 90%)",
-        }}
-      />
-      {external && (
-        <span
-          aria-hidden
-          className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full"
-          style={{
-            background: "rgba(255,255,255,0.88)",
-            backdropFilter: "blur(8px)",
-            WebkitBackdropFilter: "blur(8px)",
-            boxShadow: "var(--app-shadow-1)",
-          }}
-        >
-          <ArrowUpRight
-            className="h-3.5 w-3.5"
-            strokeWidth={2.25}
-            style={{ color: "var(--app-ink)" }}
-          />
-        </span>
-      )}
-      <span
-        aria-hidden
-        className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]"
-        style={{
-          background: "rgba(255,255,255,0.88)",
-          color: "var(--app-ink)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}
-      >
-        <BookOpen className="h-3 w-3" strokeWidth={2.25} />
-        Book
-      </span>
-      <span className="absolute inset-x-0 bottom-0 p-3">
-        <span
-          className="block font-serif text-[15px] font-semibold leading-tight text-white"
-          style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
-        >
-          {label}
-        </span>
-        <span
-          className="mt-0.5 block text-[10.5px] leading-snug text-white/85"
-          style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
-        >
-          {description}
-        </span>
-      </span>
-    </>
-  );
-  // v6: book covers are decorative, not the point of the sheet.
-  // aspect-[16/9] reads as a wide thumbnail strip — same cover,
-  // same gradient, same "Book" pill, but ~⅔ less vertical weight
-  // than the v5 4/3 card. The field guide's primary job is
-  // Tools + Useful; the books should support, not dominate.
-  const className =
-    "tactile tactile-interactive relative block aspect-[16/9] w-full overflow-hidden rounded-[var(--app-radius-md)] border transition active:scale-[0.98]";
-  const style = {
-    borderColor: "var(--app-border)",
-    boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-  };
-  return external ? (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onClose}
-      className={className}
-      style={style}
-      aria-label={label}
-    >
-      {body}
-    </a>
-  ) : (
-    <Link
-      href={href}
-      onClick={onClose}
-      className={className}
-      style={style}
-      aria-label={label}
-    >
-      {body}
-    </Link>
-  );
-}

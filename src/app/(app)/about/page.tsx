@@ -1,6 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import {
+  ArrowLeft,
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  Landmark,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 
@@ -140,10 +149,244 @@ export default async function AboutPage() {
         </Link>
       </div>
 
-      {/* Trust footer — the data-source commitments and the photography
-          book sit here as quiet, single-line links. Partners and
-          funders click through; daily users ignore them, which is the
-          right behavior for both audiences. */}
+      {/* Companion content — Books + editorial collections + history.
+          Moved here from the Field Guide drawer (May 2026 IA cleanup,
+          Phase 2): the drawer was carrying four unrelated jobs;
+          editorial / reading destinations don't belong in a launcher.
+          /about is where someone learning about the project goes —
+          the books, the longer essays, and the curated lists are
+          natural neighbors. */}
+      <section
+        aria-labelledby="about-companion-heading"
+        className="space-y-3 pt-2"
+      >
+        <h2
+          id="about-companion-heading"
+          className="font-serif text-[22px] font-semibold tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
+          Companion content
+        </h2>
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* The book — From Above, the photographer's storefront. */}
+          <li>
+            <a
+              href="http://www.miked.store"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tactile tactile-interactive relative block aspect-[4/3] overflow-hidden rounded-[var(--app-radius-md)] border"
+              style={{
+                borderColor: "var(--app-border)",
+                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+              }}
+              aria-label="From Above — drone photography over Frederick"
+            >
+              <Image
+                src="/from-above/cover-front.webp"
+                alt=""
+                fill
+                sizes="(max-width: 480px) 100vw, 360px"
+                className="object-cover"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, transparent 90%)",
+                }}
+              />
+              <span
+                aria-hidden
+                className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full"
+                style={{
+                  background: "rgba(255,255,255,0.88)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  boxShadow: "var(--app-shadow-1)",
+                }}
+              >
+                <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} style={{ color: "var(--app-ink)" }} />
+              </span>
+              <span
+                aria-hidden
+                className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]"
+                style={{
+                  background: "rgba(255,255,255,0.88)",
+                  color: "var(--app-ink)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                }}
+              >
+                <BookOpen className="h-3 w-3" strokeWidth={2.25} />
+                Book
+              </span>
+              <span className="absolute inset-x-0 bottom-0 p-3">
+                <span
+                  className="block font-serif text-[15px] font-semibold leading-tight text-white"
+                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
+                >
+                  From Above
+                </span>
+                <span
+                  className="mt-0.5 block text-[10.5px] leading-snug text-white/85"
+                  style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
+                >
+                  Drone photography over Frederick · miked.store
+                </span>
+              </span>
+            </a>
+          </li>
+
+          {/* Color Frederick — the local coloring book. */}
+          <li>
+            <a
+              href="https://www.colorfrederick.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="tactile tactile-interactive relative block aspect-[4/3] overflow-hidden rounded-[var(--app-radius-md)] border"
+              style={{
+                borderColor: "var(--app-border)",
+                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+              }}
+              aria-label="Color Frederick — the Frederick coloring book"
+            >
+              <Image
+                src="/images/color-frederick-cover.webp"
+                alt=""
+                fill
+                sizes="(max-width: 480px) 100vw, 360px"
+                className="object-cover"
+              />
+              <span
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, transparent 90%)",
+                }}
+              />
+              <span
+                aria-hidden
+                className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full"
+                style={{
+                  background: "rgba(255,255,255,0.88)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  boxShadow: "var(--app-shadow-1)",
+                }}
+              >
+                <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} style={{ color: "var(--app-ink)" }} />
+              </span>
+              <span
+                aria-hidden
+                className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em]"
+                style={{
+                  background: "rgba(255,255,255,0.88)",
+                  color: "var(--app-ink)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                }}
+              >
+                <BookOpen className="h-3 w-3" strokeWidth={2.25} />
+                Book
+              </span>
+              <span className="absolute inset-x-0 bottom-0 p-3">
+                <span
+                  className="block font-serif text-[15px] font-semibold leading-tight text-white"
+                  style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
+                >
+                  Color Frederick
+                </span>
+                <span
+                  className="mt-0.5 block text-[10.5px] leading-snug text-white/85"
+                  style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
+                >
+                  The Frederick coloring book · colorfrederick.com
+                </span>
+              </span>
+            </a>
+          </li>
+
+          {/* History — editorial pages. */}
+          <li>
+            <Link
+              href="/history"
+              className="hover-lift flex h-full items-start gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
+              style={{
+                borderColor: "var(--app-border)",
+                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+                style={{
+                  background: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)",
+                  color: "var(--app-brand-2)",
+                }}
+              >
+                <Landmark className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className="block text-[14px] font-semibold leading-tight"
+                  style={{ color: "var(--app-ink)" }}
+                >
+                  History
+                </span>
+                <span
+                  className="mt-0.5 block text-[12px] leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Frederick County, one story at a time
+                </span>
+              </span>
+            </Link>
+          </li>
+
+          {/* Collections — curated editorial lists. */}
+          <li>
+            <Link
+              href="/collections"
+              className="hover-lift flex h-full items-start gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5 transition"
+              style={{
+                borderColor: "var(--app-border)",
+                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+              }}
+            >
+              <span
+                aria-hidden
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+                style={{
+                  background: "color-mix(in srgb, var(--app-accent) 14%, transparent)",
+                  color: "var(--app-accent)",
+                }}
+              >
+                <Sparkles className="h-5 w-5" strokeWidth={2} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span
+                  className="block text-[14px] font-semibold leading-tight"
+                  style={{ color: "var(--app-ink)" }}
+                >
+                  Collections
+                </span>
+                <span
+                  className="mt-0.5 block text-[12px] leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  Editorial lists — date nights, rainy days, kid energy
+                </span>
+              </span>
+            </Link>
+          </li>
+        </ul>
+      </section>
+
+      {/* Trust footer — the data-source commitments. The book +
+          collections lived here in v1; they've moved up into the
+          Companion content section above. */}
       <footer
         className="space-y-3 border-t pt-5 text-[13px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
@@ -153,18 +396,6 @@ export default async function AboutPage() {
           <Link href="/trust" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-cool)" }}>
             How we verify everything we publish →
           </Link>
-        </p>
-        <p>
-          Companion: a photo book of Frederick County from above.{" "}
-          <a
-            href="http://www.miked.store"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold underline-offset-2 hover:underline"
-            style={{ color: "var(--app-brand)" }}
-          >
-            From Above →
-          </a>
         </p>
       </footer>
     </div>
