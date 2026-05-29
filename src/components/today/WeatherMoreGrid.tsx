@@ -97,7 +97,7 @@ export default async function WeatherMoreGrid() {
   const comfort = metar ? dewpointComfort(metar.dewpointF) : null;
 
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="columns-2 gap-2 [&>*]:mb-2">
       {/* ── SUN ───────────────────────────────────────────────────── */}
       {sun && (
         <MoreTile
@@ -335,7 +335,7 @@ function MoreTile({
 }) {
   return (
     <article
-      className="flex min-h-[92px] flex-col rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5"
+      className="flex break-inside-avoid flex-col rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5"
       style={{ borderColor: "var(--app-border)" }}
     >
       <header
