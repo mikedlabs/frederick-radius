@@ -24,6 +24,8 @@ import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
 import { isOpenNow } from "@/lib/hours";
+import Link from "next/link";
+import { formatEventTime, eventDateParts } from "@/lib/format/eventTime";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import {
   minutesToMeters,
@@ -204,11 +206,28 @@ const AMENITY_META: { kind: AmenityKind; label: string; glyph: string }[] = [
   { kind: "playground", label: "Playgrounds", glyph: "\u{1F6DD}" },
 ];
 
+/** Slim upcoming-event shape the reach view filters by location. Kept
+ *  minimal on purpose — the radius surface is deliberately lean, so we
+ *  pass only what a compact "happening within reach" row needs. */
+export type RadiusEventPin = {
+  slug: string;
+  title: string;
+  startsAt: string;
+  venueName: string | null;
+  lng: number;
+  lat: number;
+  category: string;
+};
+
 export default function RadiusBuilder({
   amenities = [],
+  events = [],
   modeToggle,
 }: {
   amenities?: Amenity[];
+  /** Upcoming events with coordinates; filtered to the chosen reach and
+   *  shown as a compact "happening within reach" section. */
+  events?: RadiusEventPin[];
   /** Optional element rendered immediately below the map, right-aligned.
    *  The /map route passes its MapModeToggle (Radius / Browse) here so
    *  the mode switch sits BELOW the map (not floating over it) — which
@@ -472,6 +491,14 @@ export default function RadiusBuilder({
     return () => { cancelled = true; };
   }, [center.lng, center.lat, mode, minutes]);
 
+  // The reachable polygons, derived once from the isochrone and shared
+  // by the place filter AND the events filter so both judge "within
+  // reach" by the exact same boundary. Null until the isochrone loads.
+  const reachPolys = useMemo(
+    () => (isochrone ? collectPolygons(isochrone) : null),
+    [isochrone],
+  );
+
   const inside = useMemo(() => {
     // When the isochrone is loaded, filter by ACTUAL reachability
     // (point-in-polygon). Otherwise fall back to haversine distance
@@ -481,12 +508,11 @@ export default function RadiusBuilder({
       ...p,
       distance_m: haversineMeters({ lng: center.lng, lat: center.lat }, p.geom),
     }));
-    const polys = isochrone ? collectPolygons(isochrone) : null;
-    const filtered = polys && polys.length > 0
-      ? withDistance.filter((p) => pointInAnyPolygon([p.geom.lng, p.geom.lat], polys))
+    const filtered = reachPolys && reachPolys.length > 0
+      ? withDistance.filter((p) => pointInAnyPolygon([p.geom.lng, p.geom.lat], reachPolys))
       : withDistance.filter((p) => (p.distance_m ?? Infinity) <= meters);
     return filtered.sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
-  }, [places, center.lng, center.lat, meters, isochrone]);
+  }, [places, center.lng, center.lat, meters, reachPolys]);
 
   // "Open now" inside the radius — the app's headline pillar, applied
   // to the reach instrument. Counts ONLY places we can confirm are open
@@ -506,6 +532,25 @@ export default function RadiusBuilder({
     () => (openOnly ? inside.filter((p) => isOpenNow(p.open_status)) : inside),
     [inside, openOnly],
   );
+
+  // Events within the same reach, judged by the SAME isochrone/circle as
+  // places so "within reach" means one thing. Soonest-first, because an
+  // event's value is time-sensitive — the next thing matters most.
+  const eventsInReach = useMemo(() => {
+    if (events.length === 0) return [];
+    const withDistance = events.map((e) => ({
+      ...e,
+      distance_m: haversineMeters(
+        { lng: center.lng, lat: center.lat },
+        { lng: e.lng, lat: e.lat },
+      ),
+    }));
+    const within =
+      reachPolys && reachPolys.length > 0
+        ? withDistance.filter((e) => pointInAnyPolygon([e.lng, e.lat], reachPolys))
+        : withDistance.filter((e) => e.distance_m <= meters);
+    return within.sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt));
+  }, [events, center.lng, center.lat, meters, reachPolys]);
 
   // Complete, taxonomy-driven grouping: every shown place lands in
   // exactly one group, ordered by the category tree. Σ group counts ===
@@ -852,6 +897,75 @@ export default function RadiusBuilder({
         amenities={insideAmenities}
         mode={mode}
       />
+
+      {/* Happening within reach — upcoming events whose venue falls
+          inside the SAME reach as the places above. Soonest-first;
+          events are the time-sensitive half of "what's worth your
+          time," so they lead the results next to the best-nearby tiles.
+          The radius instrument used to answer "what PLACES can I reach";
+          this completes it with "what's HAPPENING within reach." */}
+      {eventsInReach.length > 0 && (
+        <section className="space-y-2">
+          <SectionHeading title="Happening within reach" count={eventsInReach.length} />
+          <ul className="space-y-2">
+            {eventsInReach.slice(0, 5).map((e) => {
+              const parts = eventDateParts(e.startsAt);
+              return (
+                <li key={e.slug}>
+                  <Link
+                    href={`/events/${e.slug}`}
+                    className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] px-3 py-2.5 transition active:scale-[0.99]"
+                    style={{ border: "1px solid var(--app-border)" }}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)]"
+                      style={{ background: "var(--app-bg-sunken)" }}
+                      aria-hidden
+                    >
+                      <span
+                        className="text-[10px] font-bold uppercase tracking-wide"
+                        style={{ color: "var(--app-brand)" }}
+                      >
+                        {parts.monthShort}
+                      </span>
+                      <span
+                        className="font-serif text-[15px] font-semibold leading-none"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {parts.day}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="truncate text-[14px] font-semibold leading-tight"
+                        style={{ color: "var(--app-ink)" }}
+                      >
+                        {e.title}
+                      </p>
+                      <p
+                        className="mt-0.5 truncate text-[11.5px]"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {formatEventTime(e.startsAt)}
+                        {e.venueName ? ` · ${e.venueName}` : ""} · {formatDistance(e.distance_m)}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          {eventsInReach.length > 5 && (
+            <Link
+              href="/events"
+              className="inline-flex items-center gap-1 text-[12px] font-semibold"
+              style={{ color: "var(--app-brand)" }}
+            >
+              All {eventsInReach.length} within reach on the events page →
+            </Link>
+          )}
+        </section>
+      )}
 
       {/* Compact control card — center + mode + slider in one tight
           stack so the entire instrument fits under the map in one

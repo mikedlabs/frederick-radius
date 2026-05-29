@@ -8,7 +8,7 @@ import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { getMunicipalBoundaries } from "@/lib/integrations/fcGis";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
-import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent } from "@/lib/loaders/events";
+import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
@@ -165,6 +165,40 @@ function isTimeMode(s: string | undefined): s is TimeMode {
   return s === "now" || s === "tonight" || s === "weekend" || s === "all";
 }
 
+/**
+ * The deduped, sorted upcoming-events set the map shares between its
+ * browse and radius branches: curated seed events unioned with the live
+ * feeds (DFP iCal, Ticketmaster music + sports, Bandsintown), civic
+ * meetings stripped, recurring occurrences collapsed. Every feed fails
+ * soft, and each loader caches via its own revalidate, so the cold-path
+ * cost stays bounded under ISR. One source of truth so the two branches
+ * can never drift on what "upcoming events" means.
+ */
+async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
+  const [liveEventsRaw, tmMusic, tmSports, bitEvents] = await Promise.all([
+    getLiveEvents(60).then((r) => r.events).catch(() => []),
+    fetchTicketmasterMusic().catch(() => []),
+    fetchTicketmasterSports().catch(() => []),
+    fetchBandsintownForArtists([]).catch(() => []),
+  ]);
+  const curatedWeek = allUpcoming(now, 200);
+  const liveCards = dedupeLiveAgainstCurated(
+    collapseRecurringEvents(
+      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
+        .map(liveToCardEvent)
+        .filter((e) => !isCivicEvent(e)),
+    ),
+    curatedWeek,
+  );
+  const bySlug = new Map<string, EventWithMeta>();
+  for (const e of [...curatedWeek, ...liveCards]) {
+    if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
+  }
+  return [...bySlug.values()].sort(
+    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+  );
+}
+
 // Slim places projection used to de-dupe amenities (same shape the
 // /radius route used to derive). Inlined here so the radius branch
 // can compute its amenity set without dragging the full Place loader
@@ -207,6 +241,22 @@ export default async function MapPage({
       allAmenities(),
       CLIENT_PLACES_FOR_DEDUPE,
     );
+    // Upcoming events with coordinates, slimmed to just what the reach
+    // view needs (no SSR bloat). RadiusBuilder filters these to the
+    // chosen reach. Same shared loader as browse, so the event set is
+    // identical across modes; ISR caching bounds the cold-path cost.
+    const radiusEvents = (await loadUpcomingEvents(new Date()))
+      .filter((e) => Number.isFinite(e.geom?.lng) && Number.isFinite(e.geom?.lat))
+      .slice(0, 120)
+      .map((e) => ({
+        slug: e.slug,
+        title: e.title,
+        startsAt: e.starts_at,
+        venueName: e.venue_name ?? null,
+        lng: e.geom.lng,
+        lat: e.geom.lat,
+        category: e.category,
+      }));
     return (
       <div className="relative space-y-3">
         <PageBloom variant="cool" />
@@ -216,6 +266,7 @@ export default async function MapPage({
             expects a UI control to live. */}
         <RadiusBuilder
           amenities={radiusAmenities}
+          events={radiusEvents}
           modeToggle={<MapModeToggle mode="radius" />}
         />
       </div>
@@ -228,6 +279,7 @@ export default async function MapPage({
   // reuse `earlyParams` here instead of awaiting searchParams again.
   const { intent: intentParam, sub: subParam, t: tParam, open: openParam } =
     earlyParams;
+  const now = new Date();
   const [
     incidents,
     fixit,
@@ -235,11 +287,8 @@ export default async function MapPage({
     trailLines,
     transitLines,
     municipalBoundaries,
-    liveEventsRaw,
-    tmMusic,
-    tmSports,
-    bitEvents,
     waterSites,
+    allWeek,
   ] = await Promise.all([
     getChartIncidentsFrederick().catch(() => []),
     getFixItIssues(30).catch(() => []),
@@ -249,19 +298,15 @@ export default async function MapPage({
     // County GIS municipal boundary polygons — quiet always-on map
     // outline. Fail-soft to empty so the county server never blocks.
     getMunicipalBoundaries().catch(() => EMPTY_FC),
-    // Live event feeds — same set /events uses. Pre-fix the map only
-    // pulled `allUpcoming` (curated seed events.ts), so the event
-    // layer showed 2 pins when /events listed dozens. Joining the
-    // live feeds here brings the map to parity. All fail-soft.
-    getLiveEvents(60).then((r) => r.events).catch(() => []),
-    fetchTicketmasterMusic().catch(() => []),
-    fetchTicketmasterSports().catch(() => []),
-    fetchBandsintownForArtists([]).catch(() => []),
     // USGS river gauges — surfaced as a map layer (kind="river_gauge")
     // so the Rivers & creeks dataset isn't trapped on /rivers alone.
     // Gauges report every ~15 min upstream; we cache for 30 min via
     // the loader's revalidate. Light payload — no per-site history.
     getFrederickWaterSites().catch(() => []),
+    // Upcoming events (curated seed + live feeds), deduped + sorted.
+    // Shared with the radius branch via loadUpcomingEvents so the two
+    // can never drift on what "upcoming" means.
+    loadUpcomingEvents(now),
   ]);
   const civic: CivicPin[] = [
     ...incidents
@@ -342,28 +387,9 @@ export default async function MapPage({
 
   // Events as map pins, scoped to the active temporal window. The
   // brief's "what's happening now / tonight / this weekend" filter
-  // lives in the ?t= search param.
-  const now = new Date();
-  // Combine curated seed events with live feeds (DFP iCal, Ticketmaster
-  // music + sports, Bandsintown) — same union /events uses. Dedupe by
-  // slug so a curated entry doesn't double up with a live duplicate;
-  // strip civic-meeting rows the same way /events does.
-  const curatedWeek = allUpcoming(now, 200);
-  const liveCards = dedupeLiveAgainstCurated(
-    collapseRecurringEvents(
-      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
-        .map(liveToCardEvent)
-        .filter((e) => !isCivicEvent(e)),
-    ),
-    curatedWeek,
-  );
-  const eventsBySlug = new Map<string, (typeof curatedWeek)[number]>();
-  for (const e of [...curatedWeek, ...liveCards]) {
-    if (!eventsBySlug.has(e.slug)) eventsBySlug.set(e.slug, e);
-  }
-  const allWeek = [...eventsBySlug.values()].sort(
-    (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-  );
+  // lives in the ?t= search param. `allWeek` (curated + live feeds,
+  // deduped + sorted) comes from loadUpcomingEvents in the Promise.all
+  // above, shared with the radius branch.
   // Pre-compute per-mode counts so the chip strip can show "Tonight · 3"
   // without forcing a click into an empty map.
   const counts: Partial<Record<TimeMode, number>> = {};
