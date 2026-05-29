@@ -80,19 +80,28 @@ export function useInstallPrompt(): {
     writeEngagement(updated);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time read of persisted engagement to derive client-only install eligibility (SSR-unsafe storage)
     setDismissed(wasDismissed());
-    // Brief: first-visit prompt. No engagement gate; show as soon as
-    // it is a fresh, not-installed, not-previously-dismissed client.
-    // (Engagement is still tracked above for analytics, just not gated
-    // on -- the common 2-session best practice is intentionally
-    // overridden per the brief.)
-    setEligible(!isStandalone() && !wasDismissed());
+
+    // Don't slam the prompt on arrival — that's what read as intrusive.
+    // Let the user settle in first: hold it back a few seconds (and a
+    // touch longer on a true first session, when they're still getting
+    // oriented). Still a first-visit prompt, just not the instant the
+    // page paints. Dismiss-forever behavior is unchanged.
+    const baseEligible = !isStandalone() && !wasDismissed();
+    const delayMs = updated.sessions <= 1 ? 18_000 : 8_000;
+    let eligibleTimer: ReturnType<typeof setTimeout> | undefined;
+    if (baseEligible) {
+      eligibleTimer = setTimeout(() => setEligible(true), delayMs);
+    }
 
     const handler = (event: Event) => {
       event.preventDefault();
       setDeferredEvent(event as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => {
+      if (eligibleTimer) clearTimeout(eligibleTimer);
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
   }, []);
 
   const dismiss = () => {
