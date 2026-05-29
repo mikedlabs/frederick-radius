@@ -23,6 +23,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
+import { isOpenNow } from "@/lib/hours";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import {
   minutesToMeters,
@@ -493,12 +494,7 @@ export default function RadiusBuilder({
   // are never counted, so the number never over-asserts. Free to compute
   // — `inside` already carries open_status, no extra data fetch.
   const openNowCount = useMemo(
-    () =>
-      inside.filter(
-        (p) =>
-          p.open_status.state === "open" ||
-          p.open_status.state === "closing-soon",
-      ).length,
+    () => inside.filter((p) => isOpenNow(p.open_status)).length,
     [inside],
   );
 
@@ -507,14 +503,7 @@ export default function RadiusBuilder({
   // Drives the map dots, the grouped list, best-moves, and the counts,
   // so every surface agrees on what's being shown.
   const displayedInside = useMemo(
-    () =>
-      openOnly
-        ? inside.filter(
-            (p) =>
-              p.open_status.state === "open" ||
-              p.open_status.state === "closing-soon",
-          )
-        : inside,
+    () => (openOnly ? inside.filter((p) => isOpenNow(p.open_status)) : inside),
     [inside, openOnly],
   );
 

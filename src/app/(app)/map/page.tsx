@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
+import { isOpenNow } from "@/lib/hours";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
@@ -334,13 +335,9 @@ export default async function MapPage({
   // is computed AFTER intent/sub filtering so it reflects what the
   // user is actually browsing.
   const openNow = openParam === "now";
-  const openNowCount = subFiltered.filter(
-    (p) => p.open_status.state === "open" || p.open_status.state === "closing-soon",
-  ).length;
+  const openNowCount = subFiltered.filter((p) => isOpenNow(p.open_status)).length;
   const places = openNow
-    ? subFiltered.filter(
-        (p) => p.open_status.state === "open" || p.open_status.state === "closing-soon",
-      )
+    ? subFiltered.filter((p) => isOpenNow(p.open_status))
     : subFiltered;
 
   // Events as map pins, scoped to the active temporal window. The

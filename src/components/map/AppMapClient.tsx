@@ -8,6 +8,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
+import { isOpenNow } from "@/lib/hours";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
@@ -285,12 +286,7 @@ function InViewDrawer({
   // counted, so the number never over-asserts. Reads as "at least N
   // confirmed open right now."
   const openCount = useMemo(
-    () =>
-      results.filter(
-        (p) =>
-          p.open_status.state === "open" ||
-          p.open_status.state === "closing-soon",
-      ).length,
+    () => results.filter((p) => isOpenNow(p.open_status)).length,
     [results],
   );
 

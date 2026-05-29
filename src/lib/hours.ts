@@ -35,6 +35,18 @@ export type OpenStatus =
   | { state: "unverified" }
   | { state: "unknown" };
 
+/**
+ * "Open right now" — the shared predicate behind every open-now count
+ * and filter (the map readout, the radius instrument, the browse filter).
+ * Centralized so the definition can never drift between surfaces: only
+ * verified-open states count. "unverified" and "unknown" never do, so a
+ * count built on this is always "at least N confirmed open" and never
+ * over-asserts.
+ */
+export function isOpenNow(status: OpenStatus): boolean {
+  return status.state === "open" || status.state === "closing-soon";
+}
+
 export function getOpenStatus(
   hours: Hours | undefined,
   options: { verified?: boolean } = {},

@@ -1,6 +1,6 @@
 import { PLACES } from "@/data/places";
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
-import { getOpenStatus } from "@/lib/hours";
+import { getOpenStatus, isOpenNow } from "@/lib/hours";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
@@ -68,7 +68,7 @@ function openNowCount(now: Date): number {
     if (p.source !== "seed" && p.source !== "manual") continue;
     if (!p.hours) continue;
     const status = getOpenStatus(p.hours, { verified: true }, now);
-    if (status?.state === "open" || status?.state === "closing-soon") n++;
+    if (isOpenNow(status)) n++;
   }
   return n;
 }

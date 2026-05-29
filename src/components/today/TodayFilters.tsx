@@ -6,6 +6,7 @@ import { Shuffle } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import FilterChip from "@/components/ui/FilterChip";
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { isOpenNow } from "@/lib/hours";
 
 type Vibe = "all" | "date-night" | "kids-6-12" | "rainy-day" | "outdoor-seating" | "live-music" | "dog-friendly";
 type TimeFilter = "now" | "next-hour" | "tonight" | "open-late";
@@ -39,7 +40,7 @@ export default function TodayFilters({ candidates }: { candidates: PlaceCardData
     }
 
     if (time === "now" || time === "next-hour") {
-      pool = pool.filter((p) => p.open_status.state === "open" || p.open_status.state === "closing-soon");
+      pool = pool.filter((p) => isOpenNow(p.open_status));
       if (time === "next-hour") {
         pool = pool.filter((p) => p.open_status.state === "open");
       }
