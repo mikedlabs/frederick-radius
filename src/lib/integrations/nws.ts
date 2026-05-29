@@ -102,15 +102,20 @@ export async function getNwsForecast(point: LngLat): Promise<NwsForecast | null>
   };
 }
 
-export function iconForShortForecast(s: string): "Sun" | "CloudSun" | "Cloud" | "CloudRain" | "CloudSnow" | "Wind" | "CloudFog" | "CloudLightning" {
+export function iconForShortForecast(
+  s: string,
+  isDaytime = true,
+): "Sun" | "Moon" | "CloudSun" | "CloudMoon" | "Cloud" | "CloudRain" | "CloudSnow" | "Wind" | "CloudFog" | "CloudLightning" {
   const t = s.toLowerCase();
   if (t.includes("thunder") || t.includes("storm")) return "CloudLightning";
   if (t.includes("snow") || t.includes("flurr") || t.includes("ice") || t.includes("sleet")) return "CloudSnow";
   if (t.includes("rain") || t.includes("shower") || t.includes("drizzle")) return "CloudRain";
   if (t.includes("fog") || t.includes("haze") || t.includes("smoke")) return "CloudFog";
   if (t.includes("wind")) return "Wind";
-  if (t.includes("clear") || t.includes("sunny")) return "Sun";
-  if (t.includes("partly")) return "CloudSun";
+  // Clear / partly are the only conditions that read differently by day
+  // vs night — a clear night should show the moon, not a rotating sun.
+  if (t.includes("clear") || t.includes("sunny")) return isDaytime ? "Sun" : "Moon";
+  if (t.includes("partly")) return isDaytime ? "CloudSun" : "CloudMoon";
   if (t.includes("cloud") || t.includes("overcast")) return "Cloud";
-  return "CloudSun";
+  return isDaytime ? "CloudSun" : "CloudMoon";
 }

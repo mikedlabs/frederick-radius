@@ -2,6 +2,7 @@ import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { nextWeatherChange } from "@/lib/weather-verdict";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
+import { currentSkyTone } from "./SkyHero";
 
 /**
  * WeatherHero — the weather slug at the top of /now.
@@ -69,7 +70,11 @@ export default async function WeatherHero() {
     ? nextWeatherChange({ hourly: forecast.hourly, now: new Date() })
     : null;
 
-  const curVariant: SkyVariant = iconForShortForecast(cur.shortForecast);
+  // Day/night from the same hour-based signal that tints the SkyHero,
+  // so the glyph and the sky agree — a clear night shows the moon, not
+  // a rotating sun.
+  const isDay = currentSkyTone() !== "dark";
+  const curVariant: SkyVariant = iconForShortForecast(cur.shortForecast, isDay);
 
   // Sentence-case the NWS shortForecast. Raw NWS sends Title Case
   // ("Chance Showers And Thunderstorms") which reads like XML output.
