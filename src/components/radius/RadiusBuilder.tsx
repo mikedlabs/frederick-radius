@@ -483,6 +483,21 @@ export default function RadiusBuilder({
     return filtered.sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
   }, [places, center.lng, center.lat, meters, isochrone]);
 
+  // "Open now" inside the radius — the app's headline pillar, applied
+  // to the reach instrument. Counts ONLY places we can confirm are open
+  // (verified hours → "open" or "closing-soon"); "unverified"/"unknown"
+  // are never counted, so the number never over-asserts. Free to compute
+  // — `inside` already carries open_status, no extra data fetch.
+  const openNowCount = useMemo(
+    () =>
+      inside.filter(
+        (p) =>
+          p.open_status.state === "open" ||
+          p.open_status.state === "closing-soon",
+      ).length,
+    [inside],
+  );
+
   // Complete, taxonomy-driven grouping: every in-radius place lands in
   // exactly one group, ordered by the category tree. Σ group counts ===
   // inside.length (the completeness invariant).
@@ -770,6 +785,22 @@ export default function RadiusBuilder({
                 {`${inside.length === 1 ? "place" : "places"} in radius`}
               </span>
             </span>
+            {/* "Open now" — the headline pillar, glanceable on the map.
+                Only renders when at least one place is confirmed open, so
+                a quiet hour never shows a misleading "0 open". Positive
+                tint reads as "you can go right now". */}
+            {openNowCount > 0 && (
+              <>
+                <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
+                <span
+                  className="inline-flex items-center gap-1 font-semibold tabular-nums"
+                  style={{ color: "var(--app-positive)" }}
+                >
+                  <span className="font-serif text-[15px]">{openNowCount}</span>
+                  <span className="text-[10px] uppercase tracking-[0.08em]">open now</span>
+                </span>
+              </>
+            )}
             {/* "farthest: Hill House Bed and Breakfast" was here.
                 Removed pre-launch (review §12): the user needs the
                 best nearby thing at the top of /radius, not the
@@ -997,7 +1028,7 @@ export default function RadiusBuilder({
                     creates multiple text nodes that screen readers
                     and text extractors concatenate with whitespace,
                     rendering "488 place s · 11 categor ies." */}
-                {`${inside.length.toLocaleString()} ${inside.length === 1 ? "place" : "places"} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
+                {`${inside.length.toLocaleString()} ${inside.length === 1 ? "place" : "places"}${openNowCount > 0 ? ` · ${openNowCount} open now` : ""} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
               </p>
             </div>
             <button
