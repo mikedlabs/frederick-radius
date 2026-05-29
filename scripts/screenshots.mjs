@@ -25,6 +25,14 @@ const run = async () => {
   await mkdir(OUT, { recursive: true });
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices["iPhone 13"] });
+  // Dismiss the first-visit beta intro so captures show the real
+  // layouts, not the welcome overlay.
+  await ctx.addInitScript(() => {
+    try { localStorage.setItem("fr:beta-intro-dismissed:v8", "true"); } catch {}
+  });
+  await ctx.addCookies([
+    { name: "fr:beta-intro-dismissed:v8", value: "true", url: BASE },
+  ]);
   const page = await ctx.newPage();
   for (const r of ROUTES) {
     try {

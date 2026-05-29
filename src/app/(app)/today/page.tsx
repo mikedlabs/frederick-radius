@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
-import WeatherHero from "@/components/today/WeatherHero";
+import TodayCard from "@/components/today/TodayCard";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
-import BriefingLine from "@/components/today/BriefingLine";
 import LocalNewsRail from "@/components/today/LocalNewsRail";
 import NowDayStrip from "@/components/today/NowDayStrip";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
@@ -295,7 +294,6 @@ export default async function HomePage({
             instead of a stack of weather modules. */}
         <div className="space-y-2">
           <DateLine />
-          <BriefingLine />
         </div>
       </div>
 
@@ -357,10 +355,24 @@ export default async function HomePage({
           card floats, week + hourly + more peeks from underneath. */}
       <div className="relative">
         <SkyHero className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
+          {/* TodayCard — the daily hook (P1): greeting + weather mood +
+              now/high/sunset + tonight's event + two situational CTAs.
+              Folds in the old BriefingLine's job and the compact weather
+              readout into one editorial "why this exists" moment. */}
           <Suspense
-            fallback={<Skeleton.Block height={40} round="var(--app-radius-sm)" />}
+            fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}
           >
-            <WeatherHero compact />
+            <TodayCard
+              tonightEvent={
+                featuredEvent
+                  ? {
+                      slug: featuredEvent.slug,
+                      title: featuredEvent.title,
+                      venue_name: featuredEvent.venue_name ?? null,
+                    }
+                  : null
+              }
+            />
           </Suspense>
           {/* AlmanacFooter moved INSIDE the SkyHero gradient as a
               quiet footer line under the weather hero. Used to live
