@@ -35,6 +35,7 @@ export default function DeferUntilVisible({
     const el = ref.current;
     if (!el) return;
     if (typeof IntersectionObserver === "undefined") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- fail open: with no IntersectionObserver (old browser / jsdom) show the real content immediately rather than leave it hidden behind the placeholder forever
       setVisible(true);
       return;
     }
