@@ -27,15 +27,15 @@ export default async function WorthALook() {
   if (picks.length === 0) return null;
 
   return (
-    // Collapsed by default — the discovery rail is a "browse when
-    // curious" surface, not part of the daily-decision spine, so it
-    // stays a tidy summary row ("Worth a look today · 6 picks") until
-    // tapped. Keeps the first screen dense.
+    // Open by default — the daily photo picks are a draw worth showing;
+    // the collapse control stays so a reader can tuck it away, but it
+    // greets visitors expanded.
     <CollapsibleSection
       title="Worth a look today"
       count={picks.length}
       countLabel="picks"
       storageKey="fr:worth-a-look-open:v1"
+      defaultOpen
     >
       {/* Horizontal scroll rail. -mx-4 + px-4 lets the first/last
           tiles edge-fade off the screen. Snap-stop on each tile so

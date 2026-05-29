@@ -66,7 +66,7 @@ export default function MoodTiles() {
         {MOODS.map((m) => {
           const Icon = m.icon;
           const tileClass =
-            "tactile-interactive relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] border p-1.5 text-center transition active:scale-[0.96]";
+            "tactile-interactive relative flex h-[66px] w-full flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-md)] border p-1.5 text-center transition active:scale-[0.96]";
           const tileStyle = {
             borderColor: "var(--app-border)",
             background: "var(--app-bg-elevated)",
@@ -102,7 +102,7 @@ export default function MoodTiles() {
                 {/* Oversized accent glyph watermark bleeding off the corner. */}
                 <Icon
                   aria-hidden
-                  className="pointer-events-none absolute -bottom-3 -right-2 h-14 w-14"
+                  className="pointer-events-none absolute -bottom-2 -right-1 h-9 w-9"
                   strokeWidth={1.25}
                   style={{ color: m.color, opacity: 0.1 }}
                 />
@@ -110,13 +110,13 @@ export default function MoodTiles() {
                 {/* Accent glyph chip. */}
                 <span
                   aria-hidden
-                  className="relative grid h-8 w-8 place-items-center rounded-full"
+                  className="relative grid h-6 w-6 place-items-center rounded-full"
                   style={{
                     background: `color-mix(in srgb, ${m.color} 15%, transparent)`,
                     color: m.color,
                   }}
                 >
-                  <Icon className="h-[16px] w-[16px]" strokeWidth={2.25} />
+                  <Icon className="h-[14px] w-[14px]" strokeWidth={2.25} />
                 </span>
 
                 <span

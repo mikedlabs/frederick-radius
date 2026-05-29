@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import WeatherHero from "@/components/today/WeatherHero";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
@@ -257,6 +258,22 @@ export default async function HomePage({
   const upcomingRest = heroInSlice
     ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
     : sliceItems;
+
+  // When the active slice is empty, nudge to a DIFFERENT slice that
+  // actually has events — never back to the same (empty) one, which is
+  // what the old hardcoded "see the weekend" link did when Weekend
+  // itself was empty. Falls back to the full /events page if nothing is
+  // on the calendar in any near-term slice.
+  const SLICE_LABEL: Record<TodayTimeMode, string> = {
+    now: "happening now",
+    tonight: "tonight",
+    tomorrow: "tomorrow",
+    weekend: "this weekend",
+  };
+  const fallbackSlice = (["now", "tonight", "tomorrow", "weekend"] as const).find(
+    (m) => m !== mode && (counts[m] ?? 0) > 0,
+  );
+
   return (
     <div className="relative">
       <PageBloom />
@@ -520,9 +537,15 @@ export default async function HomePage({
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
-            <a href="/today?t=weekend" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
-              See the weekend
-            </a>
+            {fallbackSlice ? (
+              <Link href={`/today?t=${fallbackSlice}`} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                See what&rsquo;s {SLICE_LABEL[fallbackSlice]}
+              </Link>
+            ) : (
+              <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                Browse all events
+              </Link>
+            )}
             .
           </p>
         )}
