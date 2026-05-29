@@ -94,7 +94,7 @@ export default function MapTimeChips({
             tone="ink"
             size="sm"
             bare
-            icon={Icon}
+            icon={<Icon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
             href={hrefFor(key)}
             active={key === active}
             count={counts?.[key]}

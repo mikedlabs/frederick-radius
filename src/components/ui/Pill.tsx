@@ -1,7 +1,7 @@
 "use client";
 
 import Link, { useLinkStatus } from "next/link";
-import { Loader2, type LucideIcon } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { haptic } from "@/lib/haptics";
 
@@ -47,7 +47,12 @@ type PillProps = {
   children: ReactNode;
   active?: boolean;
   tone?: Tone;
-  icon?: LucideIcon;
+  /** A PRE-RENDERED icon element, e.g. `icon={<Zap className="h-3.5 w-3.5" />}`.
+   *  It's a ReactNode (not a component function) on purpose: Pill is a
+   *  client component, and a server-component caller (TimeToggle,
+   *  MapTimeChips) cannot pass a function across the RSC boundary —
+   *  but it CAN pass an already-rendered element. */
+  icon?: ReactNode;
   /** Trailing count badge (tabular, tone-aware). */
   count?: number;
   size?: "sm" | "md";
@@ -83,14 +88,14 @@ function CountBadge({ count, active, tone }: { count: number; active: boolean; t
 /** Shared inner content. `spinner` swaps the leading icon for a
  *  loading glyph (link path only — see LinkBody). */
 function Body({
-  Icon,
+  icon,
   children,
   count,
   active,
   tone,
   spinner = false,
 }: {
-  Icon?: LucideIcon;
+  icon?: ReactNode;
   children: ReactNode;
   count?: number;
   active: boolean;
@@ -102,7 +107,7 @@ function Body({
       {spinner ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.25} aria-hidden />
       ) : (
-        Icon && <Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+        icon
       )}
       {children}
       {typeof count === "number" && count > 0 && (
@@ -115,7 +120,7 @@ function Body({
 /** Link-only body: reads useLinkStatus() (valid only inside a <Link>)
  *  so the pill shows a spinner the instant its navigation starts. */
 function LinkBody(props: {
-  Icon?: LucideIcon;
+  icon?: ReactNode;
   children: ReactNode;
   count?: number;
   active: boolean;
@@ -129,7 +134,7 @@ export default function Pill({
   children,
   active = false,
   tone = "brand",
-  icon: Icon,
+  icon,
   count,
   size = "md",
   bare = false,
@@ -170,7 +175,7 @@ export default function Pill({
         aria-label={rest["aria-label"]}
         title={rest.title}
       >
-        <LinkBody Icon={Icon} count={count} active={active} tone={tone}>
+        <LinkBody icon={icon} count={count} active={active} tone={tone}>
           {children}
         </LinkBody>
       </Link>
@@ -190,7 +195,7 @@ export default function Pill({
       aria-label={rest["aria-label"]}
       title={rest.title}
     >
-      <Body Icon={Icon} count={count} active={active} tone={tone}>
+      <Body icon={icon} count={count} active={active} tone={tone}>
         {children}
       </Body>
     </button>
