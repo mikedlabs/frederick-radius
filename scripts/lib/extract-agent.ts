@@ -21,26 +21,58 @@ const API_KEY = process.env.ANTHROPIC_API_KEY;
 const DEFAULT_MODEL = process.env.EXTRACT_MODEL || "claude-haiku-4-5-20251001";
 const UA = "FrederickRadius/1.0 (+civic data ingest)";
 
-/** Fetch a public page and reduce it to model-friendly text. */
-export async function fetchPageText(url: string, maxChars = 18_000): Promise<string | null> {
+function htmlToText(html: string, maxChars: number): string {
+  return html
+    .replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxChars);
+}
+
+/**
+ * Fetch a public page and reduce it to model-friendly text.
+ *
+ * Real-world reality (learned by testing actual venue sites): many
+ * calendars are JS-rendered (events aren't in the static HTML) or the
+ * server 403s a bare fetch. Pass `render: true` to load the page in a
+ * real headless browser (Playwright, already a project dep) so those
+ * sources work too. Plain fetch is the fast default for static pages.
+ */
+export async function fetchPageText(
+  url: string,
+  opts: { render?: boolean; maxChars?: number } = {},
+): Promise<string | null> {
+  const maxChars = opts.maxChars ?? 18_000;
+
+  if (opts.render) {
+    try {
+      const { chromium } = await import("@playwright/test");
+      const browser = await chromium.launch();
+      const page = await browser.newPage({ userAgent: UA });
+      await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+      await page.waitForTimeout(1200); // let late calendar widgets settle
+      const text = (await page.innerText("body")).replace(/\s+/g, " ").trim().slice(0, maxChars);
+      await browser.close();
+      return text || null;
+    } catch (err) {
+      console.log(`  ✗ ${url} (render) → ${(err as Error).message}`);
+      return null;
+    }
+  }
+
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 20_000);
     const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
     clearTimeout(timer);
     if (!r.ok) {
-      console.log(`  ✗ ${url} → HTTP ${r.status}`);
+      console.log(`  ✗ ${url} → HTTP ${r.status}${r.status === 403 ? " (try render:true)" : ""}`);
       return null;
     }
-    const html = await r.text();
-    const text = html
-      .replace(/<(script|style|noscript)[^>]*>[\s\S]*?<\/\1>/gi, " ")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/\s+/g, " ")
-      .trim();
-    return text.slice(0, maxChars);
+    return htmlToText(await r.text(), maxChars);
   } catch (err) {
     console.log(`  ✗ ${url} → ${(err as Error).message}`);
     return null;

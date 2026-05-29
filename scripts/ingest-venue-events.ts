@@ -23,7 +23,7 @@ import { fetchPageText, extractJson, nowISO } from "./lib/extract-agent";
 const OUT = resolve("src/data/venue-events.json");
 const CONFIG = resolve("config/venue-sources.json");
 
-type VenueSource = { slug: string; name: string; category?: string; urls: string[] };
+type VenueSource = { slug: string; name: string; category?: string; urls: string[]; render?: boolean };
 type RawEvent = {
   title?: string;
   starts_at?: string; // ISO or plain date/time as published
@@ -63,7 +63,7 @@ async function main() {
     }
     console.log(`• ${venue.name}: ${venue.urls.length} url(s)`);
     for (const url of venue.urls) {
-      const text = await fetchPageText(url);
+      const text = await fetchPageText(url, { render: venue.render });
       if (!text) continue;
       const events = await extractJson<RawEvent[]>(
         `Venue: ${venue.name} (Frederick County, MD).\n${SHAPE}`,
