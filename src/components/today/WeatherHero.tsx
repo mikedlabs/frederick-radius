@@ -39,7 +39,14 @@ import { currentSkyTone } from "./SkyHero";
  *     surfaced as a small subtitle. This is real operational info
  *     AdaptiveGreeting doesn't give.
  */
-export default async function WeatherHero() {
+export default async function WeatherHero({
+  /** Compact one-line summary (glyph · temp · condition · H/L) for the
+   *  consolidated weather module — reclaims the vertical space the big
+   *  hero ate. The full hourly/7-day/details live in dropdowns below. */
+  compact = false,
+}: {
+  compact?: boolean;
+} = {}) {
   const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const cur = forecast?.hourly?.[0] ?? null;
 
@@ -98,6 +105,45 @@ export default async function WeatherHero() {
         minute: "2-digit",
       }).format(asOf)
     : null;
+
+  // Compact one-line summary — the default on /today's consolidated
+  // weather module. Glyph · big-but-small temp · condition · H/L on a
+  // single row, with the schedule cue ("Rain at 5 PM") as a quiet tail.
+  // Everything deeper (hourly, 7-day, details) lives in the dropdowns
+  // beneath it, so the always-visible weather is one tight line.
+  if (compact) {
+    return (
+      <section
+        className="flex items-center gap-3"
+        aria-label={`Current weather in Frederick, Maryland: ${cur.temperature}°F, ${condition}`}
+        style={{ color: "currentColor" }}
+      >
+        <AnimatedSkyGlyph variant={curVariant} size={34} />
+        <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <span className="font-serif text-[30px] font-light leading-none tabular-nums tracking-tight">
+            {cur.temperature}&deg;
+          </span>
+          <span className="text-[13.5px] font-medium leading-tight">
+            {condition}
+          </span>
+          {(high !== undefined || low !== undefined) && (
+            <span className="text-[12px] font-semibold tabular-nums leading-tight opacity-70">
+              {high !== undefined && <>H&thinsp;{high}&deg;</>}
+              {high !== undefined && low !== undefined && (
+                <span className="mx-1 opacity-60">·</span>
+              )}
+              {low !== undefined && <>L&thinsp;{low}&deg;</>}
+            </span>
+          )}
+          {nextChange && (
+            <span className="basis-full text-[11.5px] leading-tight opacity-75">
+              {nextChange}
+            </span>
+          )}
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

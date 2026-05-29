@@ -341,9 +341,9 @@ export default async function HomePage({
       <div className="relative">
         <SkyHero className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
           <Suspense
-            fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
+            fallback={<Skeleton.Block height={40} round="var(--app-radius-sm)" />}
           >
-            <WeatherHero />
+            <WeatherHero compact />
           </Suspense>
           {/* AlmanacFooter moved INSIDE the SkyHero gradient as a
               quiet footer line under the weather hero. Used to live
