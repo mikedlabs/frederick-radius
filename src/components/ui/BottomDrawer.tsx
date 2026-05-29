@@ -38,6 +38,10 @@ export type BottomDrawerProps = {
   open?: boolean;
   /** Open-state callback for controlled mode. */
   onOpenChange?: (open: boolean) => void;
+  /** Hide the visible title/subtitle header (kept for screen readers)
+   *  so content can render flush under the drag handle — e.g. a
+   *  full-bleed photo cover. Default false. */
+  bareHeader?: boolean;
 };
 
 export default function BottomDrawer({
@@ -47,6 +51,7 @@ export default function BottomDrawer({
   subtitle,
   open,
   onOpenChange,
+  bareHeader = false,
 }: BottomDrawerProps) {
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
@@ -72,25 +77,36 @@ export default function BottomDrawer({
             className="mx-auto mt-2 h-1 w-10 rounded-full"
             style={{ background: "var(--app-border)" }}
           />
-          <div
-            className="border-b px-4 pb-3 pt-2"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <Drawer.Title
-              className="font-serif text-[18px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
+          {bareHeader ? (
+            // Header kept for screen readers only — the content provides
+            // its own visual header (e.g. a photo cover).
+            <>
+              <Drawer.Title className="sr-only">{title}</Drawer.Title>
+              {subtitle ? (
+                <Drawer.Description className="sr-only">{subtitle}</Drawer.Description>
+              ) : null}
+            </>
+          ) : (
+            <div
+              className="border-b px-4 pb-3 pt-2"
+              style={{ borderColor: "var(--app-border)" }}
             >
-              {title}
-            </Drawer.Title>
-            {subtitle ? (
-              <Drawer.Description
-                className="mt-0.5 text-[12px]"
-                style={{ color: "var(--app-ink-3)" }}
+              <Drawer.Title
+                className="font-serif text-[18px] font-semibold tracking-tight"
+                style={{ color: "var(--app-ink)" }}
               >
-                {subtitle}
-              </Drawer.Description>
-            ) : null}
-          </div>
+                {title}
+              </Drawer.Title>
+              {subtitle ? (
+                <Drawer.Description
+                  className="mt-0.5 text-[12px]"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {subtitle}
+                </Drawer.Description>
+              ) : null}
+            </div>
+          )}
           {/* Scrollable body. Vaul's drag physics work with content
               that's scrollable below the handle row. */}
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(env(safe-area-inset-bottom,0px)+24px,24px)]">
