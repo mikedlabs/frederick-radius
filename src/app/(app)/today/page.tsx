@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
-import TodayActions from "@/components/today/TodayActions";
+import TodayMoves from "@/components/today/TodayMoves";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import LocalNewsRail from "@/components/today/LocalNewsRail";
@@ -376,10 +376,25 @@ export default async function HomePage({
           </Suspense>
         </SkyHero>
 
-        {/* Situational next-steps live on PAPER just below the sky hook,
-            not floating on the gradient (where buttons read as misplaced). */}
+        {/* Command center — the confident "what's the move?" answer lives
+            on PAPER just below the sky hook: one weather-aware primary
+            move + Tonight + Near you. Leads the page so the weather panel
+            and the rest read as supporting detail, not the headline. */}
         <div className="mt-3">
-          <TodayActions />
+          <Suspense fallback={<Skeleton.Block height={170} round="var(--app-radius-lg)" />}>
+            <TodayMoves
+              tonightCount={counts.tonight ?? 0}
+              tonightEvent={
+                featuredEvent
+                  ? {
+                      slug: featuredEvent.slug,
+                      title: featuredEvent.title,
+                      venue_name: featuredEvent.venue_name ?? null,
+                    }
+                  : null
+              }
+            />
+          </Suspense>
         </div>
 
         {(() => {
