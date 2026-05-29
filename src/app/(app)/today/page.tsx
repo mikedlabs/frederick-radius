@@ -452,7 +452,8 @@ export default async function HomePage({
        * after the weather block.
        */}
 
-      {/* MoodTiles — what do you need right now, with sub-tile expand. */}
+      {/* MoodTiles — what do you need right now; each tile opens the
+          browse map filtered to that category, closest-first. */}
       <MoodTiles />
 
       {/* PartnerAppsRow — ParkMobile + OpenTable. */}

@@ -489,6 +489,12 @@ export default async function MapPage({
           municipalBoundaries={municipalBoundaries}
           events={events}
           fullBleed
+          // Arriving via a category tile (?intent=…): center on the
+          // user's known location, measure/sort the list from there,
+          // and open the results drawer so the filtered list is the
+          // first thing they see.
+          autoOpenList={Boolean(intent)}
+          recenterToKnownLocation={Boolean(intent)}
         />
       </div>
       {/* Mode toggle BELOW the map in its own right-aligned strip,

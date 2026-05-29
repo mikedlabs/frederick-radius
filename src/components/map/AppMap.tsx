@@ -32,6 +32,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
 import { FREDERICK_CENTER, haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
+import { readCachedPosition } from "@/hooks/useGeolocation";
 // THE one duplicate rule (pure, no data imports — bundle-safe). The
 // map's curated-vs-OSM de-dupe now uses the exact same contract as
 // the canonical loader, so "the same thing twice" is closed by one
@@ -137,6 +138,11 @@ type Props = {
    *  Apple Maps (they don't have local event ↔ venue joins). Already
    *  geo-deduped and scoped to "happening soon" server-side. */
   events?: EventPin[];
+  /** Open centered on the user's last-known location when a fresh
+   *  cached fix exists (no prompt) — set when arriving via a category
+   *  so the map and its list read "from where you're standing." Falls
+   *  back to `initialCenter` when there's no cached fix. */
+  recenterToKnownLocation?: boolean;
 };
 
 export default function AppMap({
@@ -146,6 +152,7 @@ export default function AppMap({
   fullBleed = false,
   initialCenter = FREDERICK,
   initialZoom = 14,
+  recenterToKnownLocation = false,
   onPlacesInView,
   focus,
   civic = [],
@@ -157,6 +164,20 @@ export default function AppMap({
   events = [],
 }: Props) {
   const mapRef = useRef<MapRef>(null);
+  // Effective camera home: when we arrived via a category and already
+  // hold the user's cached fix, open on them so the map (and its
+  // closest-first list) reads "from where you're standing." Read once
+  // at mount — never prompts; falls back to the city center. We seed
+  // initialViewState directly rather than flyTo so there's no jarring
+  // glide from Downtown to the user on load.
+  const effectiveCenter = useMemo<[number, number]>(() => {
+    if (recenterToKnownLocation) {
+      const cached = readCachedPosition();
+      if (cached) return [cached.lng, cached.lat];
+    }
+    return initialCenter;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot read of the cached fix at mount
+  }, []);
   const { openSheet } = usePlaceSheet();
   // Mode-driven layer defaults. The map mounts client-side via
   // dynamic({ ssr:false }), so the initial mode read here is the
@@ -992,8 +1013,8 @@ export default function AppMap({
           ref={mapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={{
-            longitude: initialCenter[0],
-            latitude: initialCenter[1],
+            longitude: effectiveCenter[0],
+            latitude: effectiveCenter[1],
             zoom: initialZoom,
           }}
           mapStyle={STYLE_URL}

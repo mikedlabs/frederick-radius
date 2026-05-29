@@ -9,6 +9,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
+import { readCachedPosition } from "@/hooks/useGeolocation";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
@@ -70,6 +71,8 @@ export default function AppMapClient({
   municipalBoundaries = EMPTY_FC,
   events = [],
   fullBleed = false,
+  autoOpenList = false,
+  recenterToKnownLocation = false,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
    *  (decoratePlace)). The client must NOT re-import the loader: it
@@ -96,9 +99,31 @@ export default function AppMapClient({
    *  "In view" list below. The map IS the page. The synced list lives
    *  in a slide-up sheet inside the map area instead. */
   fullBleed?: boolean;
+  /** Open the results drawer to its half snap on mount instead of the
+   *  default peek — set when arriving via a category so the filtered
+   *  list is the first thing the user sees. */
+  autoOpenList?: boolean;
+  /** Center the camera (and measure list distances) from the user's
+   *  last-known location when we already have a cached fix — so the
+   *  list reads closest-first "from where you're standing." Never
+   *  prompts; falls back to the city center. */
+  recenterToKnownLocation?: boolean;
 }) {
   const [inView, setInView] = useState<string[]>([]);
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
+
+  // The point we measure "how far" from. When we arrived via a category
+  // and already have the user's consent-cached fix, sort/label distances
+  // from where they're standing; otherwise fall back to the city center
+  // (the map's default camera home). Read once on mount — no prompt.
+  const origin = useMemo(() => {
+    if (recenterToKnownLocation) {
+      const cached = readCachedPosition();
+      if (cached) return cached;
+    }
+    return FREDERICK_CENTER;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot read of the cached fix at mount
+  }, []);
 
   const bySlug = useMemo(() => {
     const m = new Map<string, PlaceCardData>();
@@ -107,14 +132,15 @@ export default function AppMapClient({
   }, [places]);
 
   // Already decorated server-side; only attach the viewport-relative
-  // distance here (pure, no loader/JSON in the client bundle).
+  // distance here (pure, no loader/JSON in the client bundle). Measured
+  // from `origin` so the card distances match the list's sort home.
   const results = useMemo(
     () =>
       inView
         .map((slug) => bySlug.get(slug))
         .filter((p): p is PlaceCardData => Boolean(p))
-        .map((p) => ({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) })),
-    [inView, bySlug]
+        .map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })),
+    [inView, bySlug, origin]
   );
 
   // Full-bleed: the map fills the parent, the "In view" list lives
@@ -135,10 +161,12 @@ export default function AppMapClient({
           municipalBoundaries={municipalBoundaries}
           events={events}
           fullBleed
+          recenterToKnownLocation={recenterToKnownLocation}
         />
         <InViewDrawer
           results={results}
           events={events}
+          initialSnap={autoOpenList ? "half" : "peek"}
           onPick={(slug) =>
             setFocus((f) => ({ slug, n: (f?.n ?? 0) + 1 }))
           }
@@ -237,15 +265,19 @@ export function eventsNearVisiblePlaces(
 function InViewDrawer({
   results,
   events = [],
+  initialSnap = "peek",
   onPick,
 }: {
   results: PlaceCardData[];
   /** Map's event pins. The drawer filters them down to events near
    *  the visible places via eventsNearVisiblePlaces above. */
   events?: EventPin[];
+  /** Snap state on mount — "half" when arriving via a category so the
+   *  filtered list is visible immediately; "peek" otherwise. */
+  initialSnap?: "peek" | "half" | "full";
   onPick: (slug: string) => void;
 }) {
-  const [snap, setSnap] = useState<"peek" | "half" | "full">("peek");
+  const [snap, setSnap] = useState<"peek" | "half" | "full">(initialSnap);
   const heights: Record<typeof snap, string> = {
     peek: "100px",
     half: "55%",
