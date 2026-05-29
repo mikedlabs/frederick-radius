@@ -3,6 +3,14 @@
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { Download, X, Share, Plus } from "lucide-react";
 
+/**
+ * InstallPrompt — the "add to home screen" nudge.
+ *
+ * Redesigned to feel inviting, not intrusive: a slim brand-gradient
+ * glass card that slides in gently (pop-in), with a generous, obvious
+ * dismiss so it never feels like a trap. The useInstallPrompt hook
+ * gates WHEN it appears; this is purely how it looks when it does.
+ */
 export default function InstallPrompt() {
   const { show, ios, promptInstall, dismiss } = useInstallPrompt();
   if (!show) return null;
@@ -11,57 +19,77 @@ export default function InstallPrompt() {
     <div
       role="dialog"
       aria-labelledby="install-title"
-      className="fixed inset-x-3 bottom-20 z-40 mx-auto max-w-md rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-3)]"
-      style={{ borderColor: "var(--app-border)" }}
+      className="pop-in fixed inset-x-3 bottom-20 z-40 mx-auto max-w-sm overflow-hidden rounded-[var(--app-radius-xl)] border backdrop-blur-md"
+      style={{
+        borderColor: "var(--app-border)",
+        // Soft brand wash fading to elevated paper — warm and on-brand
+        // rather than a stark white takeover.
+        background:
+          "linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 60%)",
+        boxShadow: "var(--app-elev-3), var(--app-hi)",
+      }}
     >
       <button
         type="button"
         onClick={dismiss}
         aria-label="Dismiss"
-        className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full"
+        className="tactile-interactive absolute right-1.5 top-1.5 grid h-9 w-9 place-items-center rounded-full transition active:scale-[0.9]"
         style={{ color: "var(--app-ink-3)" }}
       >
-        <X className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+        <X className="h-4 w-4" strokeWidth={2} aria-hidden />
       </button>
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 p-3.5 pr-10">
         <div
           aria-hidden
           className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
-          style={{ background: "var(--app-brand)" }}
+          style={{
+            background: "linear-gradient(140deg, var(--app-brand) 0%, var(--app-brand-2) 100%)",
+            boxShadow: "var(--app-shadow-1), inset 0 1px 0 rgba(255,255,255,0.25)",
+          }}
         >
           <Download className="h-5 w-5 text-white" strokeWidth={2} />
         </div>
         <div className="min-w-0 flex-1">
-          <p id="install-title" className="font-serif text-base font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            Add Frederick Radius to your home screen
+          <p id="install-title" className="font-serif text-[15px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+            Keep Frederick a tap away
           </p>
           {ios ? (
-            <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
               Tap{" "}
-              <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
                 <Share className="h-3 w-3" aria-hidden /> Share
               </span>{" "}
               in Safari, then{" "}
-              <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
+              <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
                 <Plus className="h-3 w-3" aria-hidden /> Add to Home Screen
               </span>.
             </p>
           ) : (
-            <p className="mt-1.5 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              One tap to install as a real app. Opens in a single screen. Works offline for saved places.
+            <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              Add it to your home screen — opens full-screen and works offline for saved places.
             </p>
           )}
-          {!ios && (
+          <div className="mt-2.5 flex items-center gap-3">
+            {!ios && (
+              <button
+                type="button"
+                onClick={promptInstall}
+                className="tactile-interactive inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-meta-lg font-semibold text-white transition active:scale-[0.96]"
+                style={{ background: "var(--app-brand)" }}
+              >
+                <Download className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+                Install
+              </button>
+            )}
             <button
               type="button"
-              onClick={promptInstall}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-white"
-              style={{ background: "var(--app-brand)" }}
+              onClick={dismiss}
+              className="text-meta-lg font-semibold transition active:opacity-70"
+              style={{ color: "var(--app-ink-3)" }}
             >
-              <Download className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-              Install
+              Maybe later
             </button>
-          )}
+          </div>
         </div>
       </div>
     </div>
