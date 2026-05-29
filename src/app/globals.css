@@ -73,6 +73,31 @@
   --app-info: #2F5470;
 
   /* ─────────────────────────────────────────────────────
+   * BRIEF-NAMED ALIASES (Experience / Visual brief).
+   * The existing --app-* palette already realizes the brief's warm
+   * paper / ink / clay / moss system, so these are aliases over the
+   * proven values rather than a risky app-wide rename. New and touched
+   * components may read this vocabulary directly.
+   *
+   * Two deliberate reconciliations against the brief's literal hexes:
+   *   1. --ink-3 keeps the AA-tuned #6A6862. The brief's lighter
+   *      #928774 fails 4.5:1 on the paper ground, so we hold contrast.
+   *   2. --clay maps to the existing brick (#A8462C) rather than the
+   *      brief's brighter #B8432B, so the brand does not shift across
+   *      every surface for a marginal hue change.
+   * ───────────────────────────────────────────────────── */
+  --paper: var(--app-bg);              /* #F4EFE6 */
+  --paper-2: var(--app-bg-sunken);     /* #ECE5D5 */
+  --paper-3: #E3D9C6;                  /* deeper paper tier (brief) */
+  --ink: var(--app-ink);               /* #1A1815 */
+  --ink-2: var(--app-ink-2);
+  --ink-3: var(--app-ink-3);           /* AA-held, see note above */
+  --clay: var(--app-brand);            /* the one sharp accent */
+  --clay-deep: #97331F;                /* pressed-state clay (brief) */
+  --clay-soft: var(--app-brand-tint-14);
+  --moss: var(--app-positive);         /* civic / open status only */
+
+  /* ─────────────────────────────────────────────────────
    * TINT UTILITIES — pre-computed color-mix variants of the most
    * common semantic colors. Cuts inline `color-mix(in srgb, …)`
    * calls (200+ instances in the codebase) and gives palette

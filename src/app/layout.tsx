@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import {
-  Newsreader,
-  Public_Sans,
+  Fraunces,
+  Hanken_Grotesk,
   JetBrains_Mono,
 } from "next/font/google";
 import "./globals.css";
@@ -15,20 +15,19 @@ import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 
 /**
- * Brand Book No. 01 — Voice Guide v1 typography (May 2026).
- * Newsreader for display + body display, Public Sans as the working
- * sans, JetBrains Mono for metadata + tabular numerics.
+ * Typography per the Experience and Visual brief.
+ * Fraunces is the display face (dates, headlines, section titles, place
+ * names) and carries the editorial, local warmth through its italic.
+ * Hanken Grotesk is the working sans for labels, buttons, and dense UI.
+ * JetBrains Mono carries every number and code-like value (times,
+ * temperatures, distances, counts, tracked labels), which is what gives
+ * the product its instrument quality.
  *
- * Instrument Serif was dropped during the May 2026 design-token
- * audit — it was loaded just for one italic tagline on /about, and
- * Newsreader's own italic carries the editorial voice with one
- * fewer font fetch (~50KB + a round trip saved).
- *
- * Variable names are kept generic (sans-base / display / mono-base)
- * so downstream tokens (--font-sans / --font-serif / --font-mono in
- * globals.css) stay stable if we swap typefaces again.
+ * The variable names stay generic (sans-base / display / mono-base) so
+ * the downstream tokens (--font-sans / --font-serif / --font-mono in
+ * globals.css) hold steady if the typefaces change again.
  */
-const sans = Public_Sans({
+const sans = Hanken_Grotesk({
   variable: "--font-sans-base",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
@@ -36,7 +35,7 @@ const sans = Public_Sans({
   display: "swap",
 });
 
-const display = Newsreader({
+const display = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
