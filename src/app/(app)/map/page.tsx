@@ -495,6 +495,9 @@ export default async function MapPage({
           // first thing they see.
           autoOpenList={Boolean(intent)}
           recenterToKnownLocation={Boolean(intent)}
+          // Pinpoint-first: with no intent filter, open the map CLEAN and
+          // let the user add what they want (vs. dumping all ~1,700 pins).
+          pinpointDefault={!intent}
         />
       </div>
       {/* Mode toggle BELOW the map in its own right-aligned strip,

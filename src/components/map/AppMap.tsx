@@ -17,7 +17,7 @@ import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
@@ -145,6 +145,11 @@ type Props = {
    *  so the map and its list read "from where you're standing." Falls
    *  back to `initialCenter` when there's no cached fix. */
   recenterToKnownLocation?: boolean;
+  /** Pinpoint-first: when true (browse mode with no server-side intent
+   *  filter) the map opens CLEAN — no curated pins until the user adds a
+   *  category — instead of dumping all ~1,700. The control surface lets
+   *  them compose what they want to see. */
+  pinpointDefault?: boolean;
 };
 
 export default function AppMap({
@@ -155,6 +160,7 @@ export default function AppMap({
   initialCenter = FREDERICK,
   initialZoom = 14,
   recenterToKnownLocation = false,
+  pinpointDefault = false,
   onPlacesInView,
   focus,
   civic = [],
@@ -315,12 +321,15 @@ export default function AppMap({
 
   const filteredPlaces = useMemo(() => {
     const base = places;
-    if (activeCats.size === 0) return base;
+    // Pinpoint-first: a clean map until the user adds a category. When a
+    // server-side intent already pre-filtered `places` (pinpointDefault
+    // false), empty activeCats still means "show the whole filtered set."
+    if (activeCats.size === 0) return pinpointDefault ? [] : base;
     return base.filter((p) => {
       const cat = CATEGORY_BY_SLUG[p.category];
       return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
     });
-  }, [places, activeCats]);
+  }, [places, activeCats, pinpointDefault]);
 
   // Emit the curated places inside the current viewport (nearest-center
   // first) whenever the map settles — drives the synced results list.
@@ -852,6 +861,50 @@ export default function AppMap({
         aerialCount={AERIAL_PHOTOS.length}
         setDemo={setDemo}
       />
+
+        {/* Pinpoint-first empty state — the control surface. With nothing
+            added, the map is calm and this invites the user to compose
+            what they want to see. Tapping a category drops its pins
+            instantly (toggles activeCats); the prompt then disappears. */}
+        {pinpointDefault && activeCats.size === 0 && !mapError && (
+          <div className="pointer-events-none absolute inset-x-0 top-[15%] z-10 flex justify-center px-4">
+            <div
+              className="deck-card pointer-events-auto w-full max-w-sm rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-4 text-center"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+                Your Frederick, your way
+              </p>
+              <h2 className="mt-0.5 font-serif text-[19px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                What do you want to see?
+              </h2>
+              <p className="mt-1 text-meta-lg" style={{ color: "var(--app-ink-2)" }}>
+                Tap to drop it on the map — add as many as you like.
+              </p>
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                {TOP_CATEGORIES.slice(0, 8).map((c) => (
+                  <button
+                    key={c.slug}
+                    type="button"
+                    onClick={() => {
+                      haptic("light");
+                      setActiveCats((prev) => {
+                        const next = new Set(prev);
+                        next.add(c.slug);
+                        return next;
+                      });
+                    }}
+                    className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-meta-lg font-semibold transition active:scale-[0.95]"
+                    style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                  >
+                    <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: c.color }} />
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {mapError && (
           <div
