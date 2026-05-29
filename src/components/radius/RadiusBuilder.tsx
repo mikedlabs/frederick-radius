@@ -290,6 +290,10 @@ export default function RadiusBuilder({
   // full directory view). User-flow fix: the old default landed on
   // a 6-section, 8-card-each wall before you could find your bucket.
   const [seeAll, setSeeAll] = useState(false);
+  // "Open now" filter — tap the open-now count to narrow the whole
+  // radius view (map dots, list, best-moves, counts) to places we can
+  // confirm are open. A toggle, so a second tap restores everything.
+  const [openOnly, setOpenOnly] = useState(false);
   const toggleExpand = (key: string) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -498,12 +502,28 @@ export default function RadiusBuilder({
     [inside],
   );
 
-  // Complete, taxonomy-driven grouping: every in-radius place lands in
+  // What the view actually shows. When the open-now filter is on, it's
+  // the confirmed-open subset; otherwise it's everything in the radius.
+  // Drives the map dots, the grouped list, best-moves, and the counts,
+  // so every surface agrees on what's being shown.
+  const displayedInside = useMemo(
+    () =>
+      openOnly
+        ? inside.filter(
+            (p) =>
+              p.open_status.state === "open" ||
+              p.open_status.state === "closing-soon",
+          )
+        : inside,
+    [inside, openOnly],
+  );
+
+  // Complete, taxonomy-driven grouping: every shown place lands in
   // exactly one group, ordered by the category tree. Σ group counts ===
-  // inside.length (the completeness invariant).
+  // displayedInside.length (the completeness invariant).
   const groups = useMemo(() => {
     const byKey = new Map<string, PlaceCardData[]>();
-    for (const p of inside) {
+    for (const p of displayedInside) {
       const k = groupKeyFor(p.category);
       const arr = byKey.get(k);
       if (arr) arr.push(p);
@@ -525,7 +545,7 @@ export default function RadiusBuilder({
         const d = groupOrder(a.key) - groupOrder(b.key);
         return d !== 0 ? d : b.items.length - a.items.length;
       });
-  }, [inside, sort]);
+  }, [displayedInside, sort]);
 
   // Cuisine facets from the food group's actual contents, so the chip
   // row only ever offers cuisines that are genuinely nearby.
@@ -544,7 +564,7 @@ export default function RadiusBuilder({
   // a category-colored dot tells a story at a glance.
   const insideDots = useMemo(
     () =>
-      inside.map((p) => ({
+      displayedInside.map((p) => ({
         lng: p.geom.lng,
         lat: p.geom.lat,
         slug: p.slug,
@@ -552,7 +572,7 @@ export default function RadiusBuilder({
         category: p.category,
         category_color: CATEGORY_BY_SLUG[p.category]?.color,
       })),
-    [inside],
+    [displayedInside],
   );
 
   // (`edgePlace` — the place at the far edge — was used in the
@@ -777,19 +797,30 @@ export default function RadiusBuilder({
               className="inline-flex items-center gap-1 font-semibold tabular-nums"
               style={{ color: "var(--app-ink)" }}
             >
-              <span className="font-serif text-[15px]">{inside.length.toLocaleString()}</span>
+              <span className="font-serif text-[15px]">{displayedInside.length.toLocaleString()}</span>
               {/* "places in radius" rather than just "places" — answers
                   the stranger's "of what?" without forcing them to
                   trace back to the page name. */}
               <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                {`${inside.length === 1 ? "place" : "places"} in radius`}
+                {`${displayedInside.length === 1 ? "place" : "places"} in radius`}
               </span>
             </span>
             {/* "Open now" — the headline pillar, glanceable on the map.
-                Only renders when at least one place is confirmed open, so
-                a quiet hour never shows a misleading "0 open". Positive
-                tint reads as "you can go right now". */}
-            {openNowCount > 0 && (
+                When the filter is on, all shown places ARE open, so we
+                flip the stat to an "open only" state badge instead of a
+                redundant count. Positive tint reads as "you can go now".
+                The accessible toggle lives in the results header below. */}
+            {openOnly ? (
+              <>
+                <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
+                <span
+                  className="inline-flex items-center gap-1 font-semibold uppercase tracking-[0.08em]"
+                  style={{ color: "var(--app-positive)", fontSize: "10px" }}
+                >
+                  open only
+                </span>
+              </>
+            ) : openNowCount > 0 ? (
               <>
                 <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
                 <span
@@ -800,7 +831,7 @@ export default function RadiusBuilder({
                   <span className="text-[10px] uppercase tracking-[0.08em]">open now</span>
                 </span>
               </>
-            )}
+            ) : null}
             {/* "farthest: Hill House Bed and Breakfast" was here.
                 Removed pre-launch (review §12): the user needs the
                 best nearby thing at the top of /radius, not the
@@ -828,7 +859,7 @@ export default function RadiusBuilder({
           there's no match in the current radius — so dialing all
           the way down doesn't render a row of empty placeholders. */}
       <BestNearbyMoves
-        places={inside}
+        places={displayedInside}
         amenities={insideAmenities}
         mode={mode}
       />
@@ -994,6 +1025,63 @@ export default function RadiusBuilder({
           a numeric count. The count moves below as the secondary line.
           Implicitly responds to a quick-pick tap too: the sentence
           rewrites the moment mode/minutes change. */}
+
+      {/* Open-now filter toggle — the tappable counterpart to the
+          ribbon's "open now" stat. Lives OUTSIDE the groups gate so a
+          user who filtered down to zero open places can always tap it
+          back off. Green = active (showing open only). */}
+      {(openNowCount > 0 || openOnly) && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpenOnly((v) => !v)}
+            aria-pressed={openOnly}
+            className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
+            style={{
+              background: openOnly ? "var(--app-positive)" : "var(--app-bg-elevated)",
+              color: openOnly ? "white" : "var(--app-ink-2)",
+              border: `1px solid ${openOnly ? "var(--app-positive)" : "var(--app-border)"}`,
+            }}
+          >
+            <span
+              aria-hidden
+              className="h-2 w-2 rounded-full"
+              style={{ background: openOnly ? "white" : "var(--app-positive)" }}
+            />
+            {openOnly ? "Showing open only" : `Open now · ${openNowCount}`}
+          </button>
+          {openOnly && (
+            <button
+              type="button"
+              onClick={() => setOpenOnly(false)}
+              className="text-[12px] font-medium underline-offset-2 hover:underline"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              Show all {inside.length.toLocaleString()}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Filtered to open but nothing qualifies — a clear, recoverable
+          dead end instead of a silently empty page. */}
+      {openOnly && displayedInside.length === 0 && (
+        <p
+          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        >
+          Nothing inside this radius is confirmed open right now.{" "}
+          <button
+            type="button"
+            onClick={() => setOpenOnly(false)}
+            className="font-semibold underline underline-offset-2"
+            style={{ color: "var(--app-brand)" }}
+          >
+            Show all {inside.length.toLocaleString()}
+          </button>
+        </p>
+      )}
+
       {groups.length > 0 && (
         <section aria-label="Categories in radius" className="space-y-3">
           <header className="flex items-end justify-between gap-2">
@@ -1013,7 +1101,7 @@ export default function RadiusBuilder({
                     .slice(0, 4)
                     .map((g) => g.label.toLowerCase());
                   if (tops.length === 0) {
-                    return `${inside.length} place${inside.length === 1 ? "" : "s"} within this radius.`;
+                    return `${displayedInside.length} place${displayedInside.length === 1 ? "" : "s"} within this radius.`;
                   }
                   return `You're within a ${minutes}-minute ${MODE_VERB[mode]} of ${formatList(tops)}.`;
                 })()}
@@ -1028,7 +1116,7 @@ export default function RadiusBuilder({
                     creates multiple text nodes that screen readers
                     and text extractors concatenate with whitespace,
                     rendering "488 place s · 11 categor ies." */}
-                {`${inside.length.toLocaleString()} ${inside.length === 1 ? "place" : "places"}${openNowCount > 0 ? ` · ${openNowCount} open now` : ""} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
+                {`${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}${!openOnly && openNowCount > 0 ? ` · ${openNowCount} open now` : ""} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
               </p>
             </div>
             <button
