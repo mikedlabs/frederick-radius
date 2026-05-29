@@ -46,7 +46,7 @@ export default function TimeToggle({
             key={key}
             tone="ink"
             size="sm"
-            icon={Icon}
+            icon={<Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
             href={`/today?t=${key}`}
             active={key === active}
             count={counts?.[key]}
