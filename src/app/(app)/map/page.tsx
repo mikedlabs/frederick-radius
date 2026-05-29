@@ -82,6 +82,29 @@ export const metadata: Metadata = {
 };
 
 export const revalidate = 300;
+// /map fans out to ~10 external APIs (Ticketmaster, Bandsintown, Chart
+// traffic, FixIt 311, Mapillary, transit/trail/boundary GIS, USGS).
+// Give the render headroom over the platform default so a cold cache
+// doesn't 503 — but the real protection is withTimeout() below, which
+// stops any single slow upstream from blocking the whole page.
+export const maxDuration = 30;
+
+/**
+ * Resolve to `fallback` if `p` rejects OR doesn't settle within `ms`.
+ *
+ * The page's loaders already `.catch(() => [])`, which handles an
+ * upstream that ERRORS — but not one that just HANGS. A hanging fetch
+ * (no error, no response) blocks Promise.all until the serverless
+ * function times out, which is the /map 503 in production. Racing every
+ * upstream against a timer means the worst case is a missing layer, not
+ * a dead page.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    Promise.resolve(p).catch(() => fallback),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
 
 /**
  * /map — the map IS the page.
@@ -175,11 +198,14 @@ function isTimeMode(s: string | undefined): s is TimeMode {
  * can never drift on what "upcoming events" means.
  */
 async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
+  // Each feed is timeout-guarded (not just .catch'd) so a slow upstream
+  // can't hang the render — the radius branch (the DEFAULT /map view)
+  // awaits this, so an unbounded hang here is a default-page 503.
   const [liveEventsRaw, tmMusic, tmSports, bitEvents] = await Promise.all([
-    getLiveEvents(60).then((r) => r.events).catch(() => []),
-    fetchTicketmasterMusic().catch(() => []),
-    fetchTicketmasterSports().catch(() => []),
-    fetchBandsintownForArtists([]).catch(() => []),
+    withTimeout(getLiveEvents(60).then((r) => r.events), 5000, [] as Awaited<ReturnType<typeof getLiveEvents>>["events"]),
+    withTimeout(fetchTicketmasterMusic(), 5000, []),
+    withTimeout(fetchTicketmasterSports(), 5000, []),
+    withTimeout(fetchBandsintownForArtists([]), 5000, []),
   ]);
   const curatedWeek = allUpcoming(now, 200);
   const liveCards = dedupeLiveAgainstCurated(
@@ -245,7 +271,7 @@ export default async function MapPage({
     // view needs (no SSR bloat). RadiusBuilder filters these to the
     // chosen reach. Same shared loader as browse, so the event set is
     // identical across modes; ISR caching bounds the cold-path cost.
-    const radiusEvents = (await loadUpcomingEvents(new Date()))
+    const radiusEvents = (await withTimeout(loadUpcomingEvents(new Date()), 8000, [] as EventWithMeta[]))
       .filter((e) => Number.isFinite(e.geom?.lng) && Number.isFinite(e.geom?.lat))
       .slice(0, 120)
       .map((e) => ({
@@ -290,23 +316,23 @@ export default async function MapPage({
     waterSites,
     allWeek,
   ] = await Promise.all([
-    getChartIncidentsFrederick().catch(() => []),
-    getFixItIssues(30).catch(() => []),
-    fetchMapillaryTrash().catch(() => []),
-    getFrederickTrailShapes().catch(() => EMPTY_FC),
-    getFrederickTransitRouteShapes().catch(() => EMPTY_FC),
+    // Timeout-guarded (not just .catch'd): a slow upstream degrades to a
+    // missing layer instead of hanging the render into a 503.
+    withTimeout(getChartIncidentsFrederick(), 6000, []),
+    withTimeout(getFixItIssues(30), 6000, []),
+    withTimeout(fetchMapillaryTrash(), 6000, []),
+    withTimeout(getFrederickTrailShapes(), 6000, EMPTY_FC),
+    withTimeout(getFrederickTransitRouteShapes(), 6000, EMPTY_FC),
     // County GIS municipal boundary polygons — quiet always-on map
     // outline. Fail-soft to empty so the county server never blocks.
-    getMunicipalBoundaries().catch(() => EMPTY_FC),
+    withTimeout(getMunicipalBoundaries(), 6000, EMPTY_FC),
     // USGS river gauges — surfaced as a map layer (kind="river_gauge")
     // so the Rivers & creeks dataset isn't trapped on /rivers alone.
-    // Gauges report every ~15 min upstream; we cache for 30 min via
-    // the loader's revalidate. Light payload — no per-site history.
-    getFrederickWaterSites().catch(() => []),
+    withTimeout(getFrederickWaterSites(), 6000, []),
     // Upcoming events (curated seed + live feeds), deduped + sorted.
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
-    loadUpcomingEvents(now),
+    withTimeout(loadUpcomingEvents(now), 8000, [] as EventWithMeta[]),
   ]);
   const civic: CivicPin[] = [
     ...incidents
