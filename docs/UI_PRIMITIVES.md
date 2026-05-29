@@ -41,11 +41,39 @@ modes" (the events view toggle, map Radius/Browse).
 - `labelsOn="sm"` hides labels below the small breakpoint (icon-only on
   tight rows).
 
+### `Row` / `RowList` / `IconTile` — dense directory rows
+`src/components/ui/Row.tsx`. The antidote to "directory of big cards
+that goes on forever." A `RowList` is one elevated, rounded container
+with hairline dividers; each `Row` is a ~56px scannable line
+(leading icon/thumb + title + subtitle + trailing meta + chevron).
+Server-component safe. For generic directory data (parks, trails,
+amenities) — use `PlaceCard variant="row"` for place data with photos.
+
+```tsx
+<RowList>
+  {parks.map((p) => (
+    <Row key={p.id} href={`/map?focus=${p.lat},${p.lng}`}
+         leading={<IconTile icon={Trees} tone="#2E3B2C" />}
+         title={p.name} subtitle={`${kind} · ${p.address}`} meta={`${p.acres} ac`} />
+  ))}
+</RowList>
+```
+Pair with `CollapsibleSection` to collapse long lists by group (largest
+group `defaultOpen`, rest tucked away, choice persisted).
+
 ### Other canonical pieces (already existed — keep using)
 `Surface`/`Card`, `Chip` (tonal display pill, non-interactive),
+`CollapsibleSection` (hide-when-not-needed group wrapper),
 `SectionHeading`, `EmptyState`, the `.text-*`/`.display-*` type scale,
 `.deck-card`. The weight rule: 400 quiet · 500 labels · 600 titles ·
 700 numerics only.
+
+### Directory density — done
+`parks` (10,680px → 1,682px) and `trails` (~1,673px) rebuilt from
+big map-thumbnail card grids to dense `Row` + collapsed-by-town
+`CollapsibleSection`. These were the two true "card dump" pages; the
+other long surfaces (parking, amenities, transit, places) are
+editorial guides or already use compact rows — left as-is by design.
 
 ## Rollout status
 
