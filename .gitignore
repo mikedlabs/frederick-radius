@@ -69,3 +69,6 @@ scripts/.lighthouse/
 .env*.local
 /index.mjs
 /index.ts
+
+# Visual-verification output (scripts/screenshots.mjs)
+screenshots/
