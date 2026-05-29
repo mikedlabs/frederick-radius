@@ -104,6 +104,38 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Security headers — applied to every response. These are the
+  // zero-risk, high-value ones: they don't depend on which origins we
+  // load and won't break Mapbox / Supabase / analytics, so they ship
+  // enforcing. (A Content-Security-Policy is the next step but has to
+  // be tuned against the live third-party origins and verified on a
+  // preview deploy first — see docs/SECURITY_AUDIT.md — so it is NOT
+  // shipped blind here.)
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // Force HTTPS for two years; reversible (no `preload`, so we
+          // never get pinned on a browser preload list we can't undo).
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+          // Stop MIME sniffing (defends against content-type confusion).
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          // Don't leak full URLs (which can carry query params) to other sites.
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Clickjacking: refuse to be framed by other origins.
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          // Lock down powerful browser features. Geolocation is allowed
+          // for our own origin only — the Radius / "near me" features
+          // need it; everything else is denied to every origin.
+          {
+            key: "Permissions-Policy",
+            value: "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=()",
+          },
+        ],
+      },
+    ];
+  },
   // Permanent route consolidation — duplicate editorial pages and
   // legacy /today URL fold into their canonical homes. Preserves
   // crawler equity and any bookmarks pointing at the old paths.
