@@ -7,6 +7,8 @@ import {
   CloudLightning,
   CloudFog,
   Wind,
+  Moon,
+  CloudMoon,
   Sunset as SunsetIcon,
   Sunrise as SunriseIcon,
 } from "lucide-react";
@@ -16,6 +18,7 @@ import { sunTimes, FREDERICK_LAT, FREDERICK_LNG } from "@/lib/almanac";
 
 const ICONS = {
   Sun, CloudSun, Cloud, CloudRain, CloudSnow, CloudLightning, CloudFog, Wind,
+  Moon, CloudMoon,
 } as const;
 
 const TINT: Record<keyof typeof ICONS, string> = {
@@ -27,6 +30,8 @@ const TINT: Record<keyof typeof ICONS, string> = {
   CloudLightning: "#7E2C6F",
   CloudFog: "#9A9690",
   Wind: "#4A7CA8",
+  Moon: "#5C6B8A",
+  CloudMoon: "#6E7894",
 };
 
 /**
