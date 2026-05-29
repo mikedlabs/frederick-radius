@@ -268,7 +268,7 @@ export default async function HomePage({
           message and bump the key. Client component so the SSR HTML
           is empty and there's no hydration flash. Full-width above
           the desktop split so it spans both columns. */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <BetaIntroCard />
         {/* DateLine + BriefingLine lifted to full width above the
             desktop split so the orientation + "what should I do?"
@@ -290,11 +290,11 @@ export default async function HomePage({
        *             partner apps, WorthALook, events, From Above).
        * Each column keeps its own internal space-y-6 spine so the
        * vertical rhythm doesn't collapse at the breakpoint. */}
-      <div className="mt-6 flex flex-col gap-6 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-6">
+      <div className="mt-4 flex flex-col gap-4 lg:mt-4 lg:grid lg:grid-cols-2 lg:gap-5">
         {/* ── LEFT column: the weather block. Leads on mobile (weather
             at the top, per the premium-refresh direction) and sits in
             the left column at lg+. ───────────────────────────────── */}
-        <div className="space-y-6">
+        <div className="space-y-4">
 
       {/* DateLine + BriefingLine + NowDayStrip — the slim header
           that replaces the old AdaptiveGreeting block. Sits ABOVE
@@ -339,7 +339,7 @@ export default async function HomePage({
           SkyHero casts depth onto the panel. Net visual: weather
           card floats, week + hourly + more peeks from underneath. */}
       <div className="relative">
-        <SkyHero fill className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
+        <SkyHero className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
           <Suspense
             fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
           >
@@ -433,7 +433,7 @@ export default async function HomePage({
 
         {/* ── RIGHT column: the action stack. Follows the weather on
             mobile; second column at lg+. ──────────────────────────── */}
-        <div className="space-y-6">
+        <div className="space-y-4">
 
       {/* SPINE REORDER (cleanup pass):
        *
