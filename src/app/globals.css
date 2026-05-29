@@ -174,6 +174,9 @@
   /* The "made" look: a 1px top inner highlight + crisp inner edge
    * (reads sharper than a 1px border on a tinted surface). */
   --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  /* Deck stack — a faint card peeking behind the bottom edge, so a
+   * surface reads as the top of a physical stack (the Wallet feel). */
+  --app-deck-edge: 0 1px 2px rgba(26, 26, 26, 0.05), 0 2px 5px -1px rgba(26, 26, 26, 0.08);
   --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.09);
   /* A 1px darker bottom inner shadow — the "lip" on filled controls. */
   --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.14);
@@ -1108,6 +1111,28 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * After this PR ships, new code should pick from this scale. Old
  * `text-[Npx]` usages get swept opportunistically as we touch files.
  * ───────────────────────────────────────────────────── */
+/* Deck card — a surface that reads as the top of a physical stack (the
+ * Apple-Wallet feel the brief asks for). Richer layered elevation plus a
+ * faint card peeking behind the bottom edge via ::after. Apply to the
+ * key Today surfaces (weather panel, day strip) so they feel handled,
+ * not flat. */
+.deck-card {
+  position: relative;
+  box-shadow: var(--app-elev-2), var(--app-edge), var(--app-hi);
+}
+.deck-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 9px;
+  right: 9px;
+  bottom: -5px;
+  height: 16px;
+  border-radius: 0 0 var(--app-radius-lg) var(--app-radius-lg);
+  background: var(--app-bg-elevated);
+  box-shadow: var(--app-deck-edge);
+}
+
 /* Canonical type scale — the ONLY sizes new/migrated code should use.
  * Maps the ~20 ad-hoc text-[Npx] sizes onto fixed steps:
  *   caption 10 · meta 11 · meta-lg 12 · body 13 · body-lg 14 ·
