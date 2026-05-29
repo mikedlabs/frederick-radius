@@ -190,6 +190,27 @@ export default async function SkyHero({
   }
   const sky = applyMood(base, mood);
 
+  // Celestial body — a soft sun (day) or moon (night) glow that ARCS
+  // across the hero by the hour, so the hero quietly tells the time of
+  // day. It's a blurred radial light, never a clip-art disc, so it
+  // stays in the calm field-guide register. The sun rides the daytime
+  // arc (low at 6/18, high at noon); after dusk a cooler moon glow sits
+  // high. Heavy weather (rain/storm/fog) hides it — you can't see the
+  // sun through a storm. Positions are 0–100% of the hero box.
+  const celestial: "sun" | "moon" | "none" =
+    mood === "rain" || mood === "storm" || mood === "fog"
+      ? "none"
+      : nyHour >= 6 && nyHour < 19
+        ? "sun"
+        : "moon";
+  // Daytime arc: x runs 8%→92% from 6am→6pm; y dips to ~16% at noon and
+  // rises to ~62% near the horizons. Night: a calm high moon.
+  const dayT = Math.min(1, Math.max(0, (nyHour - 6) / 12));
+  const sunX = 8 + dayT * 84;
+  const sunY = 62 - (1 - Math.abs(dayT - 0.5) * 2) * 46;
+  const celX = celestial === "moon" ? 74 : sunX;
+  const celY = celestial === "moon" ? 24 : sunY;
+
   return (
     <section
       className={`sky-hero -mx-4 -mt-4 px-4 pb-4 pt-6 sm:rounded-b-[var(--app-radius-xl)] ${className}`}
@@ -198,11 +219,14 @@ export default async function SkyHero({
           "--sky-top": sky.top,
           "--sky-mid": sky.mid,
           "--sky-bottom": sky.bottom,
+          "--cel-x": `${celX}%`,
+          "--cel-y": `${celY}%`,
           color: sky.tone === "dark" ? "#F4F2EE" : "#1A1A1A",
         } as React.CSSProperties
       }
       data-sky-tone={sky.tone}
       data-sky-mood={mood}
+      data-celestial={celestial}
     >
       {children}
       {/* No silhouette mounted here right now. See the import-area

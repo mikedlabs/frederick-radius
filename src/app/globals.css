@@ -417,6 +417,15 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * Driven by --sky-top / --sky-mid / --sky-bottom set inline by SkyHero.
  * Slow noise drift creates an atmospheric, alive feel without distraction.
  * ───────────────────────────────────────────────────── */
+/* Register the gradient stops as real <color> custom properties so the
+   browser can INTERPOLATE them — that turns any change to the daypart
+   palette into a smooth cross-fade instead of a hard jump. Harmless on
+   first paint (the inline values win); the payoff lands when the sky is
+   updated live (LiveSky tick) as the clock crosses a daypart. */
+@property --sky-top { syntax: "<color>"; inherits: false; initial-value: #ffd8a8; }
+@property --sky-mid { syntax: "<color>"; inherits: false; initial-value: #f5a6a0; }
+@property --sky-bottom { syntax: "<color>"; inherits: false; initial-value: #c97b8a; }
+
 .sky-hero {
   position: relative;
   background:
@@ -428,6 +437,42 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
     );
   overflow: hidden;
   isolation: isolate;
+  /* Daypart cross-fade. The gradient stops ease between palettes over a
+     few seconds rather than snapping. */
+  transition:
+    --sky-top 3s var(--app-ease-out, ease),
+    --sky-mid 3s var(--app-ease-out, ease),
+    --sky-bottom 3s var(--app-ease-out, ease);
+}
+
+/* Celestial body — a soft sun (day) or moon (night) glow that arcs
+   across the hero by the hour (position via --cel-x / --cel-y, set by
+   SkyHero). It's blurred ambient light, never a clip-art disc, so it
+   stays calm. Hidden in heavy weather (data-celestial="none"). The
+   position eases too, so it glides as the day moves. */
+.sky-hero[data-celestial="sun"]::after,
+.sky-hero[data-celestial="moon"]::after {
+  content: "";
+  position: absolute;
+  left: var(--cel-x, 50%);
+  top: var(--cel-y, 30%);
+  width: 220px;
+  height: 220px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 1;
+  transition: left 3s var(--app-ease-out, ease), top 3s var(--app-ease-out, ease);
+}
+.sky-hero[data-celestial="sun"]::after {
+  background: radial-gradient(circle, rgba(255,247,224,0.85) 0%, rgba(255,236,189,0.45) 28%, rgba(255,224,160,0.12) 55%, transparent 72%);
+  filter: blur(6px);
+}
+.sky-hero[data-celestial="moon"]::after {
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(232,238,255,0.55) 0%, rgba(208,220,245,0.22) 38%, transparent 68%);
+  filter: blur(8px);
 }
 .sky-hero::before {
   content: "";
