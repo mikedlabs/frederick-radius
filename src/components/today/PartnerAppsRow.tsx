@@ -50,12 +50,13 @@ const HANDOFFS: Handoff[] = [
 
 export default function PartnerAppsRow() {
   return (
-    // Collapsed by default — these are utility shortcuts (parking,
-    // reservations), not daily reading. They stay out of the way until
-    // a visitor actually needs them, then one tap reveals the row.
+    // Open by default — surfaced as visible shortcuts (parking,
+    // reservations). The collapse control remains for readers who want
+    // to tuck them away.
     <CollapsibleSection
       title="Quick handoffs"
       storageKey="fr:partner-apps-open:v1"
+      defaultOpen
     >
       {/* Compact pill row — was a 2-col stack of tall cards that
           punched above its weight relative to the section's purpose
