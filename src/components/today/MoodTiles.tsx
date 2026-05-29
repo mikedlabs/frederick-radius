@@ -6,17 +6,18 @@ import { Coffee, Trees, UtensilsCrossed, Baby, Toilet, ParkingCircle, X } from "
 import { INTENT_BY_KEY, INTENTS, type IntentKey, type SubIntent } from "@/data/intents";
 
 /**
- * MoodTiles v6 — 6-up unified compact grid.
+ * MoodTiles v7 — premium-neutral refresh.
  *
- * v5 still had two visual treatments (color tiles for intents,
- * white chips for utilities). v6 unifies all six in the same
- * compact color-led shape and drops them into one grid — 3-up on
- * mobile, 6-up on wider viewports. Every tile is the same size, so
- * the row reads as one cohesive surface instead of two clusters.
+ * v6 filled each tile with a saturated color gradient, which read
+ * cheap. v7 drops the color fills: the tiles are now matte paper
+ * "plates" with tactile depth (the field-card grammar), and the
+ * category color appears only as an ACCENT — the glyph chip, a top
+ * hairline, and a faint oversized watermark of the tile's own icon.
+ * Ink labels, not white-on-color. Restraint reads premium; one accent
+ * per tile keeps the row from going rainbow.
  *
- * Restroom + Parking pick up muted utility colors (Carroll Creek
- * slate + warm ink) so they're visibly the utility group without
- * matching the saturated intent four — same shape, quieter palette.
+ * Utilities (Restroom, Parking) carry muted civic accents so they read
+ * as the utility group within the same neutral shape.
  */
 
 type Mood = {
@@ -38,21 +39,10 @@ const MOODS: Mood[] = [
   { intentKey: "eat",     label: "Eat",       nudge: "Restaurants and breweries", href: "/map?intent=eat",     icon: UtensilsCrossed, color: intentColor("eat")     },
   { intentKey: "outdoor", label: "Outdoors",  nudge: "Parks, trails, water",      href: "/map?intent=outdoor", icon: Trees,           color: intentColor("outdoor") },
   { intentKey: "family",  label: "With kids", nudge: "Family-friendly",           href: "/map?intent=family",  icon: Baby,            color: intentColor("family")  },
-  // Utility moods use muted civic colors (slate + warm ink) so they
-  // sit in the same row visually but read as the utility group.
+  // Utility moods use muted civic accents (slate + warm ink).
   { label: "Restroom", nudge: "Public restrooms nearby",  href: "/amenities",        icon: Toilet,        color: "#2F5470" },
   { label: "Parking",  nudge: "Garages, lots, on-street", href: "/category/parking", icon: ParkingCircle, color: "#4A4844" },
 ];
-
-/** Diagonal gradient using the intent color — lighter top-left into
- *  saturated bottom-right. v5 dials the gradient back from v4 so the
- *  compact tiles read as accent cards, not blocks of brand color. */
-function gradientFor(color: string, active: boolean): string {
-  if (active) {
-    return `linear-gradient(155deg, color-mix(in srgb, ${color} 70%, white) 0%, ${color} 55%, color-mix(in srgb, ${color} 82%, black) 100%)`;
-  }
-  return `linear-gradient(155deg, color-mix(in srgb, ${color} 76%, white) 0%, ${color} 65%, color-mix(in srgb, ${color} 90%, black) 100%)`;
-}
 
 export default function MoodTiles() {
   const [openIntent, setOpenIntent] = useState<IntentKey | null>(null);
@@ -70,10 +60,9 @@ export default function MoodTiles() {
         What do you need right now
       </h2>
 
-      {/* 6-up grid — 3 on mobile, 6 in a single row from sm+ up.
-          Every tile is the same compact square shape; intents carry
-          saturated brand colors, utilities sit in muted civic colors
-          so the row reads as one cohesive control surface. */}
+      {/* 6-up grid — 3 on mobile, 6 in a single row from sm+. Every
+          tile is the same neutral paper plate; the category color is
+          accent-only, so the row reads as one calm control surface. */}
       <ul className="reveal-up grid grid-cols-3 gap-2 sm:grid-cols-6">
         {MOODS.map((m) => {
           const Icon = m.icon;
@@ -82,40 +71,47 @@ export default function MoodTiles() {
           const isDimmed = openIntent !== null && !isActive;
           const tileBody = (
             <>
-              {/* Soft white scatter — bottom-right corner for a hint
-                  of depth on the gradient. */}
+              {/* Top accent hairline — the only always-on color cue. */}
               <span
                 aria-hidden
-                className="absolute -right-3 -bottom-3 h-12 w-12 rounded-full"
+                className="absolute inset-x-0 top-0 h-[2px]"
+                style={{ background: m.color, opacity: isActive ? 1 : 0.45 }}
+              />
+              {/* Faint plate-dot texture, faded toward the bottom. */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-0"
                 style={{
-                  background:
-                    "radial-gradient(circle, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 70%)",
+                  backgroundImage:
+                    "radial-gradient(circle, color-mix(in srgb, var(--app-ink) 5%, transparent) 1px, transparent 1.3px)",
+                  backgroundSize: "12px 12px",
+                  maskImage: "linear-gradient(150deg, black, transparent 78%)",
+                  WebkitMaskImage: "linear-gradient(150deg, black, transparent 78%)",
                 }}
               />
+              {/* Oversized accent glyph watermark bleeding off the corner. */}
+              <Icon
+                aria-hidden
+                className="pointer-events-none absolute -bottom-3 -right-2 h-14 w-14"
+                strokeWidth={1.25}
+                style={{ color: m.color, opacity: 0.1 }}
+              />
 
-              {/* Smaller white glass icon pill — sized for the tighter
-                  tile footprint. */}
+              {/* Accent glyph chip. */}
               <span
                 aria-hidden
-                className="grid h-8 w-8 place-items-center rounded-full"
+                className="relative grid h-8 w-8 place-items-center rounded-full"
                 style={{
-                  background: "rgba(255,255,255,0.96)",
-                  backdropFilter: "blur(8px)",
-                  WebkitBackdropFilter: "blur(8px)",
-                  boxShadow:
-                    "0 2px 6px -1px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.7)",
+                  background: `color-mix(in srgb, ${m.color} 15%, transparent)`,
+                  color: m.color,
                 }}
               >
-                <Icon
-                  className="h-[16px] w-[16px]"
-                  strokeWidth={2.25}
-                  style={{ color: m.color }}
-                />
+                <Icon className="h-[16px] w-[16px]" strokeWidth={2.25} />
               </span>
 
               <span
-                className="block max-w-full truncate text-[11px] font-semibold leading-none text-white"
-                style={{ textShadow: "0 1px 2px rgba(0,0,0,0.35)" }}
+                className="relative block max-w-full truncate text-[11px] font-semibold leading-none"
+                style={{ color: "var(--app-ink)" }}
               >
                 {m.label}
               </span>
@@ -124,28 +120,26 @@ export default function MoodTiles() {
                 <span
                   aria-hidden
                   className="absolute right-1 top-1 grid h-4 w-4 place-items-center rounded-full"
-                  style={{
-                    background: "rgba(0,0,0,0.5)",
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                  }}
+                  style={{ background: "color-mix(in srgb, var(--app-ink) 12%, transparent)" }}
                 >
-                  <X className="h-2 w-2 text-white" strokeWidth={2.5} />
+                  <X className="h-2 w-2" strokeWidth={2.5} style={{ color: "var(--app-ink-2)" }} />
                 </span>
               )}
             </>
           );
 
           const tileClass =
-            "tactile tactile-interactive relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] border p-1.5 text-center transition active:scale-[0.96]";
+            "tactile-interactive relative flex aspect-square w-full flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] border p-1.5 text-center transition active:scale-[0.96]";
           const tileStyle = {
             borderColor: isActive
-              ? `color-mix(in srgb, ${m.color} 60%, black)`
+              ? `color-mix(in srgb, ${m.color} 45%, var(--app-border))`
               : "var(--app-border)",
-            background: gradientFor(m.color, isActive),
+            background: isActive
+              ? `color-mix(in srgb, ${m.color} 8%, var(--app-bg-elevated))`
+              : "var(--app-bg-elevated)",
             boxShadow: isActive
-              ? `var(--app-elev-2), 0 0 0 1.5px ${m.color}, 0 8px 18px -8px color-mix(in srgb, ${m.color} 50%, transparent)`
-              : `var(--app-elev-1), 0 3px 8px -4px color-mix(in srgb, ${m.color} 28%, transparent)`,
+              ? `var(--app-elev-2), 0 0 0 1.5px color-mix(in srgb, ${m.color} 55%, transparent)`
+              : "var(--app-elev-1), var(--app-edge), var(--app-hi)",
             opacity: isDimmed ? 0.55 : 1,
           };
 

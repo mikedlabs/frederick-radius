@@ -291,11 +291,10 @@ export default async function HomePage({
        * Each column keeps its own internal space-y-6 spine so the
        * vertical rhythm doesn't collapse at the breakpoint. */}
       <div className="mt-6 flex flex-col gap-6 lg:mt-6 lg:grid lg:grid-cols-2 lg:gap-6">
-        {/* ── LEFT column: the weather block. order-2 on mobile so it
-            sits BELOW the action stack — a "today" page should open
-            with what's worth your time, not the forecast — and is
-            restored to the left column at lg+. ───────────────────── */}
-        <div className="space-y-6 order-2 lg:order-1">
+        {/* ── LEFT column: the weather block. Leads on mobile (weather
+            at the top, per the premium-refresh direction) and sits in
+            the left column at lg+. ───────────────────────────────── */}
+        <div className="space-y-6">
 
       {/* DateLine + BriefingLine + NowDayStrip — the slim header
           that replaces the old AdaptiveGreeting block. Sits ABOVE
@@ -431,9 +430,9 @@ export default async function HomePage({
 
         </div>{/* /LEFT column */}
 
-        {/* ── RIGHT column: the action stack. order-1 on mobile so it
-            leads above the weather column; second column at lg+. ──── */}
-        <div className="space-y-6 order-1 lg:order-2">
+        {/* ── RIGHT column: the action stack. Follows the weather on
+            mobile; second column at lg+. ──────────────────────────── */}
+        <div className="space-y-6">
 
       {/* SPINE REORDER (cleanup pass):
        *
