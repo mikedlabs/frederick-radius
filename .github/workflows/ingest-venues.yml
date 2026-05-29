@@ -24,6 +24,8 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      - name: Install Chromium (for render: true sources)
+        run: npx playwright install --with-deps chromium
       - name: Extract venue events
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

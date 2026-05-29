@@ -1,10 +1,77 @@
 {
-  "_doc": "Venue registry for the events extraction agent (scripts/ingest-venue-events.ts). Each venue whose events live only on its own site/socials gets an entry. The agent fetches `urls`, has Claude extract upcoming events (title, date/time, description, price, ticket url) with source + freshness, dedupes against what's known, and writes src/data/venue-events.json — which flows into the events feed + the answer engine. Venues with empty `urls` are skipped. Add the venue's official events/calendar page URL(s). Social-only venues (Instagram/Facebook) need the partnership/vision path (see docs/EXTRACTION_PLATFORM.md), not blind scraping.",
+  "_doc": "Venue registry for scripts/ingest-venue-events.ts. URLs found + assigned by research (May 2026). `render: true` = the page is JS-rendered or 403s a bare fetch, so the agent loads it in a headless browser (Playwright). Social-only sources (Instagram/Facebook) are noted but NOT scraped — see docs/EXTRACTION_PLATFORM.md for the partnership/vision/human path. Verify URLs periodically; the agent validates at fetch time and never fabricates.",
   "venues": [
-    { "slug": "banyan", "name": "The Banyan", "searchHint": "The Banyan Frederick MD events / calendar page", "category": "music", "urls": [] },
-    { "slug": "derby", "name": "The Derby", "searchHint": "The Derby Frederick MD events page", "category": "music", "urls": [] },
-    { "slug": "sky-stage", "name": "Sky Stage", "searchHint": "Sky Stage Frederick events calendar", "category": "arts", "urls": [] },
-    { "slug": "weinberg-center", "name": "Weinberg Center for the Arts", "searchHint": "Weinberg Center Frederick events", "category": "theater", "urls": [] },
-    { "slug": "new-spire", "name": "New Spire Arts", "searchHint": "New Spire Arts Frederick events", "category": "theater", "urls": [] }
+    {
+      "slug": "banyan",
+      "name": "The Banyan",
+      "category": "music",
+      "render": true,
+      "urls": ["https://www.thebanyanmd.com/livemusic"],
+      "note": "216 E. Patrick St. Same team as The Derby (New Market). Rooftop + 2nd-floor live music; lineup builds out through 2026."
+    },
+    {
+      "slug": "weinberg-center",
+      "name": "Weinberg Center for the Arts",
+      "category": "theater",
+      "render": true,
+      "urls": ["https://weinbergcenter.org/performances/"],
+      "note": "Historic 1926 theater. 403s a bare fetch → render. Also covers New Spire Arts programming."
+    },
+    {
+      "slug": "sky-stage",
+      "name": "Sky Stage",
+      "category": "arts",
+      "render": true,
+      "urls": ["https://www.skystagefrederick.com/project/calendar/"],
+      "note": "Open-air FAC venue, 59 S. Carroll St. Calendar is JS-rendered → render."
+    },
+    {
+      "slug": "new-spire",
+      "name": "New Spire Arts",
+      "category": "theater",
+      "render": true,
+      "urls": ["https://weinbergcenter.org/our-venues/new-spire-arts/"],
+      "note": "15 W. Patrick St. Managed by the Weinberg Center; programming listed there."
+    },
+    {
+      "slug": "bushwallers",
+      "name": "Bushwaller's",
+      "category": "music",
+      "render": true,
+      "urls": ["https://www.bushwallers.com/events"],
+      "note": "Oldest Irish pub in Frederick, 209 N. Market St. Live music upstairs; events page is a JS widget → render."
+    },
+    {
+      "slug": "cellar-door",
+      "name": "Cellar Door",
+      "category": "music",
+      "render": true,
+      "urls": ["https://www.cellardoorfrederick.com/entertainment-1"],
+      "note": "5 E. Church St. Open mic, DJ, comedy, karaoke. Squarespace entertainment page → render."
+    },
+    {
+      "slug": "bentztown",
+      "name": "Bentztown",
+      "category": "music",
+      "render": true,
+      "urls": ["https://bentztown.com/calendar/"],
+      "note": "Southern food + bourbon + live-music stage, 6 S. Bentz St. Calendar widget → render."
+    },
+    {
+      "slug": "jojos",
+      "name": "JoJo's Restaurant & Tap House",
+      "category": "music",
+      "render": true,
+      "urls": [],
+      "note": "16 E. Patrick St. Dining, happy hour & live music. Find/verify an events/calendar URL (posts heavily on social); leave empty until a non-social source exists."
+    },
+    {
+      "slug": "derby-new-market",
+      "name": "The Derby (New Market)",
+      "category": "music",
+      "render": false,
+      "urls": [],
+      "note": "Live music Wed–Sat. Posts on Instagram/Facebook (@thederbymd) — social-only; needs the partnership/vision path, not blind scraping. URL left empty until a non-social source exists."
+    }
   ]
 }

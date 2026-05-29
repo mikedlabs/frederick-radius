@@ -52,6 +52,32 @@ build on it. Three honest paths, best first:
 3. **30-second human-in-the-loop** — paste the post/image weekly; Claude
    extracts; publishes. Reliable fallback.
 
+## Rendering reality (learned by testing real venue sites)
+Many venue calendars **don't work with a bare fetch**: they're
+JS-rendered (events aren't in the static HTML — e.g. Sky Stage) or the
+server **403s** a plain request (e.g. Weinberg). So the engine supports
+`render: true` per source → it loads the page in a **headless browser**
+(Playwright, already a dep; CI installs Chromium). Use plain fetch for
+static pages, `render` for JS/blocked ones.
+
+### Configured venue sources (May 2026 research)
+The Banyan, Weinberg Center (covers New Spire), Sky Stage, Bushwaller's,
+Cellar Door, Bentztown — real URLs in `config/venue-sources.json`, all
+`render: true`. JoJo's + The Derby are social-heavy → left empty until a
+non-social source exists. FCPS closings page is captured for the
+school-closings profile: `fcps.org/families_students/weather_delays_closings`.
+
+### The smarter shortcut: aggregators
+Several local sources already aggregate **many** venues at once — far
+cheaper than per-venue scraping:
+- **Frederick Frequency** (frederickfrequency.com) — local live-music calendar
+- **Events Frederick** concert calendar (eventsfrederick.com)
+- **Bandsintown** (bandsintown.com/c/frederick-md) — has a real API
+- **Visit Frederick** live-music listing (visitfrederick.org/events/live-music)
+- **Celebrate Frederick** (already ingested via iCal)
+Prefer these as primary sources; fall back to per-venue extraction for
+what they miss.
+
 ## "Learning the cadence"
 v1: run daily, dedupe, surface only what's new. v2: track each source's
 `lastChanged` to infer its rhythm ("posts every Thursday") and check
