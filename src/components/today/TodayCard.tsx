@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRight, MapPin } from "lucide-react";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
@@ -102,15 +101,6 @@ export default async function TodayCard({
 
   const mood = moodLine(condition, tempNow);
 
-  // Situational primary CTA by daypart — morning nudges coffee, the
-  // evening nudges tonight's plans; the map is always one tap away.
-  const primaryCta =
-    band === "morning"
-      ? { label: "Find coffee", href: "/map?mode=browse&intent=coffee" }
-      : band === "evening" || band === "late"
-        ? { label: "What's tonight", href: "/today?t=tonight" }
-        : { label: "Open now nearby", href: "/map?mode=browse&open=now" };
-
   // Data readout pieces, joined with middots so empty ones drop out.
   const readout = [
     tempNow != null ? `${tempNow}° now` : null,
@@ -149,28 +139,6 @@ export default async function TodayCard({
         </p>
       )}
 
-      {/* Two situational next-steps — a win in one tap. Tone-aware:
-          translucent fills so they read on any sky. */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Link
-          href={primaryCta.href}
-          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-meta-lg font-semibold backdrop-blur transition active:scale-[0.96]"
-          style={{
-            background: "color-mix(in srgb, currentColor 14%, transparent)",
-          }}
-        >
-          {primaryCta.label}
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-        </Link>
-        <Link
-          href="/map"
-          className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-meta-lg font-semibold transition active:scale-[0.96]"
-          style={{ borderColor: "color-mix(in srgb, currentColor 30%, transparent)" }}
-        >
-          <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Open map
-        </Link>
-      </div>
     </section>
   );
 }

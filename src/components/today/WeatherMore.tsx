@@ -49,10 +49,9 @@ export default function WeatherMore({ children }: { children: ReactNode }) {
   };
 
   return (
-    <article
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
-    >
+    // Row inside the unified weather panel — no self-chrome (parent
+    // supplies the single border + dividers).
+    <article>
       <button
         type="button"
         onClick={toggle}
