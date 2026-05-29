@@ -8,8 +8,8 @@ import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
 import ModeParamSync from "@/components/mode/ModeParamSync";
-import CommandPalette from "@/components/cmdk/CommandPalette";
 import { Suspense } from "react";
+import CommandPaletteLazy from "@/components/cmdk/CommandPaletteLazy";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -61,10 +61,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BottomNav />
           <SideRail />
           <InstallPrompt />
-          {/* Global ⌘K / Ctrl+K palette — jumps to pages, categories,
-              towns, and places without leaving the keyboard. Mounted
-              at the layout root so it works on every (app) route. */}
-          <CommandPalette />
+          {/* Global ⌘K / Ctrl+K palette. Loaded lazily — the heavy cmdk
+              bundle is fetched only when the user actually opens the
+              palette (or hovers/focuses the search affordance), so it's
+              out of every route's first-load JS. */}
+          <CommandPaletteLazy />
         </div>
       </RouteAccent>
     </PlaceSheetProvider>
