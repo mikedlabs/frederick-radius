@@ -1,0 +1,41 @@
+name: Ingest municipal civic data
+
+# Closes the town parity gap: runs the Claude extraction agent against
+# each town's configured gov page(s), refreshes src/data/municipal-civic.json
+# with source + freshness, and commits the result. Daily + manual.
+#
+# Requires repo secret: ANTHROPIC_API_KEY
+# Configure which pages to read in: config/municipal-civic-sources.json
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # daily 08:00 UTC
+  workflow_dispatch: {} # run on demand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Extract civic data
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run ingest:civic
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "frederick-radius-bot"
+          git config user.email "bot@users.noreplace.github.com"
+          if ! git diff --quiet -- src/data/municipal-civic.json; then
+            git add src/data/municipal-civic.json
+            git commit -m "data: refresh municipal civic (automated)"
+            git push
+          else
+            echo "No civic data changes."
+          fi

@@ -1,0 +1,16 @@
+{
+  "_doc": "Sources for the municipal civic extraction agent (scripts/ingest-municipal-civic.ts). For each town, list official gov page URL(s) to extract from. The agent fetches each URL, has Claude pull structured civic fields (town hall, public works, trash/recycling, permits, police non-emergency, utilities) with source + freshness, and writes src/data/municipal-civic.json. Towns with empty `urls` are skipped. Add the real official URLs (verify they 200) — the agent validates and logs failures, and NEVER fabricates: it only extracts from fetched pages.",
+  "towns": [
+    { "slug": "brunswick", "name": "Brunswick", "searchHint": "City of Brunswick MD official government website", "urls": [] },
+    { "slug": "thurmont", "name": "Thurmont", "searchHint": "Town of Thurmont MD official website", "urls": [] },
+    { "slug": "middletown", "name": "Middletown", "searchHint": "Town of Middletown MD official website", "urls": [] },
+    { "slug": "walkersville", "name": "Walkersville", "searchHint": "Town of Walkersville MD official website", "urls": [] },
+    { "slug": "emmitsburg", "name": "Emmitsburg", "searchHint": "Town of Emmitsburg MD official website", "urls": [] },
+    { "slug": "new-market", "name": "New Market", "searchHint": "Town of New Market MD official website", "urls": [] },
+    { "slug": "mount-airy", "name": "Mount Airy", "searchHint": "Town of Mount Airy MD official website", "urls": [] },
+    { "slug": "myersville", "name": "Myersville", "searchHint": "Town of Myersville MD official website", "urls": [] },
+    { "slug": "woodsboro", "name": "Woodsboro", "searchHint": "Town of Woodsboro MD official website", "urls": [] },
+    { "slug": "burkittsville", "name": "Burkittsville", "searchHint": "Town of Burkittsville MD official website", "urls": [] },
+    { "slug": "rosemont", "name": "Rosemont", "searchHint": "Town of Rosemont MD official website", "urls": [] }
+  ]
+}
