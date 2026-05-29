@@ -54,7 +54,10 @@
 
   --app-ink: #1A1815;             /* warm ink (was #1A1A1A) */
   --app-ink-2: #4A4844;
-  --app-ink-3: #6A6862;           /* WCAG AA: ≥4.5:1 on the new warmer bg/sunken */
+  --app-ink-3: #615F55;           /* WCAG AA: ≥4.5:1 on bg/sunken/elevated. Darkened from
+                                     #6A6862 after the v3 redesign deepened --app-bg-sunken
+                                     to #E6DECE, which dropped small ink-3 text to 4.16:1
+                                     (Lighthouse-caught). Now 4.79 on sunken, 5.26 on bg. */
   --app-ink-inverse: #F4EFE6;     /* paper cream on dark */
 
   --app-brand: #A03A22;           /* Frederick brick — deepened + saturated for the v3 refresh */
