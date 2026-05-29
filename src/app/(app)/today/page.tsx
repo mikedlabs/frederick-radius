@@ -398,7 +398,7 @@ export default async function HomePage({
               Each remembers the user's expand choice in localStorage. */}
           <HourlyDisclosure
             summary={
-              <Suspense fallback={<>Loading…</>}>
+              <Suspense fallback={<Skeleton.Block height={14} width="68%" round="var(--app-radius-sm)" />}>
                 <HourlySummary />
               </Suspense>
             }
@@ -409,7 +409,7 @@ export default async function HomePage({
           </HourlyDisclosure>
           <WeeklyCard
             summary={
-              <Suspense fallback={<>Loading…</>}>
+              <Suspense fallback={<Skeleton.Block height={14} width="68%" round="var(--app-radius-sm)" />}>
                 <WeeklySummary />
               </Suspense>
             }
