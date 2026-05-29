@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
@@ -299,12 +300,46 @@ export default async function MapPage({
     );
   }
 
-  // Browse mode — the original /map experience. The rest of this
-  // function is the pre-existing data-fetch + render pipeline. We
-  // already destructured the params for the mode peek above, so we
-  // reuse `earlyParams` here instead of awaiting searchParams again.
-  const { intent: intentParam, sub: subParam, t: tParam, open: openParam } =
-    earlyParams;
+  // Browse mode — stream it. The shell (the two thin mode strips)
+  // paints immediately; the heavy ~10-feed data load + the map render
+  // stream in via Suspense, so the page no longer blocks first paint on
+  // the slowest upstream AND the Mapbox JS downloads during that fetch.
+  return (
+    <div className="-mx-4 -mt-4">
+      <div className="px-3 py-2 sm:px-4">
+        <MapModes params={{ mode: "browse", open: earlyParams.open, intent: earlyParams.intent }} />
+      </div>
+      <Suspense
+        fallback={
+          <div
+            className="animate-pulse"
+            style={{ height: BROWSE_MAP_HEIGHT, background: "var(--app-bg-sunken)" }}
+            aria-busy="true"
+            aria-label="Loading map"
+          />
+        }
+      >
+        <BrowseMapArea params={earlyParams} />
+      </Suspense>
+      <div className="flex justify-end px-3 py-2 sm:px-4">
+        <MapModeToggle mode="browse" />
+      </div>
+    </div>
+  );
+}
+
+const BROWSE_MAP_HEIGHT =
+  "calc(100dvh - 56px - 48px - 48px - env(safe-area-inset-top, 0px))";
+
+/** The heavy half of browse mode — ~10 upstream feeds + the map render.
+ *  Split into its own async component so the page shell can stream
+ *  while this resolves (Suspense boundary in MapPage above). */
+async function BrowseMapArea({
+  params,
+}: {
+  params: { intent?: string; sub?: string; t?: string; open?: string };
+}) {
+  const { intent: intentParam, sub: subParam, t: tParam, open: openParam } = params;
   const now = new Date();
   const [
     incidents,
@@ -461,29 +496,7 @@ export default async function MapPage({
   }
 
   return (
-    <div className="-mx-4 -mt-4">
-      {/* MapModes preset shelf — inline ABOVE the map (no longer
-          floating). Putting it in normal flow gives clear separation
-          from TopBar so the chips can never sit under the search bar,
-          which is what was happening when MapModes floated absolute
-          at top-2 of the map div (the safe-area math was double-
-          counted on devices with a notch). */}
-      <div className="px-3 py-2 sm:px-4">
-        <MapModes
-          params={{ mode: "browse", open: openParam, intent: intentParam }}
-        />
-      </div>
-      <div
-        className="relative"
-        style={{
-          // 100dvh minus TopBar (56) minus the MapModes strip (~48)
-          // minus the bottom toggle strip (~48) minus the iOS safe
-          // area at top. Both inline strips use py-2 = 16px padding
-          // with ~32px chip height = ~48px each.
-          height:
-            "calc(100dvh - 56px - 48px - 48px - env(safe-area-inset-top, 0px))",
-        }}
-      >
+    <div className="relative" style={{ height: BROWSE_MAP_HEIGHT }}>
         {/* MapIntentChips still floats over the map — it's the
             in-context filter UI; users tap chips to narrow what's
             visible. The active-intent banner sits at the top of this
@@ -526,13 +539,5 @@ export default async function MapPage({
           pinpointDefault={!intent}
         />
       </div>
-      {/* Mode toggle BELOW the map in its own right-aligned strip,
-          mirroring the MapModes strip above. Toggle lives in the
-          same spot across both Radius and Browse so the affordance
-          is learnable. */}
-      <div className="flex justify-end px-3 py-2 sm:px-4">
-        <MapModeToggle mode="browse" />
-      </div>
-    </div>
   );
 }
