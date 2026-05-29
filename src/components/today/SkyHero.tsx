@@ -239,6 +239,10 @@ export default async function SkyHero({
       data-sky-mood={mood}
       data-celestial={celestial}
     >
+      {/* Fine film grain — sits above the gradient + celestial light but
+          below content, giving the sky real material texture instead of
+          a flat CSS wash. The detail that reads as "crafted." */}
+      <div aria-hidden className="sky-grain" />
       {/* Fill mode centers the weather glance in the tall sky (the
           Apple-Weather "city up top, temp in the field" composition);
           on lg the wrapper is inert so the desktop card layout holds. */}

@@ -523,6 +523,27 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * RidgeLine handles the seam where the ridge's low points meet
  * the page bg (its own fillOpacity is 0.96 so the join is soft). */
 .sky-hero > * { position: relative; z-index: 2; }
+
+/* Fine film grain over the sky — premium materiality. Sits at z-1
+ * (above gradient/drift/celestial, below content at z-2). Soft-light
+ * blend so it textures the light without muddying color; ~9% so it's
+ * felt, not seen. This is the "is this a native app?" detail. */
+.sky-hero > .sky-grain {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.09;
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+  background-size: 200px 200px;
+}
+/* Atmospheric depth — a soft inset shadow hugging the bottom edge so
+ * the sky has volume and the content below reads as a distinct layer,
+ * not a flat seam. */
+.sky-hero {
+  box-shadow: inset 0 -20px 34px -26px rgba(0, 0, 0, 0.26);
+}
 @keyframes sky-drift {
   0%   { transform: translate3d(0, 0, 0) scale(1); }
   100% { transform: translate3d(-3%, 1%, 0) scale(1.05); }
