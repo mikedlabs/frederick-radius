@@ -40,24 +40,24 @@
   --app-paper: #F4EFE6;           /* warm almanac cream */
   --app-paper-2: #ECE5D5;         /* slightly deeper paper */
 
-  --app-bg: #F4EFE6;              /* paper-cream (was #FAFAF7) */
+  --app-bg: #EFE8DA;              /* deeper warm paper ground (richer; lets cards pop) */
   /* --app-bg-elevated is slightly translucent so the PageBloom aurora
      orbs tint cards from behind — the "glass" effect that lets the
      animated background read THROUGH the dense card stacks. Modals,
      sheets, popups that need full opacity should set their bg to
      --app-bg-elevated-solid instead. */
-  --app-bg-elevated-solid: #FBF8F1;
-  --app-bg-elevated: color-mix(in srgb, #FBF8F1 92%, transparent);
-  --app-bg-sunken: #ECE5D5;       /* paper-2 (was #F2F1EC) */
-  --app-border: #D9D2C3;          /* warmer hairline (was #E5E3DD) */
-  --app-border-strong: rgba(26, 24, 21, 0.09);
+  --app-bg-elevated-solid: #FFFDF8;
+  --app-bg-elevated: color-mix(in srgb, #FFFDF8 93%, transparent);
+  --app-bg-sunken: #E6DECE;       /* deeper sunken to read against brighter cards */
+  --app-border: #D6CDBB;          /* warm hairline, a touch crisper */
+  --app-border-strong: rgba(26, 24, 21, 0.10);
 
   --app-ink: #1A1815;             /* warm ink (was #1A1A1A) */
   --app-ink-2: #4A4844;
   --app-ink-3: #6A6862;           /* WCAG AA: ≥4.5:1 on the new warmer bg/sunken */
   --app-ink-inverse: #F4EFE6;     /* paper cream on dark */
 
-  --app-brand: #A8462C;           /* Frederick brick (was #C4451C) */
+  --app-brand: #A03A22;           /* Frederick brick — deepened + saturated for the v3 refresh */
   --app-brand-2: #2E3B2C;         /* Catoctin green (was #1E3A2F) */
   --app-accent: #C99632;          /* almanac gold (was #D9A441) */
   --app-cool: #2F5470;            /* Carroll Creek slate (was #2A5D8F) */
@@ -132,10 +132,10 @@
   --z-overlay: 50;    /* modal backdrops, drawer backdrops, sheets */
   --z-toast:   70;    /* sonner toaster — always on top */
 
-  --app-radius-sm: 6px;
-  --app-radius-md: 12px;
-  --app-radius-lg: 20px;
-  --app-radius-xl: 28px;
+  --app-radius-sm: 8px;
+  --app-radius-md: 14px;
+  --app-radius-lg: 22px;
+  --app-radius-xl: 30px;
 
   --app-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --app-dur-fast: 160ms;
@@ -160,17 +160,17 @@
    * consumers; primitives use the --app-elev-* scale.
    * ───────────────────────────────────────────────────── */
   --app-elev-1:
-    0 1px 2px rgba(26, 26, 26, 0.06),
-    0 2px 6px -1px rgba(26, 26, 26, 0.09);
+    0 1px 2px rgba(40, 30, 20, 0.07),
+    0 3px 8px -2px rgba(40, 30, 20, 0.10);
   --app-elev-2:
-    0 1px 3px rgba(26, 26, 26, 0.07),
-    0 8px 18px -4px rgba(26, 26, 26, 0.14);
+    0 1px 3px rgba(40, 30, 20, 0.08),
+    0 10px 22px -5px rgba(40, 30, 20, 0.16);
   --app-elev-3:
-    0 2px 6px rgba(26, 26, 26, 0.08),
-    0 18px 36px -8px rgba(26, 26, 26, 0.20);
+    0 2px 7px rgba(40, 30, 20, 0.10),
+    0 22px 44px -10px rgba(40, 30, 20, 0.23);
   --app-elev-4:
-    0 4px 10px rgba(26, 26, 26, 0.09),
-    0 28px 56px -12px rgba(168, 70, 44, 0.22); /* brand-tinted ambient */
+    0 5px 12px rgba(40, 30, 20, 0.11),
+    0 32px 64px -14px rgba(160, 58, 34, 0.26); /* brand-tinted ambient */
   /* The "made" look: a 1px top inner highlight + crisp inner edge
    * (reads sharper than a 1px border on a tinted surface). */
   --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.85);
