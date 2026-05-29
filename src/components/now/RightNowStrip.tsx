@@ -156,16 +156,28 @@ export default async function RightNowStrip({
       >
         On deck
       </h2>
-      {/* 3-column grid (was a vertical space-y-2 list of full-width
-          cards). At narrow widths the trio reads as three different
-          answers side-by-side — open / starting / weekend — instead of
-          three stacked rows that scroll out of frame. Each card is
-          vertical (icon stamp on top, eyebrow + title + meta below)
-          so the layout survives 360px viewports. */}
-      <ul className="reveal-up grid grid-cols-3 gap-2">
-        {open && <li><OpenNowCard place={open} /></li>}
-        {soon && <li><StartingSoonCard event={soon} now={now} /></li>}
-        {weekend && <li><WeekendBetCard place={weekend} /></li>}
+      {/* Mobile: a horizontal shelf-rail. Three answers crammed into
+          ~115px columns on a 360px phone truncated everything
+          ("Delaplaine Art…", "Until 5:00…"). Now each card gets a
+          comfortable ~74% width with a peek of the next and the rail's
+          soft edge-fade ("more this way"), so names and meta breathe.
+          Tablet/desktop (md+) keep the clean 3-up grid. */}
+      <ul className="reveal-up shelf-rail gap-2.5 md:grid md:grid-cols-3 md:gap-2 md:overflow-visible md:[mask-image:none]">
+        {open && (
+          <li className="w-[74%] shrink-0 md:w-auto">
+            <OpenNowCard place={open} />
+          </li>
+        )}
+        {soon && (
+          <li className="w-[74%] shrink-0 md:w-auto">
+            <StartingSoonCard event={soon} now={now} />
+          </li>
+        )}
+        {weekend && (
+          <li className="w-[74%] shrink-0 md:w-auto">
+            <WeekendBetCard place={weekend} />
+          </li>
+        )}
       </ul>
     </section>
   );
