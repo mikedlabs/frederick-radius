@@ -793,6 +793,12 @@ export default function RadiusBuilder({
           center={{ lng: center.lng, lat: center.lat }}
           centerLabel={center.label}
           insidePlaces={insideDots}
+          events={eventsInReach.map((e) => ({
+            lng: e.lng,
+            lat: e.lat,
+            slug: e.slug,
+            title: e.title,
+          }))}
           reachable={isochrone}
           onCenterChange={(next) => {
             setMyLoc(next);

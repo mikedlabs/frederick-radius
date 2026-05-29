@@ -102,12 +102,23 @@ export type InsideDot = {
   category_color?: string;
 };
 
+/** An in-reach event, plotted as a distinct ring marker (vs the solid
+ *  category dots for places) so the map reads "places + happenings" at a
+ *  glance. Minimal fields: enough to plot and to link the tap popup. */
+export type EventDot = {
+  lng: number;
+  lat: number;
+  slug: string;
+  title: string;
+};
+
 export default function RadiusMap({
   mode,
   meters,
   center,
   centerLabel,
   insidePlaces,
+  events = [],
   reachable,
   onCenterChange,
   // Tuned so the map AND the control card below it (mode toggle +
@@ -123,6 +134,9 @@ export default function RadiusMap({
   /** Pre-filtered to places inside the radius. Rendered as small dots
    *  so users can see geographic density, not just read a count. */
   insidePlaces: InsideDot[];
+  /** Upcoming events inside the same reach, plotted as distinct ring
+   *  markers. Tapping one opens a preview that links to the event. */
+  events?: EventDot[];
   /** Mapbox Isochrone polygon for the "real reachable" area. When
    *  present, replaces the circle so the user sees what they can
    *  ACTUALLY reach by walking/biking/driving on real streets.
@@ -148,6 +162,9 @@ export default function RadiusMap({
     slug: string;
     name: string;
     color: string;
+    /** Drives the popup's link target + label: places go to /places,
+     *  events to /events. Defaults to place when omitted. */
+    kind?: "place" | "event";
   } | null>(null);
 
   // Hover preview (desktop): the dot under the cursor. Updated only when
@@ -207,6 +224,17 @@ export default function RadiusMap({
     };
   }, [insidePlaces]);
 
+  const eventsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
+    return {
+      type: "FeatureCollection",
+      features: events.map((e) => ({
+        type: "Feature",
+        properties: { slug: e.slug, name: e.title, kind: "event" },
+        geometry: { type: "Point", coordinates: [e.lng, e.lat] },
+      })),
+    };
+  }, [events]);
+
   // Cancel any pending drag-flush frame on unmount so it never fires
   // setDrag after the component is gone.
   useEffect(() => {
@@ -262,7 +290,7 @@ export default function RadiusMap({
       (e.features && e.features.length > 0
         ? e.features
         : e.target.queryRenderedFeatures(e.point, {
-            layers: ["radius-places-dots"],
+            layers: ["radius-places-dots", "radius-events-dots"],
           })) ?? [];
     if (hits.length > 0) {
       const f = hits[0];
@@ -271,14 +299,19 @@ export default function RadiusMap({
         slug?: string;
         name?: string;
         color?: string;
+        kind?: string;
       };
+      const isEvent = f.layer?.id === "radius-events-dots" || props.kind === "event";
       if (props.slug && props.name) {
         setSelected({
           lng: coords[0],
           lat: coords[1],
           slug: props.slug,
           name: props.name,
-          color: props.color ?? "#7A828C",
+          // Events ride a fixed brand tint (their ring marker isn't
+          // category-colored); places keep their category color.
+          color: isEvent ? "#A8462C" : props.color ?? "#7A828C",
+          kind: isEvent ? "event" : "place",
         });
         return;
       }
@@ -294,7 +327,10 @@ export default function RadiusMap({
   // anchors the popup to the new dot. Moving within one dot is a no-op.
   const handleMouseMove = (e: MapMouseEvent) => {
     const map = e.target;
-    const f = e.features && e.features.length > 0 ? e.features[0] : null;
+    // Only places get the hover size-bump + popup. Event ring markers
+    // are click-only, so we ignore them here (their feature-state lives
+    // on a different source anyway).
+    const f = e.features?.find((ff) => ff.layer?.id === "radius-places-dots") ?? null;
     const id = f && (f.properties as { slug?: string })?.slug ? f.id ?? null : null;
     if (id === hoveredId.current) return;
     if (hoveredId.current != null) {
@@ -394,7 +430,7 @@ export default function RadiusMap({
         onClick={handleMapClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        interactiveLayerIds={["radius-places-dots"]}
+        interactiveLayerIds={["radius-places-dots", "radius-events-dots"]}
         // Pointer over a dot, otherwise the move-center crosshair (or a
         // plain grab when the map is view-only).
         cursor={hover ? "pointer" : onCenterChange ? "crosshair" : "grab"}
@@ -464,6 +500,25 @@ export default function RadiusMap({
               "line-color": accentHex,
               "line-width": usingIsochrone ? 2.5 : 2,
               "line-opacity": usingIsochrone ? 0.92 : 0.55,
+            }}
+          />
+        </Source>
+        {/* In-reach events as distinct hollow ring markers — a white
+            core with a brand ring, so they read as a different thing
+            from the solid category place dots ("ring = happening,
+            solid = place"). Mounted last so they sit above the places
+            and the reach fill; a tap opens a preview linking to the
+            event. */}
+        <Source id="radius-events" type="geojson" data={eventsGeoJson}>
+          <Layer
+            id="radius-events-dots"
+            type="circle"
+            paint={{
+              "circle-radius": 6,
+              "circle-color": "#ffffff",
+              "circle-opacity": 0.95,
+              "circle-stroke-color": "#A8462C",
+              "circle-stroke-width": 2.5,
             }}
           />
         </Source>
@@ -598,7 +653,11 @@ export default function RadiusMap({
               </strong>
               <div style={{ marginTop: 6 }}>
                 <Link
-                  href={`/places/${selected.slug}`}
+                  href={
+                    selected.kind === "event"
+                      ? `/events/${selected.slug}`
+                      : `/places/${selected.slug}`
+                  }
                   style={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -608,7 +667,7 @@ export default function RadiusMap({
                     color: selected.color,
                   }}
                 >
-                  See place
+                  {selected.kind === "event" ? "See event" : "See place"}
                   <ArrowUpRight size={12} strokeWidth={2.25} />
                 </Link>
               </div>
