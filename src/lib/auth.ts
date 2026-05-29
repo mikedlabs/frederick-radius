@@ -29,7 +29,18 @@ export type ServerUser = {
  * The former is the safe default for any server-side authz check.
  */
 export async function getServerUser(): Promise<ServerUser | null> {
-  const supabase = await createClient();
+  let supabase;
+  try {
+    supabase = await createClient();
+  } catch {
+    // Supabase not configured (env vars missing) — treat as anonymous
+    // rather than throwing. Auth is optional: every consumer already
+    // handles a null user ("on this device" mode), so this keeps pages
+    // rendering and, critically, stops the static prerender of tabs
+    // like /my-radius from crashing the production build when keys
+    // aren't present in the build environment.
+    return null;
+  }
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) return null;
   return {
