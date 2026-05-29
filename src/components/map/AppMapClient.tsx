@@ -278,6 +278,22 @@ function InViewDrawer({
       .slice(0, 6);
   }, [results]);
 
+  // "Open now" count for the readout — the app's headline pillar, and
+  // the one decision fact missing from the drawer header. Counts ONLY
+  // places we can confirm are open (verified hours → "open" or
+  // "closing-soon"); "unverified" and "unknown" are deliberately not
+  // counted, so the number never over-asserts. Reads as "at least N
+  // confirmed open right now."
+  const openCount = useMemo(
+    () =>
+      results.filter(
+        (p) =>
+          p.open_status.state === "open" ||
+          p.open_status.state === "closing-soon",
+      ).length,
+    [results],
+  );
+
   return (
     <div
       className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3"
@@ -306,6 +322,14 @@ function InViewDrawer({
           ) : (
             <>
               {results.length} place{results.length === 1 ? "" : "s"}
+              {openCount > 0 && (
+                <>
+                  {" · "}
+                  <span style={{ color: "var(--app-positive)" }}>
+                    {openCount} open now
+                  </span>
+                </>
+              )}
               {eventsHere.length > 0 && (
                 <>
                   {" · "}
