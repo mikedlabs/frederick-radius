@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Zap, MoonStar, CalendarRange, CalendarDays, Clock } from "lucide-react";
+import Pill from "@/components/ui/Pill";
 
 /**
  * MapTimeChips — temporal control for the event layer on /map. The
@@ -87,38 +88,20 @@ export default function MapTimeChips({
       }}
       aria-label="Filter map by time"
     >
-        {CHIPS.map(({ key, label, Icon }) => {
-          const isActive = key === active;
-          const n = counts?.[key];
-          return (
-            <Link
-              key={key}
-              href={hrefFor(key)}
-              aria-current={isActive ? "page" : undefined}
-              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
-              style={{
-                background: isActive ? "var(--app-ink)" : "transparent",
-                color: isActive ? "var(--app-bg)" : "var(--app-ink-2)",
-              }}
-            >
-              <Icon className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              {label}
-              {typeof n === "number" && (
-                <span
-                  className="ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-bold tabular-nums"
-                  style={{
-                    background: isActive
-                      ? "color-mix(in srgb, var(--app-bg) 22%, transparent)"
-                      : "color-mix(in srgb, var(--app-ink) 8%, transparent)",
-                    color: isActive ? "var(--app-bg)" : "var(--app-ink-3)",
-                  }}
-                >
-                  {n}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+        {CHIPS.map(({ key, label, Icon }) => (
+          <Pill
+            key={key}
+            tone="ink"
+            size="sm"
+            bare
+            icon={Icon}
+            href={hrefFor(key)}
+            active={key === active}
+            count={counts?.[key]}
+          >
+            {label}
+          </Pill>
+        ))}
         {/* Hairline + Open-now pill — visually separated so it doesn't
             read as a 5th event time mode. Different control surface
             (places, not events); same row because both are temporal. */}

@@ -51,6 +51,10 @@ type PillProps = {
   /** Trailing count badge (tabular, tone-aware). */
   count?: number;
   size?: "sm" | "md";
+  /** For chip rows that live INSIDE a shared elevated/glass container
+   *  (e.g. the map time strip): inactive chips are transparent with no
+   *  per-chip elevation, so they read as one connected control. */
+  bare?: boolean;
   href?: string;
   onClick?: () => void;
   "aria-label"?: string;
@@ -128,6 +132,7 @@ export default function Pill({
   icon: Icon,
   count,
   size = "md",
+  bare = false,
   href,
   onClick,
   className = "",
@@ -137,8 +142,10 @@ export default function Pill({
   const pad = size === "sm" ? "px-3 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]";
   const base =
     `inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition active:scale-[0.95] ${pad}`;
-  const inactiveCls = "tactile tactile-interactive";
-  const cls = `${base} ${active ? "" : inactiveCls} ${className}`.trim();
+  // Inactive elevation: a free-standing pill gets the tactile chip
+  // treatment; a `bare` pill (inside a shared container) stays flat.
+  const inactiveCls = active || bare ? "" : "tactile tactile-interactive";
+  const cls = `${base} ${inactiveCls} ${className}`.trim();
   const fillStyle: CSSProperties = active
     ? {
         background: ACTIVE_BG[tone],
@@ -147,7 +154,7 @@ export default function Pill({
         transitionTimingFunction: "var(--app-ease-spring)",
       }
     : {
-        background: "var(--app-bg-elevated)",
+        background: bare ? "transparent" : "var(--app-bg-elevated)",
         color: "var(--app-ink-2)",
         transitionTimingFunction: "var(--app-ease-spring)",
       };
