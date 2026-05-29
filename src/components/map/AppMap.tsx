@@ -33,6 +33,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import type { Amenity } from "@/lib/loaders/amenities";
 import { FREDERICK_CENTER, haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
 import { readCachedPosition } from "@/hooks/useGeolocation";
+import { sizedImage } from "@/lib/format/img";
 // THE one duplicate rule (pure, no data imports — bundle-safe). The
 // map's curated-vs-OSM de-dupe now uses the exact same contract as
 // the canonical loader, so "the same thing twice" is closed by one
@@ -81,6 +82,7 @@ import {
   DUPE_K,
   EMPTY_FC,
   FREDERICK,
+  FREDERICK_MAX_BOUNDS,
   RADIUS_M,
   STYLE_URL,
   circlePolygon,
@@ -1020,6 +1022,24 @@ export default function AppMap({
           mapStyle={STYLE_URL}
           style={{ width: "100%", height: "100%" }}
           attributionControl={true}
+          // ── Mobile-smoothness flags ──
+          // This is a flat 2D county map: rotation and pitch only ever
+          // happen by accident on a two-finger pan, leaving the user
+          // staring at a tilted, spun map they can't easily un-tilt.
+          // Locking both keeps every gesture a clean pan/zoom.
+          dragRotate={false}
+          pitchWithRotate={false}
+          touchPitch={false}
+          // Leash the camera to the county (+ buffer) so flings don't
+          // sail off into empty tiles the user then has to scroll back
+          // from — and so the place set always has context on screen.
+          maxBounds={FREDERICK_MAX_BOUNDS}
+          // Don't tear down + re-create the GL context when the map
+          // unmounts (mode toggle, route change) — reusing it makes the
+          // map snap back instantly instead of cold-booting Mapbox.
+          reuseMaps
+          // Snappier label transitions on pan/zoom (default is 300ms).
+          fadeDuration={120}
           // The terrain/fog combo we previously had assumed Standard's
           // built-in mapbox-dem source. On dark-v11 that source isn't
           // included, so terrain silently no-ops; applyFrederickPalette
@@ -1780,12 +1800,17 @@ export default function AppMap({
                   style={{ aspectRatio: "16/9" }}
                 >
                   {/* Plain <img> — Mapbox popup content sits outside
-                      Next's image optimizer pipeline and these are
-                      already 1920×1080 jpegs of the right resolution. */}
+                      Next's <Image> component, but we can still hit the
+                      optimizer endpoint directly: the source is a full
+                      1920×1080 jpeg and the card is ~320px wide, so a
+                      640px variant (2× DPR) is a fraction of the bytes. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={selectedAerial.src}
+                    src={sizedImage(selectedAerial.src, 640)}
                     alt={`Aerial photo, ${selectedAerial.season}`}
+                    width={320}
+                    height={180}
+                    decoding="async"
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                 </div>
@@ -1949,7 +1974,9 @@ export default function AppMap({
                     height: 36,
                     borderRadius: 9999,
                     background: e.hero_image
-                      ? `center/cover no-repeat url("${e.hero_image}")`
+                      // 36px dot at up to 3× DPR → a 128px variant is
+                      // plenty; the raw hero.jpg blob is 1–2 MB.
+                      ? `center/cover no-repeat url("${sizedImage(e.hero_image, 128)}")`
                       : e.category_color || "#A8462C",
                     border: `2px solid #fff`,
                     boxShadow: "var(--app-shadow-2)",

@@ -191,6 +191,17 @@ export function saveCachedOsm(data: OsmPlace[]) {
 
 export const FREDERICK: [number, number] = [-77.4105, 39.4143];
 
+// Camera leash for the county map. Frederick County spans roughly
+// lat 39.15–39.72, lng -77.76 to -77.0; this box adds a comfortable
+// buffer so the user can pan to (and just past) every edge — including
+// a "Near me" recenter from a town near the line — but can't drift off
+// into empty Pennsylvania / the Atlantic, which only burns tile
+// fetches and loses the place. Format: [[west, south], [east, north]].
+export const FREDERICK_MAX_BOUNDS: [[number, number], [number, number]] = [
+  [-78.05, 38.95],
+  [-76.80, 39.98],
+];
+
 // Base style chosen so applyFrederickPalette() can do its thing.
 // dark-v11 is a simple legacy style with predictable layer naming —
 // the System-Black palette in applyFrederickPalette walks every
