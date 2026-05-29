@@ -142,7 +142,6 @@ export default async function MunicipalityPage(
               priority
               placeholder="blur"
               blurDataURL={PAPER_CREAM_BLUR}
-              unoptimized
               className="object-cover"
             />
           ) : (

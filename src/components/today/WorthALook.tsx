@@ -73,7 +73,6 @@ export default async function WorthALook() {
                       placeholder="blur"
                       blurDataURL={PAPER_CREAM_BLUR}
                       className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                      unoptimized
                       // View Transitions pair-up: same name on the
                       // hero of /places/[slug] morphs this tile photo
                       // into the detail hero on route change.

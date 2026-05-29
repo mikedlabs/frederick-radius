@@ -54,7 +54,6 @@ export default function PlacePhoto({
       blurDataURL={PAPER_CREAM_BLUR}
       className={`object-cover ${className}`}
       onError={() => setFailed(true)}
-      unoptimized
     />
   );
 }
