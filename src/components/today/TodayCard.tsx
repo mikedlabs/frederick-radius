@@ -97,7 +97,20 @@ export default async function TodayCard({
   const tempNow = cur?.temperature ?? null;
   const condition = cur?.shortForecast ?? "";
   const high = forecast?.daily?.find((p) => p.isDaytime)?.temperature ?? null;
-  const sunset = fmtTime(sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng).sunset);
+
+  // The NEXT sun event, not both — sunrise if it hasn't happened yet,
+  // otherwise tonight's sunset, otherwise tomorrow's sunrise. (Replaces
+  // the redundant sunrise+sunset footer that duplicated this.)
+  const st = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+  let sun: { label: string; time: string } | null = null;
+  if (st.sunrise && now < st.sunrise) {
+    sun = { label: "Sunrise", time: fmtTime(st.sunrise)! };
+  } else if (st.sunset && now < st.sunset) {
+    sun = { label: "Sunset", time: fmtTime(st.sunset)! };
+  } else {
+    const tmrw = sunTimes(new Date(now.getTime() + 86_400_000), FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+    if (tmrw.sunrise) sun = { label: "Sunrise", time: fmtTime(tmrw.sunrise)! };
+  }
 
   const mood = moodLine(condition, tempNow);
 
@@ -105,7 +118,7 @@ export default async function TodayCard({
   const readout = [
     tempNow != null ? `${tempNow}° now` : null,
     high != null ? `High ${high}°` : null,
-    sunset ? `Sunset ${sunset}` : null,
+    sun ? `${sun.label} ${sun.time}` : null,
   ].filter(Boolean);
 
   return (

@@ -22,7 +22,6 @@ import PageBloom from "@/components/ui/PageBloom";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
-import AlmanacFooter from "@/components/today/AlmanacFooter";
 import HourlyForecast from "@/components/today/HourlyForecast";
 import HourlyDisclosure from "@/components/today/HourlyDisclosure";
 import HourlySummary from "@/components/today/HourlySummary";
@@ -375,16 +374,6 @@ export default async function HomePage({
               }
             />
           </Suspense>
-          {/* AlmanacFooter moved INSIDE the SkyHero gradient as a
-              quiet footer line under the weather hero. Used to live
-              at the bottom of the consolidated weather panel; pulled
-              up here so sunrise/sunset/daylight-delta/AQI/comfort
-              read as part of the sky scene the user is looking at,
-              not a separate strip you scroll past. Inherits the
-              sky's currentColor for tone-aware ink. */}
-          <Suspense fallback={null}>
-            <AlmanacFooter inSky />
-          </Suspense>
         </SkyHero>
 
         {/* Situational next-steps live on PAPER just below the sky hook,
@@ -407,11 +396,11 @@ export default async function HomePage({
           const strength = sky.tone === "dark" ? 14 : 10;
           const stackBg = `linear-gradient(180deg, color-mix(in srgb, ${sky.bottom} ${strength}%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 75%)`;
           return (
+            <div className="deck-card mt-3 rounded-[var(--app-radius-lg)]">
             <div
-              className="relative mt-3 z-0 overflow-hidden rounded-[var(--app-radius-lg)] border [&_>_*:not(:last-child)]:border-b"
+              className="relative z-0 overflow-hidden rounded-[var(--app-radius-lg)] border [&_>_*:not(:last-child)]:border-b"
               style={{
                 borderColor: "var(--app-border)",
-                boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
                 background: stackBg,
               }}
             >
@@ -451,7 +440,8 @@ export default async function HomePage({
               <WeatherMoreGrid />
             </Suspense>
           </WeatherMore>
-        </div>
+            </div>
+            </div>
           );
         })()}
       </div>
