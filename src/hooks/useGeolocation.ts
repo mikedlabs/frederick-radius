@@ -29,6 +29,35 @@ const STORAGE_KEY = "fr_geo_v1";
 const TTL_MS = 1000 * 60 * 30; // 30 min cache
 
 /**
+ * Read the cached geolocation fix WITHOUT prompting or mounting the hook.
+ *
+ * Returns the user's last-known coordinates if a fresh (< 30 min) fix is
+ * cached in sessionStorage, else null. Used by surfaces that want to
+ * center "from where you're standing" only when we already have consent —
+ * e.g. arriving on the map via a category tile. Never triggers a
+ * permission prompt: if there's no cached fix, the caller falls back to
+ * the city center. Safe to call during a client render (SSR-guarded).
+ */
+export function readCachedPosition(): { lng: number; lat: number } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as GeoPosition;
+    if (
+      Number.isFinite(cached.lng) &&
+      Number.isFinite(cached.lat) &&
+      Date.now() - cached.timestamp < TTL_MS
+    ) {
+      return { lng: cached.lng, lat: cached.lat };
+    }
+  } catch {
+    // ignore parse / storage errors — treat as no fix
+  }
+  return null;
+}
+
+/**
  * Geolocation hook with cached position + permission awareness.
  * Returns state + a request() function for explicit opt-in.
  *

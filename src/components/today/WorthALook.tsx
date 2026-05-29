@@ -3,6 +3,7 @@ import Image from "next/image";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { getWorthALookToday, easternDayKey } from "@/lib/worth-a-look";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
  * WorthALook — compact photo-led discovery rail on /now.
@@ -26,22 +27,16 @@ export default async function WorthALook() {
   if (picks.length === 0) return null;
 
   return (
-    <section aria-label="Worth a look today" className="space-y-2.5">
-      <header className="flex items-baseline justify-between px-1">
-        <h2
-          className="eyebrow"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Worth a look today
-        </h2>
-        <span
-          className="text-[10px] font-medium uppercase tracking-[0.1em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {picks.length} picks
-        </span>
-      </header>
-
+    // Collapsible: the discovery rail can be tucked away by readers who
+    // want a tighter page; the title + "N picks" stay as the summary
+    // row. Defaults open so the daily surprise still greets visitors.
+    <CollapsibleSection
+      title="Worth a look today"
+      count={picks.length}
+      countLabel="picks"
+      storageKey="fr:worth-a-look-open:v1"
+      defaultOpen
+    >
       {/* Horizontal scroll rail. -mx-4 + px-4 lets the first/last
           tiles edge-fade off the screen. Snap-stop on each tile so
           a flick lands cleanly. */}
@@ -116,6 +111,6 @@ export default async function WorthALook() {
           })}
         </ol>
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }

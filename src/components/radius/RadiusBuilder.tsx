@@ -9,13 +9,16 @@ import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
 import BestNearbyMoves from "./BestNearbyMoves";
 import { resolveMunicipality } from "@/lib/location";
+import { useClientPlaces } from "@/hooks/useClientPlaces";
 // Read the same slim, pre-decorated set the rest of the app uses on
 // the client. The previous shape (places passed in via props from
 // radius/page) inlined ~4MB of redundant JSON into the SSR HTML for
-// every cold visit — the bundle ALREADY ships places-client.json, so
-// the server payload was a pure duplicate. clientPlaces() returns
-// the same canonical operational set, decorated, cached as a const.
-import { clientPlaces } from "@/lib/loaders/places-client";
+// every cold visit. We now neither ship it in HTML nor static-import
+// it: places-client.json (~1.5MB) is the single biggest blob on the
+// default /map route, and parsing it on the main thread before the
+// map can paint is the dominant cold-load cost. It's loaded lazily
+// after mount (see the effect below) via dynamic import, so the map
+// canvas and controls paint first and the place set streams in.
 import type { PlaceCardData } from "@/lib/loaders/places";
 // TYPE ONLY: the points arrive as a server prop (radius/page →
 // allAmenities()), so this client component never imports the loader
@@ -235,11 +238,14 @@ export default function RadiusBuilder({
    *  with the map's own camera affordances. */
   modeToggle?: React.ReactNode;
 }) {
-  // Places source: client-bundled, slim, already-decorated. Reading
-  // here instead of taking via props removes ~4MB from /radius's SSR
-  // HTML payload — the data was ALREADY on the client; the prop was
-  // duplicating it as a serialized RSC payload. (Pre-2026-05-23.)
-  const places: PlaceCardData[] = clientPlaces();
+  // Places source: client-bundled, slim, already-decorated — but
+  // loaded LAZILY (see useClientPlaces) so the 1.5MB JSON parse stays
+  // off the critical path. The map paints, the reach controls are
+  // interactive, and the place set fills in a tick later. Until then
+  // `places` is empty (the reach simply lists nothing yet) and
+  // `placesReady` drives a quiet "finding places…" affordance instead
+  // of a false "nothing here."
+  const { places, ready: placesReady } = useClientPlaces();
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
@@ -837,12 +843,18 @@ export default function RadiusBuilder({
               className="inline-flex items-center gap-1 font-semibold tabular-nums"
               style={{ color: "var(--app-ink)" }}
             >
-              <span className="font-serif text-[15px]">{displayedInside.length.toLocaleString()}</span>
+              <span className="font-serif text-[15px]">
+                {placesReady ? displayedInside.length.toLocaleString() : "…"}
+              </span>
               {/* "places in radius" rather than just "places" — answers
                   the stranger's "of what?" without forcing them to
-                  trace back to the page name. */}
+                  trace back to the page name. While the place set is
+                  still streaming in we read "finding places" so the
+                  momentary zero never looks like an empty county. */}
               <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                {`${displayedInside.length === 1 ? "place" : "places"} in radius`}
+                {!placesReady
+                  ? "finding places"
+                  : `${displayedInside.length === 1 ? "place" : "places"} in radius`}
               </span>
             </span>
             {/* "Open now" — the headline pillar, glanceable on the map.
@@ -1174,7 +1186,7 @@ export default function RadiusBuilder({
 
       {/* Filtered to open but nothing qualifies — a clear, recoverable
           dead end instead of a silently empty page. */}
-      {openOnly && displayedInside.length === 0 && (
+      {placesReady && openOnly && displayedInside.length === 0 && (
         <p
           className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}

@@ -162,9 +162,16 @@ function applyMood(sky: Sky, mood: SkyMood): Sky {
 export default async function SkyHero({
   children,
   className = "",
+  fill = false,
 }: {
   children: React.ReactNode;
   className?: string;
+  /** Cinematic fold: on mobile the sky grows to own most of the first
+   *  screen (the 9:16 canvas), centering the weather glance in the
+   *  gradient with a quiet scroll cue at the bottom edge. Resets to a
+   *  normal-height block at lg+ so the desktop two-column layout is
+   *  untouched. */
+  fill?: boolean;
 }) {
   const nyHour = parseInt(
     new Intl.DateTimeFormat("en-US", {
@@ -213,7 +220,11 @@ export default async function SkyHero({
 
   return (
     <section
-      className={`sky-hero -mx-4 -mt-4 px-4 pb-4 pt-6 sm:rounded-b-[var(--app-radius-xl)] ${className}`}
+      className={`sky-hero -mx-4 -mt-4 px-4 pb-4 pt-6 sm:rounded-b-[var(--app-radius-xl)] ${
+        fill
+          ? "flex min-h-[72svh] flex-col lg:!min-h-0 lg:block"
+          : ""
+      } ${className}`}
       style={
         {
           "--sky-top": sky.top,
@@ -228,7 +239,38 @@ export default async function SkyHero({
       data-sky-mood={mood}
       data-celestial={celestial}
     >
-      {children}
+      {/* Fill mode centers the weather glance in the tall sky (the
+          Apple-Weather "city up top, temp in the field" composition);
+          on lg the wrapper is inert so the desktop card layout holds. */}
+      {fill ? (
+        <div className="flex flex-1 flex-col justify-center lg:block">
+          {children}
+        </div>
+      ) : (
+        children
+      )}
+
+      {/* Scroll cue — a quiet, tone-aware chevron at the bottom of the
+          fold that says "there's more below" without a label. Mobile
+          only; the desktop layout shows the next sections inline. */}
+      {fill && (
+        <div
+          aria-hidden
+          className="mt-4 flex shrink-0 justify-center pb-1 opacity-60 lg:hidden"
+        >
+          <svg
+            className="h-5 w-5 animate-bounce"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </div>
+      )}
       {/* No silhouette mounted here right now. See the import-area
           comment for the history of attempts (mountains, spires).
           Frederick identity lives in the AlmanacFooter + BriefingLine

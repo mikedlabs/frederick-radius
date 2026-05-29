@@ -305,15 +305,6 @@ export default async function HomePage({
           synthesis of time-of-day, open places, and the next
           notable event) — the centerpiece of the data → decisions
           shift the review called for. */}
-      {/* NowDayStrip — the multi-day weather strip. Stays with the
-          weather column (DateLine + BriefingLine moved up to the
-          full-width header). Async (fetches NWS daily forecast for a
-          glyph + hi/lo per day); Suspense fallback is a slim
-          placeholder matching the strip's height. */}
-      <Suspense fallback={<Skeleton.Block height={86} round="var(--app-radius-sm)" />}>
-        <NowDayStrip />
-      </Suspense>
-
       {/* 1 — Sky-tinted hero. Sun countdown + weather (now and the
           7-day, on one card) + plan card, layered on the time-of-day
           gradient. */}
@@ -348,7 +339,7 @@ export default async function HomePage({
           SkyHero casts depth onto the panel. Net visual: weather
           card floats, week + hourly + more peeks from underneath. */}
       <div className="relative">
-        <SkyHero className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
+        <SkyHero fill className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
           <Suspense
             fallback={<Skeleton.Block height={180} round="var(--app-radius-lg)" />}
           >
@@ -428,6 +419,16 @@ export default async function HomePage({
         })()}
       </div>
 
+      {/* NowDayStrip — the multi-day weather strip. Moved BELOW the
+          cinematic sky fold (it used to sit above SkyHero and broke the
+          "slim header → full-bleed sky" first screen). It now caps the
+          weather column as a quick multi-day glance after the detailed
+          panel. Async (NWS daily forecast → glyph + hi/lo per day);
+          Suspense fallback matches the strip's height. */}
+      <Suspense fallback={<Skeleton.Block height={86} round="var(--app-radius-sm)" />}>
+        <NowDayStrip />
+      </Suspense>
+
         </div>{/* /LEFT column */}
 
         {/* ── RIGHT column: the action stack. Follows the weather on
@@ -452,7 +453,8 @@ export default async function HomePage({
        * after the weather block.
        */}
 
-      {/* MoodTiles — what do you need right now, with sub-tile expand. */}
+      {/* MoodTiles — what do you need right now; each tile opens the
+          browse map filtered to that category, closest-first. */}
       <MoodTiles />
 
       {/* PartnerAppsRow — ParkMobile + OpenTable. */}

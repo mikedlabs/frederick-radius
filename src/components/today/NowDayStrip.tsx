@@ -4,27 +4,28 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import AnimatedSkyGlyph from "./AnimatedSkyGlyph";
 
 /**
- * NowDayStrip — 7-day "you are here + what's the weather" strip.
+ * NowDayStrip — 7-day "here's the week, here's the weather" forecast.
  *
- * Previous version was a quiet 7-dot row with today highlighted. It
- * gave a temporal anchor but didn't carry any data. This rewrite
- * pairs each day with the NWS forecast pulled server-side:
+ * v3 (cohesion pass): the previous version stacked FOUR elements per
+ * cell — weekday letter, a heavy filled day-number circle, a glyph, and
+ * slashed "72°/50°" temps — across 7 columns. Four competing shapes ×
+ * seven read as noise ("good data, messy layout") and the circles were
+ * the loudest offender. This pass:
+ *   - drops the calendar-number circle in WEATHER mode. For a forward
+ *     7-day forecast the weekday IS the anchor (Apple Weather shows no
+ *     date numbers either), so the row of heavy circles just went away.
+ *   - unifies each cell to three calm elements: weekday → glyph →
+ *     hi/lo with real hierarchy (hi bold ink, lo muted, no slash).
+ *   - wraps the seven cells in ONE low-profile container so the strip
+ *     reads as a single forecast module, not seven floating mini-cards.
+ *   - trims ~20% of the vertical real estate.
  *
- *   - Weekday letter (S M T W T F S)
- *   - Animated sky glyph for the forecast condition
- *   - Day number (today is filled brand color)
- *   - High / low temperature
+ * The /events date-picker mode (hrefForDate + eventCountByDate) still
+ * needs the calendar number and a count badge, so that layout is kept.
  *
- * The whole strip reads in a glance as "here's the week, here's
- * what the weather will be." Today is still the anchor — same brand-
- * filled circle as before — but every day around it now carries
- * useful signal so the strip earns the vertical space it took.
- *
- * Server component, fetches NWS once per request (cached by the
- * shared getNwsForecast). Daily forecast comes back as 14 periods
- * alternating daytime/nighttime; we pair them up to get hi/low per
- * date. If the fetch fails the strip degrades gracefully to the
- * day-only layout (no glyph, no temps).
+ * Server component; fetches NWS once per request (shared cache). Daily
+ * forecast comes back as alternating day/night periods paired into
+ * hi/lo per Eastern date. Fetch failure degrades to weekday-only cells.
  */
 
 const WEEKDAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
@@ -60,13 +61,6 @@ function easternDayNumber(now: Date, offsetFromToday: number): number {
   );
 }
 
-/**
- * For each day-offset (-todayDow..6-todayDow), find the NWS daytime
- * and nighttime periods so we can show hi/lo + a representative
- * forecast variant. NWS returns periods in chronological order
- * starting from the next half-day; we match by Eastern-time calendar
- * date.
- */
 type DailyForecastInfo = {
   high?: number;
   low?: number;
@@ -92,18 +86,14 @@ function dateForOffset(now: Date, offset: number): Date {
 }
 
 export default async function NowDayStrip({
-  /** When set, every day cell wraps in a Link to this URL (use {date}
-   *  as the YYYY-MM-DD placeholder). Used by /events to make the day
-   *  strip a temporal filter. When omitted the strip is static. */
+  /** When set, every day cell wraps in a Link to this URL. Used by
+   *  /events to make the day strip a temporal filter. */
   hrefForDate,
-  /** When set, override which day reads as "active." For /events this
-   *  is the currently-filtered day; for /now it stays undefined so
-   *  today is the active day. ISO YYYY-MM-DD in Eastern time. */
+  /** Override which day reads as "active." /events passes the filtered
+   *  day; /now leaves it undefined so today is active. */
   activeDateKey,
-  /** Optional event-count map keyed by Eastern date key. When provided,
-   *  replaces the weather hi/lo line with a "N events" badge so the
-   *  strip carries event density instead of forecast. /events uses
-   *  this; /now leaves it undefined for the weather treatment. */
+  /** When provided, the strip switches to EVENT mode: calendar number +
+   *  per-day event-count badge instead of the weather forecast. */
   eventCountByDate,
 }: {
   hrefForDate?: (dateKey: string) => string;
@@ -111,13 +101,10 @@ export default async function NowDayStrip({
   eventCountByDate?: Map<string, number>;
 } = {}) {
   const now = new Date();
-  // Pre-redesign the strip ran S-M-T-W-T-F-S with today in the middle,
-  // so past days (S/M/T before today) had no weather since NWS only
-  // gives forward forecast. The user wanted weather for every day in
-  // the strip. Easy fix: start from today and run 7 days forward —
-  // today on the LEFT, +6 days on the right. Every cell is then
-  // covered by the 7-day NWS forecast.
   const todayKey = easternDateKey(now);
+  // Weather mode is the /now default; event mode kicks in only when the
+  // caller hands us a per-day count map (the /events date picker).
+  const weatherMode = !eventCountByDate;
 
   const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const dailyByDate = new Map<string, DailyForecastInfo>();
@@ -139,152 +126,151 @@ export default async function NowDayStrip({
   return (
     <nav
       aria-label="This week"
-      className="grid grid-cols-7 gap-1 sm:gap-1.5"
+      // One low-profile container so the seven days read as a single
+      // forecast module, matching the weather panel's card grammar
+      // without becoming a heavy "big card."
+      className="overflow-hidden rounded-[var(--app-radius-lg)] border"
+      style={{
+        borderColor: "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+      }}
     >
-      {Array.from({ length: 7 }, (_, i) => {
-        // Position 0 = today; positions 1..6 = today+1..today+6.
-        // Past days are gone from the strip, so isPast is always
-        // false — the dimming logic that used to apply to S/M/T
-        // before today retires here.
-        const offset = i;
-        const cellDate = dateForOffset(now, offset);
-        const cellDow = easternWeekday(cellDate);
-        const letter = WEEKDAY_LETTERS[cellDow];
-        const fullName = WEEKDAY_FULL[cellDow];
-        const isPast = false;
-        const dayNumber = easternDayNumber(now, offset);
-        const dk = easternDateKey(cellDate);
-        const info = dailyByDate.get(dk);
-        const variant = info?.shortForecast ? iconForShortForecast(info.shortForecast) : null;
-        const eventCount = eventCountByDate?.get(dk);
-        const isToday = offset === 0;
-        // "Active" day: caller-supplied (used by /events to highlight
-        // the day they've filtered to) OR fall back to today.
-        const isActive = activeDateKey
-          ? dk === activeDateKey
-          : isToday;
-        const isTodayMarker = dk === todayKey;
-        const href = hrefForDate?.(dk);
-        // Same content inside Link vs div — Link gives client-side
-        // navigation + prefetch when caller passes hrefForDate.
-        const cellClass =
-          "flex flex-col items-center gap-1 rounded-[var(--app-radius-sm)] py-1.5 " +
-          (href ? "transition active:scale-[0.97] hover:bg-[var(--app-bg-sunken)]" : "");
-        const cellStyle = {
-          background: isActive
-            ? "color-mix(in srgb, var(--app-brand) 6%, transparent)"
-            : "transparent",
-        };
-        const ariaLabel = [
-          `${fullName} ${dayNumber}`,
-          isTodayMarker ? "today" : null,
-          info?.high !== undefined ? `high ${info.high}` : null,
-          info?.low !== undefined ? `low ${info.low}` : null,
-          typeof eventCount === "number" ? `${eventCount} events` : null,
-        ].filter(Boolean).join(", ");
-        const inner = (
-          <>
+      <div className="grid grid-cols-7">
+        {Array.from({ length: 7 }, (_, i) => {
+          const offset = i;
+          const cellDate = dateForOffset(now, offset);
+          const cellDow = easternWeekday(cellDate);
+          const letter = WEEKDAY_LETTERS[cellDow];
+          const fullName = WEEKDAY_FULL[cellDow];
+          const dayNumber = easternDayNumber(now, offset);
+          const dk = easternDateKey(cellDate);
+          const info = dailyByDate.get(dk);
+          const variant = info?.shortForecast ? iconForShortForecast(info.shortForecast) : null;
+          const eventCount = eventCountByDate?.get(dk);
+          const isToday = offset === 0;
+          const isActive = activeDateKey ? dk === activeDateKey : isToday;
+          const isTodayMarker = dk === todayKey;
+          const href = hrefForDate?.(dk);
+
+          const ariaLabel = [
+            `${fullName} ${dayNumber}`,
+            isTodayMarker ? "today" : null,
+            info?.high !== undefined ? `high ${info.high}` : null,
+            info?.low !== undefined ? `low ${info.low}` : null,
+            typeof eventCount === "number" ? `${eventCount} events` : null,
+          ].filter(Boolean).join(", ");
+
+          const cellClass =
+            "flex flex-col items-center gap-1.5 py-2.5 " +
+            (href ? "transition active:scale-[0.97] hover:bg-[var(--app-bg-sunken)]" : "");
+          const cellStyle = {
+            // Today/active gets a quiet brand wash + a top accent rule
+            // (drawn via inset box-shadow) instead of a heavy circle.
+            background: isActive
+              ? "color-mix(in srgb, var(--app-brand) 7%, transparent)"
+              : "transparent",
+            boxShadow: isActive ? "inset 0 2px 0 0 var(--app-brand)" : "none",
+          };
+
+          // Weekday label — brand on the active day, muted otherwise.
+          const weekdayEl = (
             <span
-              className="text-[10px] font-semibold uppercase tracking-[0.08em]"
-              style={{
-                color: isActive
-                  ? "var(--app-brand)"
-                  : isPast
-                    ? "var(--app-ink-3)"
-                    : "var(--app-ink-2)",
-                opacity: isPast ? 0.6 : 1,
-              }}
+              className="text-[10px] font-bold uppercase tracking-[0.1em]"
+              style={{ color: isActive ? "var(--app-brand)" : "var(--app-ink-3)" }}
             >
               {letter}
             </span>
-            <span
-              className="grid h-7 w-7 place-items-center rounded-full text-[11px] font-bold tabular-nums sm:h-8 sm:w-8 sm:text-[12px]"
-              style={{
-                background: isTodayMarker
-                  ? "var(--app-brand)"
-                  : isActive
-                    ? "color-mix(in srgb, var(--app-brand) 22%, transparent)"
-                    : "transparent",
-                color: isTodayMarker
-                  ? "white"
-                  : isActive
+          );
+
+          const inner = weatherMode ? (
+            <>
+              {weekdayEl}
+              {variant ? (
+                <AnimatedSkyGlyph variant={variant} size={22} />
+              ) : (
+                <div style={{ height: 22 }} aria-hidden />
+              )}
+              {/* hi over lo — hi bold ink, lo muted; no slash, aligned
+                  baselines across the week so the row scans cleanly. */}
+              {info?.high !== undefined || info?.low !== undefined ? (
+                <span
+                  aria-hidden
+                  className="flex flex-col items-center leading-tight tabular-nums"
+                >
+                  {info?.high !== undefined && (
+                    <span className="text-[12px] font-bold" style={{ color: "var(--app-ink)" }}>
+                      {info.high}°
+                    </span>
+                  )}
+                  {info?.low !== undefined && (
+                    <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                      {info.low}°
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <div style={{ height: 26 }} aria-hidden />
+              )}
+            </>
+          ) : (
+            // EVENT mode — keep the calendar number (it's a date picker)
+            // and a count badge, flattened to match the calmer cell.
+            <>
+              {weekdayEl}
+              <span
+                className="grid h-7 w-7 place-items-center rounded-full text-[12px] font-bold tabular-nums"
+                style={{
+                  background: isTodayMarker
                     ? "var(--app-brand)"
-                    : isPast
-                      ? "var(--app-ink-3)"
-                      : "var(--app-ink)",
-                opacity: isPast ? 0.55 : 1,
-                boxShadow: isTodayMarker ? "var(--app-shadow-1)" : "none",
-              }}
-            >
-              {dayNumber}
-            </span>
-            {/* Bottom row — either an event-count badge (when the
-                caller passes eventCountByDate) or the weather glyph
-                + hi/lo combo from NWS. Past days render with reduced
-                opacity since neither forecast nor future-event count
-                applies backwards. */}
-            {eventCountByDate ? (
+                    : isActive
+                      ? "color-mix(in srgb, var(--app-brand) 22%, transparent)"
+                      : "transparent",
+                  color: isTodayMarker ? "white" : isActive ? "var(--app-brand)" : "var(--app-ink)",
+                }}
+              >
+                {dayNumber}
+              </span>
               <span
                 aria-hidden
                 className="text-[10px] font-bold tabular-nums leading-tight"
                 style={{
-                  color: typeof eventCount === "number" && eventCount > 0
-                    ? "var(--app-ink-2)"
-                    : "var(--app-ink-3)",
-                  opacity: isPast ? 0.4 : 1,
+                  color:
+                    typeof eventCount === "number" && eventCount > 0
+                      ? "var(--app-ink-2)"
+                      : "var(--app-ink-3)",
                   minHeight: 14,
                 }}
               >
                 {typeof eventCount === "number" && eventCount > 0 ? eventCount : "·"}
               </span>
-            ) : variant ? (
-              <div
-                aria-hidden
-                style={{ opacity: isPast ? 0.4 : 1 }}
-                className="flex flex-col items-center gap-0.5"
-              >
-                <AnimatedSkyGlyph variant={variant} size={20} />
-                {(info?.high !== undefined || info?.low !== undefined) && (
-                  <span
-                    className="text-[10px] font-semibold tabular-nums leading-tight"
-                    style={{ color: "var(--app-ink-2)" }}
-                  >
-                    {info?.high !== undefined ? `${info.high}°` : ""}
-                    {info?.high !== undefined && info?.low !== undefined && (
-                      <span className="opacity-50">{"/"}</span>
-                    )}
-                    {info?.low !== undefined ? `${info.low}°` : ""}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div style={{ height: 32 }} aria-hidden />
-            )}
-          </>
-        );
-        return href ? (
-          <Link
-            key={i}
-            href={href}
-            aria-current={isActive ? "date" : undefined}
-            aria-label={ariaLabel}
-            className={cellClass}
-            style={cellStyle}
-          >
-            {inner}
-          </Link>
-        ) : (
-          <div
-            key={i}
-            aria-current={isActive ? "date" : undefined}
-            aria-label={ariaLabel}
-            className={cellClass}
-            style={cellStyle}
-          >
-            {inner}
-          </div>
-        );
-      })}
+            </>
+          );
+
+          return href ? (
+            <Link
+              key={i}
+              href={href}
+              aria-current={isActive ? "date" : undefined}
+              aria-label={ariaLabel}
+              className={cellClass}
+              style={cellStyle}
+            >
+              {inner}
+            </Link>
+          ) : (
+            <div
+              key={i}
+              aria-current={isActive ? "date" : undefined}
+              aria-label={ariaLabel}
+              className={cellClass}
+              style={cellStyle}
+            >
+              {inner}
+            </div>
+          );
+        })}
+      </div>
     </nav>
   );
 }

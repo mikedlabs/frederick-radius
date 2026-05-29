@@ -1,5 +1,6 @@
-import { ArrowUpRight, Newspaper } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { getLocalNews } from "@/lib/integrations/local-news";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
  * LocalNewsRail — "What's new in Frederick" surface on /today.
@@ -38,26 +39,15 @@ export default async function LocalNewsRail() {
   if (items.length === 0) return null;
 
   return (
-    <section
-      aria-labelledby="local-news-heading"
-      className="space-y-2"
+    // Collapsed by default — local headlines are "check when curious,"
+    // not part of the daily-decision spine, so they stay tucked under a
+    // summary row until tapped. Applied after the empty-guard above, so
+    // the section never shows an empty accordion.
+    <CollapsibleSection
+      title="What's new in Frederick"
+      count={items.length}
+      storageKey="fr:local-news-open:v1"
     >
-      <header className="flex items-baseline gap-2">
-        <Newspaper
-          aria-hidden
-          className="h-3.5 w-3.5 translate-y-px"
-          strokeWidth={2.25}
-          style={{ color: "var(--app-ink-3)" }}
-        />
-        <h2
-          id="local-news-heading"
-          className="eyebrow"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          What&rsquo;s new in Frederick
-        </h2>
-      </header>
-
       <ol
         className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
         style={{
@@ -131,11 +121,11 @@ export default async function LocalNewsRail() {
       </ol>
 
       <p
-        className="px-1 text-[10px]"
+        className="px-1 pt-2 text-[10px]"
         style={{ color: "var(--app-ink-3)" }}
       >
         Headlines via RSS · each link opens the publisher&rsquo;s site
       </p>
-    </section>
+    </CollapsibleSection>
   );
 }

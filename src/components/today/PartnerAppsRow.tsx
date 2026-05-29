@@ -1,4 +1,5 @@
 import { ExternalLink, Car, Utensils } from "lucide-react";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
  * PartnerAppsRow — Frederick-specific quick-action handoffs.
@@ -49,16 +50,20 @@ const HANDOFFS: Handoff[] = [
 
 export default function PartnerAppsRow() {
   return (
-    <section aria-label="Partner apps" className="space-y-2">
-      <h2 className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-        Quick handoffs
-      </h2>
+    // Collapsed by default — these are utility shortcuts (parking,
+    // reservations), not daily reading. They stay out of the way until
+    // a visitor actually needs them, then one tap reveals the row.
+    <CollapsibleSection
+      title="Quick handoffs"
+      storageKey="fr:partner-apps-open:v1"
+    >
       {/* Compact pill row — was a 2-col stack of tall cards that
           punched above its weight relative to the section's purpose
           (these are just shortcuts, not destinations). Switching to
           short horizontal pills keeps the partner-color hairline
           identity but cuts the section's vertical real estate in
           about half. */}
+      <div className="space-y-2">
       <ul className="grid grid-cols-2 gap-2">
         {HANDOFFS.map((h) => {
           const Icon = h.icon;
@@ -120,6 +125,7 @@ export default function PartnerAppsRow() {
       >
         The City of Frederick uses ParkMobile for all street parking — fully digital, zone-based. OpenTable handles dinner reservations for most downtown restaurants.
       </p>
-    </section>
+      </div>
+    </CollapsibleSection>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { MapPin, Calendar } from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -9,6 +9,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
+import { readCachedPosition } from "@/hooks/useGeolocation";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
@@ -70,6 +71,8 @@ export default function AppMapClient({
   municipalBoundaries = EMPTY_FC,
   events = [],
   fullBleed = false,
+  autoOpenList = false,
+  recenterToKnownLocation = false,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
    *  (decoratePlace)). The client must NOT re-import the loader: it
@@ -96,9 +99,31 @@ export default function AppMapClient({
    *  "In view" list below. The map IS the page. The synced list lives
    *  in a slide-up sheet inside the map area instead. */
   fullBleed?: boolean;
+  /** Open the results drawer to its half snap on mount instead of the
+   *  default peek — set when arriving via a category so the filtered
+   *  list is the first thing the user sees. */
+  autoOpenList?: boolean;
+  /** Center the camera (and measure list distances) from the user's
+   *  last-known location when we already have a cached fix — so the
+   *  list reads closest-first "from where you're standing." Never
+   *  prompts; falls back to the city center. */
+  recenterToKnownLocation?: boolean;
 }) {
   const [inView, setInView] = useState<string[]>([]);
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
+
+  // The point we measure "how far" from. When we arrived via a category
+  // and already have the user's consent-cached fix, sort/label distances
+  // from where they're standing; otherwise fall back to the city center
+  // (the map's default camera home). Read once on mount — no prompt.
+  const origin = useMemo(() => {
+    if (recenterToKnownLocation) {
+      const cached = readCachedPosition();
+      if (cached) return cached;
+    }
+    return FREDERICK_CENTER;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot read of the cached fix at mount
+  }, []);
 
   const bySlug = useMemo(() => {
     const m = new Map<string, PlaceCardData>();
@@ -107,14 +132,15 @@ export default function AppMapClient({
   }, [places]);
 
   // Already decorated server-side; only attach the viewport-relative
-  // distance here (pure, no loader/JSON in the client bundle).
+  // distance here (pure, no loader/JSON in the client bundle). Measured
+  // from `origin` so the card distances match the list's sort home.
   const results = useMemo(
     () =>
       inView
         .map((slug) => bySlug.get(slug))
         .filter((p): p is PlaceCardData => Boolean(p))
-        .map((p) => ({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) })),
-    [inView, bySlug]
+        .map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })),
+    [inView, bySlug, origin]
   );
 
   // Full-bleed: the map fills the parent, the "In view" list lives
@@ -135,10 +161,12 @@ export default function AppMapClient({
           municipalBoundaries={municipalBoundaries}
           events={events}
           fullBleed
+          recenterToKnownLocation={recenterToKnownLocation}
         />
         <InViewDrawer
           results={results}
           events={events}
+          initialSnap={autoOpenList ? "half" : "peek"}
           onPick={(slug) =>
             setFocus((f) => ({ slug, n: (f?.n ?? 0) + 1 }))
           }
@@ -237,19 +265,118 @@ export function eventsNearVisiblePlaces(
 function InViewDrawer({
   results,
   events = [],
+  initialSnap = "peek",
   onPick,
 }: {
   results: PlaceCardData[];
   /** Map's event pins. The drawer filters them down to events near
    *  the visible places via eventsNearVisiblePlaces above. */
   events?: EventPin[];
+  /** Snap state on mount — "half" when arriving via a category so the
+   *  filtered list is visible immediately; "peek" otherwise. */
+  initialSnap?: "peek" | "half" | "full";
   onPick: (slug: string) => void;
 }) {
-  const [snap, setSnap] = useState<"peek" | "half" | "full">("peek");
+  const [snap, setSnap] = useState<"peek" | "half" | "full">(initialSnap);
+  // CSS height per snap (the resting target). The drag math below
+  // mirrors these as fractions so the live finger-follow and the
+  // resting state agree: peek is a fixed handle height, half/full are
+  // shares of the map area (the drawer's containing block).
   const heights: Record<typeof snap, string> = {
     peek: "100px",
     half: "55%",
     full: "82%",
+  };
+  const PEEK_PX = 100;
+  const HALF_FRAC = 0.55;
+  const FULL_FRAC = 0.82;
+
+  // ── Draggable sheet ──
+  // The sheet used to only tap-cycle peek→half→full, which read as
+  // broken on a phone — every thumb tries to *drag* a bottom sheet. We
+  // now follow the finger live and snap to the nearest detent on
+  // release, with a velocity fling so a quick flick jumps a level
+  // (Apple/Google Maps behavior). Tap (no real movement) still cycles.
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const [dragPx, setDragPx] = useState<number | null>(null);
+  const drag = useRef<{
+    startY: number;
+    startH: number;
+    curPx: number;
+    lastY: number;
+    lastT: number;
+    v: number; // px/ms, positive = dragging upward (growing)
+    moved: boolean;
+  } | null>(null);
+  const suppressClick = useRef(false);
+
+  const containerH = () =>
+    sheetRef.current?.parentElement?.getBoundingClientRect().height ??
+    (typeof window !== "undefined" ? window.innerHeight : 800);
+  const snapPx = (s: "peek" | "half" | "full") => {
+    if (s === "peek") return PEEK_PX;
+    const H = containerH();
+    return s === "half" ? H * HALF_FRAC : H * FULL_FRAC;
+  };
+
+  const onHandlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+    const startH =
+      sheetRef.current?.getBoundingClientRect().height ?? snapPx(snap);
+    drag.current = {
+      startY: e.clientY,
+      startH,
+      curPx: startH,
+      lastY: e.clientY,
+      lastT: e.timeStamp,
+      v: 0,
+      moved: false,
+    };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onHandlePointerMove = (e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const next = Math.min(
+      snapPx("full"),
+      Math.max(PEEK_PX, d.startH + (d.startY - e.clientY)),
+    );
+    const dt = e.timeStamp - d.lastT;
+    if (dt > 0) d.v = (d.lastY - e.clientY) / dt;
+    d.lastY = e.clientY;
+    d.lastT = e.timeStamp;
+    d.curPx = next;
+    if (Math.abs(e.clientY - d.startY) > 4) d.moved = true;
+    setDragPx(next);
+  };
+  const onHandlePointerUp = (e: React.PointerEvent) => {
+    const d = drag.current;
+    drag.current = null;
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    if (!d) return;
+    if (!d.moved) {
+      // A tap, not a drag — let onClick handle the cycle.
+      setDragPx(null);
+      return;
+    }
+    // A real drag happened; swallow the synthetic click that follows.
+    suppressClick.current = true;
+    window.setTimeout(() => (suppressClick.current = false), 360);
+
+    const order = ["peek", "half", "full"] as const;
+    let target = order.reduce((best, s) =>
+      Math.abs(snapPx(s) - d.curPx) < Math.abs(snapPx(best) - d.curPx)
+        ? s
+        : best,
+    );
+    // Velocity fling: a quick flick jumps one detent past the nearest.
+    const FLING = 0.5; // px/ms
+    const idx = order.indexOf(target);
+    if (d.v > FLING && idx < 2) target = order[idx + 1];
+    else if (d.v < -FLING && idx > 0) target = order[idx - 1];
+
+    setSnap(target);
+    setDragPx(null);
   };
 
   // Events whose venue is within 1.5km of any visible place. Recomputed
@@ -292,20 +419,31 @@ function InViewDrawer({
 
   return (
     <div
+      ref={sheetRef}
       className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3"
       style={{
-        height: heights[snap],
-        transition: "height 280ms var(--app-ease-spring)",
+        height: dragPx != null ? `${dragPx}px` : heights[snap],
+        // No transition while the finger is down — the sheet must track
+        // 1:1. The spring only plays on release / programmatic snaps.
+        transition: dragPx != null ? "none" : "height 280ms var(--app-ease-spring)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
       <button
         type="button"
-        onClick={() =>
-          setSnap((s) => (s === "peek" ? "half" : s === "half" ? "full" : "peek"))
-        }
+        onClick={() => {
+          if (suppressClick.current) {
+            suppressClick.current = false;
+            return;
+          }
+          setSnap((s) => (s === "peek" ? "half" : s === "half" ? "full" : "peek"));
+        }}
+        onPointerDown={onHandlePointerDown}
+        onPointerMove={onHandlePointerMove}
+        onPointerUp={onHandlePointerUp}
+        onPointerCancel={onHandlePointerUp}
         aria-label={snap === "full" ? "Collapse list" : "Expand list"}
-        className="flex shrink-0 cursor-grab flex-col items-center justify-center gap-1.5 pb-2.5 pt-2.5"
+        className="flex shrink-0 cursor-grab touch-none select-none flex-col items-center justify-center gap-1.5 pb-2.5 pt-2.5 active:cursor-grabbing"
       >
         <span
           aria-hidden

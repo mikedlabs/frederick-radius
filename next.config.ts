@@ -12,6 +12,20 @@ const nextConfig: NextConfig = {
     // globals.css (vt-fade-in / vt-fade-out at the @view-transition
     // root). No-op on browsers without VT API support.
     viewTransition: true,
+    // Client Router Cache lifetimes. Next 15+ defaults `dynamic` to 0,
+    // which means a dynamic page (our tabs all read searchParams /
+    // cookies, so they're dynamic) is dropped from the client cache
+    // the instant you navigate away — so re-tapping a tab you JUST
+    // visited refetches the whole RSC payload from the server. That's
+    // the "going between tabs feels slow" symptom. Holding dynamic
+    // pages for 30s makes back-and-forth tab switching feel instant
+    // (the page is already in the client cache); 30s is short enough
+    // that open-now / event freshness never goes meaningfully stale,
+    // and the routes are ISR-cached (revalidate) on the server anyway.
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
   },
   // React Compiler — auto-memoizes every client component at build
   // time so we get useMemo / useCallback equivalents without hand-
