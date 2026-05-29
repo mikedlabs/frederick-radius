@@ -60,11 +60,11 @@ function useHideOnScroll(disabled: boolean) {
  * the modal.
  */
 const SEARCH_PROMPTS = [
-  "Coffee open right now",
-  "Tonight's live music",
-  "Carroll Creek",
-  "Plan a date night",
-  "Family-friendly weekend",
+  "What's open right now?",
+  "Live music tonight?",
+  "Coffee near me",
+  "This weekend with the kids",
+  "Dinner reservations tonight",
   "Hiking near downtown",
 ] as const;
 
