@@ -18,6 +18,7 @@ import MoodTiles from "@/components/today/MoodTiles";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
+import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 import AlmanacFooter from "@/components/today/AlmanacFooter";
@@ -456,14 +457,18 @@ export default async function HomePage({
       <MoodTiles />
 
       {/* PartnerAppsRow — ParkMobile + OpenTable. */}
-      <PartnerAppsRow />
+      <RevealOnScroll>
+        <PartnerAppsRow />
+      </RevealOnScroll>
 
       {/* Worth a look today — the page's surprise-me block now lives
           AFTER the action surfaces, so it earns return visits without
           burying the actually-useful answers above it. */}
-      <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
-        <WorthALook />
-      </Suspense>
+      <RevealOnScroll>
+        <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
+          <WorthALook />
+        </Suspense>
+      </RevealOnScroll>
 
       {/* Visitor "Stay" door — Proposal B. Only renders when the
           active mode is Visitor (StayDeepLinks self-hides for

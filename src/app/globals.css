@@ -1224,6 +1224,28 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ─────────────────────────────────────────────────────
+ * .reveal-on-scroll — scroll-triggered rise + fade for below-the-fold
+ * sections (the "printed guide unfolding" feel). The RevealOnScroll
+ * component primes a section hidden ONLY once it's confirmed below the
+ * fold (off-screen, so no visible flash), then drops the primed flag
+ * when it scrolls into view. Default is fully visible, so SSR, no-JS,
+ * crawlers, and above-the-fold content never hide.
+ * ───────────────────────────────────────────────────── */
+.reveal-on-scroll {
+  transition:
+    opacity 620ms var(--app-ease-out),
+    transform 620ms var(--app-ease-out);
+}
+.reveal-on-scroll[data-reveal="primed"] {
+  opacity: 0;
+  transform: translateY(18px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal-on-scroll { transition: none; }
+  .reveal-on-scroll[data-reveal="primed"] { opacity: 1; transform: none; }
+}
+
+/* ─────────────────────────────────────────────────────
  * Command palette (cmdk) — global ⌘K jump bar.
  * Brand-aligned shell: paper-cream surface, hairline border,
  * tactile elevation. Sits above the bottom nav (z-50) and
