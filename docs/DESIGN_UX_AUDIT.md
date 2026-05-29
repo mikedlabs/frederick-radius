@@ -194,3 +194,84 @@ a parent; surface or retire the orphans; rename the beverage trail.
 re-laying out a surface becomes "compose primitives" instead of
 hand-styling, so the whole-app polish lands coherently rather than as
 more one-off patches.
+
+---
+
+## Operating principles (hold every change to these)
+
+The north star: **a stranger must find it faster, clearer, and more
+pleasant than Google/Yelp on the FIRST tap — or they bounce back to
+their habit and never return.** Speed and ease are not features; they
+are survival. Everything below serves that.
+
+1. **Adopt once → apply everywhere, same release.** When we establish a
+   pattern (a type step, a Chip, a disclosure, a card density), we sweep
+   *every* sibling instance in the same pass. No "fixed on Today but not
+   on Events." This is enforced *structurally*, not by memory:
+   - shared **primitives** — change the component once, all call sites
+     inherit it (the reason Phase 1 precedes surface work);
+   - **tokens** — one color/size value, used everywhere;
+   - **lint guards** — ban `text-[Npx]` and raw hex so a one-off can't
+     re-enter after we've migrated an area.
+   - PR rule: "did a similar element elsewhere just become inconsistent
+     with this change?" must be answered before merge.
+2. **No directories. No walls of text.** The moment a screen becomes a
+   long stack of equal-weight rows or paragraphs, it has failed. Every
+   list-y / text-heavy surface must use: a visual anchor (image/glyph/
+   color), **mixed density** (one hero + compact rows + a rail), and
+   **progressive disclosure** (collapse secondary content). Target: the
+   first screen answers a question; depth is one tap away, never a
+   scroll-forever.
+3. **Every tap is predictable.** It goes where the label promises; you
+   always know where you are (a lit tab) and how to get back (the Back
+   control). Never dump the user into a re-search.
+4. **Verify before shipping.** Visual/perf changes get eyes on the
+   rendered result (screenshot harness) before they hit the live site.
+
+---
+
+## Backend & integrations audit (so the experience actually has data)
+
+Great UI over thin data still feels broken. Source registry
+(`data/sources.yaml`) status tally: **12 active · 15 scaffold · 44
+pending**. The unwired ones are silently capping the experience.
+
+### Highest-impact gaps (wire these first)
+- **Event coverage → the visible one.** The aggregators that would fill
+  the calendar are off: **Ticketmaster** (`scaffold`), **Bandsintown**,
+  **Eventbrite**, **Songkick** (`pending`). Today only a few calendar
+  feeds (Celebrate Frederick, Hood, County) + seed data are live — which
+  is why a weekend can read empty. *Action:* set `TICKETMASTER_API_KEY`
+  + `BANDSINTOWN_APP_ID` in Vercel and flip those sources `active`.
+- **Place richness.** `GOOGLE_PLACES_API_KEY` powers photos + hours
+  enrichment; `MAPILLARY_TOKEN` the street-level map pins; `YELP_API_KEY`
+  ratings. Missing keys = grey cards / fewer pins.
+- **Weather extras.** `AIRNOW_API_KEY` (AQI in the almanac),
+  `NWS_USER_AGENT` (NWS *requires* a UA or throttles).
+
+### Env keys the code expects (set in Vercel → Project → Settings → Env)
+| Area | Vars |
+| --- | --- |
+| Places/enrichment | `GOOGLE_PLACES_API_KEY`, `YELP_API_KEY` |
+| Map | `MAPILLARY_TOKEN` |
+| Events | `TICKETMASTER_API_KEY`, `BANDSINTOWN_APP_ID`, `HOOD_CALENDAR_URL` |
+| Weather/air | `AIRNOW_API_KEY`, `NWS_USER_AGENT`, `NPS_API_KEY` |
+| Data / persistence | `NEXT_PUBLIC_SUPABASE_URL`, `*_SUPABASE_*_KEY`, `POSTGRES_URL` / `DATABASE_URL` (saved / My Radius / business claims) |
+| Notifications / email | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (web push), `RESEND_API_KEY` (email) |
+| Ops / observability | `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_PLAUSIBLE_*`, `SLACK_WEBHOOK_URL` |
+| AI | `ANTHROPIC_API_KEY` |
+
+### Cron jobs (vercel.json) — depend on the keys + DB above
+`/api/ingest/all` (daily 09:00), `/api/cron/notify-civic-alerts`
+(every 30m → needs VAPID), `/api/cron/business-status` (daily),
+`/api/cron/data-health` (daily). If their upstream keys are unset they
+run but no-op.
+
+### Good news
+Integrations fail **soft** — loaders use `.catch(() => [])`, so a
+missing key degrades quietly (thinner data) instead of crashing. So
+wiring keys is purely *additive* upside, low risk.
+
+> **Note:** I can't set secrets from here — these go in the Vercel
+> dashboard. Tell me which you've set and I'll flip the matching
+> `data/sources.yaml` entries `active` and verify the wiring.
