@@ -17,7 +17,7 @@ import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { useMode } from "@/hooks/useMode";
 import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
-import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
@@ -151,6 +151,27 @@ type Props = {
    *  them compose what they want to see. */
   pinpointDefault?: boolean;
 };
+
+/**
+ * Map Modes — smart presets for "controlled discovery." Instead of
+ * toggling many layers, a mode drops a curated bundle of categories
+ * (+ amenities, + civic overlay) in one tap; the user can still
+ * customize afterward. "Modes instead of endless filters."
+ */
+const MAP_MODES: {
+  key: string;
+  label: string;
+  cats: string[];
+  amenities?: string[];
+  civic?: boolean;
+}[] = [
+  { key: "food", label: "Food & drink", cats: ["food"] },
+  { key: "kids", label: "With kids", cats: ["family", "outdoors"], amenities: ["restroom"] },
+  { key: "outdoors", label: "Outdoors", cats: ["outdoors"], amenities: ["restroom"] },
+  { key: "arts", label: "Arts & culture", cats: ["arts"] },
+  { key: "errands", label: "Errands", cats: ["services", "shopping", "parking"] },
+  { key: "civic", label: "Civic & alerts", cats: ["civic"], civic: true },
+];
 
 export default function AppMap({
   places,
@@ -869,7 +890,7 @@ export default function AppMap({
         {pinpointDefault && activeCats.size === 0 && !mapError && (
           <div className="pointer-events-none absolute inset-x-0 top-[15%] z-10 flex justify-center px-4">
             <div
-              className="deck-card pointer-events-auto w-full max-w-sm rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-4 text-center"
+              className="deck-card pop-in pointer-events-auto w-full max-w-sm rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-4 text-center"
               style={{ borderColor: "var(--app-border)" }}
             >
               <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
@@ -879,28 +900,30 @@ export default function AppMap({
                 What do you want to see?
               </h2>
               <p className="mt-1 text-meta-lg" style={{ color: "var(--app-ink-2)" }}>
-                Tap to drop it on the map — add as many as you like.
+                Pick a mode — we drop the right places on the map. Tweak it
+                anytime in Layers.
               </p>
               <div className="mt-3 flex flex-wrap justify-center gap-2">
-                {TOP_CATEGORIES.slice(0, 8).map((c) => (
-                  <button
-                    key={c.slug}
-                    type="button"
-                    onClick={() => {
-                      haptic("light");
-                      setActiveCats((prev) => {
-                        const next = new Set(prev);
-                        next.add(c.slug);
-                        return next;
-                      });
-                    }}
-                    className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-meta-lg font-semibold transition active:scale-[0.95]"
-                    style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-                  >
-                    <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: c.color }} />
-                    {c.name}
-                  </button>
-                ))}
+                {MAP_MODES.map((m) => {
+                  const accent = CATEGORY_BY_SLUG[m.cats[0]]?.color ?? "var(--app-brand)";
+                  return (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => {
+                        haptic("light");
+                        setActiveCats(new Set(m.cats));
+                        setAmenityGroups(new Set(m.amenities ?? []));
+                        if (m.civic !== undefined) setShowCivic(m.civic);
+                      }}
+                      className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-meta-lg font-semibold transition active:scale-[0.95]"
+                      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                    >
+                      <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: accent }} />
+                      {m.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

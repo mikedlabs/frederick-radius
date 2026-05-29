@@ -552,6 +552,20 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   100% { transform: translate3d(-3%, 1%, 0) scale(1.05); }
 }
 
+/* pop-in — a gentle scale+fade entrance for surfaces that appear on
+ * demand (the map's "what do you want to see?" control, sheets). A
+ * little life, not a bounce. Reduced-motion users get no transform. */
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.pop-in {
+  animation: pop-in 340ms var(--app-ease-spring, cubic-bezier(0.22, 1, 0.36, 1)) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pop-in { animation: none; }
+}
+
 /* ─────────────────────────────────────────────────────
  * Aurora bloom — slow-drifting gradient orbs behind the
  * whole page, the shader-style cinematic background the
