@@ -26,6 +26,12 @@ const nextConfig: NextConfig = {
       dynamic: 30,
       static: 180,
     },
+    // Tree-shake barrel-export packages so a single named import doesn't
+    // pull the whole library into a route's first-load JS. lucide-react
+    // (icons imported across ~every component) and framer-motion (heavy,
+    // used by the marketing scenes) are the big wins; Next rewrites the
+    // imports to deep paths at build time.
+    optimizePackageImports: ["lucide-react", "framer-motion", "date-fns"],
   },
   // React Compiler — auto-memoizes every client component at build
   // time so we get useMemo / useCallback equivalents without hand-
