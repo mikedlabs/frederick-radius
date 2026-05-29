@@ -43,7 +43,7 @@ export default function DateLine() {
           {weekday}
         </h1>
         <p
-          className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em]"
+          className="mt-1 text-meta font-semibold uppercase tracking-[0.14em]"
           style={{ color: "var(--app-ink-3)" }}
         >
           {date}
