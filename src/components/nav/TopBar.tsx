@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Search, Bookmark, Settings as SettingsIcon, MoreHorizontal } from "lucide-react";
+import { Search, Bookmark, Settings as SettingsIcon, MoreHorizontal, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
 import MoreSheet from "./MoreSheet";
 import PulseIndicator from "./PulseIndicator";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { tabIndexForPath } from "./tabs";
 
 /**
  * Auto-hide on scroll: the bar slides up out of view when the user
@@ -83,8 +84,25 @@ export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const hidden = useHideOnScroll(searchOpen);
   const prompt = useRotatingPrompt(searchOpen);
+
+  // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
+  // sub-route) and isn't the root. On these the bottom nav lights NO
+  // tab, so without a back control the user is stranded — the #1 cause
+  // of the "I tapped something and got dumped with no way back" feel.
+  // The left slot becomes a Back button here instead of the wordmark.
+  const isDeepPage = pathname !== "/" && tabIndexForPath(pathname) === -1;
+  const goBack = () => {
+    // Prefer real history; fall back to /today when the user landed
+    // here cold (deep link / new tab) so Back is never a dead button.
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/today");
+    }
+  };
 
   // Close the More sheet on route change — the drawer would otherwise
   // cover the new page after the user tapped one of its items.
@@ -126,26 +144,40 @@ export default function TopBar() {
         }}
       >
         <div className="mx-auto flex h-14 max-w-screen-md items-center gap-3 px-4">
-          <Link
-            href="/"
-            aria-label="Frederick Radius — home"
-            className="flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full shadow-[var(--app-shadow-1)]"
-              style={{ background: "var(--app-brand)" }}
-              aria-hidden
+          {isDeepPage ? (
+            // Deep page: a clear way back, so no screen is a dead-end.
+            <button
+              type="button"
+              onClick={goBack}
+              aria-label="Back"
+              className="-ml-1.5 inline-flex h-10 items-center gap-1 rounded-full pl-1 pr-2.5 font-semibold tracking-tight transition active:scale-[0.96]"
+              style={{ color: "var(--app-ink)" }}
             >
-              <Disc />
-            </span>
-            <span className="leading-tight">
-              Frederick
-              <span className="block text-[10px] font-medium uppercase tracking-[0.14em] -mt-0.5" style={{ color: "var(--app-ink-3)" }}>
-                Radius
+              <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
+              <span className="text-[15px]">Back</span>
+            </button>
+          ) : (
+            <Link
+              href="/"
+              aria-label="Frederick Radius — home"
+              className="flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
+              style={{ color: "var(--app-ink)" }}
+            >
+              <span
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full shadow-[var(--app-shadow-1)]"
+                style={{ background: "var(--app-brand)" }}
+                aria-hidden
+              >
+                <Disc />
               </span>
-            </span>
-          </Link>
+              <span className="leading-tight">
+                Frederick
+                <span className="block text-[10px] font-medium uppercase tracking-[0.14em] -mt-0.5" style={{ color: "var(--app-ink-3)" }}>
+                  Radius
+                </span>
+              </span>
+            </Link>
+          )}
 
           {/* Search trigger — full-width input-styled pill so the
               header reads as "find anything" instead of three tiny
