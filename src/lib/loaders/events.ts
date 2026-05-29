@@ -7,6 +7,7 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters, type LngLat } from "@/lib/geo";
 import { isKnownClosed } from "@/lib/integrations/closures";
+import { easternParts, easternDayKey, easternWallToUtcISO } from "@/lib/tz";
 import {
   partitionEvents,
   logPlacementWarnings,
@@ -301,16 +302,14 @@ export function getEventSeries(slug: string, now: Date = new Date()): EventWithM
     .map((x) => decorate(x));
 }
 
-/** All events on a given calendar day (local America/New_York). */
+/** All events on a given calendar day (America/New_York).
+ *  Compares Eastern day-keys, not server-local Date parts — otherwise a
+ *  late-evening Eastern event (stored as next-day UTC) lands on the
+ *  wrong day on a UTC production server. */
 export function eventsOnDay(day: Date): EventWithMeta[] {
-  const y = day.getFullYear();
-  const m = day.getMonth();
-  const d = day.getDate();
+  const key = easternDayKey(day);
   return EVENTS
-    .filter((e) => {
-      const s = new Date(e.starts_at);
-      return s.getFullYear() === y && s.getMonth() === m && s.getDate() === d;
-    })
+    .filter((e) => easternDayKey(new Date(e.starts_at)) === key)
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
 }
@@ -326,8 +325,10 @@ export function eventsLive(now: Date = new Date()): EventWithMeta[] {
 }
 
 export function eventsNext24h(now: Date = new Date()): EventWithMeta[] {
-  const end = new Date(now);
-  end.setHours(end.getHours() + 24);
+  // Rolling 24h window — absolute-time arithmetic so it's DST- and
+  // timezone-safe (the old setHours(getHours()+24) read server-local
+  // hours and could drift an hour across the DST switch).
+  const end = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   return EVENTS
     .filter((e) => {
       const s = new Date(e.starts_at);
@@ -338,17 +339,23 @@ export function eventsNext24h(now: Date = new Date()): EventWithMeta[] {
 }
 
 export function eventsWeekend(now: Date = new Date()): EventWithMeta[] {
-  const dow = now.getDay();
-  const friday = new Date(now);
-  friday.setDate(friday.getDate() + ((5 - dow + 7) % 7));
-  friday.setHours(17, 0, 0, 0);
-  const monday = new Date(friday);
-  monday.setDate(monday.getDate() + 3);
-  monday.setHours(0, 0, 0, 0);
+  // Weekend = upcoming Fri 17:00 → Mon 00:00, all America/New_York.
+  // The old version used server-local getDay()/setHours(17), so on a
+  // UTC production server the window was ~Fri 1 PM → Sun 8 PM Eastern
+  // (the P0 date-window bug). Build the boundaries as Eastern wall
+  // times converted to the correct UTC instants instead.
+  const et = easternParts(now);
+  const daysToFri = (5 - et.weekday + 7) % 7;
+  // Walk the Eastern calendar by constructing a noon-UTC date and
+  // re-reading its Eastern parts, so month/year rollover is correct.
+  const friBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri, 12)));
+  const monBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri + 3, 12)));
+  const friStart = Date.parse(easternWallToUtcISO(friBase.year, friBase.month, friBase.day, 17, 0));
+  const monStart = Date.parse(easternWallToUtcISO(monBase.year, monBase.month, monBase.day, 0, 0));
   return EVENTS
     .filter((e) => {
-      const s = new Date(e.starts_at);
-      return s >= friday && s < monday;
+      const s = +new Date(e.starts_at);
+      return s >= friStart && s < monStart;
     })
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))
     .map((e) => decorate(e));
