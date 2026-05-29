@@ -2,9 +2,38 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, Phone } from "lucide-react";
+import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, Phone, Train } from "lucide-react";
 import type { SearchResult, SearchResultType } from "@/lib/search/index";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
+
+/**
+ * Quick-answer intents — recognized needs resolve in ONE tap to the
+ * right pre-filtered view, instead of making the user browse. Phrased
+ * as the answer, not a search ("What's open right now"). North Star:
+ * answer the question, ≤2 taps. Each entry's href IS the answer.
+ */
+const QUICK_INTENTS: { terms: string[]; title: string; sub: string; href: string; icon: typeof Clock }[] = [
+  { terms: ["open now", "whats open", "what's open", "open right now", "open late", "anything open"], title: "What's open right now", sub: "Places confirmed open near you", href: "/map?mode=browse&open=now", icon: Clock },
+  { terms: ["tonight", "this evening", "live music", "music tonight", "show tonight", "concert"], title: "Happening tonight", sub: "Events & music starting soon", href: "/today?t=tonight", icon: Calendar },
+  { terms: ["weekend", "this weekend", "saturday", "sunday", "things to do"], title: "This weekend", sub: "Events across the county", href: "/today?t=weekend", icon: Calendar },
+  { terms: ["train", "marc", "transit", "commute", "bus", "next train"], title: "MARC & transit times", sub: "Next departures and routes", href: "/transit", icon: Train },
+  { terms: ["parking", "park the car", "garage", "where to park", "meter"], title: "Parking", sub: "Garages, lots & street parking", href: "/map?mode=browse&intent=parking", icon: MapPin },
+  { terms: ["event", "events", "happening", "calendar"], title: "Events", sub: "What's on across Frederick", href: "/events", icon: Calendar },
+];
+
+function findQuickAnswers(query: string, limit = 2): typeof QUICK_INTENTS {
+  const lq = query.toLowerCase().trim();
+  if (lq.length < 3) return [];
+  const out: typeof QUICK_INTENTS = [];
+  const seen = new Set<string>();
+  for (const intent of QUICK_INTENTS) {
+    if (intent.terms.some((t) => lq.includes(t)) && !seen.has(intent.href)) {
+      seen.add(intent.href);
+      out.push(intent);
+    }
+  }
+  return out.slice(0, limit);
+}
 // A2.5: SearchOverlay no longer static-imports lib/search.ts (and its
 // transitive places-client.json ~2MB blob) into every page's client
 // bundle. It now fetches /api/search with a 150ms debounce and an
@@ -231,9 +260,12 @@ export default function SearchOverlay({
 
   if (!open) return null;
 
-  // Direct gov answers for the current query (buried-info un-burier).
-  // Cheap synchronous lookup over the static 37-dept table; no fetch.
+  // Direct answers for the current query — quick-route intents
+  // (open-now, events, transit, parking) + buried-gov departments.
+  // Cheap synchronous lookups; no fetch.
+  const quickAnswers = findQuickAnswers(query);
   const govAnswers = findDepartments(query);
+  const hasAnswer = quickAnswers.length > 0 || govAnswers.length > 0;
 
   return (
     <div
@@ -297,9 +329,35 @@ export default function SearchOverlay({
               (recycling, permits, potholes, animal control…) straight to
               the right department + phone + source, ABOVE place results.
               The North Star front door, on real data. */}
-          {govAnswers.length > 0 && (
+          {hasAnswer && (
             <div className="border-b px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "color-mix(in srgb, var(--app-brand) 5%, transparent)" }}>
               <p className="eyebrow mb-1.5 px-1" style={{ color: "var(--app-brand)" }}>Direct answer</p>
+              {quickAnswers.length > 0 && (
+                <ul className="mb-1.5 space-y-1.5">
+                  {quickAnswers.map((qa) => {
+                    const Icon = qa.icon;
+                    return (
+                      <li key={qa.href}>
+                        <Link
+                          href={qa.href}
+                          onClick={onClose}
+                          className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5 transition active:scale-[0.99]"
+                          style={{ borderColor: "var(--app-border)" }}
+                        >
+                          <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-brand)" }}>
+                            <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-body font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{qa.title}</span>
+                            <span className="block text-meta-lg leading-snug" style={{ color: "var(--app-ink-2)" }}>{qa.sub}</span>
+                          </span>
+                          <ArrowRight className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
               <ul className="space-y-1.5">
                 {govAnswers.map((d) => (
                   <li key={d.slug}>
@@ -342,7 +400,7 @@ export default function SearchOverlay({
               onClearRecent={clearRecent}
             />
           ) : results.length === 0 ? (
-            govAnswers.length > 0 ? null : (
+            hasAnswer ? null : (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
               <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
               <p className="mt-1 text-xs">Try a town (Brunswick, Thurmont), a category (&ldquo;coffee&rdquo;, &ldquo;parks&rdquo;), or a partial place name.</p>
