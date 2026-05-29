@@ -1,0 +1,41 @@
+name: Ingest venue events
+
+# Captures lineups from venues that only post on their own site
+# (The Banyan, The Derby, Sky Stage…). Runs the venue extraction agent,
+# refreshes src/data/venue-events.json with source + freshness, commits.
+#
+# Requires repo secret: ANTHROPIC_API_KEY
+# Configure venues + URLs in: config/venue-sources.json
+
+on:
+  schedule:
+    - cron: "30 9 * * *" # daily 09:30 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Extract venue events
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run ingest:venues
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "frederick-radius-bot"
+          git config user.email "bot@users.noreply.github.com"
+          if ! git diff --quiet -- src/data/venue-events.json; then
+            git add src/data/venue-events.json
+            git commit -m "data: refresh venue events (automated)"
+            git push
+          else
+            echo "No venue event changes."
+          fi
