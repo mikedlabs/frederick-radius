@@ -1087,8 +1087,20 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  * After this PR ships, new code should pick from this scale. Old
  * `text-[Npx]` usages get swept opportunistically as we touch files.
  * ───────────────────────────────────────────────────── */
+/* Canonical type scale — the ONLY sizes new/migrated code should use.
+ * Maps the ~20 ad-hoc text-[Npx] sizes onto fixed steps:
+ *   caption 10 · meta 11 · meta-lg 12 · body 13 · body-lg 14 ·
+ *   title-sm 15 · lead 16 · title 18 (serif) · display-1/2/3.
+ * Half-pixel strays (10.5/11.5/12.5/13.5) round to the nearest step.
+ *
+ * WEIGHT RULE (fixes the "everything is semibold" monotony — 624 uses):
+ *   400 normal -> quiet secondary; 500 medium -> labels/chips;
+ *   600 semibold -> titles/primary label; 700 bold -> numerics only.
+ * Don't reach past 600 for prose; let SIZE + the display face carry
+ * headlines, not heavier sans weight. */
 .text-caption  { font-size: 10px; line-height: 1.35; }
 .text-meta     { font-size: 11px; line-height: 1.4;  }
+.text-meta-lg  { font-size: 12px; line-height: 1.45; }
 .text-body     { font-size: 13px; line-height: 1.55; }
 .text-body-lg  { font-size: 14px; line-height: 1.6;  }
 .text-lead     { font-size: 16px; line-height: 1.6;  }
