@@ -21,6 +21,7 @@
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed.ts",
     "enrich": "tsx --tsconfig tsconfig.json scripts/enrich-places.ts",
     "ingest:civic": "tsx --tsconfig tsconfig.json scripts/ingest-municipal-civic.ts",
+    "ingest:venues": "tsx --tsconfig tsconfig.json scripts/ingest-venue-events.ts",
     "discover": "tsx --tsconfig tsconfig.json scripts/discover-places.ts",
     "audit:data": "tsx --tsconfig tsconfig.json scripts/audit-data.ts",
     "gen:dedup": "tsx --tsconfig tsconfig.json scripts/gen-dedup.ts",

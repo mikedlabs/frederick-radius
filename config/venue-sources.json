@@ -1,0 +1,10 @@
+{
+  "_doc": "Venue registry for the events extraction agent (scripts/ingest-venue-events.ts). Each venue whose events live only on its own site/socials gets an entry. The agent fetches `urls`, has Claude extract upcoming events (title, date/time, description, price, ticket url) with source + freshness, dedupes against what's known, and writes src/data/venue-events.json — which flows into the events feed + the answer engine. Venues with empty `urls` are skipped. Add the venue's official events/calendar page URL(s). Social-only venues (Instagram/Facebook) need the partnership/vision path (see docs/EXTRACTION_PLATFORM.md), not blind scraping.",
+  "venues": [
+    { "slug": "banyan", "name": "The Banyan", "searchHint": "The Banyan Frederick MD events / calendar page", "category": "music", "urls": [] },
+    { "slug": "derby", "name": "The Derby", "searchHint": "The Derby Frederick MD events page", "category": "music", "urls": [] },
+    { "slug": "sky-stage", "name": "Sky Stage", "searchHint": "Sky Stage Frederick events calendar", "category": "arts", "urls": [] },
+    { "slug": "weinberg-center", "name": "Weinberg Center for the Arts", "searchHint": "Weinberg Center Frederick events", "category": "theater", "urls": [] },
+    { "slug": "new-spire", "name": "New Spire Arts", "searchHint": "New Spire Arts Frederick events", "category": "theater", "urls": [] }
+  ]
+}
