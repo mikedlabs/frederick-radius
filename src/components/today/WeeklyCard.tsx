@@ -68,10 +68,11 @@ export default function WeeklyCard({
   };
 
   return (
-    <article
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
-      style={{ borderColor: "var(--app-border)" }}
-    >
+    // No self-chrome: this is a ROW inside the unified weather panel
+    // (the parent supplies the single border + dividers). Standalone
+    // border/rounding/shadow made the dropdowns read as disconnected
+    // floating cards.
+    <article>
       <button
         type="button"
         onClick={toggle}

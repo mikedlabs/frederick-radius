@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
+import TodayActions from "@/components/today/TodayActions";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import LocalNewsRail from "@/components/today/LocalNewsRail";
@@ -385,6 +386,13 @@ export default async function HomePage({
             <AlmanacFooter inSky />
           </Suspense>
         </SkyHero>
+
+        {/* Situational next-steps live on PAPER just below the sky hook,
+            not floating on the gradient (where buttons read as misplaced). */}
+        <div className="mt-3">
+          <TodayActions />
+        </div>
+
         {(() => {
           // Sky-aware wash on the weather sub-card stack so the
           // supplemental cards (Hourly / Weekly / More Details) read
@@ -400,7 +408,7 @@ export default async function HomePage({
           const stackBg = `linear-gradient(180deg, color-mix(in srgb, ${sky.bottom} ${strength}%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 75%)`;
           return (
             <div
-              className="relative -mt-3 z-0 overflow-hidden rounded-[var(--app-radius-lg)] border pt-3 [&_>_*:not(:last-child)]:border-b"
+              className="relative mt-3 z-0 overflow-hidden rounded-[var(--app-radius-lg)] border [&_>_*:not(:last-child)]:border-b"
               style={{
                 borderColor: "var(--app-border)",
                 boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
