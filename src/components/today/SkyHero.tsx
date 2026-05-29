@@ -220,7 +220,7 @@ export default async function SkyHero({
 
   return (
     <section
-      className={`sky-hero -mx-4 -mt-4 px-4 pb-4 pt-6 sm:rounded-b-[var(--app-radius-xl)] ${
+      className={`sky-hero -mx-4 -mt-4 px-4 pb-3 pt-4 sm:rounded-b-[var(--app-radius-xl)] ${
         fill
           ? "flex min-h-[72svh] flex-col lg:!min-h-0 lg:block"
           : ""
