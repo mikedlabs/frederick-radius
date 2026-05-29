@@ -73,6 +73,7 @@ export default function AppMapClient({
   fullBleed = false,
   autoOpenList = false,
   recenterToKnownLocation = false,
+  pinpointDefault = false,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
    *  (decoratePlace)). The client must NOT re-import the loader: it
@@ -108,6 +109,9 @@ export default function AppMapClient({
    *  list reads closest-first "from where you're standing." Never
    *  prompts; falls back to the city center. */
   recenterToKnownLocation?: boolean;
+  /** Pinpoint-first: open the browse map clean (no pins) until the user
+   *  adds a category. Set when browsing with no server-side intent. */
+  pinpointDefault?: boolean;
 }) {
   const [inView, setInView] = useState<string[]>([]);
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
@@ -162,6 +166,7 @@ export default function AppMapClient({
           events={events}
           fullBleed
           recenterToKnownLocation={recenterToKnownLocation}
+          pinpointDefault={pinpointDefault}
         />
         <InViewDrawer
           results={results}
