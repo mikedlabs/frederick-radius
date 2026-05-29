@@ -189,7 +189,7 @@ export default async function BriefingLine() {
 
   return (
     <p
-      className="text-[12px] font-medium leading-snug"
+      className="text-meta-lg font-medium"
       style={{ color: "var(--app-ink-3)" }}
       aria-label="Daily briefing"
     >

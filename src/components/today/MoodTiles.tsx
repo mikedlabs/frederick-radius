@@ -120,7 +120,7 @@ export default function MoodTiles() {
                 </span>
 
                 <span
-                  className="relative block max-w-full truncate text-[11px] font-semibold leading-none"
+                  className="relative block max-w-full truncate text-meta font-semibold leading-none"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {m.label}
