@@ -512,7 +512,7 @@ function InViewDrawer({
       </button>
       {snap !== "peek" && (
         <ul
-          className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3"
+          className="reveal-up min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3"
           style={{
             // The drawer sits on top of the mapbox-gl canvas, which by
             // default claims vertical pan gestures for the map camera.
