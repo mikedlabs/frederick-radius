@@ -10,6 +10,8 @@ import EventsMap from "@/components/event/EventsMap";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Sheet from "@/components/ui/Sheet";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
+import Pill from "@/components/ui/Pill";
+import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -21,6 +23,19 @@ const EVENT_SORT_OPTIONS: ReadonlyArray<SortOption<EventSortKey>> = [
   { key: "time", label: "Soonest", hint: "Next event first (grouped by horizon)" },
   { key: "az", label: "A→Z", hint: "Alphabetical by event title" },
   { key: "venue", label: "Venue", hint: "Cluster by venue name" },
+];
+
+type ViewKey = "list" | "compact" | "calendar" | "map";
+
+// The four lenses on the same filtered set. List = grouped browse;
+// Compact = dense 48px "Rolodex" rows; Agenda = day-grouped schedule;
+// Map = the pins. One Segmented control, labels collapse to icons on
+// narrow screens.
+const VIEW_ITEMS: ReadonlyArray<SegmentItem<ViewKey>> = [
+  { key: "list", label: "List", icon: ListIcon },
+  { key: "compact", label: "Compact", icon: Rows3 },
+  { key: "calendar", label: "Agenda", icon: CalendarDays },
+  { key: "map", label: "Map", icon: MapIcon },
 ];
 
 type Props = {
@@ -277,23 +292,9 @@ export default function EventsExplorer({
           actually want; deeper facets stay tucked in Filters. */}
       <div className="flex flex-wrap gap-2" role="group" aria-label="Quick filters">
         {QUICK.map((c) => (
-          <button
-            key={c.key}
-            type="button"
-            onClick={c.toggle}
-            aria-pressed={c.on}
-            className={`rounded-full px-3.5 py-2 text-[13px] font-semibold transition active:scale-[0.94] ${c.on ? "" : "tactile tactile-interactive"}`}
-            style={{
-              background: c.on
-                ? "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))"
-                : "var(--app-bg-elevated)",
-              color: c.on ? "white" : "var(--app-ink-2)",
-              boxShadow: c.on ? "var(--app-elev-2)" : undefined,
-              transitionTimingFunction: "var(--app-ease-spring)",
-            }}
-          >
+          <Pill key={c.key} tone="prominent" active={c.on} onClick={c.toggle}>
             {c.label}
-          </button>
+          </Pill>
         ))}
       </div>
 
@@ -317,40 +318,17 @@ export default function EventsExplorer({
             }}
           />
         </div>
-        <div
-          className="tactile inline-flex shrink-0 overflow-hidden rounded-full"
-          role="tablist"
-          aria-label="View"
-        >
-          {(
-            [
-              ["list", ListIcon, "List"],
-              // Compact "Rolodex" mode — 48px rows, ~5x more events
-              // visible per viewport than the default feature-card
-              // list. Added May 2026 in response to the "cards too
-              // big, one-at-a-time on mobile" review feedback.
-              ["compact", Rows3, "Compact"],
-              ["calendar", CalendarDays, "Agenda"],
-              ["map", MapIcon, "Map"],
-            ] as const
-          ).map(([key, Icon, label]) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={view === key}
-              onClick={() => setView(key)}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold"
-              style={{
-                background: view === key ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                color: view === key ? "white" : "var(--app-ink-2)",
-              }}
-            >
-              <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* View toggle — labels collapse to icons on narrow screens so
+            the row never crowds the search field. Compact "Rolodex"
+            mode = 48px rows for density; Agenda + Map are the other two
+            lenses on the same filtered set. */}
+        <Segmented
+          ariaLabel="View"
+          labelsOn="sm"
+          value={view}
+          onChange={setView}
+          items={VIEW_ITEMS}
+        />
       </div>
 
       {/* One Filters button instead of an always-on facet wall, so the
@@ -455,39 +433,21 @@ export default function EventsExplorer({
               Type
             </h3>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setCat(null)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
-                  cat === null ? "" : "tactile"
-                }`}
-                style={{
-                  background: cat === null ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                  color: cat === null ? "white" : "var(--app-ink-2)",
-                  transitionTimingFunction: "var(--app-ease-spring)",
-                }}
-              >
+              <Pill tone="brand" size="sm" active={cat === null} onClick={() => setCat(null)}>
                 All types
-              </button>
+              </Pill>
               {categories.map((c) => {
                 const on = cat === c.slug;
                 return (
-                  <button
+                  <Pill
                     key={c.slug}
-                    type="button"
+                    tone="brand"
+                    size="sm"
+                    active={on}
                     onClick={() => setCat(on ? null : c.slug)}
-                    aria-pressed={on}
-                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
-                      on ? "" : "tactile"
-                    }`}
-                    style={{
-                      background: on ? "var(--app-brand)" : "var(--app-bg-elevated)",
-                      color: on ? "white" : "var(--app-ink-2)",
-                      transitionTimingFunction: "var(--app-ease-spring)",
-                    }}
                   >
                     {c.name}
-                  </button>
+                  </Pill>
                 );
               })}
             </div>
@@ -501,39 +461,21 @@ export default function EventsExplorer({
               Town
             </h3>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setTown(null)}
-                className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
-                  town === null ? "" : "tactile"
-                }`}
-                style={{
-                  background: town === null ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                  color: town === null ? "white" : "var(--app-ink-2)",
-                  transitionTimingFunction: "var(--app-ease-spring)",
-                }}
-              >
+              <Pill tone="cool" size="sm" active={town === null} onClick={() => setTown(null)}>
                 All towns
-              </button>
+              </Pill>
               {towns.map((t) => {
                 const on = town === t.slug;
                 return (
-                  <button
+                  <Pill
                     key={t.slug}
-                    type="button"
+                    tone="cool"
+                    size="sm"
+                    active={on}
                     onClick={() => setTown(on ? null : t.slug)}
-                    aria-pressed={on}
-                    className={`rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition active:scale-[0.94] ${
-                      on ? "" : "tactile"
-                    }`}
-                    style={{
-                      background: on ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                      color: on ? "white" : "var(--app-ink-2)",
-                      transitionTimingFunction: "var(--app-ease-spring)",
-                    }}
                   >
                     {t.name}
-                  </button>
+                  </Pill>
                 );
               })}
             </div>
