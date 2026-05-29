@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles } from "lucide-react";
+import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, Phone } from "lucide-react";
 import type { SearchResult, SearchResultType } from "@/lib/search/index";
+import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
 // A2.5: SearchOverlay no longer static-imports lib/search.ts (and its
 // transitive places-client.json ~2MB blob) into every page's client
 // bundle. It now fetches /api/search with a 150ms debounce and an
@@ -230,6 +231,10 @@ export default function SearchOverlay({
 
   if (!open) return null;
 
+  // Direct gov answers for the current query (buried-info un-burier).
+  // Cheap synchronous lookup over the static 37-dept table; no fetch.
+  const govAnswers = findDepartments(query);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center"
@@ -288,6 +293,48 @@ export default function SearchOverlay({
 
         {/* Results */}
         <div className="max-h-[60vh] overflow-y-auto">
+          {/* Direct answer — "ask Frederick" routes a buried-gov question
+              (recycling, permits, potholes, animal control…) straight to
+              the right department + phone + source, ABOVE place results.
+              The North Star front door, on real data. */}
+          {govAnswers.length > 0 && (
+            <div className="border-b px-3 py-2.5" style={{ borderColor: "var(--app-border)", background: "color-mix(in srgb, var(--app-brand) 5%, transparent)" }}>
+              <p className="eyebrow mb-1.5 px-1" style={{ color: "var(--app-brand)" }}>Direct answer</p>
+              <ul className="space-y-1.5">
+                {govAnswers.map((d) => (
+                  <li key={d.slug}>
+                    <div
+                      className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2.5"
+                      style={{ borderColor: "var(--app-border)" }}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, transparent)", color: "var(--app-cool)" }}>
+                          <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-body font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.name}</p>
+                          <p className="mt-0.5 text-meta-lg leading-snug" style={{ color: "var(--app-ink-2)" }}>{d.about}</p>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                            {d.phone && (
+                              <a href={`tel:${d.phone}`} className="tactile-interactive inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-meta font-semibold text-white" style={{ background: "var(--app-cool)" }}>
+                                <Phone className="h-3 w-3" strokeWidth={2.5} aria-hidden /> {formatPhone(d.phone)}
+                              </a>
+                            )}
+                            <a href={d.website} target="_blank" rel="noopener noreferrer" className="tactile-interactive inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-meta font-semibold" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+                              Open site <ArrowRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                            </a>
+                            <span className="ml-auto text-caption uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+                              {jurisdictionLabel(d.jurisdiction)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {!query.trim() ? (
             <EmptyHint
               recent={recent}
@@ -295,10 +342,12 @@ export default function SearchOverlay({
               onClearRecent={clearRecent}
             />
           ) : results.length === 0 ? (
+            govAnswers.length > 0 ? null : (
             <div className="px-4 py-8 text-center text-sm" style={{ color: "var(--app-ink-3)" }}>
               <p>Nothing matches <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>&ldquo;{query}&rdquo;</span> yet.</p>
               <p className="mt-1 text-xs">Try a town (Brunswick, Thurmont), a category (&ldquo;coffee&rdquo;, &ldquo;parks&rdquo;), or a partial place name.</p>
             </div>
+            )
           ) : (
             // Grouped results — group order follows relevance (the
             // type of the top hit appears first), items within a group

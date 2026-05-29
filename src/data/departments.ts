@@ -326,3 +326,63 @@ export const DEPARTMENTS: readonly DepartmentContact[] = [
   ...CITY,
   ...COUNTY,
 ];
+
+/**
+ * Plain-language → department routing. The answer engine ("ask
+ * Frederick") uses this to turn a buried-gov question ("when's
+ * recycling", "report a pothole", "dog at large", "building permit")
+ * into a direct department answer with a phone + source. Each hint maps
+ * everyday words to a substring of the canonical department name.
+ */
+const DEPT_HINTS: { terms: string[]; match: string }[] = [
+  { terms: ["trash", "garbage", "recycl", "refuse", "yard waste", "compost", "bulk", "dump", "landfill"], match: "solid waste" },
+  { terms: ["permit", "building", "construction", "zoning", "inspection", "renovat"], match: "permit" },
+  { terms: ["pothole", "road", "street", "snow", "plow", "sidewalk", "sign", "drain"], match: "public works" },
+  { terms: ["pet", "dog", "cat", "animal", "stray", "leash"], match: "animal control" },
+  { terms: ["water", "sewer"], match: "water and sewer" },
+  { terms: ["bus", "transit", "ride", "paratransit"], match: "transit" },
+  { terms: ["parking", "meter", "garage", "ticket"], match: "parking" },
+  { terms: ["tree", "forestry", "branch"], match: "urban forestry" },
+  { terms: ["tax", "utility bill", "payment", "billing"], match: "billing" },
+  { terms: ["code", "nuisance", "violation", "blight"], match: "code enforcement" },
+  { terms: ["police", "crime", "report"], match: "police" },
+  { terms: ["fire", "rescue", "ems"], match: "fire and rescue" },
+  { terms: ["health", "clinic", "vaccine"], match: "health" },
+  { terms: ["senior", "aging", "elder"], match: "aging" },
+];
+
+/**
+ * Find the department(s) that answer a plain-language query. Direct
+ * name/about matches first, then everyday-word hints. Returns [] for
+ * very short queries.
+ */
+export function findDepartments(query: string, limit = 2): DepartmentContact[] {
+  const lq = query.toLowerCase().trim();
+  if (lq.length < 3) return [];
+
+  const direct = DEPARTMENTS.filter(
+    (d) => d.name.toLowerCase().includes(lq) || d.about.toLowerCase().includes(lq),
+  );
+  const hinted: DepartmentContact[] = [];
+  for (const h of DEPT_HINTS) {
+    if (h.terms.some((t) => lq.includes(t))) {
+      const d = DEPARTMENTS.find((x) => x.name.toLowerCase().includes(h.match));
+      if (d) hinted.push(d);
+    }
+  }
+
+  const seen = new Set<string>();
+  const out: DepartmentContact[] = [];
+  for (const d of [...hinted, ...direct]) {
+    if (!seen.has(d.slug)) {
+      seen.add(d.slug);
+      out.push(d);
+    }
+  }
+  return out.slice(0, limit);
+}
+
+/** Resident-facing source label for an answer's provenance line. */
+export function jurisdictionLabel(j: DepartmentContact["jurisdiction"]): string {
+  return j === "city" ? "City of Frederick" : j === "county" ? "Frederick County" : "Emergency";
+}
