@@ -41,9 +41,29 @@ export const TABS: readonly Tab[] = [
   { href: "/my-radius", label: "My Radius", icon: Bookmark, fillOnActive: true  },
 ] as const;
 
-/** Resolve a pathname to its tab index (or -1 if it isn't a tab). */
+/**
+ * Secondary surfaces that belong UNDER a primary tab so the nav
+ * highlights the right home instead of falsely defaulting to Today.
+ * Place-browse + town + collection routes read as the "Map" (explore
+ * places) context. Anything not listed here returns -1 → no tab
+ * highlighted (correct for /settings, /about, /parks, a place detail
+ * reached from anywhere, etc.).
+ */
+const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
+  ["/places", 1],
+  ["/category", 1],
+  ["/collections", 1],
+  ["/m/", 1],
+];
+
+/** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */
 export function tabIndexForPath(pathname: string): number {
-  return TABS.findIndex(
+  const direct = TABS.findIndex(
     (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
   );
+  if (direct !== -1) return direct;
+  const section = SECTION_PREFIXES.find(
+    ([p]) => pathname === p || pathname.startsWith(p),
+  );
+  return section ? section[1] : -1;
 }

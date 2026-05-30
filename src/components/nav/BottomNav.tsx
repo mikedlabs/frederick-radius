@@ -10,9 +10,12 @@ export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Real index from the current route. Falls back to 0 so the slider
-  // still has a home on non-primary routes (e.g. /about, /settings).
-  const realIdx = Math.max(0, tabIndexForPath(pathname));
+  // Real index from the current route, or -1 when the page isn't under
+  // any tab (a place detail, /settings, /about…). We deliberately do
+  // NOT fall back to 0 — that's what made every non-tab page falsely
+  // light up "Today". At -1 the moving pill simply hides (the measure
+  // effect finds no cell), so no tab is mis-highlighted.
+  const realIdx = tabIndexForPath(pathname);
 
   // Optimistic index. Set on pointer-down so the indicator slides
   // within one frame, before the server-side route work begins. The

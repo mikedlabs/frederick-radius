@@ -157,7 +157,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <PlaceVisitTracker slug={place.slug} />
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/" className="hover:underline">Today</Link></li>
+          <li><Link href="/places" className="hover:underline">Places</Link></li>
           <li aria-hidden>·</li>
           <li><Link href={`/m/${place.municipality}`} className="hover:underline">{place.municipality_name}</Link></li>
           {cat && (
