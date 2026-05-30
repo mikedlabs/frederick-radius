@@ -31,6 +31,15 @@ new system. The engine, dedupe, scheduling, and provenance are shared.
 | --- | --- | --- | --- |
 | **Municipal civic** | town gov pages | `municipal-civic.json` | `ingest-municipal-civic.ts` |
 | **Venue events** | venue sites (Banyan, Derby, Sky Stage…) | `venue-events.json` | `ingest-venue-events.ts` |
+| **Business deep-info** | each place's OWN website (571 food/drink, URLs already in `places-enrichment.json`) | `business-info.json` | `ingest-business-info.ts` |
+
+The **business deep-info** profile is the moat at scale: it reads the
+website each place already has on file and extracts what Google's listing
+misses — known-for, happy hours, recurring specials, published hours,
+reservations. Adaptive fetch (plain → render fallback), incremental +
+batched (60/day, 30-day refresh), own-domain food/drink only. Most
+Frederick small-business sites are directly readable; the CAPTCHA-walled
+few (e.g. bentztown.com) are handled via aggregators instead.
 
 ## Next profiles (same engine — just add the shape + sources)
 - **Happy hours / specials** — extract day/time/deal from a place's site

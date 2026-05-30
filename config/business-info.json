@@ -1,0 +1,17 @@
+{
+  "_doc": "Tuning for scripts/ingest-business-info.ts — the business deep-info agent. It does NOT list URLs: it reads the website each place already has in src/data/places-enrichment.json (2,887 have one) and extracts what Google misses — known-for, happy hours, recurring specials, published hours, reservations. This config controls WHICH businesses to read and how often. typeIncludes/excludeDomains are substring matches. Add ANTHROPIC_API_KEY (repo secret) to run; the agent validates each fetch, falls back to a headless render when a site is JS-only, and NEVER fabricates.",
+  "typeIncludes": [
+    "restaurant", "bar", "cafe", "coffee", "bakery", "brew", "winery", "wine",
+    "pub", "food", "ice_cream", "deli", "pizza", "diner", "distill", "gastropub",
+    "meal_takeaway", "night_club", "roastery", "creamery"
+  ],
+  "excludeDomains": [
+    "facebook.com", "instagram.com", "twitter.com", "x.com", "yelp.com",
+    "tripadvisor", "doordash", "ubereats", "grubhub", "toasttab", "google.com",
+    "cityoffrederick", "visitfrederick.org", "nps.gov", "dnr.maryland",
+    "maryland.gov", ".gov", "linktr.ee"
+  ],
+  "refreshDays": 30,
+  "defaultLimit": 60,
+  "renderFallbackMinChars": 500
+}
