@@ -154,6 +154,10 @@ export default function RadiusMap({
   // circle a smooth follow without thrashing parent state on every
   // pointermove. Committed back via onCenterChange on dragend.
   const [drag, setDrag] = useState<{ lng: number; lat: number } | null>(null);
+  // Runtime map failure (WebGL off, low-power mode, blocked tiles, old
+  // device). Mapbox throws on init in these cases; without catching it
+  // the map goes blank while the page still says "N places in radius."
+  const [mapFailed, setMapFailed] = useState(false);
   // The place a user tapped on the map — shows the preview popup. Null
   // when no place is selected (the default).
   const [selected, setSelected] = useState<{
@@ -384,15 +388,34 @@ export default function RadiusMap({
     }
   };
 
-  if (!MAPBOX_TOKEN) {
+  // Branded fallback for no-token AND runtime WebGL/tile failure. Audit:
+  // "Map did not load. Nearby places still work." + a retry, instead of
+  // a blank box. The reach controls + within-reach list below keep working.
+  if (!MAPBOX_TOKEN || mapFailed) {
     return (
       <div
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)] grid place-items-center"
+        className="relative grid place-items-center overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-sunken)] px-6 text-center"
         style={{ borderColor: "var(--app-border)", height }}
       >
-        <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-          Map preview unavailable
-        </p>
+        <div>
+          <MapIcon className="mx-auto h-7 w-7" style={{ color: "var(--app-cool)" }} strokeWidth={1.5} aria-hidden />
+          <p className="mt-2 text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Map didn&rsquo;t load
+          </p>
+          <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            Nearby places still work — the controls and list below are all here.
+          </p>
+          {mapFailed && (
+            <button
+              type="button"
+              onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
+              className="tactile tactile-interactive mt-3 inline-flex items-center rounded-full px-4 py-1.5 text-[12px] font-semibold"
+              style={{ background: "var(--app-bg-elevated)", color: "var(--app-cool)" }}
+            >
+              Try again
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -409,6 +432,15 @@ export default function RadiusMap({
         }}
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle={STYLE_URL}
+        // Catch fatal init failure (WebGL off, blocked context) → branded
+        // fallback instead of a blank box. Transient tile errors are
+        // ignored so they don't nuke a working map.
+        onError={(e) => {
+          const msg = String(e?.error?.message ?? "").toLowerCase();
+          if (msg.includes("webgl") || msg.includes("failed to initialize") || msg.includes("context")) {
+            setMapFailed(true);
+          }
+        }}
         // Initial frame: center on the active preset (Frederick downtown
         // by default) at neighborhood zoom. The previous fit-to-county
         // opened the map at ~zoom 9, which made every radius circle
