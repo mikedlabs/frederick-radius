@@ -233,7 +233,7 @@ export default function TopBar() {
             href="/settings"
             aria-label="Settings"
             title="Settings"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <SettingsIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -253,7 +253,7 @@ export default function TopBar() {
             aria-expanded={moreOpen}
             aria-label="More"
             title="More"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <MoreHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
