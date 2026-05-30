@@ -657,6 +657,145 @@ export default function RadiusBuilder({
     })).filter((g) => g.list.length > 0);
   }, [insideAmenities]);
 
+  // The control card (center + travel mode + radius slider) extracted to
+  // a variable so it can render directly UNDER the map — the instrument
+  // leads, the results follow. (Was buried below the results; that was
+  // the "controls are backwards" problem.)
+  const controlCard = (
+    <section className="space-y-2.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
+             style={{ borderColor: "var(--app-border)" }}>
+      {/* Center — a dropdown with every municipality + landmarks
+          PLUS a "Use my location" button so the user has a real
+          custom-center path. */}
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+        >
+          <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
+        </span>
+        <div className="relative min-w-0 flex-1">
+          <label htmlFor="center-select" className="sr-only">Center point</label>
+          <select
+            id="center-select"
+            value={myLoc ? -1 : presetIdx}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              if (v >= 0) {
+                setMyLoc(null);
+                setPresetIdx(v);
+              }
+            }}
+            className="w-full appearance-none rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] py-2 pl-3 pr-9 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+          >
+            {myLoc && (
+              <option value={-1}>{myLocLabel}</option>
+            )}
+            <optgroup label="Municipalities">
+              {PRESETS.map((p, i) =>
+                p.kind === "muni" ? (
+                  <option key={p.slug} value={i}>{p.label}</option>
+                ) : null,
+              )}
+            </optgroup>
+            <optgroup label="Landmarks">
+              {PRESETS.map((p, i) =>
+                p.kind === "poi" ? (
+                  <option key={p.slug} value={i}>{p.label}</option>
+                ) : null,
+              )}
+            </optgroup>
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
+            strokeWidth={2.25}
+            style={{ color: "var(--app-ink-3)" }}
+            aria-hidden
+          />
+        </div>
+        <button
+          type="button"
+          onClick={requestMyLocation}
+          aria-pressed={Boolean(myLoc)}
+          aria-busy={geoStatus === "loading" || undefined}
+          title={
+            geoStatus === "denied"
+              ? "Location blocked — enable in browser settings"
+              : myLoc
+                ? "Using your location"
+                : "Center on your location"
+          }
+          disabled={geoStatus === "unavailable"}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94] disabled:opacity-40"
+          style={{
+            borderColor: myLoc ? "var(--app-brand)" : "var(--app-border)",
+            background: myLoc
+              ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
+              : "var(--app-bg-elevated)",
+            color: myLoc ? "var(--app-brand)" : "var(--app-ink-2)",
+          }}
+        >
+          <Locate
+            className={`h-4 w-4 ${geoStatus === "loading" ? "animate-pulse" : ""}`}
+            strokeWidth={myLoc ? 2.5 : 2}
+            fill={myLoc ? "currentColor" : "none"}
+            aria-hidden
+          />
+        </button>
+      </div>
+
+      {/* Mode + distance read as one instrument. */}
+      <div
+        role="group"
+        aria-label="Travel mode"
+        className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
+        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+      >
+        {MODES.map(({ mode: m, label, icon: Icon }) => {
+          const active = m === mode;
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              aria-pressed={active}
+              className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
+              style={{
+                background: active ? "var(--app-brand)" : "transparent",
+                color: active ? "#fff" : "var(--app-ink-2)",
+              }}
+            >
+              <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Slider — single row, inline minute display. */}
+      <div>
+        <input
+          id="minutes-slider"
+          aria-label={`${minutes} minutes`}
+          type="range"
+          min={3}
+          max={mode === "walk" ? 30 : mode === "bike" ? 20 : 15}
+          step={1}
+          value={minutes}
+          onChange={(e) => setMinutes(Number(e.target.value))}
+          className="w-full"
+          style={{ accentColor: "var(--app-brand)" }}
+        />
+        <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+          <span>3 min</span>
+          <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
+        </div>
+      </div>
+    </section>
+  );
+
   return (
     <div className="space-y-3">
       {/* First-visit invite card — the soul of the Radius redesign.
@@ -909,6 +1048,11 @@ export default function RadiusBuilder({
         <div className="flex justify-end">{modeToggle}</div>
       )}
 
+      {/* CONTROLS lead: center + travel mode + radius slider sit
+          directly under the map, so you tune the instrument BEFORE the
+          results — not after them. */}
+      {controlCard}
+
       {/* Best nearby moves — three curated "you should do this right
           now" tiles (coffee within reach, public restroom, park
           within reach) derived from the same inside list as the
@@ -995,146 +1139,8 @@ export default function RadiusBuilder({
         </section>
       )}
 
-      {/* Compact control card — center + mode + slider in one tight
-          stack so the entire instrument fits under the map in one
-          mobile viewport. */}
-      <section className="space-y-2.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3 shadow-[var(--app-shadow-1)]"
-               style={{ borderColor: "var(--app-border)" }}>
-        {/* Center — a dropdown with every municipality + landmarks
-            PLUS a "Use my location" button so the user has a real
-            custom-center path. Obvious, fully reachable. */}
-        <div className="flex items-center gap-2">
-          <span
-            aria-hidden
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-            style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
-          >
-            <MapPin className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </span>
-          <div className="relative min-w-0 flex-1">
-            <label htmlFor="center-select" className="sr-only">Center point</label>
-            <select
-              id="center-select"
-              value={myLoc ? -1 : presetIdx}
-              onChange={(e) => {
-                const v = Number(e.target.value);
-                if (v >= 0) {
-                  setMyLoc(null);
-                  setPresetIdx(v);
-                }
-              }}
-              className="w-full appearance-none rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] py-2 pl-3 pr-9 text-[14px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-            >
-              {myLoc && (
-                <option value={-1}>{myLocLabel}</option>
-              )}
-              <optgroup label="Municipalities">
-                {PRESETS.map((p, i) =>
-                  p.kind === "muni" ? (
-                    <option key={p.slug} value={i}>{p.label}</option>
-                  ) : null,
-                )}
-              </optgroup>
-              <optgroup label="Landmarks">
-                {PRESETS.map((p, i) =>
-                  p.kind === "poi" ? (
-                    <option key={p.slug} value={i}>{p.label}</option>
-                  ) : null,
-                )}
-              </optgroup>
-            </select>
-            <ChevronDown
-              className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2"
-              strokeWidth={2.25}
-              style={{ color: "var(--app-ink-3)" }}
-              aria-hidden
-            />
-          </div>
-          {/* Use my location — geolocation override for "what's near
-              ME right now" without picking a preset. Once set, it
-              shows in the dropdown as "Your location" and persists
-              until the user picks a different center. */}
-          <button
-            type="button"
-            onClick={requestMyLocation}
-            aria-pressed={Boolean(myLoc)}
-            aria-busy={geoStatus === "loading" || undefined}
-            title={
-              geoStatus === "denied"
-                ? "Location blocked — enable in browser settings"
-                : myLoc
-                  ? "Using your location"
-                  : "Center on your location"
-            }
-            disabled={geoStatus === "unavailable"}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94] disabled:opacity-40"
-            style={{
-              borderColor: myLoc ? "var(--app-brand)" : "var(--app-border)",
-              background: myLoc
-                ? "color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated))"
-                : "var(--app-bg-elevated)",
-              color: myLoc ? "var(--app-brand)" : "var(--app-ink-2)",
-            }}
-          >
-            <Locate
-              className={`h-4 w-4 ${geoStatus === "loading" ? "animate-pulse" : ""}`}
-              strokeWidth={myLoc ? 2.5 : 2}
-              fill={myLoc ? "currentColor" : "none"}
-              aria-hidden
-            />
-          </button>
-        </div>
-
-        {/* Mode + distance read as one instrument. */}
-        <div
-          role="group"
-          aria-label="Travel mode"
-          className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-        >
-          {MODES.map(({ mode: m, label, icon: Icon }) => {
-            const active = m === mode;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                aria-pressed={active}
-                className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
-                style={{
-                  background: active ? "var(--app-brand)" : "transparent",
-                  color: active ? "#fff" : "var(--app-ink-2)",
-                }}
-              >
-                <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Slider — single row, inline minute display. Range labels
-            tucked below at 10px so they don't add height. */}
-        <div>
-          <input
-            id="minutes-slider"
-            aria-label={`${minutes} minutes`}
-            type="range"
-            min={3}
-            max={mode === "walk" ? 30 : mode === "bike" ? 20 : 15}
-            step={1}
-            value={minutes}
-            onChange={(e) => setMinutes(Number(e.target.value))}
-            className="w-full"
-            style={{ accentColor: "var(--app-brand)" }}
-          />
-          <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-            <span>3 min</span>
-            <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
-          </div>
-        </div>
-      </section>
+      {/* Control card now renders UP near the map (see {controlCard}
+          right under the map ribbon) — controls lead, results follow. */}
 
       {/* (Quick-pick chips removed — they presumed the user wanted a
           specific time radius up front, which isn't how people think.
