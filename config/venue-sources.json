@@ -54,8 +54,8 @@
       "name": "Bentztown",
       "category": "music",
       "render": true,
-      "urls": ["https://bentztown.com/calendar/"],
-      "note": "Southern food + bourbon + live-music stage, 6 S. Bentz St. Calendar widget → render."
+      "urls": ["https://www.bandsintown.com/v/10444653-bentztown"],
+      "note": "6 S. Bentz St. Southern food + bourbon + live-music stage. Its OWN site (bentztown.com) is CAPTCHA-walled (\"prove you're human\") — un-scrapable by any agent, verified May 2026. Read the lineup from its Bandsintown venue page instead: no CAPTCHA, ~33 upcoming shows with real dates, render:true. Bandsintown also carries Weinberg + other Frederick venues — treat it as a primary aggregator source per docs/EXTRACTION_PLATFORM.md."
     },
     {
       "slug": "jojos",
