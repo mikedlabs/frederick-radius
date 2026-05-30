@@ -570,6 +570,75 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ─────────────────────────────────────────────────────
+ * EXPRESSIVE MOTION LAYER (v3) — the "alive" feel.
+ * The app had functional motion (press states, fades) but not
+ * the lifelike, breathing quality the brief asked for. This is
+ * that layer: a richer spring, a staggered breathe-in entrance,
+ * and a living radius pulse. All GPU-friendly (transform/opacity
+ * only), all reduced-motion-safe.
+ * ───────────────────────────────────────────────────── */
+
+/* A bouncier spring than --app-ease-spring, for entrances that
+ * should feel like they settle into place with a little life. */
+:root { --app-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* breathe-in — the canonical entrance. Rises a touch further and
+ * settles with the bounce spring so content feels PLACED, not popped.
+ * Pair with .stagger-children on a parent to cascade the kids. */
+@keyframes breathe-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.breathe-in {
+  animation: breathe-in 520ms var(--app-ease-bounce) both;
+}
+
+/* Stagger: each direct child breathes in slightly after the last,
+ * so a section assembles itself instead of snapping in at once.
+ * Up to 10 children get an increasing delay; beyond that they share
+ * the last step (cheap, and long lists shouldn't cascade forever). */
+.stagger-children > * {
+  animation: breathe-in 520ms var(--app-ease-bounce) both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 40ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 95ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 205ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 260ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 315ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 370ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 425ms; }
+.stagger-children > *:nth-child(n+9) { animation-delay: 480ms; }
+
+/* Living radius — a soft expanding ring that ripples outward from a
+ * center, the brand concept ("Radius") made into motion. Put on an
+ * ::before/::after or a dedicated span behind a center marker. */
+@keyframes radius-ripple {
+  0%   { transform: scale(0.6); opacity: 0.55; }
+  70%  { opacity: 0.12; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+.radius-ripple {
+  animation: radius-ripple 2800ms var(--app-ease-out) infinite;
+}
+/* A gentle breathing scale for a live center dot / "you are here". */
+@keyframes radius-breathe {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.12); opacity: 0.88; }
+}
+.radius-breathe {
+  animation: radius-breathe 2600ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .breathe-in,
+  .stagger-children > *,
+  .radius-ripple,
+  .radius-breathe { animation: none; opacity: 1; transform: none; }
+}
+
+
+/* ─────────────────────────────────────────────────────
  * Aurora bloom — slow-drifting gradient orbs behind the
  * whole page, the shader-style cinematic background the
  * north-star UI calls for. Each orb is a single radial

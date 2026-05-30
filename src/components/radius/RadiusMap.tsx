@@ -540,13 +540,48 @@ export default function RadiusMap({
               placeItems: "center",
               width: 22,
               height: 22,
-              borderRadius: 9999,
-              background: accentHex,
-              border: "3px solid #fff",
-              boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
               cursor: onCenterChange ? "grab" : "default",
             }}
-          />
+          >
+            {/* Living "Radius" — two ripple rings expand outward from the
+                center on a staggered loop, so the center point feels
+                ALIVE (the brand concept as motion). Pure transform/opacity,
+                reduced-motion-safe via the .radius-ripple class. */}
+            <span
+              className="radius-ripple"
+              style={{
+                position: "absolute",
+                width: 22,
+                height: 22,
+                borderRadius: 9999,
+                border: `2px solid ${accentHex}`,
+              }}
+            />
+            <span
+              className="radius-ripple"
+              style={{
+                position: "absolute",
+                width: 22,
+                height: 22,
+                borderRadius: 9999,
+                border: `2px solid ${accentHex}`,
+                animationDelay: "1400ms",
+              }}
+            />
+            {/* Breathing core dot. */}
+            <span
+              className="radius-breathe"
+              style={{
+                position: "relative",
+                width: 22,
+                height: 22,
+                borderRadius: 9999,
+                background: accentHex,
+                border: "3px solid #fff",
+                boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+              }}
+            />
+          </span>
         </Marker>
         {/* Place preview popup — shows when a user taps a colored dot.
             Mobile-friendly dismiss: closeOnClick lets a tap on the map
