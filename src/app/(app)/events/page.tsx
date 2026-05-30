@@ -19,6 +19,7 @@ import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -344,9 +345,20 @@ export default async function EventsIndexPage({
         initialDay={initialDay}
       />
 
-      {/* ── 6. Municipal series — quiet series-level summary block. */}
+      {/* ── 6. Official calendars — the civic firehose, COLLAPSED by
+              default so municipal gravity (meetings, water bills, gym
+              classes) never visually competes with the fun events above.
+              Reviewer's #1: separate public-interest from municipal. */}
       {ingestedSeries.length > 0 && (
-        <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
+        <CollapsibleSection
+          title="Official calendars"
+          count={ingestedSeries.length}
+          countLabel="series"
+          storageKey="fr.events.official"
+          defaultOpen={false}
+        >
+          <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
+        </CollapsibleSection>
       )}
 
       {/* ── 7. Honesty footer ───────────────────────────────────────── */}
