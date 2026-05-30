@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>North Star — Radius</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EBE3D2;--card:#FCF8EF;--ink:#231D15;--ink2:#574E40;--ink3:#857B68;--brand:#A53A20;--green:#33623A;--cool:#2F5763;--gold:#9C7A33;--purple:#7E2C6F;--border:#D6C9AD}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:Inter,sans-serif;background:#211c14;display:flex;justify-content:center;padding:18px 0}
+.p{width:390px;height:880px;border-radius:40px;overflow:hidden;position:relative;box-shadow:0 30px 90px rgba(0,0,0,.55);background:var(--paper)}
+.mono{font-family:'IBM Plex Mono',monospace}.serif{font-family:Fraunces,serif}
+/* the county map, brand-painted + spotlight */
+.map{position:absolute;inset:0;background:
+ radial-gradient(circle at 32% 34%,rgba(51,98,58,.12),transparent 20%),
+ radial-gradient(circle at 66% 60%,rgba(47,87,99,.10),transparent 24%),
+ linear-gradient(180deg,#E6DECC,#DED5C0)}
+/* county veil edges */
+.map:after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 2000px rgba(0,0,0,0);background:
+ radial-gradient(125% 80% at 50% 45%, transparent 52%, rgba(35,29,21,.16) 100%)}
+.contour{position:absolute;inset:0;opacity:.5;background:repeating-radial-gradient(circle at 50% 44%,transparent 0 17px,rgba(120,108,86,.06) 17px 18px)}
+/* dashed county border suggestion */
+.cty{position:absolute;left:24px;right:24px;top:120px;bottom:300px;border:1.5px dashed rgba(124,44,32,.35);border-radius:46% 54% 50% 50%/40% 45% 55% 60%}
+.ring{position:absolute;width:215px;height:215px;border-radius:50%;border:2px dashed rgba(165,58,32,.55);background:rgba(165,58,32,.05);left:50%;top:38%;transform:translate(-50%,-50%)}
+.me{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--brand);border:3px solid #fff;box-shadow:0 0 0 7px rgba(165,58,32,.16)}
+.pin{position:absolute;width:30px;height:30px;border-radius:50% 50% 50% 4px;transform:rotate(45deg);display:grid;place-items:center;box-shadow:0 4px 10px rgba(0,0,0,.28);border:2px solid #fff}
+.pin span{transform:rotate(-45deg);font-size:12px}
+.pin.q{opacity:.45;width:24px;height:24px;border-width:1.5px}
+/* topbar */
+.tb{position:absolute;top:14px;left:16px;right:16px;display:flex;gap:10px;z-index:9}
+.sr{flex:1;background:rgba(252,248,239,.96);backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 18px rgba(35,29,21,.12)}
+.sr span{color:var(--ink3);font-size:14px}
+.icbtn{width:46px;background:rgba(252,248,239,.96);border:1px solid var(--border);border-radius:14px;display:grid;place-items:center;box-shadow:0 6px 18px rgba(35,29,21,.12);color:var(--ink2);font-size:16px}
+/* reach control pill */
+.reach{position:absolute;top:70px;left:16px;right:16px;display:flex;gap:8px;z-index:9}
+.rc{flex:1;background:rgba(252,248,239,.96);border:1px solid var(--border);border-radius:30px;padding:9px 6px;display:flex;align-items:center;justify-content:space-around;box-shadow:0 6px 16px rgba(35,29,21,.1)}
+.rc .o{font-size:12.5px;font-weight:600;color:var(--ink3);padding:4px 12px;border-radius:20px}
+.rc .o.on{background:var(--brand);color:#fff}
+/* chip row */
+.fc{position:absolute;top:118px;left:0;right:0;display:flex;gap:7px;overflow-x:auto;padding:0 16px;z-index:9}
+.fc .c{flex:0 0 auto;background:rgba(252,248,239,.96);border:1px solid var(--border);border-radius:30px;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--ink2);box-shadow:0 3px 10px rgba(35,29,21,.08)}
+.fc .c.on{background:var(--ink);color:#fff}
+/* bottom sheet */
+.sheet{position:absolute;left:0;right:0;bottom:0;height:300px;background:var(--card);border-radius:24px 24px 0 0;box-shadow:0 -12px 40px rgba(35,29,21,.2);padding:8px 20px 92px;z-index:12}
+.handle{width:40px;height:5px;border-radius:5px;background:var(--border);margin:2px auto 12px}
+.shh{display:flex;align-items:baseline;gap:8px}
+.shh h2{font-family:Fraunces;font-size:19px;font-weight:600;color:var(--ink)}
+.shh .n{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink3)}
+.shh a{margin-left:auto;font-size:12px;color:var(--brand);font-weight:600;text-decoration:none}
+.li{display:flex;gap:13px;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)}.li:last-child{border:0}
+.th{width:46px;height:46px;border-radius:12px;flex:0 0 auto;display:grid;place-items:center;color:#fff;font-size:18px}
+.nm{font-family:Fraunces;font-size:15px;font-weight:600;color:var(--ink);line-height:1.1}.mt{font-size:11.5px;color:var(--ink3);margin-top:2px}
+.dist{margin-left:auto;text-align:right}.dist .d{font-family:'IBM Plex Mono';font-size:12px;font-weight:600;color:var(--brand)}.dist .s{font-size:9px;color:var(--green);font-weight:600}
+.nav{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:340px;height:64px;background:rgba(252,248,239,.96);backdrop-filter:blur(14px);border:1px solid var(--border);border-radius:22px;display:flex;align-items:center;justify-content:space-around;box-shadow:0 14px 34px rgba(35,29,21,.16);z-index:20}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;color:var(--ink3);text-decoration:none;font-weight:600}.nav a.on{color:var(--brand)}
+.tag{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:5px 13px;border-radius:20px;z-index:30;font-weight:600;font-family:'IBM Plex Mono'}
+</style></head><body><div class="p">
+<div class="tag">★ Radius · the signature</div>
+<div class="map">
+ <div class="contour"></div><div class="cty"></div>
+ <div class="ring"></div><div class="me"></div>
+ <div class="pin" style="left:39%;top:27%;background:var(--brand)"><span>🍴</span></div>
+ <div class="pin" style="left:57%;top:31%;background:var(--purple)"><span>🎭</span></div>
+ <div class="pin" style="left:31%;top:45%;background:var(--green)"><span>🌲</span></div>
+ <div class="pin" style="left:62%;top:47%;background:var(--gold)"><span>☕</span></div>
+ <div class="pin" style="left:47%;top:50%;background:var(--cool)"><span>🍺</span></div>
+ <div class="pin q" style="left:20%;top:62%;background:var(--green)"><span>🌲</span></div>
+ <div class="pin q" style="left:74%;top:66%;background:var(--brand)"><span>🍴</span></div>
+ <div class="pin q" style="left:80%;top:24%;background:var(--purple)"><span>🎭</span></div>
+</div>
+<div class="tb"><div class="sr"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#857B68" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg><span>Search Frederick County…</span></div><div class="icbtn">⚙</div></div>
+<div class="reach"><div class="rc"><span class="o">🚶 Walk</span><span class="o on">🚴 Bike</span><span class="o">🚗 Drive</span></div></div>
+<div class="fc"><span class="c on">All</span><span class="c">Eat</span><span class="c">Drink</span><span class="c">See</span><span class="c">Outdoors</span><span class="c">Kids</span></div>
+<div class="sheet">
+ <div class="handle"></div>
+ <div class="shh"><h2>Within a 15-min bike</h2><span class="n">· 64 places</span><a>List ↑</a></div>
+ <div style="margin-top:10px">
+  <div class="li"><div class="th" style="background:linear-gradient(135deg,#C99632,#B26B00)">🍴</div><div><div class="nm">Brewer's Alley</div><div class="mt">Restaurant · American</div></div><div class="dist"><div class="d">4 min</div><div class="s">OPEN</div></div></div>
+  <div class="li"><div class="th" style="background:linear-gradient(135deg,#7E2C6F,#5B1E55)">🎭</div><div><div class="nm">Sky Stage</div><div class="mt">Open-air arts venue</div></div><div class="dist"><div class="d">6 min</div><div class="s">OPEN</div></div></div>
+  <div class="li"><div class="th" style="background:linear-gradient(135deg,#33623A,#2E3B2C)">🌲</div><div><div class="nm">Carroll Creek Park</div><div class="mt">Linear park · waterfront</div></div><div class="dist"><div class="d">3 min</div><div class="s">OPEN</div></div></div>
+ </div>
+</div>
+<div class="nav">
+ <a><span style="font-size:18px">☀</span>Today</a>
+ <a class="on"><span style="font-size:18px">◎</span>Radius</a>
+ <a><span style="font-size:18px">📅</span>Events</a>
+ <a><span style="font-size:18px">🔖</span>Saved</a>
+</div>
+</div></body></html>
