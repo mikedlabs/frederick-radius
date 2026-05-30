@@ -8,6 +8,7 @@ import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { installCategoryMarkers } from "@/components/map/categoryMarkers";
+import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
 import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
 // Mapbox CSS — without this, tile rendering and canvas sizing fail.
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -493,7 +494,16 @@ export default function RadiusMap({
         // glance — food orange, parks green, arts purple — instead of
         // anonymous dots. styleimagemissing inside the installer covers
         // any category not eagerly added, and survives style reloads.
-        onLoad={(e) => installCategoryMarkers(e.target)}
+        onLoad={(e) => {
+          installCategoryMarkers(e.target);
+          // Repaint stock light-v11 into the Frederick brand: paper-cream
+          // land, Carroll Creek slate water, sage parks, warm-ink labels,
+          // Catoctin/South Mountain hillshade — and POI clutter hidden so
+          // OUR pins are the only points of interest ("nothing else
+          // there"). The browse map already does this; the default radius
+          // view now matches, so the premium look is consistent.
+          applyFrederickPalette(e.target);
+        }}
         // The invisible hit-pad is listed FIRST so a fingertip near a tiny
         // icon still resolves to the place (Fitts-friendly tap target).
         interactiveLayerIds={["radius-places-hit", "radius-places-dots", "radius-events-dots"]}
