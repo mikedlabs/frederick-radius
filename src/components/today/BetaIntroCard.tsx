@@ -21,23 +21,27 @@ const STORAGE_KEY = "fr:beta-intro-dismissed:v9";
  * instead of forcing it. Shows once, then never again (localStorage).
  */
 export default function BetaIntroCard() {
-  // Default dismissed=true so SSR + first client paint render nothing
-  // (no flash); the stored value resolves after mount.
-  const [dismissed, setDismissed] = useState(true);
+  // `shown` flips true after mount ONLY if the dismiss key is unset.
+  // SSR + first client paint render nothing (no flash / no hydration
+  // mismatch); the localStorage read happens post-mount.
+  const [shown, setShown] = useState(false);
 
   useEffect(() => {
+    let dismissed = false;
     try {
-      setDismissed(localStorage.getItem(STORAGE_KEY) === "true");
+      dismissed = localStorage.getItem(STORAGE_KEY) === "true";
     } catch {
-      setDismissed(false);
+      dismissed = false;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of a localStorage preference; SSR can't read localStorage
+    if (!dismissed) setShown(true);
   }, []);
 
-  if (dismissed) return null;
+  if (!shown) return null;
 
   const dismiss = () => {
     try { localStorage.setItem(STORAGE_KEY, "true"); } catch {}
-    setDismissed(true);
+    setShown(false);
   };
 
   return (
