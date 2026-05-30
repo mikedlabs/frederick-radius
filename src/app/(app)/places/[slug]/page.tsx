@@ -17,6 +17,8 @@ import EventCard from "@/components/event/EventCard";
 import MyRadiusButton from "@/components/place/MyRadiusButton";
 import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
+import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
+import { businessInfoFor } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
@@ -228,6 +230,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             knownFor={place.known_for}
             customersLoved={place.customers_loved}
           />
+          {/* "Good to know" — happy hour / specials / a notable detail
+              pulled straight from the place's OWN website by the
+              business-info agent, with source + freshness. Renders
+              nothing until that data exists for this place. */}
+          <BusinessExtrasCard info={businessInfoFor(place.slug)} />
           {place.review_snippet && (
             <figure
               className="border-l-2 pl-3"
