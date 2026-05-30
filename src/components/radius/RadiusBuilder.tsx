@@ -602,16 +602,24 @@ export default function RadiusBuilder({
   // color so the map can color dots by category and surface a place
   // preview when one is tapped — a generic mode-tinted dot was anonymous;
   // a category-colored dot tells a story at a glance.
+  // Controlled discovery: the map plots only the BEST ~18 reachable
+  // places (by editorial feature_score), not all ~500 — a confetti of
+  // dots reads as a mess and buries the signal. The full set still lives
+  // in the results list + the "Within reach" outcomes; the map's job is
+  // to show the reach + the highlights, not every point.
   const insideDots = useMemo(
     () =>
-      displayedInside.map((p) => ({
-        lng: p.geom.lng,
-        lat: p.geom.lat,
-        slug: p.slug,
-        name: p.name,
-        category: p.category,
-        category_color: CATEGORY_BY_SLUG[p.category]?.color,
-      })),
+      [...displayedInside]
+        .sort((a, b) => (b.feature_score ?? 0) - (a.feature_score ?? 0))
+        .slice(0, 18)
+        .map((p) => ({
+          lng: p.geom.lng,
+          lat: p.geom.lat,
+          slug: p.slug,
+          name: p.name,
+          category: p.category,
+          category_color: CATEGORY_BY_SLUG[p.category]?.color,
+        })),
     [displayedInside],
   );
 
