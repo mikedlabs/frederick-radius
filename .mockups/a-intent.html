@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Direction A — Intent-First</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F4EFE6; --paper2:#ECE5D5; --bg:#EFE8DA; --sunken:#E6DECE;
+    --elev:#FFFDF8; --ink:#1A1815; --ink2:#4A4844; --ink3:#615F55;
+    --brand:#A03A22; --green:#2E3B2C; --cool:#2F5470; --border:#D9D2C3;
+    --sage:#859076;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:Inter,system-ui,sans-serif;background:#3a3631;display:flex;justify-content:center;padding:18px 0}
+  .phone{width:390px;background:var(--bg);min-height:844px;border-radius:38px;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .serif{font-family:Fraunces,Georgia,serif}
+  .eyebrow{font-family:Inter;font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--ink3)}
+  .scroll{height:844px;overflow-y:auto;padding:54px 18px 96px}
+  /* status/topbar */
+  .topbar{position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:linear-gradient(var(--bg),rgba(239,232,218,.85));backdrop-filter:blur(8px);z-index:10}
+  .brand{display:flex;align-items:center;gap:8px}
+  .logo{width:30px;height:30px;border-radius:9px;background:var(--brand);display:grid;place-items:center;color:#fff}
+  .brandtxt{line-height:1}.brandtxt b{font-family:Fraunces;font-size:16px;font-weight:600}.brandtxt span{font-size:9px;letter-spacing:.18em;color:var(--ink3);text-transform:uppercase;display:block}
+  /* HERO QUESTION */
+  .ask{margin-top:6px}
+  .ask .greet{color:var(--ink3);font-size:13px;font-weight:500}
+  .ask h1{font-family:Fraunces;font-size:30px;font-weight:600;line-height:1.05;letter-spacing:-.02em;color:var(--ink);margin-top:3px}
+  /* SEARCH */
+  .search{margin-top:16px;display:flex;align-items:center;gap:10px;background:var(--elev);border:1px solid var(--border);border-radius:16px;padding:14px 16px;box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 6px 16px rgba(20,24,16,.05)}
+  .search svg{color:var(--ink3)}.search span{color:var(--ink3);font-size:15px}
+  /* INTENT GRID — the "what do you need" answer, user-led */
+  .intents{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .intent{position:relative;border-radius:18px;padding:16px;min-height:96px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;border:1px solid var(--border);background:var(--elev);box-shadow:0 6px 18px rgba(20,24,16,.06)}
+  .intent .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;color:#fff}
+  .intent .lbl{font-family:Fraunces;font-size:17px;font-weight:600;color:var(--ink)}
+  .intent .sub{font-size:11.5px;color:var(--ink3);margin-top:1px}
+  .intent.big{grid-column:1/3;min-height:auto;flex-direction:row;align-items:center;gap:14px;background:linear-gradient(120deg,#fff,#FBF6EC)}
+  .sectit{display:flex;align-items:baseline;justify-content:space-between;margin:26px 2px 12px}
+  .sectit h2{font-family:Fraunces;font-size:20px;font-weight:600;color:var(--ink)}
+  .sectit a{font-size:12px;font-weight:600;color:var(--brand);text-decoration:none}
+  .rule{height:1px;background:linear-gradient(90deg,rgba(97,95,85,.4),transparent);margin:4px 2px 0}
+  /* open-now rail */
+  .rail{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin:0 -18px;padding-left:18px;padding-right:18px}
+  .opencard{flex:0 0 150px;background:var(--elev);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+  .opencard .ph{height:84px;background:linear-gradient(135deg,#c9a, #846)}
+  .opencard .ph.a{background:linear-gradient(135deg,#7E2C6F,#5B1E55)}
+  .opencard .ph.b{background:linear-gradient(135deg,#1E6B3A,#2E3B2C)}
+  .opencard .bd{padding:10px}
+  .opencard .nm{font-family:Fraunces;font-size:14px;font-weight:600;color:var(--ink);line-height:1.1}
+  .opencard .mt{font-size:11px;color:var(--ink3);margin-top:3px;display:flex;align-items:center;gap:5px}
+  .dot{width:6px;height:6px;border-radius:9px;background:var(--green);display:inline-block}
+  /* bottom nav */
+  .nav{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:330px;height:62px;background:rgba(255,253,248,.92);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:22px;display:flex;align-items:center;justify-content:space-around;box-shadow:0 12px 30px rgba(20,24,16,.14)}
+  .nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;color:var(--ink3);text-decoration:none;font-weight:500}
+  .nav a.on{color:var(--brand)}
+  .tag{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#1A1815;color:#F4EFE6;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:4px 12px;border-radius:20px;z-index:20;font-weight:600}
+</style></head>
+<body>
+<div class="phone">
+  <div class="tag">Direction A · Intent-First</div>
+  <div class="topbar">
+    <div class="brand"><div class="logo">◎</div><div class="brandtxt"><b>Frederick</b><span>Radius</span></div></div>
+    <div style="display:flex;gap:8px"><div style="width:34px;height:34px;border-radius:50%;background:var(--elev);border:1px solid var(--border);display:grid;place-items:center;color:var(--ink3)">⚙</div></div>
+  </div>
+  <div class="scroll">
+    <div class="ask">
+      <div class="greet">Saturday evening · 73° &amp; clear</div>
+      <h1>What are you<br>in the mood for?</h1>
+    </div>
+    <div class="search">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+      <span>Search places, events, food…</span>
+    </div>
+
+    <div class="intents">
+      <div class="intent big">
+        <div class="ic" style="background:var(--brand)">🍽</div>
+        <div><div class="lbl">Eat &amp; drink nearby</div><div class="sub">128 open now within a 10-min walk</div></div>
+      </div>
+      <div class="intent"><div class="ic" style="background:#7E2C6F">🎭</div><div><div class="lbl">See &amp; do</div><div class="sub">Arts, music, shows</div></div></div>
+      <div class="intent"><div class="ic" style="background:#1E6B3A">🌲</div><div><div class="lbl">Outdoors</div><div class="sub">Parks, trails, water</div></div></div>
+      <div class="intent"><div class="ic" style="background:#C99632">👪</div><div><div class="lbl">With kids</div><div class="sub">Family-friendly</div></div></div>
+      <div class="intent"><div class="ic" style="background:var(--cool)">📍</div><div><div class="lbl">Right now</div><div class="sub">Open this minute</div></div></div>
+    </div>
+
+    <div class="sectit"><h2>Happening tonight</h2><a>See all →</a></div>
+    <div class="rule"></div>
+    <div class="rail" style="margin-top:12px">
+      <div class="opencard"><div class="ph a"></div><div class="bd"><div class="nm">Color on the Creek</div><div class="mt"><span class="dot"></span>Now · Carroll Creek</div></div></div>
+      <div class="opencard"><div class="ph b"></div><div class="bd"><div class="nm">Alive @ Five</div><div class="mt"><span class="dot"></span>5:00 · Downtown</div></div></div>
+      <div class="opencard"><div class="ph"></div><div class="bd"><div class="nm">First Friday Art Walk</div><div class="mt"><span class="dot"></span>6:00 · Market St</div></div></div>
+    </div>
+    <div style="height:8px"></div>
+  </div>
+  <div class="nav">
+    <a class="on"><span style="font-size:18px">☀</span>Today</a>
+    <a><span style="font-size:18px">🗺</span>Map</a>
+    <a><span style="font-size:18px">📅</span>Events</a>
+    <a><span style="font-size:18px">🔖</span>Saved</a>
+  </div>
+</div>
+</body></html>
