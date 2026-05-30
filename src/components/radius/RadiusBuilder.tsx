@@ -6,7 +6,6 @@ import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
-import RadiusPresets from "./RadiusPresets";
 import WithinReach from "./WithinReach";
 import { resolveMunicipality } from "@/lib/location";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
@@ -905,12 +904,7 @@ export default function RadiusBuilder({
         </div>
       </div>
 
-      {/* Mode toggle — sits BELOW the map, right-aligned. Out of the
-          map's own real estate (no collision with camera controls or
-          the floating stats ribbon) and where the user expects a UI
-          control. The /map route passes <MapModeToggle> in via the
-          modeToggle prop; nothing renders here when the prop is
-          omitted (e.g. shared-plan view). */}
+      {/* Mode toggle (Radius / Browse) — right under the map. */}
       {modeToggle && (
         <div className="flex justify-end">{modeToggle}</div>
       )}
@@ -1142,16 +1136,10 @@ export default function RadiusBuilder({
         </div>
       </section>
 
-      {/* Quick-pick chips — one tap sets BOTH mode and minutes for
-          the six most-asked-for combinations. */}
-      <RadiusPresets
-        mode={mode}
-        minutes={minutes}
-        onPick={(m, n) => {
-          setMode(m);
-          setMinutes(n);
-        }}
-      />
+      {/* (Quick-pick chips removed — they presumed the user wanted a
+          specific time radius up front, which isn't how people think.
+          The mode + slider above are the control; the radius defaults
+          to a sensible 10-min walk and the user adjusts if they care.) */}
 
       {/* Category tile grid — the new landing for the lower half.
           Compact, colorful, scannable. Tap a tile to expand JUST
