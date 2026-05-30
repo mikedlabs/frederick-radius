@@ -839,11 +839,15 @@ export default function RadiusBuilder({
               </span>
             </span>
             <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
+            {/* The place count is a trust signal, not the answer — the
+                "Within reach" outcomes below carry that. Kept quiet +
+                small so the walk-time/mode (the slider's live feedback)
+                stays the loud thing in the ribbon. */}
             <span
-              className="inline-flex items-center gap-1 font-semibold tabular-nums"
-              style={{ color: "var(--app-ink)" }}
+              className="inline-flex items-center gap-1 tabular-nums"
+              style={{ color: "var(--app-ink-3)" }}
             >
-              <span className="font-serif text-[15px]">
+              <span className="text-[12px] font-semibold">
                 {placesReady ? displayedInside.length.toLocaleString() : "…"}
               </span>
               {/* "places in radius" rather than just "places" — answers
