@@ -136,6 +136,7 @@ export default function RadiusMap({
   events = [],
   reachable,
   onCenterChange,
+  onSelectPlace,
   // Tuned so the map AND the control card below it (mode toggle +
   // slider) fit in one mobile viewport. The previous 60vh buried the
   // slider below the fold, which broke the "see what you're doing
@@ -163,6 +164,10 @@ export default function RadiusMap({
   /** Fires on map tap and on center-pin drag end. Parent can opt out
    *  (omit the prop) to keep the map view-only. */
   onCenterChange?: (next: { lng: number; lat: number }) => void;
+  /** Tapping a PLACE marker calls this with its slug; the parent (which
+   *  holds the full client place set) opens the PlaceSheet. When omitted,
+   *  places fall back to the lightweight inline popup. */
+  onSelectPlace?: (slug: string) => void;
   height?: string;
 }) {
   const accentHex = MODE_HEX[mode] ?? "#2F5470";
@@ -335,6 +340,15 @@ export default function RadiusMap({
       };
       const isEvent = f.layer?.id === "radius-events-dots" || props.kind === "event";
       if (props.slug && props.name) {
+        // PLACES open the full PlaceSheet bottom sheet (the same premium
+        // surface the browse map uses) when the parent wires it — the
+        // tiny inline popup was the last vestige of the old radius map.
+        // Events keep the lightweight popup (no event sheet exists).
+        if (!isEvent && onSelectPlace) {
+          onSelectPlace(props.slug);
+          setSelected(null);
+          return;
+        }
         setSelected({
           lng: coords[0],
           lat: coords[1],
@@ -482,7 +496,12 @@ export default function RadiusMap({
           longitude: center.lng,
           latitude: center.lat,
           zoom: 13,
+          // Gentle tilt so the 3D relief reads as dimensional depth
+          // without distorting the reach circle into an unreadable
+          // ellipse — enough to feel the ridges, not a flight-sim angle.
+          pitch: 32,
         }}
+        maxPitch={70}
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}
@@ -509,6 +528,17 @@ export default function RadiusMap({
           // as a field-guide page of ONE place, not a window onto an
           // endless world. Eases back as you zoom into a neighborhood.
           installCountySpotlight(e.target);
+          // 3D relief — "Frederick IS its terrain." applyFrederickPalette
+          // already loads the fr-dem elevation source; draping the map
+          // over it (with the gentle default pitch below) makes the
+          // Catoctin & South Mountain ridges physically rise. Low
+          // exaggeration so the reach circle stays legibly round and the
+          // map stays a usable wayfinding tool, not a flight sim.
+          try {
+            e.target.setTerrain({ source: "fr-dem", exaggeration: 1.15 });
+          } catch {
+            /* DEM unavailable on this token — stays flat, no harm */
+          }
         }}
         // The invisible hit-pad is listed FIRST so a fingertip near a tiny
         // icon still resolves to the place (Fitts-friendly tap target).

@@ -9,6 +9,7 @@ import RadiusMap from "./RadiusMap";
 import WithinReach from "./WithinReach";
 import { resolveMunicipality } from "@/lib/location";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
+import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 // Read the same slim, pre-decorated set the rest of the app uses on
 // the client. The previous shape (places passed in via props from
 // radius/page) inlined ~4MB of redundant JSON into the SSR HTML for
@@ -245,6 +246,13 @@ export default function RadiusBuilder({
   // `placesReady` drives a quiet "finding places…" affordance instead
   // of a false "nothing here."
   const { places, ready: placesReady } = useClientPlaces();
+  // Tapping a place marker opens the same PlaceSheet bottom sheet the
+  // browse map and the result cards use — one detail surface, everywhere.
+  const { openSheet } = usePlaceSheet();
+  const placesBySlug = useMemo(
+    () => new Map(places.map((p) => [p.slug, p])),
+    [places],
+  );
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
@@ -966,6 +974,10 @@ export default function RadiusBuilder({
           onCenterChange={(next) => {
             setMyLoc(next);
             setMyLocLabel("Pinned point");
+          }}
+          onSelectPlace={(slug) => {
+            const p = placesBySlug.get(slug);
+            if (p) openSheet(p);
           }}
         />
         {/* Floating ribbon — overlays the map's bottom edge. Same
