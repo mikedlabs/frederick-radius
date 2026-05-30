@@ -7,7 +7,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
-import BestNearbyMoves from "./BestNearbyMoves";
+import WithinReach from "./WithinReach";
 import { resolveMunicipality } from "@/lib/location";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
 // Read the same slim, pre-decorated set the rest of the app uses on
@@ -910,7 +910,11 @@ export default function RadiusBuilder({
           assistive, not directory-style. Self-hides each tile when
           there's no match in the current radius — so dialing all
           the way down doesn't render a row of empty placeholders. */}
-      <BestNearbyMoves
+      {/* "You can reach X in N min" — the nearest of each useful kind
+          (coffee, eat, drinks, park, art, shops, restroom, parking),
+          nearest first, tappable. The outcomes answer that replaces the
+          old "N places in radius" count. */}
+      <WithinReach
         places={displayedInside}
         amenities={insideAmenities}
         mode={mode}
