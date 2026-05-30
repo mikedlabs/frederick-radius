@@ -1036,9 +1036,16 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-3);
 }
 .tactile-interactive:active {
-  transform: translateY(0) scale(0.985);
+  /* Deeper, snappier press: a touch more scale-down so the control
+     visibly "gives" under a finger, and on release it springs back
+     with --app-ease-bounce (a subtle overshoot) instead of a flat
+     ease — the difference between a button that moves and one that
+     feels alive. ~110ms press-in keeps it responsive. */
+  transform: translateY(0) scale(0.965);
   box-shadow: var(--app-edge), var(--app-hi), var(--app-elev-1);
-  transition-duration: var(--app-dur-fast);
+  transition:
+    transform 110ms var(--app-ease-bounce),
+    box-shadow 110ms var(--app-ease-out);
 }
 /* Filled controls: gloss overlay + bottom inner lip + bumped ambient
  * so a solid background reads as material, not flat. Plays well with
