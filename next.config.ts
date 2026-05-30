@@ -189,6 +189,13 @@ const nextConfig: NextConfig = {
       // remains permanently redirected so bookmarks + iOS Share Sheet
       // saves don't 404.
       { source: "/saved", destination: "/my-radius", permanent: true },
+      // Submit/business hub paths 404'd (only the leaf routes existed),
+      // which reads as broken to community submitters + business owners
+      // (external audit ship-blocker #2). Point the bare paths at the
+      // real flows. Not permanent — these may become real hubs later.
+      { source: "/submit", destination: "/submit/place", permanent: false },
+      { source: "/business", destination: "/business/claim", permanent: false },
+      { source: "/business/manage", destination: "/business/claim", permanent: false },
     ];
   },
 };
