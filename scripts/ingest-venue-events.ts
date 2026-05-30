@@ -18,7 +18,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { fetchPageText, extractJson, nowISO } from "./lib/extract-agent";
+import { fetchPageText, extractJson, nowISO, preflightKey } from "./lib/extract-agent";
 
 const OUT = resolve("src/data/venue-events.json");
 const CONFIG = resolve("config/venue-sources.json");
@@ -49,6 +49,7 @@ const SHAPE =
 const keyOf = (e: VenueEvent) => `${e.venue_slug}::${(e.title ?? "").toLowerCase().trim()}::${e.starts_at ?? ""}`;
 
 async function main() {
+  if (!(await preflightKey())) return;
   const only = process.argv[2];
   const cfg = JSON.parse(readFileSync(CONFIG, "utf8")) as { venues: VenueSource[] };
   const existing = JSON.parse(readFileSync(OUT, "utf8")) as VenueEvent[];
