@@ -18,6 +18,7 @@ import { statusLabel } from "@/lib/event-status";
 export default function EventCard({
   event,
   variant = "glance",
+  live = false,
 }: {
   event: EventWithMeta;
   /**
@@ -31,6 +32,9 @@ export default function EventCard({
    * single-line Rolodex row used in dense list views.
    */
   variant?: "row" | "tile" | "feature" | "compact" | "glance";
+  /** Live right now — renders a small pulsing dot in the compact row so
+   *  "happening now" reads even in the dense listing. */
+  live?: boolean;
 }) {
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -88,12 +92,14 @@ export default function EventCard({
 
         {/* Category color dot — quiet visual cue tying the row to a
             type. Small enough to scan past, distinct enough that a
-            shelf of compact rows shows category rhythm at a glance. */}
+            shelf of compact rows shows category rhythm at a glance.
+            When the event is live right now it pulses on the positive
+            green so "happening now" reads even in the dense listing. */}
         <span
           aria-hidden
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: accent }}
-          title={categoryLabel}
+          className={`h-2 w-2 shrink-0 rounded-full${live ? " live-dot" : ""}`}
+          style={{ background: live ? "var(--app-positive)" : accent }}
+          title={live ? "Live now" : categoryLabel}
         />
 
         {/* Title + meta — title is the link target, meta line below
