@@ -24,7 +24,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { fetchPageText, extractJson, nowISO } from "./lib/extract-agent";
+import { fetchPageText, extractJson, nowISO, preflightKey } from "./lib/extract-agent";
 
 const OUT = resolve("src/data/business-info.json");
 const ENR = resolve("src/data/places-enrichment.json");
@@ -82,6 +82,9 @@ async function fetchAdaptive(url: string, minChars: number): Promise<string | nu
 }
 
 async function main() {
+  // Fail fast + clear if the key is missing/invalid/out-of-credit, so a
+  // bad CI run shows one actionable line instead of a buried stack trace.
+  if (!(await preflightKey())) return;
   const positional = process.argv[2];
   const only = positional && !positional.startsWith("--") ? positional : undefined;
   const limitArg = process.argv.find((a) => a.startsWith("--limit="));

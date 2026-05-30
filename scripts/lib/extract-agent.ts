@@ -127,3 +127,52 @@ export async function extractJson<T = unknown>(
 
 /** ISO timestamp helper for provenance stamps. */
 export const nowISO = () => new Date().toISOString();
+
+/**
+ * Preflight: verify the API key exists AND is accepted, with a clear,
+ * actionable message — so a missing/invalid key in CI shows an obvious
+ * one-liner instead of a buried stack trace. Returns true if good;
+ * prints guidance + returns false otherwise (caller exits 0, not a crash,
+ * so the workflow reads as "nothing to do" rather than a hard failure).
+ */
+export async function preflightKey(): Promise<boolean> {
+  if (!API_KEY) {
+    console.error(
+      "\n✗ ANTHROPIC_API_KEY is not set.\n" +
+        "  → Add it as a GitHub repo secret: Settings → Secrets and variables\n" +
+        "    → Actions → New repository secret → name it exactly ANTHROPIC_API_KEY.\n" +
+        "  The agent can't extract anything without it; skipping this run.\n",
+    );
+    return false;
+  }
+  // Cheap liveness ping so an INVALID or out-of-credit key reports
+  // precisely, instead of failing 60 times mid-run.
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODEL,
+      max_tokens: 1,
+      messages: [{ role: "user", content: "ping" }],
+    }),
+  });
+  if (r.status === 401) {
+    console.error("\n✗ ANTHROPIC_API_KEY is set but REJECTED (HTTP 401). The key is wrong or revoked — re-copy it from console.anthropic.com.\n");
+    return false;
+  }
+  if (r.status === 429) {
+    console.error("\n✗ ANTHROPIC_API_KEY works but is OUT OF CREDIT / rate-limited (HTTP 429). Add credit at console.anthropic.com → Billing.\n");
+    return false;
+  }
+  if (!r.ok && r.status !== 400) {
+    console.error(`\n✗ Anthropic API preflight failed (HTTP ${r.status}). Transient? Try the run again.\n`);
+    return false;
+  }
+  console.log("✓ ANTHROPIC_API_KEY verified — extracting.");
+  return true;
+}
+
