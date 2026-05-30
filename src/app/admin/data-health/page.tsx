@@ -14,6 +14,7 @@ import {
   hydrateSnapshots,
 } from "@/lib/integrations/feed-snapshot";
 import { getDriftStats } from "@/lib/drift-review";
+import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
 
 export const metadata: Metadata = {
   title: "Data health · Admin",
@@ -48,6 +49,12 @@ export default async function DataHealth() {
   const reviewPlaces = getNeedsReviewPlaces();
   const reviewEvents = getNeedsReviewEvents();
 
+  // Live-feed connectivity — the at-a-glance "is it collecting data?"
+  // board. Keyless feeds are live wherever the network allows; keyed
+  // feeds are dark until their env var is set in the deployment.
+  const feeds = feedStatuses();
+  const dark = darkFeedCount();
+
   const rows: Array<[string, string, string]> = [
     ["Places (raw)", String(PLACES.length), ""],
     ["Duplicate clusters", String(clusters), `${folded} records fold`],
@@ -74,6 +81,78 @@ export default async function DataHealth() {
           cron at /api/cron/data-health recomputes and reports these numbers.
         </p>
       </header>
+
+      {/* ── Live feed connectivity — the "is it collecting data?" board.
+          Keyed feeds go green when their env var is set in the
+          deployment, amber ("needs key") until then; keyless feeds are
+          live wherever outbound network is allowed. ──────────────────── */}
+      <section className="mt-6">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Live feed connectivity
+          </h2>
+          <span
+            className="rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums"
+            style={{
+              background: dark === 0
+                ? "color-mix(in srgb, var(--app-positive) 14%, var(--app-bg-elevated))"
+                : "color-mix(in srgb, var(--app-warning) 16%, var(--app-bg-elevated))",
+              color: dark === 0 ? "var(--app-positive)" : "var(--app-warning)",
+            }}
+          >
+            {dark === 0 ? "All keyed feeds live" : `${dark} keyed feed${dark === 1 ? "" : "s"} dark`}
+          </span>
+        </div>
+        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          {dark === 0
+            ? "Every keyed feed has its API key configured."
+            : "Dark feeds fail soft to empty — nothing breaks, but those layers stay blank until the key is set in the Vercel project env."}
+        </p>
+
+        <div className="mt-3 space-y-2">
+          {feeds.keyed.map((f) => (
+            <div
+              key={f.name}
+              className="flex items-center gap-3 rounded-[var(--app-radius-md)] border px-3 py-2"
+              style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+            >
+              <span
+                aria-hidden
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: f.configured ? "var(--app-positive)" : "var(--app-warning)" }}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{f.name}</span>
+                  <span className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>{f.powers}</span>
+                </div>
+              </div>
+              {f.configured ? (
+                <span className="shrink-0 text-[11px] font-semibold" style={{ color: "var(--app-positive)" }}>Live</span>
+              ) : (
+                <code className="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold" style={{ background: "color-mix(in srgb, var(--app-warning) 14%, transparent)", color: "var(--app-warning)" }}>
+                  set {f.env}
+                </code>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <details className="mt-2">
+          <summary className="cursor-pointer text-[12px] font-semibold" style={{ color: "var(--app-cool)" }}>
+            {feeds.keyless.length} keyless feeds (live without a key)
+          </summary>
+          <div className="mt-2 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {feeds.keyless.map((f) => (
+              <div key={f.name} className="flex items-center gap-2 text-[12px]">
+                <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: "var(--app-positive)" }} />
+                <span className="font-medium" style={{ color: "var(--app-ink-2)" }}>{f.name}</span>
+                <span className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>· {f.powers}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      </section>
 
       <table className="mt-6 w-full text-sm">
         <tbody>
