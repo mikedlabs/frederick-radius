@@ -35,7 +35,7 @@ const Layer = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Layer), 
 const Marker = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Marker), { ssr: false });
 const Popup = dynamic(() => import("react-map-gl/mapbox").then((m) => m.Popup), { ssr: false });
 
-const STYLE_URL = "mapbox://styles/mapbox/standard";
+const STYLE_URL = "mapbox://styles/mapbox/light-v11";
 
 // Frederick County bbox in the [W, S, E, N] form Mapbox wants for
 // fitBounds. Source: src/lib/integrations/overpass.ts (kept in sync).
