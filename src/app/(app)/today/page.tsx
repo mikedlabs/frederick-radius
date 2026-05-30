@@ -20,7 +20,7 @@ import MoodTiles from "@/components/today/MoodTiles";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
-import RevealOnScroll from "@/components/ui/RevealOnScroll";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 import HourlyForecast from "@/components/today/HourlyForecast";
@@ -489,59 +489,18 @@ export default async function HomePage({
             the last, so the page feels alive on arrival. ──────────── */}
         <div className="space-y-4 stagger-children">
 
-      {/* SPINE REORDER (cleanup pass):
-       *
-       *   weather (left, above on mobile) → MOOD → PARTNER APPS →
-       *   DISCOVERY (WorthALook) → events → from above
-       *
-       * Earlier passes carried two more surfaces here —
-       * RightNowStrip ("On deck") and PrimaryActionCard ("Plan
-       * tonight"). Both were retired: the events section +
-       * TimeToggle below already cover the "what's happening
-       * tonight" job; the MoreSheet's Tools cluster carries Plan,
-       * Within Reach, and Pulse. Keeping these on /now meant the
-       * page repeated itself across three scroll-screens.
-       *
-       * On desktop, this column rides alongside the weather column
-       * — both visible without scrolling. On mobile, it stacks
-       * after the weather block.
-       */}
+      {/* CLEANUP PASS (the answer leads, the rest collapses):
+       *   1. When? toggle  2. Tonight/events (THE answer)
+       *   3. MoodTiles (quick needs)
+       *   4. "More for today" — everything secondary, collapsed by
+       *      default (partner apps, worth-a-look, local news, from-above),
+       *      so the page opens SHORT and scannable instead of a 13-section
+       *      wall you scroll forever. */}
 
-      {/* MoodTiles — what do you need right now; each tile opens the
-          browse map filtered to that category, closest-first. */}
-      <MoodTiles />
-
-      {/* PartnerAppsRow — ParkMobile + OpenTable. */}
-      <RevealOnScroll>
-        <PartnerAppsRow />
-      </RevealOnScroll>
-
-      {/* Worth a look today — the page's surprise-me block now lives
-          AFTER the action surfaces, so it earns return visits without
-          burying the actually-useful answers above it. */}
-      <RevealOnScroll>
-        <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
-          <WorthALook />
-        </Suspense>
-      </RevealOnScroll>
-
-      {/* Visitor "Stay" door — Proposal B. Only renders when the
-          active mode is Visitor (StayDeepLinks self-hides for
-          Residents — they live here). Defaults to Frederick city
-          since that's the visitor's most common entry point. */}
-      <VisitorStayPrompt />
-
-      {/* When? — the brand-defining temporal control. Pivots the
-       *  events section between Now / Tonight / Tomorrow / Weekend.
-       *  Mode lives in ?t= so the view is shareable. */}
+      {/* When? — temporal control for the events section directly below. */}
       <TimeToggle active={mode} counts={counts} />
 
-      {/* ── PRIMARY ZONE ───────────────────────────────────────────
-          The two things a stranger opens the app to learn: what's the
-          day like (the weather column — beside this on desktop, below
-          it on mobile) and what's happening (this). The events section
-          sits under the toggle so the answer to "what should I do?"
-          leads on every screen. */}
+      {/* ── THE ANSWER: what's happening, leads the action column. ── */}
       <DismissibleSection
         id="upcoming"
         title={slice.title}
@@ -566,9 +525,6 @@ export default async function HomePage({
             )}
           </div>
         ) : (
-          // Empty state — the section never silently vanishes when a
-          // time slice has nothing. Quiet, with a nudge to a slice
-          // that does have events.
           <p
             className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
@@ -588,22 +544,33 @@ export default async function HomePage({
         )}
       </DismissibleSection>
 
-      {/* Local news — RSS headlines from Patch / FNP / MD Matters
-          via getLocalNews(). Headlines + attribution + relative
-          timestamp; every card links OUT to the publisher. The
-          server component self-hides when every source errored,
-          so we never show a broken "Local news" section. */}
-      <Suspense fallback={null}>
-        <LocalNewsRail />
-      </Suspense>
+      {/* MoodTiles — "what do you need right now" quick-needs row. */}
+      <MoodTiles />
 
-      {/* From Above — the page's quiet exit beat. After the daily
-          utility surfaces (weather + events + places) finish their
-          work, the user is invited into the photography book. The
-          card carries a seasonal thumbnail from the same /images/
-          seasons collection that backs /about's hero, so the visual
-          identity stays consistent end-to-end. */}
-      <FromAboveCta />
+      {/* Visitor "Stay" door — self-hides for Residents. Kept inline
+          (only shows for visitors, so it's not clutter for locals). */}
+      <VisitorStayPrompt />
+
+      {/* ── MORE FOR TODAY — everything secondary, COLLAPSED by default.
+          This is the de-clutter: partner apps, the surprise-me pick,
+          local headlines, and the photography exit beat all live behind
+          one tap instead of four scroll-screens. */}
+      <CollapsibleSection
+        title="More for today"
+        storageKey="fr.today.more"
+        defaultOpen={false}
+      >
+        <div className="space-y-4 pt-1">
+          <PartnerAppsRow />
+          <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
+            <WorthALook />
+          </Suspense>
+          <Suspense fallback={null}>
+            <LocalNewsRail />
+          </Suspense>
+          <FromAboveCta />
+        </div>
+      </CollapsibleSection>
 
         </div>{/* /RIGHT column */}
       </div>{/* /responsive split */}
