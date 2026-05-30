@@ -197,7 +197,7 @@ function aliveAtFiveSeason(): Event[] {
 
 export const EVENTS: Event[] = [
   {
-    slug: "first-friday-may-2026-frederick",
+    slug: "first-friday-june-2026-frederick",
     title: "First Friday — June Art Walk",
     description:
       "Downtown Frederick's monthly evening street festival. Galleries open late, sidewalks programmed with music, restaurants spill onto the patios. The Delaplaine and dozens of N Market shops host the headline openings.",
