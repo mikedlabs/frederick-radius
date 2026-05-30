@@ -34,7 +34,7 @@ function resolvePhotoSrc(slug: string, category: string, width: number) {
 }
 
 export default function PlaceHero({
-  slug, name, category, blurb,
+  slug, name, category,
   aspectRatio = "16/10", size = "hero", priority = false, photoSrc,
 }: Props) {
   const cat = CATEGORY_BY_SLUG[category];
@@ -123,19 +123,11 @@ export default function PlaceHero({
         <span aria-hidden>{glyph}</span> {cat?.name ?? category}
       </div>
 
-      {/* Name overlay */}
-      {size === "hero" && (
-        <div className="absolute inset-x-3 bottom-3 text-white">
-          <h2 className="font-serif text-2xl font-semibold leading-tight tracking-tight drop-shadow">
-            {name}
-          </h2>
-          {blurb && (
-            <p className="mt-1 line-clamp-2 text-[13px] leading-snug opacity-95 drop-shadow">
-              {blurb}
-            </p>
-          )}
-        </div>
-      )}
+      {/* No name overlay on the detail hero: the place's <h1> + address
+          sit on the card directly below, so painting the name on the
+          photo too was a duplicate title. The photo stays clean with
+          just the category chip; cards (non-"hero" sizes) never had an
+          overlay. */}
     </div>
   );
 }

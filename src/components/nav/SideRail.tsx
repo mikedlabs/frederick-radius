@@ -29,7 +29,9 @@ export default function SideRail() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const realIdx = Math.max(0, tabIndexForPath(pathname));
+  // -1 (no tab) hides the indicator instead of falsely lighting "Today"
+  // on non-tab pages — matches BottomNav.
+  const realIdx = tabIndexForPath(pathname);
   const [pendingIdx, setPendingIdx] = useState<number | null>(null);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset optimistic state once the actual route change completes
