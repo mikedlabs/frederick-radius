@@ -48,12 +48,14 @@ export default function EventCard({
   const statusBg = isCancelled ? "var(--app-negative, #C0392B)" : "var(--app-warning, #B8860B)";
   // Accent MUST be a hex literal — used in templates like `${accent}38`
   // to compose color-with-alpha. A CSS var() fallback would produce
-  // invalid CSS. Generic-category fallback uses the civic blue so
-  // county / civic-affairs items read as the quiet-utility category
-  // they are, instead of borrowing the brand brick.
-  const accent: string = cat?.color ?? "#2F5470";
+  // invalid CSS. An unrecognized/blank category resolves to a NEUTRAL
+  // grey + the honest label "Event" — never the civic blue + "Civic",
+  // which mislabeled every uncategorized concert and market as civic
+  // business and made the feed read inconsistent (the "everything looks
+  // Civic" bug). A wrong label is worse than a neutral one.
+  const accent: string = cat?.color ?? "#7A7975";
   const hasPhoto = Boolean(event.hero_image);
-  const categoryLabel = cat?.name ?? (event.category ? event.category : "Civic");
+  const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
 
   // Compact variant — the Rolodex row. Single ~48px line: date pill
   // (left, fixed width) + title + venue/time meta + category color

@@ -13,6 +13,7 @@ import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import Pill from "@/components/ui/Pill";
 import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -20,14 +21,11 @@ import type { EventWithMeta } from "@/lib/loaders/events";
 type TimeKey = "all" | "today" | "weekend" | "week";
 type EventSortKey = "time" | "az" | "venue";
 
-// Editorial hierarchy by TYPE, not just time. Most people open /events
-// for things to DO — music, food, arts, family, festivals. Civic
-// business (council / NAC / commission meetings, tagged category="civic"
-// by the ingest pipeline) is a utility, not a draw: it should be
-// accessible, but it shouldn't compete with the fun in the main flow.
-// Module-scoped so it's a stable reference across the filter memos.
-const isUtilityEvent = (e: Pick<EventWithMeta, "category">): boolean =>
-  e.category === "civic";
+// Editorial hierarchy by TYPE, not just time: the grouped list leads
+// with draws (music, food, arts, family) and tucks civic business into a
+// quiet tail. The draw/utility call is the app-wide rule in
+// lib/event-kind.ts (taxonomy kind + a keyword net for mistagged feeds),
+// so Today / events / map can never drift on what counts as "utility."
 
 const EVENT_SORT_OPTIONS: ReadonlyArray<SortOption<EventSortKey>> = [
   { key: "time", label: "Soonest", hint: "Next event first (grouped by horizon)" },

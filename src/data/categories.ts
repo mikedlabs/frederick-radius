@@ -6,6 +6,15 @@ export type Category = {
   color: string;
   display_order: number;
   blurb: string;
+  /**
+   * Editorial weight for EVENT surfaces. "draw" = something people come
+   * out for (music, food, arts, family, markets); "utility" = civic
+   * business people may need but won't browse for fun (council / NAC /
+   * commission meetings, hearings, elections). Drives the draw-leads /
+   * utility-tucked-away hierarchy on Today, /events, and /map — ONE rule,
+   * everywhere. Omitted = "draw" (the common case).
+   */
+  kind?: "draw" | "utility";
 };
 
 export const CATEGORIES: Category[] = [
@@ -43,10 +52,10 @@ export const CATEGORIES: Category[] = [
   { slug: "wellness", name: "Wellness", icon: "Heart", color: "#A02929", display_order: 60, blurb: "Yoga, fitness, spas, and outdoor wellness." },
   { slug: "yoga", name: "Yoga & Fitness", parent: "wellness", icon: "Activity", color: "#A02929", display_order: 61, blurb: "Studios, gyms, and group classes." },
 
-  { slug: "civic", name: "Civic & Public", icon: "Building2", color: "#2F5470", display_order: 70, blurb: "Government services, public buildings, civic infrastructure." },
-  { slug: "government", name: "Government", parent: "civic", icon: "Building", color: "#2F5470", display_order: 71, blurb: "City and county government buildings and services." },
-  { slug: "public-safety", name: "Public Safety", parent: "civic", icon: "ShieldCheck", color: "#A02929", display_order: 72, blurb: "Police, fire, and emergency services." },
-  { slug: "voting", name: "Voting", parent: "civic", icon: "Vote", color: "#2F5470", display_order: 73, blurb: "Election day and early voting centers." },
+  { slug: "civic", name: "Civic & Public", icon: "Building2", color: "#2F5470", display_order: 70, blurb: "Government services, public buildings, civic infrastructure.", kind: "utility" },
+  { slug: "government", name: "Government", parent: "civic", icon: "Building", color: "#2F5470", display_order: 71, blurb: "City and county government buildings and services.", kind: "utility" },
+  { slug: "public-safety", name: "Public Safety", parent: "civic", icon: "ShieldCheck", color: "#A02929", display_order: 72, blurb: "Police, fire, and emergency services.", kind: "utility" },
+  { slug: "voting", name: "Voting", parent: "civic", icon: "Vote", color: "#2F5470", display_order: 73, blurb: "Election day and early voting centers.", kind: "utility" },
   { slug: "worship", name: "Churches & Worship", parent: "civic", icon: "Church", color: "#5B3A8F", display_order: 74, blurb: "Churches, temples, and houses of worship across the county." },
 
   // The honest catch-all for events that don't fit a sharper bucket —
@@ -86,3 +95,20 @@ export const CATEGORY_BY_SLUG = Object.fromEntries(
 ) as Record<string, Category>;
 
 export const TOP_CATEGORIES = CATEGORIES.filter((c) => !c.parent);
+
+/**
+ * Resolve a category slug to its editorial kind, inheriting from the
+ * parent when the leaf doesn't set it (so "government" → civic's
+ * "utility" even though only "civic" is tagged). Unknown / blank slugs
+ * resolve to "draw" — the safe default — so the keyword layer in
+ * lib/event-kind.ts, not the taxonomy, is what catches mistagged
+ * utility events.
+ */
+export function categoryKind(slug: string | undefined): "draw" | "utility" {
+  if (!slug) return "draw";
+  const c = CATEGORY_BY_SLUG[slug];
+  if (!c) return "draw";
+  if (c.kind) return c.kind;
+  if (c.parent) return CATEGORY_BY_SLUG[c.parent]?.kind ?? "draw";
+  return "draw";
+}
