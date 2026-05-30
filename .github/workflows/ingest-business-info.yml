@@ -1,0 +1,50 @@
+name: Ingest business deep-info
+
+# Reads each food/drink place's own website (URLs already on file in
+# places-enrichment.json) and extracts what Google misses — known-for,
+# happy hours, specials, published hours — into src/data/business-info.json.
+# Incremental + batched, so it works through the ~600 eligible businesses
+# a chunk at a time and refreshes stale entries.
+#
+# Requires repo secret: ANTHROPIC_API_KEY
+# Tuning: config/business-info.json
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # daily 08:00 UTC — a batch per day, refresh-aware
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "How many businesses to read this run"
+        required: false
+        default: "60"
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Install Chromium (for the render fallback on JS-only sites)
+        run: npx playwright install --with-deps chromium
+      - name: Extract business deep-info
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run ingest:business -- --limit=${{ github.event.inputs.limit || '60' }}
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "frederick-radius-bot"
+          git config user.email "bot@users.noreply.github.com"
+          if ! git diff --quiet -- src/data/business-info.json; then
+            git add src/data/business-info.json
+            git commit -m "data: refresh business deep-info (automated)"
+            git push
+          else
+            echo "No business-info changes."
+          fi
