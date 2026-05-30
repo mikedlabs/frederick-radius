@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Search, Bookmark, Settings as SettingsIcon, MoreHorizontal, ChevronLeft } from "lucide-react";
+import { Search, Settings as SettingsIcon, MoreHorizontal, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
 import MoreSheet from "./MoreSheet";
@@ -209,15 +209,10 @@ export default function TopBar() {
             </kbd>
           </button>
 
-          <Link
-            href="/my-radius"
-            aria-label="My Radius"
-            title="My Radius"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            <Bookmark className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          </Link>
+          {/* (Removed the header "My Radius" bookmark — it duplicated the
+              My Radius primary nav tab/SideRail item, putting two bookmark
+              icons on screen for one destination. My Radius stays one tap
+              away via the bottom nav (<lg) and the SideRail (≥lg).) */}
 
           {/* Settings — visible at all viewports. The original
               design hid this on mobile and routed mobile users via
