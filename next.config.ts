@@ -196,6 +196,14 @@ const nextConfig: NextConfig = {
       { source: "/submit", destination: "/submit/place", permanent: false },
       { source: "/business", destination: "/business/claim", permanent: false },
       { source: "/business/manage", destination: "/business/claim", permanent: false },
+      // First Friday was mis-keyed "may-2026" while its real date is
+      // June 5 (slug/date mismatch the audit caught). Slug corrected to
+      // june-2026; redirect the old URL so shared/cached links resolve.
+      {
+        source: "/events/first-friday-may-2026-frederick",
+        destination: "/events/first-friday-june-2026-frederick",
+        permanent: true,
+      },
     ];
   },
 };
