@@ -9,6 +9,7 @@ import type { TravelMode } from "@/lib/geo";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { installCategoryMarkers } from "@/components/map/categoryMarkers";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
+import { installCountySpotlight } from "@/components/map/countySpotlight";
 import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
 // Mapbox CSS — without this, tile rendering and canvas sizing fail.
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -503,6 +504,11 @@ export default function RadiusMap({
           // there"). The browse map already does this; the default radius
           // view now matches, so the premium look is consistent.
           applyFrederickPalette(e.target);
+          // Lock the plate into Frederick County: veil everything beyond
+          // the line in warm paper + trace the border, so the map reads
+          // as a field-guide page of ONE place, not a window onto an
+          // endless world. Eases back as you zoom into a neighborhood.
+          installCountySpotlight(e.target);
         }}
         // The invisible hit-pad is listed FIRST so a fingertip near a tiny
         // icon still resolves to the place (Fitts-friendly tap target).
