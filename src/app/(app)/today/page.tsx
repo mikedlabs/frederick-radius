@@ -484,8 +484,10 @@ export default async function HomePage({
         </div>{/* /LEFT column */}
 
         {/* ── RIGHT column: the action stack. Follows the weather on
-            mobile; second column at lg+. ──────────────────────────── */}
-        <div className="space-y-4">
+            mobile; second column at lg+. stagger-children makes the
+            section assemble itself — each card breathes in just after
+            the last, so the page feels alive on arrival. ──────────── */}
+        <div className="space-y-4 stagger-children">
 
       {/* SPINE REORDER (cleanup pass):
        *
