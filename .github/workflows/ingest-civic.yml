@@ -15,6 +15,12 @@ on:
 permissions:
   contents: write
 
+# Opt the JS actions (checkout / setup-node) into Node.js 24 now, ahead of
+# GitHub forcing it on June 16 2026 — clears the Node-20 deprecation warning
+# without pinning to action tags that may not exist yet.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
