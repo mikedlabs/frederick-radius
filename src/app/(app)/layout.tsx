@@ -24,6 +24,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           className="min-h-screen"
           style={{ color: "var(--app-ink)" }}
         >
+          {/* Global printed-paper materiality (grain + warm vignette) on
+              every page — see .app-paper-fx. Sits below content; purely
+              decorative. */}
+          <div className="app-paper-fx" aria-hidden />
           {/* Fires the optional geolocation-based mode suggestion on
               first mount. Renders nothing; the map paints with the
               default mode immediately and quietly flips to Resident

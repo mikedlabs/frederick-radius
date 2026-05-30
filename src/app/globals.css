@@ -1858,3 +1858,37 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   border-right: 1px solid;
   border-bottom-right-radius: 2px;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   GLOBAL PAPER MATERIALITY — printed-field-guide texture on EVERY page.
+
+   PageBloom (aurora + grain) is per-page; pages without it read flat.
+   This fixed layer rides just above the body cream and below all
+   content (z:-5 > PageBloom's -10), so the paper gets a fine grain +
+   a warm edge vignette in the margins and gaps without ever sitting
+   over — or intercepting — interactive UI. Pure paint, reduced-motion
+   irrelevant (static). The grain is a tiled fractal-noise SVG so it
+   costs no network and stays crisp at any DPR.
+   ───────────────────────────────────────────────────────────────── */
+.app-paper-fx {
+  position: fixed;
+  inset: 0;
+  z-index: -5;
+  pointer-events: none;
+  /* Warm "aged plate" vignette — a whisper of ink at the edges draws
+     the eye to the center of the page. */
+  background: radial-gradient(
+    115% 90% at 50% 8%,
+    transparent 58%,
+    color-mix(in srgb, var(--app-ink) 6%, transparent) 100%
+  );
+}
+.app-paper-fx::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 180px 180px;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+}
