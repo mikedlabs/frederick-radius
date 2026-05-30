@@ -1,25 +1,17 @@
 name: Ingest venue events
 
 # Captures lineups from venues that only post on their own site
-# (The Banyan, The Derby, Sky Stage…). Runs the venue extraction agent,
-# refreshes src/data/venue-events.json with source + freshness, commits.
-#
-# Requires repo secret: ANTHROPIC_API_KEY
-# Configure venues + URLs in: config/venue-sources.json
+# (The Banyan, Sky Stage, Bandsintown-backed venues). Runs the venue
+# extraction agent, refreshes src/data/venue-events.json, commits.
+# Requires repo secret: ANTHROPIC_API_KEY. Configure: config/venue-sources.json
 
 on:
   schedule:
-    - cron: "30 9 * * *" # daily 09:30 UTC
+    - cron: "30 9 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
-
-# Opt the JS actions (checkout / setup-node) into Node.js 24 now, ahead of
-# GitHub forcing it on June 16 2026 — clears the Node-20 deprecation warning
-# without pinning to action tags that may not exist yet.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   ingest:
@@ -28,9 +20,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: "22"
       - run: npm ci
-      - name: "Install Chromium (for render sources)"
+      - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Extract venue events
         env:
@@ -38,13 +30,11 @@ jobs:
         run: npm run ingest:venues
       - name: Commit refreshed data
         run: |
-          git config user.name  "frederick-radius-bot"
+          git config user.name "frederick-radius-bot"
           git config user.email "bot@users.noreply.github.com"
           if ! git diff --quiet -- src/data/venue-events.json; then
             git add src/data/venue-events.json
             git commit -m "data: refresh venue events (automated)"
-            # Rebase onto any commits that landed during the run, then push,
-            # so a moving main can't reject the bot's data commit.
             git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
             git push origin "HEAD:${GITHUB_REF_NAME:-main}"
           else
