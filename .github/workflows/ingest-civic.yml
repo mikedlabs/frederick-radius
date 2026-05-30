@@ -37,11 +37,14 @@ jobs:
       - name: Commit refreshed data
         run: |
           git config user.name  "frederick-radius-bot"
-          git config user.email "bot@users.noreplace.github.com"
+          git config user.email "bot@users.noreply.github.com"
           if ! git diff --quiet -- src/data/municipal-civic.json; then
             git add src/data/municipal-civic.json
             git commit -m "data: refresh municipal civic (automated)"
-            git push
+            # Rebase onto any commits that landed during the run, then push,
+            # so a moving main can't reject the bot's data commit.
+            git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME:-main}"
           else
             echo "No civic data changes."
           fi

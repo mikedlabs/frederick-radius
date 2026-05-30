@@ -50,7 +50,10 @@ jobs:
           if ! git diff --quiet -- src/data/business-info.json; then
             git add src/data/business-info.json
             git commit -m "data: refresh business deep-info (automated)"
-            git push
+            # Rebase onto any commits that landed during the run, then push,
+            # so a moving main can't reject the bot's data commit.
+            git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME:-main}"
           else
             echo "No business-info changes."
           fi
