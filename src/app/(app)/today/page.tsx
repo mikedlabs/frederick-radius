@@ -41,6 +41,7 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // reorder makes the divider unnecessary.
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
+import { isUtilityEvent } from "@/lib/event-kind";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
 
@@ -176,7 +177,12 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
       const ms = new Date(e.starts_at).getTime() - nowMs;
       return ms >= 0 && ms <= 90 * 60_000;
     });
-    return { title: "Happening now", items: [...eventsLive(now), ...inNext90] };
+    // Same draw/utility rule as /events (lib/event-kind): a council
+    // hearing is never a "what's happening now" headline answer here.
+    return {
+      title: "Happening now",
+      items: [...eventsLive(now), ...inNext90].filter((e) => !isUtilityEvent(e)),
+    };
   }
 
   let title: string;
@@ -213,7 +219,9 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
     // text-only card next to events that DO carry a hero image.
     items: withVenueThumbs(allUpcoming(now)).filter((e) => {
       const ms = Date.parse(e.starts_at);
-      return Number.isFinite(ms) && ms >= startMs && ms <= endMs;
+      // Time window AND draw-only: utility/civic business is reachable on
+      // /events, not surfaced as a Today answer (shared event-kind rule).
+      return Number.isFinite(ms) && ms >= startMs && ms <= endMs && !isUtilityEvent(e);
     }),
   };
 }

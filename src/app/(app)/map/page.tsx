@@ -26,6 +26,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
 import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { isUtilityEvent } from "@/lib/event-kind";
 
 const EMPTY_FC = { type: "FeatureCollection" as const, features: [] };
 
@@ -273,6 +274,9 @@ export default async function MapPage({
     // chosen reach. Same shared loader as browse, so the event set is
     // identical across modes; ISR caching bounds the cold-path cost.
     const radiusEvents = (await withTimeout(loadUpcomingEvents(new Date()), 8000, [] as EventWithMeta[]))
+      // Draw-only on the map: civic meetings/hearings aren't map answers
+      // (shared event-kind rule — consistent with Today and /events).
+      .filter((e) => !isUtilityEvent(e))
       .filter((e) => Number.isFinite(e.geom?.lng) && Number.isFinite(e.geom?.lat))
       .slice(0, 120)
       .map((e) => ({
@@ -456,10 +460,14 @@ async function BrowseMapArea({
   // above, shared with the radius branch.
   // Pre-compute per-mode counts so the chip strip can show "Tonight · 3"
   // without forcing a click into an empty map.
+  // Draw-only base for BOTH the chip counts and the rendered pins, so a
+  // "Tonight · 3" count can never include a civic hearing the map won't
+  // plot (shared event-kind rule).
+  const drawWeek = allWeek.filter((e) => !isUtilityEvent(e));
   const counts: Partial<Record<TimeMode, number>> = {};
   for (const mode of ["now", "tonight", "weekend", "all"] as const) {
     const pred = eventTimePredicate(mode, now);
-    counts[mode] = allWeek.filter((e) => pred(e.starts_at, e.ends_at)).length;
+    counts[mode] = drawWeek.filter((e) => pred(e.starts_at, e.ends_at)).length;
   }
   // Default time mode: was hard-wired to "tonight" which produced an
   // empty event layer most days/hours. Now picks the first populated
@@ -475,7 +483,7 @@ async function BrowseMapArea({
   const timeMode: TimeMode = isTimeMode(tParam) ? tParam : pickDefaultTimeMode();
 
   const matchTime = eventTimePredicate(timeMode, now);
-  const inWindow = allWeek.filter((e) => matchTime(e.starts_at, e.ends_at));
+  const inWindow = drawWeek.filter((e) => matchTime(e.starts_at, e.ends_at));
   const seenCells = new Set<string>();
   const events: EventPin[] = [];
   for (const e of inWindow) {
