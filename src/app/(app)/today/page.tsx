@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodayMoves from "@/components/today/TodayMoves";
+import MoveStack from "@/components/today/MoveStack";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import LocalNewsRail from "@/components/today/LocalNewsRail";
@@ -394,6 +395,15 @@ export default async function HomePage({
                   : null
               }
             />
+          </Suspense>
+        </div>
+
+        {/* Move Stack — a confident "plan your next few hours" itinerary
+            (dinner → drinks → music), ranked + weather/time-aware. The
+            decision-engine payoff: one sequence, not a wall of options. */}
+        <div className="mt-3">
+          <Suspense fallback={<Skeleton.Block height={200} round="var(--app-radius-lg)" />}>
+            <MoveStack />
           </Suspense>
         </div>
 
