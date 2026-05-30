@@ -1769,3 +1769,92 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .wx-hero { transition: none; }
   .wx-week-list { transition: none; }
 }
+/* ─────────────────────────────────────────────────────────────────
+   FIELD GUIDE — a naturalist's-pocket-guide vocabulary.
+
+   The app's identity is an almanac/field guide of Frederick County:
+   warm cream paper, Fraunces serif, hand-drawn category icons, the
+   map locked into the county line. These opt-in utilities carry that
+   language into the rest of the UI — small-caps plate labels, hairline
+   rules with end ticks, and specimen-plate corner ticks — so any
+   surface can read like a printed plate without a bespoke restyle.
+   Reduced-motion / a11y safe; pure paint, no layout cost.
+   ───────────────────────────────────────────────────────────────── */
+
+/* Plate eyebrow — the small tracked label above a heading, like the
+   classification line over a specimen ("CARDINALIS CARDINALIS"). Mono
+   for that field-notes precision, sepia-into-brand so it sits quietly. */
+.fg-eyebrow {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--app-ink-3) 80%, var(--app-brand));
+}
+
+/* Plate index — the "No. 03 / Pl. VII" figure mark a guide uses to
+   number its plates. Tabular so the digits sit like print. */
+.fg-plate-no {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--app-ink-3) 70%, transparent);
+}
+
+/* Hairline rule with an end tick — the drawn divider under a plate
+   caption. Fades left→right and drops a short vertical tick at the end,
+   echoing the dashed county border on the map. */
+.fg-rule {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--app-ink-3) 42%, transparent),
+    color-mix(in srgb, var(--app-ink-3) 12%, transparent) 68%,
+    transparent
+  );
+}
+.fg-rule::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 1px;
+  height: 5px;
+  background: color-mix(in srgb, var(--app-ink-3) 50%, var(--app-brand));
+}
+
+/* Specimen-plate ticks — fine corner marks (top-left + bottom-right)
+   that frame a card like a printed plate, registration-mark style.
+   Asymmetric on purpose: reads as a drawn frame, not a full border. */
+.fg-plate {
+  position: relative;
+}
+.fg-plate::before,
+.fg-plate::after {
+  content: "";
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  pointer-events: none;
+  opacity: 0.55;
+  border-color: color-mix(in srgb, var(--app-ink-3) 55%, transparent);
+}
+.fg-plate::before {
+  top: 9px;
+  left: 9px;
+  border-top: 1px solid;
+  border-left: 1px solid;
+  border-top-left-radius: 2px;
+}
+.fg-plate::after {
+  bottom: 9px;
+  right: 9px;
+  border-bottom: 1px solid;
+  border-right: 1px solid;
+  border-bottom-right-radius: 2px;
+}

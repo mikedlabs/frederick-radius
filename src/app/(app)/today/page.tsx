@@ -506,6 +506,8 @@ export default async function HomePage({
         title={slice.title}
         href="/events"
         cta="See all"
+        eyebrow="What's on"
+        plateNo="No. 01"
       >
         {heroInSlice || upcomingRest.length > 0 ? (
           <div className="space-y-3">
