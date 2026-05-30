@@ -14,10 +14,11 @@ import type { IngestedSeries } from "@/lib/loaders/ingested";
  */
 export default function MunicipalEvents({
   series,
-  summary,
 }: {
   series: IngestedSeries[];
-  summary: { total: number; series: number; recurring: number };
+  /** Accepted for callsite compatibility; no longer surfaced (the
+   *  alarming "2,618 events" count was the panic the reviewer flagged). */
+  summary?: { total: number; series: number; recurring: number };
 }) {
   const munis = useMemo(() => {
     const counts = new Map<string, number>();
@@ -46,14 +47,10 @@ export default function MunicipalEvents({
 
   return (
     <section className="space-y-3">
-      <div className="flex items-baseline justify-between">
-        <h2 className="font-serif text-xl font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-          Municipal calendars
-        </h2>
-        <span className="text-xs tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          {summary.total.toLocaleString()} events · {summary.recurring} recurring
-        </span>
-      </div>
+      <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        Meetings, programs, and town schedules — the civic firehose, here
+        when you want it, out of the way when you don&rsquo;t.
+      </p>
 
       {/* Search */}
       <div
