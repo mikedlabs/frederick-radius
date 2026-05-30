@@ -12,12 +12,20 @@ import Sheet from "@/components/ui/Sheet";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import Pill from "@/components/ui/Pill";
 import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon } from "@/lib/eventHorizon";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 type EventSortKey = "time" | "az" | "venue";
+
+// Editorial hierarchy by TYPE, not just time: the grouped list leads
+// with draws (music, food, arts, family) and tucks civic business into a
+// quiet tail. The draw/utility call is the app-wide rule in
+// lib/event-kind.ts (taxonomy kind + a keyword net for mistagged feeds),
+// so Today / events / map can never drift on what counts as "utility."
 
 const EVENT_SORT_OPTIONS: ReadonlyArray<SortOption<EventSortKey>> = [
   { key: "time", label: "Soonest", hint: "Next event first (grouped by horizon)" },
@@ -203,18 +211,32 @@ export default function EventsExplorer({
     }).sort(sortFn);
   }, [events, day, time, cat, town, q, freeOnly, happyOnly, now, next24ISO, weekendStartISO, weekendEndISO, sortFn]);
 
-  // Group the filtered list into human horizons so the default view is
+  // Split the filtered set by TYPE so the grouped list leads with what
+  // people actually come for; civic business sinks into a quiet tail
+  // below (still one tap away). Only the default "list" view splits —
+  // the Compact / Calendar / Map lenses keep the full set, since those
+  // are deliberate "show me everything" modes.
+  const crowdFiltered = useMemo(
+    () => filtered.filter((e) => !isUtilityEvent(e)),
+    [filtered],
+  );
+  const utilityFiltered = useMemo(
+    () => filtered.filter((e) => isUtilityEvent(e)),
+    [filtered],
+  );
+
+  // Group the CROWD list into human horizons so the default view is
   // navigable at a glance instead of a 400-row chronological scroll.
   const horizonGroups = useMemo(
     () =>
-      groupByHorizon(filtered, {
+      groupByHorizon(crowdFiltered, {
         now,
         next24: +new Date(next24ISO),
         weekendStart: +new Date(weekendStartISO),
         weekendEnd: +new Date(weekendEndISO),
         live,
       }),
-    [filtered, now, next24ISO, weekendStartISO, weekendEndISO, live],
+    [crowdFiltered, now, next24ISO, weekendStartISO, weekendEndISO, live],
   );
 
   const mapPins = useMemo(
@@ -591,29 +613,19 @@ export default function EventsExplorer({
         <div className="space-y-6">
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
-            // Tighter peek + expanded cap (was PEEK=9, no expanded
-            // cap). Users were getting walls of 30-100 event tiles
-            // when a group expanded — felt endless and undermined
-            // the horizon-grouping work. Now each group shows 6 at
-            // first, expands to a max of 24, and links to the
-            // calendar for the long tail.
-            const PEEK = 6;
-            const EXPANDED_CAP = 24;
-            // Pull the first photo-backed event out of the FIRST group
-            // as a feature card. One per page — gives the index a focal
-            // point instead of a uniform stack of tiles.
+            // One photo-backed FEATURE leads the first group as the
+            // editorial focal point; everything else is a dense,
+            // scannable listing (a printed-guide column, not a wall of
+            // big tiles). Peek 8 rows, expand to 40 — rows are ~⅕ a tile
+            // so a fuller peek no longer reads as endless.
+            const PEEK = 8;
+            const EXPANDED_CAP = 40;
             const featureIdx =
               groupIdx === 0 ? g.events.findIndex((e) => Boolean(e.hero_image)) : -1;
             const feature = featureIdx >= 0 ? g.events[featureIdx] : null;
             const rest = feature
               ? g.events.filter((_, i) => i !== featureIdx)
               : g.events;
-            // Mobile-first scannability: the FIRST horizon group renders
-            // as a horizontal swipeable shelf so users can graze without
-            // a long vertical scroll. Following groups stay as a vertical
-            // grid (the "browse" mode) — best of both. Hidden behind a
-            // toggle (`isOpen`) where the user wants to see everything.
-            const useShelf = groupIdx === 0 && !isOpen;
             const shown = isOpen
               ? rest.slice(0, EXPANDED_CAP)
               : rest.slice(0, PEEK);
@@ -623,7 +635,7 @@ export default function EventsExplorer({
                 <SectionHeading
                   title={g.label}
                   count={g.events.length}
-                  cta={rest.length > PEEK ? (isOpen ? "Show fewer" : "Show all") : undefined}
+                  cta={rest.length > PEEK ? (isOpen ? "Show fewer" : `Show all ${rest.length}`) : undefined}
                   onCtaClick={
                     rest.length > PEEK ? () => toggleGroup(g.key) : undefined
                   }
@@ -641,44 +653,26 @@ export default function EventsExplorer({
                     <EventCard event={feature} variant="feature" />
                   </div>
                 )}
-                {useShelf ? (
-                  <div className="-mx-4 px-4">
-                    <div className="shelf-rail stagger gap-3 pb-1">
-                      {rest.slice(0, PEEK).map((e) => (
-                        <div key={e.slug} className="relative w-[260px] shrink-0">
-                          {live.has(e.slug) && (
-                            <span
-                              className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                              style={{ background: "var(--app-positive)" }}
-                            >
-                              <span className="live-dot" /> Live
-                            </span>
-                          )}
-                          <EventCard event={e} variant="tile" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="stagger grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {/* Dense listing — date pill + title + venue/time per row,
+                    ~5-8 per viewport instead of 1-2 tiles. The whole group
+                    reads as one bordered "plate" the eye can run down. */}
+                {shown.length > 0 && (
+                  <ol
+                    className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+                    style={{
+                      borderColor: "var(--app-border)",
+                      boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                    }}
+                  >
                     {shown.map((e) => (
-                      <div key={e.slug} className="relative">
-                        {live.has(e.slug) && (
-                          <span
-                            className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                            style={{ background: "var(--app-positive)" }}
-                          >
-                            <span className="live-dot" /> Live
-                          </span>
-                        )}
-                        <EventCard event={e} variant="tile" />
-                      </div>
+                      <li key={e.slug}>
+                        <EventCard event={e} variant="compact" live={live.has(e.slug)} />
+                      </li>
                     ))}
-                  </div>
+                  </ol>
                 )}
-                {/* Overflow nudge — when an expanded group hit the
-                    EXPANDED_CAP, point the long tail at the calendar
-                    instead of dumping every remaining tile inline. */}
+                {/* Overflow nudge — point the long tail at the calendar
+                    instead of dumping every remaining row inline. */}
                 {overflow > 0 && (
                   <div className="px-1 pt-1 text-center">
                     <Link
@@ -696,6 +690,32 @@ export default function EventsExplorer({
               </section>
             );
           })}
+
+          {/* ── Civic & meetings — the utility tail. Council / NAC /
+              commission business, kept OUT of the main flow (it's not
+              what most people come for) but one tap away for the people
+              who want it. Sits just above the page's "Official calendars"
+              municipal-series block, so all the civic-utility weight
+              lives together at the bottom. */}
+          {utilityFiltered.length > 0 && (
+            <CollapsibleSection
+              title="Civic & meetings"
+              count={utilityFiltered.length}
+              storageKey="fr.events.civic"
+              defaultOpen={false}
+            >
+              <ol
+                className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
+                style={{ borderColor: "var(--app-border)" }}
+              >
+                {utilityFiltered.slice(0, 80).map((e) => (
+                  <li key={e.slug}>
+                    <EventCard event={e} variant="compact" />
+                  </li>
+                ))}
+              </ol>
+            </CollapsibleSection>
+          )}
         </div>
       )}
     </div>

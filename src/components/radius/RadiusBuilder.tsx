@@ -9,6 +9,7 @@ import RadiusMap from "./RadiusMap";
 import WithinReach from "./WithinReach";
 import { resolveMunicipality } from "@/lib/location";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
+import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 // Read the same slim, pre-decorated set the rest of the app uses on
 // the client. The previous shape (places passed in via props from
 // radius/page) inlined ~4MB of redundant JSON into the SSR HTML for
@@ -245,6 +246,13 @@ export default function RadiusBuilder({
   // `placesReady` drives a quiet "finding places…" affordance instead
   // of a false "nothing here."
   const { places, ready: placesReady } = useClientPlaces();
+  // Tapping a place marker opens the same PlaceSheet bottom sheet the
+  // browse map and the result cards use — one detail surface, everywhere.
+  const { openSheet } = usePlaceSheet();
+  const placesBySlug = useMemo(
+    () => new Map(places.map((p) => [p.slug, p])),
+    [places],
+  );
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
@@ -606,20 +614,31 @@ export default function RadiusBuilder({
   // dots reads as a mess and buries the signal. The full set still lives
   // in the results list + the "Within reach" outcomes; the map's job is
   // to show the reach + the highlights, not every point.
-  const insideDots = useMemo(
+  // The MAP shows the WHOLE county — the radius is a lens, not a fence.
+  // The old behavior clipped the map to the reach AND capped it at 18
+  // dots, so a newcomer was actively hidden from the brewery one town
+  // over — the opposite of a discovery app's job. Now every county place
+  // is plotted; `inReach` carries the emphasis so RadiusMap can draw the
+  // close ones bright + labeled and keep the rest quietly visible. The
+  // LIST below still focuses on what's within reach — it's the map that
+  // should never hide the county.
+  const reachSlugs = useMemo(
+    () => new Set(inside.map((p) => p.slug)),
+    [inside],
+  );
+  const countyDots = useMemo(
     () =>
-      [...displayedInside]
-        .sort((a, b) => (b.feature_score ?? 0) - (a.feature_score ?? 0))
-        .slice(0, 18)
-        .map((p) => ({
-          lng: p.geom.lng,
-          lat: p.geom.lat,
-          slug: p.slug,
-          name: p.name,
-          category: p.category,
-          category_color: CATEGORY_BY_SLUG[p.category]?.color,
-        })),
-    [displayedInside],
+      places.map((p) => ({
+        lng: p.geom.lng,
+        lat: p.geom.lat,
+        slug: p.slug,
+        name: p.name,
+        category: p.category,
+        category_color: CATEGORY_BY_SLUG[p.category]?.color,
+        inReach: reachSlugs.has(p.slug),
+        score: p.feature_score ?? 0,
+      })),
+    [places, reachSlugs],
   );
 
   // (`edgePlace` — the place at the far edge — was used in the
@@ -944,7 +963,7 @@ export default function RadiusBuilder({
           meters={meters}
           center={{ lng: center.lng, lat: center.lat }}
           centerLabel={center.label}
-          insidePlaces={insideDots}
+          places={countyDots}
           events={eventsInReach.map((e) => ({
             lng: e.lng,
             lat: e.lat,
@@ -955,6 +974,10 @@ export default function RadiusBuilder({
           onCenterChange={(next) => {
             setMyLoc(next);
             setMyLocLabel("Pinned point");
+          }}
+          onSelectPlace={(slug) => {
+            const p = placesBySlug.get(slug);
+            if (p) openSheet(p);
           }}
         />
         {/* Floating ribbon — overlays the map's bottom edge. Same

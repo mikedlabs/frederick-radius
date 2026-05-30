@@ -7,6 +7,9 @@ import { Crosshair, Map as MapIcon, ArrowUpRight, X } from "lucide-react";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { installCategoryMarkers } from "@/components/map/categoryMarkers";
+import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
+import { installCountySpotlight } from "@/components/map/countySpotlight";
 import type { MapRef, MapMouseEvent, MarkerDragEvent } from "react-map-gl/mapbox";
 // Mapbox CSS — without this, tile rendering and canvas sizing fail.
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -86,10 +89,15 @@ function radiusBounds(
 }
 
 /**
- * One in-range place rendered as a colored dot on the map. Carries the
- * minimum metadata needed to color the dot by category and to surface a
- * tap-preview popup (slug + name); no photo URL, no full place record,
- * so the props stay light even at 500+ places.
+ * One county place rendered on the map. Carries the minimum metadata
+ * needed to draw a category-iconed marker and surface a tap preview
+ * (slug + name); no photo URL, no full place record, so the props stay
+ * light even at the full county set (~1,700 places).
+ *
+ * The radius is a LENS, not a fence: the map plots every county place,
+ * and `inReach` decides emphasis — in-reach places draw bright and
+ * labeled, the rest stay visible but quiet so discovery is never clipped
+ * to the ring.
  */
 export type InsideDot = {
   lng: number;
@@ -100,6 +108,13 @@ export type InsideDot = {
   /** Category color (CATEGORY_BY_SLUG[cat]?.color). Falls back to a
    *  neutral grey when the category isn't in the taxonomy. */
   category_color?: string;
+  /** Within the active reach (isochrone/circle)? Drives the bright vs.
+   *  quiet emphasis and whether a label is offered. Defaults to true so
+   *  a caller that doesn't compute reach still gets full-strength pins. */
+  inReach?: boolean;
+  /** Feature score — orders collision priority so the strongest places
+   *  win labels/placement when pins crowd. Higher = more prominent. */
+  score?: number;
 };
 
 /** An in-reach event, plotted as a distinct ring marker (vs the solid
@@ -117,10 +132,11 @@ export default function RadiusMap({
   meters,
   center,
   centerLabel,
-  insidePlaces,
+  places,
   events = [],
   reachable,
   onCenterChange,
+  onSelectPlace,
   // Tuned so the map AND the control card below it (mode toggle +
   // slider) fit in one mobile viewport. The previous 60vh buried the
   // slider below the fold, which broke the "see what you're doing
@@ -131,9 +147,11 @@ export default function RadiusMap({
   meters: number;
   center: { lng: number; lat: number };
   centerLabel: string;
-  /** Pre-filtered to places inside the radius. Rendered as small dots
-   *  so users can see geographic density, not just read a count. */
-  insidePlaces: InsideDot[];
+  /** The WHOLE county place set. Every place is plotted as a
+   *  category-iconed marker; each one's `inReach` flag drives bright
+   *  (in-reach) vs. quiet (beyond-reach) emphasis. The radius highlights;
+   *  it never hides — so the county is always there to discover. */
+  places: InsideDot[];
   /** Upcoming events inside the same reach, plotted as distinct ring
    *  markers. Tapping one opens a preview that links to the event. */
   events?: EventDot[];
@@ -146,6 +164,10 @@ export default function RadiusMap({
   /** Fires on map tap and on center-pin drag end. Parent can opt out
    *  (omit the prop) to keep the map view-only. */
   onCenterChange?: (next: { lng: number; lat: number }) => void;
+  /** Tapping a PLACE marker calls this with its slug; the parent (which
+   *  holds the full client place set) opens the PlaceSheet. When omitted,
+   *  places fall back to the lightweight inline popup. */
+  onSelectPlace?: (slug: string) => void;
   height?: string;
 }) {
   const accentHex = MODE_HEX[mode] ?? "#2F5470";
@@ -210,23 +232,34 @@ export default function RadiusMap({
   const placesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     return {
       type: "FeatureCollection",
-      features: insidePlaces.map((p) => ({
-        type: "Feature",
-        properties: {
-          slug: p.slug,
-          name: p.name,
-          // Category slug rides along so the hover and tap popups can
-          // show a human label resolved via CATEGORY_BY_SLUG.
-          category: p.category,
-          // Falls back to a neutral grey for places that don't have a
-          // category color, so a missing taxonomy entry never breaks
-          // the whole dot layer.
-          color: p.category_color ?? "#7A828C",
-        },
-        geometry: { type: "Point", coordinates: [p.lng, p.lat] },
-      })),
+      features: places.map((p) => {
+        const inReach = p.inReach !== false;
+        return {
+          type: "Feature",
+          properties: {
+            slug: p.slug,
+            name: p.name,
+            // Category slug rides along so the icon-image expression can
+            // resolve `cat-<category>` and the tap popup can show a human
+            // label via CATEGORY_BY_SLUG.
+            category: p.category,
+            // Falls back to a neutral grey for places that don't have a
+            // category color, so a missing taxonomy entry never breaks
+            // the whole layer.
+            color: p.category_color ?? "#7A828C",
+            // 1 = within reach (bright + labeled), 0 = beyond (quiet).
+            inReach: inReach ? 1 : 0,
+            // Collision priority: LOWER places/labels first (wins). In-
+            // reach always outranks beyond-reach; within each tier the
+            // higher feature_score wins. So the strongest, closest places
+            // keep their labels when the map crowds.
+            pri: (inReach ? 0 : 100_000) - (p.score ?? 0),
+          },
+          geometry: { type: "Point", coordinates: [p.lng, p.lat] },
+        };
+      }),
     };
-  }, [insidePlaces]);
+  }, [places]);
 
   const eventsGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     return {
@@ -294,7 +327,7 @@ export default function RadiusMap({
       (e.features && e.features.length > 0
         ? e.features
         : e.target.queryRenderedFeatures(e.point, {
-            layers: ["radius-places-dots", "radius-events-dots"],
+            layers: ["radius-places-hit", "radius-places-dots", "radius-events-dots"],
           })) ?? [];
     if (hits.length > 0) {
       const f = hits[0];
@@ -307,6 +340,15 @@ export default function RadiusMap({
       };
       const isEvent = f.layer?.id === "radius-events-dots" || props.kind === "event";
       if (props.slug && props.name) {
+        // PLACES open the full PlaceSheet bottom sheet (the same premium
+        // surface the browse map uses) when the parent wires it — the
+        // tiny inline popup was the last vestige of the old radius map.
+        // Events keep the lightweight popup (no event sheet exists).
+        if (!isEvent && onSelectPlace) {
+          onSelectPlace(props.slug);
+          setSelected(null);
+          return;
+        }
         setSelected({
           lng: coords[0],
           lat: coords[1],
@@ -454,7 +496,12 @@ export default function RadiusMap({
           longitude: center.lng,
           latitude: center.lat,
           zoom: 13,
+          // Gentle tilt so the 3D relief reads as dimensional depth
+          // without distorting the reach circle into an unreadable
+          // ellipse — enough to feel the ridges, not a flight-sim angle.
+          pitch: 32,
         }}
+        maxPitch={70}
         dragRotate={false}
         pitchWithRotate={false}
         touchPitch={false}
@@ -462,47 +509,126 @@ export default function RadiusMap({
         onClick={handleMapClick}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        interactiveLayerIds={["radius-places-dots", "radius-events-dots"]}
+        // Install the shared category-icon images (the same colored pucks
+        // the browse map uses) so the radius view reads as a story at a
+        // glance — food orange, parks green, arts purple — instead of
+        // anonymous dots. styleimagemissing inside the installer covers
+        // any category not eagerly added, and survives style reloads.
+        onLoad={(e) => {
+          installCategoryMarkers(e.target);
+          // Repaint stock light-v11 into the Frederick brand: paper-cream
+          // land, Carroll Creek slate water, sage parks, warm-ink labels,
+          // Catoctin/South Mountain hillshade — and POI clutter hidden so
+          // OUR pins are the only points of interest ("nothing else
+          // there"). The browse map already does this; the default radius
+          // view now matches, so the premium look is consistent.
+          applyFrederickPalette(e.target);
+          // Lock the plate into Frederick County: veil everything beyond
+          // the line in warm paper + trace the border, so the map reads
+          // as a field-guide page of ONE place, not a window onto an
+          // endless world. Eases back as you zoom into a neighborhood.
+          installCountySpotlight(e.target);
+          // 3D relief — "Frederick IS its terrain." applyFrederickPalette
+          // already loads the fr-dem elevation source; draping the map
+          // over it (with the gentle default pitch below) makes the
+          // Catoctin & South Mountain ridges physically rise. Low
+          // exaggeration so the reach circle stays legibly round and the
+          // map stays a usable wayfinding tool, not a flight sim.
+          try {
+            e.target.setTerrain({ source: "fr-dem", exaggeration: 1.15 });
+          } catch {
+            /* DEM unavailable on this token — stays flat, no harm */
+          }
+        }}
+        // The invisible hit-pad is listed FIRST so a fingertip near a tiny
+        // icon still resolves to the place (Fitts-friendly tap target).
+        interactiveLayerIds={["radius-places-hit", "radius-places-dots", "radius-events-dots"]}
         // Pointer over a dot, otherwise the move-center crosshair (or a
         // plain grab when the map is view-only).
         cursor={hover ? "pointer" : onCenterChange ? "crosshair" : "grab"}
         style={{ width: "100%", height: "100%" }}
       >
-        {/* In-range places as category-colored dots — the map now reads
-            as a story at a glance: food clusters orange, parks green,
-            arts purple. Each dot is tappable; the click handler decides
-            whether the tap is a place preview or a center-set. */}
-        {/* generateId lets Mapbox assign stable numeric feature ids so
-            feature-state (the hover size bump) works. */}
+        {/* THE WHOLE COUNTY as category-iconed markers — the map reads as
+            a story at a glance: food orange, parks green, arts purple.
+            The radius is a LENS, not a fence — every place is plotted; the
+            `inReach` flag only decides emphasis. In-reach places draw at
+            full size + color and earn a label; beyond-reach places stay
+            visible but quiet (smaller, faded) so discovery is never
+            clipped to the ring. generateId gives stable numeric feature
+            ids for the hover preview's feature-state. */}
         <Source id="radius-places" type="geojson" data={placesGeoJson} generateId>
+          {/* Icons. icon-allow-overlap mirrors the browse map: the
+              label-heavy light base style would otherwise make our pins
+              lose collisions and the map would read empty. Beyond-reach
+              pins are smaller AND faded so the eye lands on what's close
+              first, without losing the sense of the wider county. */}
           <Layer
             id="radius-places-dots"
+            type="symbol"
+            layout={{
+              "icon-image": [
+                "coalesce",
+                ["image", ["concat", "cat-", ["get", "category"]]],
+                ["image", "cat-_default"],
+              ],
+              "icon-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                10, ["case", ["==", ["get", "inReach"], 1], 0.42, 0.26],
+                13, ["case", ["==", ["get", "inReach"], 1], 0.62, 0.34],
+                15, ["case", ["==", ["get", "inReach"], 1], 0.82, 0.46],
+                17, ["case", ["==", ["get", "inReach"], 1], 0.95, 0.6],
+              ],
+              "icon-allow-overlap": true,
+              "icon-ignore-placement": true,
+              "symbol-sort-key": ["get", "pri"],
+              "icon-anchor": "center",
+            }}
+            paint={{
+              // Beyond-reach pins fade back so the in-reach set leads the
+              // eye — present, not shouting.
+              "icon-opacity": ["case", ["==", ["get", "inReach"], 1], 1, 0.5],
+            }}
+          />
+          {/* Invisible Fitts-friendly tap pad — keeps a ~36px touch target
+              even when an icon shrinks at low zoom. Same source, so the
+              click handler resolves back to the place via props.slug. */}
+          <Layer
+            id="radius-places-hit"
             type="circle"
             paint={{
-              // 4.5px at rest, 7px on hover (feature-state). Slightly
-              // bigger than the old 3.5px so taps land reliably on
-              // mobile and the color story carries.
-              "circle-radius": [
-                "case",
-                ["boolean", ["feature-state", "hover"], false],
-                7,
-                4.5,
-              ],
-              "circle-color": ["get", "color"],
-              "circle-opacity": [
-                "case",
-                ["boolean", ["feature-state", "hover"], false],
-                1,
-                0.85,
-              ],
-              "circle-stroke-color": "#ffffff",
-              "circle-stroke-width": [
-                "case",
-                ["boolean", ["feature-state", "hover"], false],
-                2,
-                1.2,
-              ],
-              "circle-stroke-opacity": 0.85,
+              "circle-color": "#000000",
+              "circle-opacity": 0,
+              "circle-radius": 16,
+            }}
+          />
+          {/* Names for what's CLOSE. Labels are offered only for in-reach
+              places (clutter control) and appear from the default radius
+              zoom, so the user can READ the nearby answers — not just see
+              dots. Collision (text-allow-overlap false) auto-thins them;
+              symbol-sort-key keeps the strongest, closest names. */}
+          <Layer
+            id="radius-places-labels"
+            type="symbol"
+            filter={["==", ["get", "inReach"], 1]}
+            minzoom={12}
+            layout={{
+              "text-field": ["get", "name"],
+              "text-size": ["interpolate", ["linear"], ["zoom"], 12, 10.5, 17, 13],
+              "text-font": ["DIN Pro Medium", "Arial Unicode MS Regular"],
+              "text-anchor": "top",
+              "text-offset": [0, 1.0],
+              "text-optional": true,
+              "text-allow-overlap": false,
+              "text-max-width": 8,
+              "symbol-sort-key": ["get", "pri"],
+            }}
+            paint={{
+              "text-color": "#1A1A1A",
+              "text-halo-color": "#FAFAF7",
+              "text-halo-width": 1.7,
+              "text-opacity": ["interpolate", ["linear"], ["zoom"], 11.8, 0, 12.6, 1],
             }}
           />
         </Source>
