@@ -1,0 +1,46 @@
+name: CI
+
+# The mechanical quality gate the repo was missing: typecheck, lint,
+# unit tests, and a production build on every PR and every push to main.
+# Until now CI only ran editorial-style + data-freshness checks, so a
+# type error or failing test could land on main unnoticed — especially
+# risky with autonomous agents committing. A green check here is the
+# enforceable version of "tests must pass before committing."
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel superseded runs on the same ref so a rapid push series doesn't
+# queue stale builds.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "npm"
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          # Build must not require real secrets; the app is written to
+          # degrade when these are absent. Provide empty defaults so the
+          # build exercises the real code paths without external calls.
+          NEXT_TELEMETRY_DISABLED: "1"
