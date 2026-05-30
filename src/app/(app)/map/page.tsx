@@ -328,8 +328,11 @@ export default async function MapPage({
   );
 }
 
+// Reserve the floating bottom nav (~84px incl. its lift) + bottom
+// safe-area so the map + mode-toggle never slide under the nav
+// (audit: "sticky bottom nav overlays content").
 const BROWSE_MAP_HEIGHT =
-  "calc(100dvh - 56px - 48px - 48px - env(safe-area-inset-top, 0px))";
+  "calc(100dvh - 56px - 48px - 48px - 84px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))";
 
 /** The heavy half of browse mode — ~10 upstream feeds + the map render.
  *  Split into its own async component so the page shell can stream
