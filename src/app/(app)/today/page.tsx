@@ -17,6 +17,7 @@ import NowDayStrip from "@/components/today/NowDayStrip";
 // surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MoodTiles from "@/components/today/MoodTiles";
+import TwoDoors from "@/components/today/TwoDoors";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -41,6 +42,8 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // reorder makes the divider unnecessary.
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
+import { getOpenNowCount, findBucket } from "@/lib/find-picks";
+import { getWeekendData, weekendDayKey } from "@/lib/weekend-picks";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -266,6 +269,13 @@ export default async function HomePage({
   const upcomingRest = heroInSlice
     ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
     : sliceItems;
+
+  // Live counts for the two doors. Both cached (10-min / hourly buckets)
+  // so the home page reads them off the edge, never paying the rank cost.
+  const [openCount, weekendData] = await Promise.all([
+    getOpenNowCount(findBucket(now)),
+    getWeekendData(weekendDayKey(now)),
+  ]);
 
   // When the active slice is empty, nudge to a DIFFERENT slice that
   // actually has events — never back to the same (empty) one, which is
@@ -504,6 +514,12 @@ export default async function HomePage({
        *      default (partner apps, worth-a-look, local news, from-above),
        *      so the page opens SHORT and scannable instead of a 13-section
        *      wall you scroll forever. */}
+
+      {/* ── THE TWO DOORS — the find-system's two jobs lead the action
+          column: "Find somewhere good" (eat/drink now) and "What's on
+          this weekend" (going-on), with live counts. The first real
+          choice after the weather glance. ──────────────────────────── */}
+      <TwoDoors openCount={openCount} weekendCount={weekendData.total} />
 
       {/* When? — temporal control for the events section directly below. */}
       <TimeToggle active={mode} counts={counts} />

@@ -69,7 +69,25 @@ export const getFindPicks = unstable_cache(
   { revalidate: 600, tags: ["find-picks", "places"] },
 );
 
-/** Convenience: today's bucket key for the current request. */
+/** Today's bucket key for the current request. */
 export function findBucket(now: Date = new Date()): string {
   return tenMinBucket(now);
 }
+
+/**
+ * Count of open-now food & drink places near downtown — the honest
+ * number on the home "Find somewhere good" door. Cached per 10-minute
+ * bucket so the home page never pays the full ranking cost per request
+ * (the count is the length of the unscoped curated set, uncapped).
+ */
+export const getOpenNowCount = unstable_cache(
+  async (bucket: string): Promise<number> => {
+    void bucket;
+    const cats = new Set<string>(FIND_FILTERS.all);
+    return getCuratedPicks({ origin: FREDERICK_CENTER, limit: 600 }).filter(
+      (p) => cats.has(p.category) || (p.subcategories ?? []).some((s) => cats.has(s)),
+    ).length;
+  },
+  ["find-open-count", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  { revalidate: 600, tags: ["find-picks", "places"] },
+);
