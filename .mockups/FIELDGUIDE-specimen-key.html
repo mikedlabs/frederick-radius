@@ -1,0 +1,310 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Field Guide — Specimen & Key</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+ --ground:#F7F4EC;--ground2:#EFEADE;--card:#FFFFFF;
+ --ink:#191613;--ink2:#544C40;--ink3:#8C8273;
+ --line:#DCD3C2;--line2:#EAE3D4;
+ --green:#3B5A40;--brick:#A6402A;--blue:#2C4A57;--gold:#9A6B1E;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:Inter,system-ui,sans-serif;background:#1b1916;display:flex;justify-content:center;gap:30px;padding:30px;flex-wrap:wrap}
+.p{width:392px;background:var(--ground);height:880px;border-radius:38px;overflow:hidden;position:relative;box-shadow:0 30px 90px rgba(0,0,0,.55)}
+.mono{font-family:'Spline Sans Mono',monospace}.serif{font-family:Fraunces,serif}
+.sc{height:880px;overflow-y:auto;position:relative;z-index:2}
+.tag{position:absolute;top:9px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--ground);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;padding:5px 13px;border-radius:3px;z-index:30;font-weight:600;font-family:'Spline Sans Mono'}
+/* ---- masthead ---- */
+.mh{padding:50px 22px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.mh .gl{font-family:'Spline Sans Mono';font-size:8px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink3);line-height:1.7}
+.mh .gl b{display:block;font-family:Fraunces;font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink);font-weight:600}
+.mh .no{font-family:'Spline Sans Mono';font-size:8px;letter-spacing:.18em;color:var(--ink3);text-transform:uppercase;text-align:right;line-height:1.7}
+/* =========== FRAME A — THE KEY =========== */
+.keywrap{padding:30px 22px 22px}
+.kicker{font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--brick);font-weight:600}
+.kq{font-family:Fraunces;font-size:30px;font-weight:600;letter-spacing:-.015em;color:var(--ink);line-height:1.05;margin-top:14px}
+.kq i{font-style:italic;font-weight:500;color:var(--ink2)}
+/* the key path so far */
+.path{margin-top:24px;border-top:1px solid var(--line);padding-top:16px}
+.step{display:flex;align-items:center;gap:12px;padding:7px 0}
+.step .ix{font-family:'Spline Sans Mono';font-size:10px;color:var(--ink3);width:18px}
+.step .dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--line);flex:0 0 auto;display:grid;place-items:center}
+.step.done .dot{background:var(--green);border-color:var(--green)}
+.step.done .dot:after{content:"";width:5px;height:5px;border-radius:50%;background:#fff}
+.step.now .dot{border-color:var(--ink);border-width:2px}
+.step .lb{font-size:13.5px;color:var(--ink3)}
+.step.done .lb{color:var(--ink)}.step.done .lb b{font-weight:600}
+.step.now .lb{color:var(--ink);font-weight:600}
+.step .ans{margin-left:auto;font-family:'Spline Sans Mono';font-size:10px;letter-spacing:.04em;color:var(--green);text-transform:uppercase}
+.step .vr{position:absolute;margin-left:25px;margin-top:18px;width:1px;height:14px;background:var(--line)}
+/* the current branch — two big choices */
+.branch{margin-top:18px;display:flex;flex-direction:column;gap:11px}
+.ch{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 18px;display:flex;align-items:center;gap:15px;box-shadow:0 1px 0 #fff inset}
+.ch .lt{font-family:'Spline Sans Mono';font-size:10px;color:var(--ink3);letter-spacing:.1em}
+.ch .nm{font-family:Fraunces;font-size:19px;font-weight:600;color:var(--ink);line-height:1.05}
+.ch .sb{font-size:11.5px;color:var(--ink3);margin-top:3px}
+.ch .ct{margin-left:auto;text-align:right}
+.ch .ct b{font-family:Fraunces;font-size:22px;font-weight:600;color:var(--ink);display:block;line-height:1}
+.ch .ct span{font-family:'Spline Sans Mono';font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.matchbar{margin-top:20px;display:flex;align-items:center;gap:10px;justify-content:center;font-family:'Spline Sans Mono';font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+.matchbar .l{flex:1;height:1px;background:var(--line)}
+.matchbar b{color:var(--brick);font-weight:600}
+.skipkey{margin-top:16px;text-align:center;font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.skipkey b{color:var(--ink);font-weight:600;border-bottom:1px solid var(--line)}
+/* =========== FRAME B — SPECIMEN CARDS =========== */
+.idxhead{padding:26px 22px 8px;display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--ink);margin:0 0 0}
+.idxhead h2{font-family:Fraunces;font-size:21px;font-weight:600;color:var(--ink)}
+.idxhead .mono{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.spec{padding:16px 22px;border-bottom:1px solid var(--line);display:flex;gap:15px;position:relative}
+.spec .plate{width:96px;height:96px;flex:0 0 auto;border-radius:4px;position:relative;overflow:hidden;border:1px solid var(--line)}
+.spec .plate:after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05)}
+.spec .num{position:absolute;left:22px;top:8px;font-family:'Spline Sans Mono';font-size:8px;color:var(--ink3);letter-spacing:.08em}
+.spec .body{flex:1;min-width:0;padding-top:2px}
+.spec .cls{font-family:'Spline Sans Mono';font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.spec .nm{font-family:Fraunces;font-size:18px;font-weight:600;color:var(--ink);line-height:1.08;margin-top:5px}
+.marks{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.mk{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:3px;padding:3px 7px;font-size:9.5px;font-weight:600;color:var(--ink2);background:var(--ground)}
+.mk.live{border-color:var(--brick);color:var(--brick)}
+.mk.open{border-color:var(--green);color:var(--green)}
+.mk .gd{width:5px;height:5px;border-radius:50%;background:currentColor}
+.spec .sig{margin-top:10px;font-size:11.5px;color:var(--ink2);display:flex;align-items:center;gap:7px}
+.spec .sig .rt{font-weight:700;color:var(--ink)}
+.spec .sig .st{color:var(--gold)}
+.spec .sig .sep{width:3px;height:3px;border-radius:50%;background:var(--ink3);opacity:.5}
+/* =========== FRAME C — PLATE VIEW =========== */
+.pv .hero{height:300px;position:relative;border-bottom:1px solid var(--ink)}
+.pv .hero .pn{position:absolute;left:18px;top:54px;font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.16em;color:#fff;background:rgba(25,22,19,.6);padding:5px 9px;border-radius:3px;backdrop-filter:blur(4px)}
+.pv .hero .logf{position:absolute;right:16px;top:50px;width:40px;height:40px;border-radius:50%;background:rgba(247,244,236,.92);display:grid;place-items:center;font-size:18px}
+.pv .body{padding:20px 22px 30px}
+.pv .cls{font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3)}
+.pv h1{font-family:Fraunces;font-size:30px;font-weight:600;letter-spacing:-.015em;color:var(--ink);line-height:1.02;margin-top:7px}
+.pv .marks{margin-top:13px}
+/* data block — designed, hairline, leader lines */
+.data{margin-top:20px;border-top:1.5px solid var(--ink);border-bottom:1px solid var(--line)}
+.drow{display:flex;align-items:baseline;gap:10px;padding:11px 0;border-bottom:1px dotted var(--line)}
+.drow:last-child{border-bottom:0}
+.drow .k{font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);width:78px;flex:0 0 auto}
+.drow .v{font-size:13.5px;color:var(--ink);font-weight:500;flex:1}
+.drow .v .hl{color:var(--green);font-weight:600}
+.drow .v .now{color:var(--brick);font-weight:600}
+.drow .led{flex:1;border-bottom:1px dotted var(--line);margin:0 4px;position:relative;top:-3px}
+/* tonight strip */
+.tonight{margin-top:18px;background:var(--card);border:1px solid var(--line);border-left:3px solid var(--brick);border-radius:4px;padding:13px 15px}
+.tonight .h{font-family:'Spline Sans Mono';font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--brick);font-weight:600}
+.tonight .e{display:flex;align-items:baseline;gap:9px;margin-top:8px}
+.tonight .e .tm{font-family:Fraunces;font-size:15px;font-weight:600;color:var(--ink);width:54px}
+.tonight .e .ti{font-size:12.5px;color:var(--ink2)}
+.tonight .e+.e{margin-top:5px}
+/* range map */
+.rng{margin-top:20px}
+.rng .lab{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.rng .lab .k{font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.rng .lab .w{font-family:'Spline Sans Mono';font-size:9px;color:var(--green);font-weight:600}
+.rng .map{height:120px;border-radius:6px;border:1px solid var(--line);background:
+  repeating-linear-gradient(0deg,transparent,transparent 17px,rgba(60,74,87,.05) 17px,rgba(60,74,87,.05) 18px),
+  repeating-linear-gradient(90deg,transparent,transparent 17px,rgba(60,74,87,.05) 17px,rgba(60,74,87,.05) 18px),
+  #EFEADE;position:relative;overflow:hidden}
+.rng .map .creek{position:absolute;left:-10%;top:55%;width:130%;height:3px;background:var(--blue);opacity:.35;transform:rotate(-7deg);border-radius:2px}
+.rng .map .you{position:absolute;left:42%;top:46%;width:9px;height:9px;border-radius:50%;background:var(--brick);box-shadow:0 0 0 5px rgba(166,64,42,.18)}
+.rng .map .here{position:absolute;left:54%;top:38%;width:13px;height:13px}
+.rng .map .here svg{filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+/* field notes */
+.notes{margin-top:20px}
+.notes .k{font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.notes p{font-family:Fraunces;font-size:15px;line-height:1.5;color:var(--ink2);margin-top:8px;font-weight:400}
+.notes p .dropcap{float:left;font-size:42px;line-height:.78;font-weight:600;color:var(--ink);padding:3px 7px 0 0}
+/* see also */
+.seealso{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+.seealso .k{font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.seealso .row{display:flex;gap:9px;margin-top:11px}
+.seealso .sa{flex:1;border:1px solid var(--line);border-radius:5px;padding:9px 10px;background:var(--card)}
+.seealso .sa .n{font-family:'Spline Sans Mono';font-size:7.5px;color:var(--ink3);letter-spacing:.06em}
+.seealso .sa .t{font-family:Fraunces;font-size:13px;font-weight:600;color:var(--ink);margin-top:3px;line-height:1.1}
+/* add to log */
+.logbtn{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:9px;background:var(--ink);color:var(--ground);border-radius:9px;padding:15px;font-size:13.5px;font-weight:600;font-family:Inter}
+.logbtn .mono{font-family:'Spline Sans Mono';font-size:9px;letter-spacing:.1em;opacity:.7;text-transform:uppercase}
+.cap{color:#bdb29a;font-family:'Spline Sans Mono';font-size:10.5px;letter-spacing:.03em;text-align:center;max-width:1240px;line-height:1.7;margin-top:4px}
+</style></head><body>
+
+<!-- ============ FRAME A — THE KEY ============ -->
+<div class="p">
+ <div class="tag">The Key · narrowing as discovery</div>
+ <div class="mh">
+  <div class="gl">A field guide to<b class="serif">Frederick County</b></div>
+  <div class="no">EST.<br>21701</div>
+ </div>
+ <div class="sc">
+  <div class="keywrap">
+   <div class="kicker">The Key · Step 3 of 3</div>
+   <div class="kq">How far will you<br><i>go today?</i></div>
+
+   <div class="path">
+    <div class="step done"><span class="ix mono">I</span><span class="dot"></span><span class="lb">I&rsquo;m looking to <b>eat</b></span><span class="ans mono">Eat</span></div>
+    <div class="step done"><span class="ix mono">II</span><span class="dot"></span><span class="lb">Happening <b>tonight</b></span><span class="ans mono">Tonight</span></div>
+    <div class="step now"><span class="ix mono">III</span><span class="dot"></span><span class="lb">Range &mdash; choose below</span></div>
+   </div>
+
+   <div class="branch">
+    <div class="ch">
+     <div>
+      <div class="lt mono">A</div>
+      <div class="nm">Close by, on foot</div>
+      <div class="sb">A 5&ndash;15 minute walk from Market St.</div>
+     </div>
+     <div class="ct"><b>11</b><span>specimens</span></div>
+    </div>
+    <div class="ch">
+     <div>
+      <div class="lt mono">B</div>
+      <div class="nm">Worth a short drive</div>
+      <div class="sb">The county towns, 10&ndash;40 min out</div>
+     </div>
+     <div class="ct"><b>34</b><span>specimens</span></div>
+    </div>
+   </div>
+
+   <div class="matchbar"><span class="l"></span>Narrowed from 612 to <b>&nbsp;45</b><span class="l"></span></div>
+   <div class="skipkey">or <b>flip straight to the plates ›</b></div>
+  </div>
+ </div>
+</div>
+
+<!-- ============ FRAME B — SPECIMEN CARDS (the result set) ============ -->
+<div class="p">
+ <div class="tag">Specimen cards · the plates</div>
+ <div class="mh">
+  <div class="gl">Eat · Tonight · On foot<b class="serif">11 specimens</b></div>
+  <div class="no">DOWNTOWN<br>FREDERICK</div>
+ </div>
+ <div class="sc">
+  <div class="idxhead"><h2 class="serif">The plates</h2><span class="mono">sorted · best first</span></div>
+
+  <div class="spec">
+   <span class="num mono">№ 047</span>
+   <div class="plate" style="background:linear-gradient(150deg,#6B3B52,#A6402A)"></div>
+   <div class="body">
+    <div class="cls mono">Gastropub · Market Street</div>
+    <div class="nm">White Rabbit Gastropub</div>
+    <div class="marks">
+     <span class="mk open"><span class="gd"></span>Open</span>
+     <span class="mk live"><span class="gd"></span>Trivia 8PM</span>
+     <span class="mk">Late kitchen</span>
+     <span class="mk">Patio</span>
+    </div>
+    <div class="sig"><span class="st">★</span><span class="rt">4.7</span> <span class="sep"></span> 2,699 notes <span class="sep"></span> 2 min walk</div>
+   </div>
+  </div>
+
+  <div class="spec">
+   <span class="num mono">№ 112</span>
+   <div class="plate" style="background:linear-gradient(150deg,#2C4A57,#3B5A40)"></div>
+   <div class="body">
+    <div class="cls mono">Distillery · Carroll Street</div>
+    <div class="nm">Tenth Ward Distilling Co.</div>
+    <div class="marks">
+     <span class="mk open"><span class="gd"></span>Open</span>
+     <span class="mk live"><span class="gd"></span>Live music 9PM</span>
+     <span class="mk">Reservations</span>
+    </div>
+    <div class="sig"><span class="st">★</span><span class="rt">4.8</span> <span class="sep"></span> 230 notes <span class="sep"></span> 1 min walk</div>
+   </div>
+  </div>
+
+  <div class="spec">
+   <span class="num mono">№ 088</span>
+   <div class="plate" style="background:linear-gradient(150deg,#7A5A1E,#A6402A)"></div>
+   <div class="body">
+    <div class="cls mono">Italian · East Patrick</div>
+    <div class="nm">Tempo Di Pasta</div>
+    <div class="marks">
+     <span class="mk open"><span class="gd"></span>Open</span>
+     <span class="mk">Reservations</span>
+     <span class="mk">Dog friendly</span>
+    </div>
+    <div class="sig"><span class="st">★</span><span class="rt">4.8</span> <span class="sep"></span> 631 notes <span class="sep"></span> 5 min walk</div>
+   </div>
+  </div>
+
+  <div class="spec">
+   <span class="num mono">№ 134</span>
+   <div class="plate" style="background:linear-gradient(150deg,#3B5A40,#2C4A57)"></div>
+   <div class="body">
+    <div class="cls mono">Brewery · South Carroll</div>
+    <div class="nm">McClintock Distillery</div>
+    <div class="marks">
+     <span class="mk open"><span class="gd"></span>Open</span>
+     <span class="mk">Patio</span>
+     <span class="mk">Tours</span>
+    </div>
+    <div class="sig"><span class="st">★</span><span class="rt">4.8</span> <span class="sep"></span> 247 notes <span class="sep"></span> 3 min walk</div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<!-- ============ FRAME C — PLATE VIEW (full specimen) ============ -->
+<div class="p">
+ <div class="tag">Plate view · the full specimen</div>
+ <div class="sc">
+  <div class="pv">
+   <div class="hero" style="background:linear-gradient(155deg,#6B3B52,#A6402A 70%,#7A5A1E)">
+    <div class="pn mono">№ 047 · COLL. DOWNTOWN</div>
+    <div class="logf">＋</div>
+   </div>
+   <div class="body">
+    <div class="cls mono">Gastropub · Market Street, Frederick</div>
+    <h1>White Rabbit<br>Gastropub</h1>
+    <div class="marks">
+     <span class="mk open"><span class="gd"></span>Open now</span>
+     <span class="mk live"><span class="gd"></span>Trivia tonight</span>
+     <span class="mk">Late kitchen</span>
+     <span class="mk">Patio</span>
+     <span class="mk">Reservations</span>
+    </div>
+
+    <div class="data">
+     <div class="drow"><span class="k mono">Hours</span><span class="v">Open <span class="now">til 1 AM</span> · kitchen til 11</span></div>
+     <div class="drow"><span class="k mono">Range</span><span class="v">2 min walk<span class="led"></span><span class="hl">0.1 mi</span></span></div>
+     <div class="drow"><span class="k mono">Price</span><span class="v">$$ · burgers, steaks, brunch</span></div>
+     <div class="drow"><span class="k mono">Notes</span><span class="v"><span class="st" style="color:var(--gold)">★</span> 4.7 · 2,699 field notes</span></div>
+     <div class="drow"><span class="k mono">Coord</span><span class="v mono" style="font-size:11.5px;color:var(--ink2)">39.4143° N, 77.4105° W</span></div>
+    </div>
+
+    <div class="tonight">
+     <div class="h mono">● On tonight</div>
+     <div class="e"><span class="tm serif">8:00</span><span class="ti">Trivia night — teams of up to six</span></div>
+     <div class="e"><span class="tm serif">11:00</span><span class="ti">Last call, kitchen closes</span></div>
+    </div>
+
+    <div class="rng">
+     <div class="lab"><span class="k mono">Range map</span><span class="w mono">◷ on foot · 12 min radius</span></div>
+     <div class="map">
+      <div class="creek"></div>
+      <div class="you"></div>
+      <div class="here"><svg width="13" height="13" viewBox="0 0 24 24" fill="#191613"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/></svg></div>
+     </div>
+    </div>
+
+    <div class="notes">
+     <div class="k mono">Field notes</div>
+     <p><span class="dropcap serif">F</span>rederick&rsquo;s most-noted table, and the one locals name first. A compact, always-full gastropub on Market doing burgers, steaks and a brunch people queue for. Happy hour runs long; the patio is the one to angle for on a clear night.</p>
+    </div>
+
+    <div class="seealso">
+     <div class="k mono">See also — nearby of a kind</div>
+     <div class="row">
+      <div class="sa"><div class="n mono">№ 112 · 1 MIN</div><div class="t">Tenth Ward Distilling</div></div>
+      <div class="sa"><div class="n mono">№ 134 · 3 MIN</div><div class="t">McClintock Distillery</div></div>
+     </div>
+    </div>
+
+    <div class="logbtn"><span>＋ Add to field log</span><span class="mono">· LIFE LIST</span></div>
+   </div>
+  </div>
+ </div>
+</div>
+
+</body>
+<div style="width:100%;display:flex;justify-content:center"><div class="cap">THE KEY narrows 612 specimens to a strong few · THE PLATES present dense data as pleasure · THE PLATE VIEW is the full specimen, annotated. Editorial and modern — cataloging logic, not vintage paper.</div></div>
+</html>
