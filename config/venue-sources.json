@@ -1,19 +1,19 @@
 {
-  "_doc": "Venue registry for scripts/ingest-venue-events.ts. URLs found + assigned by research (May 2026). `render: true` = the page is JS-rendered or 403s a bare fetch, so the agent loads it in a headless browser (Playwright). Social-only sources (Instagram/Facebook) are noted but NOT scraped — see docs/EXTRACTION_PLATFORM.md for the partnership/vision/human path. Verify URLs periodically; the agent validates at fetch time and never fabricates.",
+  "_doc": "Venue registry for scripts/ingest-venue-events.ts. Each venue declares a `method` for how its events are collected, chosen by inspecting the live site (May 2026): `feed` = a structured Squarespace ?format=json events collection, parsed deterministically with NO model call (exact + stable + free); `image` = the calendar is published only as a graphic, read with Claude vision from `imageUrl`; `render` = JS-rendered or 403s a bare fetch, so the page is loaded in a headless browser (Playwright) and the text handed to the model; `fetch` = static HTML handed to the model; `bandsintown`/`render` aggregator pages are treated as render. Social-only sources (Instagram/Facebook) are NOT scraped — see docs/EXTRACTION_PLATFORM.md. The agent validates at fetch time and never fabricates: a failed fetch leaves prior data untouched.",
   "venues": [
     {
       "slug": "banyan",
       "name": "The Banyan",
       "category": "music",
-      "render": true,
+      "method": "feed",
       "urls": ["https://www.thebanyanmd.com/livemusic"],
-      "note": "216 E. Patrick St. Same team as The Derby (New Market). Rooftop + 2nd-floor live music; lineup builds out through 2026."
+      "note": "216 E. Patrick St. Squarespace — its events collection serves clean JSON at /livemusic?format=json (upcoming[] with title + ms-epoch startDate/endDate + fullUrl). Parsed deterministically, no model call. Verified May 2026."
     },
     {
       "slug": "weinberg-center",
       "name": "Weinberg Center for the Arts",
       "category": "theater",
-      "render": true,
+      "method": "render",
       "urls": ["https://weinbergcenter.org/performances/"],
       "note": "Historic 1926 theater. 403s a bare fetch → render. Also covers New Spire Arts programming."
     },
@@ -21,15 +21,15 @@
       "slug": "sky-stage",
       "name": "Sky Stage",
       "category": "arts",
-      "render": true,
-      "urls": ["https://www.skystagefrederick.com/project/calendar/"],
-      "note": "Open-air FAC venue, 59 S. Carroll St. Calendar is JS-rendered → render."
+      "method": "render",
+      "urls": ["https://www.skystagefrederick.com/?format=json", "https://www.skystagefrederick.com/project/calendar/"],
+      "note": "Open-air FAC venue, 59 S. Carroll St. Programmed by the Frederick Arts Council; its own /project/calendar/ page is an empty JS widget. Try the Squarespace site feed first, then render the homepage. Events also syndicate to the county CivicEngage calendar (frederickcountymd.gov) and Eventbrite — see docs/EXTRACTION_PLATFORM.md for the aggregator path if direct collection stays thin."
     },
     {
       "slug": "new-spire",
       "name": "New Spire Arts",
       "category": "theater",
-      "render": true,
+      "method": "render",
       "urls": ["https://weinbergcenter.org/our-venues/new-spire-arts/"],
       "note": "15 W. Patrick St. Managed by the Weinberg Center; programming listed there."
     },
@@ -37,39 +37,40 @@
       "slug": "bushwallers",
       "name": "Bushwaller's",
       "category": "music",
-      "render": true,
+      "method": "image",
+      "imageUrl": "https://static.wixstatic.com/media/cea4fa_1a264cc4ca314aa38da0b0cdde2adab9~mv2.png",
       "urls": ["https://www.bushwallers.com/events"],
-      "note": "Oldest Irish pub in Frederick, 209 N. Market St. Live music upstairs; events page is a JS widget → render."
+      "note": "Oldest Irish pub in Frederick, 209 N. Market St. Live music upstairs. Wix site publishes the monthly lineup ONLY as a calendar PNG (no text, no feed) — read it with Claude vision from imageUrl. The image is a month graphic; refresh imageUrl when they post a new month (filename like 2026May.png). Verified May 2026."
     },
     {
       "slug": "cellar-door",
       "name": "Cellar Door",
       "category": "music",
-      "render": true,
+      "method": "render",
       "urls": ["https://www.cellardoorfrederick.com/entertainment-1"],
-      "note": "5 E. Church St. Open mic, DJ, comedy, karaoke. Squarespace entertainment page → render."
+      "note": "5 E. Church St. Squarespace entertainment page. Posts a RECURRING weekly schedule (Open Mic Tue, Karaoke Thu, DJ Fri/Sat, Comedy Sun) rather than dated one-off shows, so the model extracts only what carries a real date; expect few or none. Render → model."
     },
     {
       "slug": "bentztown",
       "name": "Bentztown",
       "category": "music",
-      "render": true,
+      "method": "render",
       "urls": ["https://www.bandsintown.com/v/10444653-bentztown"],
-      "note": "6 S. Bentz St. Southern food + bourbon + live-music stage. Its OWN site (bentztown.com) is CAPTCHA-walled (\"prove you're human\") — un-scrapable by any agent, verified May 2026. Read the lineup from its Bandsintown venue page instead: no CAPTCHA, ~33 upcoming shows with real dates, render:true. Bandsintown also carries Weinberg + other Frederick venues — treat it as a primary aggregator source per docs/EXTRACTION_PLATFORM.md."
+      "note": "6 S. Bentz St. Southern food + bourbon + live-music stage. Its OWN site (bentztown.com) is CAPTCHA-walled — un-scrapable, verified May 2026. Read the lineup from its Bandsintown venue page instead: no CAPTCHA, ~33 upcoming shows with real dates, render. Bandsintown also carries Weinberg + other Frederick venues — a primary aggregator per docs/EXTRACTION_PLATFORM.md."
     },
     {
       "slug": "jojos",
       "name": "JoJo's Restaurant & Tap House",
       "category": "music",
-      "render": true,
-      "urls": [],
-      "note": "16 E. Patrick St. Dining, happy hour & live music. Find/verify an events/calendar URL (posts heavily on social); leave empty until a non-social source exists."
+      "method": "render",
+      "urls": ["https://jojosrestauranttaphouse.com/events.php"],
+      "note": "16-18 E. Patrick St. Dining, happy hour & live music. Custom PHP site (SDP Technology) with a server-rendered events.php — render → model. Verified the domain + events page exist May 2026 (previous config had no URL). If events.php proves thin, they also post on Facebook (social-only fallback)."
     },
     {
       "slug": "derby-new-market",
       "name": "The Derby (New Market)",
       "category": "music",
-      "render": false,
+      "method": "render",
       "urls": [],
       "note": "Live music Wed–Sat. Posts on Instagram/Facebook (@thederbymd) — social-only; needs the partnership/vision path, not blind scraping. URL left empty until a non-social source exists."
     }
