@@ -12,6 +12,7 @@ import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
+import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -100,9 +101,15 @@ export default async function EventsIndexPage({
     curatedUpcoming,
   );
 
+  // Extracted venue lineups (The Banyan, Sky Stage, …) folded into the
+  // same feed so a venue with a band tonight reads as an event, not just
+  // a place — the "places + events fused" wedge. Empty until the venue
+  // agent runs; civic-stripped for parity with the live set.
+  const venueCards = venueEventsAsCards(now).filter((e) => !isCivicEvent(e));
+
   // One unified, deduplicated, time-sorted set the explorer drives.
   const bySlug = new Map<string, EventWithMeta>();
-  for (const e of [...curatedUpcoming, ...liveCards]) {
+  for (const e of [...curatedUpcoming, ...liveCards, ...venueCards]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
   // Second-pass dedup catches CURATED-vs-CURATED duplicates that
