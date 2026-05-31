@@ -87,6 +87,106 @@ export async function fetchPageText(
 }
 
 /**
+ * A normalized event as pulled from a structured feed (no model call).
+ * Mirrors the shape the venue agent already writes, minus the per-venue
+ * stamping the caller adds (venue_slug, venue_name, source).
+ */
+export type FeedEvent = {
+  title: string;
+  starts_at: string; // ISO 8601
+  ends_at?: string;
+  description?: string;
+  ticket_url?: string;
+};
+
+/**
+ * Parse a Squarespace events collection (the `?format=json` response) to
+ * normalized events — deterministically, with no model call. Squarespace
+ * exposes every events page as JSON at `<collection-url>?format=json`,
+ * with an `upcoming` array of items carrying `title`, `startDate` /
+ * `endDate` (millisecond epoch integers), `excerpt`, and `fullUrl`.
+ *
+ * This is the preferred collector for any Squarespace venue: it is exact
+ * (no scraping, no guessing), cheap (no token cost), and stable across
+ * site redesigns. Falls back to nothing — a caller that gets [] should
+ * try the render+model path.
+ *
+ * No fabrication: an item with no title or no parseable start date is
+ * dropped rather than invented. `baseUrl` (the site origin) turns the
+ * relative `fullUrl` into an absolute ticket/detail link when present.
+ */
+export function parseSquarespaceEvents(json: unknown, baseUrl?: string): FeedEvent[] {
+  const root = json as { upcoming?: unknown } | null;
+  const items = root && Array.isArray(root.upcoming) ? root.upcoming : [];
+  const origin = (() => {
+    if (!baseUrl) return "";
+    try {
+      return new URL(baseUrl).origin;
+    } catch {
+      return "";
+    }
+  })();
+
+  const out: FeedEvent[] = [];
+  for (const raw of items) {
+    const it = raw as {
+      title?: unknown;
+      startDate?: unknown;
+      endDate?: unknown;
+      excerpt?: unknown;
+      fullUrl?: unknown;
+    };
+    const title = typeof it.title === "string" ? it.title.trim() : "";
+    const startMs = typeof it.startDate === "number" ? it.startDate : NaN;
+    if (!title || !Number.isFinite(startMs)) continue; // never invent
+
+    const ev: FeedEvent = {
+      title,
+      starts_at: new Date(startMs).toISOString(),
+    };
+    if (typeof it.endDate === "number" && Number.isFinite(it.endDate)) {
+      ev.ends_at = new Date(it.endDate).toISOString();
+    }
+    // Excerpt is HTML; strip to one plain line if present.
+    if (typeof it.excerpt === "string" && it.excerpt.trim()) {
+      const plain = it.excerpt.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      if (plain) ev.description = plain.slice(0, 280);
+    }
+    if (typeof it.fullUrl === "string" && it.fullUrl) {
+      ev.ticket_url = origin ? `${origin}${it.fullUrl}` : it.fullUrl;
+    }
+    out.push(ev);
+  }
+  return out;
+}
+
+/**
+ * Fetch a Squarespace collection's JSON feed and parse it to events.
+ * `collectionUrl` is the human events page (e.g. ".../livemusic"); this
+ * appends `?format=json`. Returns [] on any fetch/parse failure so the
+ * caller can fall back to render+model without a thrown error.
+ */
+export async function fetchSquarespaceEvents(collectionUrl: string): Promise<FeedEvent[]> {
+  const sep = collectionUrl.includes("?") ? "&" : "?";
+  const url = `${collectionUrl}${sep}format=json`;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 20_000);
+    const r = await fetch(url, { headers: { "User-Agent": UA }, redirect: "follow", signal: ctrl.signal });
+    clearTimeout(timer);
+    if (!r.ok) {
+      console.log(`  ✗ ${url} → HTTP ${r.status}`);
+      return [];
+    }
+    const json = JSON.parse(await r.text());
+    return parseSquarespaceEvents(json, collectionUrl);
+  } catch (err) {
+    console.log(`  ✗ ${url} (feed) → ${(err as Error).message}`);
+    return [];
+  }
+}
+
+/**
  * Ask Claude to extract structured JSON. `instructions` describes the
  * shape + rules; `content` is the page text. Returns parsed JSON (object
  * or array) or null. Enforces the "omit what isn't on the page" rule via
@@ -128,6 +228,67 @@ export async function extractJson<T = unknown>(
     return JSON.parse(match[0]) as T;
   } catch {
     console.log("  ✗ Claude returned non-JSON");
+    return null;
+  }
+}
+
+/**
+ * Extract structured JSON from an IMAGE using Claude vision. Some venues
+ * publish their calendar only as a graphic (e.g. a Wix-hosted PNG), with
+ * no text or feed to read. This sends the image URL to the model under
+ * the same hard rule as extractJson — include only what is legibly in
+ * the image, never invent a date or act — and returns parsed JSON or null.
+ *
+ * Anthropic fetches the image by URL server-side (type: "url"), so no
+ * download is needed here. Vision needs a more capable model than the
+ * text default; override with EXTRACT_VISION_MODEL if desired.
+ */
+export async function extractJsonFromImage<T = unknown>(
+  instructions: string,
+  imageUrl: string,
+  opts: { model?: string; maxTokens?: number } = {},
+): Promise<T | null> {
+  if (!API_KEY) throw new Error("ANTHROPIC_API_KEY not set");
+  const model =
+    opts.model || process.env.EXTRACT_VISION_MODEL || "claude-sonnet-4-6";
+  const preamble =
+    "You read structured data from an image of a calendar or event flyer. Return ONLY JSON — no prose. " +
+    "Critically: include ONLY events legibly shown in the image. Never invent a date, time, or act, and " +
+    "never guess at text you cannot read. If the image has no readable events, return an empty result.\n\n";
+
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: opts.maxTokens ?? 2000,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "image", source: { type: "url", url: imageUrl } },
+            { type: "text", text: `${preamble}${instructions}` },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!r.ok) {
+    console.log(`  ✗ Claude vision → HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    return null;
+  }
+  const data = (await r.json()) as { content?: { text?: string }[] };
+  const raw = data.content?.[0]?.text ?? "";
+  const match = raw.match(/[[{][\s\S]*[\]}]/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[0]) as T;
+  } catch {
+    console.log("  ✗ Claude vision returned non-JSON");
     return null;
   }
 }

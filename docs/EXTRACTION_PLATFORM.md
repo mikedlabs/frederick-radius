@@ -26,6 +26,24 @@ loaders + the "ask Frederick" answer engine + the surfaces
 Adding a new buried-data type = **a config + an extraction shape**, not a
 new system. The engine, dedupe, scheduling, and provenance are shared.
 
+## Collection methods — cleanest rung first
+
+Not every source hides the same way, so the engine offers four collectors.
+A venue/source declares its `method`; the agent picks the cheapest one
+that works and falls back as needed. Prefer a structured feed over the
+model whenever one exists — it is exact, free, and survives redesigns.
+
+| Method | When | How | Model? |
+| --- | --- | --- | --- |
+| **`feed`** | Squarespace events page (very common for small venues) | `fetchSquarespaceEvents(url)` reads `<url>?format=json` and `parseSquarespaceEvents()` maps `upcoming[]` (ms-epoch dates) deterministically | **No** |
+| **`render`** | JS-rendered or 403s a bare fetch | headless Chromium → text → `extractJson()` | Yes (text) |
+| **`fetch`** | static HTML | plain fetch → text → `extractJson()` | Yes (text) |
+| **`image`** | calendar published only as a graphic (e.g. a Wix PNG) | `extractJsonFromImage(url)` reads the image with Claude vision | Yes (vision) |
+
+`parseSquarespaceEvents` is pure and unit-tested (`tests/squarespace-events.spec.ts`)
+against the real Banyan shape — no network, no key. The `feed` path needs
+neither the API key nor Chromium; `image` needs the key but not Chromium.
+
 ## Live profiles
 | Profile | Source kind | Output | Agent |
 | --- | --- | --- | --- |

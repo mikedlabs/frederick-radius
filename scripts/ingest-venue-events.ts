@@ -1,29 +1,53 @@
 /**
  * Venue events extraction agent.
  *
- * Many Frederick venues (The Banyan, The Derby, Sky Stage…) only post
- * their lineups on their own site or socials — buried, no feed. This
- * agent closes that gap using the shared extraction engine: for each
- * venue in config/venue-sources.json with URL(s), it fetches the events
- * page, has Claude pull upcoming events as strict JSON (never guessing),
+ * Many Frederick venues only post their lineups on their own site — and
+ * each in a different shape. This agent collects them by the cleanest
+ * method available per venue (declared in config/venue-sources.json),
  * dedupes against what's known, and writes src/data/venue-events.json
  * with source + freshness — which the events feed + answer engine read.
  *
- * Run:  npm run ingest:venues            (all venues with URLs)
+ * Collection methods, cleanest first:
+ *   feed   — a structured Squarespace ?format=json events collection,
+ *            parsed DETERMINISTICALLY (no model call): exact, free, stable.
+ *   image  — the calendar is published only as a graphic; read with
+ *            Claude vision from the venue's imageUrl.
+ *   render — JS-rendered/403 page → headless browser → model extraction.
+ *   fetch  — static HTML → model extraction.
+ *
+ * Run:  npm run ingest:venues            (all venues)
  *       npm run ingest:venues banyan     (one venue)
- * Needs: ANTHROPIC_API_KEY. Scheduled by .github/workflows/ingest-venues.yml.
+ * Needs: ANTHROPIC_API_KEY (feed-only venues don't, but the run preflights
+ * once). Scheduled by .github/workflows/ingest-venues.yml.
  *
  * Social-only venues aren't scraped here (ToS/access) — see
  * docs/EXTRACTION_PLATFORM.md for the partnership/vision/human path.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { fetchPageText, extractJson, nowISO, preflightKey } from "./lib/extract-agent";
+import {
+  fetchPageText,
+  fetchSquarespaceEvents,
+  extractJson,
+  extractJsonFromImage,
+  nowISO,
+  preflightKey,
+} from "./lib/extract-agent";
 
 const OUT = resolve("src/data/venue-events.json");
 const CONFIG = resolve("config/venue-sources.json");
 
-type VenueSource = { slug: string; name: string; category?: string; urls: string[]; render?: boolean };
+type Method = "feed" | "image" | "render" | "fetch";
+type VenueSource = {
+  slug: string;
+  name: string;
+  category?: string;
+  method?: Method;
+  urls: string[];
+  imageUrl?: string;
+  // Legacy flag kept for back-compat: render:true == method "render".
+  render?: boolean;
+};
 type RawEvent = {
   title?: string;
   starts_at?: string; // ISO or plain date/time as published
@@ -45,8 +69,70 @@ const SHAPE =
   `"ends_at"?: string, "description"?: string (one sentence), "price"?: string, "ticket_url"?: string (absolute) }\n` +
   `Only events clearly listed on the page with a real date. Skip past events. If none, return [].`;
 
+const IMAGE_SHAPE =
+  `This image is a venue's monthly events/music calendar. Extract every event legibly shown as a JSON array. Each item:\n` +
+  `{ "title": string, "starts_at": string (date, with time if shown; include the year ${new Date().getFullYear()} if the image omits it), ` +
+  `"description"?: string }\n` +
+  `Only events you can actually read in the image, with a real date. If none are legible, return [].`;
+
+/** Resolve the collection method, honoring the legacy render flag. */
+const methodOf = (v: VenueSource): Method => v.method ?? (v.render ? "render" : "fetch");
+
 /** Stable key to dedupe an event across runs. */
 const keyOf = (e: VenueEvent) => `${e.venue_slug}::${(e.title ?? "").toLowerCase().trim()}::${e.starts_at ?? ""}`;
+
+/**
+ * Collect raw events for one venue by its declared method. Returns the
+ * events plus the source URL to stamp on each. Never throws: a failed
+ * fetch/extract yields [] so the caller leaves prior data untouched.
+ */
+async function collect(venue: VenueSource): Promise<{ events: RawEvent[]; sourceUrl: string }> {
+  const method = methodOf(venue);
+
+  if (method === "image") {
+    if (!venue.imageUrl) {
+      console.log(`  – no imageUrl configured`);
+      return { events: [], sourceUrl: venue.urls[0] ?? "" };
+    }
+    const events = await extractJsonFromImage<RawEvent[]>(
+      `Venue: ${venue.name} (Frederick County, MD).\n${IMAGE_SHAPE}`,
+      venue.imageUrl,
+    );
+    const n = Array.isArray(events) ? events.length : 0;
+    console.log(`  ✓ ${n} event(s) from image ${venue.imageUrl}`);
+    return { events: Array.isArray(events) ? events : [], sourceUrl: venue.urls[0] ?? venue.imageUrl };
+  }
+
+  if (method === "feed") {
+    // Deterministic Squarespace JSON — no model call. Try each URL until
+    // one yields events.
+    for (const url of venue.urls) {
+      const events = await fetchSquarespaceEvents(url);
+      if (events.length) {
+        console.log(`  ✓ ${events.length} event(s) from feed ${url}`);
+        return { events, sourceUrl: url };
+      }
+    }
+    console.log(`  – feed returned no upcoming events`);
+    return { events: [], sourceUrl: venue.urls[0] ?? "" };
+  }
+
+  // render | fetch — page text → model. Try each URL; first hit wins.
+  for (const url of venue.urls) {
+    const text = await fetchPageText(url, { render: method === "render" });
+    if (!text) continue;
+    const events = await extractJson<RawEvent[]>(
+      `Venue: ${venue.name} (Frederick County, MD).\n${SHAPE}`,
+      text,
+    );
+    if (Array.isArray(events) && events.length) {
+      console.log(`  ✓ ${events.length} event(s) from ${url}`);
+      return { events, sourceUrl: url };
+    }
+    console.log(`  – 0 event(s) from ${url}`);
+  }
+  return { events: [], sourceUrl: venue.urls[0] ?? "" };
+}
 
 async function main() {
   if (!(await preflightKey())) return;
@@ -58,33 +144,25 @@ async function main() {
 
   let added = 0;
   for (const venue of venues) {
-    if (!venue.urls?.length) {
-      console.log(`• ${venue.name}: no URLs configured — skipped`);
+    const hasSource = venue.urls?.length || venue.imageUrl;
+    if (!hasSource) {
+      console.log(`• ${venue.name}: no source configured — skipped`);
       continue;
     }
-    console.log(`• ${venue.name}: ${venue.urls.length} url(s)`);
-    for (const url of venue.urls) {
-      const text = await fetchPageText(url, { render: venue.render });
-      if (!text) continue;
-      const events = await extractJson<RawEvent[]>(
-        `Venue: ${venue.name} (Frederick County, MD).\n${SHAPE}`,
-        text,
-      );
-      if (!Array.isArray(events)) continue;
-      for (const ev of events) {
-        if (!ev.title || !ev.starts_at) continue;
-        const full: VenueEvent = {
-          ...ev,
-          venue_slug: venue.slug,
-          venue_name: venue.name,
-          category: venue.category,
-          source: { url, fetchedAt: nowISO() },
-        };
-        const k = keyOf(full);
-        if (!byKey.has(k)) added++;
-        byKey.set(k, full); // refresh freshness even if known
-      }
-      console.log(`  ✓ ${events.length} event(s) from ${url}`);
+    console.log(`• ${venue.name} [${methodOf(venue)}]`);
+    const { events, sourceUrl } = await collect(venue);
+    for (const ev of events) {
+      if (!ev.title || !ev.starts_at) continue;
+      const full: VenueEvent = {
+        ...ev,
+        venue_slug: venue.slug,
+        venue_name: venue.name,
+        category: venue.category,
+        source: { url: sourceUrl, fetchedAt: nowISO() },
+      };
+      const k = keyOf(full);
+      if (!byKey.has(k)) added++;
+      byKey.set(k, full); // refresh freshness even if known
     }
   }
 
