@@ -6,6 +6,7 @@ import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { isNonDiscoverable } from "@/lib/relevance";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
+import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
@@ -400,11 +401,19 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     p.source !== "seed" && p.source !== "manual" && e.editorial_summary?.trim()
       ? e.editorial_summary.trim()
       : p.short_blurb;
+  // Hours: a hand-curated structured schedule (seed/manual, e.g. the
+  // parks) always wins; otherwise parse Google's weekday strings into the
+  // structured shape getOpenStatus needs. THIS is the line that lifts
+  // open-now coverage from ~3.6% (curated only) to ~80% — the verified
+  // hours were always in the enrichment; nothing turned the
+  // "Monday: 9:00 AM - 5:00 PM" strings into { mon: [{ open, close }] }.
+  const hours = p.hours ?? parseGoogleHours(e.weekday_hours);
   return {
     ...p,
     geom,
     category,
     short_blurb,
+    hours,
     is_operational,
     // Curated data wins; Google fills the gaps. This is why ~96% of places
     // (DFP scrapes with no phone/site) stay blank until enriched.
