@@ -122,8 +122,12 @@ const BANNED: Array<{ rule: string; re: RegExp; allow?: RegExp }> = [
   {
     rule: "destination",
     re: new RegExp(`${B}destination${A}`, "i"),
-    // Brief 4.4: allow "destination" in a transit-route context.
-    allow: /\b(transit|route|bus|gtfs|headsign|bound|inbound|outbound|trip|stop)\b/i,
+    // Brief 4.4: allow "destination" in a transit-route context. Also
+    // allow property access (`req.destination`): the service worker
+    // source lives in a template literal, so the Web Request API's
+    // `.destination` is code, not editorial copy. A leading dot never
+    // occurs in real prose ("your destination" has a space).
+    allow: /\b(transit|route|bus|gtfs|headsign|bound|inbound|outbound|trip|stop)\b|\.destination\b/i,
   },
   // Brand Book No. 01 additions (May 2026). New banned words from the
   // STYLE.md Voice Guide v1 list. Selective subset — focused on

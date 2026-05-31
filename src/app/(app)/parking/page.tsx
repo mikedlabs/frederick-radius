@@ -62,7 +62,7 @@ const PARK_INTENTS: ParkIntent[] = [
   },
   {
     label: "Market Street shopping",
-    hint: "Boutiques, restaurants, the heart of downtown — Court Street Garage",
+    hint: "Boutiques, restaurants, the center of downtown — Court Street Garage",
     icon: ShoppingBag,
     accent: "var(--app-brand-2)",
     href: "/places/court-street-parking-garage-frederick",
@@ -165,7 +165,7 @@ export default function ParkingPage() {
           24/7, all on the ParkMobile app. Street parking is metered
           via numbered ParkMobile zones (the number is on the sign;
           enter it in the app to pay). Pick the garage closest to
-          your destination — distances downtown are tiny, but the
+          where you are headed — distances downtown are tiny, but the
           right garage saves a five-minute walk.
         </p>
       </header>
