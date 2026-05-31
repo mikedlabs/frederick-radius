@@ -1,0 +1,59 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>S6 Map-First</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EAE3D4;--ink:#1C1813;--ink2:#524B41;--ink3:#8A8174;--brand:#A63A20;--green:#2E6B45;--cool:#2C5366;--border:#D4C9B2;--sheet:#FBF7EE}
+*{box-sizing:border-box;margin:0;padding:0}body{font-family:Inter,sans-serif;background:#221e17;display:flex;justify-content:center;padding:18px 0}
+.p{width:390px;height:844px;border-radius:38px;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.5);background:var(--paper)}
+.serif{font-family:Fraunces,serif}
+/* the MAP fills the screen */
+.map{position:absolute;inset:0;background:
+ radial-gradient(circle at 30% 35%,rgba(46,107,69,.10),transparent 22%),
+ radial-gradient(circle at 64% 58%,rgba(44,83,102,.10),transparent 26%),
+ linear-gradient(180deg,#E7E0D0,#E0D8C6)}
+/* contour + roads suggestion */
+.map:before{content:"";position:absolute;inset:0;opacity:.5;background:repeating-radial-gradient(circle at 50% 42%,transparent 0 18px,rgba(120,110,90,.07) 18px 19px)}
+/* pins */
+.pin{position:absolute;width:30px;height:30px;border-radius:50% 50% 50% 4px;transform:rotate(45deg);display:grid;place-items:center;box-shadow:0 4px 10px rgba(0,0,0,.25);border:2px solid #fff}
+.pin span{transform:rotate(-45deg);font-size:13px}
+.ring{position:absolute;width:230px;height:230px;border-radius:50%;border:2px dashed rgba(166,58,32,.5);background:rgba(166,58,32,.06);left:50%;top:40%;transform:translate(-50%,-50%)}
+.me{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;background:var(--brand);border:3px solid #fff;box-shadow:0 0 0 6px rgba(166,58,32,.18)}
+.tb{position:absolute;top:14px;left:16px;right:16px;display:flex;gap:10px;z-index:9}
+.tb .sr{flex:1;background:rgba(251,247,238,.95);backdrop-filter:blur(8px);border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.tb .sr span{color:var(--ink3);font-size:14px}
+.tb .ic{width:46px;background:rgba(251,247,238,.95);border-radius:14px;display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.12);color:var(--ink2)}
+/* filter chips floating */
+.fc{position:absolute;top:70px;left:0;right:0;display:flex;gap:8px;overflow-x:auto;padding:0 16px;z-index:9}
+.fc .c{flex:0 0 auto;background:rgba(251,247,238,.95);border-radius:30px;padding:8px 15px;font-size:13px;font-weight:600;color:var(--ink2);box-shadow:0 4px 12px rgba(0,0,0,.1)}
+.fc .c.on{background:var(--ink);color:#fff}
+/* bottom sheet peeking */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sheet);border-radius:26px 26px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.18);padding:10px 20px 90px;z-index:10;height:340px}
+.handle{width:40px;height:5px;border-radius:5px;background:var(--border);margin:2px auto 14px}
+.sheet h2{font-family:Fraunces;font-size:20px;font-weight:600;color:var(--ink)}
+.sheet .cnt{font-size:12px;color:var(--ink3);margin-top:2px;margin-bottom:12px}
+.li{display:flex;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}.li:last-child{border:0}
+.th{width:48px;height:48px;border-radius:12px;flex:0 0 auto}
+.nm{font-family:Fraunces;font-size:15.5px;font-weight:600;line-height:1.1;color:var(--ink)}.mt{font-size:12px;color:var(--ink3);margin-top:3px}
+.dist{margin-left:auto;font-size:12px;font-weight:600;color:var(--brand)}
+.nav{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);width:344px;height:62px;background:rgba(251,247,238,.97);backdrop-filter:blur(14px);border-radius:22px;display:flex;align-items:center;justify-content:space-around;box-shadow:0 12px 30px rgba(0,0,0,.16);z-index:20}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:9.5px;color:var(--ink3);text-decoration:none;font-weight:600}.nav a.on{color:var(--brand)}
+.tag{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#1C1813;color:#fff;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;z-index:30;font-weight:600}
+</style></head><body><div class="p"><div class="tag">S6 · Map-First</div>
+<div class="map">
+ <div class="ring"></div><div class="me"></div>
+ <div class="pin" style="left:38%;top:28%;background:var(--brand)"><span>🍴</span></div>
+ <div class="pin" style="left:58%;top:33%;background:var(--purple,#7E2C6F)"><span>🎭</span></div>
+ <div class="pin" style="left:30%;top:48%;background:var(--green)"><span>🌲</span></div>
+ <div class="pin" style="left:64%;top:50%;background:var(--cool)"><span>☕</span></div>
+ <div class="pin" style="left:46%;top:55%;background:#C99632"><span>🍺</span></div>
+</div>
+<div class="tb"><div class="sr"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A8174" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg><span>Search Frederick County…</span></div><div class="ic">⚙</div></div>
+<div class="fc"><span class="c on">All</span><span class="c">Eat</span><span class="c">Drink</span><span class="c">See</span><span class="c">Outdoors</span></div>
+<div class="sheet"><div class="handle"></div><h2>Within a 10-min walk</h2><div class="cnt">128 places open now near you</div>
+<div class="li"><div class="th" style="background:linear-gradient(135deg,#C99632,#B26B00)"></div><div><div class="nm">Brewer's Alley</div><div class="mt">Restaurant · Open now</div></div><span class="dist">4 min</span></div>
+<div class="li"><div class="th" style="background:linear-gradient(135deg,#7E2C6F,#5B1E55)"></div><div><div class="nm">Sky Stage</div><div class="mt">Arts venue · Open</div></div><span class="dist">6 min</span></div>
+<div class="li"><div class="th" style="background:linear-gradient(135deg,#2E6B45,#2E3B2C)"></div><div><div class="nm">Carroll Creek Park</div><div class="mt">Park · Open</div></div><span class="dist">3 min</span></div>
+</div>
+<div class="nav"><a><span style="font-size:18px">☀</span>Today</a><a class="on"><span style="font-size:18px">🗺</span>Map</a><a><span style="font-size:18px">📅</span>Events</a><a><span style="font-size:18px">🔖</span>Saved</a></div>
+</div></body></html>

@@ -1,0 +1,74 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>North Star — Place</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EBE3D2;--card:#FCF8EF;--ink:#231D15;--ink2:#574E40;--ink3:#857B68;--brand:#A53A20;--green:#33623A;--cool:#2F5763;--gold:#9C7A33;--border:#D6C9AD}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:Inter,sans-serif;background:#211c14;display:flex;justify-content:center;padding:18px 0}
+.p{width:390px;height:880px;border-radius:40px;overflow:hidden;position:relative;box-shadow:0 30px 90px rgba(0,0,0,.55);background:#1a1610}
+.mono{font-family:'IBM Plex Mono',monospace}.serif{font-family:Fraunces,serif}
+/* dimmed map behind */
+.bg{position:absolute;inset:0;background:linear-gradient(180deg,#E6DECC,#DED5C0);filter:brightness(.7)}
+.scrim{position:absolute;inset:0;background:rgba(20,16,10,.4)}
+/* the sheet */
+.sheet{position:absolute;left:0;right:0;bottom:0;top:88px;background:var(--card);border-radius:26px 26px 0 0;overflow:hidden;box-shadow:0 -16px 50px rgba(0,0,0,.35);z-index:5}
+.handle{width:42px;height:5px;border-radius:5px;background:rgba(255,255,255,.7);position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:9}
+.scl{height:100%;overflow-y:auto}
+.hero{height:210px;background:linear-gradient(135deg,#C99632,#9a3a20);position:relative}
+.hero .dots{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;gap:5px}
+.hero .dots i{width:6px;height:6px;border-radius:9px;background:#fff6;display:block}.hero .dots i.on{background:#fff}
+.hero .clo{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.4);backdrop-filter:blur(8px);display:grid;place-items:center;color:#fff;font-size:15px}
+.body{padding:18px 20px 110px}
+.kick{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--brand)}
+h1{font-family:Fraunces;font-size:26px;font-weight:600;color:var(--ink);line-height:1.05;margin-top:6px}
+.meta{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:20px}
+.badge.open{background:color-mix(in srgb,var(--green) 16%,#fff);color:var(--green)}
+.badge.g{background:var(--paper);color:var(--ink2)}
+.row2{display:flex;gap:10px;margin-top:16px}
+.act{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--paper);color:var(--ink);text-decoration:none}
+.act .ic{font-size:18px}.act .l{font-size:11px;font-weight:600}
+.act.prime{background:var(--brand);color:#fff;border-color:var(--brand)}
+.desc{margin-top:18px;font-size:14px;line-height:1.6;color:var(--ink2)}
+.facts{margin-top:18px;border:1px solid var(--border);border-radius:14px;background:var(--paper);overflow:hidden}
+.f{display:flex;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--ink2)}.f:last-child{border:0}
+.f .k{color:var(--ink3);width:64px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.f .v{color:var(--ink);font-weight:500}
+.ph2{font-family:Fraunces;font-size:18px;font-weight:600;color:var(--ink);margin:22px 0 12px}
+.mini{height:120px;border-radius:14px;background:linear-gradient(180deg,#E6DECC,#DED5C0);position:relative;border:1px solid var(--border)}
+.mini .mp{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);font-size:24px}
+.tag{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:5px 13px;border-radius:20px;z-index:30;font-weight:600;font-family:'IBM Plex Mono'}
+</style></head><body><div class="p">
+<div class="tag">★ Place detail · the sheet</div>
+<div class="bg"></div><div class="scrim"></div>
+<div class="sheet">
+ <div class="handle"></div>
+ <div class="scl">
+  <div class="hero"><div class="clo">✕</div><div class="dots"><i class="on"></i><i></i><i></i><i></i></div></div>
+  <div class="body">
+   <div class="kick">Restaurant · American · $$</div>
+   <h1>Brewer's Alley</h1>
+   <div class="meta">
+    <span class="badge open">● Open now · until 11pm</span>
+    <span class="badge g">★ 4.6 (1,240)</span>
+    <span class="badge g">🚶 4-min walk</span>
+   </div>
+   <div class="row2">
+    <a class="act prime"><span class="ic">🧭</span><span class="l">Directions</span></a>
+    <a class="act"><span class="ic">📞</span><span class="l">Call</span></a>
+    <a class="act"><span class="ic">🌐</span><span class="l">Website</span></a>
+    <a class="act"><span class="ic">🔖</span><span class="l">Save</span></a>
+   </div>
+   <div class="desc">Frederick's original brewpub — house-brewed lagers and ales poured beside elevated pub fare, right on Market Street. A reliable downtown anchor for a casual dinner or a pint after work.</div>
+   <div class="facts">
+    <div class="f"><span class="k">Hours</span><span class="v">11:00 AM – 11:00 PM today</span></div>
+    <div class="f"><span class="k">Address</span><span class="v">124 N Market St, Frederick</span></div>
+    <div class="f"><span class="k">Phone</span><span class="v">(301) 631-0089</span></div>
+   </div>
+   <div class="ph2">On the map</div>
+   <div class="mini"><div class="mp">📍</div></div>
+  </div>
+ </div>
+</div>
+</div></body></html>

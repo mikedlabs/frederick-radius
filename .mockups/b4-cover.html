@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>B4 — Guidebook Cover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,400&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EFE6D2;--card:#F6EFDD;--ink:#231E16;--ink2:#4A4234;--ink3:#736A55;--brand:#9A3320;--green:#3D5230;--cool:#2F5560;--gold:#A07B2E;--border:#D0C3A4}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:Inter,sans-serif;background:#221d15;display:flex;justify-content:center;padding:18px 0}
+.phone{width:390px;background:var(--paper);min-height:844px;border-radius:38px;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.phone:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;opacity:.05;mix-blend-mode:multiply;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+.mono{font-family:'IBM Plex Mono',monospace}.serif{font-family:Fraunces,serif}
+.scroll{height:844px;overflow-y:auto;position:relative;z-index:2}
+/* COVER PLATE — full-bleed top like a book cover */
+.cover{margin:14px 14px 0;border:2px solid var(--ink);border-radius:8px;padding:8px;position:relative}
+.cover .inner{border:1px solid var(--gold);border-radius:4px;padding:26px 20px 22px;text-align:center;background:linear-gradient(170deg,#F8F1DF,#EBDFC4)}
+.cover .crest{width:46px;height:46px;margin:0 auto 12px;border-radius:50%;border:2px solid var(--brand);display:grid;place-items:center;color:var(--brand);font-size:22px;background:#fff8}
+.cover .t1{font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:.36em;text-transform:uppercase;color:var(--brand)}
+.cover h1{font-family:Fraunces;font-weight:900;font-size:33px;line-height:.98;color:var(--ink);margin:12px 0 6px;letter-spacing:-.01em}
+.cover .it{font-family:Fraunces;font-style:italic;font-size:13.5px;color:var(--ink2)}
+.cover .orn{margin:14px auto 0;width:60%;height:1px;background:var(--ink3);position:relative;opacity:.5}
+.cover .orn:after{content:"❖";position:absolute;left:50%;top:-9px;transform:translateX(-50%);background:#F3EAD6;padding:0 8px;color:var(--gold);font-size:11px}
+.cover .est{font-family:'IBM Plex Mono';font-size:9px;letter-spacing:.14em;color:var(--ink3);margin-top:12px}
+.body{padding:6px 20px 96px}
+.ph{display:flex;align-items:baseline;gap:9px;margin:24px 0 12px}
+.ph .pl{font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--ink3)}
+.ph h2{font-family:Fraunces;font-size:22px;font-weight:600;color:var(--ink)}
+.ph .ln{flex:1;height:1px;background:var(--ink3);opacity:.45;position:relative;top:-3px}
+.ph .ln:after{content:"";position:absolute;right:0;top:-2px;width:1px;height:6px;background:var(--brand)}
+/* contents-style intent list */
+.toc{border-top:1.5px solid var(--ink)}
+.te{display:flex;align-items:center;gap:12px;padding:13px 2px;border-bottom:1px solid var(--border)}
+.te .ic{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:#fff;font-size:16px;flex:0 0 auto}
+.te .nm{font-family:Fraunces;font-size:17px;font-weight:600;color:var(--ink);flex:1}
+.te .dots{flex:1;border-bottom:1.5px dotted var(--border);height:1px;margin:0 4px}
+.te .ct{font-family:'IBM Plex Mono';font-size:11px;color:var(--ink3)}
+.idx{border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,.35);margin-top:4px}
+.r{display:flex;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px dashed var(--border)}
+.r:last-child{border-bottom:0}
+.r .dt{width:34px;text-align:center;font-family:'IBM Plex Mono';font-size:9.5px;color:var(--brand);font-weight:600}
+.r .dt b{display:block;font-family:Fraunces;font-size:17px;color:var(--ink)}
+.r .nm{font-family:Fraunces;font-size:15px;font-weight:600;color:var(--ink);line-height:1.15}
+.r .mt{font-size:11px;color:var(--ink3);margin-top:2px}
+.r .tk{width:7px;height:7px;border-radius:9px}
+.nav{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);width:332px;height:60px;background:var(--card);border:1.5px solid var(--ink);border-radius:6px;display:flex;align-items:center;justify-content:space-around;z-index:10}
+.nav a{display:flex;flex-direction:column;align-items:center;gap:3px;font-family:'IBM Plex Mono';font-size:8.5px;text-transform:uppercase;color:var(--ink3);text-decoration:none}
+.nav a.on{color:var(--brand)}
+.tag{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#231E16;color:var(--paper);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:4px 11px;border-radius:20px;z-index:20;font-weight:600;font-family:'IBM Plex Mono'}
+</style></head><body><div class="phone">
+<div class="tag">B4 · Guidebook Cover</div>
+<div class="scroll">
+  <div class="cover"><div class="inner">
+    <div class="crest">◎</div>
+    <div class="t1">A Field Guide to Frederick County</div>
+    <h1>Saturday Evening</h1>
+    <div class="it">clear skies &amp; 73° — the thirtieth of May</div>
+    <div class="orn"></div>
+    <div class="est">128 OPEN NOW · 14 TONIGHT · 9 TOWNS</div>
+  </div></div>
+  <div class="body">
+    <div class="ph"><span class="pl">Contents</span><h2>What do you need?</h2><span class="ln"></span></div>
+    <div class="toc">
+      <div class="te"><span class="ic" style="background:var(--brand)">🍴</span><span class="nm">Eat &amp; drink</span><span class="dots"></span><span class="ct">128</span></div>
+      <div class="te"><span class="ic" style="background:#7E2C6F">🎭</span><span class="nm">See &amp; do</span><span class="dots"></span><span class="ct">18</span></div>
+      <div class="te"><span class="ic" style="background:var(--green)">🌲</span><span class="nm">Outdoors</span><span class="dots"></span><span class="ct">40</span></div>
+      <div class="te"><span class="ic" style="background:var(--gold)">👪</span><span class="nm">With kids</span><span class="dots"></span><span class="ct">26</span></div>
+      <div class="te"><span class="ic" style="background:var(--cool)">📍</span><span class="nm">Open right now</span><span class="dots"></span><span class="ct">↗</span></div>
+    </div>
+    <div class="ph"><span class="pl">Plate I</span><h2>On tonight</h2><span class="ln"></span></div>
+    <div class="idx">
+      <div class="r"><div class="dt">MAY<b>30</b></div><span class="tk" style="background:var(--brand)"></span><div><div class="nm">Color on the Creek — Opening</div><div class="mt">Now · Carroll Creek · Free</div></div></div>
+      <div class="r"><div class="dt">MAY<b>30</b></div><span class="tk" style="background:var(--green)"></span><div><div class="nm">Alive @ Five — Mack Berry Band</div><div class="mt">5:00 PM · Downtown</div></div></div>
+      <div class="r"><div class="dt">MAY<b>31</b></div><span class="tk" style="background:var(--cool)"></span><div><div class="nm">First Friday — June Art Walk</div><div class="mt">5:00 PM · Market Street</div></div></div>
+    </div>
+  </div>
+</div>
+<div class="nav"><a class="on"><span style="font-size:15px">❂</span>Today</a><a><span style="font-size:15px">◬</span>Map</a><a><span style="font-size:15px">❍</span>Events</a><a><span style="font-size:15px">✦</span>Saved</a></div>
+</div></body></html>
