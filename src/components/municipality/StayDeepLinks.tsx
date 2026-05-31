@@ -61,7 +61,7 @@ export default function StayDeepLinks({
     {
       label: "VRBO",
       href: vrboUrl,
-      sub: vrboTownPath === "frederick" ? "Frederick destination page" : "Frederick County destination",
+      sub: vrboTownPath === "frederick" ? "Frederick rentals page" : "Frederick County rentals",
     },
     {
       label: "Booking.com",
