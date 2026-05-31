@@ -1,0 +1,5 @@
+{
+  "_README": "Hand-curated 'local favorite' overrides for the visitor curated picks ranking. 'picks' force a place to read as a local favorite regardless of its Google rating/review count (use for the gems locals send people to that the data can't see). 'exclude' force OFF the data-derived local-favorite proxy for a place (use for tourist traps that score well on Google but locals wouldn't send a friend to). Until this file is curated, the data proxy in places.ts (high rating + enough reviews + verified) supplies the signal on its own. Edit by hand; slugs must match src/data/places.ts.",
+  "picks": [],
+  "exclude": []
+}

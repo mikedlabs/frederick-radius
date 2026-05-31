@@ -11,6 +11,7 @@ import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" }
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import KNOWN_FOR_RAW from "@/data/known-for.json" with { type: "json" };
+import LOCAL_FAVORITES_RAW from "@/data/local-favorites.json" with { type: "json" };
 import SEASONAL_RAW from "@/data/seasonal-places.json" with { type: "json" };
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
@@ -121,6 +122,61 @@ type KnownFor = {
   extracted_at?: string;
 };
 const KNOWN_FOR = KNOWN_FOR_RAW as Record<string, KnownFor>;
+
+/**
+ * Local-favorite signal — the "a friend would send you here" axis the
+ * visitor curated-picks ranking blends in (see rankPlaces profile:
+ * "visitor"). Two layers:
+ *
+ *   1. Hand-picks (local-favorites.json → `picks`). Editorial truth
+ *      that no metric can see: the gem locals love that has few Google
+ *      reviews, the institution everyone names. Always wins.
+ *   2. Data proxy (isLocalFavoriteByData). Until the hand-pick list is
+ *      curated, a high Google rating + enough reviews + verified-open
+ *      stands in for "locals vouch for this." `exclude` force-removes a
+ *      place from the proxy (the well-reviewed tourist trap a local
+ *      wouldn't actually recommend).
+ *
+ * This is the approach we committed to: ship on the data proxy now,
+ * let the hand-pick list override and accrete over time.
+ */
+const LOCAL_FAVORITE_PICKS = new Set<string>(
+  (LOCAL_FAVORITES_RAW.picks as string[] | undefined) ?? [],
+);
+const LOCAL_FAVORITE_EXCLUDE = new Set<string>(
+  (LOCAL_FAVORITES_RAW.exclude as string[] | undefined) ?? [],
+);
+
+/** Minimum Google reviews before a high rating counts as a vouch.
+ *  A 5.0 with three reviews is noise; ~40 is a real local signal. */
+const LOCAL_FAVORITE_MIN_REVIEWS = 40;
+/** Rating floor for the data proxy. Tuned to "a local would send you." */
+const LOCAL_FAVORITE_MIN_RATING = 4.5;
+
+function isLocalFavoriteByData(
+  rating: number | undefined,
+  count: number | undefined,
+  verified: boolean | undefined,
+): boolean {
+  return (
+    Boolean(verified) &&
+    (rating ?? 0) >= LOCAL_FAVORITE_MIN_RATING &&
+    (count ?? 0) >= LOCAL_FAVORITE_MIN_REVIEWS
+  );
+}
+
+/** Resolve the final local-favorite flag: hand-pick wins, then proxy,
+ *  with the exclude list vetoing the proxy (never the hand-pick). */
+export function resolveLocalFavorite(
+  slug: string,
+  rating: number | undefined,
+  count: number | undefined,
+  verified: boolean | undefined,
+): boolean {
+  if (LOCAL_FAVORITE_PICKS.has(slug)) return true;
+  if (LOCAL_FAVORITE_EXCLUDE.has(slug)) return false;
+  return isLocalFavoriteByData(rating, count, verified);
+}
 
 /**
  * The HUMAN data-cleaning layer (places-overrides.json, written by
@@ -238,6 +294,11 @@ export type PlaceEnriched = {
   google_photos?: string[];
   google_rating?: number;
   google_rating_count?: number;
+  /** "A friend would send you here." Hand-picked in local-favorites.json
+   *  or derived from a strong, well-reviewed, verified Google profile.
+   *  Blended into the visitor curated-picks ranking and surfaced as a
+   *  "Local favorite" trust chip. */
+  local_favorite?: boolean;
   /** Human-readable weekly hours from Google */
   google_hours?: string[];
   /** True once Google has verified this place */
@@ -295,7 +356,14 @@ export type PlaceCardData = Place & PlaceEnriched & {
 
 function applyEnrichment(p: Place): Place & PlaceEnriched {
   const e = ENRICHMENT[p.slug];
-  if (!e) return { ...p, last_verified_at: SEED_PLACE_VERIFIED_AT };
+  if (!e)
+    return {
+      ...p,
+      last_verified_at: SEED_PLACE_VERIFIED_AT,
+      // No Google profile to derive from, but an editorial hand-pick
+      // still counts (and that is the whole reason hand-picks exist).
+      local_favorite: resolveLocalFavorite(p.slug, undefined, undefined, p.is_verified),
+    };
   // Google business_status overrides our seed guess — it's authoritative.
   const is_operational =
     e.business_status === "CLOSED_PERMANENTLY" ? "closed_permanently" :
@@ -360,6 +428,12 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     google_photos: photos.map((n) => photoProxy(n, 800, p.slug)),
     google_rating: e.rating,
     google_rating_count: e.user_rating_count,
+    local_favorite: resolveLocalFavorite(
+      p.slug,
+      e.rating,
+      e.user_rating_count,
+      e.business_status === "OPERATIONAL" ? true : p.is_verified,
+    ),
     google_hours: e.weekday_hours,
     google_verified: Boolean(e.business_status && e.business_status !== "UNKNOWN"),
     review_snippet: e.review_snippet?.trim() || undefined,
@@ -460,6 +534,14 @@ export type RankingContext = {
   municipality?: string;
   tags?: string[];
   limit?: number;
+  /**
+   * Ranking profile. Default (undefined) keeps the legacy
+   * curation-led sort that every existing surface depends on. "visitor"
+   * switches to the blended four-signal recipe (ratings + local-favorite
+   * + closest/open + moment-fit) tuned for a stranger asking "where
+   * should I go right now?" — see visitorScore and getCuratedPicks.
+   */
+  profile?: "visitor";
 };
 
 function proximityScore(distance_m: number | undefined): number {
@@ -476,6 +558,91 @@ function openScore(status: OpenStatus): number {
   if (status.state === "closing-soon") return 0.6;
   if (status.state === "unknown") return 0.5;
   return 0;
+}
+
+/**
+ * Rating axis (0–1) for the visitor blend. Bayesian shrinkage toward a
+ * neutral prior so a 5.0 with three reviews does not outrank a 4.6 with
+ * eight hundred — the exact failure mode that makes a "best nearby"
+ * list feel untrustworthy to a stranger. A place with no rating returns
+ * the neutral midpoint rather than 0, so the unrated aren't buried on a
+ * signal they simply lack (their curation/proximity still carry them).
+ */
+const RATING_PRIOR_MEAN = 4.0; // county-wide center of mass for Google stars
+const RATING_PRIOR_WEIGHT = 30; // reviews of "pull" toward the prior
+export function ratingScore(rating: number | undefined, count: number | undefined): number {
+  if (rating === undefined) return 0.5;
+  const n = count ?? 0;
+  const bayes = (n * rating + RATING_PRIOR_WEIGHT * RATING_PRIOR_MEAN) / (n + RATING_PRIOR_WEIGHT);
+  // Map the meaningful band [3.0 … 5.0] onto [0 … 1]; clamp the tails.
+  return Math.max(0, Math.min(1, (bayes - 3.0) / 2.0));
+}
+
+/**
+ * Curation axis (0–1): the editorial/quality judgement. feature_score is
+ * 0–10 (normalized here — the legacy default sort multiplied it raw,
+ * which silently made it ~85% of that blend), lifted by the
+ * local-favorite signal so "a friend would send you here" measurably
+ * moves a place up.
+ */
+export function curationScore(featureScore: number, localFavorite: boolean | undefined): number {
+  const base = Math.max(0, Math.min(1, featureScore / 10));
+  const boost = localFavorite ? 0.15 : 0;
+  return Math.min(1, base + boost);
+}
+
+/** Coarse Eastern daypart for moment-fit. Local copy so the loader has
+ *  no dependency cycle with now-picks.ts (which imports rankPlaces). */
+function dayPartLocal(d: Date): "morning" | "midday" | "evening" {
+  const hour =
+    parseInt(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        hour: "numeric",
+        hour12: false,
+      }).format(d),
+      10,
+    ) % 24;
+  if (hour < 10) return "morning";
+  if (hour < 16) return "midday";
+  return "evening";
+}
+
+const MOMENT_FIT: Record<"morning" | "midday" | "evening", ReadonlySet<string>> = {
+  morning: new Set(["coffee", "bakery", "breakfast", "cafe", "park", "trail", "outdoors", "market"]),
+  midday: new Set([
+    "restaurant", "cafe", "coffee", "museum", "gallery", "park", "trail",
+    "outdoors", "market", "shopping", "playground", "family",
+  ]),
+  evening: new Set([
+    "restaurant", "bar", "brewery", "winery", "pizza", "music", "theater", "gallery",
+  ]),
+};
+
+/**
+ * Moment-fit axis (0–1): does this place suit the time the visitor is
+ * actually standing there? A coffee shop scores high at 8am and low at
+ * 9pm; a brewery the reverse. Categories with no strong daypart read sit
+ * at a neutral 0.6 so they're neither boosted nor punished.
+ */
+export function momentFitScore(category: string, now: Date): number {
+  return MOMENT_FIT[dayPartLocal(now)].has(category) ? 1 : 0.6;
+}
+
+/**
+ * The visitor blend (0–1). All four signals the product brief calls out,
+ * weighted to sum to 1: ratings & reviews, local-favorite curation,
+ * closest-&-open, and right-for-the-moment. This is the "what a friend
+ * would tell you" recipe — opt in via rankPlaces({ profile: "visitor" }).
+ */
+function visitorScore(p: PlaceCardData, now: Date): number {
+  const proximityOpen = proximityScore(p.distance_m) * 0.6 + openScore(p.open_status) * 0.4;
+  return (
+    ratingScore(p.google_rating, p.google_rating_count) * 0.28 +
+    curationScore(p.feature_score, p.local_favorite) * 0.28 +
+    proximityOpen * 0.24 +
+    momentFitScore(p.category, now) * 0.2
+  );
 }
 
 /**
@@ -640,13 +807,39 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
     results = results.filter((p) => p.open_status.state !== "closed");
   }
 
-  results.sort((a, b) => {
-    const sa = a.feature_score * 0.4 + proximityScore(a.distance_m) * 0.3 + openScore(a.open_status) * 0.3;
-    const sb = b.feature_score * 0.4 + proximityScore(b.distance_m) * 0.3 + openScore(b.open_status) * 0.3;
-    return sb - sa;
-  });
+  if (ctx.profile === "visitor") {
+    results.sort((a, b) => visitorScore(b, now) - visitorScore(a, now));
+  } else {
+    results.sort((a, b) => {
+      const sa = a.feature_score * 0.4 + proximityScore(a.distance_m) * 0.3 + openScore(a.open_status) * 0.3;
+      const sb = b.feature_score * 0.4 + proximityScore(b.distance_m) * 0.3 + openScore(b.open_status) * 0.3;
+      return sb - sa;
+    });
+  }
 
   return ctx.limit ? results.slice(0, ctx.limit) : results;
+}
+
+/**
+ * The curated short-list behind "Find somewhere good" — the answer to a
+ * visitor standing somewhere, hungry, asking where a local would send
+ * them. Not the full firehose: open-or-closing-soon, blended by the
+ * four-signal visitor recipe, capped short. Pass a `category` (e.g.
+ * "restaurant", "coffee", "bar") to scope it to the moment's craving.
+ *
+ * This is deliberately a thin wrapper over rankPlaces({ profile:
+ * "visitor" }) so every caller shares one ranking definition.
+ */
+export function getCuratedPicks(
+  ctx: Omit<RankingContext, "profile" | "preferOpen"> & { limit?: number } = {},
+): PlaceCardData[] {
+  const { limit = 12, ...rest } = ctx;
+  return rankPlaces({
+    ...rest,
+    profile: "visitor",
+    preferOpen: true, // a stranger deciding now can't use a closed door
+    limit,
+  });
 }
 
 export function placesWithinRadius(origin: LngLat, meters: number, now: Date = new Date()): PlaceCardData[] {
