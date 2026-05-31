@@ -13,6 +13,8 @@ import Image from "next/image";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import TownStrip from "@/components/municipality/TownStrip";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
+import CivicCard from "@/components/municipality/CivicCard";
+import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 export const revalidate = 600;
@@ -91,6 +93,9 @@ export default async function MunicipalityPage(
 
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
+  // Buried-civic answers for this town (trash/recycling, hall, permits…),
+  // null until the extraction agent populates it. The card self-hides.
+  const civic = municipalCivicFor(m.slug);
 
   // Town hero — each town gets its OWN identifiable photo instead of
   // a generic rotating aerial. The picker has three tiers:
@@ -185,6 +190,11 @@ export default async function MunicipalityPage(
       <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         {m.description}
       </p>
+
+      {/* Buried-civic answers — the moat. Town hall, trash/recycling,
+          permits, utilities, with source + freshness. Self-hides until
+          the extraction agent has populated this town. */}
+      <CivicCard rec={civic} />
 
       {/* Worth your time — the answer to "what's here." Top 8 by
           feature score; grid-by-default so a scroll feels like a

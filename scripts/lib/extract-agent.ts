@@ -51,7 +51,14 @@ export async function fetchPageText(
     try {
       const { chromium } = await import("@playwright/test");
       const browser = await chromium.launch();
-      const page = await browser.newPage({ userAgent: UA });
+      const page = await browser.newPage({
+        userAgent: UA,
+        // Opt-in escape hatch for environments behind a TLS-intercepting
+        // proxy whose CA the bundled Chromium does not trust (render would
+        // otherwise fail ERR_CERT_AUTHORITY_INVALID on every page). Off by
+        // default, so production and CI keep full certificate validation.
+        ignoreHTTPSErrors: process.env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS === "1",
+      });
       await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
       await page.waitForTimeout(1200); // let late calendar widgets settle
       const text = (await page.innerText("body")).replace(/\s+/g, " ").trim().slice(0, maxChars);

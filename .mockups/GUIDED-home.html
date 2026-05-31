@@ -1,0 +1,165 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Guided Home — What are you after?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+ --paper:#F4EFE6;--paper2:#ECE5D5;--card:#FCF8EF;--ink:#1A1815;--ink2:#4A4844;--ink3:#857B68;
+ --brand:#A03A22;--green:#2E3B2C;--cool:#2F5763;--gold:#B26B00;--purple:#7E2C6F;--border:#DBCEB2
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:Inter,system-ui,sans-serif;background:#211c14;display:flex;justify-content:center;gap:36px;padding:30px;flex-wrap:wrap}
+.p{width:390px;background:var(--paper);height:880px;border-radius:40px;overflow:hidden;position:relative;box-shadow:0 30px 90px rgba(0,0,0,.55)}
+.p:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:6;opacity:.04;mix-blend-mode:multiply;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>")}
+.mono{font-family:'IBM Plex Mono',monospace}.serif{font-family:Fraunces,serif}
+.sc{height:880px;overflow-y:auto;padding:54px 22px 30px;position:relative;z-index:2}
+.tb{position:absolute;top:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:10}
+.bw{display:flex;align-items:center;gap:9px}
+.logo{width:30px;height:30px;border-radius:9px;background:var(--brand);display:grid;place-items:center;color:#fff;font-size:15px;box-shadow:0 3px 8px rgba(160,58,34,.3)}
+.bw b{font-family:Fraunces;font-size:15px;font-weight:600;color:var(--ink);line-height:1}
+.bw span{font-family:'IBM Plex Mono';font-size:7px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);display:block;margin-top:2px}
+.back{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;color:var(--ink2);font-size:17px}
+.pill{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;color:var(--ink3);font-size:14px}
+.crumb{font-family:'IBM Plex Mono';font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);display:flex;align-items:center;gap:7px}
+.crumb b{color:var(--brand);font-weight:700}
+/* calm orienting line — ONE sentence, no dashboard */
+.eyebrow{font-family:'IBM Plex Mono';font-size:10.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--brand)}
+.ask{font-family:Fraunces;font-size:34px;font-weight:600;letter-spacing:-.02em;color:var(--ink);line-height:1.04;margin-top:12px}
+.ask .lt{color:var(--ink3);font-weight:400;font-style:italic}
+.sub{margin-top:12px;font-size:13.5px;color:var(--ink2);line-height:1.5}
+/* the few warm doors — generous, calm, NOT a category grid */
+.doors{margin-top:24px;display:flex;flex-direction:column;gap:12px}
+.door{position:relative;display:flex;align-items:center;gap:15px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:17px 18px;box-shadow:0 5px 16px rgba(26,24,21,.05)}
+.door .ic{width:50px;height:50px;border-radius:14px;display:grid;place-items:center;font-size:24px;flex:0 0 auto}
+.door .tx .nm{font-family:Fraunces;font-size:18px;font-weight:600;color:var(--ink);line-height:1.1}
+.door .tx .ct{font-size:12px;color:var(--ink3);margin-top:3px}
+.door .arr{margin-left:auto;color:var(--border);font-size:22px}
+/* natural-language search — "or just tell me" */
+.orline{display:flex;align-items:center;gap:12px;margin:22px 2px 0}
+.orline .ln{flex:1;height:1px;background:var(--border)}
+.orline span{font-family:'IBM Plex Mono';font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.search{margin-top:14px;display:flex;align-items:center;gap:11px;background:var(--paper2);border:1px solid var(--border);border-radius:15px;padding:15px 16px}
+.search span{color:var(--ink3);font-size:13.5px}
+/* one quiet contextual nudge */
+.nudge{margin-top:20px;display:flex;align-items:center;gap:12px;background:linear-gradient(100deg,var(--card),#F7EFDE);border:1px solid var(--border);border-radius:16px;padding:14px 16px}
+.nudge .d{width:9px;height:9px;border-radius:9px;background:var(--green);flex:0 0 auto;box-shadow:0 0 0 4px color-mix(in srgb,var(--green) 18%,transparent)}
+.nudge .tx b{font-size:13px;color:var(--ink);font-weight:600;display:block}
+.nudge .tx span{font-size:11.5px;color:var(--ink3)}
+.nudge .arr{margin-left:auto;color:var(--ink3);font-size:16px}
+.tag{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:9px;letter-spacing:.12em;text-transform:uppercase;padding:5px 13px;border-radius:20px;z-index:20;font-weight:600;font-family:'IBM Plex Mono'}
+.cap{color:#cdbf9f;font-family:'IBM Plex Mono';font-size:10.5px;letter-spacing:.04em;text-align:center;max-width:390px;line-height:1.6}
+/* ===== SCREEN B: one tap in, warmer ===== */
+.refine{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.rf{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:15px;min-height:84px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 5px 14px rgba(26,24,21,.05)}
+.rf .e{font-size:21px}
+.rf .nm{font-family:Fraunces;font-size:15.5px;font-weight:600;color:var(--ink);margin-top:8px}
+.rf .ct{font-family:'IBM Plex Mono';font-size:8.5px;letter-spacing:.04em;color:var(--ink3);margin-top:2px}
+.rf.wide{grid-column:1/3;min-height:auto;flex-direction:row;align-items:center;gap:13px;background:linear-gradient(105deg,var(--card),#F7EFDE)}
+.rf.wide .e{font-size:23px}
+.skip{margin:22px 0 6px;text-align:center}
+.skip span{font-family:'IBM Plex Mono';font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.skip span b{color:var(--brand);font-weight:700}
+/* lead pick (payoff) */
+.lead{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--border);box-shadow:0 12px 30px rgba(26,24,21,.12);margin-top:14px}
+.lead .im{height:140px;position:relative;background:linear-gradient(135deg,var(--brand),#7E2C6F)}
+.lead .fav{position:absolute;left:12px;top:12px;display:flex;align-items:center;gap:5px;background:rgba(252,248,239,.95);border-radius:30px;padding:6px 11px;font-size:10px;font-weight:700;color:var(--brand)}
+.lead .fav .st{color:var(--gold)}
+.lead .walk{position:absolute;right:12px;top:12px;background:rgba(20,18,16,.78);color:#fff;border-radius:30px;padding:6px 10px;font-size:10px;font-weight:600}
+.lead .bd{padding:13px 16px 15px;background:var(--card)}
+.lead .k{font-family:'IBM Plex Mono';font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+.lead h3{font-family:Fraunces;font-size:19px;font-weight:600;color:var(--ink);margin-top:4px}
+.lead .why{color:var(--ink2);font-size:12px;margin-top:6px;line-height:1.45}
+.lead .rate{margin-top:9px;font-size:11.5px;color:var(--ink2);font-weight:600}
+.lead .rate .stars{color:var(--gold);letter-spacing:1px}
+.lead .rate .ct{color:var(--ink3);font-weight:500}
+</style></head><body>
+
+<!-- ============ SCREEN A — the calm front door ============ -->
+<div class="p">
+ <div class="tag">★ Front Door · Guide, not directory</div>
+ <div class="tb">
+  <div class="bw"><div class="logo">◎</div><div><b class="serif">Frederick</b><span>Radius</span></div></div>
+  <div style="display:flex;gap:8px"><div class="pill">♡</div><div class="pill">⚙</div></div>
+ </div>
+ <div class="sc">
+  <div class="eyebrow">Saturday evening · 73° &amp; clear</div>
+  <div class="ask">Good evening.<br><span class="lt">What are you after?</span></div>
+  <div class="sub">Tell me what you&rsquo;re in the mood for and I&rsquo;ll find the good stuff &mdash; you don&rsquo;t have to dig.</div>
+
+  <div class="doors">
+   <a class="door">
+    <div class="ic" style="background:color-mix(in srgb,var(--brand) 16%,var(--card));">🍴</div>
+    <div class="tx"><div class="nm">Somewhere to eat or drink</div><div class="ct">Open now, a short walk away</div></div>
+    <div class="arr">›</div>
+   </a>
+   <a class="door">
+    <div class="ic" style="background:color-mix(in srgb,var(--cool) 16%,var(--card));">📅</div>
+    <div class="tx"><div class="nm">Something to do</div><div class="ct">Tonight &amp; this weekend &middot; 14 on</div></div>
+    <div class="arr">›</div>
+   </a>
+   <a class="door">
+    <div class="ic" style="background:color-mix(in srgb,var(--green) 18%,var(--card));">🌳</div>
+    <div class="tx"><div class="nm">Get outside</div><div class="ct">Parks, trails &amp; the creek</div></div>
+    <div class="arr">›</div>
+   </a>
+   <a class="door">
+    <div class="ic" style="background:color-mix(in srgb,var(--gold) 16%,var(--card));">🗺</div>
+    <div class="tx"><div class="nm">Show me around</div><div class="ct">Wander the map, your way</div></div>
+    <div class="arr">›</div>
+   </a>
+  </div>
+
+  <div class="orline"><div class="ln"></div><span>or just ask</span><div class="ln"></div></div>
+  <div class="search">
+   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#857B68" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+   <span>"tacos", "live music", "rainy day with kids"…</span>
+  </div>
+
+  <div class="nudge">
+   <div class="d"></div>
+   <div class="tx"><b>Happening now: Color on the Creek</b><span>Opening weekend &middot; Carroll Creek &middot; til 9 PM</span></div>
+   <div class="arr">›</div>
+  </div>
+ </div>
+</div>
+
+<!-- ============ SCREEN B — one tap in, the funnel getting warmer ============ -->
+<div class="p">
+ <div class="tag">★ One tap in · Warmer, not wider</div>
+ <div class="tb">
+  <div class="back">‹</div>
+  <div class="crumb">After: <b>Eat &amp; drink</b></div>
+  <div class="pill">🗺</div>
+ </div>
+ <div class="sc">
+  <div class="eyebrow">Saturday · 7:04 PM · near you</div>
+  <div class="ask">What sounds<br><span class="lt">good?</span></div>
+  <div class="sub">A few good ways to narrow it. Or skip ahead &mdash; I&rsquo;ve already lined up the best nearby.</div>
+
+  <div class="refine">
+   <a class="rf"><div class="e">🍽</div><div><div class="nm">Sit-down dinner</div><div class="ct">42 OPEN NEARBY</div></div></a>
+   <a class="rf"><div class="e">🍸</div><div><div class="nm">Drinks</div><div class="ct">18 OPEN NEARBY</div></div></a>
+   <a class="rf"><div class="e">🥡</div><div><div class="nm">Quick bite</div><div class="ct">31 OPEN NEARBY</div></div></a>
+   <a class="rf"><div class="e">🍦</div><div><div class="nm">Something sweet</div><div class="ct">9 OPEN NEARBY</div></div></a>
+  </div>
+
+  <div class="skip"><span>— or just <b>show me the best nearby</b> ↓ —</span></div>
+
+  <div class="lead">
+   <div class="im">
+    <div class="fav"><span class="st">★</span> LOCAL FAVORITE</div>
+    <div class="walk">🚶 2 min</div>
+   </div>
+   <div class="bd">
+    <div class="k">Gastropub · Market Street</div>
+    <h3>White Rabbit Gastropub</h3>
+    <div class="why">Frederick&rsquo;s most-loved table &mdash; burgers, steaks and a famous brunch, two blocks away.</div>
+    <div class="rate"><span class="stars">★★★★★</span> 4.7 <span class="ct">· 2,699 reviews · $$</span></div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<div class="cap">The directory shows you everything at once. The guide asks one question, then makes every tap smaller and warmer — until you're looking at the answer, not a list.</div>
+
+</body></html>

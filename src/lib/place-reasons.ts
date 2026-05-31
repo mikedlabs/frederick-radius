@@ -61,10 +61,13 @@ export function placeReasons(
     }
   }
 
-  // 3. Quality signal. Hand-picked seed places carry a high
-  // feature_score even when they don't have a Google rating; Google-
-  // sourced spots earn the "top rated" chip via stars + count.
-  if ((p.feature_score ?? 0) >= LOCAL_FAVORITE_MIN_FEATURE) {
+  // 3. Quality signal. The authoritative local-favorite flag (hand-pick
+  // in local-favorites.json, or the verified high-rating data proxy —
+  // see resolveLocalFavorite in the loader) is the same signal the
+  // visitor ranking blends, so the chip and the ranking never disagree.
+  // Curated seed places with a high feature_score but no Google profile
+  // still qualify. Otherwise a strong Google rating earns "Top rated".
+  if (p.local_favorite || (p.feature_score ?? 0) >= LOCAL_FAVORITE_MIN_FEATURE) {
     out.push({ kind: "local_favorite", label: "Local favorite", tone: "rated" });
   } else if (
     (p.google_rating ?? 0) >= TOP_RATED_MIN_STARS &&

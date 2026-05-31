@@ -1,1 +1,211 @@
-{}
+{
+  "brunswick": {
+    "slug": "brunswick",
+    "name": "Brunswick",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-834-7500",
+      "address": "1 West Potomac St., Brunswick, MD 21716",
+      "hours": "Mon - Fri 8:00 a.m. - 4:30 p.m."
+    },
+    "publicWorks": {
+      "label": "Public Works",
+      "phone": "301-834-7500",
+      "address": "811 W. Potomac Street Brunswick, MD 21716"
+    },
+    "source": {
+      "url": "https://brunswickmd.gov/publicworks",
+      "fetchedAt": "2026-05-31T17:38:12.952Z"
+    }
+  },
+  "thurmont": {
+    "slug": "thurmont",
+    "name": "Thurmont",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-271-7313",
+      "address": "615 East Main Street, PO Box 17, Thurmont, MD 21788",
+      "hours": "Monday-Friday 8AM-4PM"
+    },
+    "police": {
+      "label": "Police (non-emergency)",
+      "website": "https://www.thurmont.md.gov/government/police-department"
+    },
+    "trashRecycling": {
+      "label": "Trash & Recycling",
+      "phone": "301-271-7313",
+      "schedule": "Curbside recycling pickup every other Friday by 6:00 a.m.; curbside grass clippings pickup Mondays by 6:00 a.m. (April-November in paper bags)"
+    },
+    "source": {
+      "url": "https://www.thurmont.com/2143/Government",
+      "fetchedAt": "2026-05-31T17:38:16.865Z"
+    }
+  },
+  "middletown": {
+    "slug": "middletown",
+    "name": "Middletown",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-371-6171",
+      "address": "31 West Main Street, Middletown, MD 21769"
+    },
+    "permits": {
+      "label": "Permits & Zoning"
+    },
+    "utilities": {
+      "label": "Water / Utilities",
+      "phone": "301-371-6171"
+    },
+    "source": {
+      "url": "https://www.middletown.md.us/",
+      "fetchedAt": "2026-05-31T17:38:19.279Z"
+    }
+  },
+  "walkersville": {
+    "slug": "walkersville",
+    "name": "Walkersville",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-845-4500",
+      "address": "21 W. Frederick St., P.O. Box 249, Walkersville, MD 21793",
+      "hours": "M-F 8:30am - 4:30pm"
+    },
+    "source": {
+      "url": "https://www.walkersvillemd.gov/",
+      "fetchedAt": "2026-05-31T17:38:21.407Z"
+    }
+  },
+  "emmitsburg": {
+    "slug": "emmitsburg",
+    "name": "Emmitsburg",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-600-6300",
+      "website": "http://www.emmitsburgmd.gov"
+    },
+    "publicWorks": {
+      "label": "Public Works"
+    },
+    "utilities": {
+      "label": "Water / Utilities"
+    },
+    "trashRecycling": {
+      "label": "Trash & Recycling",
+      "phone": "301-600-6300",
+      "schedule": "Household trash collection is on Monday of every week. If Monday falls on a holiday, garbage is typically picked up on the following day."
+    },
+    "source": {
+      "url": "https://www.emmitsburgmd.gov/",
+      "fetchedAt": "2026-05-31T17:38:24.947Z"
+    }
+  },
+  "new-market": {
+    "slug": "new-market",
+    "name": "New Market",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-865-5544",
+      "address": "40 South Alley, P.O. Box 27, New Market, Maryland 21774",
+      "hours": "8 AM - 4 PM Monday - Friday"
+    },
+    "source": {
+      "url": "https://www.townofnewmarket.org/contacts-directory",
+      "fetchedAt": "2026-05-31T17:38:28.006Z"
+    }
+  },
+  "mount-airy": {
+    "slug": "mount-airy",
+    "name": "Mount Airy",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-829-1424",
+      "hours": "Monday-Friday 8:30 a.m. - 5:00 p.m.",
+      "address": "110 S. Main Street, P.O. Box 50, Mount Airy, MD 21771"
+    },
+    "trashRecycling": {
+      "label": "Trash & Recycling",
+      "phone": "301-829-1424",
+      "schedule": "Trash collected every Tuesday for Carroll County premises and every Friday for Frederick County premises and the Nottingham Subdivision. Recycling collected every other Wednesday for Frederick County and every Wednesday for Carroll County."
+    },
+    "source": {
+      "url": "https://mountairymd.gov/27/Government-Services",
+      "fetchedAt": "2026-05-31T17:38:33.739Z"
+    }
+  },
+  "myersville": {
+    "slug": "myersville",
+    "name": "Myersville",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-293-4281",
+      "address": "301 Main Street, P.O. Box 295 Myersville, MD 21773",
+      "hours": "Monday - Friday 8:00am - 4:00pm"
+    },
+    "source": {
+      "url": "https://myersville.org/government",
+      "fetchedAt": "2026-05-31T17:38:35.279Z"
+    }
+  },
+  "woodsboro": {
+    "slug": "woodsboro",
+    "name": "Woodsboro",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-898-3800",
+      "address": "605 S. Main Street, Woodsboro MD 21798",
+      "hours": "Council Meetings held second Tuesday of every month at 7:00 pm; Planning & Zoning Meetings held first Monday of month as needed at 6:00 PM"
+    },
+    "source": {
+      "url": "https://woodsboro.org/",
+      "fetchedAt": "2026-05-31T17:38:38.575Z"
+    }
+  },
+  "burkittsville": {
+    "slug": "burkittsville",
+    "name": "Burkittsville",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "301-969-0326",
+      "address": "500 East Street, Burkittsville, MD 21718",
+      "website": "https://www.burkittsville-md.gov"
+    },
+    "permits": {
+      "label": "Permits & Zoning",
+      "phone": "301-969-0326",
+      "website": "www.burkittsville-md.gov"
+    },
+    "trashRecycling": {
+      "label": "Trash & Recycling",
+      "phone": "301-668-8282"
+    },
+    "police": {
+      "label": "Police (non-emergency)",
+      "phone": "301-600-2071"
+    },
+    "source": {
+      "url": "https://burkittsville-md.gov/government/",
+      "fetchedAt": "2026-05-31T17:38:56.167Z"
+    }
+  },
+  "rosemont": {
+    "slug": "rosemont",
+    "name": "Rosemont",
+    "townHall": {
+      "label": "Town Hall",
+      "phone": "240-353-3988"
+    },
+    "trashRecycling": {
+      "label": "Trash & Recycling",
+      "phone": "301-600-2960",
+      "schedule": "Spring bulk trash pickup April 13-15; recycling drop-off at Brunswick Public Works Monday-Friday 8am-3pm"
+    },
+    "utilities": {
+      "label": "Water / Utilities",
+      "phone": "301-600-2187"
+    },
+    "source": {
+      "url": "https://sites.google.com/site/rosemontmd/home",
+      "fetchedAt": "2026-05-31T17:38:58.845Z"
+    }
+  }
+}
