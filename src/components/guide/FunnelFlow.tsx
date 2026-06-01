@@ -37,7 +37,7 @@ import BetaIntroCard from "@/components/today/BetaIntroCard";
 // winery/brewery overlap (those live under Eat's sub-intents). This
 // ordered list is the single thing to tune as the product owner decides
 // the real top level (add Shop? split Drinks? add Tonight/events?).
-const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "shop", "arts", "family", "wellness", "civic"];
+const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "shop", "arts", "family", "wellness", "stay", "faith", "civic"];
 
 const RESULT_CAP = 24;
 

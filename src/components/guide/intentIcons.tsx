@@ -9,6 +9,8 @@ import {
   Landmark,
   Heart,
   ShoppingBag,
+  Hotel,
+  Church,
   type LucideIcon,
 } from "lucide-react";
 import type { Intent } from "@/data/intents";
@@ -28,4 +30,6 @@ export const INTENT_ICON: Record<Intent["icon"], LucideIcon> = {
   Landmark,
   Heart,
   ShoppingBag,
+  Hotel,
+  Church,
 };
