@@ -75,3 +75,5 @@ screenshots/
 
 # Generated mockup renders (reproducible from the .html + render script)
 .mockups/render/
+.mockups/render/
+.mockups/*.built.html

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>The Radius — Clean & Modern</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+  :root{
+    --bg:#F6F3EE; --card:#FFFFFF; --ink:#191714; --ink2:#55504A; --ink3:#928B80;
+    --border:#ECE7DE; --accent:#A8462C;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:Inter,system-ui,sans-serif;background:#2a2620;display:flex;justify-content:center;padding:18px 0}
+  .phone{width:390px;background:var(--bg);min-height:844px;border-radius:40px;overflow:hidden;position:relative;box-shadow:0 30px 80px rgba(0,0,0,.5)}
+  .scroll{height:844px;overflow-y:auto;padding:18px 20px 110px}
+  /* top row */
+  .top{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+  .loc{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink2)}
+  .loc svg{width:15px;height:15px;color:var(--accent)}
+  .top .ic{width:38px;height:38px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;color:var(--ink2)}
+  .top .ic svg{width:17px;height:17px}
+  /* header */
+  .head{margin-top:22px}
+  .head .now{font-size:12.5px;color:var(--ink3);font-weight:500;letter-spacing:.01em}
+  .head h1{font-size:31px;font-weight:600;color:var(--ink);letter-spacing:-.025em;line-height:1.06;margin-top:7px}
+  /* search */
+  .search{margin-top:16px;display:flex;align-items:center;gap:10px;height:46px;background:var(--card);border:1px solid var(--border);border-radius:15px;padding:0 14px;box-shadow:0 1px 2px rgba(20,18,16,.03)}
+  .search svg{width:18px;height:18px;color:var(--ink3)}
+  .search span{font-size:14px;color:var(--ink3)}
+  /* section label */
+  .lab{font-size:11px;font-weight:700;letter-spacing:.10em;text-transform:uppercase;color:var(--ink3);margin:26px 2px 12px}
+  /* grid */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .cell{background:var(--card);border:1px solid var(--border);border-radius:19px;padding:15px;box-shadow:0 4px 16px rgba(25,23,20,.04);position:relative}
+  .cell .ico{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff}
+  .cell .ico svg{width:21px;height:21px;stroke-width:2}
+  .cell h3{font-size:15.5px;font-weight:600;color:var(--ink);margin-top:12px;letter-spacing:-.01em}
+  .cell .ct{font-size:12.5px;color:var(--ink3);margin-top:2px;font-weight:500}
+  .cell .chev{position:absolute;top:16px;right:14px;color:var(--ink3);opacity:.55}
+  .cell .chev svg{width:16px;height:16px}
+  .cell .badge{position:absolute;top:13px;right:13px;background:var(--accent);color:#fff;font-size:8.5px;font-weight:700;letter-spacing:.08em;padding:3px 6px;border-radius:7px}
+  /* more row */
+  .more{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink2);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:8px 14px}
+  .pill svg{width:15px;height:15px;color:var(--ink3)}
+  .pill.ghost{background:transparent;border-style:dashed}
+  /* lenses */
+  .lenses{display:flex;flex-wrap:wrap;gap:8px}
+  .lens{font-size:13px;font-weight:500;color:var(--ink2);background:transparent;border:1px solid var(--border);border-radius:999px;padding:8px 13px}
+  /* tab bar */
+  .tabs{position:absolute;bottom:0;left:0;right:0;height:84px;background:rgba(255,255,255,.92);backdrop-filter:blur(18px);border-top:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-around;padding-top:11px}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--ink3)}
+  .tab svg{width:23px;height:23px;stroke-width:2}
+  .tab.on{color:var(--accent)}
+  .tag{position:absolute;top:0;left:50%;transform:translateX(-50%);background:#191714;color:#fff;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 13px;border-radius:0 0 12px 12px;z-index:20;font-weight:600}
+</style></head>
+<body>
+<div class="phone">
+  <div class="tag">The Radius · Clean</div>
+  <div class="scroll">
+    <div class="top">
+      <span class="loc"><i data-lucide="map-pin"></i> Downtown Frederick</span>
+      <span class="ic"><i data-lucide="sliders-horizontal"></i></span>
+    </div>
+
+    <div class="head">
+      <div class="now">Saturday · 73° &amp; clear · 128 places open now</div>
+      <h1>What are you after?</h1>
+    </div>
+
+    <div class="search">
+      <i data-lucide="search"></i><span>Search places, events, towns…</span>
+    </div>
+
+    <div class="lab">Pick a lane</div>
+    <div class="grid">
+      <div class="cell"><div class="ico" style="background:#A8462C"><i data-lucide="utensils"></i></div><h3>Eat</h3><div class="ct">215 spots</div><span class="chev"><i data-lucide="chevron-right"></i></span></div>
+      <div class="cell"><div class="ico" style="background:#7E1F1F"><i data-lucide="wine"></i></div><h3>Drinks</h3><div class="ct">99 spots</div><span class="chev"><i data-lucide="chevron-right"></i></span></div>
+      <div class="cell"><div class="ico" style="background:#8B5A2B"><i data-lucide="coffee"></i></div><h3>Coffee</h3><div class="ct">90 spots</div><span class="chev"><i data-lucide="chevron-right"></i></span></div>
+      <div class="cell"><div class="ico" style="background:#1E6B3A"><i data-lucide="trees"></i></div><h3>Outdoors</h3><div class="ct">171 spots</div><span class="chev"><i data-lucide="chevron-right"></i></span></div>
+      <div class="cell"><div class="ico" style="background:#2E7D74"><i data-lucide="shopping-bag"></i></div><h3>Shops &amp; makers</h3><div class="ct">322 spots</div><span class="chev"><i data-lucide="chevron-right"></i></span></div>
+      <div class="cell"><div class="ico" style="background:#7E2C6F"><i data-lucide="palette"></i></div><h3>Arts &amp; culture</h3><div class="ct">98 spots</div><span class="chev"><i data-lucide="chevron-right"></i></span></div>
+      <div class="cell"><div class="ico" style="background:#C9952F"><i data-lucide="baby"></i></div><h3>Family</h3><div class="ct">96 spots</div><span class="chev"><i data-lucide="chevron-right"></i></span></div>
+      <div class="cell"><div class="ico" style="background:#A02929"><i data-lucide="heart"></i></div><h3>Wellness</h3><div class="ct">285 spots</div><span class="chev"><i data-lucide="chevron-right"></i></span></div>
+    </div>
+
+    <div class="more">
+      <span class="pill"><i data-lucide="bed-double"></i> Stay</span>
+      <span class="pill"><i data-lucide="leaf"></i> Dispensary <span style="color:var(--accent);font-size:8.5px;font-weight:700;letter-spacing:.06em;margin-left:2px">NEW</span></span>
+      <span class="pill"><i data-lucide="church"></i> Faith</span>
+      <span class="pill"><i data-lucide="landmark"></i> Civic</span>
+    </div>
+
+    <div class="lab">Or by the moment</div>
+    <div class="lenses">
+      <span class="lens">Date night</span><span class="lens">With kids</span><span class="lens">Dog-friendly</span><span class="lens">Live music</span><span class="lens">Patio</span><span class="lens">Local favorites</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab on"><i data-lucide="compass"></i>Radius</div>
+    <div class="tab"><i data-lucide="sun"></i>Today</div>
+    <div class="tab"><i data-lucide="map"></i>Map</div>
+    <div class="tab"><i data-lucide="calendar"></i>Events</div>
+    <div class="tab"><i data-lucide="bookmark"></i>Saved</div>
+  </div>
+</div>
+<script>window.addEventListener('load',()=>{try{lucide.createIcons()}catch(e){}});</script>
+</body></html>
