@@ -126,7 +126,7 @@ export default function FunnelFlow() {
     }
   };
 
-  const transition: Transition = reduce ? { duration: 0 } : { duration: 0.28, ease: [0.22, 1, 0.36, 1] };
+  const transition: Transition = reduce ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36, mass: 0.9 };
   const variants = {
     initial: reduce ? { opacity: 0 } : { opacity: 0, x: 24 },
     animate: { opacity: 1, x: 0 },
@@ -292,13 +292,18 @@ export default function FunnelFlow() {
                 .
               </p>
             ) : (
-              <ul className="space-y-3">
+              <motion.ul
+                className="space-y-3"
+                variants={reduce ? undefined : tilesContainer}
+                initial={reduce ? false : "hidden"}
+                animate="show"
+              >
                 {results.map((p) => (
-                  <li key={p.slug}>
+                  <motion.li key={p.slug} variants={reduce ? undefined : tileItem}>
                     <PlaceCard place={p} variant="row" />
-                  </li>
+                  </motion.li>
                 ))}
-              </ul>
+              </motion.ul>
             )}
           </motion.div>
         )}
