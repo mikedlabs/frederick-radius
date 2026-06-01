@@ -13,6 +13,7 @@ import Pill from "@/components/ui/Pill";
 import Skeleton from "@/components/ui/Skeleton";
 import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
+import { placeQuality } from "@/lib/quality/placeQuality";
 import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
 import { INTENT_ICON } from "./intentIcons";
@@ -125,8 +126,13 @@ export default function FunnelFlow() {
     ranked.sort((a, b) => {
       const ao = isOpenNow(a.open_status) ? 0 : 1;
       const bo = isOpenNow(b.open_status) ? 0 : 1;
-      if (ao !== bo) return ao - bo;
-      if (origin) return (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+      if (ao !== bo) return ao - bo; // open now first
+      if (origin) {
+        const byDist = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+        if (byDist !== 0) return byDist; // then nearest
+      }
+      const byQuality = placeQuality(b) - placeQuality(a); // then most useful + confident
+      if (byQuality !== 0) return byQuality;
       return a.name.localeCompare(b.name);
     });
     return ranked.slice(0, RESULT_CAP);
