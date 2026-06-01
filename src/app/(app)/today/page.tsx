@@ -17,7 +17,6 @@ import NowDayStrip from "@/components/today/NowDayStrip";
 // surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
 import MoodTiles from "@/components/today/MoodTiles";
-import TwoDoors from "@/components/today/TwoDoors";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -43,7 +42,6 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
 import { getOpenNowCount, findBucket } from "@/lib/find-picks";
-import { getWeekendData, weekendDayKey } from "@/lib/weekend-picks";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -276,10 +274,7 @@ export default async function HomePage({
 
   // Live counts for the two doors. Both cached (10-min / hourly buckets)
   // so the home page reads them off the edge, never paying the rank cost.
-  const [openCount, weekendData] = await Promise.all([
-    getOpenNowCount(findBucket(now)),
-    getWeekendData(weekendDayKey(now)),
-  ]);
+  const openCount = await getOpenNowCount(findBucket(now));
 
   // ── Answer-first lead (UX_REDO Build 1): build 3 to 5 anticipatory
   //    answers from the real data this page already computed. Honest by
@@ -365,7 +360,12 @@ export default async function HomePage({
        *             partner apps, WorthALook, events, From Above).
        * Each column keeps its own internal space-y-6 spine so the
        * vertical rhythm doesn't collapse at the breakpoint. */}
-      <div className="mt-4 flex flex-col gap-4 lg:mt-4 lg:grid lg:grid-cols-2 lg:gap-5">
+      {/* THE FULL BRIEFING — weather, events, and the rest, COLLAPSED by
+          default so the first screen is just the ask + the answers. Depth
+          is one tap away, not the opening wall. Reversible: flip
+          defaultOpen, or lift any module back above to taste. */}
+      <CollapsibleSection title="The full briefing" storageKey="fr.today.briefing" defaultOpen={false}>
+      <div className="mt-2 flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-5">
         {/* ── LEFT column: the weather block. Leads on mobile (weather
             at the top, per the premium-refresh direction) and sits in
             the left column at lg+. ───────────────────────────────── */}
@@ -556,12 +556,6 @@ export default async function HomePage({
        *      so the page opens SHORT and scannable instead of a 13-section
        *      wall you scroll forever. */}
 
-      {/* ── THE TWO DOORS — the find-system's two jobs lead the action
-          column: "Find somewhere good" (eat/drink now) and "What's on
-          this weekend" (going-on), with live counts. The first real
-          choice after the weather glance. ──────────────────────────── */}
-      <TwoDoors openCount={openCount} weekendCount={weekendData.total} />
-
       {/* When? — temporal control for the events section directly below. */}
       <TimeToggle active={mode} counts={counts} />
 
@@ -641,6 +635,7 @@ export default async function HomePage({
 
         </div>{/* /RIGHT column */}
       </div>{/* /responsive split */}
+      </CollapsibleSection>
     </div>
   );
 }
