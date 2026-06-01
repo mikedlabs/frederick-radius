@@ -20,6 +20,7 @@ import { haptic } from "@/lib/haptics";
 import { track } from "@vercel/analytics";
 import { INTENT_ICON } from "./intentIcons";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
+import AskFrederick from "@/components/ask/AskFrederick";
 
 /**
  * FunnelFlow — the "what are you after?" front door.
@@ -287,6 +288,11 @@ export default function FunnelFlow({
               <BetaIntroCard />
             </div>
             <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Pick one — it narrows from there." />
+            {/* Ask Frederick — the concierge: one box that answers from
+                real data. Sits above the grid as the fastest path. */}
+            <div className="mb-5">
+              <AskFrederick />
+            </div>
             {/* Reserve the row height so the daypart picks fade in on mount
                 without shoving the grid down (no first-paint layout shift). */}
             <div className="mb-4 flex min-h-[38px] flex-wrap items-center gap-2">
