@@ -129,9 +129,9 @@ export default async function TodayCard({
 
       {/* The hook — greeting + a confident weather mood, in the display
           face. This is the 3-second "I get it" line. */}
-      <h1 className="mt-1 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
+      <h2 className="mt-1 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
         {GREETING[band]} {mood}
-      </h1>
+      </h2>
 
       {readout.length > 0 && (
         <p className="mt-1.5 text-body font-medium tabular-nums opacity-90">

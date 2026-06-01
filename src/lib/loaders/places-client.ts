@@ -1,6 +1,7 @@
 import CLIENT_RAW from "@/data/places-client.json" with { type: "json" };
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { getOpenStatus } from "@/lib/hours";
 
 /**
  * CLIENT-SAFE place data. Imports ONLY the slim, pre-decorated
@@ -36,27 +37,42 @@ const BY_SLUG: Record<string, PlaceCardData> = (() => {
   return m;
 })();
 
+/**
+ * Recompute open-now at call time from the shipped structured `hours`, so
+ * the client never renders a stale build-time "Open until 9". Places with
+ * no hours resolve to { state: "unknown" } exactly as before. Cheap: the
+ * slim set now carries the COMPACT { mon: [{ open, close }] } schedule (a
+ * few hundred bytes), not the heavy google_hours strings that were
+ * dropped to keep this bundle small.
+ */
+function withLiveStatus(p: PlaceCardData): PlaceCardData {
+  return {
+    ...p,
+    open_status: getOpenStatus(p.hours, { verified: p.hours_verified ?? false }),
+  };
+}
+
 export function clientPlaces(): PlaceCardData[] {
-  return CLIENT_PLACES;
+  return CLIENT_PLACES.map(withLiveStatus);
 }
 
 export function clientPlaceBySlug(slug: string): PlaceCardData | undefined {
-  return BY_SLUG[slug];
+  const p = BY_SLUG[slug];
+  return p ? withLiveStatus(p) : undefined;
 }
 
 /**
  * Client-safe placesWithinRadius: same shape/contract, over the slim
- * already-decorated set. The only difference vs the server loader is
- * open_status is the build-time value (recomputing it live needs the
- * per-place hours arrays, which were intentionally dropped to keep
- * this 2MB instead of 12MB — an honest tradeoff for a UI hint).
+ * already-decorated set. open_status is recomputed live (withLiveStatus)
+ * now that the compact structured hours ship in the slim bundle, so the
+ * radius readout's open-now matches the server's.
  */
 export function clientPlacesWithinRadius(
   origin: LngLat,
   meters: number,
 ): PlaceCardData[] {
   return CLIENT_PLACES.map((p) => ({
-    ...p,
+    ...withLiveStatus(p),
     distance_m: haversineMeters(origin, p.geom),
   }))
     .filter((p) => (p.distance_m ?? Infinity) <= meters)

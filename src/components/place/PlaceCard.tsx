@@ -68,10 +68,15 @@ export default function PlaceCard({
   place,
   compact = false,
   variant = "row",
+  galleryPhotos,
 }: {
   place: PlaceCardData;
   compact?: boolean;
-  variant?: "row" | "feature" | "tile" | "grid";
+  variant?: "row" | "feature" | "tile" | "grid" | "answer";
+  /** Extra photos (proxied URLs) for the answer variant's food/photo
+   *  strip. The funnel fetches these on demand from the enrich route
+   *  for its lead pick; absent it, the strip simply doesn't render. */
+  galleryPhotos?: string[];
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "#1A1A1A";
@@ -127,6 +132,172 @@ export default function PlaceCard({
             </div>
           </div>
         </button>
+      </article>
+    );
+  }
+
+  // The "answer" card — the funnel's lead pick. Photo on top (or a
+  // tonal category graphic when there's none), then a content block
+  // that reveals every honest signal we hold for this place in one
+  // glance: open status + closing time, the why-it-matches reason
+  // chips, the Google rating, price band, and — the buried gem most
+  // cards never surface — the attributed "what people say" snippet.
+  // The full reveal (hours table, photos, map, reviews) is one tap
+  // away in the PlaceSheet. Never fabricates: each line self-hides
+  // when the data isn't there.
+  if (variant === "answer") {
+    const reasons = placeReasons(place);
+    const loved = (place.customers_loved ?? []).slice(0, 3);
+    // Food/photo strip — the extra Google photos (dishes, interior)
+    // beyond the hero. The hero is filtered out so it never repeats.
+    const stripPhotos = (galleryPhotos ?? []).filter((u) => u && u !== photoUrl).slice(0, 6);
+    return (
+      <article
+        className="tactile tactile-e2 group relative overflow-hidden rounded-[var(--app-radius-lg)]"
+        style={{ background: "var(--app-bg-elevated-solid)" }}
+      >
+        <button
+          type="button"
+          onClick={openDetail}
+          aria-label={`View ${place.name} details`}
+          className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
+        >
+          {/* Cinematic banner — taller than the tile so the lead pick
+              reads as "the answer," not another row. */}
+          <div className="relative h-44 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+            {photoUrl ? (
+              <>
+                <PlacePhoto
+                  src={photoUrl}
+                  alt={photo?.alt ?? place.name}
+                  glyph={glyph}
+                  color={color}
+                  sizes="(min-width: 640px) 600px, 100vw"
+                  className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
+                  rounded="0"
+                />
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, rgba(0,0,0,0.32) 0%, transparent 32%, transparent 60%, rgba(0,0,0,0.45) 100%)",
+                  }}
+                />
+              </>
+            ) : (
+              <CategoryGraphic
+                category={place.category}
+                seed={place.slug}
+                className="absolute inset-0 transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
+              />
+            )}
+            {cat && (
+              <span
+                className="absolute left-2.5 top-2.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
+                style={{
+                  background: photoUrl ? color : `color-mix(in srgb, ${color} 22%, var(--app-bg-elevated))`,
+                  color: photoUrl ? "white" : color,
+                  boxShadow: photoUrl ? "0 2px 6px -1px rgba(0,0,0,0.30)" : "none",
+                }}
+              >
+                {cat.name}
+              </span>
+            )}
+            {place.distance_m !== undefined && (
+              <span
+                className="absolute bottom-2.5 right-2.5 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
+                style={{
+                  background: "rgba(255,255,255,0.95)",
+                  color: "var(--app-ink)",
+                  backdropFilter: "blur(8px)",
+                  WebkitBackdropFilter: "blur(8px)",
+                  boxShadow: "0 2px 6px -1px rgba(0,0,0,0.30)",
+                }}
+              >
+                {formatDistance(place.distance_m)}
+              </span>
+            )}
+            <div aria-hidden className="absolute inset-x-0 bottom-0 h-[3px]" style={{ background: color }} />
+          </div>
+          <div className="space-y-2.5 p-4">
+            <div className="flex items-baseline gap-2">
+              <h3 className="display-3 min-w-0 flex-1 truncate" style={{ color: "var(--app-ink)" }}>
+                {place.name}
+              </h3>
+              <SourceBadge place={place} size="sm" />
+            </div>
+            <p className="text-body truncate" style={{ color: "var(--app-ink-3)" }}>
+              {cat?.name ?? place.category}
+              {kf && (
+                <>
+                  {" · "}
+                  <span style={{ color: "var(--app-ink-2)" }}>{kf}</span>
+                </>
+              )}
+              <BeenHereIndicator slug={place.slug} />
+            </p>
+            {/* Food / photo strip — a horizontal scroll of the venue's
+                other Google photos (dishes, interior, the patio). The
+                single most-requested thing for a restaurant answer:
+                "show me the food." Renders only when we actually have
+                more than the hero. */}
+            {stripPhotos.length > 0 && (
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 pt-0.5" style={{ scrollbarWidth: "none" }}>
+                {stripPhotos.map((u, i) => (
+                  <div
+                    key={i}
+                    className="relative h-[74px] w-[96px] shrink-0 overflow-hidden rounded-[12px] bg-[var(--app-bg-sunken)]"
+                    style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)" }}
+                  >
+                    <PlacePhoto src={u} alt={`${place.name} photo ${i + 1}`} glyph={glyph} color={color} sizes="96px" />
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* The decision row: open + closing time, rating, price —
+                the three things that answer "can I go, is it good,
+                what's it cost," each self-hiding when unknown. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <PlaceStatus status={place.open_status} />
+              <Rave rating={place.google_rating} count={place.google_rating_count} />
+              {place.price_band && (
+                <span className="text-[12px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+                  {"$".repeat(place.price_band)}
+                </span>
+              )}
+            </div>
+            {reasons.length > 0 && <ReasonChipRow reasons={reasons} />}
+            {/* "What people say" — a real, attributed Google review
+                snippet. The single strongest word-of-mouth signal we
+                hold, and it appears on no other card. Labelled as UGC,
+                never passed off as our own copy. */}
+            {place.review_snippet && (
+              <blockquote
+                className="mt-0.5 border-l-2 pl-2.5 text-[12.5px] italic leading-snug"
+                style={{ borderColor: `color-mix(in srgb, ${color} 60%, transparent)`, color: "var(--app-ink-2)" }}
+              >
+                &ldquo;{place.review_snippet}&rdquo;
+                {place.review_author && (
+                  <cite className="mt-0.5 block text-[11px] not-italic" style={{ color: "var(--app-ink-3)" }}>
+                    — {place.review_author}, Google
+                  </cite>
+                )}
+              </blockquote>
+            )}
+            {/* "Loved for" — AI-extracted highlights from reviews, shown
+                only when we actually have them. */}
+            {loved.length > 0 && !place.review_snippet && (
+              <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>Loved for</span>{" "}
+                {loved.join(" · ")}
+              </p>
+            )}
+          </div>
+        </button>
+        <div className="absolute right-2.5 top-2.5 z-10">
+          <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
+        </div>
       </article>
     );
   }

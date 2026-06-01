@@ -106,7 +106,7 @@ export default function BottomNav() {
 
         <ul
           ref={stripRef}
-          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-4 px-1.5 py-1.5"
+          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
         >
           {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
             const isRealActive =
@@ -165,7 +165,7 @@ export default function BottomNav() {
                     }}
                   />
                   <span
-                    className="text-[10.5px] font-semibold leading-none tracking-tight transition-opacity"
+                    className="text-[11px] font-semibold leading-tight tracking-tight transition-opacity"
                     style={{ opacity: active ? 1 : 0.78 }}
                   >
                     {label}

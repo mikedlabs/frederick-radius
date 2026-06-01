@@ -12,10 +12,12 @@ import type { PlaceCardData } from "@/lib/loaders/places";
  *      the Yoga sub. The yoga name must combine with the wellness/
  *      yoga category to count as wellness.
  *
- *   2. Parent = union(subs). The Wellness top-intent's match must
- *      equal the union of Yoga, Gyms, and Spas — never more, never
- *      less. If a place matches Wellness it has to match at least
- *      one sub-chip; the chips have to add up to the parent count.
+ *   2. sub ⊆ parent. The Wellness top-intent now serves the WHOLE
+ *      self-care category (yoga + wellness), so the subs (Yoga, Gyms,
+ *      Spas, Hair & beauty, Nails) are a NON-exhaustive partition:
+ *      every sub match implies a parent match, but the parent also
+ *      covers uncategorized self-care rows no sub claims. The parent
+ *      never matches outside the self-care category.
  *
  *   3. Yoga + Gyms are disjoint by design. A studio with "yoga" in
  *      the name lands in Yoga, not Gyms (we explicitly excluded yoga
@@ -52,11 +54,15 @@ describe("Wellness intent (Yoga / Gyms / Spas)", () => {
   const yoga = wellness.subIntents?.find((s) => s.key === "yoga");
   const gyms = wellness.subIntents?.find((s) => s.key === "gyms");
   const spas = wellness.subIntents?.find((s) => s.key === "spas");
+  const hair = wellness.subIntents?.find((s) => s.key === "hair");
+  const nails = wellness.subIntents?.find((s) => s.key === "nails");
 
-  it("registers all three sub-intents", () => {
+  it("registers all five sub-intents", () => {
     expect(yoga).toBeDefined();
     expect(gyms).toBeDefined();
     expect(spas).toBeDefined();
+    expect(hair).toBeDefined();
+    expect(nails).toBeDefined();
   });
 
   it("Yoga sub matches yoga category OR /yoga/ name — but only inside the wellness family", () => {
@@ -101,20 +107,32 @@ describe("Wellness intent (Yoga / Gyms / Spas)", () => {
     }
   });
 
-  it("Wellness parent.match equals the UNION of sub matches (invariant)", () => {
+  it("Wellness parent serves the whole self-care category — and nothing outside it", () => {
+    // Inside the self-care family → matched (even rows no sub claims).
+    expect(wellness.match(place("Sol Yoga", "yoga"))).toBe(true);
+    expect(wellness.match(place("Briq Haus Pilates", "wellness"))).toBe(true);
+    expect(wellness.match(place("Some Lash Studio", "wellness"))).toBe(true);
+    expect(wellness.match(place("Generic Wellness Co", "wellness"))).toBe(true);
+    // Outside the self-care category → never matched, even on a name hit.
+    expect(wellness.match(place("Yoga Cafe", "restaurant"))).toBe(false);
+    expect(wellness.match(place("Massage Brewing", "brewery"))).toBe(false);
+  });
+
+  it("every sub-intent is a subset of the parent (sub ⊆ parent)", () => {
+    const subs = [yoga!, gyms!, spas!, hair!, nails!];
     const candidates: PlaceCardData[] = [
       place("Sol Yoga", "yoga"),
-      place("Yogamour", "wellness"),
       place("Briq Haus Pilates", "wellness"),
       place("Unwind Massage", "wellness"),
-      place("Some Lash Studio", "wellness"), // none of yoga/gym/spa
-      place("Yoga Cafe", "restaurant"), // gated out by category
-      place("Massage Brewing", "brewery"), // gated out by category
+      place("Shear Beauty Salon", "wellness"),
+      place("Polished Nail Bar", "wellness"),
+      place("Yoga Cafe", "restaurant"), // category-gated out of every sub
     ];
     for (const p of candidates) {
-      const parent = wellness.match(p);
-      const union = yoga!.match(p) || gyms!.match(p) || spas!.match(p);
-      expect(parent).toBe(union);
+      for (const sub of subs) {
+        // If a sub claims a place, the parent must claim it too.
+        if (sub.match(p)) expect(wellness.match(p)).toBe(true);
+      }
     }
   });
 });

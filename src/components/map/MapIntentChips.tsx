@@ -25,6 +25,9 @@ import {
   Activity,
   Dumbbell,
   Sparkles,
+  ShoppingBag,
+  Hotel,
+  Pill,
   X,
 } from "lucide-react";
 import { INTENTS, type SubIntent } from "@/data/intents";
@@ -55,6 +58,9 @@ const ICON: Record<NonNullable<SubIntent["icon"]>, typeof Coffee> = {
   Activity,
   Dumbbell,
   Sparkles,
+  ShoppingBag,
+  Hotel,
+  Pill,
 };
 
 /**

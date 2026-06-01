@@ -43,6 +43,7 @@ export const KEYLESS_FEEDS: FeedDef[] = [
   { name: "MD Farmers Markets", powers: "Seasonal market listings" },
   { name: "TransIT Frederick", powers: "Bus route shapes" },
   { name: "MARC / rail", powers: "Brunswick-line rail schedule" },
+  { name: "Venue live-music calendars", powers: "Live music at breweries, wineries, distilleries & bars (per-venue iCal — see live-music-venues.ts)" },
 ];
 
 export type FeedStatus = FeedDef & {

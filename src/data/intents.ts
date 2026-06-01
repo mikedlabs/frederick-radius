@@ -13,6 +13,8 @@
  */
 
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
+import { cuisinesOf } from "@/lib/cuisine";
 
 export type IntentKey =
   | "coffee"
@@ -23,7 +25,10 @@ export type IntentKey =
   | "family"
   | "arts"
   | "wellness"
-  | "civic";
+  | "civic"
+  | "shop"
+  | "stay"
+  | "faith";
 
 export type Intent = {
   key: IntentKey;
@@ -43,7 +48,10 @@ export type Intent = {
     | "Baby"
     | "Palette"
     | "Landmark"
-    | "Heart";
+    | "Heart"
+    | "ShoppingBag"
+    | "Hotel"
+    | "Church";
   /** Match predicate against a place's category slug — kept simple so
    *  the matcher is fast across the full ~2,400 row set. */
   match: (p: PlaceCardData) => boolean;
@@ -101,7 +109,11 @@ export type SubIntent = {
     | "Heart"
     | "Activity"
     | "Dumbbell"
-    | "Sparkles";
+    | "Sparkles"
+    | "ShoppingBag"
+    | "Hotel"
+    | "Church"
+    | "Pill";
 };
 
 const COFFEE = new Set(["coffee", "bakery"]);
@@ -154,6 +166,7 @@ const CIVIC = new Set([
   "voting",
   "transit",
   "civic",
+  "pharmacy",
 ]);
 
 // Wellness — Frederick has a real yoga + boutique-fitness scene that
@@ -190,11 +203,41 @@ const isGymFitness = (p: PlaceCardData): boolean =>
 const isSpa = (p: PlaceCardData): boolean =>
   WELLNESS_CATS.has(p.category) && SPA_NAME_RE.test(p.name);
 
+// Shop — Market Street retail, antiques, books, makers, and markets.
+const SHOP = new Set(["shopping", "antiques", "book-store", "market"]);
+
+// Stay — the visitor lodging set (hotels, inns, B&Bs, farm stays). 42
+// rows that had no find path until now.
+const LODGING = new Set(["lodging"]);
+const BNB_NAME_RE = /\b(bed\s?(?:and|&|'n')?\s?breakfast|b&b|b\s?and\s?b|inn|guest\s?house|farm\s?stay|cottage)\b/i;
+
+// Faith — 167 houses of worship that were orphaned (the civic intent's
+// matcher never included them). Their own intent so "find a church near
+// me" / a new mover finding a congregation actually works.
+const WORSHIP = new Set(["worship"]);
+
+// Wellness & beauty — the whole everyday self-care map. Previously the
+// intent name-filtered the 273-row wellness bucket down to yoga/gym/spa,
+// orphaning ~190 hair/nail/beauty rows. Now the parent serves the FULL
+// category and the sub-intents below split it honestly by name signal.
+const SELFCARE_CATS = new Set(["yoga", "wellness"]);
+const HAIR_NAME_RE = /\b(salon|hair|barber|braid|blow.?dry|beauty|lash|brow|wax|aesthetic|skin\s?care|med\s?spa)\b/i;
+const NAIL_NAME_RE = /\b(nail|mani|pedi|polish)\b/i;
+const isHairBeauty = (p: PlaceCardData): boolean =>
+  SELFCARE_CATS.has(p.category) && HAIR_NAME_RE.test(p.name) && !NAIL_NAME_RE.test(p.name);
+const isNails = (p: PlaceCardData): boolean =>
+  SELFCARE_CATS.has(p.category) && NAIL_NAME_RE.test(p.name);
+
+// Cuisine sub-intent helper — the cuisine classifier reads name + blurb
+// (there is no structured cuisine field), so "Italian / Mexican / Sushi"
+// work across the whole food set. A place can match more than one.
+const hasCuisine = (p: PlaceCardData, slug: string): boolean => cuisinesOf(p).includes(slug);
+
 export const INTENTS: Intent[] = [
   {
     key: "coffee",
-    label: "Coffee right now",
-    blurb: "Cafes and bakeries open at this hour, near you.",
+    label: "Coffee",
+    blurb: "Roasters, cafes, and the bakeries worth the early line.",
     color: "#8B5A2B",
     icon: "Coffee",
     match: (p) => COFFEE.has(p.category),
@@ -235,6 +278,16 @@ export const INTENTS: Intent[] = [
       { key: "wineries",    type: "category", label: "Wineries",    icon: "Wine",     match: (p) => isWinery(p) },
       { key: "bakeries",    type: "category", label: "Bakeries",    icon: "Cookie",   match: (p) => p.category === "bakery" },
       { key: "trucks",      type: "category", label: "Food trucks", icon: "Truck",    match: (p) => p.category === "food-truck" },
+      // Cuisine subs — the depth that turns "Eat" from a category into a
+      // real craving. Derived from name + blurb by the cuisine classifier
+      // (there is no structured cuisine field), so they reach DFP rows too.
+      { key: "italian",   type: "category", label: "Italian",            match: (p) => hasCuisine(p, "italian") },
+      { key: "mexican",   type: "category", label: "Mexican",            match: (p) => hasCuisine(p, "mexican") },
+      { key: "asian",     type: "category", label: "Asian & sushi",      match: (p) => ["thai", "chinese", "japanese", "korean", "vietnamese", "indian"].some((c) => hasCuisine(p, c)) },
+      { key: "american",  type: "category", label: "American",           match: (p) => hasCuisine(p, "american") },
+      { key: "bbq",       type: "category", label: "BBQ & smokehouse",   match: (p) => hasCuisine(p, "bbq") },
+      { key: "seafood",   type: "category", label: "Seafood",            match: (p) => hasCuisine(p, "seafood") },
+      { key: "breakfast", type: "category", label: "Breakfast & brunch", match: (p) => hasCuisine(p, "breakfast") },
     ],
   },
   {
@@ -299,7 +352,7 @@ export const INTENTS: Intent[] = [
   {
     key: "arts",
     label: "Arts & culture",
-    blurb: "Galleries, theaters, museums, live music.",
+    blurb: "Galleries, stages, museums, and where the live music plays.",
     color: "#7E2C6F",
     icon: "Palette",
     match: (p) => ARTS.has(p.category),
@@ -308,29 +361,38 @@ export const INTENTS: Intent[] = [
       { key: "museums",    type: "category", label: "Museums",    icon: "Palette",   match: (p) => p.category === "museum" },
       { key: "galleries",  type: "category", label: "Galleries",  icon: "ImageIcon", match: (p) => p.category === "gallery" },
       { key: "theaters",   type: "category", label: "Theaters",   icon: "Theater",   match: (p) => p.category === "theater" },
-      { key: "live-music", type: "category", label: "Live music", icon: "Music",     match: (p) => p.category === "music" },
+      // Live music isn't a place category — it's a thing venues HOST.
+      // The `music` category catches only formal halls (~5 rows); the
+      // curated venue set adds the breweries, wineries, distilleries &
+      // bars that stage most of Frederick's live music. See
+      // src/data/live-music-venues.ts (every slug verified in dataset).
+      { key: "live-music", type: "category", label: "Live music", icon: "Music",     match: (p) => p.category === "music" || LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
       { key: "public-art", type: "category", label: "Public art", icon: "Palette",   match: (p) => p.category === "public-art" },
     ],
   },
   {
     key: "wellness",
-    label: "Wellness",
-    blurb:
-      "Yoga, gyms, and spas — the everyday wellness map. Filtered down from the broader directory so the chip stays useful.",
+    label: "Wellness & beauty",
+    blurb: "Yoga, gyms, spas, hair & nails — the everyday self-care map.",
     color: "#A02929",
     icon: "Heart",
-    match: (p) => isYoga(p) || isGymFitness(p) || isSpa(p),
+    // Serve the WHOLE self-care category. The old matcher name-filtered
+    // to yoga/gym/spa and orphaned ~190 hair/nail/beauty rows; now the
+    // parent shows all and the sub-intents split it honestly by name.
+    match: (p) => SELFCARE_CATS.has(p.category),
     preferOpen: true,
     subIntents: [
-      { key: "yoga",    type: "category", label: "Yoga",         icon: "Activity", match: isYoga },
-      { key: "gyms",    type: "category", label: "Gyms",         icon: "Dumbbell", match: isGymFitness },
-      { key: "spas",    type: "category", label: "Spas",         icon: "Sparkles", match: isSpa },
+      { key: "yoga",  type: "category", label: "Yoga",           icon: "Activity", match: isYoga },
+      { key: "gyms",  type: "category", label: "Gyms & fitness",  icon: "Dumbbell", match: isGymFitness },
+      { key: "spas",  type: "category", label: "Spas & massage",  icon: "Sparkles", match: isSpa },
+      { key: "hair",  type: "category", label: "Hair & beauty",                     match: isHairBeauty },
+      { key: "nails", type: "category", label: "Nails",                             match: isNails },
     ],
   },
   {
     key: "civic",
-    label: "Civic services",
-    blurb: "Libraries, government offices, public services.",
+    label: "Civic & services",
+    blurb: "Libraries, government, voting, pharmacies — the practical stuff.",
     color: "#2F5470",
     icon: "Landmark",
     match: (p) => CIVIC.has(p.category),
@@ -340,8 +402,48 @@ export const INTENTS: Intent[] = [
       { key: "government",    type: "category", label: "Government",    icon: "Building",    match: (p) => p.category === "government" },
       { key: "public-safety", type: "category", label: "Public safety", icon: "ShieldCheck", match: (p) => p.category === "public-safety" },
       { key: "voting",        type: "category", label: "Voting",        icon: "Vote",        match: (p) => p.category === "voting" },
-      { key: "worship",       type: "category", label: "Worship",       icon: "Church",      match: (p) => p.category === "worship" },
+      { key: "pharmacies",    type: "category", label: "Pharmacies",    icon: "Pill",        match: (p) => p.category === "pharmacy" },
     ],
+  },
+  {
+    key: "shop",
+    label: "Shops & makers",
+    blurb: "Market Street boutiques, antiques, bookshops, and local makers.",
+    color: "#2E7D74",
+    icon: "ShoppingBag",
+    match: (p) => SHOP.has(p.category),
+    preferOpen: true,
+    subIntents: [
+      { key: "antiques",  type: "category", label: "Antiques",          match: (p) => p.category === "antiques" },
+      { key: "boutiques", type: "category", label: "Boutiques & shops", match: (p) => p.category === "shopping" },
+      { key: "books",     type: "category", label: "Bookstores",        match: (p) => p.category === "book-store" },
+      { key: "markets",   type: "category", label: "Markets",           match: (p) => p.category === "market" },
+    ],
+  },
+  {
+    key: "stay",
+    label: "Stay the night",
+    blurb: "A bed for the night — downtown hotels to country B&Bs.",
+    color: "#5B1E55",
+    icon: "Hotel",
+    match: (p) => LODGING.has(p.category),
+    preferOpen: false,
+    subIntents: [
+      { key: "hotels", type: "category", label: "Hotels",      match: (p) => LODGING.has(p.category) && !BNB_NAME_RE.test(p.name) },
+      { key: "bnbs",   type: "category", label: "B&Bs & inns", match: (p) => LODGING.has(p.category) && BNB_NAME_RE.test(p.name) },
+    ],
+  },
+  {
+    key: "faith",
+    label: "Faith & worship",
+    blurb: "Churches, temples, and houses of worship across the county.",
+    color: "#5B3A8F",
+    icon: "Church",
+    match: (p) => WORSHIP.has(p.category),
+    preferOpen: false,
+    // No sub-intents — denomination isn't a reliable structured signal,
+    // and slicing 167 rows by a name guess would be dishonest. Browsable
+    // as one list, nearest-first when the user shares location.
   },
 ];
 

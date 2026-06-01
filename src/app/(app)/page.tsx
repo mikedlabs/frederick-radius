@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
-// Owner decision (2026-05-17): the app opens on Now (formerly Today),
-// not Radius. Now is the daily landing — weather, what's open,
-// what's happening right now, what's coming up next. Old "/" bookmarks
-// and the PWA entry land on /now.
+// The app opens on the funnel front door (/guide): "what are you after?"
+// → narrow → the answer. The /today briefing is now a secondary surface,
+// reachable from the funnel and under the Find tab. Old "/" bookmarks and
+// the PWA entry land on the funnel.
 export default function Home() {
-  redirect("/today");
+  redirect("/guide");
 }

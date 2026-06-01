@@ -1,0 +1,31 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=440">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:opsz,wght@6..72,300;6..72,500&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}
+:root{--cream:#EFE8DA;--paper:#FFFDF8;--sand:#E6DECE;--ink:#1A1815;--ink2:#4A4844;--ink3:#6B6459;--line:#D6CDBB;--brick:#A03A22;--gold:#C99632;--green:#1E6B3A;--cool:#2F5470;--plum:#7E2C6F;-- tan:#8B5A2B;--ink9:#0E0F12;}
+.serif{font-family:'Fraunces',Georgia,serif}.news{font-family:'Newsreader',Georgia,serif}.sans{font-family:'Inter',system-ui,sans-serif}.grot{font-family:'Space Grotesk','Inter',sans-serif}.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+body{font-family:'Inter',system-ui,sans-serif;width:440px}
+.scr{width:440px;min-height:920px;position:relative;overflow:hidden}
+.up{text-transform:uppercase;letter-spacing:.16em}.scr{background:#E4E9E0}
+  .map{position:absolute;inset:0;background:
+   radial-gradient(60% 40% at 30% 20%,#EEF1EA,transparent),
+   radial-gradient(50% 40% at 80% 70%,#E0E7DC,transparent),#E7ECE3}
+  .creek{position:absolute;left:-20px;top:340px;width:480px;height:60px;background:linear-gradient(90deg,#9FC2D8,#7FB0D8);transform:rotate(-8deg);opacity:.7;border-radius:40px;filter:blur(1px)}
+  .road{position:absolute;background:#fff;opacity:.7}
+  .pin{position:absolute;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50% 50% 50% 4px;background:#fff;border:2px solid var(--c);display:grid;place-items:center;font-size:18px;box-shadow:0 8px 16px -6px rgba(0,0,0,.3);rotate:45deg}
+  .pin>*{rotate:-45deg}
+  .search{position:absolute;top:54px;left:20px;right:20px;height:52px;background:rgba(255,255,255,.85);backdrop-filter:blur(12px);border:1px solid #fff;border-radius:16px;display:flex;align-items:center;padding:0 16px;gap:10px;box-shadow:0 10px 30px -12px rgba(0,0,0,.25)}
+  .search .q{color:var(--ink3);font-size:15px}
+  .chips{position:absolute;top:122px;left:20px;right:0;display:flex;gap:8px;overflow:hidden}
+  .chip{background:rgba(255,255,255,.9);border:1px solid #fff;border-radius:999px;padding:8px 13px;font-size:12px;font-weight:600;color:var(--ink2);white-space:nowrap;box-shadow:0 4px 12px -6px rgba(0,0,0,.2)}
+  .chip.on{background:var(--ink);color:#fff}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-radius:26px 26px 0 0;padding:18px 20px 30px;box-shadow:0 -16px 40px -20px rgba(0,0,0,.3)}
+  .grip{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+  .sheet h3{font-size:22px}.sheet .s{font-size:13px;color:var(--ink3);margin-top:2px}
+  .mini{display:flex;gap:10px;margin-top:14px}.card{flex:1;background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:12px}
+  .card .n{font-size:14px;font-weight:700}.card .m{font-size:11px;color:var(--ink3);margin-top:3px}</style></head><body><div class="scr"><div class="map"></div><div class="creek"></div>
+  <div class="road" style="left:0;top:300px;width:440px;height:8px"></div><div class="road" style="left:210px;top:0;width:8px;height:920px"></div>
+  <div class="pin" style="left:120px;top:300px;--c:var(--tan)">☕</div><div class="pin" style="left:300px;top:260px;--c:var(--brick)">🍽</div><div class="pin" style="left:210px;top:360px;--c:var(--plum)">🎭</div><div class="pin" style="left:330px;top:420px;--c:var(--green)">🌲</div><div class="pin" style="left:150px;top:470px;--c:var(--cool)">🛍</div>
+  <div class="search"><span style="font-size:16px">⌕</span><span class="q">Coffee, tacos, live music…</span></div>
+  <div class="chips"><div class="chip on">Open now</div><div class="chip">Eat</div><div class="chip">Coffee</div><div class="chip">Outdoors</div><div class="chip">Arts</div></div>
+  <div class="sheet"><div class="grip"></div><h3 class="serif">12 open within a 5-min walk</h3><div class="s">Nearest first · downtown Frederick</div>
+   <div class="mini"><div class="card"><div class="n">Cafe Nola</div><div class="m">Coffee · open till 11 · 2 min</div></div><div class="card"><div class="n">Tenth Ward</div><div class="m">Live music · open · 4 min</div></div></div></div></div></body></html>
