@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import { motion, AnimatePresence, useReducedMotion, type Transition } from "framer-motion";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
 import { ChevronLeft, ChevronRight, Search, MapPin } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
@@ -9,8 +9,10 @@ import { useClientPlaces } from "@/hooks/useClientPlaces";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import PlaceCard from "@/components/place/PlaceCard";
 import Pill from "@/components/ui/Pill";
+import Skeleton from "@/components/ui/Skeleton";
 import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
+import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
 import { INTENT_ICON } from "./intentIcons";
 
@@ -35,6 +37,21 @@ const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "arts", "family", "wellnes
 
 const RESULT_CAP = 24;
 
+// Premium entrance: tiles settle in with a gentle spring stagger.
+const tilesContainer: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } } };
+const tileItem: Variants = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: [0.34, 1.4, 0.5, 1] } },
+};
+
+function daypartGreeting(hour: number): string {
+  if (hour < 5) return "Late night";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 21) return "Good evening";
+  return "Tonight";
+}
+
 export default function FunnelFlow() {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
@@ -42,6 +59,10 @@ export default function FunnelFlow() {
   const [chosenSub, setChosenSub] = useState<SubIntent | "all" | null>(null);
   const [openOnly, setOpenOnly] = useState(false);
   const { state: geo, request: requestGeo } = useGeolocation();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  // Daypart greeting only after mount, so SSR and first paint match.
+  const greeting = mounted ? daypartGreeting(frederickHour()) : null;
 
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
   const hasSubs = !!(intent?.subIntents && intent.subIntents.length);
@@ -135,7 +156,7 @@ export default function FunnelFlow() {
       <AnimatePresence mode="wait" initial={false}>
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
-            <Header eyebrow="FREDERICK COUNTY" title="What are you after?" sub="Tap one. It narrows from there." />
+            <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Tap one. It narrows from there." />
             <Grid>
               {TOP.map((k) => {
                 const it = INTENT_BY_KEY[k];
@@ -221,7 +242,7 @@ export default function FunnelFlow() {
             {!ready ? (
               <div className="space-y-3" aria-hidden>
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="h-[84px] animate-pulse rounded-[var(--app-radius-lg)]" style={{ background: "var(--app-bg-sunken)" }} />
+                  <Skeleton.Block key={i} height={84} round="var(--app-radius-lg)" />
                 ))}
               </div>
             ) : results.length === 0 ? (
@@ -273,7 +294,13 @@ function Header({ eyebrow, title, sub, color }: { eyebrow: string; title: string
 }
 
 function Grid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-2 gap-3">{children}</div>;
+  const reduce = useReducedMotion();
+  if (reduce) return <div className="grid grid-cols-2 gap-3">{children}</div>;
+  return (
+    <motion.div className="grid grid-cols-2 gap-3" variants={tilesContainer} initial="hidden" animate="show">
+      {children}
+    </motion.div>
+  );
 }
 
 function Tile({
@@ -295,22 +322,23 @@ function Tile({
     <motion.button
       type="button"
       onClick={onClick}
+      variants={tileItem}
       whileTap={{ scale: 0.97 }}
-      className="tactile tactile-interactive flex min-h-[120px] flex-col items-start gap-1 rounded-[var(--app-radius-lg)] p-4 text-left"
+      className="tactile tactile-interactive flex min-h-[124px] flex-col items-start gap-1.5 rounded-[var(--app-radius-lg)] p-4 text-left"
       style={{ background: "var(--app-bg-elevated)" }}
     >
-      {icon ? (
-        <span
-          className="mb-1 inline-flex h-9 w-9 items-center justify-center rounded-full"
-          style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
-        >
-          {icon}
-        </span>
-      ) : (
-        <ChevronRight className="mb-1 h-5 w-5" strokeWidth={2.5} style={{ color }} aria-hidden />
-      )}
       <span
-        className="text-[16px] font-semibold leading-snug"
+        className="mb-0.5 inline-flex h-11 w-11 items-center justify-center rounded-[14px]"
+        style={{
+          background: `linear-gradient(145deg, color-mix(in srgb, ${color} 20%, var(--app-bg-elevated)), color-mix(in srgb, ${color} 8%, var(--app-bg-elevated)))`,
+          color,
+          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 22%, transparent)`,
+        }}
+      >
+        {icon ?? <ChevronRight className="h-5 w-5" strokeWidth={2.5} aria-hidden />}
+      </span>
+      <span
+        className="mt-0.5 text-[16.5px] font-semibold leading-snug"
         style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
       >
         {label}
@@ -321,7 +349,8 @@ function Tile({
         </span>
       )}
       {typeof count === "number" && (
-        <span className="mt-auto pt-1.5 text-[11px] font-semibold tabular-nums" style={{ color }}>
+        <span className="mt-auto inline-flex items-center gap-1.5 pt-1.5 text-[11px] font-semibold tabular-nums" style={{ color }}>
+          <span className="inline-block h-1 w-1 rounded-full" style={{ background: color }} aria-hidden />
           {count} place{count === 1 ? "" : "s"}
         </span>
       )}
