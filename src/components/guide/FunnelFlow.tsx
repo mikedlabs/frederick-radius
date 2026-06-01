@@ -286,7 +286,7 @@ export default function FunnelFlow({
             <div className="mb-3">
               <BetaIntroCard />
             </div>
-            <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Tap one. It narrows from there." />
+            <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Pick one — it narrows from there." />
             {/* Reserve the row height so the daypart picks fade in on mount
                 without shoving the grid down (no first-paint layout shift). */}
             <div className="mb-4 flex min-h-[38px] flex-wrap items-center gap-2">
@@ -475,7 +475,7 @@ export default function FunnelFlow({
                   >
                     {geo.status === "granted"
                       ? "Open now & nearest first — tap any for hours, photos & reviews."
-                      : "Open now first, then most useful. Turn on location for nearest-first."}
+                      : "Open now first, then the most useful. Turn on location to sort by nearest."}
                   </motion.li>
                 )}
               </motion.ul>

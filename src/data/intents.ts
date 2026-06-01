@@ -236,8 +236,8 @@ const hasCuisine = (p: PlaceCardData, slug: string): boolean => cuisinesOf(p).in
 export const INTENTS: Intent[] = [
   {
     key: "coffee",
-    label: "Coffee right now",
-    blurb: "Cafes and bakeries open at this hour, near you.",
+    label: "Coffee",
+    blurb: "Roasters, cafes, and the bakeries worth the early line.",
     color: "#8B5A2B",
     icon: "Coffee",
     match: (p) => COFFEE.has(p.category),
@@ -352,7 +352,7 @@ export const INTENTS: Intent[] = [
   {
     key: "arts",
     label: "Arts & culture",
-    blurb: "Galleries, theaters, museums, live music.",
+    blurb: "Galleries, stages, museums, and where the live music plays.",
     color: "#7E2C6F",
     icon: "Palette",
     match: (p) => ARTS.has(p.category),
@@ -391,8 +391,8 @@ export const INTENTS: Intent[] = [
   },
   {
     key: "civic",
-    label: "Civic & essentials",
-    blurb: "Libraries, government, voting, pharmacies, public services.",
+    label: "Civic & services",
+    blurb: "Libraries, government, voting, pharmacies — the practical stuff.",
     color: "#2F5470",
     icon: "Landmark",
     match: (p) => CIVIC.has(p.category),
@@ -407,8 +407,8 @@ export const INTENTS: Intent[] = [
   },
   {
     key: "shop",
-    label: "Shop",
-    blurb: "Market Street shops, antiques, books, and makers.",
+    label: "Shops & makers",
+    blurb: "Market Street boutiques, antiques, bookshops, and local makers.",
     color: "#2E7D74",
     icon: "ShoppingBag",
     match: (p) => SHOP.has(p.category),
@@ -423,7 +423,7 @@ export const INTENTS: Intent[] = [
   {
     key: "stay",
     label: "Stay the night",
-    blurb: "Hotels, inns, and bed & breakfasts across the county.",
+    blurb: "A bed for the night — downtown hotels to country B&Bs.",
     color: "#5B1E55",
     icon: "Hotel",
     match: (p) => LODGING.has(p.category),
@@ -436,7 +436,7 @@ export const INTENTS: Intent[] = [
   {
     key: "faith",
     label: "Faith & worship",
-    blurb: "Churches, temples, and houses of worship countywide.",
+    blurb: "Churches, temples, and houses of worship across the county.",
     color: "#5B3A8F",
     icon: "Church",
     match: (p) => WORSHIP.has(p.category),
