@@ -52,7 +52,10 @@ export default function AnswerCard({ answer }: { answer: Answer }) {
       )}
 
       <div className="space-y-1">
-        <h3 className="text-[16px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+        <h3
+          className="text-[16px] font-semibold leading-snug"
+          style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
+        >
           {answer.title}
         </h3>
         {answer.answer && (

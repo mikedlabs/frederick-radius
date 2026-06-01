@@ -138,7 +138,7 @@ export default async function TodayMoves({
         className="tactile tactile-interactive group block rounded-[var(--app-radius-lg)] p-4"
         style={{
           background:
-            "linear-gradient(135deg, color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated)), var(--app-bg-elevated))",
+            "linear-gradient(135deg, color-mix(in srgb, var(--app-brand) 20%, var(--app-bg-elevated)), var(--app-bg-elevated))",
         }}
       >
         <div className="flex items-start gap-3">

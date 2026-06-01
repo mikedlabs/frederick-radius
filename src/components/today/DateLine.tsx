@@ -36,12 +36,15 @@ export default function DateLine() {
   return (
     <header className="flex items-end justify-between gap-3">
       <div className="min-w-0">
-        <h1
+        {/* Styled like display type but semantically a <p>: the page's
+            one <h1> is TodayAsk ("Ask Frederick anything."). Avoids the
+            three-<h1> document-hierarchy bug the craft audit flagged. */}
+        <p
           className="font-serif text-[26px] font-semibold leading-none tracking-tight sm:text-[30px]"
           style={{ color: "var(--app-ink)" }}
         >
           {weekday}
-        </h1>
+        </p>
         <p
           className="mt-1 text-meta font-semibold uppercase tracking-[0.14em]"
           style={{ color: "var(--app-ink-3)" }}

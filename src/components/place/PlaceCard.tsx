@@ -275,7 +275,7 @@ export default function PlaceCard({
             {place.review_snippet && (
               <blockquote
                 className="mt-0.5 border-l-2 pl-2.5 text-[12.5px] italic leading-snug"
-                style={{ borderColor: `color-mix(in srgb, ${color} 45%, transparent)`, color: "var(--app-ink-2)" }}
+                style={{ borderColor: `color-mix(in srgb, ${color} 60%, transparent)`, color: "var(--app-ink-2)" }}
               >
                 &ldquo;{place.review_snippet}&rdquo;
                 {place.review_author && (
