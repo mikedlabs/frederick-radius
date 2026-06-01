@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Search, MapPin } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import PlaceCard from "@/components/place/PlaceCard";
 import Pill from "@/components/ui/Pill";
@@ -61,12 +62,28 @@ function suggestedForHour(hour: number): IntentKey[] {
   return ["eat"];
 }
 
+// Situational lenses — find by the moment, ACROSS categories, using the
+// place `tags` we already hold. Honest: each surfaces only the TAGGED
+// set (a curated subset), never a guess.
+type Lens = { key: string; label: string; match: (p: PlaceCardData) => boolean };
+const hasTag = (p: PlaceCardData, t: string) => (p.tags ?? []).includes(t);
+const LENSES: Lens[] = [
+  { key: "date-night", label: "Date night", match: (p) => hasTag(p, "date-night") },
+  { key: "with-kids", label: "With kids", match: (p) => hasTag(p, "kids-0-5") || hasTag(p, "kids-6-12") || hasTag(p, "family") },
+  { key: "dog", label: "Dog-friendly", match: (p) => hasTag(p, "dog-friendly") },
+  { key: "patio", label: "Patio & outdoor", match: (p) => hasTag(p, "patio") || hasTag(p, "outdoor-seating") || hasTag(p, "outdoor") },
+  { key: "groups", label: "Good for groups", match: (p) => hasTag(p, "groups") },
+  { key: "rainy", label: "Rainy day", match: (p) => hasTag(p, "rainy-day") || hasTag(p, "indoor") },
+  { key: "local", label: "Local favorites", match: (p) => p.local_favorite === true || hasTag(p, "local-favorite") },
+];
+
 export default function FunnelFlow() {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
   const [intentKey, setIntentKey] = useState<IntentKey | null>(null);
   const [chosenSub, setChosenSub] = useState<SubIntent | "all" | null>(null);
   const [openOnly, setOpenOnly] = useState(false);
+  const [lens, setLens] = useState<Lens | null>(null);
   const { state: geo, request: requestGeo } = useGeolocation();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag: the daypart greeting must differ between SSR (none) and client (real hour), so it can only resolve post-mount
@@ -79,11 +96,13 @@ export default function FunnelFlow() {
 
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
   const hasSubs = !!(intent?.subIntents && intent.subIntents.length);
-  const step: "intent" | "sub" | "results" = !intent
-    ? "intent"
-    : hasSubs && chosenSub === null
-      ? "sub"
-      : "results";
+  const step: "intent" | "sub" | "results" = lens
+    ? "results"
+    : !intent
+      ? "intent"
+      : hasSubs && chosenSub === null
+        ? "sub"
+        : "results";
 
   // Live per-intent counts so the first screen reads as real, not a menu.
   const counts = useMemo(() => {
@@ -94,10 +113,10 @@ export default function FunnelFlow() {
   }, [ready, places]);
 
   const results = useMemo(() => {
-    if (!intent) return [];
+    if (!intent && !lens) return [];
     const origin = geo.status === "granted" ? { lng: geo.position.lng, lat: geo.position.lat } : null;
-    let r = places.filter(intent.match);
-    if (chosenSub && chosenSub !== "all") r = r.filter(chosenSub.match);
+    let r = lens ? places.filter(lens.match) : places.filter(intent!.match);
+    if (!lens && chosenSub && chosenSub !== "all") r = r.filter(chosenSub.match);
     if (openOnly) r = r.filter((p) => isOpenNow(p.open_status));
     // Distance only when we truly have the user's location — never imply
     // a distance we can't source. Rank: open now first, then nearest
@@ -111,14 +130,28 @@ export default function FunnelFlow() {
       return a.name.localeCompare(b.name);
     });
     return ranked.slice(0, RESULT_CAP);
-  }, [places, intent, chosenSub, openOnly, geo]);
+  }, [places, intent, lens, chosenSub, openOnly, geo]);
 
   const resultsSub = !ready
     ? "Finding places…"
     : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${geo.status === "granted" ? "nearest first" : "open now first"}`;
 
+  // Result-header values, shared by the intent and lens paths.
+  const resultColor = lens ? "var(--app-brand)" : intent?.color;
+  const resultTitle = lens ? lens.label : chosenSub && chosenSub !== "all" ? chosenSub.label : intent?.label ?? "";
+  const resultEyebrow = (lens
+    ? `By the moment · ${lens.label}`
+    : chosenSub && chosenSub !== "all"
+      ? `${intent?.label} · ${chosenSub.label}`
+      : intent?.label ?? ""
+  ).toUpperCase();
+
   const back = () => {
     haptic("light");
+    if (lens) {
+      setLens(null);
+      return;
+    }
     if (step === "results" && hasSubs) setChosenSub(null);
     else {
       setIntentKey(null);
@@ -155,13 +188,13 @@ export default function FunnelFlow() {
             <Search className="h-3.5 w-3.5" strokeWidth={2} aria-hidden /> Search instead
           </Link>
         )}
-        {step !== "intent" && intent && (
+        {step !== "intent" && (intent || lens) && (
           <span
             className="ml-auto truncate text-[12px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: intent.color }}
+            style={{ color: resultColor }}
           >
-            {intent.label}
-            {chosenSub && chosenSub !== "all" ? ` › ${chosenSub.label}` : ""}
+            {lens ? lens.label : intent!.label}
+            {!lens && chosenSub && chosenSub !== "all" ? ` › ${chosenSub.label}` : ""}
           </span>
         )}
       </div>
@@ -213,6 +246,18 @@ export default function FunnelFlow() {
                 );
               })}
             </Grid>
+            <div className="mt-5">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
+                Or by the moment
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {LENSES.map((l) => (
+                  <Pill key={l.key} tone="ink" size="sm" onClick={() => { haptic("light"); setLens(l); }}>
+                    {l.label}
+                  </Pill>
+                ))}
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -245,13 +290,13 @@ export default function FunnelFlow() {
           </motion.div>
         )}
 
-        {step === "results" && intent && (
+        {step === "results" && (intent || lens) && (
           <motion.div key="results" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
             <Header
-              eyebrow={(chosenSub && chosenSub !== "all" ? `${intent.label} · ${chosenSub.label}` : intent.label).toUpperCase()}
-              title={chosenSub && chosenSub !== "all" ? chosenSub.label : intent.label}
+              eyebrow={resultEyebrow}
+              title={resultTitle}
               sub={resultsSub}
-              color={intent.color}
+              color={resultColor}
             />
             {ready && (
               <div className="flex flex-wrap gap-2 pb-3">
