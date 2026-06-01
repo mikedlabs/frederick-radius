@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin, CalendarDays, Activity, TrainFront, SquareParking, Route, Waves, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
@@ -77,6 +77,20 @@ const LENSES: Lens[] = [
   { key: "groups", label: "Good for groups", match: (p) => hasTag(p, "groups") },
   { key: "rainy", label: "Rainy day", match: (p) => hasTag(p, "rainy-day") || hasTag(p, "indoor") },
   { key: "local", label: "Local favorites", match: (p) => p.local_favorite === true || hasTag(p, "local-favorite") },
+];
+
+// Beyond the place directory — the OTHER answers Radius holds, so the
+// front door reaches the whole app, not just "where to eat." Each row
+// routes to a live, working surface (data-liveness audited: weather,
+// MARC, traffic, outages, school closings, river gauges are all live).
+type Pathway = { href: string; label: string; sub: string; icon: LucideIcon; color: string };
+const PATHWAYS: Pathway[] = [
+  { href: "/events",  label: "What's happening",        sub: "Tonight, this weekend, live music & festivals", icon: CalendarDays,  color: "var(--app-accent)" },
+  { href: "/pulse",   label: "Right now in the county",  sub: "Traffic, power outages, school closings, 311",  icon: Activity,      color: "var(--app-brand)" },
+  { href: "/transit", label: "Trains & getting around",  sub: "Live MARC departures + TransIT routes",          icon: TrainFront,    color: "var(--app-cool)" },
+  { href: "/parking", label: "Parking downtown",         sub: "Garages, rates & event-day closures",            icon: SquareParking, color: "var(--app-ink-2)" },
+  { href: "/plan",    label: "Plan a day",               sub: "Build a shareable Frederick itinerary",          icon: Route,         color: "var(--app-brand-2)" },
+  { href: "/rivers",  label: "Rivers & flooding",        sub: "Live Carroll Creek + Monocacy gauges",           icon: Waves,         color: "var(--app-cool)" },
 ];
 
 export default function FunnelFlow() {
@@ -272,9 +286,22 @@ export default function FunnelFlow() {
                 ))}
               </div>
             </div>
-            <p className="mt-6 text-center">
+            {/* Beyond places — make the front door reach the whole app.
+                These route to live, working surfaces that were otherwise
+                unreachable from here (the "missing pathways"). */}
+            <div className="mt-7">
+              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
+                Or get a straight answer
+              </p>
+              <div className="space-y-2">
+                {PATHWAYS.map((p) => (
+                  <PathwayRow key={p.href} {...p} />
+                ))}
+              </div>
+            </div>
+            <p className="mt-5 text-center">
               <Link href="/today" className="text-[13px] font-semibold" style={{ color: "var(--app-brand)" }}>
-                Or see what&rsquo;s on today &rarr;
+                Today&rsquo;s weather &amp; full briefing &rarr;
               </Link>
             </p>
           </motion.div>
@@ -412,6 +439,37 @@ function Grid({ children }: { children: ReactNode }) {
     <motion.div className="grid grid-cols-2 gap-3" variants={tilesContainer} initial="hidden" animate="show">
       {children}
     </motion.div>
+  );
+}
+
+function PathwayRow({ href, label, sub, icon: Icon, color }: Pathway) {
+  return (
+    <Link
+      href={href}
+      onClick={() => haptic("light")}
+      className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-lg)] p-3"
+      style={{ background: "var(--app-bg-elevated)" }}
+    >
+      <span
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px]"
+        style={{
+          background: `linear-gradient(150deg, color-mix(in srgb, ${color} 24%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${color} 9%, var(--app-bg-elevated-solid)))`,
+          color,
+          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 26%, transparent)`,
+        }}
+      >
+        <Icon className="h-5 w-5" strokeWidth={2} aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-title-sm block" style={{ color: "var(--app-ink)" }}>
+          {label}
+        </span>
+        <span className="text-meta block truncate" style={{ color: "var(--app-ink-3)" }}>
+          {sub}
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+    </Link>
   );
 }
 
