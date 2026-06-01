@@ -52,8 +52,8 @@ export default function NotFound() {
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <Button href="/today" size="md">
-            Back to Now
+          <Button href="/guide" size="md">
+            Back home
           </Button>
           <Button href="/events" variant="secondary" size="md">
             See events

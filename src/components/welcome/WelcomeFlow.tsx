@@ -73,10 +73,10 @@ export default function WelcomeFlow() {
   const [chosenMood, setChosenMood] = useState<string | null>(null);
 
   // Hard navigation, not router.replace — middleware reads the cookie
-  // on every /now request, and a client-side router push can race
+  // on every request, and a client-side router push can race
   // document.cookie on some Safari/cache states.
   function goToNow(): void {
-    window.location.assign("/today");
+    window.location.assign("/guide");
   }
 
   const finish = useCallback(

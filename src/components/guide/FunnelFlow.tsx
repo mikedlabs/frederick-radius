@@ -17,6 +17,7 @@ import { placeQuality } from "@/lib/quality/placeQuality";
 import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
 import { INTENT_ICON } from "./intentIcons";
+import BetaIntroCard from "@/components/today/BetaIntroCard";
 
 /**
  * FunnelFlow — the "what are you after?" front door.
@@ -208,29 +209,36 @@ export default function FunnelFlow() {
       <AnimatePresence mode="wait" initial={false}>
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
+            <div className="mb-3">
+              <BetaIntroCard />
+            </div>
             <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Tap one. It narrows from there." />
-            {suggested.length > 0 && (
-              <div className="mb-4 flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                  Good right now
-                </span>
-                {suggested.map((k) => {
-                  const it = INTENT_BY_KEY[k];
-                  const I = INTENT_ICON[it.icon];
-                  return (
-                    <Pill
-                      key={`now-${k}`}
-                      tone="prominent"
-                      size="sm"
-                      icon={<I className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
-                      onClick={() => { haptic("light"); setChosenSub(null); setIntentKey(k); }}
-                    >
-                      {it.label}
-                    </Pill>
-                  );
-                })}
-              </div>
-            )}
+            {/* Reserve the row height so the daypart picks fade in on mount
+                without shoving the grid down (no first-paint layout shift). */}
+            <div className="mb-4 flex min-h-[38px] flex-wrap items-center gap-2">
+              {suggested.length > 0 && (
+                <>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
+                    Good right now
+                  </span>
+                  {suggested.map((k) => {
+                    const it = INTENT_BY_KEY[k];
+                    const I = INTENT_ICON[it.icon];
+                    return (
+                      <Pill
+                        key={`now-${k}`}
+                        tone="prominent"
+                        size="sm"
+                        icon={<I className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
+                        onClick={() => { haptic("light"); setChosenSub(null); setIntentKey(k); }}
+                      >
+                        {it.label}
+                      </Pill>
+                    );
+                  })}
+                </>
+              )}
+            </div>
             <Grid>
               {TOP.map((k) => {
                 const it = INTENT_BY_KEY[k];
