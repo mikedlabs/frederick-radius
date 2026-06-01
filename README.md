@@ -1,33 +1,33 @@
 # Frederick Radius
 
-> The pocket compass for Frederick County, Maryland. What's open, what's happening, where, and how to get there.
+> An answer-first field guide to Frederick County, Maryland. What's open, what's happening, where, and how to get there — answered, with its source.
 
 **Live:** [frederickradius.app](https://frederickradius.app)
-**Companion docs:** [`AUDIT.md`](./AUDIT.md) (what works, what's half-working) · [`ROADMAP.md`](./ROADMAP.md) (what's shipping, scaffolded, or unbuilt) · `docs/archive/` (historical decisions, pre-overhaul state).
+**Companion docs:** [`docs/NORTH_STAR.md`](./docs/NORTH_STAR.md) (what the product is + the laws) · [`UX_REDO.md`](./UX_REDO.md) (the sequenced redo plan + data-confidence gate) · [`AUDIT.md`](./AUDIT.md) (what works, what's half-working) · [`ROADMAP.md`](./ROADMAP.md) (what's shipping, scaffolded, or unbuilt) · `docs/archive/` (historical decisions, pre-overhaul state).
 
 ---
 
 ## What ships today
 
-Four primary tabs:
+Four primary tabs (the bottom nav; single source of truth in `src/components/nav/tabs.ts`):
 
 | Tab | URL | What it does |
 |---|---|---|
-| **Now** | `/now` | Daily briefing — weather (hourly + 7-day) · 3 right-now picks (open · starting soon · weekend bet) · mood tiles · events scoped to the active lens |
-| **Browse** | `/browse` | Map of all places with category-color clustered pins, layers drawer for civic / transit / trails / amenities |
-| **Plan** | `/events` | Lens-driven event explorer (Tonight · Tomorrow · Weekend · This week · Free) with month-view calendar |
-| **Saved** | `/saved` | localStorage-backed bookmarks · recently-viewed places · smart town-cluster suggestions |
+| **Today** | `/today` | The home. Today still leads with weather + an events shelf; the answer-first reframe (the "intelligence layer" home) is UX_REDO Layer 2. Renders weather (hourly + 7-day), TodayMoves + MoveStack, TwoDoors, mode-scoped events, MoodTiles. |
+| **Map** | `/map` | Pinpoint-first map with category-color pins + a layers drawer (civic / transit / trails / amenities). Radius is a mode here: `/map?mode=radius`. |
+| **Events** | `/events` | Lens-driven event explorer (Tonight · Tomorrow · Weekend · This week · Free) with month-view calendar. |
+| **My Radius** | `/my-radius` | localStorage-backed saves · recently-viewed places · follows. |
 
 ### Deep-link routes (not in bottom nav but discoverable)
 
 - `/places/[slug]` · `/category/[slug]` · `/m/[slug]` · `/events/[slug]` · `/events/calendar`
-- `/radius` (Within-reach mode for the map) · `/search` (one ranked list) · `/pulse` (deep weather)
-- `/parks` · `/trails` · `/trail` (beverage trail) · `/transit` · `/water` · `/history` · `/from-above`
+- `/map?mode=radius` (within-reach mode) · `/search` (one ranked list) · `/pulse` (deep weather)
+- `/parks` · `/trails` · `/trail` (beverage trail) · `/transit` · `/rivers` · `/history` · `/from-above`
 
 ### Meta + flow
 
-- `/` redirects: new visitor → `/about` · returning (cookie set) → `/now`
-- `/welcome` — 2-step mood + live-here onboarding
+- `/` redirects to `/today`. The onboarding/about gate was removed pre-launch; the persona affordance is now an in-page chip, not a forced redirect.
+- `/welcome` — 2-step mood + live-here onboarding (reachable, no longer gated)
 - `/about` — 30-second pitch · `/trust` — data source commitments
 - `/business/claim` · `/business/manage/[token]` · `/submit/place` · `/submit/event`
 - `/admin/*` — Basic Auth gated dashboards (claims, data-health, dedup-review, etc.)
@@ -40,7 +40,7 @@ Plus: dynamic per-place OG images via `/api/og`, Event + LocalBusiness JSON-LD, 
 - **Mapbox GL JS** + custom paper-mode palette (was Leaflet — switched May 2026)
 - **Vaul** for bottom drawers · **cmdk** for the ⌘K command palette · **nuqs** for URL state
 - **Sonner** for toasts · **Framer Motion** for shelf reveals
-- **Drizzle ORM** schema committed (Postgres + PostGIS) — DB usage limited to feed-snapshots
+- **Supabase** (auth + Postgres) · **Drizzle ORM** schema committed (Postgres + PostGIS) — DB usage limited to feed-snapshots + auth/follows
 - **next/og** for runtime OG image generation
 - **Sentry** for runtime error capture (when `SENTRY_DSN` is set)
 - **Vercel** hosting · ISR everywhere · Skew Protection enabled
@@ -49,18 +49,20 @@ Plus: dynamic per-place OG images via `/api/og`, Event + LocalBusiness JSON-LD, 
 
 ```
 src/
+├── middleware.ts            # /admin Basic Auth + Supabase session refresh
 ├── app/
-│   ├── (marketing)/         # / — cinematic 10-scene demo (investor + press)
+│   ├── pitch/               # cinematic marketing demo (investor + press)
 │   ├── (app)/               # the PWA route group
-│   │   ├── now/             # the home briefing
-│   │   ├── browse/          # the map (the merged map + radius surface)
-│   │   ├── events/          # plan tab + [slug] + calendar
+│   │   ├── page.tsx         # "/" → redirects to /today
+│   │   ├── today/           # the home (answer-first reframe is UX_REDO L2)
+│   │   ├── map/             # the map + radius mode (?mode=radius)
+│   │   ├── events/          # events tab + [slug] + calendar
 │   │   ├── places/          # directory + [slug]
 │   │   ├── m/[municipality] # town pages
 │   │   ├── category/[slug]  # category surfaces
-│   │   ├── saved/ · search/ · about/ · welcome/ · trust/ · settings/
-│   │   ├── radius/ · pulse/ · history/ · parks/ · trails/ · trail/
-│   │   ├── transit/ · water/
+│   │   ├── my-radius/ · search/ · about/ · welcome/ · trust/ · settings/
+│   │   ├── pulse/ · history/ · parks/ · trails/ · trail/ · rivers/
+│   │   ├── transit/ · find/ · weekend/ · plan/ · collections/ · amenities/
 │   │   └── layout.tsx       # bottom-nav layout chrome
 │   ├── admin/               # gated admin dashboards
 │   ├── business/            # claim + manage
@@ -70,18 +72,16 @@ src/
 │   │   ├── og/              # dynamic OG image generator
 │   │   ├── isochrone/       # Mapbox isochrone proxy
 │   │   ├── events/[slug]/ics
-│   │   └── push/, /discover/, /cron/
+│   │   └── push/, /discover/, /cron/, /ingest/
 │   ├── icon.tsx · apple-icon.tsx · manifest.ts · sitemap.ts · robots.ts
-│   ├── layout.tsx           # root: fonts, Toaster, NuqsAdapter, SW register
-│   ├── middleware.ts        # /welcome gate + /admin Basic Auth
-│   └── globals.css          # design tokens + .reveal-up + .shimmer + .cmdk-* + .wx-* + .sky-*
+│   └── layout.tsx           # root: fonts, Toaster, NuqsAdapter, SW register
 ├── components/
-│   ├── now/ · today/        # /now sections + WeatherHero stack
+│   ├── now/ · today/        # /today sections + weather/answer stack
 │   ├── event/ · place/ · saved/ · search/ · radius/ · map/
 │   ├── nav/                 # BottomNav (4 tabs, sliding indicator) · TopBar · RouteAccent
 │   ├── cmdk/                # ⌘K command palette
 │   ├── ui/                  # primitives (BottomDrawer, Skeleton, ReasonChip, etc.)
-│   └── marketing/           # the 10 cinematic scenes
+│   └── marketing/           # the cinematic scenes (rendered at /pitch)
 ├── data/                    # municipalities, categories, places, events + enrichment JSON
 ├── lib/
 │   ├── loaders/             # places, events, calendar — pure server data accessors
@@ -94,15 +94,15 @@ src/
 
 ## Information architecture
 
-Three jobs the app does. Every route is structure under one of them:
+Three jobs the app does. Every route sits under one of them:
 
-1. **NOW** — answer "what should I do right now / soon" (weather, open, near, happening)
-2. **BROWSE** — answer "what's here / where / what kind" (map, directory, town, category, radius)
-3. **PLAN** — answer "what's coming up" (events list, calendar, weekend)
+1. **TODAY** — answer "what should I do right now / soon" (weather, open, near, happening). The home; see [`docs/NORTH_STAR.md`](./docs/NORTH_STAR.md) for the answer-first reframe.
+2. **MAP** — answer "what's here / where / what kind" (map, directory, town, category, radius mode)
+3. **EVENTS** — answer "what's coming up" (events list, calendar, weekend)
 
-Saved is your stuff — not a job, a holding area.
+My Radius is your stuff — not a job, a holding area.
 
-Old `/today`, `/map`, `/discover`, `/tonight`, `/markets`, `/historic`, `/art`, `/amenities` all 301 to canonical destinations via `next.config.ts`.
+Renamed routes 301 to their canonical destinations via `next.config.ts`: `/now` → `/today`, `/browse` → `/map`, `/saved` → `/my-radius`, `/radius` → `/map?mode=radius`, `/water` → `/rivers`, plus the older `/discover`, `/tonight`, `/markets`, `/historic`, `/art`, `/amenities`.
 
 ## Local dev
 
