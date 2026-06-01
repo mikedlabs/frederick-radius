@@ -2,11 +2,15 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import PlaceCard from "@/components/place/PlaceCard";
+import Pill from "@/components/ui/Pill";
+import { isOpenNow } from "@/lib/hours";
+import { haversineMeters } from "@/lib/geo";
 import { haptic } from "@/lib/haptics";
 import { INTENT_ICON } from "./intentIcons";
 
@@ -36,6 +40,8 @@ export default function FunnelFlow() {
   const reduce = useReducedMotion();
   const [intentKey, setIntentKey] = useState<IntentKey | null>(null);
   const [chosenSub, setChosenSub] = useState<SubIntent | "all" | null>(null);
+  const [openOnly, setOpenOnly] = useState(false);
+  const { state: geo, request: requestGeo } = useGeolocation();
 
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
   const hasSubs = !!(intent?.subIntents && intent.subIntents.length);
@@ -55,10 +61,27 @@ export default function FunnelFlow() {
 
   const results = useMemo(() => {
     if (!intent) return [];
+    const origin = geo.status === "granted" ? { lng: geo.position.lng, lat: geo.position.lat } : null;
     let r = places.filter(intent.match);
     if (chosenSub && chosenSub !== "all") r = r.filter(chosenSub.match);
-    return r.slice(0, RESULT_CAP);
-  }, [places, intent, chosenSub]);
+    if (openOnly) r = r.filter((p) => isOpenNow(p.open_status));
+    // Distance only when we truly have the user's location — never imply
+    // a distance we can't source. Rank: open now first, then nearest
+    // (when located), else alphabetical.
+    const ranked = origin ? r.map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })) : r.slice();
+    ranked.sort((a, b) => {
+      const ao = isOpenNow(a.open_status) ? 0 : 1;
+      const bo = isOpenNow(b.open_status) ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      if (origin) return (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+      return a.name.localeCompare(b.name);
+    });
+    return ranked.slice(0, RESULT_CAP);
+  }, [places, intent, chosenSub, openOnly, geo]);
+
+  const resultsSub = !ready
+    ? "Finding places…"
+    : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${geo.status === "granted" ? "nearest first" : "open now first"}`;
 
   const back = () => {
     haptic("light");
@@ -171,13 +194,30 @@ export default function FunnelFlow() {
             <Header
               eyebrow={(chosenSub && chosenSub !== "all" ? `${intent.label} · ${chosenSub.label}` : intent.label).toUpperCase()}
               title={chosenSub && chosenSub !== "all" ? chosenSub.label : intent.label}
-              sub={
-                !ready
-                  ? "Finding places…"
-                  : `${results.length}${results.length === RESULT_CAP ? "+" : ""} place${results.length === 1 ? "" : "s"} in Frederick County`
-              }
+              sub={resultsSub}
               color={intent.color}
             />
+            {ready && (
+              <div className="flex flex-wrap gap-2 pb-3">
+                <Pill tone="brand" size="sm" active={openOnly} onClick={() => { haptic("light"); setOpenOnly((v) => !v); }}>
+                  Open now
+                </Pill>
+                {geo.status === "granted" ? (
+                  <Pill tone="cool" size="sm" active icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
+                    Near you
+                  </Pill>
+                ) : (
+                  <Pill tone="cool" size="sm" onClick={() => { haptic("light"); requestGeo(); }} icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
+                    {geo.status === "loading" ? "Locating…" : "Near me"}
+                  </Pill>
+                )}
+              </div>
+            )}
+            {geo.status === "denied" && (
+              <p className="-mt-1 pb-3 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                Location is off, so this is sorted by open-now. Turn it on for nearest-first.
+              </p>
+            )}
             {!ready ? (
               <div className="space-y-3" aria-hidden>
                 {[0, 1, 2, 3].map((i) => (
