@@ -10,7 +10,7 @@ import { TABS, tabIndexForPath } from "./tabs";
  * SideRail — desktop primary nav (≥lg, 1024px+).
  *
  * Vertical mirror of BottomNav. Floating rounded-pill column on the
- * left edge with the same 4 tabs, the same glass treatment, and the
+ * left edge with the same 5 tabs, the same glass treatment, and the
  * same MOVING BRAND PILL behind the active tab (left/width became
  * top/height for the vertical axis). Hidden below lg; BottomNav
  * carries everything below that breakpoint.

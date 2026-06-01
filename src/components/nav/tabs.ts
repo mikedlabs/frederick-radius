@@ -1,5 +1,6 @@
 import {
   Compass,
+  Sun,
   Map as MapIcon,
   Calendar,
   Bookmark,
@@ -11,18 +12,19 @@ import {
  * (desktop). One source of truth — change a label here and both
  * navs follow.
  *
- * Four tabs:
- *   - Find      /guide  (the funnel front door; /today briefing sits under it)
+ * Five tabs:
+ *   - Find      /guide      (the funnel front door — "what are you after?")
+ *   - Today     /today      (weather + what's on + the live county pulse —
+ *                            the daily-return surface for locals)
  *   - Map       /map
  *   - Events    /events
  *   - My Radius /my-radius
  *
- * The fifth "Field guide" tab was retired — it housed four unrelated
- * jobs (geographic data, alternate map/now views, app settings,
- * editorial books) and a 5-tab nav couldn't articulate any of them.
- * The drawer's CONTENT still exists; the trigger moved to a "More"
- * icon button in the header so secondary destinations remain
- * reachable without a tab-sized claim on the primary nav.
+ * Today rejoined the primary nav (it had been demoted to a link under
+ * Find): the UI survey found the temporal / ambient-live-data layer is
+ * the single biggest daily-return driver for residents, and a buried
+ * link can't carry that. Secondary destinations (amenities, contacts,
+ * trails…) still live behind the header "More" sheet.
  */
 
 export type Tab = {
@@ -35,26 +37,25 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/guide",     label: "Find",      icon: Compass,  fillOnActive: false },
-  { href: "/map",       label: "Map",       icon: MapIcon,  fillOnActive: false },
-  { href: "/events",    label: "Events",    icon: Calendar, fillOnActive: false },
-  { href: "/my-radius", label: "My Radius", icon: Bookmark, fillOnActive: true  },
+  { href: "/guide",     label: "Find",   icon: Compass,  fillOnActive: false },
+  { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
+  { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
+  { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
+  { href: "/my-radius", label: "Saved",  icon: Bookmark, fillOnActive: true  },
 ] as const;
 
 /**
  * Secondary surfaces that belong UNDER a primary tab so the nav
- * highlights the right home instead of falsely defaulting to Today.
- * Place-browse + town + collection routes read as the "Map" (explore
- * places) context. Anything not listed here returns -1 → no tab
- * highlighted (correct for /settings, /about, /parks, a place detail
- * reached from anywhere, etc.).
+ * highlights the right home. Place-browse + town + collection routes
+ * read as the "Map" (explore places) context — index 2 now that Today
+ * sits at index 1. Anything not listed returns -1 → no tab highlighted
+ * (correct for /settings, /about, /parks, a place detail, etc.).
  */
 const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
-  ["/today", 0],
-  ["/places", 1],
-  ["/category", 1],
-  ["/collections", 1],
-  ["/m/", 1],
+  ["/places", 2],
+  ["/category", 2],
+  ["/collections", 2],
+  ["/m/", 2],
 ];
 
 /** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */
