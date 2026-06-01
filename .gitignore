@@ -72,3 +72,6 @@ scripts/.lighthouse/
 
 # Visual-verification output (scripts/screenshots.mjs)
 screenshots/
+
+# Generated mockup renders (reproducible from the .html + render script)
+.mockups/render/
