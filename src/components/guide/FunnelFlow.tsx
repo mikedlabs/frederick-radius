@@ -95,6 +95,24 @@ const PATHWAYS: Pathway[] = [
   { href: "/rivers",  label: "Rivers & flooding",        sub: "Live Carroll Creek + Monocacy gauges",           icon: Waves,         color: "var(--app-cool)" },
 ];
 
+// The long tail — every other real, landing-page-backed surface, so the
+// front door reaches the WHOLE app. Compact chips (vs. the six rich rows
+// above) because these are browse-and-explore, not urgent answers. Only
+// routes with a real index page are listed (no param-only /m or
+// /category dead links).
+const MORE_PATHS: { href: string; label: string }[] = [
+  { href: "/amenities",   label: "Restrooms & amenities" },
+  { href: "/trails",      label: "Trails" },
+  { href: "/parks",       label: "Parks" },
+  { href: "/weekend",     label: "This weekend" },
+  { href: "/history",     label: "History & stories" },
+  { href: "/trail",       label: "Beverage trail" },
+  { href: "/collections", label: "Collections" },
+  { href: "/contacts",    label: "City & county contacts" },
+  { href: "/places",      label: "All places" },
+  { href: "/map",         label: "Explore the map" },
+];
+
 export default function FunnelFlow() {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
@@ -301,7 +319,19 @@ export default function FunnelFlow() {
                 ))}
               </div>
             </div>
-            <p className="mt-5 text-center">
+            <div className="mt-6">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
+                More to explore
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {MORE_PATHS.map((m) => (
+                  <Pill key={m.href} href={m.href} size="sm">
+                    {m.label}
+                  </Pill>
+                ))}
+              </div>
+            </div>
+            <p className="mt-6 text-center">
               <Link href="/today" className="text-[13px] font-semibold" style={{ color: "var(--app-brand)" }}>
                 Today&rsquo;s weather &amp; full briefing &rarr;
               </Link>
