@@ -13,15 +13,15 @@ import {
  * navs follow.
  *
  * Five tabs:
- *   - Find      /guide      (the funnel front door — "what are you after?")
+ *   - Radius    /guide      (the front door — "The Radius": what are you after?)
  *   - Today     /today      (weather + what's on + the live county pulse —
  *                            the daily-return surface for locals)
  *   - Map       /map
  *   - Events    /events
- *   - My Radius /my-radius
+ *   - Saved     /my-radius
  *
  * Today rejoined the primary nav (it had been demoted to a link under
- * Find): the UI survey found the temporal / ambient-live-data layer is
+ * the front door): the UI survey found the temporal / ambient-live-data layer is
  * the single biggest daily-return driver for residents, and a buried
  * link can't carry that. Secondary destinations (amenities, contacts,
  * trails…) still live behind the header "More" sheet.
@@ -37,7 +37,7 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/guide",     label: "Find",   icon: Compass,  fillOnActive: false },
+  { href: "/guide",     label: "Radius", icon: Compass,  fillOnActive: false },
   { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
   { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
   { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
