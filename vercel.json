@@ -4,7 +4,8 @@
     { "path": "/api/ingest/all", "schedule": "0 9 * * *" },
     { "path": "/api/cron/notify-civic-alerts", "schedule": "*/30 * * * *" },
     { "path": "/api/cron/business-status", "schedule": "0 7 * * *" },
-    { "path": "/api/cron/data-health", "schedule": "30 9 * * *" }
+    { "path": "/api/cron/data-health", "schedule": "30 9 * * *" },
+    { "path": "/api/cron/daily-briefing", "schedule": "0 12,13 * * *" }
   ],
   "headers": [
     {
