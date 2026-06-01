@@ -69,6 +69,23 @@ export function getOpenStatus(
     }
   }
 
+  // Overnight spillover: a window that opened YESTERDAY and closes after
+  // midnight (close <= open, e.g. "11:00 AM – 1:00 AM") is still open in
+  // the early hours of today. The today-window loop above only catches
+  // the late-evening side of that range on the day it opens; without this
+  // a bar open "Fri 5 PM – 2 AM" reads as CLOSED at 1 AM Saturday. Check
+  // yesterday's overnight windows and honor the [00:00, close) tail.
+  const prevDay = DAYS[(DAYS.indexOf(day) + 6) % 7];
+  for (const w of hours[prevDay] ?? []) {
+    const open = parseHHMM(w.open);
+    const close = parseHHMM(w.close);
+    if (close <= open && minutes < close) {
+      const left = close - minutes;
+      if (left <= 60) return { state: "closing-soon", closesAt: w.close };
+      return { state: "open", closesAt: w.close, closingSoon: false };
+    }
+  }
+
   for (let i = 0; i < 7; i++) {
     const idx = (DAYS.indexOf(day) + i) % 7;
     const d = DAYS[idx];

@@ -104,4 +104,21 @@ describe("parseGoogleHours -> getOpenStatus integration", () => {
     expect(status.state).toBe("open");
     if (status.state === "open") expect(status.closesAt).toBe("17:00");
   });
+
+  it("stays open after midnight for an overnight window, then closes once it ends", () => {
+    // The Friday-night-into-Saturday case: open 5 PM Fri to 2 AM Sat.
+    const hours = parseGoogleHours(["Friday: 5:00 PM – 2:00 AM"]);
+    expect(hours).toEqual({ fri: [{ open: "17:00", close: "02:00" }] });
+    // 2026-06-06 04:30 UTC = Saturday 00:30 in America/New_York (EDT),
+    // 90 minutes before the Friday-night window closes at 2 AM. Before the
+    // overnight-spillover fix this read "closed" because getOpenStatus only
+    // checked Saturday's (empty) hours, never Friday's past-midnight tail.
+    const satHalfPastMidnight = new Date("2026-06-06T04:30:00Z");
+    const open = getOpenStatus(hours, { verified: true }, satHalfPastMidnight);
+    expect(open.state).toBe("open");
+    if (open.state === "open") expect(open.closesAt).toBe("02:00");
+    // 2026-06-06 07:00 UTC = Saturday 03:00 EDT, an hour after it closed.
+    const afterClose = getOpenStatus(hours, { verified: true }, new Date("2026-06-06T07:00:00Z"));
+    expect(afterClose.state).toBe("closed");
+  });
 });
