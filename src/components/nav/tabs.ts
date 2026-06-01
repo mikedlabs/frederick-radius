@@ -1,5 +1,5 @@
 import {
-  Sun,
+  Compass,
   Map as MapIcon,
   Calendar,
   Bookmark,
@@ -11,10 +11,10 @@ import {
  * (desktop). One source of truth — change a label here and both
  * navs follow.
  *
- * Four tabs (May 2026 IA cleanup):
- *   - Today    /today
- *   - Map      /map
- *   - Events   /events
+ * Four tabs:
+ *   - Find      /guide  (the funnel front door; /today briefing sits under it)
+ *   - Map       /map
+ *   - Events    /events
  *   - My Radius /my-radius
  *
  * The fifth "Field guide" tab was retired — it housed four unrelated
@@ -35,7 +35,7 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/today",     label: "Today",     icon: Sun,      fillOnActive: true  },
+  { href: "/guide",     label: "Find",      icon: Compass,  fillOnActive: false },
   { href: "/map",       label: "Map",       icon: MapIcon,  fillOnActive: false },
   { href: "/events",    label: "Events",    icon: Calendar, fillOnActive: false },
   { href: "/my-radius", label: "My Radius", icon: Bookmark, fillOnActive: true  },
@@ -50,6 +50,7 @@ export const TABS: readonly Tab[] = [
  * reached from anywhere, etc.).
  */
 const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
+  ["/today", 0],
   ["/places", 1],
   ["/category", 1],
   ["/collections", 1],

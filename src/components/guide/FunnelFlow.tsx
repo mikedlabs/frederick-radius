@@ -264,6 +264,11 @@ export default function FunnelFlow() {
                 ))}
               </div>
             </div>
+            <p className="mt-6 text-center">
+              <Link href="/today" className="text-[13px] font-semibold" style={{ color: "var(--app-brand)" }}>
+                Or see what&rsquo;s on today &rarr;
+              </Link>
+            </p>
           </motion.div>
         )}
 
