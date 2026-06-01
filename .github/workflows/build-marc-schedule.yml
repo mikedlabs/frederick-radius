@@ -1,0 +1,39 @@
+name: Build MARC schedule
+
+# Rebuilds src/data/marc-schedule.json from the MTA MARC GTFS feed
+# (public, keyless) and commits it if it changed. MARC's GTFS rotates on
+# a seasonal service-change cycle, so the static snapshot silently drifts
+# without this. The rebuild also repopulates feedDate from feed_info.txt
+# (currently null), so staleness becomes detectable.
+
+on:
+  schedule:
+    - cron: "0 8 1 * *" # 1st of each month, 08:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+      - name: Rebuild MARC schedule from GTFS
+        run: npm run build:marc-schedule
+      - name: Commit if changed
+        run: |
+          git config user.name "frederick-radius-bot"
+          git config user.email "bot@users.noreply.github.com"
+          if ! git diff --quiet -- src/data/marc-schedule.json; then
+            git add src/data/marc-schedule.json
+            git commit -m "data: refresh MARC schedule from GTFS (automated)"
+            git pull --rebase origin "${GITHUB_REF_NAME:-main}" || true
+            git push origin "HEAD:${GITHUB_REF_NAME:-main}"
+          else
+            echo "No MARC schedule changes."
+          fi
