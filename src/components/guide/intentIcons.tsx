@@ -8,6 +8,7 @@ import {
   Palette,
   Landmark,
   Heart,
+  ShoppingBag,
   type LucideIcon,
 } from "lucide-react";
 import type { Intent } from "@/data/intents";
@@ -26,4 +27,5 @@ export const INTENT_ICON: Record<Intent["icon"], LucideIcon> = {
   Palette,
   Landmark,
   Heart,
+  ShoppingBag,
 };

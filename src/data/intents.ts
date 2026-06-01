@@ -23,7 +23,8 @@ export type IntentKey =
   | "family"
   | "arts"
   | "wellness"
-  | "civic";
+  | "civic"
+  | "shop";
 
 export type Intent = {
   key: IntentKey;
@@ -43,7 +44,8 @@ export type Intent = {
     | "Baby"
     | "Palette"
     | "Landmark"
-    | "Heart";
+    | "Heart"
+    | "ShoppingBag";
   /** Match predicate against a place's category slug — kept simple so
    *  the matcher is fast across the full ~2,400 row set. */
   match: (p: PlaceCardData) => boolean;
@@ -101,7 +103,8 @@ export type SubIntent = {
     | "Heart"
     | "Activity"
     | "Dumbbell"
-    | "Sparkles";
+    | "Sparkles"
+    | "ShoppingBag";
 };
 
 const COFFEE = new Set(["coffee", "bakery"]);
@@ -189,6 +192,9 @@ const isGymFitness = (p: PlaceCardData): boolean =>
   !YOGA_NAME_RE.test(p.name);
 const isSpa = (p: PlaceCardData): boolean =>
   WELLNESS_CATS.has(p.category) && SPA_NAME_RE.test(p.name);
+
+// Shop — Market Street retail, antiques, books, makers, and markets.
+const SHOP = new Set(["shopping", "antiques", "book-store", "market"]);
 
 export const INTENTS: Intent[] = [
   {
@@ -341,6 +347,21 @@ export const INTENTS: Intent[] = [
       { key: "public-safety", type: "category", label: "Public safety", icon: "ShieldCheck", match: (p) => p.category === "public-safety" },
       { key: "voting",        type: "category", label: "Voting",        icon: "Vote",        match: (p) => p.category === "voting" },
       { key: "worship",       type: "category", label: "Worship",       icon: "Church",      match: (p) => p.category === "worship" },
+    ],
+  },
+  {
+    key: "shop",
+    label: "Shop",
+    blurb: "Market Street shops, antiques, books, and makers.",
+    color: "#2E7D74",
+    icon: "ShoppingBag",
+    match: (p) => SHOP.has(p.category),
+    preferOpen: true,
+    subIntents: [
+      { key: "antiques",  type: "category", label: "Antiques",          match: (p) => p.category === "antiques" },
+      { key: "boutiques", type: "category", label: "Boutiques & shops", match: (p) => p.category === "shopping" },
+      { key: "books",     type: "category", label: "Bookstores",        match: (p) => p.category === "book-store" },
+      { key: "markets",   type: "category", label: "Markets",           match: (p) => p.category === "market" },
     ],
   },
 ];
