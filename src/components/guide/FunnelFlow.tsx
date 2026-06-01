@@ -362,11 +362,22 @@ export default function FunnelFlow() {
                 initial={reduce ? false : "hidden"}
                 animate="show"
               >
-                {results.map((p) => (
+                {results.map((p, i) => (
                   <motion.li key={p.slug} variants={reduce ? undefined : tileItem}>
-                    <PlaceCard place={p} variant="row" />
+                    <PlaceCard place={p} variant={i === 0 ? "answer" : "row"} />
                   </motion.li>
                 ))}
+                {results.length > 1 && (
+                  <motion.li
+                    variants={reduce ? undefined : tileItem}
+                    className="pt-1 text-center text-[11px] italic leading-relaxed"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {geo.status === "granted"
+                      ? "Open now & nearest first — tap any for hours, photos & reviews."
+                      : "Open now first, then most useful. Turn on location for nearest-first."}
+                  </motion.li>
+                )}
               </motion.ul>
             )}
           </motion.div>
@@ -378,18 +389,15 @@ export default function FunnelFlow() {
 
 function Header({ eyebrow, title, sub, color }: { eyebrow: string; title: string; sub?: string; color?: string }) {
   return (
-    <div className="pb-4">
+    <div className="pb-5">
       <p className="eyebrow" style={{ color: color ?? "var(--app-ink-3)" }}>
         {eyebrow}
       </p>
-      <h1
-        className="mt-1 text-[28px] font-semibold leading-tight tracking-tight"
-        style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
-      >
+      <h1 className="display-2 mt-2" style={{ color: "var(--app-ink)" }}>
         {title}
       </h1>
       {sub && (
-        <p className="mt-1.5 text-[14px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        <p className="text-body-lg text-pretty mt-2" style={{ color: "var(--app-ink-3)" }}>
           {sub}
         </p>
       )}
@@ -422,39 +430,57 @@ function Tile({
   count?: number;
   onClick: () => void;
 }) {
+  const reduce = useReducedMotion();
   return (
     <motion.button
       type="button"
       onClick={onClick}
       variants={tileItem}
-      whileTap={{ scale: 0.97 }}
-      className="tactile tactile-interactive flex min-h-[124px] flex-col items-start gap-1.5 rounded-[var(--app-radius-lg)] p-4 text-left"
-      style={{ background: "var(--app-bg-elevated)" }}
+      whileHover={reduce ? undefined : { y: -4 }}
+      whileTap={reduce ? undefined : { scale: 0.965 }}
+      transition={{ type: "spring", stiffness: 400, damping: 26 }}
+      className="tactile tactile-e2 relative flex min-h-[150px] flex-col items-start overflow-hidden rounded-[var(--app-radius-lg)] p-[18px] text-left"
+      style={{
+        // Solid base so the accent wash reads crisp (the translucent
+        // --app-bg-elevated would let the PageBloom bleed through and
+        // muddy the tint). A faint radial of the intent color in the
+        // top-left corner gives each tile its own identity without
+        // shouting — the grid reads colorful but stays paper-calm.
+        background: `radial-gradient(125% 110% at 0% 0%, color-mix(in srgb, ${color} 13%, transparent), transparent 58%), var(--app-bg-elevated-solid)`,
+      }}
     >
+      {/* hairline of the accent along the very top edge — catches light
+          like a real card lip, the Linear/Stripe "set" detail */}
       <span
-        className="mb-0.5 inline-flex h-11 w-11 items-center justify-center rounded-[14px]"
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{ background: `linear-gradient(90deg, transparent, color-mix(in srgb, ${color} 55%, transparent), transparent)` }}
+      />
+      <span
+        className="inline-flex h-12 w-12 items-center justify-center rounded-2xl"
         style={{
-          background: `linear-gradient(145deg, color-mix(in srgb, ${color} 20%, var(--app-bg-elevated)), color-mix(in srgb, ${color} 8%, var(--app-bg-elevated)))`,
+          background: `linear-gradient(150deg, color-mix(in srgb, ${color} 28%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid)))`,
           color,
-          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 22%, transparent)`,
+          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 30%, transparent), 0 10px 22px -12px ${color}`,
         }}
       >
         {icon ?? <ChevronRight className="h-5 w-5" strokeWidth={2.5} aria-hidden />}
       </span>
-      <span
-        className="mt-0.5 text-[16.5px] font-semibold leading-snug"
-        style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
-      >
+      <span className="text-title mt-3" style={{ color: "var(--app-ink)" }}>
         {label}
       </span>
       {blurb && (
-        <span className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-meta mt-1" style={{ color: "var(--app-ink-3)" }}>
           {blurb}
         </span>
       )}
       {typeof count === "number" && (
-        <span className="mt-auto inline-flex items-center gap-1.5 pt-1.5 text-[11px] font-semibold tabular-nums" style={{ color }}>
-          <span className="inline-block h-1 w-1 rounded-full" style={{ background: color }} aria-hidden />
+        <span className="text-meta mt-auto inline-flex items-center gap-1.5 pt-2 font-semibold tabular-nums" style={{ color }}>
+          <span
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{ background: color, boxShadow: `0 0 6px ${color}` }}
+            aria-hidden
+          />
           {count} place{count === 1 ? "" : "s"}
         </span>
       )}
