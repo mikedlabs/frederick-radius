@@ -82,7 +82,12 @@ const FEEDS: FeedSpec[] = [
     // page the moment it's published instead of the next morning.
     source: "dfp",
     source_label: "Downtown Frederick Partnership",
-    url: "https://downtownfrederick.org/upcoming-events?ical=1",
+    // DFP's public iCal (`/upcoming-events?ical=1`) now 404s and their
+    // site exposes no working Tribe export, so this live feed is gated
+    // OFF by default (empty url → skipped). DFP events still flow via
+    // the /api/ingest/all pipeline → ingested events table. Set
+    // DFP_ICAL_URL to re-enable a live feed the moment a good one exists.
+    url: process.env.DFP_ICAL_URL ?? "",
     format: "ical",
     default_venue: "Downtown Frederick",
     default_geom: { lng: -77.4109, lat: 39.4137 },
@@ -128,9 +133,10 @@ const FEEDS: FeedSpec[] = [
     // a blog. URL overridable so a calendar move needs no deploy.
     source: "hood",
     source_label: "Hood College",
-    url:
-      process.env.HOOD_CALENDAR_URL ||
-      "https://www.trumba.com/calendars/hood-college-events.ics",
+    // Hood's Trumba calendar now returns HTTP 410 Gone, so the hardcoded
+    // default is dead — gated OFF (empty url → skipped) until a working
+    // URL is supplied via HOOD_CALENDAR_URL. No more dead fetch per request.
+    url: process.env.HOOD_CALENDAR_URL ?? "",
     format: "ical",
     default_venue: "Hood College",
     default_geom: { lng: -77.3997, lat: 39.4246 },
@@ -143,6 +149,15 @@ const FEEDS: FeedSpec[] = [
     // catch-all.
     default_category: "community",
   },
+  // NOTE on live-music venues (Tenth Ward, Monocacy, Bentztown, …):
+  // their public Tribe iCal exports were evaluated here and rejected —
+  // the shows are almost all RRULE-recurring (weekly trivia/music) and
+  // this lightweight parser does not expand recurrence, so they resolve
+  // to 0 in-window. Live-music venue events instead flow through the
+  // working daily scraper (ingest-venues.yml → venue-events.json), which
+  // reads the rendered calendars. The curated venue set lives in
+  // src/data/live-music-venues.ts and is the source of truth for which
+  // venues that scraper should target.
 ];
 
 const CATEGORY_KEYWORDS: Array<{ slug: string; words: string[] }> = [
@@ -670,7 +685,9 @@ export async function getLiveEvents(windowDays = 60): Promise<{
   // same LiveEvent shape, so they share the dedupe/filter/sort below.
   const [feedResults, ticketmasterEvents] = await Promise.all([
     Promise.all(
-      FEEDS.map((f) =>
+      // Skip env-gated feeds whose URL is unset (DFP, Hood) so a dead
+      // or unconfigured source costs zero network and zero log noise.
+      FEEDS.filter((f) => f.url).map((f) =>
         fetchFeed(f, windowDays).then((evts) => ({ source: f.source, evts })),
       ),
     ),
