@@ -52,6 +52,15 @@ function daypartGreeting(hour: number): string {
   return "Tonight";
 }
 
+// Anticipatory: the two intents most worth surfacing for this daypart.
+function suggestedForHour(hour: number): IntentKey[] {
+  if (hour < 11) return ["coffee", "eat"];
+  if (hour < 15) return ["eat", "outdoor"];
+  if (hour < 17) return ["coffee", "shop"];
+  if (hour < 21) return ["eat", "arts"];
+  return ["eat"];
+}
+
 export default function FunnelFlow() {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
@@ -62,8 +71,11 @@ export default function FunnelFlow() {
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag: the daypart greeting must differ between SSR (none) and client (real hour), so it can only resolve post-mount
   useEffect(() => setMounted(true), []);
-  // Daypart greeting only after mount, so SSR and first paint match.
-  const greeting = mounted ? daypartGreeting(frederickHour()) : null;
+  // Daypart greeting + "good right now" picks resolve only after mount,
+  // so SSR and the first client paint match.
+  const nowHour = mounted ? frederickHour() : null;
+  const greeting = nowHour !== null ? daypartGreeting(nowHour) : null;
+  const suggested = nowHour !== null ? suggestedForHour(nowHour) : [];
 
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
   const hasSubs = !!(intent?.subIntents && intent.subIntents.length);
@@ -158,6 +170,28 @@ export default function FunnelFlow() {
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
             <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Tap one. It narrows from there." />
+            {suggested.length > 0 && (
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
+                  Good right now
+                </span>
+                {suggested.map((k) => {
+                  const it = INTENT_BY_KEY[k];
+                  const I = INTENT_ICON[it.icon];
+                  return (
+                    <Pill
+                      key={`now-${k}`}
+                      tone="prominent"
+                      size="sm"
+                      icon={<I className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
+                      onClick={() => { haptic("light"); setChosenSub(null); setIntentKey(k); }}
+                    >
+                      {it.label}
+                    </Pill>
+                  );
+                })}
+              </div>
+            )}
             <Grid>
               {TOP.map((k) => {
                 const it = INTENT_BY_KEY[k];
