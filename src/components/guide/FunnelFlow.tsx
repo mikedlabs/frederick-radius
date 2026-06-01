@@ -113,7 +113,13 @@ const MORE_PATHS: { href: string; label: string }[] = [
   { href: "/map",         label: "Explore the map" },
 ];
 
-export default function FunnelFlow() {
+export default function FunnelFlow({
+  weather,
+}: {
+  /** Current conditions for the header, fetched server-side in the
+   *  /guide page (NWS, ISR-cached). Absent → the header omits weather. */
+  weather?: { tempF: number; condition: string };
+}) {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
   const [intentKey, setIntentKey] = useState<IntentKey | null>(null);
@@ -129,6 +135,16 @@ export default function FunnelFlow() {
   const nowHour = mounted ? frederickHour() : null;
   const greeting = nowHour !== null ? daypartGreeting(nowHour) : null;
   const suggested = nowHour !== null ? suggestedForHour(nowHour) : [];
+  // Concrete "right now" line for the header — weekday + Eastern time.
+  // Post-mount only (SSR has no stable clock), so it matches hydration.
+  const nowLine = mounted
+    ? new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(new Date())
+    : null;
 
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
   const hasSubs = !!(intent?.subIntents && intent.subIntents.length);
@@ -221,13 +237,36 @@ export default function FunnelFlow() {
             <ChevronLeft className="h-4 w-4" strokeWidth={2.5} aria-hidden /> Back
           </button>
         ) : (
-          <Link
-            href="/search"
-            className="ml-auto inline-flex items-center gap-1.5 text-[12.5px] font-semibold"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <Search className="h-3.5 w-3.5" strokeWidth={2} aria-hidden /> Search instead
-          </Link>
+          <>
+            {/* "Right now" line — weekday · time · temp · conditions.
+                Live date/time (client, Eastern) + server-fetched NWS
+                weather. Self-hides each part when unavailable; never a
+                fabricated temp. */}
+            {nowLine && (
+              <span
+                className="inline-flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                <span className="tabular-nums">{nowLine}</span>
+                {weather && (
+                  <>
+                    <span aria-hidden style={{ color: "var(--app-border)" }}>·</span>
+                    <span className="font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                      {weather.tempF}°
+                    </span>
+                    <span className="truncate">{weather.condition}</span>
+                  </>
+                )}
+              </span>
+            )}
+            <Link
+              href="/search"
+              className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <Search className="h-3.5 w-3.5" strokeWidth={2} aria-hidden /> Search instead
+            </Link>
+          </>
         )}
         {step !== "intent" && (intent || lens) && (
           <span

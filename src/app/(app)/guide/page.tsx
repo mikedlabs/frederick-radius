@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import PageBloom from "@/components/ui/PageBloom";
 import FunnelFlow from "@/components/guide/FunnelFlow";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 export const metadata: Metadata = {
   title: "What are you after?",
@@ -16,11 +18,20 @@ export const metadata: Metadata = {
  * New route on purpose; /today and /find are left untouched until this
  * proves the direction.
  */
-export default function GuidePage() {
+export default async function GuidePage() {
+  // Current conditions for the funnel header. NWS is keyless + ISR-cached
+  // (revalidate 30 min) and fails soft to null — the header just omits
+  // weather then, never shows a fabricated temp. hourly[0] is "now".
+  const fc = await getNwsForecast(FREDERICK_CENTER);
+  const now = fc?.hourly?.[0];
+  const weather = now
+    ? { tempF: Math.round(now.temperature), condition: now.shortForecast }
+    : undefined;
+
   return (
     <div className="relative">
       <PageBloom />
-      <FunnelFlow />
+      <FunnelFlow weather={weather} />
     </div>
   );
 }
