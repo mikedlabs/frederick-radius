@@ -172,6 +172,10 @@ export default function Pill({
         aria-current={active ? "page" : undefined}
         className={cls}
         style={merged}
+        onClick={() => {
+          haptic("light");
+          onClick?.();
+        }}
         aria-label={rest["aria-label"]}
         title={rest.title}
       >
