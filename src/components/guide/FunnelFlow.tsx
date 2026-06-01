@@ -60,6 +60,7 @@ export default function FunnelFlow() {
   const [openOnly, setOpenOnly] = useState(false);
   const { state: geo, request: requestGeo } = useGeolocation();
   const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag: the daypart greeting must differ between SSR (none) and client (real hour), so it can only resolve post-mount
   useEffect(() => setMounted(true), []);
   // Daypart greeting only after mount, so SSR and first paint match.
   const greeting = mounted ? daypartGreeting(frederickHour()) : null;
