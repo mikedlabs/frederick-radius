@@ -5,35 +5,21 @@ import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, Phone, Train } from "lucide-react";
 import type { SearchResult, SearchResultType } from "@/lib/search/index";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
+import { findQuickAnswers } from "@/lib/answers/intents";
+import type { IntentIcon } from "@/lib/answers/types";
 
 /**
- * Quick-answer intents — recognized needs resolve in ONE tap to the
- * right pre-filtered view, instead of making the user browse. Phrased
- * as the answer, not a search ("What's open right now"). North Star:
- * answer the question, ≤2 taps. Each entry's href IS the answer.
+ * Quick-answer intents now live in `@/lib/answers/intents` so /today's
+ * AnswerCards and this overlay share ONE source (extracted, not
+ * duplicated). Icons are stored there as string names to keep the list
+ * server-safe; this client map turns them back into lucide glyphs.
  */
-const QUICK_INTENTS: { terms: string[]; title: string; sub: string; href: string; icon: typeof Clock }[] = [
-  { terms: ["open now", "whats open", "what's open", "open right now", "open late", "anything open"], title: "What's open right now", sub: "Places confirmed open near you", href: "/map?mode=browse&open=now", icon: Clock },
-  { terms: ["tonight", "this evening", "live music", "music tonight", "show tonight", "concert"], title: "Happening tonight", sub: "Events & music starting soon", href: "/today?t=tonight", icon: Calendar },
-  { terms: ["weekend", "this weekend", "saturday", "sunday", "things to do"], title: "This weekend", sub: "Events across the county", href: "/today?t=weekend", icon: Calendar },
-  { terms: ["train", "marc", "transit", "commute", "bus", "next train"], title: "MARC & transit times", sub: "Next departures and routes", href: "/transit", icon: Train },
-  { terms: ["parking", "park the car", "garage", "where to park", "meter"], title: "Parking", sub: "Garages, lots & street parking", href: "/map?mode=browse&intent=parking", icon: MapPin },
-  { terms: ["event", "events", "happening", "calendar"], title: "Events", sub: "What's on across Frederick", href: "/events", icon: Calendar },
-];
-
-function findQuickAnswers(query: string, limit = 2): typeof QUICK_INTENTS {
-  const lq = query.toLowerCase().trim();
-  if (lq.length < 3) return [];
-  const out: typeof QUICK_INTENTS = [];
-  const seen = new Set<string>();
-  for (const intent of QUICK_INTENTS) {
-    if (intent.terms.some((t) => lq.includes(t)) && !seen.has(intent.href)) {
-      seen.add(intent.href);
-      out.push(intent);
-    }
-  }
-  return out.slice(0, limit);
-}
+const QUICK_ICON: Record<IntentIcon, typeof Clock> = {
+  clock: Clock,
+  calendar: Calendar,
+  train: Train,
+  pin: MapPin,
+};
 // A2.5: SearchOverlay no longer static-imports lib/search.ts (and its
 // transitive places-client.json ~2MB blob) into every page's client
 // bundle. It now fetches /api/search with a 150ms debounce and an
@@ -335,7 +321,7 @@ export default function SearchOverlay({
               {quickAnswers.length > 0 && (
                 <ul className="mb-1.5 space-y-1.5">
                   {quickAnswers.map((qa) => {
-                    const Icon = qa.icon;
+                    const Icon = QUICK_ICON[qa.icon];
                     return (
                       <li key={qa.href}>
                         <Link

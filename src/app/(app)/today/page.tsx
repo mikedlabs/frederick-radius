@@ -47,6 +47,10 @@ import { getWeekendData, weekendDayKey } from "@/lib/weekend-picks";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
+import TodayAsk from "@/components/today/TodayAsk";
+import { AnswerCard } from "@/components/answer";
+import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
+import { PARKING_GARAGES } from "@/data/parking-garages";
 
 /**
  * Now — the daily briefing.
@@ -277,6 +281,28 @@ export default async function HomePage({
     getWeekendData(weekendDayKey(now)),
   ]);
 
+  // ── Answer-first lead (UX_REDO Build 1): build 3 to 5 anticipatory
+  //    answers from the real data this page already computed. Honest by
+  //    construction — empty windows drop out, nothing is fabricated.
+  const tonightBest = eventsForMode("tonight", now).items[0] ?? null;
+  const weekendBest = eventsForMode("weekend", now).items[0] ?? null;
+  const parkingDefault =
+    PARKING_GARAGES.find((g) => g.slug === "carroll-creek-parking-garage-frederick") ??
+    PARKING_GARAGES[0] ??
+    null;
+  const todayAnswers = buildTodayAnswers({
+    openCount,
+    tonightCount: counts.tonight ?? 0,
+    tonightBest: tonightBest
+      ? { title: tonightBest.title, venue: tonightBest.venue_name ?? null, slug: tonightBest.slug }
+      : null,
+    weekendCount: counts.weekend ?? 0,
+    weekendBest: weekendBest
+      ? { title: weekendBest.title, venue: weekendBest.venue_name ?? null, slug: weekendBest.slug }
+      : null,
+    parking: parkingDefault ? { name: parkingDefault.name, slug: parkingDefault.slug } : null,
+  });
+
   // When the active slice is empty, nudge to a DIFFERENT slice that
   // actually has events — never back to the same (empty) one, which is
   // what the old hardcoded "see the weekend" link did when Weekend
@@ -315,6 +341,21 @@ export default async function HomePage({
           <DateLine />
         </div>
       </div>
+
+      {/* ── ANSWER-FIRST LEAD (UX_REDO Build 1) ─────────────────────────
+          The ask + 3 to 5 anticipatory answer cards are the front door.
+          Weather drops into the supporting split below. North Star:
+          "Answer my question in one move. Don't make me dig." */}
+      <section className="mt-4 space-y-3" aria-label="Ask Frederick">
+        <TodayAsk />
+        {todayAnswers.length > 0 && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {todayAnswers.map((a) => (
+              <AnswerCard key={a.id} answer={a} />
+            ))}
+          </div>
+        )}
+      </section>
 
       {/* RESPONSIVE SPLIT (desktop only):
        *   mobile  : everything stacks single-column (space-y-6).
