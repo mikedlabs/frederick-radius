@@ -13,6 +13,7 @@
  */
 
 import type { PlaceCardData } from "@/lib/loaders/places";
+import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 
 export type IntentKey =
   | "coffee"
@@ -314,7 +315,12 @@ export const INTENTS: Intent[] = [
       { key: "museums",    type: "category", label: "Museums",    icon: "Palette",   match: (p) => p.category === "museum" },
       { key: "galleries",  type: "category", label: "Galleries",  icon: "ImageIcon", match: (p) => p.category === "gallery" },
       { key: "theaters",   type: "category", label: "Theaters",   icon: "Theater",   match: (p) => p.category === "theater" },
-      { key: "live-music", type: "category", label: "Live music", icon: "Music",     match: (p) => p.category === "music" },
+      // Live music isn't a place category — it's a thing venues HOST.
+      // The `music` category catches only formal halls (~5 rows); the
+      // curated venue set adds the breweries, wineries, distilleries &
+      // bars that stage most of Frederick's live music. See
+      // src/data/live-music-venues.ts (every slug verified in dataset).
+      { key: "live-music", type: "category", label: "Live music", icon: "Music",     match: (p) => p.category === "music" || LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
       { key: "public-art", type: "category", label: "Public art", icon: "Palette",   match: (p) => p.category === "public-art" },
     ],
   },

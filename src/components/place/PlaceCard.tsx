@@ -68,10 +68,15 @@ export default function PlaceCard({
   place,
   compact = false,
   variant = "row",
+  galleryPhotos,
 }: {
   place: PlaceCardData;
   compact?: boolean;
   variant?: "row" | "feature" | "tile" | "grid" | "answer";
+  /** Extra photos (proxied URLs) for the answer variant's food/photo
+   *  strip. The funnel fetches these on demand from the enrich route
+   *  for its lead pick; absent it, the strip simply doesn't render. */
+  galleryPhotos?: string[];
 }) {
   const cat = CATEGORY_BY_SLUG[place.category];
   const color = cat?.color ?? "#1A1A1A";
@@ -143,6 +148,9 @@ export default function PlaceCard({
   if (variant === "answer") {
     const reasons = placeReasons(place);
     const loved = (place.customers_loved ?? []).slice(0, 3);
+    // Food/photo strip — the extra Google photos (dishes, interior)
+    // beyond the hero. The hero is filtered out so it never repeats.
+    const stripPhotos = (galleryPhotos ?? []).filter((u) => u && u !== photoUrl).slice(0, 6);
     return (
       <article
         className="tactile tactile-e2 group relative overflow-hidden rounded-[var(--app-radius-lg)]"
@@ -229,6 +237,24 @@ export default function PlaceCard({
               )}
               <BeenHereIndicator slug={place.slug} />
             </p>
+            {/* Food / photo strip — a horizontal scroll of the venue's
+                other Google photos (dishes, interior, the patio). The
+                single most-requested thing for a restaurant answer:
+                "show me the food." Renders only when we actually have
+                more than the hero. */}
+            {stripPhotos.length > 0 && (
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 pt-0.5" style={{ scrollbarWidth: "none" }}>
+                {stripPhotos.map((u, i) => (
+                  <div
+                    key={i}
+                    className="relative h-[74px] w-[96px] shrink-0 overflow-hidden rounded-[12px] bg-[var(--app-bg-sunken)]"
+                    style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)" }}
+                  >
+                    <PlacePhoto src={u} alt={`${place.name} photo ${i + 1}`} glyph={glyph} color={color} sizes="96px" />
+                  </div>
+                ))}
+              </div>
+            )}
             {/* The decision row: open + closing time, rating, price —
                 the three things that answer "can I go, is it good,
                 what's it cost," each self-hiding when unknown. */}

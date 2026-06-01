@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion, type Transition, type Varian
 import { ChevronLeft, ChevronRight, Search, MapPin, CalendarDays, Activity, TrainFront, SquareParking, Route, Waves, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
+import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -73,6 +74,7 @@ const LENSES: Lens[] = [
   { key: "date-night", label: "Date night", match: (p) => hasTag(p, "date-night") },
   { key: "with-kids", label: "With kids", match: (p) => hasTag(p, "kids-0-5") || hasTag(p, "kids-6-12") || hasTag(p, "family") },
   { key: "dog", label: "Dog-friendly", match: (p) => hasTag(p, "dog-friendly") },
+  { key: "live-music", label: "Live music", match: (p) => LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
   { key: "patio", label: "Patio & outdoor", match: (p) => hasTag(p, "patio") || hasTag(p, "outdoor-seating") || hasTag(p, "outdoor") },
   { key: "groups", label: "Good for groups", match: (p) => hasTag(p, "groups") },
   { key: "rainy", label: "Rainy day", match: (p) => hasTag(p, "rainy-day") || hasTag(p, "indoor") },
@@ -391,7 +393,7 @@ export default function FunnelFlow() {
               >
                 {results.map((p, i) => (
                   <motion.li key={p.slug} variants={reduce ? undefined : tileItem}>
-                    <PlaceCard place={p} variant={i === 0 ? "answer" : "row"} />
+                    {i === 0 ? <AnswerLead place={p} /> : <PlaceCard place={p} variant="row" />}
                   </motion.li>
                 ))}
                 {results.length > 1 && (
@@ -412,6 +414,27 @@ export default function FunnelFlow() {
       </AnimatePresence>
     </div>
   );
+}
+
+// The funnel's lead pick, with food photos. The heavy google_photos[]
+// array is stripped from the client place payload, so we fetch the
+// venue's extra Google photos on demand (the same enrich route the
+// detail sheet uses) and hand them to the answer card's photo strip.
+function AnswerLead({ place }: { place: PlaceCardData }) {
+  const [photos, setPhotos] = useState<string[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/place/${place.slug}/enrich`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && Array.isArray(d?.photos)) setPhotos(d.photos as string[]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [place.slug]);
+  return <PlaceCard place={place} variant="answer" galleryPhotos={photos ?? undefined} />;
 }
 
 function Header({ eyebrow, title, sub, color }: { eyebrow: string; title: string; sub?: string; color?: string }) {
