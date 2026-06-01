@@ -17,6 +17,7 @@ import { haversineMeters } from "@/lib/geo";
 import { placeQuality } from "@/lib/quality/placeQuality";
 import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
+import { track } from "@vercel/analytics";
 import { INTENT_ICON } from "./intentIcons";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
 
@@ -303,7 +304,7 @@ export default function FunnelFlow({
                         tone="prominent"
                         size="sm"
                         icon={<I className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
-                        onClick={() => { haptic("light"); setChosenSub(null); setIntentKey(k); }}
+                        onClick={() => { haptic("light"); track("find_intent", { intent: k, via: "suggested" }); setChosenSub(null); setIntentKey(k); }}
                       >
                         {it.label}
                       </Pill>
@@ -326,6 +327,7 @@ export default function FunnelFlow({
                     count={counts[k]}
                     onClick={() => {
                       haptic("light");
+                      track("find_intent", { intent: k });
                       setChosenSub(null);
                       setIntentKey(k);
                     }}
@@ -339,7 +341,7 @@ export default function FunnelFlow({
               </p>
               <div className="flex flex-wrap gap-2">
                 {LENSES.map((l) => (
-                  <Pill key={l.key} tone="ink" size="sm" onClick={() => { haptic("light"); setLens(l); }}>
+                  <Pill key={l.key} tone="ink" size="sm" onClick={() => { haptic("light"); track("find_lens", { lens: l.key }); setLens(l); }}>
                     {l.label}
                   </Pill>
                 ))}
@@ -538,7 +540,7 @@ function PathwayRow({ href, label, sub, icon: Icon, color }: Pathway) {
   return (
     <Link
       href={href}
-      onClick={() => haptic("light")}
+      onClick={() => { haptic("light"); track("find_pathway", { to: href }); }}
       className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-lg)] p-3"
       style={{ background: "var(--app-bg-elevated)" }}
     >
