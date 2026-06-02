@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
-import { ExternalLink, Phone, Globe, Navigation, X, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
+import { ExternalLink, Phone, Globe, Navigation, X, Expand, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import { placeActions, type PlaceAction } from "@/lib/place-actions";
 import Link from "next/link";
 import Image from "next/image";
@@ -23,6 +23,7 @@ import { placeHoursTrust, formatChecked } from "@/lib/trust";
 import { knownFor } from "@/lib/cuisine";
 import { formatDistance } from "@/lib/geo";
 import type { ParcelContext } from "@/lib/loaders/cofParcels";
+import PhotoLightbox from "@/components/ui/PhotoLightbox";
 
 /**
  * Bottom-sheet detail view for a place. Slides up with spring physics,
@@ -126,6 +127,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
 
   // Real walk/drive time from downtown via Routes API (on-demand, cached server-side)
   const [travel, setTravel] = useState<{ walkMin?: number; driveMin?: number } | null>(null);
+  const [lightboxAt, setLightboxAt] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/travel-time?lat=${place.geom.lat}&lng=${place.geom.lng}`)
@@ -168,6 +170,8 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
     ? place.google_photos
     : (extra?.photos ?? []);
   const heroUrl = place.google_photo_url ?? photos[0];
+  // Every unique photo (hero first), for the tap-to-enlarge lightbox.
+  const allPhotos = Array.from(new Set([heroUrl, ...photos].filter(Boolean))) as string[];
   const hoursLines = place.google_hours?.length
     ? place.google_hours
     : (extra?.hours ?? []);
@@ -220,7 +224,14 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
          *  When there is no photo, we fall back to a category-tinted
          *  panel with the icon — still cinematic, still on-brand. */}
         {heroUrl ? (
-          <div className="relative aspect-[4/3] w-full overflow-hidden">
+          <div
+            className="relative aspect-[4/3] w-full cursor-zoom-in overflow-hidden"
+            role="button"
+            tabIndex={0}
+            aria-label={`View ${place.name} photos`}
+            onClick={() => { haptic("light"); setLightboxAt(0); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(0); } }}
+          >
             <Image
               src={heroUrl}
               alt={place.name}
@@ -231,6 +242,13 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
               blurDataURL={PAPER_CREAM_BLUR}
               className="object-cover"
             />
+            <span
+              aria-hidden
+              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full"
+              style={{ background: "rgba(0,0,0,0.42)", color: "white", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+            >
+              <Expand className="h-4 w-4" strokeWidth={2.25} />
+            </span>
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0"
@@ -468,7 +486,12 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             {photos.slice(1, 8).map((u, i) => (
               <div
                 key={i}
-                className="relative h-24 w-32 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] border"
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${place.name} photo ${i + 2}`}
+                onClick={() => { haptic("light"); setLightboxAt(allPhotos.indexOf(u)); }}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(allPhotos.indexOf(u)); } }}
+                className="relative h-24 w-32 shrink-0 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border"
                 style={{ borderColor: "var(--app-border)" }}
               >
                 <Image
@@ -555,6 +578,15 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         </p>
         </div>
       </div>
+
+      {lightboxAt !== null && (
+        <PhotoLightbox
+          photos={allPhotos}
+          startIndex={lightboxAt}
+          alt={place.name}
+          onClose={() => setLightboxAt(null)}
+        />
+      )}
     </>
   );
 }
