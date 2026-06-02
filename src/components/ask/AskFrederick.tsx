@@ -7,19 +7,12 @@ import { haptic } from "@/lib/haptics";
 import type { AskResult } from "@/lib/ask/answer";
 
 /**
- * "Ask Frederick" — the natural-language concierge box. Type a real
+ * "Ask Radius" — the natural-language concierge box. Type a real
  * question, get an answer grounded in our actual data, with the real
  * places shown as clickable source cards beneath it. Fails soft: if the
  * AI key isn't set the API returns { configured:false } and we show a
  * quiet "warming up" state instead of an error.
  */
-
-const EXAMPLES = [
-  "Coffee open late downtown",
-  "Rainy day with a 5-year-old",
-  "Live music this weekend",
-  "Date-night with a patio",
-];
 
 export default function AskFrederick() {
   const [q, setQ] = useState("");
@@ -54,10 +47,10 @@ export default function AskFrederick() {
         background:
           "radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--app-brand) 10%, transparent), transparent 60%), var(--app-bg-elevated-solid)",
       }}
-      aria-label="Ask Frederick"
+      aria-label="Ask Radius"
     >
       <div className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-brand)" }}>
-        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Ask Frederick
+        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Ask Radius
       </div>
 
       <form
@@ -74,7 +67,7 @@ export default function AskFrederick() {
           placeholder="Ask anything — “coffee open now near me”"
           className="h-11 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--app-ink-3)]"
           style={{ color: "var(--app-ink)" }}
-          aria-label="Ask Frederick a question"
+          aria-label="Ask Radius a question"
         />
         <button
           type="submit"
@@ -86,23 +79,6 @@ export default function AskFrederick() {
           <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden />
         </button>
       </form>
-
-      {/* example prompts (only before a question is asked) */}
-      {!res && !loading && (
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          {EXAMPLES.map((ex) => (
-            <button
-              key={ex}
-              type="button"
-              onClick={() => ask(ex)}
-              className="rounded-full border px-3 py-1.5 text-[12px] font-medium transition active:scale-95"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)", background: "var(--app-bg)" }}
-            >
-              {ex}
-            </button>
-          ))}
-        </div>
-      )}
 
       {loading && (
         <p className="mt-3 text-[13px] italic" style={{ color: "var(--app-ink-3)" }}>

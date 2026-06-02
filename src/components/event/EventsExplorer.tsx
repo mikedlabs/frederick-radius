@@ -653,20 +653,16 @@ export default function EventsExplorer({
                     <EventCard event={feature} variant="feature" />
                   </div>
                 )}
-                {/* Dense listing — date pill + title + venue/time per row,
-                    ~5-8 per viewport instead of 1-2 tiles. The whole group
-                    reads as one bordered "plate" the eye can run down. */}
+                {/* Glance cards — each row carries a thumbnail (the venue's
+                    borrowed photo, or a category graphic when there's no
+                    photo) so the list scans as cards, not a wall of text.
+                    The ultra-dense "Compact" Rolodex is still one tap away
+                    via the view toggle for people who want max density. */}
                 {shown.length > 0 && (
-                  <ol
-                    className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] [&_>_li:last-child_article]:border-b-0"
-                    style={{
-                      borderColor: "var(--app-border)",
-                      boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-                    }}
-                  >
+                  <ol className="space-y-2.5">
                     {shown.map((e) => (
                       <li key={e.slug}>
-                        <EventCard event={e} variant="compact" live={live.has(e.slug)} />
+                        <EventCard event={e} variant="glance" live={live.has(e.slug)} />
                       </li>
                     ))}
                   </ol>

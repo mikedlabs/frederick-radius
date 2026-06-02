@@ -1,6 +1,6 @@
 import RAW from "@/data/venue-events.json" with { type: "json" };
 import type { EventWithMeta } from "@/lib/loaders/events";
-import { publicPlaceBySlug } from "@/lib/loaders/places";
+import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -45,6 +45,46 @@ export function upcomingVenueEvents(now: Date = new Date()): VenueEvent[] {
   }).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
 }
 
+const normLoose = (s: string): string => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+/**
+ * Resolve a scraped venue to its place record. The ingest slug is often a
+ * SHORTENED form ("weinberg-center") of the full place slug
+ * ("weinberg-center-for-the-arts-frederick"), and the scraped name can
+ * drop the town ("Weinberg Center for the Arts" vs the place's
+ * "…Frederick"). The old exact-slug-only lookup missed those, so the
+ * event lost both its venue's coordinates AND its borrowable photo — the
+ * cause of venue events rendering as photoless cards on a US county app.
+ * Try, in trust order: exact slug → a full slug that starts with the
+ * ingest slug → an exact or prefix normalized-name match. Photo-bearing
+ * candidates win ties so the card gets a real thumbnail when one exists.
+ */
+function resolveVenuePlace(slug: string, name: string): ReturnType<typeof clientPlaceBySlug> {
+  const exact = clientPlaceBySlug(slug);
+  if (exact) return exact;
+  const all = clientPlaces();
+  type VenueCandidate = { slug: string; google_photo_url?: string };
+  const withPhotoFirst = (a: VenueCandidate, b: VenueCandidate) =>
+    Number(Boolean(b.google_photo_url)) - Number(Boolean(a.google_photo_url)) ||
+    a.slug.length - b.slug.length;
+  const pref = slug.endsWith("-") ? slug : `${slug}-`;
+  const byPrefix = all
+    .filter((p) => p.slug === slug || p.slug.startsWith(pref))
+    .sort(withPhotoFirst)[0];
+  if (byPrefix) return byPrefix;
+  const nk = normLoose(name);
+  if (nk.length >= 5) {
+    const byName = all
+      .filter((p) => {
+        const k = normLoose(p.name);
+        return k === nk || k.startsWith(nk);
+      })
+      .sort(withPhotoFirst)[0];
+    if (byName) return byName;
+  }
+  return undefined;
+}
+
 /**
  * Adapt one ingested venue event to the EventWithMeta shape the event
  * card, detail page, and the unified /events feed consume — the same
@@ -59,7 +99,7 @@ export function upcomingVenueEvents(now: Date = new Date()): VenueEvent[] {
  * wedge inert.
  */
 function venueEventToCard(e: VenueEvent): EventWithMeta {
-  const place = publicPlaceBySlug(e.venue_slug);
+  const place = resolveVenuePlace(e.venue_slug, e.venue_name);
   const geom = place?.geom ?? FREDERICK_CENTER;
   const municipality = place?.municipality ?? "frederick";
   const category = e.category || place?.category || "music";
@@ -75,7 +115,8 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     timezone: "America/New_York",
     is_all_day: false,
     is_recurring: false,
-    venue_place_slug: place ? e.venue_slug : undefined,
+    venue_place_slug: place?.slug,
+    hero_image: place?.google_photo_url,
     venue_name: cleanFeedText(e.venue_name),
     address: formatAddress(cleanFeedText(place?.address ?? "")),
     geom,

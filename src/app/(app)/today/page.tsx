@@ -341,7 +341,7 @@ export default async function HomePage({
           The ask + 3 to 5 anticipatory answer cards are the front door.
           Weather drops into the supporting split below. North Star:
           "Answer my question in one move. Don't make me dig." */}
-      <section className="mt-4 space-y-3" aria-label="Ask Frederick">
+      <section className="mt-4 space-y-3" aria-label="Ask Radius">
         <TodayAsk />
         {todayAnswers.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
