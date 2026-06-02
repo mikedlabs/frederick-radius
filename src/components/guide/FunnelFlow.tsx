@@ -177,7 +177,16 @@ export default function FunnelFlow({
         return byDist !== 0 ? byDist : a.name.localeCompare(b.name);
       }
       if (mode === "rated") {
-        const byRate = ratingRank(b) - ratingRank(a);
+        // Top-rated — but when located, gently demote far-flung picks so a
+        // 5★ sixteen miles away doesn't lead over a great spot down the
+        // block (a contradiction the sims caught). Rating still dominates;
+        // distance only settles great-vs-great. Free within ~3mi.
+        const ratedScore = (p: PlaceCardData) => {
+          const base = ratingRank(p);
+          if (base < 0 || p.distance_m == null) return base;
+          return base - Math.max(0, (p.distance_m / 1000 - 4.8) * 0.06);
+        };
+        const byRate = ratedScore(b) - ratedScore(a);
         return Math.abs(byRate) > 1e-9 ? byRate : a.name.localeCompare(b.name);
       }
       // "best": open now leads for "right now" lanes, then a blend of
