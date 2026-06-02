@@ -13,14 +13,14 @@ import type { Answer, AnswerStatus } from "@/lib/answers/types";
  */
 
 const STATUS_META: Record<AnswerStatus, { label: string; fg: string; bg: string }> = {
-  "open-now": { label: "Open now", fg: "var(--app-positive)", bg: "color-mix(in srgb, var(--app-positive) 13%, transparent)" },
-  tonight: { label: "Tonight", fg: "var(--app-accent)", bg: "color-mix(in srgb, var(--app-accent) 15%, transparent)" },
-  weekend: { label: "Weekend", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 15%, transparent)" },
-  transit: { label: "Transit", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 13%, transparent)" },
-  parking: { label: "Parking", fg: "var(--app-ink-2)", bg: "color-mix(in srgb, var(--app-ink) 8%, transparent)" },
-  civic: { label: "Civic", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 13%, transparent)" },
-  events: { label: "Events", fg: "var(--app-accent)", bg: "color-mix(in srgb, var(--app-accent) 13%, transparent)" },
-  free: { label: "Free", fg: "var(--app-positive)", bg: "color-mix(in srgb, var(--app-positive) 13%, transparent)" },
+  "open-now": { label: "Open now", fg: "var(--app-positive)", bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)" },
+  tonight: { label: "Tonight", fg: "var(--app-accent)", bg: "color-mix(in srgb, var(--app-accent) 20%, transparent)" },
+  weekend: { label: "Weekend", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 20%, transparent)" },
+  transit: { label: "Transit", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 18%, transparent)" },
+  parking: { label: "Parking", fg: "var(--app-ink-2)", bg: "color-mix(in srgb, var(--app-ink) 12%, transparent)" },
+  civic: { label: "Civic", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 18%, transparent)" },
+  events: { label: "Events", fg: "var(--app-accent)", bg: "color-mix(in srgb, var(--app-accent) 18%, transparent)" },
+  free: { label: "Free", fg: "var(--app-positive)", bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)" },
 };
 
 export default function AnswerCard({ answer }: { answer: Answer }) {
@@ -30,13 +30,28 @@ export default function AnswerCard({ answer }: { answer: Answer }) {
   const source = [answer.sourceLabel, answer.freshnessLabel].filter(Boolean).join(" · ");
 
   return (
-    <Surface as="article" elevation={1} className="flex h-full flex-col gap-2 p-4">
+    <Surface
+      as="article"
+      elevation={2}
+      className="relative flex h-full flex-col gap-2 overflow-hidden p-4 pl-[19px]"
+    >
+      {/* Color-coded spine keyed to the answer's status — turns a wall of
+          identical cream cards into an at-a-glance, differentiated stack. */}
+      <span
+        aria-hidden
+        className="absolute inset-y-0 left-0 w-1.5"
+        style={{ background: meta?.fg ?? "var(--app-cool)" }}
+      />
       {(statusLabel || metaRight) && (
         <div className="flex items-center justify-between gap-2">
           {statusLabel ? (
             <span
               className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]"
-              style={{ background: meta?.bg, color: meta?.fg ?? "var(--app-ink-2)" }}
+              style={{
+                background: meta?.bg,
+                color: meta?.fg ?? "var(--app-ink-2)",
+                boxShadow: meta ? `inset 0 0 0 1px color-mix(in srgb, ${meta.fg} 30%, transparent)` : undefined,
+              }}
             >
               {statusLabel}
             </span>
