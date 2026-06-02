@@ -122,13 +122,10 @@ export default function FunnelFlow({
 
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
   const hasSubs = !!(intent?.subIntents && intent.subIntents.length);
-  const step: "intent" | "sub" | "results" = lens
-    ? "results"
-    : !intent
-      ? "intent"
-      : hasSubs && chosenSub === null
-        ? "sub"
-        : "results";
+  // Two steps only: the lane grid, then results. Sub-types narrow IN
+  // PLACE via a chip rail in the results header (no full-screen "what
+  // kind?" detour), and they stack with Open now / Near me.
+  const step: "intent" | "results" = intent || lens ? "results" : "intent";
 
   // Live per-intent counts so the first screen reads as real, not a menu.
   const counts = useMemo(() => {
@@ -183,11 +180,8 @@ export default function FunnelFlow({
       setLens(null);
       return;
     }
-    if (step === "results" && hasSubs) setChosenSub(null);
-    else {
-      setIntentKey(null);
-      setChosenSub(null);
-    }
+    setIntentKey(null);
+    setChosenSub(null);
   };
 
   const transition: Transition = reduce ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36, mass: 0.9 };
@@ -326,35 +320,6 @@ export default function FunnelFlow({
           </motion.div>
         )}
 
-        {step === "sub" && intent && (
-          <motion.div key="sub" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
-            <Header eyebrow={intent.label.toUpperCase()} title="What kind?" sub={intent.blurb} color={intent.color} />
-            <Grid>
-              <Tile
-                color={intent.color}
-                label={`All ${intent.label.toLowerCase()}`}
-                blurb="Show everything"
-                count={counts[intent.key]}
-                onClick={() => {
-                  haptic("light");
-                  setChosenSub("all");
-                }}
-              />
-              {intent.subIntents!.map((s) => (
-                <Tile
-                  key={s.key}
-                  color={intent.color}
-                  label={s.label}
-                  onClick={() => {
-                    haptic("light");
-                    setChosenSub(s);
-                  }}
-                />
-              ))}
-            </Grid>
-          </motion.div>
-        )}
-
         {step === "results" && (intent || lens) && (
           <motion.div key="results" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
             <Header
@@ -363,6 +328,42 @@ export default function FunnelFlow({
               sub={resultsSub}
               color={resultColor}
             />
+            {/* Narrow in place — the lane's sub-types as a combinable chip
+                rail. Single-select; tapping the active chip clears back to
+                All. Stacks with Open now / Near me below, and the result
+                list updates live with no full-screen jump. */}
+            {ready && intent && hasSubs && !lens && (
+              <div className="-mx-4 mb-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex w-max gap-2">
+                  <Pill
+                    tone="ink"
+                    size="sm"
+                    active={!chosenSub || chosenSub === "all"}
+                    onClick={() => { haptic("light"); setChosenSub(null); }}
+                  >
+                    All
+                  </Pill>
+                  {intent.subIntents!.map((s) => {
+                    const isActive = chosenSub !== null && chosenSub !== "all" && chosenSub.key === s.key;
+                    return (
+                      <Pill
+                        key={s.key}
+                        tone="ink"
+                        size="sm"
+                        active={isActive}
+                        onClick={() => {
+                          haptic("light");
+                          track("find_sub", { intent: intent.key, sub: s.key });
+                          setChosenSub(isActive ? null : s);
+                        }}
+                      >
+                        {s.label}
+                      </Pill>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             {ready && (
               <div className="flex flex-wrap gap-2 pb-3">
                 <Pill tone="brand" size="sm" active={openOnly} onClick={() => { haptic("light"); setOpenOnly((v) => !v); }}>
