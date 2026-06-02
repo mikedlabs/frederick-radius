@@ -455,73 +455,98 @@ export default function EventCard({
               tappable while the inner spans render at normal text
               flow. Standard Apple-cards pattern. */}
           <span className="absolute inset-0" aria-hidden />
-          {/* Top row — date on left, time on right */}
-          <div className="flex items-baseline justify-between gap-3">
-            <span
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em] tabular-nums"
-              style={{ color: accent }}
-            >
-              {date.weekday} · {date.month} {date.day}
-            </span>
-            <span
-              className="shrink-0 text-[11px] font-semibold tabular-nums"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              {date.time}
-              {statusText && (
-                <span className="ml-1.5 font-bold" style={{ color: statusBg }}>
-                  · {statusText}
+          <div className="flex items-stretch gap-3">
+            <div className="min-w-0 flex-1">
+              {/* Top row — date on left, time on right */}
+              <div className="flex items-baseline justify-between gap-3">
+                <span
+                  className="text-[10.5px] font-bold uppercase tracking-[0.12em] tabular-nums"
+                  style={{ color: accent }}
+                >
+                  {date.weekday} · {date.month} {date.day}
                 </span>
-              )}
-            </span>
-          </div>
-          {/* Title — 16px, serif, leading-tight; line-clamp-2 so a
-              two-line title doesn't blow up the card height past
-              ~108px. */}
-          <h3
-            className="mt-1.5 font-serif text-[16px] font-semibold leading-snug tracking-tight line-clamp-2"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {event.title}
-          </h3>
-          {/* Venue line — small, calm, single-line truncate. */}
-          {event.venue_name && (
-            <p
-              className="mt-0.5 truncate text-[12px] leading-snug"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {event.venue_name}
-            </p>
-          )}
-          {/* Meta row — category · price · distance. Free + price
-              live in the SAME slot (mutually exclusive). Distance
-              right-aligns when present, so a vertical scan keeps
-              its visual rhythm even with mixed signals. */}
-          <div className="mt-2 flex items-center gap-x-2 text-[11px]">
-            <span
-              className="font-semibold uppercase tracking-[0.06em]"
-              style={{ color: accent }}
-            >
-              {accentLabel}
-            </span>
-            {event.is_free ? (
-              <>
-                <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-                <span style={{ color: "var(--app-positive)" }}>Free</span>
-              </>
-            ) : event.price_text ? (
-              <>
-                <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-                <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
-              </>
-            ) : null}
-            {event.distance_m !== undefined && (
-              <span
-                className="ml-auto tabular-nums"
-                style={{ color: "var(--app-ink-3)" }}
+                <span
+                  className="shrink-0 text-[11px] font-semibold tabular-nums"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {date.time}
+                  {statusText && (
+                    <span className="ml-1.5 font-bold" style={{ color: statusBg }}>
+                      · {statusText}
+                    </span>
+                  )}
+                </span>
+              </div>
+              {/* Title — 16px, serif, leading-tight; line-clamp-2 so a
+                  two-line title doesn't blow up the card height past
+                  ~108px. */}
+              <h3
+                className="mt-1.5 font-serif text-[16px] font-semibold leading-snug tracking-tight line-clamp-2"
+                style={{ color: "var(--app-ink)" }}
               >
-                {formatDistance(event.distance_m)}
-              </span>
+                {event.title}
+              </h3>
+              {/* Venue line — small, calm, single-line truncate. */}
+              {event.venue_name && (
+                <p
+                  className="mt-0.5 truncate text-[12px] leading-snug"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {event.venue_name}
+                </p>
+              )}
+              {/* Meta row — category · price · distance. Free + price
+                  live in the SAME slot (mutually exclusive). Distance
+                  right-aligns when present, so a vertical scan keeps
+                  its visual rhythm even with mixed signals. */}
+              <div className="mt-2 flex items-center gap-x-2 text-[11px]">
+                <span
+                  className="font-semibold uppercase tracking-[0.06em]"
+                  style={{ color: accent }}
+                >
+                  {accentLabel}
+                </span>
+                {event.is_free ? (
+                  <>
+                    <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+                    <span style={{ color: "var(--app-positive)" }}>Free</span>
+                  </>
+                ) : event.price_text ? (
+                  <>
+                    <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+                    <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
+                  </>
+                ) : null}
+                {event.distance_m !== undefined && (
+                  <span
+                    className="ml-auto tabular-nums"
+                    style={{ color: "var(--app-ink-3)" }}
+                  >
+                    {formatDistance(event.distance_m)}
+                  </span>
+                )}
+              </div>
+            </div>
+            {/* Borrowed venue thumbnail — events carry no photo of their
+                own, so venueEventToCard lends them the venue's hero image
+                and the list stops reading as a wall of text. Renders only
+                when a photo actually resolved (graceful, never a broken
+                or placeholder tile). */}
+            {event.hero_image && (
+              <div
+                className="relative h-16 w-16 shrink-0 self-center overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]"
+                style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)" }}
+              >
+                <Image
+                  src={event.hero_image}
+                  alt=""
+                  fill
+                  sizes="64px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
+                  className="object-cover"
+                />
+              </div>
             )}
           </div>
         </Link>
