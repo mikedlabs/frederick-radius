@@ -119,14 +119,16 @@ export default function PlaceCard({
   compact = false,
   variant = "row",
   galleryPhotos,
-  showSource = true,
+  // Default OFF for dense-list variants (row/tile/grid), where a repeated
+  // badge becomes "chip soup" down the margin; ON for the prominent
+  // answer/feature lead. Override explicitly anywhere it's wanted.
+  showSource = variant === "answer" || variant === "feature",
 }: {
   place: PlaceCardData;
   compact?: boolean;
   variant?: "row" | "feature" | "tile" | "grid" | "answer";
-  /** Show the source/trust badge. Off in dense lists where every row is the
-   *  same baseline tier (the badge becomes repetitive "chip soup"); the full
-   *  trust signal still lives on the detail sheet. */
+  /** Show the source/trust badge. Defaults by variant (off in dense lists,
+   *  on for the lead); the full trust tier still lives on the detail sheet. */
   showSource?: boolean;
   /** Extra photos (proxied URLs) for the answer variant's food/photo
    *  strip. The funnel fetches these on demand from the enrich route
