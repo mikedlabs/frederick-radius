@@ -88,16 +88,25 @@ export default function AskFrederick() {
 
       {res && !loading && (
         <div className="mt-3">
-          {res.configured === false ? (
+          {/* Even without the AI key the API keyword-matches real places, so
+              we show those as the result instead of a dead "coming soon".
+              Only when there's genuinely nothing do we fall back to a hint. */}
+          {res.configured === false && res.sources.length === 0 ? (
             <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              The concierge is warming up — coming soon.
+              The concierge is warming up. Meanwhile, try a category above — or ask for a place, a cuisine, or “open now”.
             </p>
           ) : (
             <>
-              {res.answer && (
-                <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink)" }}>
-                  {res.answer}
+              {res.configured === false ? (
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+                  Top matches
                 </p>
+              ) : (
+                res.answer && (
+                  <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink)" }}>
+                    {res.answer}
+                  </p>
+                )
               )}
               {res.sources.length > 0 && (
                 <ul className="mt-3 space-y-1.5">
