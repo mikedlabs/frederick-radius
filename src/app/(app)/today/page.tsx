@@ -231,6 +231,12 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
   };
 }
 
+// /today is "right now" — render fresh each request so the date, the
+// clock, and the time-sensitive event groupings reflect the actual moment,
+// never a frozen build-time `new Date()`. The heavy data it reads is
+// already cached behind unstable_cache, so the cost stays bounded.
+export const dynamic = "force-dynamic";
+
 export default async function HomePage({
   searchParams,
 }: {

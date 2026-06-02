@@ -1,37 +1,37 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import HomeMuniChip from "./HomeMuniChip";
 
 /**
- * DateLine v2 — calmer typographic header above the SkyHero on /now.
+ * DateLine — the temporal anchor above the SkyHero.
  *
- * v1 was a single uppercase tracked line ("WEDNESDAY · MAY 27 · 7:30
- * PM") that read as a quiet metadata strip. v2 keeps the same role
- * (no editorial verb on top of the weather) but gives each piece
- * its own typographic register:
+ * Client + live: it ticks on a real clock, so the weekday, date, and time
+ * are always the actual current moment (and the pulse dot is honest) —
+ * never a build-time or cache-frozen value. /today also renders fresh
+ * (force-dynamic), so the SSR pass already shows request-time; the tick
+ * keeps it current after load. suppressHydrationWarning covers the
+ * unavoidable seconds-level drift between the server render and hydration.
  *
  *   - Weekday: big serif (Newsreader) — anchors the page in time.
  *   - Date: small caps under the weekday — calendar fact.
  *   - Time: monospace + live pulse dot on the right — "right now".
- *
- * HomeMuniChip still rides bottom-right when a home muni is set.
- * The strip stays on paper-cream (NOT the sky gradient) so styling
- * uses the regular ink tokens instead of sky-toned currentColor.
  */
 export default function DateLine() {
-  const now = new Date();
-  const weekday = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    weekday: "long",
-  }).format(now);
-  const date = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    month: "long",
-    day: "numeric",
-  }).format(now);
-  const time = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(now);
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    // Tick the clock so the time stays live after load. The initial value
+    // is already request-time (the page is force-dynamic), so no immediate
+    // set is needed — the interval keeps it current.
+    const id = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const part = (opts: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", ...opts }).format(now);
+  const weekday = part({ weekday: "long" });
+  const date = part({ month: "long", day: "numeric" });
+  const time = part({ hour: "numeric", minute: "2-digit" });
 
   return (
     <header className="flex items-end justify-between gap-3">
@@ -42,12 +42,14 @@ export default function DateLine() {
         <p
           className="font-serif text-[26px] font-semibold leading-none tracking-tight sm:text-[30px]"
           style={{ color: "var(--app-ink)" }}
+          suppressHydrationWarning
         >
           {weekday}
         </p>
         <p
           className="mt-1 text-meta font-semibold uppercase tracking-[0.14em]"
           style={{ color: "var(--app-ink-3)" }}
+          suppressHydrationWarning
         >
           {date}
         </p>
@@ -61,6 +63,7 @@ export default function DateLine() {
         <span
           className="font-mono text-[14px] font-semibold tabular-nums sm:text-[15px]"
           style={{ color: "var(--app-ink-2)" }}
+          suppressHydrationWarning
         >
           {time}
         </span>

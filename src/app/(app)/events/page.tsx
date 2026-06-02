@@ -28,7 +28,10 @@ export const metadata: Metadata = {
     "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, Hood College, and the Frederick Keys.",
 };
 
-export const revalidate = 3600;
+// 10 minutes, not an hour: the page groups events by "tonight / this
+// weekend" against `now`, so a tighter window keeps those buckets — and
+// the date in the header — from drifting stale between regenerations.
+export const revalidate = 600;
 
 /**
  * /events — the magazine-front-of-the-county.
