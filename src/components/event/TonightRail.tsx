@@ -4,9 +4,14 @@ import { Clock } from "lucide-react";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
 
 /**
- * "Tonight at a glance" — the editorial marquee of what's starting
- * in the next few hours. This is the surface that actually answers
- * the question people open /events to ask: "what's happening *now*?"
+ * "Happening soon" — the editorial marquee of what's starting in the
+ * next few hours. This is the surface that actually answers the
+ * question people open /events to ask: "what's happening *now*?"
+ *
+ * Named for its real window (a rolling ~6 hours from page load), not
+ * "Tonight": opened in the morning, a "Tonight" rail led with 9 AM
+ * graduations, which broke trust. "Happening soon" is honest at any
+ * hour.
  *
  * Photo-led, horizontal rail. Each card is 220px wide with the venue
  * photo as backdrop, a category-tinted chip up top, the event title
@@ -47,7 +52,7 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
   const visible = events.slice(0, 8);
 
   return (
-    <section aria-label="Tonight at a glance" className="space-y-2">
+    <section aria-label="Happening soon" className="space-y-2">
       <header className="flex items-baseline justify-between">
         <div className="flex items-baseline gap-2.5">
           <span
@@ -59,7 +64,7 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
             className="font-serif text-[20px] font-semibold tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Tonight at a glance
+            Happening soon
           </h2>
         </div>
         <span
