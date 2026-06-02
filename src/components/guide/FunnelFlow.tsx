@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, MapPin, ArrowUpDown, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin, ArrowUpDown, Wine, Baby, Dog, Music, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
@@ -68,13 +68,13 @@ function daypartGreeting(hour: number): string {
 // groups (4), rainy-day (3), and the inflated "Local favorites" (622 of
 // 1,675 places carry the flag — a meaningless 37%). The Ask box covers
 // those long-tail moments far better than a near-empty chip.
-type Lens = { key: string; label: string; match: (p: PlaceCardData) => boolean };
+type Lens = { key: string; label: string; Icon: LucideIcon; match: (p: PlaceCardData) => boolean };
 const hasTag = (p: PlaceCardData, t: string) => (p.tags ?? []).includes(t);
 const LENSES: Lens[] = [
-  { key: "date-night", label: "Date night", match: (p) => hasTag(p, "date-night") },
-  { key: "with-kids", label: "With kids", match: (p) => hasTag(p, "kids-0-5") || hasTag(p, "kids-6-12") || hasTag(p, "family") },
-  { key: "dog", label: "Dog-friendly", match: (p) => hasTag(p, "dog-friendly") },
-  { key: "live-music", label: "Live music", match: (p) => LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
+  { key: "date-night", label: "Date night", Icon: Wine, match: (p) => hasTag(p, "date-night") },
+  { key: "with-kids", label: "With kids", Icon: Baby, match: (p) => hasTag(p, "kids-0-5") || hasTag(p, "kids-6-12") || hasTag(p, "family") },
+  { key: "dog", label: "Dog-friendly", Icon: Dog, match: (p) => hasTag(p, "dog-friendly") },
+  { key: "live-music", label: "Live music", Icon: Music, match: (p) => LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
 ];
 
 // The other doors. Radius's job is finding a PLACE; the rest of the app
@@ -339,7 +339,7 @@ export default function FunnelFlow({
               </p>
               <div className="flex flex-wrap gap-2">
                 {LENSES.map((l) => (
-                  <Pill key={l.key} tone="ink" size="sm" onClick={() => { haptic("light"); track("find_lens", { lens: l.key }); setLens(l); }}>
+                  <Pill key={l.key} tone="ink" size="sm" icon={<l.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />} onClick={() => { haptic("light"); track("find_lens", { lens: l.key }); setLens(l); }}>
                     {l.label}
                   </Pill>
                 ))}
