@@ -577,7 +577,7 @@ function Tile({
   color,
   icon,
   label,
-  blurb,
+  blurb: _blurb,
   count,
   onClick,
 }: {
@@ -594,54 +594,39 @@ function Tile({
       type="button"
       onClick={onClick}
       variants={tileItem}
-      whileHover={reduce ? undefined : { y: -4 }}
-      whileTap={reduce ? undefined : { scale: 0.965 }}
-      transition={{ type: "spring", stiffness: 400, damping: 26 }}
-      className="tactile tactile-e2 relative flex min-h-[150px] flex-col items-start overflow-hidden rounded-[var(--app-radius-lg)] p-[18px] text-left"
+      whileTap={reduce ? undefined : { scale: 0.97 }}
+      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+      className="group relative flex min-h-[112px] flex-col items-start gap-2.5 rounded-[var(--app-radius-lg)] border p-4 text-left"
       style={{
-        // Solid base so the accent wash reads crisp (the translucent
-        // --app-bg-elevated would let the PageBloom bleed through and
-        // muddy the tint). A faint radial of the intent color in the
-        // top-left corner gives each tile its own identity without
-        // shouting — the grid reads colorful but stays paper-calm.
-        background: `radial-gradient(125% 110% at 0% 0%, color-mix(in srgb, ${color} 13%, transparent), transparent 58%), var(--app-bg-elevated-solid)`,
+        background: "var(--app-bg-elevated-solid)",
+        borderColor: "var(--app-border)",
+        boxShadow: "0 4px 16px rgba(25,23,20,0.05)",
       }}
     >
-      {/* hairline of the accent along the very top edge — catches light
-          like a real card lip, the Linear/Stripe "set" detail */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, color-mix(in srgb, ${color} 55%, transparent), transparent)` }}
-      />
-      <span
-        className="inline-flex h-12 w-12 items-center justify-center rounded-2xl"
-        style={{
-          background: `linear-gradient(150deg, color-mix(in srgb, ${color} 28%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid)))`,
-          color,
-          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 30%, transparent), 0 10px 22px -12px ${color}`,
-        }}
-      >
-        {icon ?? <ChevronRight className="h-5 w-5" strokeWidth={2.5} aria-hidden />}
-      </span>
-      <span className="text-title mt-3" style={{ color: "var(--app-ink)" }}>
-        {label}
-      </span>
-      {blurb && (
-        <span className="text-meta mt-1" style={{ color: "var(--app-ink-3)" }}>
-          {blurb}
+      {/* iOS-style colored icon square — the single spot of color per
+          tile (clean, not the busy gradient-glow chip). White glyph. */}
+      {icon && (
+        <span
+          className="grid h-10 w-10 place-items-center rounded-[12px] text-white"
+          style={{ background: color, boxShadow: `0 5px 12px -4px ${color}` }}
+        >
+          {icon}
         </span>
       )}
+      <span className="text-[15.5px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+        {label}
+      </span>
       {typeof count === "number" && (
-        <span className="text-meta mt-auto inline-flex items-center gap-1.5 pt-2 font-semibold tabular-nums" style={{ color }}>
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ background: color, boxShadow: `0 0 6px ${color}` }}
-            aria-hidden
-          />
+        <span className="text-meta mt-auto tabular-nums" style={{ color: "var(--app-ink-3)" }}>
           {count} place{count === 1 ? "" : "s"}
         </span>
       )}
+      <ChevronRight
+        className="absolute right-3 top-4 h-4 w-4"
+        strokeWidth={2.25}
+        style={{ color: "var(--app-ink-3)", opacity: 0.45 }}
+        aria-hidden
+      />
     </motion.button>
   );
 }
