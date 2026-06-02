@@ -142,19 +142,32 @@ export default function FunnelFlow({
     if (!lens && chosenSub && chosenSub !== "all") r = r.filter(chosenSub.match);
     if (openOnly) r = r.filter((p) => isOpenNow(p.open_status));
     // Distance only when we truly have the user's location — never imply
-    // a distance we can't source. Rank: open now first, then nearest
-    // (when located), else alphabetical.
+    // a distance we can't source.
     const ranked = origin ? r.map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })) : r.slice();
+    // Best order = a blend of nearby AND well-loved, not pure distance — so
+    // the lead is genuinely the best pick (a great roaster four minutes
+    // farther beats a mediocre one next door), never just the closest.
+    //   • For "right now" lanes (preferOpen), open places still lead — you
+    //     can't use a closed one.
+    //   • relevance = placeQuality (rating, local-favorite, verified hours,
+    //     photo, prose; ≈0..0.9) + a smooth distance decay (≈1.15 at your
+    //     feet, halving roughly every mile). No location → quality-first
+    //     ("top picks"). Every term is a real, explainable signal.
+    const prefersOpen = !lens && !!intent?.preferOpen;
+    const proximity = (d?: number) => (d == null ? 0 : Math.exp(-(d / 1000) / 2.4));
+    const relevance = (p: PlaceCardData) => placeQuality(p) + 1.15 * proximity(p.distance_m);
     ranked.sort((a, b) => {
-      const ao = isOpenNow(a.open_status) ? 0 : 1;
-      const bo = isOpenNow(b.open_status) ? 0 : 1;
-      if (ao !== bo) return ao - bo; // open now first
+      if (prefersOpen) {
+        const ao = isOpenNow(a.open_status) ? 0 : 1;
+        const bo = isOpenNow(b.open_status) ? 0 : 1;
+        if (ao !== bo) return ao - bo; // open now leads for "right now" lanes
+      }
+      const byRel = relevance(b) - relevance(a); // great AND close
+      if (Math.abs(byRel) > 1e-6) return byRel;
       if (origin) {
         const byDist = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
-        if (byDist !== 0) return byDist; // then nearest
+        if (byDist !== 0) return byDist;
       }
-      const byQuality = placeQuality(b) - placeQuality(a); // then most useful + confident
-      if (byQuality !== 0) return byQuality;
       return a.name.localeCompare(b.name);
     });
     return ranked.slice(0, RESULT_CAP);
@@ -162,7 +175,7 @@ export default function FunnelFlow({
 
   const resultsSub = !ready
     ? "Finding places…"
-    : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${geo.status === "granted" ? "nearest first" : "open now first"}`;
+    : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${geo.status === "granted" ? "best nearby" : "top picks"}`;
 
   // Result-header values, shared by the intent and lens paths.
   const resultColor = lens ? "var(--app-brand)" : intent?.color;
@@ -423,8 +436,8 @@ export default function FunnelFlow({
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {geo.status === "granted"
-                      ? "Open now & nearest first — tap any for hours, photos & reviews."
-                      : "Open now first, then the most useful. Turn on location to sort by nearest."}
+                      ? "Ranked by the best balance of nearby & well-loved — tap any for hours, photos & reviews."
+                      : "Ranked by our most useful, best-reviewed picks. Turn on location for the best nearby."}
                   </motion.li>
                 )}
               </motion.ul>
