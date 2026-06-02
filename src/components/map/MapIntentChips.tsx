@@ -28,6 +28,18 @@ import {
   ShoppingBag,
   Hotel,
   Pill,
+  Flower2,
+  Waves,
+  Shirt,
+  Recycle,
+  Home,
+  Gift,
+  Gem,
+  ShoppingCart,
+  Store,
+  BookOpen,
+  FerrisWheel,
+  Users,
   X,
 } from "lucide-react";
 import { INTENTS, type SubIntent } from "@/data/intents";
@@ -61,6 +73,18 @@ const ICON: Record<NonNullable<SubIntent["icon"]>, typeof Coffee> = {
   ShoppingBag,
   Hotel,
   Pill,
+  Flower2,
+  Waves,
+  Shirt,
+  Recycle,
+  Home,
+  Gift,
+  Gem,
+  ShoppingCart,
+  Store,
+  BookOpen,
+  FerrisWheel,
+  Users,
 };
 
 /**

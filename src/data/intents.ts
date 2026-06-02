@@ -113,7 +113,19 @@ export type SubIntent = {
     | "ShoppingBag"
     | "Hotel"
     | "Church"
-    | "Pill";
+    | "Pill"
+    | "Flower2"
+    | "Waves"
+    | "Shirt"
+    | "Recycle"
+    | "Home"
+    | "Gift"
+    | "Gem"
+    | "ShoppingCart"
+    | "Store"
+    | "BookOpen"
+    | "FerrisWheel"
+    | "Users";
 };
 
 const COFFEE = new Set(["coffee", "bakery"]);
@@ -152,6 +164,15 @@ const FOOD = new Set([
   "food-truck",
 ]);
 const OUTDOOR = new Set(["park", "trail", "outdoors", "playground"]);
+// Outdoor sub signals. The directory only structures park/trail/playground
+// as categories, so gardens and water-features are surfaced by NAME (verified
+// against the dataset). These chips only ever narrow WITHIN the outdoor set,
+// so a name match can't pull in a non-outdoor place.
+const TRAIL_NAME_RE = /\b(trail|towpath|greenway|canal|path)\b/i;
+const GARDEN_NAME_RE = /\b(garden|arboretum|botanic)\b/i;
+const WATER_NAME_RE =
+  /\b(creek|lake|river|pond|falls?|reservoir|stream|run|branch|water)\b/i;
+const PLAYGROUND_NAME_RE = /\bplayground|tot.?lot\b/i;
 const FAMILY_CATS = new Set([
   "playground",
   "family",
@@ -159,6 +180,18 @@ const FAMILY_CATS = new Set([
   "museum",
   "park",
 ]);
+// Family "Things to do" — the active kid attractions that live in the noisy
+// `family` category (arcades, escape rooms, bowling, adventure parks, wildlife
+// preserves, clay studios). Name-gated AND category-gated so the parent's
+// K-12 schools and admin offices don't sneak into the chip.
+const FAMILY_ATTRACTION_RE =
+  /\b(arcade|escape room|escape this|bowling|adventure|wildlife|preserve|skate|laser|trampoline|mini.?golf|pinball|clay studio|gymnastics|climbing|aquarium|zoo|farm)\b/i;
+const isFamilyAttraction = (p: PlaceCardData): boolean =>
+  p.category === "family" && FAMILY_ATTRACTION_RE.test(p.name);
+const isPlaygroundLike = (p: PlaceCardData): boolean =>
+  p.category === "playground" ||
+  (p.subcategories ?? []).includes("playground") ||
+  PLAYGROUND_NAME_RE.test(p.name);
 const ARTS = new Set([
   "arts",
   "gallery",
@@ -177,6 +210,21 @@ const CIVIC = new Set([
   "civic",
   "pharmacy",
 ]);
+// Civic sub signals. The `civic` catch-all category (80 rows) is mostly
+// community orgs, nonprofits, and historic sites — a big bucket that had no
+// chip. The `community` / `non_profit` subcategory tags are well-populated
+// here; the name regex catches the rest. Historic sites get their own chip.
+const CIVIC_COMMUNITY_RE =
+  /\b(community center|nonprofit|non-profit|society|council|club|coalition|united way|ymca|rotary|chamber|legion|grange|ruritan|guild|mission|salvation army|boys.*girls)\b/i;
+const CIVIC_HISTORIC_RE =
+  /\b(historic|historical|heritage|landmark|monument|battlefield|barracks|furnace)\b/i;
+const isCivicCommunity = (p: PlaceCardData): boolean =>
+  (p.subcategories ?? []).includes("community") ||
+  (p.subcategories ?? []).includes("non_profit") ||
+  (p.subcategories ?? []).includes("community_center") ||
+  CIVIC_COMMUNITY_RE.test(p.name);
+const isCivicHistoric = (p: PlaceCardData): boolean =>
+  (p.subcategories ?? []).includes("landmark") || CIVIC_HISTORIC_RE.test(p.name);
 
 // Wellness — Frederick has a real yoga + boutique-fitness scene that
 // the directory categorizes as "wellness" (the noisy 270-row bucket
@@ -214,11 +262,53 @@ const isSpa = (p: PlaceCardData): boolean =>
 
 // Shop — Market Street retail, antiques, books, makers, and markets.
 const SHOP = new Set(["shopping", "antiques", "book-store", "market"]);
+// Shop sub signals. The `subcategories` field is only ~13% populated, so each
+// sub combines the few structured tags (`clothes`, `boutique`, `thrift_store`,
+// `gift`, `jewelry`, `food`) with a name regex to surface the real downtown
+// scene. Some overlap is intentional and honest (a "Vintage Boutique" shows in
+// both Fashion and Vintage) — same as Bakeries living under Coffee and Eat.
+const SHOP_FASHION_RE =
+  /\b(boutique|clothing|apparel|fashion|outfitter|dress|denim|shoe|footwear|menswear|womenswear|bridal)\b/i;
+const SHOP_VINTAGE_RE =
+  /\b(vintage|thrift|antique|consign|resale|second.?hand|retro|salvage|curiosit)\b/i;
+const SHOP_HOME_RE =
+  /\b(home|furniture|furnishing|decor|interior|garden|nursery|plant|florist|flower|hardware|mercantile|hearth)\b/i;
+const SHOP_GIFT_RE = /\b(gift|souvenir|candle|stationery)\b/i;
+const SHOP_JEWELRY_RE = /\b(jewel|jeweler|goldsmith|diamond|gem)\b/i;
+const SHOP_GROCERY_RE =
+  /\b(grocery|grocer|supermarket|deli|butcher|cheese|spice|chocolate|candy|seafood|vinegar|oil|popcorn|provisions|emporium|creamery|weis|safeway|jubilee|organic market|co-?op|h mart|foods?)\b/i;
+const isShopFashion = (p: PlaceCardData): boolean =>
+  (p.subcategories ?? []).includes("clothes") ||
+  (p.subcategories ?? []).includes("boutique") ||
+  SHOP_FASHION_RE.test(p.name);
+const isShopVintage = (p: PlaceCardData): boolean =>
+  p.category === "antiques" ||
+  (p.subcategories ?? []).includes("thrift_store") ||
+  SHOP_VINTAGE_RE.test(p.name);
+const isShopGifts = (p: PlaceCardData): boolean =>
+  (p.subcategories ?? []).includes("gift") || SHOP_GIFT_RE.test(p.name);
+const isShopJewelry = (p: PlaceCardData): boolean =>
+  (p.subcategories ?? []).includes("jewelry") || SHOP_JEWELRY_RE.test(p.name);
+const isShopGrocery = (p: PlaceCardData): boolean =>
+  (p.subcategories ?? []).includes("food") ||
+  (p.subcategories ?? []).includes("convenience_store") ||
+  SHOP_GROCERY_RE.test(p.name);
 
 // Stay — the visitor lodging set (hotels, inns, B&Bs, farm stays). 42
-// rows that had no find path until now.
+// rows that had no find path until now. The B&B test must be honest: a bare
+// "Inn" appears in chain hotel names ("Hampton Inn", "Comfort Inn", "Inn &
+// Suites"), so matching "inn" alone mislabels ~half the hotels as B&Bs. We
+// classify as a B&B/independent inn only on an explicit B&B phrase, OR on an
+// "Inn" that is NOT a recognizable chain-suites property.
 const LODGING = new Set(["lodging"]);
-const BNB_NAME_RE = /\b(bed\s?(?:and|&|'n')?\s?breakfast|b&b|b\s?and\s?b|inn|guest\s?house|farm\s?stay|cottage)\b/i;
+const BNB_NAME_RE =
+  /\b(bed\s?(?:and|&|'n')?\s?breakfast|b\s?&\s?b|guest\s?house|farm\s?stay|cottage)\b/i;
+const CHAIN_HOTEL_RE =
+  /&\s?suites|garden inn|comfort inn|days inn|holiday inn|budget inn|sleep inn|hampton inn/i;
+const isBnB = (p: PlaceCardData): boolean =>
+  LODGING.has(p.category) &&
+  (BNB_NAME_RE.test(p.name) ||
+    (/\binn\b/i.test(p.name) && !CHAIN_HOTEL_RE.test(p.name)));
 
 // Faith — 167 houses of worship that were orphaned (the civic intent's
 // matcher never included them). Their own intent so "find a church near
@@ -340,9 +430,11 @@ export const INTENTS: Intent[] = [
     match: (p) => OUTDOOR.has(p.category),
     preferOpen: false,
     subIntents: [
-      { key: "parks",       type: "category", label: "Parks",       icon: "Trees",    match: (p) => p.category === "park" },
-      { key: "trails",      type: "category", label: "Trails",      icon: "Mountain", match: (p) => p.category === "trail" },
-      { key: "playgrounds", type: "category", label: "Playgrounds", icon: "ToyBrick", match: (p) => p.category === "playground" },
+      { key: "parks",       type: "category", label: "Parks",         icon: "Trees",    match: (p) => p.category === "park" },
+      { key: "trails",      type: "category", label: "Trails",        icon: "Mountain", match: (p) => p.category === "trail" || TRAIL_NAME_RE.test(p.name) },
+      { key: "playgrounds", type: "category", label: "Playgrounds",   icon: "ToyBrick", match: isPlaygroundLike },
+      { key: "gardens",     type: "category", label: "Gardens",       icon: "Flower2",  match: (p) => GARDEN_NAME_RE.test(p.name) },
+      { key: "water",       type: "category", label: "Water & creek", icon: "Waves",    match: (p) => WATER_NAME_RE.test(p.name) },
     ],
   },
   {
@@ -354,10 +446,11 @@ export const INTENTS: Intent[] = [
     match: (p) => FAMILY_CATS.has(p.category),
     preferOpen: false,
     subIntents: [
-      { key: "playgrounds", type: "category", label: "Playgrounds", icon: "ToyBrick", match: (p) => p.category === "playground" },
-      { key: "libraries",   type: "category", label: "Libraries",   icon: "Library",  match: (p) => p.category === "library" },
-      { key: "museums",     type: "category", label: "Museums",     icon: "Palette",  match: (p) => p.category === "museum" },
-      { key: "parks",       type: "category", label: "Parks",       icon: "Trees",    match: (p) => p.category === "park" },
+      { key: "things",      type: "category", label: "Things to do", icon: "FerrisWheel", match: isFamilyAttraction },
+      { key: "playgrounds", type: "category", label: "Playgrounds",  icon: "ToyBrick",    match: isPlaygroundLike },
+      { key: "libraries",   type: "category", label: "Libraries",    icon: "Library",     match: (p) => p.category === "library" },
+      { key: "museums",     type: "category", label: "Museums",      icon: "Palette",     match: (p) => p.category === "museum" },
+      { key: "parks",       type: "category", label: "Parks",        icon: "Trees",       match: (p) => p.category === "park" },
     ],
   },
   {
@@ -378,7 +471,9 @@ export const INTENTS: Intent[] = [
       // bars that stage most of Frederick's live music. See
       // src/data/live-music-venues.ts (every slug verified in dataset).
       { key: "live-music", type: "category", label: "Live music", icon: "Music",     match: (p) => p.category === "music" || LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
-      { key: "public-art", type: "category", label: "Public art", icon: "Palette",   match: (p) => p.category === "public-art" },
+      // "Public art" dropped: the `public-art` category is empty in the dataset
+      // and the few real installations (e.g. Trompe Loeil Bridge Mural) live
+      // under `civic`, outside the arts parent — so the chip would match 0.
     ],
   },
   {
@@ -412,8 +507,12 @@ export const INTENTS: Intent[] = [
       { key: "libraries",     type: "category", label: "Libraries",     icon: "Library",     match: (p) => p.category === "library" },
       { key: "government",    type: "category", label: "Government",    icon: "Building",    match: (p) => p.category === "government" },
       { key: "public-safety", type: "category", label: "Public safety", icon: "ShieldCheck", match: (p) => p.category === "public-safety" },
-      { key: "voting",        type: "category", label: "Voting",        icon: "Vote",        match: (p) => p.category === "voting" },
       { key: "pharmacies",    type: "category", label: "Pharmacies",    icon: "Pill",        match: (p) => p.category === "pharmacy" },
+      { key: "community",     type: "category", label: "Community",     icon: "Users",       match: isCivicCommunity },
+      { key: "historic",      type: "category", label: "Historic sites", icon: "Landmark",   match: isCivicHistoric },
+      // "Voting" and "Post & shipping" dropped: both categories are empty in
+      // the dataset (0 polling places, 0 post offices), so the chips would
+      // match nothing. Pharmacies remain (4) — the TAXONOMY's civic exception.
     ],
   },
   {
@@ -425,10 +524,14 @@ export const INTENTS: Intent[] = [
     match: (p) => SHOP.has(p.category),
     preferOpen: true,
     subIntents: [
-      { key: "antiques",  type: "category", label: "Antiques",          match: (p) => p.category === "antiques" },
-      { key: "boutiques", type: "category", label: "Boutiques & shops", match: (p) => p.category === "shopping" },
-      { key: "books",     type: "category", label: "Bookstores",        match: (p) => p.category === "book-store" },
-      { key: "markets",   type: "category", label: "Markets",           match: (p) => p.category === "market" },
+      { key: "fashion",   type: "category", label: "Fashion",            icon: "Shirt",        match: isShopFashion },
+      { key: "vintage",   type: "category", label: "Vintage & thrift",   icon: "Recycle",      match: isShopVintage },
+      { key: "home",      type: "category", label: "Home & garden",      icon: "Home",         match: (p) => SHOP_HOME_RE.test(p.name) },
+      { key: "gifts",     type: "category", label: "Gifts",              icon: "Gift",         match: isShopGifts },
+      { key: "books",     type: "category", label: "Books",              icon: "BookOpen",     match: (p) => p.category === "book-store" },
+      { key: "jewelry",   type: "category", label: "Jewelry",            icon: "Gem",          match: isShopJewelry },
+      { key: "grocery",   type: "category", label: "Grocery & specialty", icon: "ShoppingCart", match: isShopGrocery },
+      { key: "markets",   type: "category", label: "Markets",            icon: "Store",        match: (p) => p.category === "market" },
     ],
   },
   {
@@ -440,8 +543,8 @@ export const INTENTS: Intent[] = [
     match: (p) => LODGING.has(p.category),
     preferOpen: false,
     subIntents: [
-      { key: "hotels", type: "category", label: "Hotels",      match: (p) => LODGING.has(p.category) && !BNB_NAME_RE.test(p.name) },
-      { key: "bnbs",   type: "category", label: "B&Bs & inns", match: (p) => LODGING.has(p.category) && BNB_NAME_RE.test(p.name) },
+      { key: "hotels", type: "category", label: "Hotels",      icon: "Hotel", match: (p) => LODGING.has(p.category) && !isBnB(p) },
+      { key: "bnbs",   type: "category", label: "B&Bs & inns", icon: "Home",  match: isBnB },
     ],
   },
   {
