@@ -19,7 +19,6 @@ import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
 import { track } from "@vercel/analytics";
 import { INTENT_ICON } from "./intentIcons";
-import BetaIntroCard from "@/components/today/BetaIntroCard";
 import AskFrederick from "@/components/ask/AskFrederick";
 
 /**
@@ -306,9 +305,6 @@ export default function FunnelFlow({
       <AnimatePresence mode="wait" initial={false}>
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
-            <div className="mb-3">
-              <BetaIntroCard />
-            </div>
             <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Pick one — it narrows from there." />
             {/* Ask Frederick — the concierge: one box that answers from
                 real data. Sits above the grid as the fastest path. */}
