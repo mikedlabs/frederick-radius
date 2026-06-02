@@ -151,12 +151,18 @@ export const getOpenNowCandidates = unstable_cache(
     const now = bucketToDate(bucket);
     const ranked = rankPlaces({ origin, now, preferOpen: true, limit: 80 });
     const cats = openNowCats(daypart);
-    return ranked.filter(
-      (p) =>
-        p.open_status.state === "open" &&
-        cats.has(p.category) &&
-        (p.google_rating ?? 0) >= 4.0,
-    );
+    return ranked
+      .filter(
+        (p) =>
+          p.open_status.state === "open" &&
+          cats.has(p.category) &&
+          (p.google_rating ?? 0) >= 4.0,
+      )
+      // Server-rendered from the fixed city center, so this distance is NOT
+      // the user's — drop it so no card shows a misleading "X away". Real
+      // per-user distance comes from client surfaces with the visitor's
+      // actual location.
+      .map((p) => ({ ...p, distance_m: undefined }));
   },
   // Deployment hash in the key so a build that updates the place
   // loader (e.g. new Blob photo URLs) busts the cache. Without it,
@@ -183,13 +189,17 @@ export const getWeekendBetCandidates = unstable_cache(
     const origin: LngLat = FREDERICK_CENTER;
     const now = bucketToDate(`${dayKey}T1200`);
     const ranked = rankPlaces({ origin, now, limit: 200 });
-    return ranked.filter(
-      (p) =>
-        Boolean(p.google_photo_url) &&
-        WEEKEND_BET_CATS.has(p.category) &&
-        (p.google_rating ?? 0) >= 4.4 &&
-        p.open_status.state !== "closed",
-    );
+    return ranked
+      .filter(
+        (p) =>
+          Boolean(p.google_photo_url) &&
+          WEEKEND_BET_CATS.has(p.category) &&
+          (p.google_rating ?? 0) >= 4.4 &&
+          p.open_status.state !== "closed",
+      )
+      // Same as above — drop the city-center distance so it's never shown
+      // as if it were the user's.
+      .map((p) => ({ ...p, distance_m: undefined }));
   },
   // Deployment hash in the key — same reason as getOpenNowCandidates.
   ["right-now-strip:weekend-bet", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],

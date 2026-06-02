@@ -31,7 +31,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // (the rule that closed the 12MB bundle leak) the points arrive as a
 // server prop and only the Amenity type is imported (erased at build).
 import type { Amenity } from "@/lib/loaders/amenities";
-import { FREDERICK_CENTER, haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
+import { haversineMeters, formatDistance, metersToMinutes, type LngLat } from "@/lib/geo";
 import { readCachedPosition } from "@/hooks/useGeolocation";
 import { sizedImage } from "@/lib/format/img";
 // THE one duplicate rule (pure, no data imports — bundle-safe). The
@@ -629,7 +629,9 @@ export default function AppMap({
       haptic("light");
       // Google-Maps-style: tap a pin → full card slides up from the bottom
       // (photo, rating, hours, directions, save) instead of a cramped popup.
-      if (place) openSheet({ ...place, distance_m: haversineMeters(FREDERICK_CENTER, place.geom) });
+      // Distance must be from the USER, never a fixed city point — show it
+      // only when we actually have their location, else omit it (honest).
+      if (place) openSheet(userLoc ? { ...place, distance_m: haversineMeters(userLoc, place.geom) } : place);
       return;
     }
 
@@ -714,7 +716,7 @@ export default function AppMap({
     setQ("");
     haptic("light");
     if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
-    openSheet({ ...p, distance_m: haversineMeters(FREDERICK_CENTER, p.geom) });
+    openSheet(userLoc ? { ...p, distance_m: haversineMeters(userLoc, p.geom) } : p);
   };
 
   // Near-me radius ring
