@@ -110,13 +110,13 @@ export default async function SearchPage({
           >
             Try
           </p>
-          <ul className="flex flex-wrap gap-1.5">
+          <ul className="flex flex-wrap gap-2">
             {["coffee", "live music", "park", "brewery", "antiques", "kid friendly", "rainy day"].map((q) => (
               <li key={q}>
                 <Link
                   href={`/search?q=${encodeURIComponent(q)}`}
-                  className="inline-block rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+                  className="tactile tactile-interactive inline-flex items-center rounded-full px-3.5 py-2 text-[13px] font-semibold"
+                  style={{ color: "var(--app-ink-2)" }}
                 >
                   {q}
                 </Link>

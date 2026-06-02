@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, MapPin, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin, ArrowUpDown, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
@@ -19,7 +19,6 @@ import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
 import { track } from "@vercel/analytics";
 import { INTENT_ICON } from "./intentIcons";
-import BetaIntroCard from "@/components/today/BetaIntroCard";
 import AskFrederick from "@/components/ask/AskFrederick";
 
 /**
@@ -42,6 +41,10 @@ import AskFrederick from "@/components/ask/AskFrederick";
 const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "shop", "arts", "family", "wellness", "stay", "faith", "civic"];
 
 const RESULT_CAP = 24;
+
+// Result ordering the user can switch between (the smart default plus two
+// literal, honest sorts). "nearest" only offered when we have location.
+type SortKey = "best" | "nearest" | "rated";
 
 // Premium entrance: tiles settle in with a gentle spring stagger.
 const tilesContainer: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } } };
@@ -101,6 +104,7 @@ export default function FunnelFlow({
   const [chosenSub, setChosenSub] = useState<SubIntent | "all" | null>(null);
   const [openOnly, setOpenOnly] = useState(false);
   const [lens, setLens] = useState<Lens | null>(null);
+  const [sort, setSort] = useState<SortKey>("best");
   const { state: geo, request: requestGeo } = useGeolocation();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag: the daypart greeting must differ between SSR (none) and client (real hour), so it can only resolve post-mount
@@ -142,27 +146,78 @@ export default function FunnelFlow({
     if (!lens && chosenSub && chosenSub !== "all") r = r.filter(chosenSub.match);
     if (openOnly) r = r.filter((p) => isOpenNow(p.open_status));
     // Distance only when we truly have the user's location — never imply
-    // a distance we can't source. Rank: open now first, then nearest
-    // (when located), else alphabetical.
+    // a distance we can't source.
     const ranked = origin ? r.map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })) : r.slice();
+    // Best order = a blend of nearby AND well-loved, not pure distance — so
+    // the lead is genuinely the best pick (a great roaster four minutes
+    // farther beats a mediocre one next door), never just the closest.
+    //   • For "right now" lanes (preferOpen), open places still lead — you
+    //     can't use a closed one.
+    //   • relevance = placeQuality (rating, local-favorite, verified hours,
+    //     photo, prose; ≈0..0.9) + a smooth distance decay (≈1.15 at your
+    //     feet, halving roughly every mile). No location → quality-first
+    //     ("top picks"). Every term is a real, explainable signal.
+    const prefersOpen = !lens && !!intent?.preferOpen;
+    const proximity = (d?: number) => (d == null ? 0 : Math.exp(-(d / 1000) / 2.4));
+    const relevance = (p: PlaceCardData) => placeQuality(p) + 1.15 * proximity(p.distance_m);
+    // Rating-forward score for "Top rated": a real rating with enough
+    // reviews to mean something, nudged by review volume; unrated rows sink.
+    const ratingRank = (p: PlaceCardData) => {
+      const rating = p.google_rating;
+      const count = p.google_rating_count ?? 0;
+      if (typeof rating !== "number" || count < 20) return -1;
+      return rating + Math.min(0.49, Math.log10(count) / 10);
+    };
+    // "Nearest" needs location; without it, fall back to the smart default.
+    const mode: SortKey = sort === "nearest" && !origin ? "best" : sort;
     ranked.sort((a, b) => {
-      const ao = isOpenNow(a.open_status) ? 0 : 1;
-      const bo = isOpenNow(b.open_status) ? 0 : 1;
-      if (ao !== bo) return ao - bo; // open now first
+      if (mode === "nearest") {
+        const byDist = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+        return byDist !== 0 ? byDist : a.name.localeCompare(b.name);
+      }
+      if (mode === "rated") {
+        // Top-rated — but when located, gently demote far-flung picks so a
+        // 5★ sixteen miles away doesn't lead over a great spot down the
+        // block (a contradiction the sims caught). Rating still dominates;
+        // distance only settles great-vs-great. Free within ~3mi.
+        const ratedScore = (p: PlaceCardData) => {
+          const base = ratingRank(p);
+          if (base < 0 || p.distance_m == null) return base;
+          return base - Math.max(0, (p.distance_m / 1000 - 4.8) * 0.06);
+        };
+        const byRate = ratedScore(b) - ratedScore(a);
+        return Math.abs(byRate) > 1e-9 ? byRate : a.name.localeCompare(b.name);
+      }
+      // "best": open now leads for "right now" lanes, then a blend of
+      // nearby AND well-loved (never just the closest).
+      if (prefersOpen) {
+        const ao = isOpenNow(a.open_status) ? 0 : 1;
+        const bo = isOpenNow(b.open_status) ? 0 : 1;
+        if (ao !== bo) return ao - bo;
+      }
+      const byRel = relevance(b) - relevance(a);
+      if (Math.abs(byRel) > 1e-6) return byRel;
       if (origin) {
         const byDist = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
-        if (byDist !== 0) return byDist; // then nearest
+        if (byDist !== 0) return byDist;
       }
-      const byQuality = placeQuality(b) - placeQuality(a); // then most useful + confident
-      if (byQuality !== 0) return byQuality;
       return a.name.localeCompare(b.name);
     });
     return ranked.slice(0, RESULT_CAP);
-  }, [places, intent, lens, chosenSub, openOnly, geo]);
+  }, [places, intent, lens, chosenSub, openOnly, geo, sort]);
 
+  const sortLabel =
+    sort === "nearest" ? "nearest first" : sort === "rated" ? "top rated" : geo.status === "granted" ? "best nearby" : "top picks";
   const resultsSub = !ready
     ? "Finding places…"
-    : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${geo.status === "granted" ? "nearest first" : "open now first"}`;
+    : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${sortLabel}`;
+  // The sort control's options — "Nearest" only appears once we have a
+  // location to make it meaningful.
+  const sortOpts: { key: SortKey; label: string }[] = [
+    { key: "best", label: "Best" },
+    ...(geo.status === "granted" ? [{ key: "nearest" as const, label: "Nearest" }] : []),
+    { key: "rated", label: "Top rated" },
+  ];
 
   // Result-header values, shared by the intent and lens paths.
   const resultColor = lens ? "var(--app-brand)" : intent?.color;
@@ -250,9 +305,6 @@ export default function FunnelFlow({
       <AnimatePresence mode="wait" initial={false}>
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
-            <div className="mb-3">
-              <BetaIntroCard />
-            </div>
             <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Pick one — it narrows from there." />
             {/* Ask Frederick — the concierge: one box that answers from
                 real data. Sits above the grid as the fastest path. */}
@@ -336,9 +388,10 @@ export default function FunnelFlow({
               <div className="-mx-4 mb-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex w-max gap-2">
                   <Pill
-                    tone="ink"
+                    tone="brand"
                     size="sm"
                     active={!chosenSub || chosenSub === "all"}
+                    style={!chosenSub || chosenSub === "all" ? { background: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
                     onClick={() => { haptic("light"); setChosenSub(null); }}
                   >
                     All
@@ -348,9 +401,10 @@ export default function FunnelFlow({
                     return (
                       <Pill
                         key={s.key}
-                        tone="ink"
+                        tone="brand"
                         size="sm"
                         active={isActive}
+                        style={isActive ? { background: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
                         onClick={() => {
                           haptic("light");
                           track("find_sub", { intent: intent.key, sub: s.key });
@@ -365,24 +419,41 @@ export default function FunnelFlow({
               </div>
             )}
             {ready && (
-              <div className="flex flex-wrap gap-2 pb-3">
-                <Pill tone="brand" size="sm" active={openOnly} onClick={() => { haptic("light"); setOpenOnly((v) => !v); }}>
+              <div className="flex items-center gap-2 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <Pill tone="brand" size="sm" className="shrink-0" active={openOnly} onClick={() => { haptic("light"); setOpenOnly((v) => !v); }}>
                   Open now
                 </Pill>
                 {geo.status === "granted" ? (
-                  <Pill tone="cool" size="sm" active icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
+                  <Pill tone="cool" size="sm" className="shrink-0" active icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
                     Near you
                   </Pill>
                 ) : (
-                  <Pill tone="cool" size="sm" onClick={() => { haptic("light"); requestGeo(); }} icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
+                  <Pill tone="cool" size="sm" className="shrink-0" onClick={() => { haptic("light"); requestGeo(); }} icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
                     {geo.status === "loading" ? "Locating…" : "Near me"}
                   </Pill>
                 )}
+                {/* Sort, divided from the filters. The whole row scrolls
+                    horizontally on narrow screens instead of wrapping to a
+                    second line — one control row, not two. */}
+                <span aria-hidden className="mx-0.5 h-5 w-px shrink-0" style={{ background: "var(--app-border)" }} />
+                <ArrowUpDown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                {sortOpts.map((o) => (
+                  <Pill
+                    key={o.key}
+                    tone="cool"
+                    size="sm"
+                    className="shrink-0"
+                    active={sort === o.key}
+                    onClick={() => { haptic("light"); track("find_sort", { sort: o.key }); setSort(o.key); }}
+                  >
+                    {o.label}
+                  </Pill>
+                ))}
               </div>
             )}
             {geo.status === "denied" && (
               <p className="-mt-1 pb-3 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Location is off, so this is sorted by open-now. Turn it on for nearest-first.
+                Location is off, so this shows our top picks. Turn it on for the best nearby.
               </p>
             )}
             {!ready ? (
@@ -411,7 +482,7 @@ export default function FunnelFlow({
               >
                 {results.map((p, i) => (
                   <motion.li key={p.slug} variants={reduce ? undefined : tileItem}>
-                    {i === 0 ? <AnswerLead place={p} /> : <PlaceCard place={p} variant="row" />}
+                    {i === 0 ? <AnswerLead place={p} /> : <PlaceCard place={p} variant="row" showSource={false} />}
                   </motion.li>
                 ))}
                 {results.length > 1 && (
@@ -420,9 +491,13 @@ export default function FunnelFlow({
                     className="pt-1 text-center text-[11px] italic leading-relaxed"
                     style={{ color: "var(--app-ink-3)" }}
                   >
-                    {geo.status === "granted"
-                      ? "Open now & nearest first — tap any for hours, photos & reviews."
-                      : "Open now first, then the most useful. Turn on location to sort by nearest."}
+                    {sort === "nearest"
+                      ? "Closest first — tap any for hours, photos & reviews."
+                      : sort === "rated"
+                        ? "Highest-rated first (enough reviews to be real) — tap any for hours, photos & reviews."
+                        : geo.status === "granted"
+                          ? "Ranked by the best balance of nearby & well-loved — tap any for hours, photos & reviews."
+                          : "Ranked by our most useful, best-reviewed picks. Turn on location for the best nearby."}
                   </motion.li>
                 )}
               </motion.ul>
@@ -506,19 +581,26 @@ function Tile({
       variants={tileItem}
       whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      className="group relative flex min-h-[112px] flex-col items-start gap-2.5 rounded-[var(--app-radius-lg)] border p-4 text-left"
+      className="group relative flex min-h-[120px] flex-col items-start gap-3 rounded-[var(--app-radius-lg)] p-4 text-left"
       style={{
-        background: "var(--app-bg-elevated-solid)",
-        borderColor: "var(--app-border)",
-        boxShadow: "0 4px 16px rgba(25,23,20,0.05)",
+        // The lane's color breathes from the top-left and fades into
+        // paper, so each tile reads as its own warm card instead of a
+        // flat white box. Layered edge + inner highlight + ambient
+        // elevation give it the "made" depth (the .tactile-e2 recipe).
+        background: `linear-gradient(155deg, color-mix(in srgb, ${color} 11%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 58%)`,
+        boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
       }}
     >
-      {/* iOS-style colored icon square — the single spot of color per
-          tile (clean, not the busy gradient-glow chip). White glyph. */}
+      {/* Glossy colored icon tile — the spot of identity, now catching
+          light (top gloss + colored ambient glow) so it pops off paper. */}
       {icon && (
         <span
-          className="grid h-10 w-10 place-items-center rounded-[12px] text-white"
-          style={{ background: color, boxShadow: `0 5px 12px -4px ${color}` }}
+          className="grid h-11 w-11 place-items-center rounded-[14px] text-white"
+          style={{
+            background: color,
+            backgroundImage: "var(--app-gloss)",
+            boxShadow: `0 6px 16px -5px ${color}, inset 0 1px 0 rgba(255,255,255,0.38)`,
+          }}
         >
           {icon}
         </span>
@@ -527,14 +609,15 @@ function Tile({
         {label}
       </span>
       {typeof count === "number" && (
-        <span className="text-meta mt-auto tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-meta mt-auto inline-flex items-center gap-1.5 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: color, opacity: 0.85 }} aria-hidden />
           {count} place{count === 1 ? "" : "s"}
         </span>
       )}
       <ChevronRight
-        className="absolute right-3 top-4 h-4 w-4"
+        className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2"
         strokeWidth={2.25}
-        style={{ color: "var(--app-ink-3)", opacity: 0.45 }}
+        style={{ color: "var(--app-ink-3)", opacity: 0.4 }}
         aria-hidden
       />
     </motion.button>

@@ -18,7 +18,7 @@ import {
  *                            the daily-return surface for locals)
  *   - Map       /map
  *   - Events    /events
- *   - Saved     /my-radius
+ *   - Saved     /my-radius  (matches the page H1; "My Radius" is the brand eyebrow)
  *
  * Today rejoined the primary nav (it had been demoted to a link under
  * the front door): the UI survey found the temporal / ambient-live-data layer is

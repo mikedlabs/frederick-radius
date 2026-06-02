@@ -231,6 +231,15 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
   };
 }
 
+// /today is time-sensitive, but force-dynamic made every visit pay the
+// external-feed fanout (a ~7-10s cold load — the sims caught it). Instead:
+// ISR every 5 minutes, so the page serves cached + fast while the event
+// groupings stay fresh-enough, and the *visible* clock + date are handled
+// live, client-side, by <DateLine/>. (The original bug was pure-static
+// with NO revalidate — a frozen build-time date; a short revalidate plus
+// the live client clock fixes that without the per-request cost.)
+export const revalidate = 300;
+
 export default async function HomePage({
   searchParams,
 }: {
@@ -345,8 +354,8 @@ export default async function HomePage({
         <TodayAsk />
         {todayAnswers.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {todayAnswers.map((a) => (
-              <AnswerCard key={a.id} answer={a} />
+            {todayAnswers.map((a, i) => (
+              <AnswerCard key={a.id} answer={a} featured={i === 0} />
             ))}
           </div>
         )}

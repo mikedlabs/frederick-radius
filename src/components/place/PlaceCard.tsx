@@ -15,8 +15,8 @@ import { Star } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import SourceBadge from "./SourceBadge";
-import { ReasonChipRow } from "@/components/ui/ReasonChip";
-import { placeReasons } from "@/lib/place-reasons";
+import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
+import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
 import { BeenHereIndicator } from "./BeenHereIndicator";
 
 /**
@@ -49,6 +49,56 @@ function Rave({
   );
 }
 
+/**
+ * Tactile status chips for the result cards. Same tone vocabulary +
+ * color tokens as ReasonChip, but dressed in the front-door tile's
+ * "made" language: the tint is the fill, a 1px tinted inset edge
+ * crisps it, and a hairline top highlight catches light so the chip
+ * reads as a pressed token rather than flat colored text. Restyle
+ * only — every chip here comes straight from placeReasons(), so no
+ * badge is ever invented.
+ */
+const CHIP_TONE: Record<ReasonTone, { color: string; tint: string; edge: string; dot?: boolean }> = {
+  open:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)", dot: true },
+  near:     { color: "var(--app-cool)",     tint: "var(--app-cool-tint-14)",     edge: "color-mix(in srgb, var(--app-cool) 24%, transparent)" },
+  verified: { color: "var(--app-brand-2)",  tint: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)", edge: "color-mix(in srgb, var(--app-brand-2) 26%, transparent)" },
+  free:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
+  rated:    { color: "var(--app-accent)",   tint: "color-mix(in srgb, var(--app-accent) 20%, transparent)",  edge: "color-mix(in srgb, var(--app-accent) 34%, transparent)" },
+  neutral:  { color: "var(--app-ink-2)",    tint: "var(--app-ink-tint-6)",       edge: "var(--app-ink-tint-12)" },
+};
+
+function StatusChip({ label, tone = "neutral" }: { label: string; tone?: ReasonTone }) {
+  const t = CHIP_TONE[tone];
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold leading-none tracking-tight"
+      style={{
+        color: t.color,
+        background: t.tint,
+        // Crisp tinted edge + a faint inner top highlight = the tile's
+        // "this is a physical token" feel, not flat colored text.
+        boxShadow: `inset 0 0 0 1px ${t.edge}, inset 0 1px 0 rgba(255,255,255,0.45)`,
+      }}
+    >
+      {t.dot && (
+        <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: t.color }} />
+      )}
+      {label}
+    </span>
+  );
+}
+
+function StatusChipRow({ reasons, className = "" }: { reasons: PlaceReasonChip[]; className?: string }) {
+  if (reasons.length === 0) return null;
+  return (
+    <span className={`inline-flex flex-wrap items-center gap-1.5 ${className}`} aria-label="Reasons this is shown">
+      {reasons.map((r, i) => (
+        <StatusChip key={`${r.label}-${i}`} label={r.label} tone={r.tone} />
+      ))}
+    </span>
+  );
+}
+
 const GLYPH_BY_CATEGORY: Record<string, string> = {
   coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
   pizza: "🍕", park: "🌳", trail: "⛰", playground: "🛝", museum: "🏛",
@@ -69,10 +119,17 @@ export default function PlaceCard({
   compact = false,
   variant = "row",
   galleryPhotos,
+  // Default OFF for dense-list variants (row/tile/grid), where a repeated
+  // badge becomes "chip soup" down the margin; ON for the prominent
+  // answer/feature lead. Override explicitly anywhere it's wanted.
+  showSource = variant === "answer" || variant === "feature",
 }: {
   place: PlaceCardData;
   compact?: boolean;
   variant?: "row" | "feature" | "tile" | "grid" | "answer";
+  /** Show the source/trust badge. Defaults by variant (off in dense lists,
+   *  on for the lead); the full trust tier still lives on the detail sheet. */
+  showSource?: boolean;
   /** Extra photos (proxied URLs) for the answer variant's food/photo
    *  strip. The funnel fetches these on demand from the enrich route
    *  for its lead pick; absent it, the strip simply doesn't render. */
@@ -153,8 +210,13 @@ export default function PlaceCard({
     const stripPhotos = (galleryPhotos ?? []).filter((u) => u && u !== photoUrl).slice(0, 6);
     return (
       <article
-        className="tactile tactile-e2 group relative overflow-hidden rounded-[var(--app-radius-lg)]"
-        style={{ background: "var(--app-bg-elevated-solid)" }}
+        className="tactile tactile-e3 tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]"
+        style={{
+          background: "var(--app-bg-elevated-solid)",
+          // Paper catching light from the top-left — the brief's
+          // "big surface" sheen layered over the solid fill.
+          backgroundImage: "var(--app-paper-light)",
+        }}
       >
         <button
           type="button"
@@ -164,7 +226,7 @@ export default function PlaceCard({
         >
           {/* Cinematic banner — taller than the tile so the lead pick
               reads as "the answer," not another row. */}
-          <div className="relative h-44 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
+          <div className="relative h-48 w-full overflow-hidden bg-[var(--app-bg-sunken)]">
             {photoUrl ? (
               <>
                 <PlacePhoto
@@ -176,12 +238,15 @@ export default function PlaceCard({
                   className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
                   rounded="0"
                 />
+                {/* Gentle bottom scrim + faint top shade so the category
+                    chip and any on-photo text stay legible over a bright
+                    photo, while the middle of the image reads clean. */}
                 <div
                   aria-hidden
                   className="pointer-events-none absolute inset-0"
                   style={{
                     background:
-                      "linear-gradient(180deg, rgba(0,0,0,0.32) 0%, transparent 32%, transparent 60%, rgba(0,0,0,0.45) 100%)",
+                      "linear-gradient(180deg, rgba(0,0,0,0.34) 0%, transparent 30%, transparent 56%, rgba(0,0,0,0.50) 100%)",
                   }}
                 />
               </>
@@ -192,6 +257,13 @@ export default function PlaceCard({
                 className="absolute inset-0 transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
               />
             )}
+            {/* A crisp inner edge hugging the photo so it reads as set
+                into the card, not pasted on — the refined-photo detail. */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.10), inset 0 1px 0 rgba(255,255,255,0.12)" }}
+            />
             {cat && (
               <span
                 className="absolute left-2.5 top-2.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
@@ -221,8 +293,8 @@ export default function PlaceCard({
             <div aria-hidden className="absolute inset-x-0 bottom-0 h-[3px]" style={{ background: color }} />
           </div>
           <div className="space-y-2.5 p-4">
-            <div className="flex items-baseline gap-2">
-              <h3 className="display-3 min-w-0 flex-1 truncate" style={{ color: "var(--app-ink)" }}>
+            <div className="flex items-start gap-2">
+              <h3 className="display-3 min-w-0 flex-1 text-balance leading-[1.12]" style={{ color: "var(--app-ink)" }}>
                 {place.name}
               </h3>
               <SourceBadge place={place} size="sm" />
@@ -267,7 +339,7 @@ export default function PlaceCard({
                 </span>
               )}
             </div>
-            {reasons.length > 0 && <ReasonChipRow reasons={reasons} />}
+            {reasons.length > 0 && <StatusChipRow reasons={reasons} />}
             {/* "What people say" — a real, attributed Google review
                 snippet. The single strongest word-of-mouth signal we
                 hold, and it appears on no other card. Labelled as UGC,
@@ -412,9 +484,9 @@ export default function PlaceCard({
                 {place.name}
               </h3>
               {/* SourceBadge — surfaces trust tier (Curated / Verified
-                  / Community / Official). Self-hides when there's no
-                  honest claim. */}
-              <SourceBadge place={place} size="sm" />
+                  / Community / Official). Self-hides when there's no honest
+                  claim; suppressed in dense lists via showSource. */}
+              {showSource && <SourceBadge place={place} size="sm" />}
             </div>
             <p
               className="truncate text-[12px]"
@@ -554,21 +626,18 @@ export default function PlaceCard({
 
   return (
     <article
-      className="tactile tactile-interactive group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-3"
-      style={{
-        borderColor: "var(--app-border)",
-        boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-      }}
+      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] p-3"
+      style={{ background: "var(--app-bg-elevated-solid)" }}
     >
       {photoUrl ? (
         <div
-          className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
+          className="relative h-[78px] w-[78px] shrink-0 self-center overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
           style={{
-            // Inner ring + soft drop so the thumbnail reads as a
-            // physical object on the card, matching the EventCard
-            // tile's date-pill register.
+            // Crisp inner edge + a 1px top highlight + a soft ambient
+            // drop, so the thumbnail reads as a physical chip sitting on
+            // the card — the same tactile register as the lane tiles.
             boxShadow:
-              "0 2px 6px -1px rgba(20,20,18,0.18), inset 0 0 0 1px rgba(20,20,18,0.10)",
+              "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 10px -3px rgba(20,20,18,0.22)",
           }}
         >
           <PlacePhoto
@@ -576,47 +645,54 @@ export default function PlaceCard({
             alt={photo?.alt ?? place.name}
             glyph={glyph}
             color={color}
-            sizes="72px"
+            sizes="78px"
+            className="transition-transform duration-500 ease-out group-hover:scale-[1.06]"
           />
-          {/* Category color hairline along the bottom — same
-              through-line as the tile variant, just thinner. */}
+          {/* A gentle top sheen + bottom shade so the photo has volume,
+              not a flat crop; the category hairline anchors its base. */}
           <div
             aria-hidden
-            className="absolute inset-x-0 bottom-0 h-[2px]"
+            className="pointer-events-none absolute inset-0"
+            style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.10) 0%, transparent 28%, transparent 72%, rgba(0,0,0,0.18) 100%)" }}
+          />
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-[2.5px]"
             style={{ background: color }}
           />
         </div>
       ) : (
         <div
           aria-hidden
-          className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[var(--app-radius-md)]"
+          className="flex h-[78px] w-[78px] shrink-0 self-center items-center justify-center rounded-[var(--app-radius-md)]"
           style={{
-            background: `linear-gradient(145deg, ${color}2e, ${color}0c)`,
+            background: `linear-gradient(145deg, color-mix(in srgb, ${color} 22%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${color} 7%, var(--app-bg-elevated-solid)))`,
             color,
-            boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)",
+            boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)",
           }}
         >
-          <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-7 w-7 opacity-90" style={{ color }} />
+          <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-8 w-8 opacity-90" style={{ color }} />
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col justify-center">
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-start gap-2">
           <button
             type="button"
             onClick={openDetail}
             aria-label={`View ${place.name} details`}
-            className="truncate text-left text-[15px] font-semibold tracking-tight outline-none focus-visible:underline"
+            className="line-clamp-2 min-w-0 flex-1 text-left text-[15.5px] font-semibold leading-[1.2] tracking-tight outline-none focus-visible:underline"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
             {place.name}
           </button>
           {/* SourceBadge — same trust tier surfacing as the detail
-              page, set inline next to the name. Self-hides when
-              there's nothing honest to claim. */}
-          <SourceBadge place={place} size="sm" />
+              page, set inline next to the name. Self-hides when there's
+              nothing honest to claim; suppressed in dense lists via
+              showSource so the badge isn't repeated down every row. */}
+          {showSource && <SourceBadge place={place} size="sm" />}
           {place.distance_m !== undefined && (
-            <span className="ml-auto whitespace-nowrap text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
               {formatDistance(place.distance_m)}
             </span>
           )}
@@ -627,12 +703,13 @@ export default function PlaceCard({
           <BeenHereIndicator slug={place.slug} />
         </p>
         {!compact && (() => {
-          // Reason chips on the row variant — same producer as grid +
-          // tile. Falls back to the legacy status / rating / price row
-          // only if placeReasons() returns nothing.
+          // Status chips on the row variant — same producer as grid +
+          // tile, dressed in the tactile chip language. Falls back to
+          // the legacy status / rating / price row only if
+          // placeReasons() returns nothing.
           const reasons = placeReasons(place);
           if (reasons.length > 0) {
-            return <ReasonChipRow reasons={reasons} className="mt-2" />;
+            return <StatusChipRow reasons={reasons} className="mt-2" />;
           }
           return (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">

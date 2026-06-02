@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
-import { ExternalLink, Phone, Globe, Navigation, X, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
+import { ExternalLink, Phone, Globe, Navigation, X, Expand, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import { placeActions, type PlaceAction } from "@/lib/place-actions";
 import Link from "next/link";
 import Image from "next/image";
@@ -23,6 +23,7 @@ import { placeHoursTrust, formatChecked } from "@/lib/trust";
 import { knownFor } from "@/lib/cuisine";
 import { formatDistance } from "@/lib/geo";
 import type { ParcelContext } from "@/lib/loaders/cofParcels";
+import PhotoLightbox from "@/components/ui/PhotoLightbox";
 
 /**
  * Bottom-sheet detail view for a place. Slides up with spring physics,
@@ -126,6 +127,10 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
 
   // Real walk/drive time from downtown via Routes API (on-demand, cached server-side)
   const [travel, setTravel] = useState<{ walkMin?: number; driveMin?: number } | null>(null);
+  const [lightboxAt, setLightboxAt] = useState<number | null>(null);
+  const [venueEvents, setVenueEvents] = useState<
+    { slug: string; title: string; weekday: string; day: string; month: string; time: string }[]
+  >([]);
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/travel-time?lat=${place.geom.lat}&lng=${place.geom.lng}`)
@@ -150,6 +155,16 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
     return () => { cancelled = true; setExtra(null); };
   }, [place.slug, place.google_photo_url]);
 
+  // Upcoming events happening AT this venue — a strong "should I go" signal.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/place/${place.slug}/events`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && Array.isArray(d?.events)) setVenueEvents(d.events); })
+      .catch(() => {});
+    return () => { cancelled = true; setVenueEvents([]); };
+  }, [place.slug]);
+
   // City of Frederick parcel context, on-demand. Dormant by default:
   // the route returns null until the City source is approved, activated,
   // and COF_PARCELS=1, so nothing renders in production until then.
@@ -168,6 +183,8 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
     ? place.google_photos
     : (extra?.photos ?? []);
   const heroUrl = place.google_photo_url ?? photos[0];
+  // Every unique photo (hero first), for the tap-to-enlarge lightbox.
+  const allPhotos = Array.from(new Set([heroUrl, ...photos].filter(Boolean))) as string[];
   const hoursLines = place.google_hours?.length
     ? place.google_hours
     : (extra?.hours ?? []);
@@ -220,7 +237,14 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
          *  When there is no photo, we fall back to a category-tinted
          *  panel with the icon — still cinematic, still on-brand. */}
         {heroUrl ? (
-          <div className="relative aspect-[4/3] w-full overflow-hidden">
+          <div
+            className="relative aspect-[4/3] w-full cursor-zoom-in overflow-hidden"
+            role="button"
+            tabIndex={0}
+            aria-label={`View ${place.name} photos`}
+            onClick={() => { haptic("light"); setLightboxAt(0); }}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(0); } }}
+          >
             <Image
               src={heroUrl}
               alt={place.name}
@@ -231,6 +255,13 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
               blurDataURL={PAPER_CREAM_BLUR}
               className="object-cover"
             />
+            <span
+              aria-hidden
+              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full"
+              style={{ background: "rgba(0,0,0,0.42)", color: "white", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
+            >
+              <Expand className="h-4 w-4" strokeWidth={2.25} />
+            </span>
             <div
               aria-hidden
               className="pointer-events-none absolute inset-0"
@@ -468,7 +499,12 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             {photos.slice(1, 8).map((u, i) => (
               <div
                 key={i}
-                className="relative h-24 w-32 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] border"
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${place.name} photo ${i + 2}`}
+                onClick={() => { haptic("light"); setLightboxAt(allPhotos.indexOf(u)); }}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); haptic("light"); setLightboxAt(allPhotos.indexOf(u)); } }}
+                className="relative h-24 w-32 shrink-0 cursor-zoom-in overflow-hidden rounded-[var(--app-radius-md)] border"
                 style={{ borderColor: "var(--app-border)" }}
               >
                 <Image
@@ -483,6 +519,37 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
                 />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Upcoming events AT this venue — what's on here, not just what it is */}
+        {venueEvents.length > 0 && (
+          <div className="mt-5">
+            <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>Upcoming here</h3>
+            <ul className="flex flex-col gap-1.5">
+              {venueEvents.map((ev) => (
+                <li key={ev.slug}>
+                  <Link
+                    href={`/events/${ev.slug}`}
+                    onClick={() => haptic("light")}
+                    className="tactile flex items-center gap-3 rounded-[var(--app-radius-md)] p-2.5 transition active:scale-[0.99]"
+                  >
+                    <div
+                      className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)]"
+                      style={{ background: `color-mix(in srgb, ${color} 13%, var(--app-bg-elevated-solid))`, color }}
+                    >
+                      <span className="text-[9px] font-bold uppercase tracking-[0.08em] leading-none">{ev.month}</span>
+                      <span className="font-serif text-[18px] font-semibold leading-none">{ev.day}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{ev.title}</p>
+                      <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>{ev.weekday} · {ev.time}</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
@@ -555,6 +622,15 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         </p>
         </div>
       </div>
+
+      {lightboxAt !== null && (
+        <PhotoLightbox
+          photos={allPhotos}
+          startIndex={lightboxAt}
+          alt={place.name}
+          onClose={() => setLightboxAt(null)}
+        />
+      )}
     </>
   );
 }

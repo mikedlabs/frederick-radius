@@ -1,5 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
+import {
+  Activity, Apple, Baby, Beer, Building2, CalendarDays, Church, Coffee,
+  Heart, Landmark, Library, Music, Palette, ShoppingBag, Theater, Trees,
+  Users, Utensils, Vote, type LucideIcon,
+} from "lucide-react";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDateBlock } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -15,26 +20,64 @@ import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
 
+// Small Lucide icon for the no-photo glance / utility tile. A focused
+// subset of the category taxonomy's icon names (the ones that actually
+// appear on event surfaces) → component, so a photo-less row gets a
+// real, centered category glyph on a tonal tile instead of the cropped
+// 64px CategoryGraphic that read as a broken image. Anything unmapped
+// resolves to a calendar mark — honest and never broken.
+const CATEGORY_ICON: Record<string, LucideIcon> = {
+  Activity, Apple, Baby, Beer, Building2, Church, Coffee, Heart, Landmark,
+  Library, Music, Palette, ShoppingBag, Theater, Trees, Users, Utensils,
+  Vote,
+};
+/** Module-scope render component (NOT a render-time alias — that resets
+ *  state and trips react-hooks/static-components). Resolves the
+ *  category's Lucide glyph and renders it; unmapped → calendar mark. */
+function CategoryIcon({
+  category,
+  className,
+  strokeWidth = 1.75,
+}: {
+  category: string;
+  className?: string;
+  strokeWidth?: number;
+}) {
+  const name = CATEGORY_BY_SLUG[category]?.icon;
+  const Glyph = (name && CATEGORY_ICON[name]) || CalendarDays;
+  return <Glyph className={className} strokeWidth={strokeWidth} />;
+}
+
 export default function EventCard({
   event,
   variant = "glance",
   live = false,
+  whyItMatters,
 }: {
   event: EventWithMeta;
   /**
-   * Layout density. `glance` is the default — a ~108px photo-less
-   * browsing card per the mobile review (date column left, title
-   * center, bottom meta row); fits 2.5-3 cards in a mobile viewport
-   * for fast comparison. `row` is the older list card with a 64px
-   * thumbnail + full chip row, kept for surfaces where the photo
-   * earns the extra height. `tile` is the grid/rail card with photo
-   * banner; `feature` is the editorial lead; `compact` is the
-   * single-line Rolodex row used in dense list views.
+   * Layout density, smallest → largest editorial weight:
+   *   `utility` — TINY one-line muted row (civic meetings, recurring
+   *     pickups, municipal notices). No photo, no chips. The long tail.
+   *   `compact` — single-line Rolodex row (date pill + title + meta).
+   *   `glance`  — the default ~108px browsing card. Anchored by a left
+   *     accent rail; a real photo when one exists, otherwise a small
+   *     centered category icon on a tonal tile (NOT the old cropped
+   *     64px CategoryGraphic, which read as a broken image).
+   *   `row`     — legacy list card with full chip row + actions.
+   *   `tile`    — grid/rail card with a cinematic photo banner.
+   *   `feature` — HERO: full-bleed editorial lead, one per surface.
    */
-  variant?: "row" | "tile" | "feature" | "compact" | "glance";
+  variant?: "row" | "tile" | "feature" | "compact" | "glance" | "utility";
   /** Live right now — renders a small pulsing dot in the compact row so
    *  "happening now" reads even in the dense listing. */
   live?: boolean;
+  /**
+   * One honest "why it matters" line for the HERO (feature) card,
+   * derived upstream from the event's real description — never
+   * fabricated. Rendered under the meta row. Ignored by other variants.
+   */
+  whyItMatters?: string;
 }) {
   const date = eventDateBlock(event);
   const cat = CATEGORY_BY_SLUG[event.category];
@@ -56,6 +99,51 @@ export default function EventCard({
   const accent: string = cat?.color ?? "#7A7975";
   const hasPhoto = Boolean(event.hero_image);
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
+
+  // Utility variant — TINY single muted line for the civic / municipal
+  // long tail: board meetings, recurring pickups, posted notices. One
+  // calm row, anchored by a small category-tinted dot, with the date +
+  // time set quietly to the right. No photo, no chips, no actions —
+  // present and scannable, never competing with the events people came
+  // for. This is the "muted line" the tier brief asks for.
+  if (variant === "utility") {
+    return (
+      <article
+        className="group relative flex items-center gap-2.5 border-b px-1.5 py-2"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <span
+          aria-hidden
+          className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px]"
+          style={{
+            background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
+            color: accent,
+          }}
+        >
+          <CategoryIcon category={event.category} className="h-3.5 w-3.5" strokeWidth={2} />
+        </span>
+        <Link
+          href={`/events/${event.slug}`}
+          className={`min-w-0 flex-1 truncate text-[12.5px] outline-none focus-visible:underline ${
+            isCancelled ? "line-through opacity-70" : ""
+          }`}
+          style={{ color: "var(--app-ink-2)" }}
+        >
+          <span className="absolute inset-0" aria-hidden />
+          {event.title}
+          {event.venue_name && (
+            <span style={{ color: "var(--app-ink-3)" }}> · {event.venue_name}</span>
+          )}
+        </Link>
+        <span
+          className="shrink-0 text-[10.5px] tabular-nums"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          {date.weekday} {date.month} {date.day} · {date.time}
+        </span>
+      </article>
+    );
+  }
 
   // Compact variant — the Rolodex row. Single ~48px line: date pill
   // (left, fixed width) + title + venue/time meta + category color
@@ -219,6 +307,16 @@ export default function EventCard({
               {date.time}
               {event.venue_name ? ` · ${event.venue_name}` : ""}
             </p>
+            {/* "Why it matters" — one honest line, derived from the
+                event's real description upstream (never fabricated).
+                Only the hero card carries it; it's the editorial
+                difference between "an event exists" and "here's why
+                you'd go." */}
+            {whyItMatters && (
+              <p className="mt-1.5 line-clamp-2 font-serif text-[13px] italic leading-snug text-white/80">
+                {whyItMatters}
+              </p>
+            )}
             <div className="mt-2 flex items-center gap-2 text-[11px] text-white/80">
               {event.is_free && (
                 <span
@@ -527,17 +625,21 @@ export default function EventCard({
                 )}
               </div>
             </div>
-            {/* Thumbnail — the borrowed venue photo when one resolved
-                (venueEventToCard lends events their venue's hero), else a
-                category-tinted graphic so EVERY row has a visual anchor and
-                the list never reads as a wall of text. Same honest pattern
-                the tile/rail cards use (real photo or category art, never a
-                fabricated image), just at list scale. */}
-            <div
-              className="relative h-16 w-16 shrink-0 self-center overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]"
-              style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)" }}
-            >
-              {event.hero_image ? (
+            {/* Trailing visual anchor.
+                - WITH a real photo (the borrowed venue hero): a 64px
+                  cover thumbnail.
+                - WITHOUT one: a small CENTERED category icon on a tonal
+                  tile (category accent at 14% over the sunken paper),
+                  NOT the old full-bleed CategoryGraphic — which cropped
+                  its watermark icon at 64px and read as a broken image
+                  (the audit's flag). The icon + tint still carry the
+                  category signal; the left accent rail already anchors
+                  the row, so this stays quiet and clean. */}
+            {event.hero_image ? (
+              <div
+                className="relative h-16 w-16 shrink-0 self-center overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]"
+                style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)" }}
+              >
                 <Image
                   src={event.hero_image}
                   alt=""
@@ -547,10 +649,20 @@ export default function EventCard({
                   blurDataURL={PAPER_CREAM_BLUR}
                   className="object-cover"
                 />
-              ) : (
-                <CategoryGraphic category={event.category} seed={event.slug} className="absolute inset-0" />
-              )}
-            </div>
+              </div>
+            ) : (
+              <div
+                aria-hidden
+                className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[12px]"
+                style={{
+                  background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
+                  color: accent,
+                  boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.06)",
+                }}
+              >
+                <CategoryIcon category={event.category} className="h-5 w-5" />
+              </div>
+            )}
           </div>
         </Link>
       </article>
