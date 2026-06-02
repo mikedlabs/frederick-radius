@@ -277,7 +277,7 @@ export default function SavedList() {
           underneath gives the at-a-glance read without a heavy 4-cell
           dark stat block. */}
       <section
-        aria-label="Your Frederick"
+        aria-label="Saved"
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 shadow-[var(--app-shadow-1)]"
         style={{ borderColor: "var(--app-border)" }}
       >
@@ -305,7 +305,7 @@ export default function SavedList() {
               className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Your Frederick
+              At a glance
             </p>
           </div>
           <p

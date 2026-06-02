@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, MapPin, CalendarDays, Activity, TrainFront, SquareParking, Route, Waves, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
@@ -58,18 +58,13 @@ function daypartGreeting(hour: number): string {
   return "Tonight";
 }
 
-// Anticipatory: the two intents most worth surfacing for this daypart.
-function suggestedForHour(hour: number): IntentKey[] {
-  if (hour < 11) return ["coffee", "eat"];
-  if (hour < 15) return ["eat", "outdoor"];
-  if (hour < 17) return ["coffee", "shop"];
-  if (hour < 21) return ["eat", "arts"];
-  return ["eat"];
-}
-
 // Situational lenses — find by the moment, ACROSS categories, using the
-// place `tags` we already hold. Honest: each surfaces only the TAGGED
-// set (a curated subset), never a guess.
+// place `tags` we already hold. Honest by construction: only lenses with
+// a real, populated tagged set ship here. The thin/empty ones were cut so
+// a tap never dead-ends in an empty or junk list — patio (0 tagged),
+// groups (4), rainy-day (3), and the inflated "Local favorites" (622 of
+// 1,675 places carry the flag — a meaningless 37%). The Ask box covers
+// those long-tail moments far better than a near-empty chip.
 type Lens = { key: string; label: string; match: (p: PlaceCardData) => boolean };
 const hasTag = (p: PlaceCardData, t: string) => (p.tags ?? []).includes(t);
 const LENSES: Lens[] = [
@@ -77,42 +72,20 @@ const LENSES: Lens[] = [
   { key: "with-kids", label: "With kids", match: (p) => hasTag(p, "kids-0-5") || hasTag(p, "kids-6-12") || hasTag(p, "family") },
   { key: "dog", label: "Dog-friendly", match: (p) => hasTag(p, "dog-friendly") },
   { key: "live-music", label: "Live music", match: (p) => LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
-  { key: "patio", label: "Patio & outdoor", match: (p) => hasTag(p, "patio") || hasTag(p, "outdoor-seating") || hasTag(p, "outdoor") },
-  { key: "groups", label: "Good for groups", match: (p) => hasTag(p, "groups") },
-  { key: "rainy", label: "Rainy day", match: (p) => hasTag(p, "rainy-day") || hasTag(p, "indoor") },
-  { key: "local", label: "Local favorites", match: (p) => p.local_favorite === true || hasTag(p, "local-favorite") },
 ];
 
-// Beyond the place directory — the OTHER answers Radius holds, so the
-// front door reaches the whole app, not just "where to eat." Each row
-// routes to a live, working surface (data-liveness audited: weather,
-// MARC, traffic, outages, school closings, river gauges are all live).
-type Pathway = { href: string; label: string; sub: string; icon: LucideIcon; color: string };
-const PATHWAYS: Pathway[] = [
-  { href: "/events",  label: "What's happening",        sub: "Tonight, this weekend, live music & festivals", icon: CalendarDays,  color: "var(--app-accent)" },
-  { href: "/pulse",   label: "Right now in the county",  sub: "Traffic, power outages, school closings, 311",  icon: Activity,      color: "var(--app-brand)" },
-  { href: "/transit", label: "Trains & getting around",  sub: "Live MARC departures + TransIT routes",          icon: TrainFront,    color: "var(--app-cool)" },
-  { href: "/parking", label: "Parking downtown",         sub: "Garages, rates & event-day closures",            icon: SquareParking, color: "var(--app-ink-2)" },
-  { href: "/plan",    label: "Plan a day",               sub: "Build a shareable Frederick itinerary",          icon: Route,         color: "var(--app-brand-2)" },
-  { href: "/rivers",  label: "Rivers & flooding",        sub: "Live Carroll Creek + Monocacy gauges",           icon: Waves,         color: "var(--app-cool)" },
-];
-
-// The long tail — every other real, landing-page-backed surface, so the
-// front door reaches the WHOLE app. Compact chips (vs. the six rich rows
-// above) because these are browse-and-explore, not urgent answers. Only
-// routes with a real index page are listed (no param-only /m or
-// /category dead links).
-const MORE_PATHS: { href: string; label: string }[] = [
-  { href: "/amenities",   label: "Restrooms & amenities" },
-  { href: "/trails",      label: "Trails" },
-  { href: "/parks",       label: "Parks" },
-  { href: "/weekend",     label: "This weekend" },
-  { href: "/history",     label: "History & stories" },
-  { href: "/trail",       label: "Beverage trail" },
-  { href: "/collections", label: "Collections" },
-  { href: "/contacts",    label: "City & county contacts" },
-  { href: "/places",      label: "All places" },
-  { href: "/map",         label: "Explore the map" },
+// The other doors. Radius's job is finding a PLACE; the rest of the app
+// has its own homes — "what's on" is the Events tab, the live county is
+// the Today tab's pulse, the spatial browse is the Map tab. So instead of
+// re-listing 16 utility links here (they all live one tap away in the
+// header "Field guide" drawer), the front door keeps just four signposts
+// to where each non-place job already lives — and stops being a directory.
+type Elsewhere = { href: string; label: string; icon: LucideIcon };
+const ELSEWHERE: Elsewhere[] = [
+  { href: "/events",      label: "What's on",                icon: CalendarDays },
+  { href: "/pulse",       label: "Right now in the county",  icon: Activity },
+  { href: "/map",         label: "Browse the map",           icon: MapPin },
+  { href: "/collections", label: "Editorial collections",    icon: Layers },
 ];
 
 export default function FunnelFlow({
@@ -136,7 +109,6 @@ export default function FunnelFlow({
   // so SSR and the first client paint match.
   const nowHour = mounted ? frederickHour() : null;
   const greeting = nowHour !== null ? daypartGreeting(nowHour) : null;
-  const suggested = nowHour !== null ? suggestedForHour(nowHour) : [];
   // Concrete "right now" line for the header — weekday + Eastern time.
   // Post-mount only (SSR has no stable clock), so it matches hydration.
   const nowLine = mounted
@@ -293,32 +265,6 @@ export default function FunnelFlow({
             <div className="mb-5">
               <AskFrederick />
             </div>
-            {/* Reserve the row height so the daypart picks fade in on mount
-                without shoving the grid down (no first-paint layout shift). */}
-            <div className="mb-4 flex min-h-[38px] flex-wrap items-center gap-2">
-              {suggested.length > 0 && (
-                <>
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                    Good right now
-                  </span>
-                  {suggested.map((k) => {
-                    const it = INTENT_BY_KEY[k];
-                    const I = INTENT_ICON[it.icon];
-                    return (
-                      <Pill
-                        key={`now-${k}`}
-                        tone="prominent"
-                        size="sm"
-                        icon={<I className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
-                        onClick={() => { haptic("light"); track("find_intent", { intent: k, via: "suggested" }); setChosenSub(null); setIntentKey(k); }}
-                      >
-                        {it.label}
-                      </Pill>
-                    );
-                  })}
-                </>
-              )}
-            </div>
             <Grid>
               {TOP.map((k) => {
                 const it = INTENT_BY_KEY[k];
@@ -353,36 +299,30 @@ export default function FunnelFlow({
                 ))}
               </div>
             </div>
-            {/* Beyond places — make the front door reach the whole app.
-                These route to live, working surfaces that were otherwise
-                unreachable from here (the "missing pathways"). */}
+            {/* The other doors — four signposts to where each non-place
+                job already lives (Events / Today's pulse / Map /
+                Collections), instead of the old 16-link directory wall. */}
             <div className="mt-7">
-              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                Or get a straight answer
-              </p>
-              <div className="space-y-2">
-                {PATHWAYS.map((p) => (
-                  <PathwayRow key={p.href} {...p} />
-                ))}
-              </div>
-            </div>
-            <div className="mt-6">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                More to explore
+                Looking for something else?
               </p>
-              <div className="flex flex-wrap gap-2">
-                {MORE_PATHS.map((m) => (
-                  <Pill key={m.href} href={m.href} size="sm">
-                    {m.label}
-                  </Pill>
+              <div className="grid grid-cols-2 gap-2">
+                {ELSEWHERE.map(({ href, label, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => { haptic("light"); track("find_elsewhere", { to: href }); }}
+                    className="tactile tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5"
+                    style={{ background: "var(--app-bg-elevated)" }}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                      {label}
+                    </span>
+                  </Link>
                 ))}
               </div>
             </div>
-            <p className="mt-6 text-center">
-              <Link href="/today" className="text-[13px] font-semibold" style={{ color: "var(--app-brand)" }}>
-                Today&rsquo;s weather &amp; full briefing &rarr;
-              </Link>
-            </p>
           </motion.div>
         )}
 
@@ -542,42 +482,11 @@ function Grid({ children }: { children: ReactNode }) {
   );
 }
 
-function PathwayRow({ href, label, sub, icon: Icon, color }: Pathway) {
-  return (
-    <Link
-      href={href}
-      onClick={() => { haptic("light"); track("find_pathway", { to: href }); }}
-      className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-lg)] p-3"
-      style={{ background: "var(--app-bg-elevated)" }}
-    >
-      <span
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px]"
-        style={{
-          background: `linear-gradient(150deg, color-mix(in srgb, ${color} 24%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${color} 9%, var(--app-bg-elevated-solid)))`,
-          color,
-          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 26%, transparent)`,
-        }}
-      >
-        <Icon className="h-5 w-5" strokeWidth={2} aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-title-sm block" style={{ color: "var(--app-ink)" }}>
-          {label}
-        </span>
-        <span className="text-meta block truncate" style={{ color: "var(--app-ink-3)" }}>
-          {sub}
-        </span>
-      </span>
-      <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-    </Link>
-  );
-}
-
 function Tile({
   color,
   icon,
   label,
-  blurb,
+  blurb: _blurb,
   count,
   onClick,
 }: {
@@ -594,54 +503,39 @@ function Tile({
       type="button"
       onClick={onClick}
       variants={tileItem}
-      whileHover={reduce ? undefined : { y: -4 }}
-      whileTap={reduce ? undefined : { scale: 0.965 }}
-      transition={{ type: "spring", stiffness: 400, damping: 26 }}
-      className="tactile tactile-e2 relative flex min-h-[150px] flex-col items-start overflow-hidden rounded-[var(--app-radius-lg)] p-[18px] text-left"
+      whileTap={reduce ? undefined : { scale: 0.97 }}
+      transition={{ type: "spring", stiffness: 400, damping: 28 }}
+      className="group relative flex min-h-[112px] flex-col items-start gap-2.5 rounded-[var(--app-radius-lg)] border p-4 text-left"
       style={{
-        // Solid base so the accent wash reads crisp (the translucent
-        // --app-bg-elevated would let the PageBloom bleed through and
-        // muddy the tint). A faint radial of the intent color in the
-        // top-left corner gives each tile its own identity without
-        // shouting — the grid reads colorful but stays paper-calm.
-        background: `radial-gradient(125% 110% at 0% 0%, color-mix(in srgb, ${color} 13%, transparent), transparent 58%), var(--app-bg-elevated-solid)`,
+        background: "var(--app-bg-elevated-solid)",
+        borderColor: "var(--app-border)",
+        boxShadow: "0 4px 16px rgba(25,23,20,0.05)",
       }}
     >
-      {/* hairline of the accent along the very top edge — catches light
-          like a real card lip, the Linear/Stripe "set" detail */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{ background: `linear-gradient(90deg, transparent, color-mix(in srgb, ${color} 55%, transparent), transparent)` }}
-      />
-      <span
-        className="inline-flex h-12 w-12 items-center justify-center rounded-2xl"
-        style={{
-          background: `linear-gradient(150deg, color-mix(in srgb, ${color} 28%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid)))`,
-          color,
-          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 30%, transparent), 0 10px 22px -12px ${color}`,
-        }}
-      >
-        {icon ?? <ChevronRight className="h-5 w-5" strokeWidth={2.5} aria-hidden />}
-      </span>
-      <span className="text-title mt-3" style={{ color: "var(--app-ink)" }}>
-        {label}
-      </span>
-      {blurb && (
-        <span className="text-meta mt-1" style={{ color: "var(--app-ink-3)" }}>
-          {blurb}
+      {/* iOS-style colored icon square — the single spot of color per
+          tile (clean, not the busy gradient-glow chip). White glyph. */}
+      {icon && (
+        <span
+          className="grid h-10 w-10 place-items-center rounded-[12px] text-white"
+          style={{ background: color, boxShadow: `0 5px 12px -4px ${color}` }}
+        >
+          {icon}
         </span>
       )}
+      <span className="text-[15.5px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+        {label}
+      </span>
       {typeof count === "number" && (
-        <span className="text-meta mt-auto inline-flex items-center gap-1.5 pt-2 font-semibold tabular-nums" style={{ color }}>
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ background: color, boxShadow: `0 0 6px ${color}` }}
-            aria-hidden
-          />
+        <span className="text-meta mt-auto tabular-nums" style={{ color: "var(--app-ink-3)" }}>
           {count} place{count === 1 ? "" : "s"}
         </span>
       )}
+      <ChevronRight
+        className="absolute right-3 top-4 h-4 w-4"
+        strokeWidth={2.25}
+        style={{ color: "var(--app-ink-3)", opacity: 0.45 }}
+        aria-hidden
+      />
     </motion.button>
   );
 }

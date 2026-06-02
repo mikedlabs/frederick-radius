@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Terms",
@@ -25,17 +24,6 @@ export const metadata: Metadata = {
 export default function TermsPage() {
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-6 py-6">
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link
-          href="/guide"
-          className="inline-flex items-center gap-1 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back
-        </Link>
-      </nav>
-
       <header className="space-y-2">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           Terms of use

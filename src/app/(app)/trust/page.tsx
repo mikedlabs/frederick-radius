@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
+import { Database, CheckCircle2, Sparkles, Users, AlertCircle } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import CostTransparency from "@/components/trust/CostTransparency";
 
@@ -27,17 +27,6 @@ export default function TrustPage() {
   return (
     <div className="relative space-y-6">
       <PageBloom variant="cool" />
-
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link
-          href="/guide"
-          className="inline-flex items-center gap-1 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back
-        </Link>
-      </nav>
 
       <header className="space-y-2">
         <p

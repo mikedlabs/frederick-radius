@@ -21,6 +21,7 @@ import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { placeHoursTrust, formatChecked } from "@/lib/trust";
 import { knownFor } from "@/lib/cuisine";
+import { formatDistance } from "@/lib/geo";
 import type { ParcelContext } from "@/lib/loaders/cofParcels";
 
 /**
@@ -352,7 +353,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             )}
             {place.distance_m !== undefined && (
               <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                {place.distance_m < 1000 ? `${Math.round(place.distance_m)} ft` : `${(place.distance_m / 1000).toFixed(1)} km away`}
+                {formatDistance(place.distance_m)} away
               </span>
             )}
           </div>

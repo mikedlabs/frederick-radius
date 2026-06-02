@@ -4,7 +4,7 @@ import { type PlaceCardData } from "@/lib/loaders/places";
 import { eventsNext24h, type EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+import { FREDERICK_CENTER, formatDistance, type LngLat } from "@/lib/geo";
 import {
   dayPartOf,
   easternDayKey,
@@ -348,8 +348,7 @@ function OpenNowCard({ place }: { place: PlaceCardData }) {
   let meta = "Open";
   if (closes) meta = `Until ${closes}`;
   else if (typeof place.distance_m === "number") {
-    const km = place.distance_m / 1000;
-    meta = km < 1 ? `${Math.round(place.distance_m)}m away` : `${km.toFixed(1)}km away`;
+    meta = `${formatDistance(place.distance_m)} away`;
   } else if (cat?.name) meta = cat.name;
   return (
     <CardShell

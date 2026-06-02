@@ -273,7 +273,7 @@ export default async function EventsIndexPage({
                 strokeWidth={2.25}
                 aria-hidden
               />
-              Plan tonight
+              Plan an evening
             </Link>
             <Link
               href="/events/calendar"
