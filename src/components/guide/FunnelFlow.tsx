@@ -481,7 +481,7 @@ export default function FunnelFlow({
               >
                 {results.map((p, i) => (
                   <motion.li key={p.slug} variants={reduce ? undefined : tileItem}>
-                    {i === 0 ? <AnswerLead place={p} /> : <PlaceCard place={p} variant="row" />}
+                    {i === 0 ? <AnswerLead place={p} /> : <PlaceCard place={p} variant="row" showSource={false} />}
                   </motion.li>
                 ))}
                 {results.length > 1 && (

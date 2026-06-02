@@ -116,10 +116,15 @@ export default function PlaceCard({
   compact = false,
   variant = "row",
   galleryPhotos,
+  showSource = true,
 }: {
   place: PlaceCardData;
   compact?: boolean;
   variant?: "row" | "feature" | "tile" | "grid" | "answer";
+  /** Show the source/trust badge. Off in dense lists where every row is the
+   *  same baseline tier (the badge becomes repetitive "chip soup"); the full
+   *  trust signal still lives on the detail sheet. */
+  showSource?: boolean;
   /** Extra photos (proxied URLs) for the answer variant's food/photo
    *  strip. The funnel fetches these on demand from the enrich route
    *  for its lead pick; absent it, the strip simply doesn't render. */
@@ -474,9 +479,9 @@ export default function PlaceCard({
                 {place.name}
               </h3>
               {/* SourceBadge — surfaces trust tier (Curated / Verified
-                  / Community / Official). Self-hides when there's no
-                  honest claim. */}
-              <SourceBadge place={place} size="sm" />
+                  / Community / Official). Self-hides when there's no honest
+                  claim; suppressed in dense lists via showSource. */}
+              {showSource && <SourceBadge place={place} size="sm" />}
             </div>
             <p
               className="truncate text-[12px]"
@@ -677,9 +682,10 @@ export default function PlaceCard({
             {place.name}
           </button>
           {/* SourceBadge — same trust tier surfacing as the detail
-              page, set inline next to the name. Self-hides when
-              there's nothing honest to claim. */}
-          <SourceBadge place={place} size="sm" />
+              page, set inline next to the name. Self-hides when there's
+              nothing honest to claim; suppressed in dense lists via
+              showSource so the badge isn't repeated down every row. */}
+          {showSource && <SourceBadge place={place} size="sm" />}
           {place.distance_m !== undefined && (
             <span className="ml-auto mt-[1px] shrink-0 whitespace-nowrap text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
               {formatDistance(place.distance_m)}
