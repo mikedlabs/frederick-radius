@@ -23,7 +23,7 @@ const STATUS_META: Record<AnswerStatus, { label: string; fg: string; bg: string 
   free: { label: "Free", fg: "var(--app-positive)", bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)" },
 };
 
-export default function AnswerCard({ answer }: { answer: Answer }) {
+export default function AnswerCard({ answer, featured = false }: { answer: Answer; featured?: boolean }) {
   const meta = answer.status ? STATUS_META[answer.status] : null;
   const statusLabel = answer.statusLabel ?? meta?.label;
   const metaRight = answer.distanceLabel ?? answer.timeLabel;
@@ -32,14 +32,15 @@ export default function AnswerCard({ answer }: { answer: Answer }) {
   return (
     <Surface
       as="article"
-      elevation={2}
-      className="relative flex h-full flex-col gap-2 overflow-hidden p-4 pl-[19px]"
+      elevation={featured ? 3 : 2}
+      className={`relative flex h-full flex-col gap-2 overflow-hidden p-4 pl-[19px] ${featured ? "sm:col-span-2" : ""}`}
     >
       {/* Color-coded spine keyed to the answer's status — turns a wall of
-          identical cream cards into an at-a-glance, differentiated stack. */}
+          identical cream cards into an at-a-glance, differentiated stack.
+          The featured lead gets a thicker spine + deeper elevation. */}
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 w-1.5"
+        className={`absolute inset-y-0 left-0 ${featured ? "w-2" : "w-1.5"}`}
         style={{ background: meta?.fg ?? "var(--app-cool)" }}
       />
       {(statusLabel || metaRight) && (
@@ -68,7 +69,7 @@ export default function AnswerCard({ answer }: { answer: Answer }) {
 
       <div className="space-y-1">
         <h3
-          className="text-[16px] font-semibold leading-snug"
+          className={`${featured ? "text-[18px]" : "text-[16px]"} font-semibold leading-snug`}
           style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
         >
           {answer.title}

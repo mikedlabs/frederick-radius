@@ -354,8 +354,8 @@ export default async function HomePage({
         <TodayAsk />
         {todayAnswers.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {todayAnswers.map((a) => (
-              <AnswerCard key={a.id} answer={a} />
+            {todayAnswers.map((a, i) => (
+              <AnswerCard key={a.id} answer={a} featured={i === 0} />
             ))}
           </div>
         )}
