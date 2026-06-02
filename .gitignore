@@ -77,3 +77,10 @@ screenshots/
 .mockups/render/
 .mockups/render/
 .mockups/*.built.html
+
+# Scratch render / audit / smoke scripts (agent + local Playwright runs)
+/_*.mjs
+/audit*.mjs
+/*-run.mjs
+/*_tmp.mjs
+/.render-*.mjs
