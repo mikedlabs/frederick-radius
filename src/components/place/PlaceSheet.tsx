@@ -654,12 +654,8 @@ function ActionChip({ action }: { action: PlaceAction }) {
       onClick={() => haptic("light")}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-      style={{
-        borderColor: action.accent,
-        color: "white",
-        background: action.accent,
-      }}
+      className="tactile-lift tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white"
+      style={{ backgroundColor: action.accent }}
     >
       <Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
       {action.label}
