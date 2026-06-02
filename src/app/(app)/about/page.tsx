@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowLeft,
   ArrowRight,
   ArrowUpRight,
   BookOpen,
@@ -115,17 +114,6 @@ export default async function AboutPage() {
     // Centered, capped at the same 768 the rest of the app uses.
     <div className="relative mx-auto w-full max-w-screen-md space-y-7 py-6">
       <PageBloom variant="warm-cool" />
-
-      <nav aria-label="Breadcrumb" className="text-xs">
-        <Link
-          href="/guide"
-          className="inline-flex items-center gap-1 hover:underline"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          <ArrowLeft className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-          Back to Find
-        </Link>
-      </nav>
 
       {/* Seasonal hero photograph — a real photo of Frederick from the
           owner's seasons collection, picked by current season with

@@ -58,15 +58,6 @@ function daypartGreeting(hour: number): string {
   return "Tonight";
 }
 
-// Anticipatory: the two intents most worth surfacing for this daypart.
-function suggestedForHour(hour: number): IntentKey[] {
-  if (hour < 11) return ["coffee", "eat"];
-  if (hour < 15) return ["eat", "outdoor"];
-  if (hour < 17) return ["coffee", "shop"];
-  if (hour < 21) return ["eat", "arts"];
-  return ["eat"];
-}
-
 // Situational lenses — find by the moment, ACROSS categories, using the
 // place `tags` we already hold. Honest by construction: only lenses with
 // a real, populated tagged set ship here. The thin/empty ones were cut so
@@ -118,7 +109,6 @@ export default function FunnelFlow({
   // so SSR and the first client paint match.
   const nowHour = mounted ? frederickHour() : null;
   const greeting = nowHour !== null ? daypartGreeting(nowHour) : null;
-  const suggested = nowHour !== null ? suggestedForHour(nowHour) : [];
   // Concrete "right now" line for the header — weekday + Eastern time.
   // Post-mount only (SSR has no stable clock), so it matches hydration.
   const nowLine = mounted
@@ -274,32 +264,6 @@ export default function FunnelFlow({
                 real data. Sits above the grid as the fastest path. */}
             <div className="mb-5">
               <AskFrederick />
-            </div>
-            {/* Reserve the row height so the daypart picks fade in on mount
-                without shoving the grid down (no first-paint layout shift). */}
-            <div className="mb-4 flex min-h-[38px] flex-wrap items-center gap-2">
-              {suggested.length > 0 && (
-                <>
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                    Good right now
-                  </span>
-                  {suggested.map((k) => {
-                    const it = INTENT_BY_KEY[k];
-                    const I = INTENT_ICON[it.icon];
-                    return (
-                      <Pill
-                        key={`now-${k}`}
-                        tone="prominent"
-                        size="sm"
-                        icon={<I className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
-                        onClick={() => { haptic("light"); track("find_intent", { intent: k, via: "suggested" }); setChosenSub(null); setIntentKey(k); }}
-                      >
-                        {it.label}
-                      </Pill>
-                    );
-                  })}
-                </>
-              )}
             </div>
             <Grid>
               {TOP.map((k) => {

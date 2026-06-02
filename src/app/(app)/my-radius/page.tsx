@@ -34,7 +34,7 @@ export default async function MyRadiusPage() {
               : "My Radius · on this device"}
           </p>
           <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-            Your Frederick
+            Saved
           </h1>
         </div>
         <Link
