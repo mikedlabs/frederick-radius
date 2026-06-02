@@ -231,11 +231,14 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
   };
 }
 
-// /today is "right now" — render fresh each request so the date, the
-// clock, and the time-sensitive event groupings reflect the actual moment,
-// never a frozen build-time `new Date()`. The heavy data it reads is
-// already cached behind unstable_cache, so the cost stays bounded.
-export const dynamic = "force-dynamic";
+// /today is time-sensitive, but force-dynamic made every visit pay the
+// external-feed fanout (a ~7-10s cold load — the sims caught it). Instead:
+// ISR every 5 minutes, so the page serves cached + fast while the event
+// groupings stay fresh-enough, and the *visible* clock + date are handled
+// live, client-side, by <DateLine/>. (The original bug was pure-static
+// with NO revalidate — a frozen build-time date; a short revalidate plus
+// the live client clock fixes that without the per-request cost.)
+export const revalidate = 300;
 
 export default async function HomePage({
   searchParams,
