@@ -336,9 +336,10 @@ export default function FunnelFlow({
               <div className="-mx-4 mb-2.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 <div className="flex w-max gap-2">
                   <Pill
-                    tone="ink"
+                    tone="brand"
                     size="sm"
                     active={!chosenSub || chosenSub === "all"}
+                    style={!chosenSub || chosenSub === "all" ? { background: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
                     onClick={() => { haptic("light"); setChosenSub(null); }}
                   >
                     All
@@ -348,9 +349,10 @@ export default function FunnelFlow({
                     return (
                       <Pill
                         key={s.key}
-                        tone="ink"
+                        tone="brand"
                         size="sm"
                         active={isActive}
+                        style={isActive ? { background: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
                         onClick={() => {
                           haptic("light");
                           track("find_sub", { intent: intent.key, sub: s.key });
@@ -506,19 +508,26 @@ function Tile({
       variants={tileItem}
       whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      className="group relative flex min-h-[112px] flex-col items-start gap-2.5 rounded-[var(--app-radius-lg)] border p-4 text-left"
+      className="group relative flex min-h-[120px] flex-col items-start gap-3 rounded-[var(--app-radius-lg)] p-4 text-left"
       style={{
-        background: "var(--app-bg-elevated-solid)",
-        borderColor: "var(--app-border)",
-        boxShadow: "0 4px 16px rgba(25,23,20,0.05)",
+        // The lane's color breathes from the top-left and fades into
+        // paper, so each tile reads as its own warm card instead of a
+        // flat white box. Layered edge + inner highlight + ambient
+        // elevation give it the "made" depth (the .tactile-e2 recipe).
+        background: `linear-gradient(155deg, color-mix(in srgb, ${color} 11%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 58%)`,
+        boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
       }}
     >
-      {/* iOS-style colored icon square — the single spot of color per
-          tile (clean, not the busy gradient-glow chip). White glyph. */}
+      {/* Glossy colored icon tile — the spot of identity, now catching
+          light (top gloss + colored ambient glow) so it pops off paper. */}
       {icon && (
         <span
-          className="grid h-10 w-10 place-items-center rounded-[12px] text-white"
-          style={{ background: color, boxShadow: `0 5px 12px -4px ${color}` }}
+          className="grid h-11 w-11 place-items-center rounded-[14px] text-white"
+          style={{
+            background: color,
+            backgroundImage: "var(--app-gloss)",
+            boxShadow: `0 6px 16px -5px ${color}, inset 0 1px 0 rgba(255,255,255,0.38)`,
+          }}
         >
           {icon}
         </span>
@@ -527,14 +536,15 @@ function Tile({
         {label}
       </span>
       {typeof count === "number" && (
-        <span className="text-meta mt-auto tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-meta mt-auto inline-flex items-center gap-1.5 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: color, opacity: 0.85 }} aria-hidden />
           {count} place{count === 1 ? "" : "s"}
         </span>
       )}
       <ChevronRight
-        className="absolute right-3 top-4 h-4 w-4"
+        className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2"
         strokeWidth={2.25}
-        style={{ color: "var(--app-ink-3)", opacity: 0.45 }}
+        style={{ color: "var(--app-ink-3)", opacity: 0.4 }}
         aria-hidden
       />
     </motion.button>
