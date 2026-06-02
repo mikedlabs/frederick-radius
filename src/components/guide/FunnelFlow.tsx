@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, MapPin, CalendarDays, Activity, TrainFront, SquareParking, Route, Waves, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
@@ -68,8 +68,12 @@ function suggestedForHour(hour: number): IntentKey[] {
 }
 
 // Situational lenses — find by the moment, ACROSS categories, using the
-// place `tags` we already hold. Honest: each surfaces only the TAGGED
-// set (a curated subset), never a guess.
+// place `tags` we already hold. Honest by construction: only lenses with
+// a real, populated tagged set ship here. The thin/empty ones were cut so
+// a tap never dead-ends in an empty or junk list — patio (0 tagged),
+// groups (4), rainy-day (3), and the inflated "Local favorites" (622 of
+// 1,675 places carry the flag — a meaningless 37%). The Ask box covers
+// those long-tail moments far better than a near-empty chip.
 type Lens = { key: string; label: string; match: (p: PlaceCardData) => boolean };
 const hasTag = (p: PlaceCardData, t: string) => (p.tags ?? []).includes(t);
 const LENSES: Lens[] = [
@@ -77,42 +81,20 @@ const LENSES: Lens[] = [
   { key: "with-kids", label: "With kids", match: (p) => hasTag(p, "kids-0-5") || hasTag(p, "kids-6-12") || hasTag(p, "family") },
   { key: "dog", label: "Dog-friendly", match: (p) => hasTag(p, "dog-friendly") },
   { key: "live-music", label: "Live music", match: (p) => LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
-  { key: "patio", label: "Patio & outdoor", match: (p) => hasTag(p, "patio") || hasTag(p, "outdoor-seating") || hasTag(p, "outdoor") },
-  { key: "groups", label: "Good for groups", match: (p) => hasTag(p, "groups") },
-  { key: "rainy", label: "Rainy day", match: (p) => hasTag(p, "rainy-day") || hasTag(p, "indoor") },
-  { key: "local", label: "Local favorites", match: (p) => p.local_favorite === true || hasTag(p, "local-favorite") },
 ];
 
-// Beyond the place directory — the OTHER answers Radius holds, so the
-// front door reaches the whole app, not just "where to eat." Each row
-// routes to a live, working surface (data-liveness audited: weather,
-// MARC, traffic, outages, school closings, river gauges are all live).
-type Pathway = { href: string; label: string; sub: string; icon: LucideIcon; color: string };
-const PATHWAYS: Pathway[] = [
-  { href: "/events",  label: "What's happening",        sub: "Tonight, this weekend, live music & festivals", icon: CalendarDays,  color: "var(--app-accent)" },
-  { href: "/pulse",   label: "Right now in the county",  sub: "Traffic, power outages, school closings, 311",  icon: Activity,      color: "var(--app-brand)" },
-  { href: "/transit", label: "Trains & getting around",  sub: "Live MARC departures + TransIT routes",          icon: TrainFront,    color: "var(--app-cool)" },
-  { href: "/parking", label: "Parking downtown",         sub: "Garages, rates & event-day closures",            icon: SquareParking, color: "var(--app-ink-2)" },
-  { href: "/plan",    label: "Plan a day",               sub: "Build a shareable Frederick itinerary",          icon: Route,         color: "var(--app-brand-2)" },
-  { href: "/rivers",  label: "Rivers & flooding",        sub: "Live Carroll Creek + Monocacy gauges",           icon: Waves,         color: "var(--app-cool)" },
-];
-
-// The long tail — every other real, landing-page-backed surface, so the
-// front door reaches the WHOLE app. Compact chips (vs. the six rich rows
-// above) because these are browse-and-explore, not urgent answers. Only
-// routes with a real index page are listed (no param-only /m or
-// /category dead links).
-const MORE_PATHS: { href: string; label: string }[] = [
-  { href: "/amenities",   label: "Restrooms & amenities" },
-  { href: "/trails",      label: "Trails" },
-  { href: "/parks",       label: "Parks" },
-  { href: "/weekend",     label: "This weekend" },
-  { href: "/history",     label: "History & stories" },
-  { href: "/trail",       label: "Beverage trail" },
-  { href: "/collections", label: "Collections" },
-  { href: "/contacts",    label: "City & county contacts" },
-  { href: "/places",      label: "All places" },
-  { href: "/map",         label: "Explore the map" },
+// The other doors. Radius's job is finding a PLACE; the rest of the app
+// has its own homes — "what's on" is the Events tab, the live county is
+// the Today tab's pulse, the spatial browse is the Map tab. So instead of
+// re-listing 16 utility links here (they all live one tap away in the
+// header "Field guide" drawer), the front door keeps just four signposts
+// to where each non-place job already lives — and stops being a directory.
+type Elsewhere = { href: string; label: string; icon: LucideIcon };
+const ELSEWHERE: Elsewhere[] = [
+  { href: "/events",      label: "What's on",                icon: CalendarDays },
+  { href: "/pulse",       label: "Right now in the county",  icon: Activity },
+  { href: "/map",         label: "Browse the map",           icon: MapPin },
+  { href: "/collections", label: "Editorial collections",    icon: Layers },
 ];
 
 export default function FunnelFlow({
@@ -353,36 +335,30 @@ export default function FunnelFlow({
                 ))}
               </div>
             </div>
-            {/* Beyond places — make the front door reach the whole app.
-                These route to live, working surfaces that were otherwise
-                unreachable from here (the "missing pathways"). */}
+            {/* The other doors — four signposts to where each non-place
+                job already lives (Events / Today's pulse / Map /
+                Collections), instead of the old 16-link directory wall. */}
             <div className="mt-7">
-              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                Or get a straight answer
-              </p>
-              <div className="space-y-2">
-                {PATHWAYS.map((p) => (
-                  <PathwayRow key={p.href} {...p} />
-                ))}
-              </div>
-            </div>
-            <div className="mt-6">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                More to explore
+                Looking for something else?
               </p>
-              <div className="flex flex-wrap gap-2">
-                {MORE_PATHS.map((m) => (
-                  <Pill key={m.href} href={m.href} size="sm">
-                    {m.label}
-                  </Pill>
+              <div className="grid grid-cols-2 gap-2">
+                {ELSEWHERE.map(({ href, label, icon: Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    onClick={() => { haptic("light"); track("find_elsewhere", { to: href }); }}
+                    className="tactile tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5"
+                    style={{ background: "var(--app-bg-elevated)" }}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                      {label}
+                    </span>
+                  </Link>
                 ))}
               </div>
             </div>
-            <p className="mt-6 text-center">
-              <Link href="/today" className="text-[13px] font-semibold" style={{ color: "var(--app-brand)" }}>
-                Today&rsquo;s weather &amp; full briefing &rarr;
-              </Link>
-            </p>
           </motion.div>
         )}
 
@@ -539,37 +515,6 @@ function Grid({ children }: { children: ReactNode }) {
     <motion.div className="grid grid-cols-2 gap-3" variants={tilesContainer} initial="hidden" animate="show">
       {children}
     </motion.div>
-  );
-}
-
-function PathwayRow({ href, label, sub, icon: Icon, color }: Pathway) {
-  return (
-    <Link
-      href={href}
-      onClick={() => { haptic("light"); track("find_pathway", { to: href }); }}
-      className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-lg)] p-3"
-      style={{ background: "var(--app-bg-elevated)" }}
-    >
-      <span
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px]"
-        style={{
-          background: `linear-gradient(150deg, color-mix(in srgb, ${color} 24%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${color} 9%, var(--app-bg-elevated-solid)))`,
-          color,
-          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 26%, transparent)`,
-        }}
-      >
-        <Icon className="h-5 w-5" strokeWidth={2} aria-hidden />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="text-title-sm block" style={{ color: "var(--app-ink)" }}>
-          {label}
-        </span>
-        <span className="text-meta block truncate" style={{ color: "var(--app-ink-3)" }}>
-          {sub}
-        </span>
-      </span>
-      <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.5} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-    </Link>
   );
 }
 
