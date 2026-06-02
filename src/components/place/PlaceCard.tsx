@@ -58,8 +58,8 @@ function Rave({
  * only — every chip here comes straight from placeReasons(), so no
  * badge is ever invented.
  */
-const CHIP_TONE: Record<ReasonTone, { color: string; tint: string; edge: string }> = {
-  open:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
+const CHIP_TONE: Record<ReasonTone, { color: string; tint: string; edge: string; dot?: boolean }> = {
+  open:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)", dot: true },
   near:     { color: "var(--app-cool)",     tint: "var(--app-cool-tint-14)",     edge: "color-mix(in srgb, var(--app-cool) 24%, transparent)" },
   verified: { color: "var(--app-brand-2)",  tint: "color-mix(in srgb, var(--app-brand-2) 14%, transparent)", edge: "color-mix(in srgb, var(--app-brand-2) 26%, transparent)" },
   free:     { color: "var(--app-positive)", tint: "var(--app-positive-tint-14)", edge: "color-mix(in srgb, var(--app-positive) 26%, transparent)" },
@@ -71,7 +71,7 @@ function StatusChip({ label, tone = "neutral" }: { label: string; tone?: ReasonT
   const t = CHIP_TONE[tone];
   return (
     <span
-      className="inline-flex items-center rounded-full px-2 py-[3px] text-[11px] font-semibold leading-none tracking-tight"
+      className="inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] font-semibold leading-none tracking-tight"
       style={{
         color: t.color,
         background: t.tint,
@@ -80,6 +80,9 @@ function StatusChip({ label, tone = "neutral" }: { label: string; tone?: ReasonT
         boxShadow: `inset 0 0 0 1px ${t.edge}, inset 0 1px 0 rgba(255,255,255,0.45)`,
       }}
     >
+      {t.dot && (
+        <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: t.color }} />
+      )}
       {label}
     </span>
   );
