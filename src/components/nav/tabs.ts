@@ -18,7 +18,7 @@ import {
  *                            the daily-return surface for locals)
  *   - Map       /map
  *   - Events    /events
- *   - Saved     /my-radius
+ *   - My Radius  /my-radius  (label matches the page title + manifest)
  *
  * Today rejoined the primary nav (it had been demoted to a link under
  * the front door): the UI survey found the temporal / ambient-live-data layer is
@@ -41,7 +41,7 @@ export const TABS: readonly Tab[] = [
   { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
   { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
   { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
-  { href: "/my-radius", label: "Saved",  icon: Bookmark, fillOnActive: true  },
+  { href: "/my-radius", label: "My Radius", icon: Bookmark, fillOnActive: true  },
 ] as const;
 
 /**
