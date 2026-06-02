@@ -527,16 +527,17 @@ export default function EventCard({
                 )}
               </div>
             </div>
-            {/* Borrowed venue thumbnail — events carry no photo of their
-                own, so venueEventToCard lends them the venue's hero image
-                and the list stops reading as a wall of text. Renders only
-                when a photo actually resolved (graceful, never a broken
-                or placeholder tile). */}
-            {event.hero_image && (
-              <div
-                className="relative h-16 w-16 shrink-0 self-center overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]"
-                style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)" }}
-              >
+            {/* Thumbnail — the borrowed venue photo when one resolved
+                (venueEventToCard lends events their venue's hero), else a
+                category-tinted graphic so EVERY row has a visual anchor and
+                the list never reads as a wall of text. Same honest pattern
+                the tile/rail cards use (real photo or category art, never a
+                fabricated image), just at list scale. */}
+            <div
+              className="relative h-16 w-16 shrink-0 self-center overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]"
+              style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)" }}
+            >
+              {event.hero_image ? (
                 <Image
                   src={event.hero_image}
                   alt=""
@@ -546,8 +547,10 @@ export default function EventCard({
                   blurDataURL={PAPER_CREAM_BLUR}
                   className="object-cover"
                 />
-              </div>
-            )}
+              ) : (
+                <CategoryGraphic category={event.category} seed={event.slug} className="absolute inset-0" />
+              )}
+            </div>
           </div>
         </Link>
       </article>
