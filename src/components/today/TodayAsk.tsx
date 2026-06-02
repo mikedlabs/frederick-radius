@@ -10,7 +10,7 @@ import type { IntentIcon } from "@/lib/answers/types";
 /**
  * TodayAsk — the answer-first front door (UX_REDO Build 1).
  *
- * "Ask Frederick anything" + suggested intent chips, mounted at the top
+ * "Ask Radius anything" + suggested intent chips, mounted at the top
  * of /today. Tapping the field opens the existing SearchOverlay (live
  * search, reused as-is); the chips route to their intent answers. The
  * 3 to 5 default AnswerCards rendered below this on /today carry the
@@ -33,13 +33,13 @@ export default function TodayAsk() {
     <div className="space-y-3">
       <div className="space-y-0.5">
         <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Ask Frederick
+          Ask Radius
         </p>
         <h1
           className="text-[26px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
         >
-          Ask Frederick anything.
+          Ask Radius anything.
         </h1>
       </div>
 

@@ -130,6 +130,15 @@ const WINERY_NAME_RE = /winer|vineyard|cellar|meader|ciderworks?/i;
 const isWinery = (p: PlaceCardData): boolean =>
   (p.subcategories ?? []).some((s) => WINERY_SUBS.has(s)) ||
   WINERY_NAME_RE.test(p.name);
+// Coffee sub-types — there's no structured "coffee kind" field, so read
+// the name. Roasters (the local-roastery distinction coffee people seek)
+// and tea / boba houses get pulled out of the general coffee set so the
+// Coffee intent can answer the real question: what KIND of coffee.
+const isRoaster = (p: PlaceCardData): boolean =>
+  p.category === "coffee" && /\broast(er|ery|ing|ers)?\b/i.test(p.name);
+const isTeaHouse = (p: PlaceCardData): boolean =>
+  p.category === "coffee" &&
+  (/\b(tea|boba|matcha)\b/i.test(p.name) || /bubble tea/i.test(p.name));
 // Distilleries are spirit-forward — closer to a brewery experience
 // than a winery one, so they ride the breweries chip.
 const BREWERY_CATS = new Set(["brewery"]);
@@ -243,8 +252,10 @@ export const INTENTS: Intent[] = [
     match: (p) => COFFEE.has(p.category),
     preferOpen: true,
     subIntents: [
-      { key: "cafes",    type: "category", label: "Cafes",    icon: "Coffee",  match: (p) => p.category === "coffee" },
-      { key: "bakeries", type: "category", label: "Bakeries", icon: "Cookie",  match: (p) => p.category === "bakery" },
+      { key: "coffee-shops", type: "category", label: "Coffee shops", icon: "Coffee", match: (p) => p.category === "coffee" && !isRoaster(p) && !isTeaHouse(p) },
+      { key: "roasters",     type: "category", label: "Roasters",     icon: "Coffee", match: (p) => isRoaster(p) },
+      { key: "tea-boba",     type: "category", label: "Tea & boba",   icon: "Coffee", match: (p) => isTeaHouse(p) },
+      { key: "bakeries",     type: "category", label: "Bakeries",     icon: "Cookie",  match: (p) => p.category === "bakery" },
     ],
   },
   {
