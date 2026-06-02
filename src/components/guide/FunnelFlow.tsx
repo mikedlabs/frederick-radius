@@ -419,35 +419,36 @@ export default function FunnelFlow({
               </div>
             )}
             {ready && (
-              <div className="flex flex-wrap gap-2 pb-3">
-                <Pill tone="brand" size="sm" active={openOnly} onClick={() => { haptic("light"); setOpenOnly((v) => !v); }}>
+              <div className="flex items-center gap-2 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <Pill tone="brand" size="sm" className="shrink-0" active={openOnly} onClick={() => { haptic("light"); setOpenOnly((v) => !v); }}>
                   Open now
                 </Pill>
                 {geo.status === "granted" ? (
-                  <Pill tone="cool" size="sm" active icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
+                  <Pill tone="cool" size="sm" className="shrink-0" active icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
                     Near you
                   </Pill>
                 ) : (
-                  <Pill tone="cool" size="sm" onClick={() => { haptic("light"); requestGeo(); }} icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
+                  <Pill tone="cool" size="sm" className="shrink-0" onClick={() => { haptic("light"); requestGeo(); }} icon={<MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
                     {geo.status === "loading" ? "Locating…" : "Near me"}
                   </Pill>
                 )}
-                {/* Sort control — the smart "Best" default plus two literal,
-                    honest sorts. Pushed right; wraps under on narrow widths. */}
-                <div className="ml-auto flex items-center gap-1.5">
-                  <ArrowUpDown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-                  {sortOpts.map((o) => (
-                    <Pill
-                      key={o.key}
-                      tone="cool"
-                      size="sm"
-                      active={sort === o.key}
-                      onClick={() => { haptic("light"); track("find_sort", { sort: o.key }); setSort(o.key); }}
-                    >
-                      {o.label}
-                    </Pill>
-                  ))}
-                </div>
+                {/* Sort, divided from the filters. The whole row scrolls
+                    horizontally on narrow screens instead of wrapping to a
+                    second line — one control row, not two. */}
+                <span aria-hidden className="mx-0.5 h-5 w-px shrink-0" style={{ background: "var(--app-border)" }} />
+                <ArrowUpDown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                {sortOpts.map((o) => (
+                  <Pill
+                    key={o.key}
+                    tone="cool"
+                    size="sm"
+                    className="shrink-0"
+                    active={sort === o.key}
+                    onClick={() => { haptic("light"); track("find_sort", { sort: o.key }); setSort(o.key); }}
+                  >
+                    {o.label}
+                  </Pill>
+                ))}
               </div>
             )}
             {geo.status === "denied" && (
