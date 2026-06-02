@@ -268,9 +268,17 @@ export default function EventsExplorer({
   // Day filter rides along as ?d= so a tap on the WeekStrip survives a
   // share.
   useEffect(() => {
-    const qs = toQuery(viewState);
-    const sp = new URLSearchParams(qs);
+    // Merge the structural (server-readable) params INTO the existing URL
+    // rather than replacing it. nuqs owns the client filter params
+    // (?lens, ?free, ?happy, ?sort, ?q); replacing the whole query string
+    // clobbered them — which reset the filter the instant a lens chip was
+    // tapped (the URL-state race the audit caught). Start from the live
+    // search string so nuqs's params survive.
+    const sp = new URLSearchParams(window.location.search);
+    const structural = new URLSearchParams(toQuery(viewState));
+    for (const [k, v] of structural) sp.set(k, v);
     if (day) sp.set("d", day);
+    else sp.delete("d");
     const full = sp.toString();
     const url = full ? `${window.location.pathname}?${full}` : window.location.pathname;
     window.history.replaceState(null, "", url);
