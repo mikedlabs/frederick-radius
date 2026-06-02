@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, MapPin, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin, ArrowUpDown, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
@@ -42,6 +42,10 @@ import AskFrederick from "@/components/ask/AskFrederick";
 const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "shop", "arts", "family", "wellness", "stay", "faith", "civic"];
 
 const RESULT_CAP = 24;
+
+// Result ordering the user can switch between (the smart default plus two
+// literal, honest sorts). "nearest" only offered when we have location.
+type SortKey = "best" | "nearest" | "rated";
 
 // Premium entrance: tiles settle in with a gentle spring stagger.
 const tilesContainer: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.05, delayChildren: 0.04 } } };
@@ -101,6 +105,7 @@ export default function FunnelFlow({
   const [chosenSub, setChosenSub] = useState<SubIntent | "all" | null>(null);
   const [openOnly, setOpenOnly] = useState(false);
   const [lens, setLens] = useState<Lens | null>(null);
+  const [sort, setSort] = useState<SortKey>("best");
   const { state: geo, request: requestGeo } = useGeolocation();
   const [mounted, setMounted] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag: the daypart greeting must differ between SSR (none) and client (real hour), so it can only resolve post-mount
@@ -156,13 +161,33 @@ export default function FunnelFlow({
     const prefersOpen = !lens && !!intent?.preferOpen;
     const proximity = (d?: number) => (d == null ? 0 : Math.exp(-(d / 1000) / 2.4));
     const relevance = (p: PlaceCardData) => placeQuality(p) + 1.15 * proximity(p.distance_m);
+    // Rating-forward score for "Top rated": a real rating with enough
+    // reviews to mean something, nudged by review volume; unrated rows sink.
+    const ratingRank = (p: PlaceCardData) => {
+      const rating = p.google_rating;
+      const count = p.google_rating_count ?? 0;
+      if (typeof rating !== "number" || count < 20) return -1;
+      return rating + Math.min(0.49, Math.log10(count) / 10);
+    };
+    // "Nearest" needs location; without it, fall back to the smart default.
+    const mode: SortKey = sort === "nearest" && !origin ? "best" : sort;
     ranked.sort((a, b) => {
+      if (mode === "nearest") {
+        const byDist = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+        return byDist !== 0 ? byDist : a.name.localeCompare(b.name);
+      }
+      if (mode === "rated") {
+        const byRate = ratingRank(b) - ratingRank(a);
+        return Math.abs(byRate) > 1e-9 ? byRate : a.name.localeCompare(b.name);
+      }
+      // "best": open now leads for "right now" lanes, then a blend of
+      // nearby AND well-loved (never just the closest).
       if (prefersOpen) {
         const ao = isOpenNow(a.open_status) ? 0 : 1;
         const bo = isOpenNow(b.open_status) ? 0 : 1;
-        if (ao !== bo) return ao - bo; // open now leads for "right now" lanes
+        if (ao !== bo) return ao - bo;
       }
-      const byRel = relevance(b) - relevance(a); // great AND close
+      const byRel = relevance(b) - relevance(a);
       if (Math.abs(byRel) > 1e-6) return byRel;
       if (origin) {
         const byDist = (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
@@ -171,11 +196,20 @@ export default function FunnelFlow({
       return a.name.localeCompare(b.name);
     });
     return ranked.slice(0, RESULT_CAP);
-  }, [places, intent, lens, chosenSub, openOnly, geo]);
+  }, [places, intent, lens, chosenSub, openOnly, geo, sort]);
 
+  const sortLabel =
+    sort === "nearest" ? "nearest first" : sort === "rated" ? "top rated" : geo.status === "granted" ? "best nearby" : "top picks";
   const resultsSub = !ready
     ? "Finding places…"
-    : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${geo.status === "granted" ? "best nearby" : "top picks"}`;
+    : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${sortLabel}`;
+  // The sort control's options — "Nearest" only appears once we have a
+  // location to make it meaningful.
+  const sortOpts: { key: SortKey; label: string }[] = [
+    { key: "best", label: "Best" },
+    ...(geo.status === "granted" ? [{ key: "nearest" as const, label: "Nearest" }] : []),
+    { key: "rated", label: "Top rated" },
+  ];
 
   // Result-header values, shared by the intent and lens paths.
   const resultColor = lens ? "var(--app-brand)" : intent?.color;
@@ -393,11 +427,27 @@ export default function FunnelFlow({
                     {geo.status === "loading" ? "Locating…" : "Near me"}
                   </Pill>
                 )}
+                {/* Sort control — the smart "Best" default plus two literal,
+                    honest sorts. Pushed right; wraps under on narrow widths. */}
+                <div className="ml-auto flex items-center gap-1.5">
+                  <ArrowUpDown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                  {sortOpts.map((o) => (
+                    <Pill
+                      key={o.key}
+                      tone="cool"
+                      size="sm"
+                      active={sort === o.key}
+                      onClick={() => { haptic("light"); track("find_sort", { sort: o.key }); setSort(o.key); }}
+                    >
+                      {o.label}
+                    </Pill>
+                  ))}
+                </div>
               </div>
             )}
             {geo.status === "denied" && (
               <p className="-mt-1 pb-3 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Location is off, so this is sorted by open-now. Turn it on for nearest-first.
+                Location is off, so this shows our top picks. Turn it on for the best nearby.
               </p>
             )}
             {!ready ? (
@@ -435,9 +485,13 @@ export default function FunnelFlow({
                     className="pt-1 text-center text-[11px] italic leading-relaxed"
                     style={{ color: "var(--app-ink-3)" }}
                   >
-                    {geo.status === "granted"
-                      ? "Ranked by the best balance of nearby & well-loved — tap any for hours, photos & reviews."
-                      : "Ranked by our most useful, best-reviewed picks. Turn on location for the best nearby."}
+                    {sort === "nearest"
+                      ? "Closest first — tap any for hours, photos & reviews."
+                      : sort === "rated"
+                        ? "Highest-rated first (enough reviews to be real) — tap any for hours, photos & reviews."
+                        : geo.status === "granted"
+                          ? "Ranked by the best balance of nearby & well-loved — tap any for hours, photos & reviews."
+                          : "Ranked by our most useful, best-reviewed picks. Turn on location for the best nearby."}
                   </motion.li>
                 )}
               </motion.ul>
