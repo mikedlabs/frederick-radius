@@ -3,8 +3,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Utensils, ShoppingBag, Car, Instagram, ExternalLink } from "lucide-react";
-import Image from "next/image";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
@@ -22,6 +20,7 @@ import { businessInfoFor } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
+import PlacePhotoGallery from "@/components/place/PlacePhotoGallery";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
 import PlaceAmenityIcons from "@/components/place/PlaceAmenityIcons";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -363,33 +362,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <GoogleHours lines={place.google_hours} />
       ) : null}
 
-      {place.google_photos && place.google_photos.length > 1 && (
-        <section className="space-y-2">
-          <h2 className="eyebrow">
-            Photos
-          </h2>
-          <div className="shelf-rail -mx-1 gap-2 px-1 pb-1">
-            {place.google_photos.slice(1, 8).map((url, i) => (
-              <div
-                key={i}
-                className="relative h-28 w-40 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] border"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <Image
-                  src={url}
-                  alt={`${place.name} photo ${i + 2}`}
-                  fill
-                  loading="lazy"
-                  sizes="160px"
-                  placeholder="blur"
-                  blurDataURL={PAPER_CREAM_BLUR}
-                  className="object-cover"
-                />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <PlacePhotoGallery photos={place.google_photos ?? []} name={place.name} />
 
       <section className="space-y-2">
         <h2 className="eyebrow">
