@@ -21,6 +21,7 @@ import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { placeHoursTrust, formatChecked } from "@/lib/trust";
 import { knownFor } from "@/lib/cuisine";
+import { classifyDescription } from "@/lib/copy-quality";
 import { formatDistance } from "@/lib/geo";
 import type { ParcelContext } from "@/lib/loaders/cofParcels";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
@@ -488,10 +489,13 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
           </div>
         )}
 
-        {/* Blurb */}
-        <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {place.short_blurb}
-        </p>
+        {/* Blurb — gated by the copy-quality detector so scraped junk
+            (phone numbers, contact CTAs, addresses) never shows. */}
+        {place.short_blurb && classifyDescription(place.name, place.short_blurb) !== "scraped" && (
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+            {place.short_blurb}
+          </p>
+        )}
 
         {/* Photo strip — more of what the place actually looks like */}
         {photos.length > 1 && (

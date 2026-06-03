@@ -21,6 +21,12 @@ const SECOND_PERSON =
 const MARKETING =
   /\b(best|amazing|must[- ]visit|hidden gem|nestled|vibrant|elevated|curated experience|destination|exquisite|charm and elegance|unforgettable|one-of-a-kind)\b/i;
 const NOISE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]|•|#[A-Za-z]|\b[A-Z][a-z]{2}\s+20\d{2}\b/u;
+// Scraped directory-listing tells: a phone number, a contact CTA, or a
+// link/email never belong in an editorial description ("Feel free to reach
+// out to us at 703-524-…").
+const PHONE = /\(\d{3}\)\s*\d{3}[-.\s]?\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/;
+const CONTACT = /\b(feel free to|reach out|contact us|call us|give us a call|email us|book (?:now|online)|find us on|follow us|dm us)\b/i;
+const LINK = /https?:\/\/|www\.\S|\S+@\S+\.\w/i;
 
 /** Classify a place description against the STYLE.md scraped patterns. */
 export function classifyDescription(
@@ -39,6 +45,7 @@ export function classifyDescription(
   if (SECOND_PERSON.test(t)) return "scraped";
   if (MARKETING.test(t)) return "scraped";
   if (NOISE.test(t)) return "scraped";
+  if (PHONE.test(t) || CONTACT.test(t) || LINK.test(t)) return "scraped";
 
   // Single run-on: long with fewer than two sentence stops.
   const stops = (t.match(/[.!?](\s|$)/g) ?? []).length;
