@@ -11,10 +11,14 @@ import { search } from "@/lib/search";
  * `sources` so the UI renders clickable, verifiable cards alongside the
  * prose — the answer is anchored to real records, not vibes.
  *
- * Provider-flexible: uses ANTHROPIC_API_KEY (the proven claude-haiku path
- * already in this repo) if present, else OPENAI_API_KEY via the Vercel AI
- * SDK. With neither set it returns { configured: false } and the UI shows
- * a "coming soon" state — no errors, no fabrication.
+ * Provider-flexible, in priority order:
+ *   1. AI_GATEWAY_API_KEY — the Vercel AI Gateway (recommended): one key,
+ *      a model-agnostic "provider/model" string, built-in observability +
+ *      fallbacks. This is the key to set on Vercel.
+ *   2. ANTHROPIC_API_KEY — direct Claude Haiku (the proven path here).
+ *   3. OPENAI_API_KEY — direct GPT-4o-mini via the AI SDK.
+ * With none set it returns { configured: false } and the UI degrades to the
+ * retrieved place cards (never a dead end) — no errors, no fabrication.
  */
 
 export type AskSource = {
@@ -40,10 +44,32 @@ Rules you must follow:
 - Sound like a knowledgeable local, not a chatbot. No "as an AI", no filler, no markdown headers.`;
 
 function hasKey(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY);
+  return Boolean(
+    process.env.AI_GATEWAY_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENAI_API_KEY,
+  );
 }
 
 async function callModel(userContent: string): Promise<string | null> {
+  // 1) Vercel AI Gateway — the preferred path. A plain "provider/model"
+  // string routes through the gateway on AI_GATEWAY_API_KEY, so the owner
+  // sets ONE key and can swap models without a code change. If the model
+  // slug ever drifts, this throws and we fall through to the direct paths.
+  if (process.env.AI_GATEWAY_API_KEY) {
+    try {
+      const { generateText } = await import("ai");
+      const { text } = await generateText({
+        model: "anthropic/claude-haiku-4.5",
+        system: SYSTEM,
+        prompt: userContent,
+      });
+      if (text) return text.trim();
+    } catch {
+      /* fall through to a direct provider */
+    }
+  }
+
   const anthropic = process.env.ANTHROPIC_API_KEY;
   if (anthropic) {
     try {

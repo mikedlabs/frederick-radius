@@ -1,20 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { Search, Clock, Calendar, Train, MapPin } from "lucide-react";
-import SearchOverlay from "@/components/search/SearchOverlay";
+import { Clock, Calendar, Train, MapPin } from "lucide-react";
 import Pill from "@/components/ui/Pill";
+import AskFrederick from "@/components/ask/AskFrederick";
 import { QUICK_INTENTS } from "@/lib/answers/intents";
 import type { IntentIcon } from "@/lib/answers/types";
 
 /**
  * TodayAsk — the answer-first front door (UX_REDO Build 1).
  *
- * "Ask Radius anything" + suggested intent chips, mounted at the top
- * of /today. Tapping the field opens the existing SearchOverlay (live
- * search, reused as-is); the chips route to their intent answers. The
- * 3 to 5 default AnswerCards rendered below this on /today carry the
- * anticipatory layer for the undecided user.
+ * "Ask Radius anything" mounted at the top of /today, now backed by the
+ * real grounded concierge (AskFrederick → /api/ask): a natural-language
+ * question returns an AI answer with clickable, verifiable source cards.
+ * It degrades gracefully — with no AI key the API still keyword-matches
+ * real places, so the box returns place cards rather than a dead end, and
+ * plain typeahead stays one tap away via the header search pill. The
+ * suggested intent chips route to their intent answers.
  */
 
 const ICON: Record<IntentIcon, typeof Clock> = {
@@ -25,36 +26,20 @@ const ICON: Record<IntentIcon, typeof Clock> = {
 };
 
 export default function TodayAsk() {
-  const [open, setOpen] = useState(false);
   // The five strongest needs as hero chips (skip the generic "events").
   const chips = QUICK_INTENTS.filter((i) => i.key !== "events").slice(0, 5);
 
   return (
     <div className="space-y-3">
-      <div className="space-y-0.5">
-        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Ask Radius
-        </p>
-        <h1
-          className="text-[26px] font-semibold leading-tight tracking-tight"
-          style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
-        >
-          Ask Radius anything.
-        </h1>
-      </div>
-
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Search Frederick Radius"
-        className="tactile tactile-interactive flex w-full items-center gap-3 rounded-[var(--app-radius-lg)] border px-4 py-3.5 text-left"
-        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+      <h1
+        className="text-[26px] font-semibold leading-tight tracking-tight"
+        style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
       >
-        <Search className="h-5 w-5 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-        <span className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-          Open now · live music tonight · parking · coffee in Brunswick
-        </span>
-      </button>
+        Ask Radius anything.
+      </h1>
+
+      {/* The grounded concierge box — real answers from real records. */}
+      <AskFrederick />
 
       <div className="flex flex-wrap gap-2">
         {chips.map((c) => {
@@ -66,8 +51,6 @@ export default function TodayAsk() {
           );
         })}
       </div>
-
-      <SearchOverlay open={open} onClose={() => setOpen(false)} />
     </div>
   );
 }
