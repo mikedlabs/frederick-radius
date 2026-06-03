@@ -3,7 +3,8 @@
 > Mike's question, answered straight: of everything you asked for — your
 > own words, the off-the-cuff vision, and every reviewer's feedback — what
 > actually got built, what's half-there, and what got lost. Verified
-> against the real code on 2026-05-30, not from memory. No spin.
+> against the real code on 2026-05-30 (B7 re-verified 2026-06-03), not
+> from memory. No spin.
 >
 > **Legend:** ✅ DONE (live) · 🟡 PARTIAL (started, not fully there) ·
 > ❌ MISSING (talked about, never built) · ⏳ BLOCKED (built, waiting on data/key)
@@ -30,7 +31,7 @@
 | B4 | Map Modes / smart presets instead of endless filters | 🟡 | MAP_MODES exist; not reframed as human "jobs" (Coffee run, Kill an hour) |
 | B5 | The slider as a big, beautiful HERO control w/ live feedback | ❌ | Slider works but is utilitarian, not the hero |
 | B6 | Living "Radius" visual language — rings, pulse, range | 🟡 | **Just shipped** ripple+breathe on center marker; not yet the slider/whole-system |
-| B7 | Custom category pins + beautiful "you are here" marker | 🟡 | Center marker now alive; pins still generic dots |
+| B7 | Custom category pins + beautiful "you are here" marker | ✅ | Category-colored canvas pucks w/ bespoke per-bucket icons (categoryMarkers.ts), rendered by the curated/OSM icon layers; center marker alive |
 | B8 | Pin → card connection (tap pin, tethered card) | ❌ | Popup exists, no visual tether |
 | B9 | Consolidate two maps (Browse vs Radius) into one | ❌ | Still two modes behind a toggle |
 | B10 | "I'm here now" one-tap mode | ❌ | Never built |
@@ -108,8 +109,9 @@ the core of Today, the map's "outcomes not counts," intent-first Places,
 civic separation, and the start of the motion layer.
 
 **The biggest things still MISSING (your "lost in translation" list):**
-- **B5/B6/B7 — the map's living, tactile soul** (hero slider, full Radius
-  motion system, custom pins). Just started; this is the flagship feel.
+- **B5/B6 — the map's living, tactile soul** (hero slider, full Radius
+  motion system). Just started; this is the flagship feel. *(B7 custom
+  pins now shipped — ✅ above.)*
 - **B10 — "I'm here now" one-tap mode.** Never built. High emotional payoff.
 - **D3 — time-first event cards.** A clear reviewer ask, not done.
 - **E2/E3 — alive town cards + situational layers** (date night, rainy day).

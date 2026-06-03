@@ -132,7 +132,10 @@ a parent; surface or retire the orphans; rename the beverage trail.
 ## 8. Performance ✅ mostly addressed / ⏳ remaining
 
 - ✅ Route `loading.tsx` skeletons; `staleTimes` client-cache; lazy
-  1.5MB place JSON; map perf flags; lighter pin/popup images.
+  1.5MB place JSON; map perf flags; lighter pin/popup images. The
+  Mapbox renderer (`mapbox-gl` / `react-map-gl`) loads client-only via
+  `dynamic(ssr:false)` (`AppMapClient.tsx`), keeping it out of the
+  initial/server bundle; pins cluster natively via GL `cluster` sources.
 - ✅ Already on: React Compiler, View Transitions, `next/font`, ISR.
 - ⏳ Stream the map; pilot **PPR**; move shared fetches (NWS/traffic/
   events) to `"use cache"`.
