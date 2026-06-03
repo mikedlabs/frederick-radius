@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, UtensilsCrossed, Calendar, type LucideIcon } from "lucide-react";
 
 /**
  * TwoDoors — the home entry to the find-system's two jobs.
@@ -29,7 +29,7 @@ export default function TwoDoors({
         title="Find somewhere good"
         blurb="The places locals send people to, open now and a short walk away."
         meta={openCount ? `${openCount} open now` : "Open now"}
-        emoji="🍴"
+        Icon={UtensilsCrossed}
       />
       <Door
         href="/weekend"
@@ -42,7 +42,7 @@ export default function TwoDoors({
             ? `${weekendCount} this weekend`
             : "This weekend"
         }
-        emoji="📅"
+        Icon={Calendar}
       />
     </section>
   );
@@ -55,7 +55,7 @@ function Door({
   title,
   blurb,
   meta,
-  emoji,
+  Icon,
 }: {
   href: string;
   variant: "eat" | "weekend";
@@ -63,7 +63,7 @@ function Door({
   title: string;
   blurb: string;
   meta: string;
-  emoji: string;
+  Icon: LucideIcon;
 }) {
   // Two distinct gradients drawn from the brand palette so the doors are
   // instantly distinguishable — warm brick→plum for eat, cool slate→
@@ -89,10 +89,14 @@ function Door({
       {/* icon chip + live meta */}
       <span
         aria-hidden
-        className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-[13px] text-[22px]"
+        className="absolute left-4 top-4 grid h-11 w-11 place-items-center rounded-[13px]"
         style={{ background: "rgba(252,248,239,0.92)" }}
       >
-        {emoji}
+        <Icon
+          className="h-[22px] w-[22px]"
+          strokeWidth={2.25}
+          style={{ color: variant === "eat" ? "var(--app-brand)" : "#2F5763" }}
+        />
       </span>
       <span
         className="mono absolute right-4 top-[18px] text-right text-[10px] font-semibold uppercase leading-tight tracking-[0.08em]"

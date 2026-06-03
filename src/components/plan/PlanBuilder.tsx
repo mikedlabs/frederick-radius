@@ -4,6 +4,11 @@ import { useState, useTransition } from "react";
 import {
   Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock,
   Wand2, Shuffle, ChevronDown, Plus, ChevronRight,
+  User, Heart, Users, UsersRound, Luggage,
+  Leaf, Zap, Drama, Footprints, UtensilsCrossed,
+  BookOpen, Coffee, Wine, Trees, CloudRain, Sun, Compass,
+  CloudSun, Sunset, SearchX,
+  type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -44,12 +49,12 @@ import BottomDrawer from "@/components/ui/BottomDrawer";
  * works without any of those APIs.
  */
 
-const AUDIENCES: { value: PlanInputs["audience"]; label: string; emoji: string }[] = [
-  { value: "solo", label: "Solo", emoji: "🧍" },
-  { value: "date", label: "Date", emoji: "💞" },
-  { value: "family", label: "Family", emoji: "👨‍👩‍👧" },
-  { value: "friends", label: "Friends", emoji: "👥" },
-  { value: "visitor", label: "Visitor", emoji: "🧳" },
+const AUDIENCES: { value: PlanInputs["audience"]; label: string; Icon: LucideIcon }[] = [
+  { value: "solo", label: "Solo", Icon: User },
+  { value: "date", label: "Date", Icon: Heart },
+  { value: "family", label: "Family", Icon: Users },
+  { value: "friends", label: "Friends", Icon: UsersRound },
+  { value: "visitor", label: "Visitor", Icon: Luggage },
 ];
 
 // Cinematic vibe cards — the new front-and-center CTA. Each carries
@@ -60,19 +65,19 @@ const VIBES: {
   value: PlanInputs["vibe"];
   label: string;
   tagline: string;
-  emoji: string;
+  Icon: LucideIcon;
   color: string;
 }[] = [
-  { value: "easy",     label: "Easy",     tagline: "Wander, sit, sip.",      emoji: "🌿", color: "#859076" },
-  { value: "active",   label: "Active",   tagline: "Move, climb, ride.",     emoji: "⚡️", color: "#C99632" },
-  { value: "cultural", label: "Cultural", tagline: "Galleries, music, words.", emoji: "🎭", color: "#7E2C6F" },
-  { value: "outdoors", label: "Outdoors", tagline: "Trails, water, sky.",     emoji: "🥾", color: "#2E3B2C" },
-  { value: "food",     label: "Food first", tagline: "Eat. Then everything else.", emoji: "🍽️", color: "#A8462C" },
+  { value: "easy",     label: "Easy",     tagline: "Wander, sit, sip.",      Icon: Leaf, color: "#859076" },
+  { value: "active",   label: "Active",   tagline: "Move, climb, ride.",     Icon: Zap, color: "#C99632" },
+  { value: "cultural", label: "Cultural", tagline: "Galleries, music, words.", Icon: Drama, color: "#7E2C6F" },
+  { value: "outdoors", label: "Outdoors", tagline: "Trails, water, sky.",     Icon: Footprints, color: "#2E3B2C" },
+  { value: "food",     label: "Food first", tagline: "Eat. Then everything else.", Icon: UtensilsCrossed, color: "#A8462C" },
 ];
 
 type Preset = {
   id: string;
-  emoji: string;
+  Icon: LucideIcon;
   label: string;
   tagline: string;
   audience: PlanInputs["audience"];
@@ -83,22 +88,22 @@ type Preset = {
 };
 
 const PRESETS: Preset[] = [
-  { id: "library-date", emoji: "📚", label: "Library date", tagline: "Quiet, smart, charming.", audience: "date", vibe: "cultural", hours: 3, start: "afternoon", color: "#7E2C6F" },
-  { id: "date-night", emoji: "💞", label: "Date night", tagline: "Dinner. Drinks. A walk.", audience: "date", vibe: "easy", hours: 4, start: "evening", color: "#A8462C" },
-  { id: "first-date", emoji: "☕", label: "First date", tagline: "Coffee, walk, dessert.", audience: "date", vibe: "easy", hours: 2, start: "afternoon", color: "#8B5A2B" },
-  { id: "girls-night", emoji: "🥂", label: "Girls' night", tagline: "Wine and somewhere fun.", audience: "friends", vibe: "food", hours: 4, start: "evening", color: "#7E1F1F" },
-  { id: "family-sunday", emoji: "🌳", label: "Family Sunday", tagline: "Park, ice cream, easy.", audience: "family", vibe: "easy", hours: 4, start: "afternoon", color: "#1E6B3A" },
-  { id: "rainy-day", emoji: "🌧️", label: "Rainy day", tagline: "Museum, lunch, theater.", audience: "solo", vibe: "cultural", hours: 3, start: "afternoon", color: "#2F5470" },
-  { id: "sunny-saturday", emoji: "☀️", label: "Sunny Saturday", tagline: "Trail, lunch, winery.", audience: "friends", vibe: "outdoors", hours: 6, start: "afternoon", color: "#C99632" },
-  { id: "showing-friends", emoji: "🧳", label: "Out-of-town friends", tagline: "The highlight reel.", audience: "visitor", vibe: "cultural", hours: 6, start: "afternoon", color: "#2F5470" },
+  { id: "library-date", Icon: BookOpen, label: "Library date", tagline: "Quiet, smart, charming.", audience: "date", vibe: "cultural", hours: 3, start: "afternoon", color: "#7E2C6F" },
+  { id: "date-night", Icon: Heart, label: "Date night", tagline: "Dinner. Drinks. A walk.", audience: "date", vibe: "easy", hours: 4, start: "evening", color: "#A8462C" },
+  { id: "first-date", Icon: Coffee, label: "First date", tagline: "Coffee, walk, dessert.", audience: "date", vibe: "easy", hours: 2, start: "afternoon", color: "#8B5A2B" },
+  { id: "girls-night", Icon: Wine, label: "Girls' night", tagline: "Wine and somewhere fun.", audience: "friends", vibe: "food", hours: 4, start: "evening", color: "#7E1F1F" },
+  { id: "family-sunday", Icon: Trees, label: "Family Sunday", tagline: "Park, ice cream, easy.", audience: "family", vibe: "easy", hours: 4, start: "afternoon", color: "#1E6B3A" },
+  { id: "rainy-day", Icon: CloudRain, label: "Rainy day", tagline: "Museum, lunch, theater.", audience: "solo", vibe: "cultural", hours: 3, start: "afternoon", color: "#2F5470" },
+  { id: "sunny-saturday", Icon: Sun, label: "Sunny Saturday", tagline: "Trail, lunch, winery.", audience: "friends", vibe: "outdoors", hours: 6, start: "afternoon", color: "#C99632" },
+  { id: "showing-friends", Icon: Compass, label: "Out-of-town friends", tagline: "The highlight reel.", audience: "visitor", vibe: "cultural", hours: 6, start: "afternoon", color: "#2F5470" },
 ];
 
 const DURATIONS: PlanInputs["duration_hours"][] = [2, 3, 4, 6];
 type StartMode = "now" | "afternoon" | "evening";
-const STARTS: { value: StartMode; label: string; emoji: string }[] = [
-  { value: "now", label: "Now", emoji: "⏱️" },
-  { value: "afternoon", label: "Afternoon", emoji: "🌤️" },
-  { value: "evening", label: "Evening", emoji: "🌆" },
+const STARTS: { value: StartMode; label: string; Icon: LucideIcon }[] = [
+  { value: "now", label: "Now", Icon: Clock },
+  { value: "afternoon", label: "Afternoon", Icon: CloudSun },
+  { value: "evening", label: "Evening", Icon: Sunset },
 ];
 
 function startAtFor(mode: StartMode): string | undefined {
@@ -291,7 +296,7 @@ export default function PlanBuilder({
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               aria-label={`Audience: ${currentAudience.label}. Tap to change.`}
             >
-              <span aria-hidden>{currentAudience.emoji}</span>
+              <currentAudience.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               {currentAudience.label}
             </button>
             <button
@@ -301,7 +306,8 @@ export default function PlanBuilder({
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               aria-label={`Duration: ${hours} hours. Tap to change.`}
             >
-              ⏱ {hours} hr
+              <Clock className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+              {hours} hr
             </button>
             <button
               type="button"
@@ -310,7 +316,7 @@ export default function PlanBuilder({
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               aria-label={`Start: ${currentStart.label}. Tap to change.`}
             >
-              <span aria-hidden>{currentStart.emoji}</span>
+              <currentStart.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
               Starts {currentStart.label.toLowerCase()}
             </button>
           </section>
@@ -343,17 +349,14 @@ export default function PlanBuilder({
                       boxShadow: `0 12px 28px -10px ${v.color}, var(--app-elev-1)`,
                     }}
                   >
-                    <span
+                    <v.Icon
                       aria-hidden
-                      className="pointer-events-none absolute -bottom-4 -right-2 text-[88px] leading-none transition-transform duration-300 group-hover:scale-105"
+                      className="pointer-events-none absolute -bottom-5 -right-4 h-28 w-28 text-white transition-transform duration-300 group-hover:scale-105"
+                      strokeWidth={1.5}
                       style={{ opacity: 0.22 }}
-                    >
-                      {v.emoji}
-                    </span>
+                    />
                     <div className="relative flex h-full flex-col">
-                      <span aria-hidden className="text-[24px] leading-none">
-                        {v.emoji}
-                      </span>
+                      <v.Icon aria-hidden className="h-6 w-6 text-white" strokeWidth={2.25} />
                       <span className="mt-auto block">
                         <span className="block font-serif text-[20px] font-semibold leading-tight tracking-tight text-white">
                           {v.label}
@@ -402,14 +405,13 @@ export default function PlanBuilder({
                         boxShadow: "var(--app-elev-1)",
                       }}
                     >
-                      <span
+                      <p.Icon
                         aria-hidden
-                        className="pointer-events-none absolute -bottom-3 -right-2 text-[58px] leading-none"
-                        style={{ opacity: 0.16 }}
-                      >
-                        {p.emoji}
-                      </span>
-                      <span aria-hidden className="relative text-[18px] leading-none">{p.emoji}</span>
+                        className="pointer-events-none absolute -bottom-4 -right-3 h-[72px] w-[72px]"
+                        strokeWidth={1.5}
+                        style={{ opacity: 0.16, color: p.color }}
+                      />
+                      <p.Icon aria-hidden className="relative h-[18px] w-[18px]" strokeWidth={2.25} style={{ color: p.color }} />
                       <span
                         className="relative font-serif text-[14px] font-semibold leading-tight tracking-tight"
                         style={{ color: "var(--app-ink)" }}
@@ -620,10 +622,10 @@ export default function PlanBuilder({
             <div className="tactile flex flex-col items-center gap-2 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] px-6 py-10 text-center">
               <span
                 aria-hidden
-                className="grid h-12 w-12 place-items-center rounded-full text-2xl"
+                className="grid h-12 w-12 place-items-center rounded-full"
                 style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)" }}
               >
-                🗺️
+                <SearchX className="h-6 w-6" strokeWidth={2} style={{ color: "var(--app-brand)" }} />
               </span>
               <p className="font-serif text-base font-semibold" style={{ color: "var(--app-ink)" }}>
                 No clean match for that combo
@@ -758,7 +760,7 @@ export default function PlanBuilder({
                   onClick={() => setAudience(a.value)}
                   accent="brand"
                 >
-                  <span aria-hidden className="text-[15px] leading-none">{a.emoji}</span>{" "}
+                  <a.Icon aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} />{" "}
                   {a.label}
                 </Chip>
               ))}
@@ -773,7 +775,7 @@ export default function PlanBuilder({
                   onClick={() => setVibe(v.value)}
                   accent="cool"
                 >
-                  <span aria-hidden className="text-[15px] leading-none">{v.emoji}</span>{" "}
+                  <v.Icon aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} />{" "}
                   {v.label}
                 </Chip>
               ))}
@@ -802,7 +804,7 @@ export default function PlanBuilder({
                   onClick={() => setStartMode(s.value)}
                   accent="cool"
                 >
-                  <span aria-hidden className="text-[15px] leading-none">{s.emoji}</span>{" "}
+                  <s.Icon aria-hidden className="h-3.5 w-3.5" strokeWidth={2.25} />{" "}
                   {s.label}
                 </Chip>
               ))}
