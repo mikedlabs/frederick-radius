@@ -180,16 +180,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           photoSrc={place.google_photo_url}
         />
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
-          {/* Title row carries the place name + address only. The
-              previous design crowded a FollowButton + SaveButton
-              icon pair into the right of this row — both delegated
-              to the SAME useFollows hook as the prominent
-              "Add to My Radius" CTA below, so the visitor was
-              looking at three save controls for one action. v2
-              keeps just the text CTA below the title (the verb
-              that matches the "My Radius" nav tab) and lets the
-              title breathe. Sharing remains accessible from the
-              footer ShareButton. */}
+          {/* Title row carries the place name + address only. Save
+              lives in exactly one place — the prominent "Add to My
+              Radius" CTA below — so the visitor sees a single save
+              action, not an icon pair crowding the title. Sharing
+              stays in the footer ShareButton. */}
           <div className="min-w-0">
             <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
               {place.name}

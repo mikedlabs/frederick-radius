@@ -13,7 +13,6 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import OpenClosedDot from "./OpenClosedDot";
 import GoogleHours from "./GoogleHours";
 import SaveButton from "@/components/saved/SaveButton";
-import FollowButton from "@/components/place/FollowButton";
 import ShareButton from "./ShareButton";
 import SourceBadge from "./SourceBadge";
 import type { PlaceCardData } from "@/lib/loaders/places";
@@ -330,18 +329,6 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
               </div>
             </header>
           )}
-
-          {/* Follow pill — the one user-facing affordance for the
-              follow → push → owner-posts-special pipeline (#179).
-              Previously only on /places/[slug], which most users
-              never reach because they tap pins on the map and land
-              here. Right-aligned in a small row so it sits visually
-              quieter than the Save button but is always reachable
-              regardless of photo state. FollowButton self-hides on
-              platforms without push support. */}
-          <div className="-mt-1 mb-1 flex justify-end">
-            <FollowButton slug={place.slug} name={place.name} />
-          </div>
 
           {/* Address + source provenance + "known for" — three quiet
            *  lines that establish what this place is before the data
