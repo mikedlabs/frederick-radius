@@ -289,7 +289,7 @@ export default async function MapPage({
         category: e.category,
       }));
     return (
-      <div className="relative space-y-3">
+      <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
         <PageBloom variant="cool" />
         {/* Mode toggle is rendered INSIDE RadiusBuilder, in the row
             immediately below the map — clear of the map's own camera
@@ -309,7 +309,7 @@ export default async function MapPage({
   // stream in via Suspense, so the page no longer blocks first paint on
   // the slowest upstream AND the Mapbox JS downloads during that fetch.
   return (
-    <div className="-mx-4 -mt-4">
+    <div className="-mx-4 -mt-4 lg:ml-0">
       <div className="px-3 py-2 sm:px-4">
         <MapModes params={{ mode: "browse", open: earlyParams.open, intent: earlyParams.intent }} />
       </div>
@@ -508,27 +508,6 @@ async function BrowseMapArea({
 
   return (
     <div className="relative" style={{ height: BROWSE_MAP_HEIGHT }}>
-        {/* MapIntentChips still floats over the map — it's the
-            in-context filter UI; users tap chips to narrow what's
-            visible. The active-intent banner sits at the top of this
-            stack; the chips strip and the optional MapTimeChips
-            children sit below it in the same space-y-2 flow. */}
-        <MapIntentChips
-          active={intent?.key}
-          activeCount={intent ? places.length : undefined}
-          activeSub={activeSub?.key}
-          subCounts={subCounts}
-          openNow={openNow}
-        >
-          <MapTimeChips
-            active={timeMode}
-            intent={intent?.key}
-            sub={activeSub?.key}
-            counts={counts}
-            openNow={openNow}
-            openNowCount={openNowCount}
-          />
-        </MapIntentChips>
         <AppMapClient
           places={places}
           civic={civic}
@@ -548,7 +527,26 @@ async function BrowseMapArea({
           // Pinpoint-first: with no intent filter, open the map CLEAN and
           // let the user add what they want (vs. dumping all ~1,700 pins).
           pinpointDefault={!intent}
-        />
+        >
+          {/* In-context filter UI — passed as children so it overlays
+              only the map column, never the desktop list pane. */}
+          <MapIntentChips
+            active={intent?.key}
+            activeCount={intent ? places.length : undefined}
+            activeSub={activeSub?.key}
+            subCounts={subCounts}
+            openNow={openNow}
+          >
+            <MapTimeChips
+              active={timeMode}
+              intent={intent?.key}
+              sub={activeSub?.key}
+              counts={counts}
+              openNow={openNow}
+              openNowCount={openNowCount}
+            />
+          </MapIntentChips>
+        </AppMapClient>
       </div>
   );
 }

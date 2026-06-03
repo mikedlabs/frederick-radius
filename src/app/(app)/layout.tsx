@@ -2,7 +2,7 @@ import BottomNav from "@/components/nav/BottomNav";
 import SideRail from "@/components/nav/SideRail";
 import TopBar from "@/components/nav/TopBar";
 import RouteAccent from "@/components/nav/RouteAccent";
-import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import AppMain from "@/components/nav/AppMain";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import PullToRefresh from "@/components/today/PullToRefresh";
 import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
@@ -46,19 +46,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               when scrollY === 0. Reduced-motion users see no spinner. */}
           <PullToRefresh />
           <TopBar />
-          {/* Default reading column: max-w-screen-md (768) up to lg,
-              then max-w-screen-lg (1024) at desktop for breathing
-              room. Pages that need full-bleed (map, photo book) can
-              break out with their own wrappers. The lg:pl-20 clears
-              the desktop SideRail (≈80px floating on the left). */}
-          <main
-            className="mx-auto max-w-screen-md px-4 pt-4 lg:max-w-screen-lg lg:pl-24"
-            style={{
-              paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))",
-            }}
-          >
-            <ErrorBoundary>{children}</ErrorBoundary>
-          </main>
+          {/* Content column. Most routes sit in a centered reading
+              column; full-bleed routes (the browse map) opt out inside
+              AppMain so the map can fill the viewport on desktop. The
+              lg:pl-24 clears the floating SideRail. */}
+          <AppMain>{children}</AppMain>
           {/* Two navs, one shows at a time:
               - BottomNav: floating pill at bottom, < lg
               - SideRail: floating rail on left edge, ≥ lg */}
