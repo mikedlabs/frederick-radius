@@ -572,6 +572,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             title={place.name}
             text={place.short_blurb}
             url={`/places/${place.slug}`}
+            imageUrl={`/api/og?type=place&slug=${place.slug}&format=story`}
           />
         </div>
 

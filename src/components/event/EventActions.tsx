@@ -69,6 +69,27 @@ export default function EventActions({
       typeof window !== "undefined" ? window.location.origin : "https://frederickradius.app";
     const url = `${origin}/events/${event.slug}`;
     const text = event.venue_name ? `${event.title} · ${event.venue_name}` : event.title;
+
+    // Share the generated Story card as an image file when the platform
+    // supports it — this is what surfaces Instagram (Stories/feed),
+    // Facebook, etc. on the mobile share sheet. Falls through to a URL
+    // share, then clipboard.
+    if (typeof navigator !== "undefined" && typeof navigator.canShare === "function") {
+      try {
+        const res = await fetch(`/api/og?type=event&slug=${event.slug}&format=story`);
+        if (res.ok) {
+          const blob = await res.blob();
+          const file = new File([blob], `${event.slug}.png`, { type: blob.type || "image/png" });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: event.title, text, url });
+            return;
+          }
+        }
+      } catch {
+        // fall through to the URL share below
+      }
+    }
+
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title: event.title, text, url });
