@@ -14,6 +14,9 @@ export type Municipality = {
   bbox: [number, number, number, number];
   description: string;
   hero_blurb: string;
+  /** One punchy, true line — the town's claim to fame. Distilled from
+   *  `description`; kept short enough to ride a town card. */
+  fact: string;
   est: number;
 };
 
@@ -28,6 +31,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "The county seat and largest city. Carroll Creek Linear Park, the Spires of Frederick, the Maryland breweries, and a downtown arts district that punches well above its weight.",
     hero_blurb: "Spires, brick, water — and a downtown that walks.",
+    fact: "The “City of Clustered Spires.”",
     est: 1745,
   },
   {
@@ -40,6 +44,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "Railroad town on the Potomac with the longest grass-roller-coaster downtown in the county. The MARC line still runs; the C&O Canal Towpath passes through.",
     hero_blurb: "River town. Rail town. Trail town.",
+    fact: "A B&O railroad town on the Potomac.",
     est: 1780,
   },
   {
@@ -52,6 +57,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "Gateway to Catoctin Mountain Park and Cunningham Falls. Two main streets, three diners, and one Presidential retreat just over the ridge.",
     hero_blurb: "The gateway town. Catoctin behind it, Maryland in front.",
+    fact: "Gateway to Catoctin — and Camp David.",
     est: 1751,
   },
   {
@@ -64,6 +70,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "Middletown Valley between the Catoctin and South Mountain ridges. South Mountain Creamery, Stone House antiques, and a Main Street parade culture.",
     hero_blurb: "A valley between two mountains.",
+    fact: "A valley between two mountain ridges.",
     est: 1767,
   },
   {
@@ -76,6 +83,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "Heritage rail town just north of Frederick. The Walkersville Southern Railroad still runs heritage steam excursions on summer weekends.",
     hero_blurb: "Quiet streets, working tracks.",
+    fact: "Home to a heritage steam railroad.",
     est: 1882,
   },
   {
@@ -88,6 +96,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "At the county's northern edge. Mount St. Mary's University, the National Shrine of Saint Elizabeth Ann Seton, and farmland that runs to the Pennsylvania line.",
     hero_blurb: "The mountain, the shrine, the line.",
+    fact: "Mount St. Mary's and the Seton Shrine.",
     est: 1785,
   },
   {
@@ -100,6 +109,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "Self-styled \"Antiques Capital of Maryland.\" Twelve blocks of restored 19th-century shopfronts on Main Street, almost all of them dealing in something old.",
     hero_blurb: "Twelve blocks of slower time.",
+    fact: "The Antiques Capital of Maryland.",
     est: 1793,
   },
   {
@@ -112,6 +122,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "Four counties meet under one zip code (Frederick, Carroll, Howard, Montgomery). A Main Street revival, two wineries on the ridge, and the highest elevation in the county.",
     hero_blurb: "The town at the meeting of four counties.",
+    fact: "Where four counties meet.",
     est: 1830,
   },
   {
@@ -124,6 +135,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "Tucked between the Catoctin ridges. Trout Run, the historic Catoctin Mountain National Pike, and the only town with a regulation lacrosse field per capita that high.",
     hero_blurb: "Small, mountain-folded, close to everything.",
+    fact: "Tucked in the Catoctin ridges.",
     est: 1849,
   },
   {
@@ -136,6 +148,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "A two-stoplight town with one of the better farm-to-table spots in the county and a creamery just outside the limits. Drive slow on Main Street; the kids walk it.",
     hero_blurb: "A creamery, a Main Street, a stoplight or two.",
+    fact: "A two-stoplight farm-and-creamery town.",
     est: 1786,
   },
   {
@@ -150,6 +163,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "South Mountain village of just over 150 people. Best known beyond its size for a 1999 film that took its name; locals would rather you visit for the Gathland State Park overlooks.",
     hero_blurb: "South Mountain village, 153 strong.",
+    fact: "The “Blair Witch” town — go for Gathland.",
     est: 1824,
   },
   {
@@ -163,6 +177,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "A historic village on the Potomac's edge between Brunswick and the C&O Canal. Tree-lined, mostly residential, and one of the quietest places in the county.",
     hero_blurb: "Above the canal, below the ridge.",
+    fact: "A quiet village above the C&O Canal.",
     est: 1830,
   },
   {
@@ -178,6 +193,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "A fast-growing planned community in the county's south, along I-270 and MD-355. Urbana District Park, the regional library, and Sugarloaf Mountain rising just to the southwest.",
     hero_blurb: "The county's southern gateway, under Sugarloaf.",
+    fact: "Fast-growing, under Sugarloaf Mountain.",
     est: 1809,
   },
 ];
