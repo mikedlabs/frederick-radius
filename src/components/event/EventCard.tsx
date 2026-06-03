@@ -555,31 +555,38 @@ export default function EventCard({
           <span className="absolute inset-0" aria-hidden />
           <div className="flex items-stretch gap-3">
             <div className="min-w-0 flex-1">
-              {/* Top row — date on left, time on right */}
-              <div className="flex items-baseline justify-between gap-3">
+              {/* When — TIME-FIRST (audit D3). The clock time is the
+                  dominant anchor (big serif, category accent); the
+                  weekday + date ride alongside it small. A timeless event
+                  leads with its weekday instead, so the lead is never
+                  blank. The title drops to a secondary weight below, so
+                  the card answers "when" before "what". */}
+              <div className="flex items-baseline gap-2">
                 <span
-                  className="text-[10.5px] font-bold uppercase tracking-[0.12em] tabular-nums"
+                  className="shrink-0 font-serif text-[19px] font-bold leading-none tabular-nums"
                   style={{ color: accent }}
                 >
-                  {date.weekday} · {date.month} {date.day}
+                  {date.time || date.weekday}
                 </span>
                 <span
-                  className="shrink-0 text-[11px] font-semibold tabular-nums"
-                  style={{ color: "var(--app-ink-2)" }}
+                  className="min-w-0 flex-1 truncate text-[10.5px] font-bold uppercase tracking-[0.1em]"
+                  style={{ color: "var(--app-ink-3)" }}
                 >
-                  {date.time}
+                  {date.time
+                    ? `${date.weekday} · ${date.month} ${date.day}`
+                    : `${date.month} ${date.day}`}
                   {statusText && (
-                    <span className="ml-1.5 font-bold" style={{ color: statusBg }}>
-                      · {statusText}
+                    <span className="font-bold" style={{ color: statusBg }}>
+                      {" · "}
+                      {statusText}
                     </span>
                   )}
                 </span>
               </div>
-              {/* Title — 16px, serif, leading-tight; line-clamp-2 so a
-                  two-line title doesn't blow up the card height past
-                  ~108px. */}
+              {/* Title — secondary now: lighter weight + size so the time
+                  leads. Still line-clamp-2 to cap card height ~108px. */}
               <h3
-                className="mt-1.5 font-serif text-[16px] font-semibold leading-snug tracking-tight line-clamp-2"
+                className="mt-1 text-[14px] font-semibold leading-snug tracking-tight line-clamp-2"
                 style={{ color: "var(--app-ink)" }}
               >
                 {event.title}
