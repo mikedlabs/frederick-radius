@@ -29,13 +29,18 @@ export default async function MyRadiusPage() {
       <header className="flex items-end justify-between gap-3">
         <div>
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            {user
-              ? `My Radius · signed in as ${user.email ?? "you"}`
-              : "My Radius · on this device"}
+            {user ? `Signed in as ${user.email ?? "you"}` : "On this device"}
           </p>
           <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-            Saved
+            Your field guide
           </h1>
+          <p
+            className="mt-1.5 text-[14px] leading-relaxed text-pretty"
+            style={{ color: "var(--app-ink-2)" }}
+          >
+            The places and events you&apos;re keeping — spots to visit and
+            things to do, organized by town.
+          </p>
         </div>
         <Link
           href="/settings"

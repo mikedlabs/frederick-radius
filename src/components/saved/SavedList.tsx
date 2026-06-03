@@ -18,9 +18,10 @@ import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { haversineMeters } from "@/lib/geo";
 
-type SavedSortKey = "category" | "recent" | "az" | "distance";
+type SavedSortKey = "town" | "category" | "recent" | "az" | "distance";
 
 const SORT_OPTIONS: ReadonlyArray<SortOption<SavedSortKey>> = [
+  { key: "town", label: "By town", hint: "Your field guide, grouped by place" },
   { key: "category", label: "By category", hint: "Group by what kind of place" },
   { key: "recent", label: "Recent", hint: "Most recently saved first" },
   { key: "az", label: "A→Z", hint: "Alphabetical by name" },
@@ -114,11 +115,11 @@ export default function SavedList() {
   // Persisted sort preference (defaults to "category" — the original
   // grouping behavior). Read on mount so SSR + first paint stay
   // consistent (mounted gate above already prevents server/client mismatch).
-  const [sort, setSort] = useState<SavedSortKey>("category");
+  const [sort, setSort] = useState<SavedSortKey>("town");
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(SAVED_SORT_STORAGE_KEY);
-      if (saved === "category" || saved === "recent" || saved === "az" || saved === "distance") {
+      if (saved === "town" || saved === "category" || saved === "recent" || saved === "az" || saved === "distance") {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount hydration of a localStorage preference; SSR can't read localStorage
         setSort(saved);
       }
@@ -153,12 +154,13 @@ export default function SavedList() {
     }
   }, []);
 
-  const { places, events, byCategory, townTally } = useMemo(() => {
+  const { places, events, byCategory, byTown, townTally } = useMemo(() => {
     if (!placesBySlug) {
       return {
         places: [] as PlaceCardData[],
         events: [] as ReturnType<typeof decorateEvent>[],
         byCategory: new Map<string, PlaceCardData[]>(),
+        byTown: new Map<string, PlaceCardData[]>(),
         townTally: new Map<string, number>(),
       };
     }
@@ -222,7 +224,16 @@ export default function SavedList() {
       townTally.set(p.municipality, (townTally.get(p.municipality) ?? 0) + 1);
     }
 
-    return { places, events, byCategory, townTally };
+    // Bucket places by town — the field-guide view ("what I'm keeping in
+    // Frederick, in Brunswick…"). Used when sort === "town" (default).
+    const byTown = new Map<string, PlaceCardData[]>();
+    for (const p of places) {
+      const arr = byTown.get(p.municipality) ?? [];
+      arr.push(p);
+      byTown.set(p.municipality, arr);
+    }
+
+    return { places, events, byCategory, byTown, townTally };
   }, [items, placesBySlug, sort, homeOrigin]);
 
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
@@ -393,47 +404,58 @@ export default function SavedList() {
               onChange={setSortAndStore}
             />
           </header>
-          {sort === "category" ? (
+          {sort === "town" || sort === "category" ? (
             <div className="space-y-5">
-              {[...byCategory.entries()]
-                .sort((a, b) => b[1].length - a[1].length)
-                .map(([catSlug, group]) => {
-                  const cat = CATEGORY_BY_SLUG[catSlug];
-                  const color = cat?.color ?? "var(--app-cool)";
-                  return (
-                    <section key={catSlug} className="space-y-2">
-                      <header className="flex items-baseline gap-2.5">
-                        <span
-                          aria-hidden
-                          className="block h-[3px] w-7 rounded-full"
-                          style={{ background: color }}
-                        />
-                        <h3
-                          className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                          style={{ color }}
-                        >
-                          {cat?.name ?? catSlug}
-                        </h3>
-                        <span
-                          className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-                          style={{
-                            background: `color-mix(in srgb, ${color} 14%, transparent)`,
-                            color,
-                          }}
-                        >
-                          {group.length}
-                        </span>
-                      </header>
-                      <ul className="space-y-2">
-                        {group.map((p) => (
-                          <li key={p.slug}>
-                            <PlaceCard place={p} />
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  );
-                })}
+              {(sort === "town"
+                ? [...byTown.entries()]
+                    .sort((a, b) => b[1].length - a[1].length)
+                    .map(([slug, group]) => ({
+                      key: slug,
+                      label: MUNICIPALITY_BY_SLUG[slug]?.name ?? slug,
+                      color: "var(--app-cool)",
+                      group,
+                    }))
+                : [...byCategory.entries()]
+                    .sort((a, b) => b[1].length - a[1].length)
+                    .map(([catSlug, group]) => ({
+                      key: catSlug,
+                      label: CATEGORY_BY_SLUG[catSlug]?.name ?? catSlug,
+                      color: CATEGORY_BY_SLUG[catSlug]?.color ?? "var(--app-cool)",
+                      group,
+                    }))
+              ).map(({ key, label, color, group }) => (
+                <section key={key} className="space-y-2">
+                  <header className="flex items-baseline gap-2.5">
+                    <span
+                      aria-hidden
+                      className="block h-[3px] w-7 rounded-full"
+                      style={{ background: color }}
+                    />
+                    <h3
+                      className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                      style={{ color }}
+                    >
+                      {label}
+                    </h3>
+                    <span
+                      className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+                      style={{
+                        background: `color-mix(in srgb, ${color} 14%, transparent)`,
+                        color,
+                      }}
+                    >
+                      {group.length}
+                    </span>
+                  </header>
+                  <ul className="space-y-2">
+                    {group.map((p) => (
+                      <li key={p.slug}>
+                        <PlaceCard place={p} />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
             </div>
           ) : (
             <ul className="space-y-2">
@@ -539,7 +561,7 @@ function summarySentence(placeN: number, eventN: number, townN: number): string 
   if (eventN > 0) parts.push(`${eventN} event${eventN === 1 ? "" : "s"}`);
   let body = parts.join(" and ");
   if (placeN > 0 && townN > 1) body += ` across ${townN} town${townN === 1 ? "" : "s"}`;
-  return `${body} in your Radius.`;
+  return `${body} in your field guide.`;
 }
 
 /**
