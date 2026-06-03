@@ -74,6 +74,7 @@ export default function AppMapClient({
   autoOpenList = false,
   recenterToKnownLocation = false,
   pinpointDefault = false,
+  children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
    *  (decoratePlace)). The client must NOT re-import the loader: it
@@ -112,6 +113,10 @@ export default function AppMapClient({
   /** Pinpoint-first: open the browse map clean (no pins) until the user
    *  adds a category. Set when browsing with no server-side intent. */
   pinpointDefault?: boolean;
+  /** Overlay content for the map column (the MapIntentChips strip).
+   *  Lives inside the map column so it overlays only the map, never the
+   *  desktop list pane. */
+  children?: React.ReactNode;
 }) {
   const [inView, setInView] = useState<string[]>([]);
   const [focus, setFocus] = useState<{ slug: string; n: number } | null>(null);
@@ -147,35 +152,77 @@ export default function AppMapClient({
     [inView, bySlug, origin]
   );
 
+  // Shared by the desktop list pane and the mobile drawer so they never
+  // drift. eventsHere = events near any visible place; openCount =
+  // verified-open places in view (the headline pillar).
+  const onPick = (slug: string) =>
+    setFocus((f) => ({ slug, n: (f?.n ?? 0) + 1 }));
+  const eventsHere = useMemo(
+    () => eventsNearVisiblePlaces(events, results),
+    [events, results],
+  );
+  const openCount = useMemo(
+    () => results.filter((p) => isOpenNow(p.open_status)).length,
+    [results],
+  );
+
   // Full-bleed: the map fills the parent, the "In view" list lives
   // inside a slide-up bottom drawer that the user can collapse to a
   // peek. Standard mobile maps pattern (Apple Maps, Google Maps).
   if (fullBleed) {
     return (
-      <div className="relative h-full w-full">
-        <AppMap
-          places={places}
-          onPlacesInView={setInView}
-          focus={focus}
-          civic={civic}
-          extraAmenities={extraAmenities}
-          amenities={amenities}
-          trailLines={trailLines}
-          transitLines={transitLines}
-          municipalBoundaries={municipalBoundaries}
-          events={events}
-          fullBleed
-          recenterToKnownLocation={recenterToKnownLocation}
-          pinpointDefault={pinpointDefault}
-        />
-        <InViewDrawer
-          results={results}
-          events={events}
-          initialSnap={autoOpenList ? "half" : "peek"}
-          onPick={(slug) =>
-            setFocus((f) => ({ slug, n: (f?.n ?? 0) + 1 }))
-          }
-        />
+      // Two-pane on desktop (lg+): a persistent list pane beside the map
+      // (Apple/Google-Maps shape). Below lg it collapses to the mobile
+      // full-screen map + slide-up drawer, unchanged. Both presentations
+      // are always mounted and CSS-toggled, so the server and client
+      // trees match — no hydration mismatch from viewport-detection JS.
+      <div className="relative flex h-full w-full">
+        {/* Desktop list pane */}
+        <aside
+          className="hidden min-h-0 lg:flex lg:w-[380px] lg:shrink-0 lg:flex-col lg:overflow-hidden lg:border-r xl:w-[420px]"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+          aria-label="Places in view"
+        >
+          <InViewReadout
+            count={results.length}
+            openCount={openCount}
+            eventsCount={eventsHere.length}
+          />
+          <InViewList
+            results={results}
+            eventsHere={eventsHere}
+            onPick={onPick}
+            variant="pane"
+          />
+        </aside>
+
+        {/* Map column — fills the rest; chips overlay only this column */}
+        <div className="relative h-full w-full lg:flex-1">
+          {children}
+          <AppMap
+            places={places}
+            onPlacesInView={setInView}
+            focus={focus}
+            civic={civic}
+            extraAmenities={extraAmenities}
+            amenities={amenities}
+            trailLines={trailLines}
+            transitLines={transitLines}
+            municipalBoundaries={municipalBoundaries}
+            events={events}
+            fullBleed
+            recenterToKnownLocation={recenterToKnownLocation}
+            pinpointDefault={pinpointDefault}
+          />
+          {/* Mobile slide-up drawer — hidden on desktop (pane replaces it) */}
+          <InViewDrawer
+            results={results}
+            eventsHere={eventsHere}
+            openCount={openCount}
+            initialSnap={autoOpenList ? "half" : "peek"}
+            onPick={onPick}
+          />
+        </div>
       </div>
     );
   }
@@ -256,6 +303,155 @@ export function eventsNearVisiblePlaces(
 }
 
 /**
+ * The synced "in view" list body — shared by the mobile drawer and the
+ * desktop side pane so the two never drift. Events near the visible
+ * places are promoted above the places list (time-sensitive beats
+ * time-flat). `variant` only swaps the scroll container's chrome: the
+ * drawer reserves vertical pans for native scroll over the map canvas;
+ * the pane is a plain scroll column.
+ */
+function InViewList({
+  results,
+  eventsHere,
+  onPick,
+  variant,
+}: {
+  results: PlaceCardData[];
+  eventsHere: EventPin[];
+  onPick: (slug: string) => void;
+  variant: "drawer" | "pane";
+}) {
+  const isDrawer = variant === "drawer";
+  return (
+    <ul
+      className={
+        isDrawer
+          ? "reveal-up min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3"
+          : "min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-3"
+      }
+      style={
+        isDrawer
+          ? { touchAction: "pan-y", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }
+          : undefined
+      }
+      onTouchStart={isDrawer ? (e) => e.stopPropagation() : undefined}
+      onTouchMove={isDrawer ? (e) => e.stopPropagation() : undefined}
+    >
+      {results.length === 0 ? (
+        <li
+          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        >
+          Pan or zoom to scan this area. Places list here; tap any to open details.
+        </li>
+      ) : (
+        <>
+          {/* Events nearby — promoted ABOVE the places list when the
+              visible viewport has any. Time-sensitive beats time-flat:
+              a concert at Carroll Creek tonight should beat 12 restaurant
+              rows. Full details live on the event page. */}
+          {eventsHere.length > 0 && (
+            <li>
+              <p
+                className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                style={{ color: "var(--app-brand)" }}
+              >
+                <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                Events nearby
+              </p>
+              <ul className="space-y-1.5">
+                {eventsHere.slice(0, 5).map((e) => {
+                  const start = new Date(e.starts_at);
+                  const when = new Intl.DateTimeFormat("en-US", {
+                    timeZone: "America/New_York",
+                    weekday: "short",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }).format(start);
+                  const color = e.category_color ?? "#A8462C";
+                  return (
+                    <li key={e.slug}>
+                      <Link
+                        href={`/events/${e.slug}`}
+                        className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
+                        style={{ borderColor: "var(--app-border)", boxShadow: `inset 3px 0 0 ${color}` }}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                            {e.title}
+                          </p>
+                          <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                            {when} · {e.venue_name}
+                          </p>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p
+                className="mt-3 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                Places in view
+              </p>
+            </li>
+          )}
+          {results.map((p) => (
+            <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
+              <PlaceCard place={p} />
+            </li>
+          ))}
+        </>
+      )}
+    </ul>
+  );
+}
+
+/**
+ * Desktop pane header — the same decision facts the drawer's peek shows
+ * (count · open now · events), as a static column header.
+ */
+function InViewReadout({
+  count,
+  openCount,
+  eventsCount,
+}: {
+  count: number;
+  openCount: number;
+  eventsCount: number;
+}) {
+  return (
+    <div className="shrink-0 border-b px-4 py-3" style={{ borderColor: "var(--app-border)" }}>
+      <p className="text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+        {count === 0 ? (
+          "Showing Downtown Frederick"
+        ) : (
+          <>
+            {count} place{count === 1 ? "" : "s"}
+            {openCount > 0 && (
+              <>
+                {" · "}
+                <span style={{ color: "var(--app-positive)" }}>{openCount} open now</span>
+              </>
+            )}
+            {eventsCount > 0 && (
+              <>
+                {" · "}
+                <span style={{ color: "var(--app-brand)" }}>
+                  {eventsCount} event{eventsCount === 1 ? "" : "s"} nearby
+                </span>
+              </>
+            )}
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
+/**
  * InViewDrawer — slide-up bottom drawer inside the full-bleed map.
  * Three snap states (peek / half / full) tracked client-side. Peek
  * shows just the count + a grab handle; half + full reveal the
@@ -269,14 +465,17 @@ export function eventsNearVisiblePlaces(
  */
 function InViewDrawer({
   results,
-  events = [],
+  eventsHere,
+  openCount,
   initialSnap = "peek",
   onPick,
 }: {
   results: PlaceCardData[];
-  /** Map's event pins. The drawer filters them down to events near
-   *  the visible places via eventsNearVisiblePlaces above. */
-  events?: EventPin[];
+  /** Events near the visible places — computed once in the parent and
+   *  shared with the desktop pane so the two never drift. */
+  eventsHere: EventPin[];
+  /** Verified-open count in view — computed once in the parent. */
+  openCount: number;
   /** Snap state on mount — "half" when arriving via a category so the
    *  filtered list is visible immediately; "peek" otherwise. */
   initialSnap?: "peek" | "half" | "full";
@@ -384,15 +583,6 @@ function InViewDrawer({
     setDragPx(null);
   };
 
-  // Events whose venue is within 1.5km of any visible place. Recomputed
-  // when either the visible places change OR the event prop changes,
-  // so a time-filter switch (Now / Tonight / Weekend) refreshes the
-  // drawer's event count cleanly.
-  const eventsHere = useMemo(
-    () => eventsNearVisiblePlaces(events, results),
-    [events, results],
-  );
-
   // Category mix for the peek pill — shows the dominant categories
   // in the visible viewport as colored dots sized by share. Lets the
   // user read "mostly food + arts" at a glance without expanding.
@@ -411,21 +601,10 @@ function InViewDrawer({
       .slice(0, 6);
   }, [results]);
 
-  // "Open now" count for the readout — the app's headline pillar, and
-  // the one decision fact missing from the drawer header. Counts ONLY
-  // places we can confirm are open (verified hours → "open" or
-  // "closing-soon"); "unverified" and "unknown" are deliberately not
-  // counted, so the number never over-asserts. Reads as "at least N
-  // confirmed open right now."
-  const openCount = useMemo(
-    () => results.filter((p) => isOpenNow(p.open_status)).length,
-    [results],
-  );
-
   return (
     <div
       ref={sheetRef}
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3"
+      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3 lg:hidden"
       style={{
         height: dragPx != null ? `${dragPx}px` : heights[snap],
         // No transition while the finger is down — the sheet must track
@@ -511,102 +690,12 @@ function InViewDrawer({
         )}
       </button>
       {snap !== "peek" && (
-        <ul
-          className="reveal-up min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-3"
-          style={{
-            // The drawer sits on top of the mapbox-gl canvas, which by
-            // default claims vertical pan gestures for the map camera.
-            // touch-action: pan-y reserves vertical pans for native
-            // scroll inside the list; overscroll-behavior: contain
-            // stops the bounce from chaining back to the body / map.
-            touchAction: "pan-y",
-            overscrollBehavior: "contain",
-            WebkitOverflowScrolling: "touch",
-          }}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
-        >
-          {results.length === 0 ? (
-            <li
-              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-            >
-              Pan or zoom to scan this area. Places list here; tap any to open details.
-            </li>
-          ) : (
-            <>
-              {/* Events nearby — promoted ABOVE the places list when
-                  the visible viewport has any. Time-sensitive surfaces
-                  beat time-flat surfaces; if there's a concert at
-                  Carroll Creek tonight, the user should see it before
-                  scrolling 12 restaurant rows. Tight cards (date pill
-                  + title + venue + time) — full event details live
-                  on the event detail page. */}
-              {eventsHere.length > 0 && (
-                <li>
-                  <p
-                    className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: "var(--app-brand)" }}
-                  >
-                    <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                    Events nearby
-                  </p>
-                  <ul className="space-y-1.5">
-                    {eventsHere.slice(0, 5).map((e) => {
-                      const start = new Date(e.starts_at);
-                      const when = new Intl.DateTimeFormat("en-US", {
-                        timeZone: "America/New_York",
-                        weekday: "short",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      }).format(start);
-                      const color = e.category_color ?? "#A8462C";
-                      return (
-                        <li key={e.slug}>
-                          <Link
-                            href={`/events/${e.slug}`}
-                            className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
-                            style={{
-                              borderColor: "var(--app-border)",
-                              boxShadow: `inset 3px 0 0 ${color}`,
-                            }}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p
-                                className="truncate text-[13px] font-semibold leading-tight"
-                                style={{ color: "var(--app-ink)" }}
-                              >
-                                {e.title}
-                              </p>
-                              <p
-                                className="truncate text-[11px]"
-                                style={{ color: "var(--app-ink-3)" }}
-                              >
-                                {when} · {e.venue_name}
-                              </p>
-                            </div>
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <p
-                    className="mt-3 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                    Places in view
-                  </p>
-                </li>
-              )}
-              {results.map((p) => (
-                <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
-                  <PlaceCard place={p} />
-                </li>
-              ))}
-            </>
-          )}
-        </ul>
+        <InViewList
+          results={results}
+          eventsHere={eventsHere}
+          onPick={onPick}
+          variant="drawer"
+        />
       )}
     </div>
   );
