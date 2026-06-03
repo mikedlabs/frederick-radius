@@ -20,6 +20,7 @@ import { businessInfoFor } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
 import PlaceMiniMap from "@/components/place/PlaceMiniMap";
+import AerialBeat from "@/components/place/AerialBeat";
 import PlacePhotoGallery from "@/components/place/PlacePhotoGallery";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
 import PlaceAmenityIcons from "@/components/place/PlaceAmenityIcons";
@@ -364,6 +365,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           Location
         </h2>
         <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "#A8462C"} />
+        {/* "From above" — the nearest geotagged drone shot, when one
+            genuinely covers this spot (downtown Frederick). Self-hides
+            elsewhere so it never fakes an aerial of a place we don't have. */}
+        <AerialBeat lat={place.geom.lat} lng={place.geom.lng} label={place.city || "Frederick"} />
         <div className="flex items-start gap-2 rounded-[var(--app-radius-md)] tactile bg-[var(--app-bg-elevated)] p-3 text-sm">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-ink-3)" }} aria-hidden />
           <div>

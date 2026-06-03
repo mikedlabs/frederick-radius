@@ -12,6 +12,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import Image from "next/image";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import TownStrip from "@/components/municipality/TownStrip";
+import AerialBeat from "@/components/place/AerialBeat";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
 import CivicCard from "@/components/municipality/CivicCard";
 import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
@@ -190,6 +191,11 @@ export default async function MunicipalityPage(
       <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
         {m.description}
       </p>
+
+      {/* "{Town} from above" — the nearest geotagged drone shot. Only the
+          towns the aerial archive actually covers (Frederick) render this;
+          everywhere else it self-hides rather than fake an aerial. */}
+      <AerialBeat lat={m.centroid.lat} lng={m.centroid.lng} label={m.name} maxMeters={1500} />
 
       {/* Buried-civic answers — the moat. Town hall, trash/recycling,
           permits, utilities, with source + freshness. Self-hides until

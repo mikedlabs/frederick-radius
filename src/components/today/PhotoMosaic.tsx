@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { PHOTOGENIC_CATEGORIES } from "@/lib/photogenic";
 
 /**
  * "Looks like Frederick" — a six-tile photographic grid of real
@@ -21,16 +22,8 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
  * page shows coffee photos). Default: countywide ranked pool.
  */
 
-// Visual-feed whitelist. Per the design audits: PhotoMosaic was
-// surfacing parking decks, driving schools, and county offices —
-// destroying the curated feel. Only show categories someone would
-// want a photo of.
-const PHOTOGENIC_CATEGORIES: ReadonlySet<string> = new Set([
-  "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
-  "park", "trail", "outdoors", "playground",
-  "museum", "gallery", "theater", "music", "public-art",
-  "market", "lodging", "family",
-]);
+// Visual-feed whitelist now lives in @/lib/photogenic (shared with the
+// FunnelFlow topic grid) so the two never drift apart.
 
 function pickPhotos(count: number, dayIdx: number, pool: PlaceCardData[]) {
   const withPhotos = pool.filter(
