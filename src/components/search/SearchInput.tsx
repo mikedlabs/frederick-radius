@@ -31,7 +31,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
         name="q"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search Frederick — places, events, parking…"
+        placeholder="Search places, events, towns…"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"

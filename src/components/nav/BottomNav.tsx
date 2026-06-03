@@ -75,7 +75,10 @@ export default function BottomNav() {
         aria-label="Primary"
         className="pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden rounded-full"
         style={{
-          background: "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+          // Fully opaque so scroll content never ghosts through the pill
+          // (the audit caught tiles/headers bleeding at 92%). Blur kept for
+          // a faint frosted edge; with a solid fill it's purely aesthetic.
+          background: "var(--app-bg-elevated-solid)",
           backdropFilter: "blur(22px) saturate(1.15)",
           WebkitBackdropFilter: "blur(22px) saturate(1.15)",
           border: "1px solid var(--app-border)",

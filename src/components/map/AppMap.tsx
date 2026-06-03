@@ -829,7 +829,7 @@ export default function AppMap({
         setLocating(false);
         setGeoMsg(
           err && err.code === 1
-            ? "Location is off — enable it in your browser to use Near me."
+            ? "Location is off. Enable it in your browser to use Near me."
             : "Couldn't get your location. Try again.",
         );
       },

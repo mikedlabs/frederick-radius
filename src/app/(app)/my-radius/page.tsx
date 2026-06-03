@@ -83,7 +83,7 @@ export default async function MyRadiusPage() {
               className="block text-[11.5px]"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Magic link — no password. Your current list comes with you.
+              Magic link, no password. Your current list comes with you.
             </span>
           </span>
           <span

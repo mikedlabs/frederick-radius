@@ -589,7 +589,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
           <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
             Follow the places you care about, and this page becomes your
             personal view of Frederick County. Tap the bookmark on anything in
-            the field guide and it lands here — things you&apos;ve been meaning
+            the field guide and it lands here: things you&apos;ve been meaning
             to try, dates worth a return visit, or a short list to send a
             friend who&apos;s coming through town.
           </p>

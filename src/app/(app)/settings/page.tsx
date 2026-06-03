@@ -126,7 +126,7 @@ export default async function SettingsPage() {
                 className="block text-[11.5px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                Magic link — no password. My Radius comes with you.
+                Magic link, no password. My Radius comes with you.
               </span>
             </span>
             <span
