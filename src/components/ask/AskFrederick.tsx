@@ -64,7 +64,7 @@ export default function AskFrederick() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Ask anything — “coffee open now near me”"
+          placeholder="Ask anything, like “coffee open now near me”"
           className="h-11 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--app-ink-3)]"
           style={{ color: "var(--app-ink)" }}
           aria-label="Ask Radius a question"

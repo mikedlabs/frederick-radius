@@ -27,7 +27,7 @@ export default function TwoDoors({
         variant="eat"
         eyebrow="Eat & drink"
         title="Find somewhere good"
-        blurb="The places locals send people to — open now, a short walk away."
+        blurb="The places locals send people to, open now and a short walk away."
         meta={openCount ? `${openCount} open now` : "Open now"}
         emoji="🍴"
       />
@@ -36,7 +36,7 @@ export default function TwoDoors({
         variant="weekend"
         eyebrow="Going on"
         title="What's on this weekend"
-        blurb="The can't-miss few — festivals, music and markets you'd be sad to miss."
+        blurb="The can't-miss few: festivals, music and markets you'd be sad to miss."
         meta={
           weekendCount
             ? `${weekendCount} this weekend`

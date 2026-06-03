@@ -861,7 +861,7 @@ export default function RadiusBuilder({
                 className="mt-0.5 text-[12px] leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                Center the radius on your spot. Stays in your browser &mdash; we don&rsquo;t store it.
+                Center the radius on your spot. Stays in your browser. We don&rsquo;t store it.
               </p>
               <button
                 type="button"

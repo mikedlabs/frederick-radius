@@ -86,9 +86,9 @@ const LENSES: Lens[] = [
 type Elsewhere = { href: string; label: string; icon: LucideIcon };
 const ELSEWHERE: Elsewhere[] = [
   { href: "/events",      label: "What's on",                icon: CalendarDays },
-  { href: "/pulse",       label: "Right now in the county",  icon: Activity },
+  { href: "/pulse",       label: "County pulse",  icon: Activity },
   { href: "/map",         label: "Browse the map",           icon: MapPin },
-  { href: "/collections", label: "Editorial collections",    icon: Layers },
+  { href: "/collections", label: "Collections",    icon: Layers },
 ];
 
 export default function FunnelFlow({
@@ -306,7 +306,7 @@ export default function FunnelFlow({
       <AnimatePresence mode="wait" initial={false}>
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
-            <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Pick one — it narrows from there." />
+            <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Pick one. It narrows from there." />
             {/* Ask Frederick — the concierge: one box that answers from
                 real data. Sits above the grid as the fastest path. */}
             <div className="mb-5">
@@ -493,11 +493,11 @@ export default function FunnelFlow({
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {sort === "nearest"
-                      ? "Closest first — tap any for hours, photos & reviews."
+                      ? "Closest first. Tap any for hours, photos & reviews."
                       : sort === "rated"
-                        ? "Highest-rated first (enough reviews to be real) — tap any for hours, photos & reviews."
+                        ? "Highest-rated first (enough reviews to be real). Tap any for hours, photos & reviews."
                         : geo.status === "granted"
-                          ? "Ranked by the best balance of nearby & well-loved — tap any for hours, photos & reviews."
+                          ? "Ranked by the best balance of nearby & well-loved. Tap any for hours, photos & reviews."
                           : "Ranked by our most useful, best-reviewed picks. Turn on location for the best nearby."}
                   </motion.li>
                 )}
