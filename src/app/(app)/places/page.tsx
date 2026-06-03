@@ -19,6 +19,7 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import { publicPlaces } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import { INTENT_BY_KEY } from "@/data/intents";
 
 /**
@@ -455,42 +456,11 @@ export default function PlacesIndexPage() {
         >
           By town
         </h2>
-        <ul
-          className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-3"
-          aria-label="Browse places by town"
-        >
-          {townCounts.map((m) => (
-            <li key={m.slug}>
-              <Link
-                href={`/m/${m.slug}`}
-                className="hover-lift flex items-center justify-between gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
-                style={{ borderColor: "var(--app-border)" }}
-              >
-                <span className="min-w-0 flex-1">
-                  <span
-                    className="block truncate text-[13px] font-semibold"
-                    style={{ color: "var(--app-ink)" }}
-                  >
-                    {m.name}
-                  </span>
-                  <span
-                    className="block text-[11px]"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {m.n.toLocaleString()}{" "}
-                    {m.n === 1 ? "place" : "places"}
-                  </span>
-                </span>
-                <ArrowRight
-                  className="h-3.5 w-3.5 shrink-0"
-                  strokeWidth={2.25}
-                  style={{ color: "var(--app-ink-3)" }}
-                  aria-hidden
-                />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {/* Alive town cards — name + this-week event count + the town's
+            next move (its soonest event), or its editorial blurb when
+            quiet. Richer than the old count-only list, and shared with
+            the rest of the app (audit E2). */}
+        <MunicipalityStrip />
       </section>
 
       {/* Search nudge — the third browsing path. Keyboard ⌘K opens

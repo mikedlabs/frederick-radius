@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CalendarDays } from "lucide-react";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { publicPlacesByMunicipality } from "@/lib/loaders/places";
 import { eventsInMunicipality } from "@/lib/loaders/events";
@@ -13,31 +14,52 @@ function accentFor(slug: string): string {
 }
 
 // "Live this week" window — anything starting in the next 7 days.
-// Tighter than "all upcoming" because the strip is a weekly briefing,
-// not a calendar dump: a town with a concert tonight should pop, a
-// town with one event 3 months out should not.
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-function eventsThisWeek(slug: string, now: Date): number {
-  const horizon = now.getTime() + WEEK_MS;
-  return eventsInMunicipality(slug, true, now).filter((e) => {
-    const t = Date.parse(e.starts_at);
-    return Number.isFinite(t) && t <= horizon;
-  }).length;
+
+// Short, alive day label for a town's next event: Today / Tomorrow, then
+// the weekday. Keeps the "featured move" line time-sensitive.
+function dayLabel(iso: string, now: Date): string {
+  const d = new Date(iso);
+  const key = (dt: Date) =>
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/New_York",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(dt);
+  if (key(d) === key(now)) return "Today";
+  if (key(d) === key(new Date(now.getTime() + 86_400_000))) return "Tomorrow";
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+  }).format(d);
 }
 
 /**
- * All 12 towns as a visual tile grid (not a row of pills): each tile
- * carries the town name, the hero blurb, and — when a town has events
- * starting in the next 7 days — a small "live this week" chip so the
- * county reads as places + activity, not just a directory list.
+ * All 12 towns as a visual tile grid (not a row of pills). Each tile is
+ * "alive": the town name + a live-this-week event count, and a FEATURED
+ * MOVE — the town's next upcoming event, time-stamped, so the card
+ * answers "what's the move here?" (audit E2). A town with nothing on
+ * falls back to its editorial hero blurb, so a quiet town reads as
+ * character, not emptiness — time-sensitive beats time-flat, but silence
+ * still says something true.
  */
 export default function MunicipalityStrip() {
   const now = new Date();
-  const towns = MUNICIPALITIES.map((m) => ({
-    ...m,
-    count: publicPlacesByMunicipality(m.slug).length,
-    weekEvents: eventsThisWeek(m.slug, now),
-  })).sort((a, b) => b.count - a.count);
+  const horizon = now.getTime() + WEEK_MS;
+  const towns = MUNICIPALITIES.map((m) => {
+    // One events read per town, reused for BOTH the week count and the
+    // featured move — sorted soonest-first so [0] is the next move.
+    const events = eventsInMunicipality(m.slug, true, now)
+      .filter((e) => Number.isFinite(Date.parse(e.starts_at)))
+      .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+    return {
+      ...m,
+      count: publicPlacesByMunicipality(m.slug).length,
+      weekEvents: events.filter((e) => Date.parse(e.starts_at) <= horizon).length,
+      next: events[0] ?? null,
+    };
+  }).sort((a, b) => b.count - a.count);
 
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -63,10 +85,9 @@ export default function MunicipalityStrip() {
                 {m.name}
               </span>
               {/* Live-this-week chip — only renders when a town has
-                  events starting in the next 7 days. Quiet
-                  positive-tinted text + dot, no border or filled pill,
-                  so it reads as a signal not a button. Hidden entirely
-                  when zero (silence is the honest cue). */}
+                  events starting in the next 7 days. Quiet positive-tinted
+                  text + dot, no border or filled pill, so it reads as a
+                  signal not a button. Hidden when zero (silence is honest). */}
               {m.weekEvents > 0 && (
                 <span
                   className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium"
@@ -82,17 +103,37 @@ export default function MunicipalityStrip() {
                 </span>
               )}
             </div>
-            {/* The hero_blurb already lives on each municipality
-                (used on /m/[slug] and search results). Surfacing it
-                here makes the strip read as editorial rather than
-                a list of names. Falls back to the place count if a
-                town doesn't have a blurb yet. */}
-            <span
-              className="block truncate text-[11px] leading-snug"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {m.hero_blurb || (m.count > 0 ? `${m.count} ${m.count === 1 ? "place" : "places"}` : m.type)}
-            </span>
+            {/* Featured move — the town's next event, time-stamped, so the
+                card answers "what's the move here?" When nothing is
+                upcoming, fall back to the editorial blurb (character over
+                emptiness), then the place count. */}
+            {m.next ? (
+              <span
+                className="mt-0.5 flex items-center gap-1 text-[11px] leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                <CalendarDays
+                  className="h-3 w-3 shrink-0"
+                  strokeWidth={2.25}
+                  style={{ color: accent }}
+                  aria-hidden
+                />
+                <span className="min-w-0 truncate">
+                  <span className="font-semibold" style={{ color: accent }}>
+                    {dayLabel(m.next.starts_at, now)}
+                  </span>
+                  {" · "}
+                  {m.next.title}
+                </span>
+              </span>
+            ) : (
+              <span
+                className="mt-0.5 block truncate text-[11px] leading-snug"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {m.hero_blurb || (m.count > 0 ? `${m.count} ${m.count === 1 ? "place" : "places"}` : m.type)}
+              </span>
+            )}
           </Link>
         );
       })}
