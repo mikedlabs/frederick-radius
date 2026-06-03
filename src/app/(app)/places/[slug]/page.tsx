@@ -421,6 +421,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             title={place.name}
             text={safeBlurb(place)}
             url={`/places/${place.slug}`}
+            imageUrl={`/api/og?type=place&slug=${place.slug}&format=story`}
           />
         </div>
       </footer>

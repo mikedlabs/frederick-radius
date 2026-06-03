@@ -29,6 +29,9 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const type = url.searchParams.get("type") ?? "site";
   const slug = url.searchParams.get("slug") ?? "";
+  // Portrait 1080×1920 variant for Instagram / Facebook Stories sharing
+  // (?format=story). The default 1200×630 stays the link-preview card.
+  const story = (url.searchParams.get("format") ?? "") === "story";
 
   let title = "Frederick Radius";
   // The homepage share card. Says what the product does rather than the
@@ -110,6 +113,15 @@ export async function GET(request: Request) {
   const SERIF = "Newsreader, 'Iowan Old Style', Georgia, 'Times New Roman', serif";
   const ITALIC = "'Instrument Serif', Newsreader, Georgia, serif";
 
+  // Story (portrait) scales type + padding up for the taller 1080×1920
+  // canvas; the landscape 1200×630 keeps its tuned sizes.
+  const PAD = story ? 88 : 80;
+  const MAST = story ? 30 : 24;
+  const KICK = story ? 28 : 24;
+  const TITLE = story ? 104 : 88;
+  const BLURB = story ? 40 : 32;
+  const FOOT = story ? 26 : 22;
+
   return new ImageResponse(
     (
       <div
@@ -119,7 +131,7 @@ export async function GET(request: Request) {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          padding: 80,
+          padding: PAD,
           background: `linear-gradient(135deg, ${PAPER} 0%, ${PAPER_2} 100%)`,
           fontFamily: SERIF,
         }}
@@ -130,7 +142,7 @@ export async function GET(request: Request) {
             display: "flex",
             alignItems: "center",
             gap: 16,
-            fontSize: 24,
+            fontSize: MAST,
             fontWeight: 600,
             color: accent,
             letterSpacing: -0.5,
@@ -165,7 +177,7 @@ export async function GET(request: Request) {
               reads as field-guide kicker regardless of fallback. */}
           <div
             style={{
-              fontSize: 24,
+              fontSize: KICK,
               color: INK_3,
               letterSpacing: 3,
               textTransform: "uppercase",
@@ -178,7 +190,7 @@ export async function GET(request: Request) {
           <div
             style={{
               fontFamily: SERIF,
-              fontSize: 88,
+              fontSize: TITLE,
               fontWeight: 700,
               color: INK,
               letterSpacing: -2,
@@ -197,7 +209,7 @@ export async function GET(request: Request) {
               style={{
                 fontFamily: ITALIC,
                 fontStyle: "italic",
-                fontSize: 32,
+                fontSize: BLURB,
                 color: INK_2,
                 lineHeight: 1.25,
                 maxWidth: 900,
@@ -221,7 +233,7 @@ export async function GET(request: Request) {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "flex-end",
-              fontSize: 22,
+              fontSize: FOOT,
               color: INK_2,
             }}
           >
@@ -234,6 +246,6 @@ export async function GET(request: Request) {
         </div>
       </div>
     ),
-    { width: 1200, height: 630 },
+    { width: story ? 1080 : 1200, height: story ? 1920 : 630 },
   );
 }
