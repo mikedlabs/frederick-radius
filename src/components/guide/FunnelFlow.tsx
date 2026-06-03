@@ -231,6 +231,7 @@ export default function FunnelFlow({
 
   const back = () => {
     haptic("light");
+    setOpenOnly(false); // returning toward the front door clears the open-now filter so the next lane starts fresh
     if (lens) {
       setLens(null);
       return;

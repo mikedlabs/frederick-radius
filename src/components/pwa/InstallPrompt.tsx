@@ -17,7 +17,7 @@ export default function InstallPrompt() {
 
   return (
     <div
-      role="dialog"
+      role="complementary"
       aria-labelledby="install-title"
       className="pop-in fixed inset-x-3 bottom-20 z-40 mx-auto max-w-sm overflow-hidden rounded-[var(--app-radius-xl)] border backdrop-blur-md"
       style={{
