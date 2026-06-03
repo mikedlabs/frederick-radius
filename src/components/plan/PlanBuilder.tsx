@@ -649,7 +649,7 @@ export default function PlanBuilder({
             </div>
           ) : (
             <ol
-              className="stagger relative space-y-3 pl-10"
+              className="reveal-up relative space-y-3 pl-10"
               aria-label="Plan stops, in order"
             >
               {/* The vertical thread between stop nodes — gradient

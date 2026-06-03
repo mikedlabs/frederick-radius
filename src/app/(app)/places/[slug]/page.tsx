@@ -149,7 +149,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   };
 
   return (
-    <div className="space-y-6 stagger">
+    <div className="space-y-6 reveal-up">
       {/* Records this slug into the device-local recent-places list
           so /my-radius can show "Recently viewed". Client island so
           the rest of the page stays a server component. */}
