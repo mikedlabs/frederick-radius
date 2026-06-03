@@ -51,6 +51,8 @@ export function cuisineLabel(slug: string): string {
   return CUISINE_LABEL[slug] ?? slug;
 }
 
+import { classifyDescription } from "@/lib/copy-quality";
+
 type PlaceLike = {
   name: string;
   short_blurb?: string;
@@ -129,5 +131,8 @@ export function knownFor(p: PlaceLike): string | null {
   // "Name · 123 Main St" boilerplate (no real sentence).
   if (/·\s*\d+\s+\S/.test(b) && b.split(/\s+/).length < 9) return null;
   if (b.length < 16) return null;
+  // Final quality gate — rejects phone numbers, contact CTAs, links, and the
+  // other scraped tells the name/address cleaning above doesn't catch.
+  if (classifyDescription(name, b) === "scraped") return null;
   return b;
 }
