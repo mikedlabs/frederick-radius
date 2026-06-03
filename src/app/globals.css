@@ -40,26 +40,28 @@
   --app-paper: #F4EFE6;           /* warm almanac cream */
   --app-paper-2: #ECE5D5;         /* slightly deeper paper */
 
-  --app-bg: #EAE0CC;              /* warm almanac ground — deepened so empty space reads
-                                     rich, not white, and cards pop harder (ink-3 ≥4.9:1) */
+  --app-bg: #E5D8BF;              /* warm almanac ground — deepened a second notch so the
+                                     empty canvas reads as printed paper, not white; cards
+                                     pop hard against it (ink-3 holds ≥4.5:1 AA) */
   /* --app-bg-elevated is slightly translucent so the PageBloom aurora
      orbs tint cards from behind — the "glass" effect that lets the
      animated background read THROUGH the dense card stacks. Modals,
      sheets, popups that need full opacity should set their bg to
      --app-bg-elevated-solid instead. */
-  --app-bg-elevated-solid: #FCF7EC;  /* warm cream card — off pure-white so the app reads
+  --app-bg-elevated-solid: #F7F0E0;  /* warm cream card — off pure-white so the app reads
                                         as printed paper, not a white SaaS dashboard */
-  --app-bg-elevated: color-mix(in srgb, #FCF7EC 93%, transparent);
-  --app-bg-sunken: #E3D9C5;       /* deeper sunken, kept below the new ground (ink-3 ≥4.5:1) */
+  --app-bg-elevated: color-mix(in srgb, #F7F0E0 93%, transparent);
+  --app-bg-sunken: #E1D5BF;       /* deeper sunken, kept below the new ground (ink-3 ≥4.5:1) */
   --app-border: #D6CDBB;          /* warm hairline, a touch crisper */
   --app-border-strong: rgba(26, 24, 21, 0.10);
 
   --app-ink: #1A1815;             /* warm ink (was #1A1A1A) */
   --app-ink-2: #4A4844;
-  --app-ink-3: #615F55;           /* WCAG AA: ≥4.5:1 on bg/sunken/elevated. Darkened from
+  --app-ink-3: #5C5A50;           /* WCAG AA: ≥4.5:1 on bg/sunken/elevated. Darkened from
                                      #6A6862 after the v3 redesign deepened --app-bg-sunken
                                      to #E6DECE, which dropped small ink-3 text to 4.16:1
-                                     (Lighthouse-caught). Now 4.79 on sunken, 5.26 on bg. */
+                                     (Lighthouse-caught), then re-darkened to #5C5A50 for the
+                                     v4 deeper canvas. Now 4.77 on sunken, 4.91 on bg. */
   --app-ink-inverse: #F4EFE6;     /* paper cream on dark */
 
   --app-brand: #A03A22;           /* Frederick brick — deepened + saturated for the v3 refresh */
