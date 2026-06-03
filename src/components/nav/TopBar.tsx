@@ -45,48 +45,12 @@ function useHideOnScroll(disabled: boolean) {
   return disabled ? false : scrollHidden;
 }
 
-/**
- * Rotating placeholder prompts inside the search pill. A static
- * "Search the county" reads as a generic input affordance; rotating
- * concrete questions advertises what the search actually knows — a
- * coffee shop open right now, tonight's live music, Carroll Creek,
- * a date-night plan. Apple Maps and Google's home-bar do the same
- * thing for the same reason: nothing else on a header tells a new
- * user the shape of what's inside.
- *
- * Order is deterministic; cycle is ~4s with a 220ms cross-fade so
- * the change is felt, not read mid-rotation. Stops while the search
- * overlay is open so the user isn't watching prompts swap behind
- * the modal.
- */
-const SEARCH_PROMPTS = [
-  "What's open right now?",
-  "Live music tonight?",
-  "Coffee near me",
-  "This weekend with the kids",
-  "Dinner reservations tonight",
-  "Hiking near downtown",
-] as const;
-
-function useRotatingPrompt(paused: boolean) {
-  const [idx, setIdx] = useState(0);
-  useEffect(() => {
-    if (paused) return;
-    const t = window.setInterval(() => {
-      setIdx((i) => (i + 1) % SEARCH_PROMPTS.length);
-    }, 4000);
-    return () => window.clearInterval(t);
-  }, [paused]);
-  return SEARCH_PROMPTS[idx];
-}
-
 export default function TopBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const hidden = useHideOnScroll(searchOpen);
-  const prompt = useRotatingPrompt(searchOpen);
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -134,7 +98,7 @@ export default function TopBar() {
   return (
     <>
       <header
-        className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)]/85 backdrop-blur-md pt-[env(safe-area-inset-top)]"
+        className="sticky top-0 border-b border-[var(--app-border)] bg-[var(--app-bg)]/90 backdrop-blur-sm pt-[env(safe-area-inset-top)]"
         style={{
           // Tokenized z-index — see globals.css :root --z-* scale.
           zIndex: "var(--z-sticky)",
@@ -143,7 +107,7 @@ export default function TopBar() {
           willChange: "transform",
         }}
       >
-        <div className="mx-auto flex h-14 max-w-screen-md items-center gap-3 px-4">
+        <div className="mx-auto flex h-14 max-w-screen-md items-center gap-2 px-4">
           {isDeepPage ? (
             // Deep page: a clear way back, so no screen is a dead-end.
             <button
@@ -170,7 +134,11 @@ export default function TopBar() {
               >
                 <Disc />
               </span>
-              <span className="leading-tight">
+              {/* Wordmark hides on the narrowest phones so the search
+                  pill gets real room (it was clipping to "Se…"); the
+                  disc mark alone carries the brand there. Full lockup
+                  returns from sm: up. */}
+              <span className="hidden leading-tight sm:block">
                 Frederick
                 <span className="block text-[10px] font-medium uppercase tracking-[0.14em] -mt-0.5" style={{ color: "var(--app-ink-3)" }}>
                   Radius
@@ -188,18 +156,17 @@ export default function TopBar() {
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Search places, events, towns"
-            className="ml-2 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
+            className="ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-            {/* Rotating prompt. Keyed on the prompt itself so React
-                remounts the span — pairs with the keyframe fade so a
-                new prompt slides in cleanly without a layout jump. */}
-            <span
-              key={prompt}
-              className="truncate text-left animate-[fadePrompt_360ms_var(--app-ease-out)_both]"
-            >
-              {prompt}
+            {/* Calm, static placeholder — short on phones so it never
+                clips, a concrete capability hint from sm: up. Replaces
+                the rotating-prompt motion the design audit flagged as
+                header noise. */}
+            <span className="truncate text-left">
+              <span className="sm:hidden">What&apos;s open?</span>
+              <span className="hidden sm:inline">What&apos;s open right now?</span>
             </span>
             <kbd
               className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
