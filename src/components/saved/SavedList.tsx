@@ -30,6 +30,15 @@ const SORT_OPTIONS: ReadonlyArray<SortOption<SavedSortKey>> = [
 
 const SAVED_SORT_STORAGE_KEY = "fr.saved-sort";
 
+// Deterministic per-town accent so each town reads as its own colored
+// "chapter" of the field guide (matches the town grid on /places).
+const TOWN_ACCENTS = ["#A8462C", "#2F5470", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
+function townAccent(slug: string): string {
+  let h = 0;
+  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;
+  return TOWN_ACCENTS[Math.abs(h) % TOWN_ACCENTS.length];
+}
+
 type DecoratedEvent = ReturnType<typeof decorateEvent>;
 
 function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
@@ -325,6 +334,34 @@ export default function SavedList() {
           >
             {summarySentence(places.length, events.length, townTally.size)}
           </p>
+          {/* Stat scoreboard — a quick, visual read of the collection. */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-brand)" }}
+            >
+              <Bookmark className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              {places.length} {places.length === 1 ? "place" : "places"}
+            </span>
+            {townTally.size > 0 && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                style={{ background: "color-mix(in srgb, var(--app-cool) 12%, transparent)", color: "var(--app-cool)" }}
+              >
+                <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                {townTally.size} {townTally.size === 1 ? "town" : "towns"}
+              </span>
+            )}
+            {events.length > 0 && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                style={{ background: "color-mix(in srgb, var(--app-positive) 12%, transparent)", color: "var(--app-positive)" }}
+              >
+                <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                {events.length} {events.length === 1 ? "event" : "events"}
+              </span>
+            )}
+          </div>
           <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
             On this device · sign-in to sync across devices coming soon
           </p>
@@ -405,47 +442,69 @@ export default function SavedList() {
             />
           </header>
           {sort === "town" || sort === "category" ? (
-            <div className="space-y-5">
+            <div className="space-y-4">
               {(sort === "town"
                 ? [...byTown.entries()]
                     .sort((a, b) => b[1].length - a[1].length)
-                    .map(([slug, group]) => ({
-                      key: slug,
-                      label: MUNICIPALITY_BY_SLUG[slug]?.name ?? slug,
-                      color: "var(--app-cool)",
-                      group,
-                    }))
+                    .map(([slug, group]) => {
+                      const m = MUNICIPALITY_BY_SLUG[slug];
+                      return {
+                        key: slug,
+                        label: m?.name ?? slug,
+                        color: townAccent(slug),
+                        // The town's identity line — its one-liner fact,
+                        // else population — turns a header into a chapter.
+                        subtitle: m?.fact ?? (m ? `pop. ${m.population.toLocaleString()}` : null),
+                        group,
+                      };
+                    })
                 : [...byCategory.entries()]
                     .sort((a, b) => b[1].length - a[1].length)
                     .map(([catSlug, group]) => ({
                       key: catSlug,
                       label: CATEGORY_BY_SLUG[catSlug]?.name ?? catSlug,
                       color: CATEGORY_BY_SLUG[catSlug]?.color ?? "var(--app-cool)",
+                      subtitle: null as string | null,
                       group,
                     }))
-              ).map(({ key, label, color, group }) => (
+              ).map(({ key, label, color, subtitle, group }) => (
                 <section key={key} className="space-y-2">
-                  <header className="flex items-baseline gap-2.5">
+                  {/* Chapter header — an accent-tinted band in the town's
+                      own color, with a serif name + count + identity line,
+                      so each section reads as its own page of the guide. */}
+                  <header
+                    className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2"
+                    style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}
+                  >
                     <span
                       aria-hidden
-                      className="block h-[3px] w-7 rounded-full"
+                      className="block h-7 w-1.5 shrink-0 rounded-full"
                       style={{ background: color }}
                     />
-                    <h3
-                      className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                      style={{ color }}
-                    >
-                      {label}
-                    </h3>
-                    <span
-                      className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-                      style={{
-                        background: `color-mix(in srgb, ${color} 14%, transparent)`,
-                        color,
-                      }}
-                    >
-                      {group.length}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <h3
+                          className="truncate font-serif text-[15px] font-semibold tracking-tight"
+                          style={{ color: "var(--app-ink)" }}
+                        >
+                          {label}
+                        </h3>
+                        <span
+                          className="shrink-0 rounded-full px-1.5 text-[10px] font-bold tabular-nums"
+                          style={{ background: `color-mix(in srgb, ${color} 18%, transparent)`, color }}
+                        >
+                          {group.length}
+                        </span>
+                      </div>
+                      {subtitle && (
+                        <p
+                          className="truncate text-[11px] leading-tight"
+                          style={{ color: "var(--app-ink-3)" }}
+                        >
+                          {subtitle}
+                        </p>
+                      )}
+                    </div>
                   </header>
                   <ul className="space-y-2">
                     {group.map((p) => (
