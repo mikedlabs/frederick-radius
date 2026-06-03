@@ -1302,28 +1302,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background-size: 24px 24px;
 }
 
-/* Entrance: stagger children on first paint. CSS-only and SSR-safe —
- * content is visible by default; ONLY the first render animates (via
- * @starting-style, same proven pattern as .fade-up). The global
- * reduced-motion rule zeroes the durations. */
-.stagger > * {
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    opacity 520ms var(--app-ease-out),
-    transform 520ms var(--app-ease-out);
-}
-@starting-style {
-  .stagger > * { opacity: 0; transform: translateY(10px); }
-}
-.stagger > *:nth-child(1) { transition-delay: 40ms; }
-.stagger > *:nth-child(2) { transition-delay: 90ms; }
-.stagger > *:nth-child(3) { transition-delay: 140ms; }
-.stagger > *:nth-child(4) { transition-delay: 190ms; }
-.stagger > *:nth-child(5) { transition-delay: 240ms; }
-.stagger > *:nth-child(6) { transition-delay: 290ms; }
-.stagger > *:nth-child(n + 7) { transition-delay: 340ms; }
-
 /* ─────────────────────────────────────────────────────
  * .reveal-up — opt-in entrance animation for lists of cards.
  * Children fade + lift on mount with a staggered cascade so
@@ -1338,11 +1316,6 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
  *     <li>…</li>     // delay 100ms
  *     …
  *   </ul>
- *
- * Pairs naturally with the .stagger class above (which uses
- * @starting-style + opacity-only). reveal-up adds the 6px lift
- * and a tighter 50ms step that reads as decisive instead of
- * languid.
  * ───────────────────────────────────────────────────── */
 .reveal-up > * {
   opacity: 1;
