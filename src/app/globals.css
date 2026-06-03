@@ -40,15 +40,17 @@
   --app-paper: #F4EFE6;           /* warm almanac cream */
   --app-paper-2: #ECE5D5;         /* slightly deeper paper */
 
-  --app-bg: #EFE8DA;              /* deeper warm paper ground (richer; lets cards pop) */
+  --app-bg: #EAE0CC;              /* warm almanac ground — deepened so empty space reads
+                                     rich, not white, and cards pop harder (ink-3 ≥4.9:1) */
   /* --app-bg-elevated is slightly translucent so the PageBloom aurora
      orbs tint cards from behind — the "glass" effect that lets the
      animated background read THROUGH the dense card stacks. Modals,
      sheets, popups that need full opacity should set their bg to
      --app-bg-elevated-solid instead. */
-  --app-bg-elevated-solid: #FFFDF8;
-  --app-bg-elevated: color-mix(in srgb, #FFFDF8 93%, transparent);
-  --app-bg-sunken: #E6DECE;       /* deeper sunken to read against brighter cards */
+  --app-bg-elevated-solid: #FCF7EC;  /* warm cream card — off pure-white so the app reads
+                                        as printed paper, not a white SaaS dashboard */
+  --app-bg-elevated: color-mix(in srgb, #FCF7EC 93%, transparent);
+  --app-bg-sunken: #E3D9C5;       /* deeper sunken, kept below the new ground (ink-3 ≥4.5:1) */
   --app-border: #D6CDBB;          /* warm hairline, a touch crisper */
   --app-border-strong: rgba(26, 24, 21, 0.10);
 
