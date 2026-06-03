@@ -37,7 +37,6 @@ const ROUTE_ACCENTS: Record<string, string> = {
   "/m": "var(--app-brand-2)",     // municipalities — green
   "/parks": "var(--app-brand-2)",
   "/trails": "var(--app-brand-2)",
-  "/trail": "var(--app-brand-2)",
   "/water": "var(--app-cool)",
   "/transit": "var(--app-cool)",
   // /category is handled specially below — falls back to --app-cool

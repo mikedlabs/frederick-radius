@@ -1,10 +1,8 @@
 {
   "note": "Pre-existing STYLE.md debt. Burn down, owner-reviewed; do not grow.",
-  "generated": "2026-05-25T19:37:33.126Z",
-  "count": 11,
+  "generated": "2026-06-03T21:16:59.619Z",
+  "count": 9,
   "entries": [
-    "src/app/(app)/trail/page.tsx|craft|Maryland's leading craft beverage region — winer…",
-    "src/app/(app)/trail/page.tsx|craft|…County, MD — Maryland's craft beverage capital.",
     "src/components/marketing/scenes/IntroScene.tsx|ecosystem|…A unified digital ecosystem connecting 12 communiti…",
     "src/components/marketing/scenes/Scene03_NoiseToSignal.tsx|ecosystem|…One ecosystem for",
     "src/components/marketing/scenes/Scene07_Ecosystem.tsx|ecosystem|…r personas. One unified ecosystem.",
