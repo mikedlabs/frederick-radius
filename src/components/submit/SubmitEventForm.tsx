@@ -64,7 +64,7 @@ export default function SubmitEventForm() {
         <div className="mx-auto grid h-12 w-12 place-items-center rounded-full" style={{ background: "var(--app-positive)" }}>
           <Check className="h-6 w-6 text-white" strokeWidth={2.5} aria-hidden />
         </div>
-        <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks — submitted</h2>
+        <h2 className="font-serif text-xl font-semibold" style={{ color: "var(--app-ink)" }}>Thanks, submitted</h2>
         <p className="text-sm" style={{ color: "var(--app-ink-2)" }}>We&apos;ll review and reach out within 3 business days.</p>
         <Link href="/" className="inline-block text-sm font-semibold" style={{ color: "var(--app-cool)" }}>Back to Frederick Radius →</Link>
       </div>
