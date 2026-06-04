@@ -4,7 +4,7 @@ import { publicPlacesByMunicipality, decoratePlace } from "@/lib/loaders/places"
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PHOTOGENIC_CATEGORIES } from "@/lib/photogenic";
-import { nearestAerial, currentSeason, highestAerial } from "@/lib/aerial";
+import { currentSeason, highestAerial, nearestPerSeason } from "@/lib/aerial";
 import { isOpenNow } from "@/lib/hours";
 
 /**
@@ -29,11 +29,11 @@ export const revalidate = 600;
 export default async function FlyPage({
   searchParams,
 }: {
-  searchParams: Promise<{ to?: string; open?: string }>;
+  searchParams: Promise<{ to?: string; open?: string; season?: string }>;
 }) {
-  // Prototype affordance: ?to=ground (and ?open=<slug>) deep-link a stage
-  // so the descent/morph end-states are directly loadable for review.
-  const { to, open } = await searchParams;
+  // Prototype affordance: ?to=ground, ?open=<slug>, ?season=<s> deep-link
+  // a stage/season so the end-states are directly loadable for review.
+  const { to, open, season: seasonParam } = await searchParams;
   const fred = MUNICIPALITY_BY_SLUG["frederick"];
   const places = publicPlacesByMunicipality("frederick")
     .map((p) => decoratePlace(p, fred?.centroid))
@@ -51,19 +51,33 @@ export default async function FlyPage({
 
   const season = currentSeason();
   const high = highestAerial();
-  const ground =
-    nearestAerial(fred?.centroid ?? { lng: high.lng, lat: high.lat }, {
-      maxMeters: 4000,
-      preferSeason: season,
-    }) ?? high;
-  const groundMeta = `${season.charAt(0).toUpperCase()}${season.slice(1)} · ~${Math.round(ground.altM ?? 0)}m up`;
+  const center = fred?.centroid ?? { lng: high.lng, lat: high.lat };
+
+  // The nearest downtown shot in EACH season — so the viewer can fly the
+  // same place across the year. Each photo's season is its own (folder +
+  // manifest), never the current-date guess.
+  const per = nearestPerSeason(center);
+  const ORDER = ["spring", "summer", "fall", "winter"] as const;
+  const seasons = ORDER.filter((s) => per[s]).map((s) => ({
+    key: s,
+    src: per[s]!.src,
+    altM: Math.round(per[s]!.altM ?? 0),
+  }));
+  const isSeason = (s?: string): s is (typeof ORDER)[number] =>
+    !!s && (ORDER as readonly string[]).includes(s);
+  const initialSeason =
+    isSeason(seasonParam) && per[seasonParam]
+      ? seasonParam
+      : per[season]
+        ? season
+        : seasons[0]?.key ?? "summer";
 
   return (
     <FlyExperience
       highSrc={high.src}
-      groundSrc={ground.src}
-      groundMeta={groundMeta}
       places={places}
+      seasons={seasons}
+      initialSeason={initialSeason}
       initialStage={to === "ground" ? "ground" : "sky"}
       initialOpenSlug={open ?? null}
     />

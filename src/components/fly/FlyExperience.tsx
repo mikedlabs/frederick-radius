@@ -42,29 +42,43 @@ const PIN_POS = [
   { top: "74%", left: "50%" },
 ];
 
+type Season = "spring" | "summer" | "fall" | "winter";
+type SeasonShot = { key: Season; src: string; altM: number };
+const SEASON_LABEL: Record<Season, string> = {
+  spring: "Spring",
+  summer: "Summer",
+  fall: "Fall",
+  winter: "Winter",
+};
+
 export default function FlyExperience({
   highSrc,
-  groundSrc,
-  groundMeta,
   places,
+  seasons,
+  initialSeason,
   initialStage = "sky",
   initialOpenSlug = null,
 }: {
   highSrc: string;
-  groundSrc: string;
-  groundMeta: string;
   places: FlyPlace[];
+  seasons: SeasonShot[];
+  initialSeason: Season;
   initialStage?: "sky" | "ground";
   initialOpenSlug?: string | null;
 }) {
   const reduce = useReducedMotion();
   const [stage, setStage] = useState<"sky" | "ground">(initialStage);
+  const [activeSeason, setActiveSeason] = useState<Season>(initialSeason);
   const [selected, setSelected] = useState<FlyPlace | null>(
     () => (initialOpenSlug ? places.find((p) => p.slug === initialOpenSlug) ?? null : null),
   );
   // Pins stagger-bloom only AFTER an actual descent. A direct deep-link
   // into the ground stage shows them already settled.
   const [bloom, setBloom] = useState(initialStage !== "ground");
+
+  // The active season's altitude — for the caption. The images themselves
+  // are stacked layers (below), cross-faded by opacity.
+  const activeAlt = (seasons.find((s) => s.key === activeSeason) ?? seasons[0])?.altM ?? 0;
 
   const descend = () => {
     setSelected(null);
@@ -146,15 +160,27 @@ export default function FlyExperience({
         transition={{ duration: reduce ? 0.35 : 1.2, ease: [0.16, 1, 0.3, 1] }}
         style={{ pointerEvents: stage === "ground" ? "auto" : "none" }}
       >
-        <Image
-          src={groundSrc}
-          alt="Downtown Frederick from above"
-          fill
-          sizes="100vw"
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover"
-        />
+        {/* Seasonal aerials, cross-faded by CSS opacity. All layers stay
+            mounted (so a swap is instant and can never stack); only the
+            active season is opaque. */}
+        {seasons.map((s) => (
+          <div
+            key={s.key}
+            aria-hidden={s.key !== activeSeason}
+            className="absolute inset-0 transition-opacity duration-700 ease-out motion-reduce:transition-none"
+            style={{ opacity: s.key === activeSeason ? 1 : 0 }}
+          >
+            <Image
+              src={s.src}
+              alt={s.key === activeSeason ? `Downtown Frederick from above, ${SEASON_LABEL[s.key].toLowerCase()}` : ""}
+              fill
+              sizes="100vw"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="object-cover"
+            />
+          </div>
+        ))}
         <div
           aria-hidden
           className="absolute inset-0"
@@ -166,7 +192,7 @@ export default function FlyExperience({
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/70">From above</p>
             <h2 className="font-serif text-[23px] font-semibold leading-tight">Downtown Frederick</h2>
             <p className="text-[12px] text-white/70">
-              {groundMeta} · {places.length} places in view
+              {SEASON_LABEL[activeSeason]} · ~{activeAlt}m up · {places.length} places in view
             </p>
           </div>
           <button
@@ -213,6 +239,35 @@ export default function FlyExperience({
               </motion.button>
             ),
           )}
+
+        {/* Season selector — fly the same downtown across the year. Each
+            chip swaps the aerial to that season's nearest shot; the pins
+            (the places) stay put. */}
+        <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center gap-1.5 p-4 pb-9">
+          {seasons.map((s) => {
+            const on = s.key === activeSeason;
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setActiveSeason(s.key)}
+                aria-pressed={on}
+                className="rounded-full px-3.5 py-1.5 text-[12px] font-semibold backdrop-blur transition active:scale-95"
+                style={
+                  on
+                    ? { background: "rgba(255,255,255,0.92)", color: "#16140f" }
+                    : {
+                        background: "rgba(0,0,0,0.42)",
+                        color: "rgba(255,255,255,0.85)",
+                        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
+                      }
+                }
+              >
+                {SEASON_LABEL[s.key]}
+              </button>
+            );
+          })}
+        </div>
       </motion.div>
 
       {/* ── PLACE: the pin morphs into the card ────────────────────── */}

@@ -34,6 +34,24 @@ export function highestAerial(): Aerial {
   return [...AERIALS].sort((a, b) => (b.altM ?? 0) - (a.altM ?? 0))[0];
 }
 
+/** The nearest shot to a point IN EACH season — so a surface can let the
+ *  viewer swap the same location across spring/summer/fall/winter. Each
+ *  photo carries its true season, so the label is never a guess. */
+export function nearestPerSeason(at: LngLat): Record<Season, (Aerial & { distance_m: number }) | null> {
+  const out: Record<Season, (Aerial & { distance_m: number }) | null> = {
+    spring: null,
+    summer: null,
+    fall: null,
+    winter: null,
+  };
+  for (const a of AERIALS) {
+    const d = haversineMeters(at, { lng: a.lng, lat: a.lat });
+    const cur = out[a.season];
+    if (!cur || d < cur.distance_m) out[a.season] = { ...a, distance_m: d };
+  }
+  return out;
+}
+
 /** Current season in Eastern time (matches SeasonalPhoto's ranges). */
 export function currentSeason(now: Date = new Date()): Season {
   const md = new Intl.DateTimeFormat("en-CA", {
