@@ -619,50 +619,6 @@
     "review_author": "Derrick Johnson"
   },
   {
-    "google_place_id": "ChIJe61Ako4etokRSPGx3Fvkfoc",
-    "name": "Back Street Brews Coffee & Tea House",
-    "address": "11 E Pennsylvania Ave, Lovettsville, VA 20180, USA",
-    "primary_type": "cafe",
-    "location": {
-      "latitude": 39.2730162,
-      "longitude": -77.6375961
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Brunswick"
-    },
-    "lat": 39.2730162,
-    "lng": -77.6375961,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 6:30 AM – 6:00 PM",
-      "Tuesday: 6:30 AM – 6:00 PM",
-      "Wednesday: 6:30 AM – 6:00 PM",
-      "Thursday: 6:30 AM – 6:00 PM",
-      "Friday: 6:30 AM – 6:00 PM",
-      "Saturday: 6:30 AM – 6:00 PM",
-      "Sunday: 6:30 AM – 6:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.9,
-    "user_rating_count": 343,
-    "photo_names": [
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-vf5oKhZxFFWyoqvXynzONEDTGTQnj5HeNCa3BSsLC0tLoRGfD-n42bWXXfMPEwAiYPdfWI9KF3VYlPxJgDiVC_tvPZIHq7kFzLI7LWvdMVDX1_wmTGOk5FAsRr25-wZkPb2DFlkTl4rtILGItrmuAPdV564uOusQ42FFZUEDmCH2MCvKuKBwkwqRlyZe2_imRWDE4aNbFLd-YoaNthZqhJa6rwg_AanUQ5lCNpVKia1h4bptzO6NZaRi0V4985Lei38v90bKCON611j9zgM_C7mDukXrsegypIjvWp-KWH7w",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-vw3ZhfIvxkhU0cyIg7oW2D8p23t4mfzmx9AMZZwIwgVBFSVhckoCyAW_hvkIBSPKF7X78xjeS0VFGtv6als6K8kkGCEf6KXdBOWzfklNg12vAd2EluaIIeEjUsh1I3Jj_fbNHBIpyXaTVjc6qzlym2FxR6g_lTVNSPXypTiTFJYJfLf-BRsEm8yd7q-aMtT7XTblT_j6F8FzuxYqP9LhzXXF6LyA1I3IM-oqdwmaEeOsAWmJjWBnwyMY1nEOWhKQUhIg12WbPF4XyrNhseAkHdSSxsd7_mjrKbLdjnODhbXA",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-tZuD7gkTtgBBIpjKRN9ZySaZdoofBGrSRk0Lw1O7Ajng9Y_fZaMu1mcvlH8tz-dCDEISdRbjs6UlQeG91n2G3LLubjr0Kg8eVOwY-FL5l8jbPuoMDJKuEQOVpiCu8BLKB7qrm53qrk8xLfOCQFC6zs41P-HKplzAXVQHz7_PeR9vZtFrium4Cgem41UL0Dngo163WNoImCh7yGGg3ZJ2tBOmCAUwUhqv7IopOs2t8lK1vCDgaB7GArT_13HsrOqQge1b63RBUjRFnxMcveURua1RXDSzpFizCNgA9OpdnMpA",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-tOOGTkI4L39ZtojVvg3Rwq8BT7T8WpGGnY1770ZMbN6P_nw7o8FHZWzp1pLVgTNdgqkjes1jWfzqNR46ySQbpSQUGHMG4lz-DCRpxJqAueuGE-4Ftt2jB1naNTafRD2OkqBXKEztU4174WePt-aW3-YZ-bw9YJYKlDpHIsAG-j8ZtPjCMh796I7MNJz8ZyNhaNA6CqWTnIt0ihJSKx1DSk_gd5AZJSVXt1tX13CB2hF79nIHPJXpfOvuGeeApH45bXUFC0WHqWBA8Cnlf_2cs0WkjlgU4Isqfae3TQ6_V4zMOJuT7jmJMmJmNWnYy_-4s-VTokZHHaQoCw65NJ-qeGMWEXGSCHubBO8D-SysK3k7kcjvRYt0CxcWIBRxhlRs3qX71jGEir1FDif-GqCUELvhe-v3LYPv4ynXWA5oViHg",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-utQDRbHFv3fciQC2ruqqPQajV8Q6QCWOstdbw4GPV8zi63g74aWFHXWNXQwxDMKZgYa0pv5OZO6NOJA783FiPkJ-bWzNP4LBY0gWtGqfZTz-0uG3ZtuywomS4cUYrFIA_U607Paqap_H33ur9j7XK7JWmb7JMzfJzn-29lkEZ9j99lOY7ZMelZb_07dcPxzlHfdD8dD8_Dc2_YEUkf37vugCgHliPfpjQOOOhPBnet4hy5qjzj4RYcyODrkeIgrvYgG7f6lZmi4IXm02XYPz0S-477dlXgy4OFCP3WpugISCFw13e_3r5GvgKcM8wXJlt1gyblMZxOlyU9OPz6cHYcytTYkUYW29Y-tKtPWQA1C9Fti2SEoF8i-scMvJ951-NRrF5Fm6XiXDkitwYN5D6dccGJ4LnokvrsNr4SWHKA1RREdhCK5_QsxOMvY6vB",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-sdT0IX4LZDH0hEzNyhH4dbIKZU0jJVzgSEauPaMlbK4gjUCsJ_1F3blQjFGXY9F3GV9n4xu-c4Gyh5m0rxVfW9E89YSqrT1uca_sE96Pj7GtcQc5DJmkyaL7IaCt66F9PTEqHoUqmg8k_UnYB5lcGMpuySa7pfmGlXePETnHlL52jqQlC-HgSwLicI3tR7m2NG3xKZlEYqHZqZveiu_yG-AHA0fjk2TBN7rMmNDKdrP7Z0eTM2SpK65-RnN7LjdK1U-ODAjqlaDSXLGpUR08BMI3TM0U5x6XlYxp-WGWrtk6rt7J9cOna04yEJp17EC_MuBNEB-sGpqxPxaUoXIJOdDeQJmrVLLWw4sgktZh0VjPOd2sfJiMxNJXOWNICETybC4IH6Px89QMLoq_LmRZDdhD8rFwp5tMSVD7XvlujIbf-M",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-tq6rNYzkfJMyljCH3ePcrMPGbAjnS4wQjm6fO778CzxYpNr2vw5k8FqcSyam2nwFMISEiA65GgR6Q8JmR341BvvJNLLSaqEN0i4piwXnkyw-UsU6eB1mfc-oACRyjjWDF_GLpxjfkT9NX90x606u5KzhPvnvKHYyCl4qfaHNkijnD94_PoOFs68X6dz67uxPAlvvrAHoKTUofCvrUksWatSDx4xvxTlhyaXsW-qqsMl4gX4iOuuqU9kmnFWsioJdS-8PuYeJhYdXFffQsHnqY5hxhHRVhhoXdxYmjHs-9CmyuU6lxTVeZM_4enMEIDrFVjs3IokqQEsCDXJzvdev2EwfHnuwM2Vxa4XorpTcLyVsz9fTdZFW3v41HlTNUmO_n-s_KhqFqPzyr8Mut1cgwQeVRyq8tvxB4hGZi2sCU8byWa",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-saFGcWpHSrRNW9xu438EJTxUc7azHu8dHR4aY-AXkKoeb9XroXsYW22YSIUgkdHBn9m5-7zf4yCwGzLoE5jKQGxDkb_V_FOwjFw4UCDNm6G_ki_Eop5nfIb5CrrbA5FSovKub3TcE0OCqOHkb0Lk574f5BXVXqSkfArU9WheqTPeEVYEtA7vq6aIu4hVr5KLuu-46wtJ7I2Cb1nkT-fFz5vkQXIZFNd_WdRnh6zz4cos-DTWEMvab5nsRzob5dVWJUpXP2DOGV89YKxNn4l9AvDFbZVvc-VZb92E4mddfcazWecPCMSo1Sr7PK4Ij7yIWRm2qqtyJ1B2iHMZa1HzmOIi99FMBTuzGaW9aAhYiAhcMBo3YTxZb6dEuoX__i44o1_5Vi61FNHlMgJaS7rt8VhlsD-1tnfsMYWJoSZTQ",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-vFDXfrdCNlxg9Yf-M5bxKuCCAhesxHaOeumTomE8Nv-UkO6gy-D_Y5FFxEyovW5l-OGDQWdYp8LOdNxOCe6UdxSNlrh59pt30gdIpn39hSjOugqnTORoJpiO5smY7CcklQwb-V2QYKCBBH6yLJ6Kq3x7DFBtfK1wrTdXtp1t5wTUbp2K2kqD8M7bzUwJagUvb93H3dbwZT7blS3AStwVgoAdYadSC4cvv-ttNfj3Yp7_1pmbRZ_qfABXR03eSQYgDFsvWvfHCUwGeKJl1rlg-MH9AJO8a-09yxwCpsLHMgfD12ap58Paa4MKzc6BAMR6vLhjy8wvdQwsG2iLGEo8dPWIQwezhTiUQ-_Iy3c-gvNoQ7BF0OEzbENx406bsWBDIKJvoPjfndctEsl7TWSHmWBwdOzPZ1eXx1m7s3HMxqyr5H",
-      "places/ChIJe61Ako4etokRSPGx3Fvkfoc/photos/Ab43m-sRB7SPMZh3t0Kx2MBRJinMcyjFhcEBHGpNSdORU8m61iI_52LNQDTAGNjfYl67qPEQ8ybRj9JQTgq_DapPVeaTwOy5WkJGpW8nX0hQyEl67E086h75PpxyxM5X4bSPEaUa5TZP4aovmxF0-o0lOR1Pwp1V04y-hTlus3BLeWlFNMZ-NyZFVRH6ECIoVfdal5pWZA4XT0Nq4U32yhu_oioHe01lgMXRiBp20ywscn4HBrBBIGw5WGvLLw8RNkWDnICyptpATqASJF6CIV5uG7En_S2iSkzxyPW5qH7jWVxr9youIckQNehCVTZilH2bdQIwK7F9rOxhgMZSaTH-C2EWWLvaQSHLFJuwrP-lyAElWL7qhWpu2OPBDNwZ4L3Zf2XrrjBtj_fpcGR9Ij1Mebug5ftQUdd4nV7AK6PcNispfeGCZfoIdfIPdhXOZx3a"
-    ],
-    "website": "http://www.facebook.com/backstreetbrews",
-    "detail_primary_type": "cafe"
-  },
-  {
     "google_place_id": "ChIJYU3HjpkftokR8z11aVYE_hk",
     "name": "Whistle Punk Farm Delicatessen",
     "address": "30 W Potomac St Suite 103, Brunswick, MD 21716, USA",
@@ -1226,52 +1182,6 @@
     "editorial_summary": "Chain offering fuel & familiar convenience goods, including packaged snacks, drinks & takeaway fare.",
     "review_snippet": "An amazing worker, mary doing the mto orders at 1am, went above and beyond to make my special request happen! Now I can be happy eating my food, thanks to her! ( bring back your nacho cheese on hotdogs asap)",
     "review_author": "Bri Study"
-  },
-  {
-    "google_place_id": "ChIJF2_WSc2xyYkR8SynaESDk44",
-    "name": "Deja Brew at Miney Branch",
-    "address": "815 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.7353909,
-      "longitude": -77.371696
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Thurmont"
-    },
-    "lat": 39.7353909,
-    "lng": -77.371696,
-    "municipality": "emmitsburg",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 6:00 AM – 6:00 PM",
-      "Tuesday: 6:00 AM – 6:00 PM",
-      "Wednesday: 6:00 AM – 6:00 PM",
-      "Thursday: 6:00 AM – 6:00 PM",
-      "Friday: 6:00 AM – 6:00 PM",
-      "Saturday: 7:00 AM – 6:00 PM",
-      "Sunday: 8:00 AM – 6:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.6,
-    "user_rating_count": 106,
-    "photo_names": [
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-srv_C7nUUE6r0Kl5ulomDmOM6s7WaBAcsTSGiR7GsO3RzktvWvlfeUr-DwGE97bszmAKH4BFAHjVaNjcXPTA_dLEjrYQvzkwzjoBHZ9mNGc26EMQATRXR7E8teBfV9md1ThF_ZonFCbW6gsUgfBwA-8IMptB5fBxUV3szykwbiywUtCJ5EA7UKFf8ZxNWCmMFAlRHYzwyto5mx3GUsEReFt3MOkU_Nyi8867u-NkKe0xa1pWVwC5_a4XGxw1Nl8JzqZpSyTjaNG1x7zmCuhRvQ9JGQYNbVzaYk_5gJ7ZlHAoDsTDTnFIe9qJcAqD0CY6tYMQIDC5Wk_zn9qMDbRchNBcZnyPZ2Qp23t91qk0ruqe6Yqdgbfk9LoRkBNNC-P_VLvyQSgfr_qvoGrbzCGchl2ZVzd2xk86lxWbGiuniTNw",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-u8NJBmheGY_abCKOpJxcm6MdIxNE_kuOXQZDCqSmGxA7oWK_6YRATtHiTIdvTk3HoEOfpAoxMhiR6BMONCkmPhdWv949dcS1OvoPJ2Iwjygszd2cDDuZ_jzjhDy9wfAvwyHgkx3m-aU0fWkg1cteYmu3Xj2ZXkwKU_8tR90AouEj0puEvriwNDO8rYSKq2IjJqZIwDp6XwCOj9DeSC6UtgQFdUuDY6S121W21Dtl1a_lmf_zOV9LH5M7GK51nZZWdIQe0CxVihLBN14eDls19F8Sk7ns5lxoUMZ5TfBBu8GA",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-t2kDOKkUBmBJ1TeOcdpUp4DlV5BPgSSPPLDaI98PPY05_OyJ257SgdTBoEQuNDftMc-W5ys1KSfAHBedJayOkzRcC7gDgsCg9KsA3WjXoClbp1aQKZ-uQd7B0XuAq8zbI-xcU8huhcyu-wbUSV2aHn-CIFqV9LGLwFzuRfaa_XQWghxLixU4ygT2j6niBOTwy8l9Uh8ybzFcc0YJe7MVbcSuswfsGshdYeWZwq89t7_9cpmT6zjwIU2k3YA8fXS5hR2JtqiapimxA4SlFzIaVS4JCSjYQfWa0mXR83nctow4aUPRRRoSWQmvmaQwSrd3ftIVA6DjOXJHOnMCgwsZwNGDS5A8jylMJa3cryG4jOcmnWGfY0hfg2Yjod39NgBz1pzlRNoo_v4_y4awgRY0lyiKM3RXhKZ14h6VZoKytYYA",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-sgaet50kXtBPsLa9Ri7u7CKBvjcEek4nikkcd5psuj8_m1LAgaHvBe_krgs3PkmbOSyYe6w2TnesjmZHzfiLTMeYiFHhXQYpZnsGKceFpBHTNMjjBme86oQ8DZpTlvosWMOLjUAOdJ3tBQ-X5DYg6jC6QcyyXLsrztiZK6h6lEnj5QgCYbNCf_LfXZONFqBMszy6bJAcL1NJb3rQEqDM4k6GdnKj9cIPnUS-cHr0F4u1fe063f_cxBZL3E0FwHvlFQe5uhKwwVX0YViTqVxTjvtrgPCcmgB5IxE32NPSioJ7X9IeX-dSP29uULNqxzF8DeLhrYBupqci_DCu-eP08rcA-0KFMG_s1BT2xeT2IjJEVmWuvnQBV0ZfmmB5sbA2tDA-tC6TpIJsAvkzOGKaINf_2MY6qfiVq8uqiWjSATYDLv",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-sGn0_rF7BCi-Zh9kTT-TLK3-nZ75XsFFXdOuobLMkexEyN1Dzkb3n9-q4FOUbefQrh7aPu3z1pWdltVf0IgyO9gL-xfhYE1CUeSKmB172htbC9YIjM-ecYlS3gNwGLBiGf8843jaR9I8aQ9N48gJRhDZi4hz2S0QUEXRRfSw0u0httqjVUysSa2nFjx5dsODm0jx1aZGxaXUCwQ2N_XbiLuppVW5ylT-XkkIc8nA5McfBoBb1l_8J2PlirDGhB6WzMPSkNJ517P9ZoXBgy182zymQThzdOB_ShWNfRh2Cshd6KTd0H_l4sshwjFhmNccjmnjsKbKfg-4U8tCTNDSkSAPzvPu7LWTZelFXdk0GkTck8laDj-5maQpzn4MMKp31VMznBiKy0b7UCitJSnTbelmK19UBewkmzN12BDuoC_iMI",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-vnIKavTX_R_wK1VVCSDI7fSsKUOBCUs159bYtg3BxTfoIgR5dQIJ2jrq_tNfzLbxNrYbpNEG061aVOzdF5bnVH9LjrLJf_QcyjGUshsHWd9Kd2kbQchyaOALbKUff6L0oP8MWwU6BVjrO9y-z1yRtjrfxtZ2YiRfAtkRMUWvrxV0pSXQ8zh5GXZGZXLAu5e_gtavYKUOpFYBEygeMHO6KDNkYEb1Fol4TXPJAGhyAVNWe2E8uVzJsCGGI6D062I7M2EyKZj0T9Ls-PieMuG7RhPkrUi5OqSHafWhiioEH6NAW7T0krEkhUXYv4nz8ozAMtW8d91TvdtZBZ97VLw5dR1N1g1AjTXbagoS6iTZ-1Q_EPmyYOWINTv8I-qyjy8IqCgtZqiCgu-OnI8vEukxFLCDc40ojbgBuxD8t7XusyOoAn",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-uc3_EtfuYGmD56TurmoyxKliIYtbo5C6cf_AQ3Y_oyrvTJnW_jgupUDeSl5-2xxt4Ctn1LUv-yKtkkGw7bgzpPpY6TRzqUlPdY_JeVYMRvrOaW_nZTB17uUvBmAyoMkv9LeZNSRGRNQkuTt37zGy6uaaPzWUSzhZwpgbbNqUDcUcJ2H9AU-EvSbknHawmezmArDQWbZLTwggpb0rsgjes2Y8MEyhQ0hFUWr-x7HTzRI_1Fgk3sN8n5IHcAyn-CKhFjSJfN_Wn1UQGnyiWnN_pAimYmcDUFGAeeL0SZyVMKEQ",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-tp108fxnuUfX5scMF2aDXB0x9myiy6YAzyRwpFePZwP5NJnXT_O7xgqZBeCIu6dpqWlVy1PFM3WwREXbVkIn-wuwI7diI1GvZDQsGJxh-U2K-sOKeFF1Wx7JqpFTFQWiDsvjCLUdRmTn6C8FxF0dTq3gFscdvNRgZEOL1TL_92iCQ55kVZi9DF4flGp8mXjUaKa-AtLuBQ8QW07P3I6FNhPHTpjIhK8haeSb93i-sdt4iBqQyJI1KyQCtOuNopZMIL3SJHWuff4KXlAByPXOWo-PEJ6VimURu7Zlo1EimX0CQ985bzIlYv1Pr-FDgXJulZ2TS33Ruw5rchWK3U51FJ-ujiN-gTwZmP58zyQcb0_Soq8F2JC-H8p1SSutnQP7nX8A3Pf1qAieDxFUzhNLJQL72GKA7hilLcQ8hj_nxHtfI1",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-utNz3_nD5Px6DQYzQf7mc7jZVPYqrAG4rwu_5P7l2_Hu6YAHvioyjRJJ8yRxx8wbVZbBT4KeHAf2w3DhbAwHwZtGRCf3KKt8AkMIHPNHasKIB7tqmGEsIyw5BEkonfpWYX4RWWOn0zVyJkrEfnTZ8UbmIsM5J6YHSmljiazDXlKFqkvedrb0WTclGdUWH-WaAPazje6BMqhHHWHUuXB6iY94EOmLvRTw6BzIxf3y4WXO9S7uS0-8jA1OUD2GuvKCaORP-Vhr28eiepdaIChOdYOGOF72bVerTyjL0Fsh8dOYtFY_PMFeK_EbD7TfybdznUp9SK6ulzqZ6gQ1xiDHL663EslNv_gCCKv5Y9U6cOpPfhO6sJMizmIb-8b5r95taDJeL5DtA1cN2ivs3LGL4Vcz13AUBWA0DRrTeDxWB1bEDl",
-      "places/ChIJF2_WSc2xyYkR8SynaESDk44/photos/Ab43m-ttryg91w9mgD0_flZpcXRvV4vPB7xbG4IUoSlAdZVxnTMWetiRgU0dtllX-za2ZuNNe4qH9B8MwyLrXl4NejSDtlD49cUM1dfJHhrQqvyVHVsGJOGl2xfoDqrWZuxw_DyH9zOi5yhpSpInewDzrZ2EjkoV1z4tVWBE-p3nAKGX_jE9ZbmD0XmD-aZinZGvAE9DyqdFU2J3lrvtjVSUeYTGdKeSz7mgtIbNoOwO0B7x68TOey67R9lCDqsfZTsecLA-VTC9DfLlwkBm5G98DWbqHp1fa97wt2gDiFf2C-zDY53U9ilZr-pDXa7GtvkWN3m4XldNdqO_OEVJpeLjK-rPoAv3_eTmB07aQlmUivkXunD4oepz-S-Dcywm1EiuNjRZ5m1ps-GLHJrvVH52Y2mwawC5ju9ATDbdeyiIwsKZwg"
-    ],
-    "website": "https://dejabrewcb.com/",
-    "detail_primary_type": "coffee_shop",
-    "review_snippet": "Absolutely 5 stars. Will DEFINITELY be back. Service was very friendly. Place was REALLY clean. Huge choice of pastries/snacks/desserts. A LOT of gluten free. Everything we got was DELICIOUS!!! And everything was very reasonably priced!!",
-    "review_author": "Lisa B"
   },
   {
     "google_place_id": "ChIJvfZni4THyYkRsJ_5CFSWle0",
@@ -5346,54 +5256,6 @@
     "detail_primary_type": "pizza_restaurant"
   },
   {
-    "google_place_id": "ChIJ-7M6g-awyYkRWeTploKWNN0",
-    "name": "Dave & Jane's Crabhouse",
-    "address": "2989 Tract Rd, Fairfield, PA 17320, USA",
-    "primary_type": "seafood_restaurant",
-    "location": {
-      "latitude": 39.720953099999996,
-      "longitude": -77.339709
-    },
-    "discovered_for": {
-      "category": "cafe",
-      "area": "Emmitsburg"
-    },
-    "lat": 39.720953099999996,
-    "lng": -77.339709,
-    "municipality": "emmitsburg",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 4:00 – 10:00 PM",
-      "Tuesday: 4:00 – 10:00 PM",
-      "Wednesday: 4:00 – 10:00 PM",
-      "Thursday: 11:00 AM – 10:00 PM",
-      "Friday: 11:00 AM – 10:00 PM",
-      "Saturday: 11:00 AM – 10:00 PM",
-      "Sunday: 11:00 AM – 9:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.2,
-    "user_rating_count": 1475,
-    "photo_names": [
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-vt4OsmYEMhOOVDOJIvBKvJ7r_K6t1xnRfEHU0eKHq9M_q1kRjTwYQvRWlDedyGJyfqyGjDCt1SE-VUlCEIfbStS1QtDg_P7iZCD1z8XhHKYY9lSQ8xWCnxxnKgxlgx44P-TzWgGy3ZVFtqUemHDvCHkkY7VWABSarj9w0eVxXBtF16Grt_cX9VjDB-YS4SMICRoQdRCRdwU2HuTPBmUda4Up4GWkjH0FE0dmsF4MOYIebJvexNECIji72syOgQ-Pks26atE1Bvdw8HaJ1sLFAUIRfoJi01U9zqPAYQKqrEbZbGPksNHreiUawc89XDBHvDq0ld39padnWdL0w8PhB-adDjxLA2-0-FDBpCWkspD-TSiH8Igg24aTF1OZYTV5C8TIbFwnlaLl1w_4uIQRNqVMRYt-XTD9YwJaJvUIwLlQ",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-uAZk2MvRAQT6B5sVrGV_0XW_ulcbN7RIJtMsTU1_BM8TqiKTgMtGA2L2ZCkh83u7jqnJB7SBieG2cgsstvaQJkvGSsc_0WWzCpUcPPI0JuFZ9TbpPI0qJB_4O9fdsXLBsO5wAElK14YAB9sVBqMG3I2FxTnTfkmoiOz-2CYjwz2PyU52VTheQ5R5aTCgu1LJkFh2hiwAtkyxYs8ED9Gk_lTeti_hSpmhemjPVvY2EBk5qA34X5vgXHXrEnjxpuqFMSW-j9_FGSQfYm241f06XySI9se_I_OJyGn0cmeJCh2RO2Pig0BzYw4DZijtTTGSu6smhIBDkzP8Q4rfPD6vsLJ-MdtYEFskRyscHV_Mm79HvtfTQVU0wiajlxAMbKMiYHvvVHuN36eNJCX5TfnF5cMV3YgC--DRemMU8vioGXBlawZ1JOPD8FPD6H4Xc7",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-uypRfGy39cCTaE-uoriIEb4sePsk19C7pjechns82mGu4KMZi5suiIrYKX6ihB-ZKmTIYyQ3Qqxdw-GUqrtrmhNqAsIhhTZsnVnm2eJEcm4gdN9zsJeXg-yC79ogGgRJit_sU-SC4utq112pr-ke5bD8T0vT6z-Xxc8oOD2xyIdoIxIzCPRJGmYXW03guZnn7AoOJu3P8rXrAt4QrwJl88uz877ueSLsqaYo5J-mlUGX2x3DQF8qeYyuHSMOUWAz6mqYq9Q1ketqjB3TV5Lqz7DpdCtMJ7DJ00qT81nWpPI5KmUkjaTg4hYtGj_aiCQLwyVnUEuoeLLrTlQ6PvwnpQBU4f_s3V8YsDHUKC0v5yPx7nrzUen5xwwYDibPEPhJfc8hK-zbv3r6MMyTiGqpNzclyVt-J-EWZOMeZqLBl90LaZyx6e8ia--pGmJAOs",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-vKdNwmAtdun_6qut1oYvlPTGClUpBnAYPualn4jUQToawTijdhxg49UKMt8AfBlRIHBjlRZvaMLbsVNm49Tayauc0VeV_YJKL8cH0gCFilIeToukaoe17m-dE6Bx_WdRaNa-_gbyhZDhn-kuPhSdjDlHv5CMWAIDKhsr_-7Q3Lw58PwUJMaFE4MAh-sBevEe8ia3if9lZXwAZd_3W94fw10fIAmATALExnpFFfHEJ25uL_KZeeVtXiTR298HN0hJF0EALaTYXDTblpeZy8B5BOm5HAa9A91sOvlcL7ZfEqs2QlGNNbxm35SF5i_J7-KhnO_-9RVDg8TP9GhIwR1GGqjCvlWD_cguNUNNKwT2ptG6fhCKO5HSx3S6p1Xh_10_YnmHG-lP1T0_yN25HAYKcagznoEETJLSbt4D2HO5J0JiQWUG14MGEcOx3oSmAp",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-tZl9xbnzYEUWoI1CcHDmpo3Uju37mjJjWhPiYqCvioS1ITEb-JK-qzVgs5h3qwVjFIRcO5HHWpaDvVE4KIcMu88Jmw3z0E9TOylGcvIbXuYCERkhoSmz_r6RBEp6rHY6QX8c3xEWY6MCS2cJIik3BhQkqDVN7IaIUYPofaiGPOqR1pBYVg9CjkIol8_LlZ3wUM5dG4LdwWB8suYBOOXngHCrXxBs_uAq0DkiscxAXEy4NCQq2My9RG09KqfDsaiY31KetL_0JkSGmentBIgcW4cgbXommlsy4iCIycDFuU5uY2lUlZozDSl-TF4FGahl6FjjgGNY3Zz84JQ1nlOgOki6o9mFVvkRVc8cKukcuokrhJ8OY0G5y-QcXGKXjyuNYElrCAoScBdsJa-xFVf2O2HnmFfiMpBrcl8U0nx9rUutfF57YzdF6a_fHcWzqu",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-sT3Qplmb6KjBzjdGULUcema-gFBOt8oHHXnsGRXfSqtuX0jkhODFA_1wiIWFp-PKbjTIfg-FWhuUSykJ-tCoT3Jl39nPmoRLouEjBdYfNkOQ8p31Ko7U03wDEfgUsTAloA-6dPfgXxzmtTC5aC3vBjyBP-CFmTuzjpZHoZSsbI6Q4M2qLiLklLiIuT1Rxc4moVj63aZjGbqZidNzzYp7MB8ec5pomRRLcEJSmUGuZ-H5UgOK-KnMvk3pPAlIsyjDIYp5m-aWoXyV2DocBb2EAYgk9nxzBu5D6GumUAGP56HF8bztxYncVqrDlEZOFYZneGSIs7-5ke9i83sOJ6lW-WJsAPdc5f3D3IoFM8RPLi3MsfBnRYM3EzdLdnYulJNgh73c-TAliad3ocM2J9RLg556VcMmImZsQWZHWV5XK5Z_QbaGJ208WJGiwKjMKW",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-sgcOFm9N0SjwNyvp4oXZsYAduwA9w4uH6NytK3IN3vkiHJyOIoVyxQLQ5E3SgvegxwDYQk3vsBIsjmAEPVDFe3hLC_S7RtQiwGRIuIrvWap-zaDPXyUyXltvmFjnWbzeXESNRrnGlyrJmeU8OQMPAUkgwwyg2QdHgC_ankzwtryYIxWFLAUmk3Kdn6IIVxzUXvW83w2qYhIUlcE4szUvjhgs78wbgp9DXLWhWR0QYEindSh1ScxTjDZ5Vwi3xoPHCVIkOWSUQos6S0f9MCyGWuGgtwECgGvBLkoN0fe2bIyADREha-4pz21RexzhQxdHwXrWWmoDbf5ZNxDv--5LGR-lidsunlDDT4HtVa8l1padf5CewYxLOOpMlcicmD1oXeUD8Yj57gVayIrkVjRHfdhXGSdzHvd1zZxmGyZ5ugaNfBK-gO8IhfxbHwJKH6",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-vR_2OKrQZXV28pwpw-yHB6XxIH6pcN9njVlTXuFNHLmXb2XwsiKZheOAZ67Yxnj5UrmlnAheGzcKVq_V4wv5lWxDnH_I4S5NvWoJXd9y2RmO47mPUgaymC_Nhbu0Sqfs1QdabRC0CBk36buD5sWLVsqYROjmOTkstb1wsw9ZFB1rcZJsHvUA0NYmrYBO--RGcL7cvBidJ7_n4ZfNa96qyQ7pNNLPHzoBIUZRGXrvb9UfVpBVMYk74TdCw1qCG9gfZlQ3jG5rkTEdSqduU55Fm2g2i2v-0fzAZ-91SSDfcJrCNgrql7m9KsF0D-ofiJecp7Hofmc7S8uuBpDPIRbli9zWr8Tb9Jp3bAJO5NvtnNnB6RL1t-O3hv2RtfoBk7jmSp1hLg-Kt3kSvNQuN0P8665gVsZZp46Sc2r3EsvJF-N34Q74FAz6GqzLjQ6Ra5",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-tk8whoKra5xgKIRFsE2ZmClKPsVfMq4EHkCiR6JogEO_g15_aagmuhmYyMnZIxsplRSNKTHNOUF2kFBhdecm2SycmAQw4hR3IWYUNRxitT0YccSHgOozbXjlgBFIpLnqr_DK9Bif4EeE7omFpnjp4kdLl8Dz0EdpgHBprmOi8IClBn67lEpNUa1sUikI05GruDeNW29wPiAjCgWanQ8-3yemcW1QCNxH5oJFMDe3WuJiq2vcYU7RBOFwJOJ1uPgK4Da7VoO9orXy_Zsz158jzPUa33-Xie2vQCEXgjKxCAkUtJaGXIWpOwGgvE-SsBQAROKCCtdoQLSgSH9S02bYSgNHit4mPu7L-d9kPXJAmuZBSvu2nqL2bFDM3jD5R8juAkFYLRq4tq_TeyujrBR86AzaG98oMoYqFlVmEQflp0HlCCnECVsrgKJcfgqE9g",
-      "places/ChIJ-7M6g-awyYkRWeTploKWNN0/photos/Ab43m-t7oAVIhyHDowjCo3-k_2GPPVh6AUHizo1XNwJWSCzKo2EdMfF9dh71PMVxe6_bII9XpFQqkqwxZSlAgdF9Ndf6SFezn5Vn1BlBA_pORqjOO_cE8gL4mp2uke5NirRh0ti7CQjQBfRqNQ34D2os0xozMo_qFbh9b46q7wjEq0mrgkB6Ke4T0oZLdgzSs0A5kSHCvmGeafWiXNZB3R9sNoAg1_t-0tr4tETrld6yGBPq_qOdYZWeIRyCHJJOT_yIDZEZMLJuyHrJZa5HES6EYlT-rbtamwUwCmLWYREQseXXpPG1B49XdAIzq5wYM3v8u2cbcHiMb4qzosyAY-t5ZghDX9TIt4UikaRqQfixcbwI0ucNA9YkhAUqQyaLV0wqVpoJ3xV0AQXQpoMvC1vjrTIE7_63IFEywi__2KvfKsRBB1e-mElyZn0ra5qs6eXz"
-    ],
-    "phone": "(717) 642-6574",
-    "website": "http://www.daveandjanes.com/",
-    "detail_primary_type": "seafood_restaurant",
-    "editorial_summary": "Family-run destination specializing in steamed crabs & other seafood served in a casual environment.",
-    "review_snippet": "Laid back and fun place! Our waitress was wonderful, food just took a while to get at the start but once it started coming it was all good! Moist, easy pull crab legs, yummy hush puppies, and the vegetable crab soup was great too!",
-    "review_author": "Tianna Weaver"
-  },
-  {
     "google_place_id": "ChIJx5gybFhLyIkRyp_avERGoaU",
     "name": "Cafe Au Bouchon",
     "address": "5525 Taneytown Pike, Taneytown, MD 21787, USA",
@@ -6948,96 +6810,6 @@
     "detail_primary_type": "restaurant"
   },
   {
-    "google_place_id": "ChIJic8M0Y0etokRXMJtwarbccI",
-    "name": "1836 Kitchen and Taproom",
-    "address": "34 E Broad Way, Lovettsville, VA 20180, USA",
-    "primary_type": "american_restaurant",
-    "location": {
-      "latitude": 39.271696,
-      "longitude": -77.63592299999999
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    },
-    "lat": 39.271696,
-    "lng": -77.63592299999999,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Closed",
-      "Tuesday: 11:30 AM – 10:00 PM",
-      "Wednesday: 11:30 AM – 10:00 PM",
-      "Thursday: 11:30 AM – 10:00 PM",
-      "Friday: 11:30 AM – 11:00 PM",
-      "Saturday: 11:30 AM – 11:00 PM",
-      "Sunday: 11:30 AM – 8:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.5,
-    "user_rating_count": 627,
-    "photo_names": [
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-vtzXZVi-pbhj5nEMOfUM88SBqnUF0NnL6cvE687vmzSyHM8e73JYUqQoa4d0wcYcR4ycQkE3Wk8ERsy1KEFEFkdWX_HQ3yrv5Kb0yaECAMTxxNuYayYZFrqgg7nTDT7Zgzja534RjzauerA222qYMr1y7J_yI7FdIHkW6hb4Srn7_bKIYO_7UQGVHD_sUNNIwoNymviPFhl7bkaliW8R9S64-_KTQLIBRh8JRSdJljXiCf9oKhpQIO5gQvoF5H43q0_NX8en-hl-dmmIohB8WWDcL1lwX1Z_XroEB7QDcCTA",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-v-h1tqEX5qZa6slLdo7b6dVVj-37xblsNV49vpjc4HrcMjJnKFoaGlMEOnaOp9Mcbfq3Q4p2SqQL66UsPoIJIiuWsQQFLg5NBCM2OLNkKbnjLqkQVowRXxIt9eZt3A4oAchtNJQ02BBkmfPbPBwK77jwd2FREDlm7EuNWqZIuJd-nZ4O2Mov3mgdxrGjmg9N2zoRZGVzNoPLoFD-jN6LAfoSPCnSNlheKERFcKMpMNxMw4pEUc3uTSRcMU-42Jyn1ovTjDf7v7TX2D5pVHPb6yLkjIQDh0FU0UMXvOm_pwupe1mpb5NPLf63bWBPNvYKTYPUpc4MCVCeMYASfnNT6PoCt8rrPWrJjKiGTek_J1kwN-pIlL9CJbN3ygGtR_VMMPH0K1DUkpd-xsYVw6i8kccwmbYw1P3QxQBY3ZWsJKGg",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-ubfAhwGgYzQM56NjKKXmO2ac6KGVk37iZKDBTRQuYoGrhewRLYKrBN-byF5ydfy3lspeRGqeZKm-Z1vlj-Nc7k5wvzPq9r9ZoM2y2WeEKMZj6IXCrGQFk0MR9Johrd-H9Rdtq59aPIOIXg270T6rz_CmsAzT9mQU0nc6Z1OqHgLtj59_MzAhLyq6zqFO0xceoOOuatvtx-Ovz7cGHMay5H6tIwwLGCDDSnawMSZeoP1tQdGF7fRmlZAi6ju5VXbHisD4hf1qsCBGriNxrEPT-vBHcn1rYcnuATKsni1iNtaZhO3HpevQ8GOqMD9z5glQwvPTZITB2ILfSFpaEG7lauEcp1XjtTz_N8LXAOrNWZw2VDmpCHBsdolooUpDbDCD4YUm171iGg2fRi9mx_Grz8hi1AZYl709Tq96GuDf73OWB6UeIoOfEAdEVKLg",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-sO5avDAFVJwz79OgseTH_p-namLZ2hWfhDI9SOn9gIhn1XqwKcRl9qTyiztOeb4Aiv9VqmJrdiUYerR3yf0rFHA1Qza9O9SDJa1bjczariET1kgpnyWFVVGeepmd5ac1uxwlBvOPGNIWUctuWkt8pmu6D_vk9-KsCS1cCf9dBV_xJU2WmaGaM6OqSlJlsE4Q1rPMHZYsn6T89OaRKrWgglaQpkHHJkEScGx6j6dlIgcgHNKCOplNmOlG9scQZ2xqdsegucrRLy5qRmHodKMQuuN_bCBPR37HR49xYg_7-ccA",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-tJd-HuzEgUAFloxIrNotSIITe73BG5aeBVQMM8K2sRrslGOU6yTaUp0og7yyLi1K9vAL4h8sOKL8d1tX-bVrq3gFQ3xGaZ1nLydO2rBIRSluxJbqlkFwFmysvQ5l0OTm5iSVuuZ7bqkcz01411E1zLeBCpw5jdn1tHhiEpGCBzQTEKFnrckNezypn1t1nOb7fE7WTj1h1xVSxwk3EUHc62ogKVNeDHEgyLWBoxcumXuNm0PaKKl_R2hgd0TLLNypFTDwBB5WpehH1WzIUDrET3KTBotmYC67LqE3bpuGSgR2TqV2ro9MvxPKsaq5r8KpEJam0glGk6m1IJ7JNdLfZXttEhHw0PkNJHPjnb87fjwga3GCeF78sntOTG-wcaq_Rj1BJQ6pA4c_a-WWDZaGN1TID3pCW4loiqpaQdXvvWQQ",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-sv9Fhbw7xqiOjoX4YRStS2sQ6IiqvIpu2r_T5GTolCSLLug0w81FaTqjv1UWWx6D8t5dOJE6JQXdys1eXFAHJQyGAq2RAIrT_GkQ1K88NS52zliHSjo4_fU06lF5xP66Y-siPqjjNwtNGILI3kYAaGsY0UiEjONP5a0ltbv4mt9e3ZeXIs2wSAM6deONLYra17VggIw5KXaCNCpZHIfgIbCwaQQDXKJmQ2dad9X8bEo55UdWaeXI2suR8Prn_JxmtR71g_OLcTvrRlxMYVWcbt47_Uc6detg_bkJbfnSxEc95MG8EuI4V0rDSxiY98sR6xoliFYmvpUdvqm_FgzM_UC7zMTOYNVPQ1InBKk1_9_fU-EZW0v9azNfzyUkBwJYyhYyXcGpUoKsG08BW3VaDDNQyJGdXJ9UPxQ5nkjBZOtR63CZw3i8fBX3gL_BmG",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-u0Y_Fln6saX-OomhVCEuYasAAYkQ4y_Myjittg26GuBmBnOSSUolVHPZ0fsbwNhUa_aZxEJRu2yB3iDNpZ-KS_bOK8X-RI_ywcOhb4Babg0DHOXlHLNyFIIhuC12ODv9gWrFxQJ1T-TGaxMoaMMnnWVEsABPdljBE-btRyuwCgnjJeatcKGTfFcI-OwLq8WoRdgM2y7VTutNb-xY2ieTpJDlLKN5EejeNTggdRLj2xlbeCPyX3P-yOkOIDlGFlqow4kWb1yKJNdFRD36uW92yR3X5xNfdBpk41cwCHLRkBev-ZN3Eyo6GR3ROUhjGlSsNRx2t2vXynCCg0wqzk_s2n7TFIGOTJqr31Wv6o_6KaI-Ftg7_JwA_K7kOrEHDOgrlfPSc8uOUEINw9bh7RPJSSeo5wa218PZ0pC0fqb0ngNwm2",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-sCITi71zeGB4eWghDCS4-qLoPp-t-egLrKfXxgF3nfp4lPtjYA6lQ3ViSc54j_sSAydOKZZWrbmxwI2papSpGCo-uqSz0Ygy80g4jN8Tl9tH4eN7ObSC9zlgmHzCVlrPT_jYSbXRVcwZtkicL-q6bPKnDdXmMA49lIRtYI3048lfu4fxzF_DpWsxbWyQlLbm3-zv4xUlJ1aMc1q5pFcyp8Cya3TKotuOJqzUxjtTcpM4OHMfRDdKgwLK18aaiYKtmowDljtUSrzCDGbNf63pRDLizVYblF5NEk693VGSBC1F46qsyD2kIuuTOcKAfeE8rCqrAVFqhrLlu0jqySxEsbnA_JIoDVZP-qvZvwF_N-9J_OyGkbd-q2IFYypji6P4ySwnFNDYt8Id2yuit7Nw3A2vUAnoICo3WU0-CIVpi7lA",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-sEqdohJ7YUuM0NnYUAcAOMiKKjLoVWk_W96metktRFevHNuQPUzXiVvjr4I7Boc8cQVOSq_Px_8_ipRP47N0RXTV0FVeiKR2xlGFlqKzPbLrUyepxoasBRxIDWpbMj9qC5b10HLsU1SSxMaenprj7GIeMV-MAhydeTXlJcgL1ewWS7LLaYApZwheaLEdOVXgF3g4MVCN9WaOsMjZ6bTncp813ULYhZQLCWxSLJezc-gtIdqKRyk79g4-kj00lrKR4GhwjsD35oONMpiAduxuwqMaSjfEXI2uSJfTUxa97nniWo80Pm_7Rvb3pbuVuRny7Baq1J__f6lapOyQMGGVR3gpwfSdiUoPXMQwkPngX6_8h_1s67C58RkNuzdBmMDVJXSvSCEDEIxB75aKMXnksZ40u-CsSp686q-QdNSg_5Ew",
-      "places/ChIJic8M0Y0etokRXMJtwarbccI/photos/Ab43m-vY4XueuL0FJpq3ZF14wgjjMw-YRSb5OxhDPHRru1fVMZZDeenImMjzVDX74nspPX1XJaLItrUPWsikicqgRQpvtXCF3fq8cBdsy-RVaVzs1Z2Wu77Qlb0Zhyl6qgkOe1SDCD-R6k0Nn_HhwM0-R8MZKcAf8_ynyweEmFuHOmxBHcZEctYdlkul_54hcfg2Unl9xqO5ajAGe-QGO3q93xqZfxJIf3cmZj_tXOpplIh4WxmMWliXxNv-TFCR7IRoIA-Cm2-drShCe_9sNOW2i3kPvp44uZIgRgJwG9HO7LJ7wGx_KU5L2hY3jQD6CgmK9_33R9ILIZigr682CTJVAuJxJmWNu8enGHgo2OyuhtwVadewqZ7WwvoJxGlZeJw0f5ago7Yn986GgozqyWGAJKrR2vF-J6PHyrPm_13iOHzTRxXtdNBM2siWD-Ifqqrw"
-    ],
-    "phone": "(540) 668-5835",
-    "website": "https://www.1836kitchenandtaproom.com/",
-    "detail_primary_type": "american_restaurant"
-  },
-  {
-    "google_place_id": "ChIJv2jwbHsftokRrWsl2p2n438",
-    "name": "El Pitayo Mexican Restaurant",
-    "address": "5 Town Center Dr, Lovettsville, VA 20180, USA",
-    "primary_type": "mexican_restaurant",
-    "location": {
-      "latitude": 39.274451899999995,
-      "longitude": -77.640087
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    },
-    "lat": 39.274451899999995,
-    "lng": -77.640087,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 11:00 AM – 9:00 PM",
-      "Tuesday: 11:00 AM – 9:00 PM",
-      "Wednesday: 11:00 AM – 9:00 PM",
-      "Thursday: 11:00 AM – 9:00 PM",
-      "Friday: 11:00 AM – 10:00 PM",
-      "Saturday: 11:00 AM – 10:00 PM",
-      "Sunday: 11:00 AM – 9:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.6,
-    "user_rating_count": 193,
-    "photo_names": [
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-tCGxMpEvkWEq1njLAreCdvFzxt-bhmRJHuqtuxikIygE_891_6vo4JD4vyb9EvJ-mrd3tP3B-Wf8GCREjL9gqzamA6kvIy981Yg88wHgHQD9E2-etZarCnzCGoSlg_Q2iicBRnweU6b9t2COBj3vO0-ZkI3G69_LK8VzP7OTrnqaF1GQKfTKAEv5vtFt3_aHSIs4vuYUq9fjyn_FeoP6zCEq8vudqLWYYraqW2Nh2GKvnb7ZCOQqGijjW8w0jv2D8uG5kLqkGBMniiqOzyat6G8CrP-XyWd4gOofuN97h7iNsgAxZ-2MaZumUiVfPtZ0DqLWAEi493DGo75QJ-qmW71B-Vj5CfhlSdkCWcRhgOZcyXdKlyB8h6Vk5ppKvrs0CJhdtA5u_LilifjraVCi2SsbaoY4obkDGEoPqfzSFCGIVVyrQwe27t7rqrHFbl",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-th5NNRkYsmWX7xK7h4igZaJSRt81Laro739ORJpm3CEmcnalIx8V1QT2ES3Ob-V4XzEa5J9DBRjJXmJGqKaiTkx8_a8pF0yFPX-xRTfERlM5Gy_z_Fo9G8ohaT3DFlNLmiLi7h7L1J5h5-zzx2AmlvWYJSxH9LzMPbBAqgtatYaHKpmdDFuW3wwYJUGyiTdEYrBOjFXZ76WJl_Md1rP12zYl6o48Zz4Z-AEi5ABwDkNsUz3vucHjShJts6FuzWlX9IV0w3wiCcQ9HjXUPkNpPeKeeRuggMXymR9VVG3vavCKNQpCcKii-tKOQLkMJUNl_1ZV868S_rI0mSkLtnTEsfj8vltjSgtS95LdzLwsAp-T6zFtndT0-ZqYeJfAjMyJ4iTRCaDDaXUsiEkVZmMUpCKt7vVpeOWWtTSUlx5IPXHtMY4Um-9Nc30pfSwQFw",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-tHSjtdYE6SbAcLQhg9Z-xVnpHRpW0YjHBC7_y-1wMtBdM4eDKpZKG_uK1VXoQRPOBCrAC9lof2af6GyYxzBzsZgZpfhavUDgAGok59_qdlrEanlA2z49QNGbpMzDy1EGgGAh6NLOCa6T_ahqGinEs7_vsBrMfN-1uOmqK70v8Cnt7kgHfZeRVV3Iu0nsbxdi8QJBneUJvFGxxObY65qe4nT3ZoCpSQsneYY5w05oEl4lJY700RQuJrNSNRBUID_-LGCqEqTJ4biI9rEHsblGD0pWQA-fLZfJ5ThK_8RH5vAWkmkm2s_2v_0F3xgdumUjItlWDLV-UUuNV4gKtqk2uT3KmEq030EIc5b12-iAscy9UvFtuk9P4raZvtso8Oq8v38nCRAZY_Vvl00MOxhOqNZInexXNkTm_fqfHWKUnLCTtmsLy8iWquHAbTL7xf",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-tK093s8X5hzlpG1REFVyi41Hxw_wYcQjNxVty72a5-kQKtmFNdDNzymxzlXi-qOjz9QXb2b4etU_4DsOdljpXBvs4N5jHIJwlDOSHcFV_BEcgKtcOolxihWaecWwjQSHFZdaAtY_FM3yNbZKhbr10qZ_PAaqn7Z9c4yqIRnvx8NCZ7Jwff9SnNwHQlr0HzKdL4wgz8Jlfhj-ctmv2-IcahbLUYwxTz8TqJiU9BvWKWgQ9yer_uqfUaYvQ7xNzgT8ofCFxnd9Jky0imoLVsMS72JIOaBYItxW2WHfC0RZbvA8Qt04bY4PvhzZEESHuKqdxl_-3OBNF23_hVdpDSs30mgD9Ql_DBQF0x0rq3LcTuhSzsYoU1egM3FXpFRXmkjTCokYOj6trrFVPFimFh0l13q8HIHYqxY5lpA8_afxEQsF9aMBc40ENwJF86N8d-",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-tAVShBNIULQ0_WuLG0VcGquQT_7YpDF32cXpNfu81Z58YaYPTdUXMBZF45iiHQwDViNJa7yJQsc_2tNJXapPm3znq_m4vnuo-orHXbcQ5btXCxTjZ0mcE-Q1qGlQk1sx6d_cmwnBZR804Ty5nBLNRMzRGTK6tM_naT-Pt_Tks2uttYsji7BMZOKr_V4hVL-CPR9miBmSvXjGVvdu9S9vkPby5UcBpNduRgcFhKsm9PH2r0VYWpzIFMOf6loAz8r16CcDRL-htKQpboiSa0_oE5WpwVo_v70dfmtWe4xNgpEMybTL0lRoV5BlHEiin69IrFvvondFsDdSZ9pUiyLyZ4QGoP_87pgfJENbi-GVQmYb7_j2CdTXe4OwVGlRrv9BxEd4i1NFX31f1GuKkteHTxFyM0H6mjGivGdTLQWh_bHBj83GKdnlP4vRCMqw",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-s7mJImzCkorAqSm21EdgGytYc7Bk9lw86dCELxEzc7ttFk06iPvufSfI_oPTTQIp5XZHQVLY4pRzHOwg7U9LjmXptUfPRbWYxsSQzGjMe2icv1HE5-GI0ZXqmvaTmD1nUGf_qwq1dfegWYPXdrbZiiSg9HtbJGNEUr9SB9mCbxLFUJxakyxfs7qmvEsUlPPn4_UGDOg58zZ1Bd6nN22Trl5W3ExmpDRXs5Uh1ZFHrheX6_eoEUAwlSvqtSFKY3yM0t1xZx3xEp7A3ftywAC8zjL39ElwzlxFfdYcuUh0XN196yisyKgIe5YX00ogcUiqby7IrAsPdObK7vk38HAUxYmHI9DP_pB4ky6lwfyPLGFD9KYlzJ5y9_vF78yG7uylmsBrXqwdUwoZjT3WAdGa46G9rBWkIU6_8KgR73kVnBQN2IFICj3VN9RWR9J_vw",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-uvXH1noCYs7XCg0C3CV3I2S3Ozbh6tb9apMMtcRIWpB9dStYAvyAJmwDm1msV4DhBW57I6j-o4bMYIentwWM007KfYTAvD-wtplYWCulpq3rqt9akVvSQOUfQj62hm2bhcxLtB0rHXYaqDlIsWaoudbeeDcB1AhR49-JN-chokzw-kyacqKWr8iWK3wJ3Bqw57pwr3zIlgTRbkgYMNzxaisQaZU8U9L33K0rqVFUuylD7ooapilA_y6-9MxyJ0v6ni7AQau8luvsuywqLlHeMqhBAPOJsyrfM70jNnFOgf8s-htTMlnLnAwWWed2IGmUuFVXPxarUYxthZpB0FrJLVJABlEwSJiq1iZR5lU09uCg4TRlNTkOetKemihMvJg2aosS4Ulq5zvY9f1ilXltC1VnazDL1G6Vnm4JU2EOPJoKzULhcH60b4Sq8SmQ",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-uVnJPzPwNsAvAGHNl_M_6f4XzR63TzqGRBpwMcmk4lubPOTG3k_YP6ErNoxNXvQYamokJyyqQEe0aqM8VsnPnLM2DcaK-vzQmNf4MkioA3xfxy42doy7BtxPqkrpSaCashUGlECYkV06hBH1HQpEPj_vGWPXcdMIaFuCc6ntxP1fl-F3o59GScy35sQU-3AFnPuVpuNJnR6Fp9QejxaqIgeH3R9YApoI82P7n9NbqaATJzu3ipVtGFg88ghV5e8gLnp6pBEHPbJ9fn-q_AUfnnB0WtW-kVvvjc5q-qTzf3w_ssy5NSNfG9UOg1OlTpEc0MZy4sfMtDnH11a_Eo3j6ZGLpmqYAK2A1C-quET9QeLQVoDaQ7r5TUkphMCSto7okLZa1tYKUwyZx93TEHbNgRQqLTGR-89GG4rUFwNZcs3zOTFYJNl7LsTdXaeQ",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-t_yVbesBr011lLlz7ZKPOIiiO7M5h0GAm_1bQ6gXEPApwTvhv1Am0VT2jiiEH_DgJtpjSk0JlbISc82mlU8h7Bg4kzRIIO2eLwCs-OvRM5GI58NV_54NlKOiPOgZWQat5uPStepc-urku4uDionahbwjkXREcov6c4aXCQ99RqfYkb7B1SroBcIdM0hn2i_c8AObJvydG6bJ9j5EmyD9QyzSkeR5Y0wfghjjpOSxy1iR211M2k2fQsRvS7Fo6E6RWk5QlWCiSWqPFY11EBOmJfuKcQhX9mGtAwVS1AgGi7aiEnH86oikg2e4krM4yO2T2z5gQ5tu-CF6BCgDAZnW_eEcf_x1XCgfNIbeMWxrUo9uDQ77sfhn-B3ZxxydJ1WKj1sN-lSeKX3NhSYyPPUIsWylXFii77lyoum5-UFdbfxFhQwTl5xF69TvrrfQjv",
-      "places/ChIJv2jwbHsftokRrWsl2p2n438/photos/Ab43m-u4dsNJrvhiBE_UPnZrNhFp97e0-BLBASTC9flIRPik2hDfH2nr8iPmmvuSafYRhugMvhzriTbr5Yt_1-Aej16tlpLVQdNOF5qsO3S6Ftfl-ZpfpTHNu-HnVR4Puy-puCWthAi-HQLYhhjgozmtlt24lxodpSnwuRraDxE64uEEgxB8a8c6h88bImoVzozbq8ZNLcjUU_-TqpUCqHOnbAJjy-7lYNvOvjjcr6bNn9imze0A8eoQHdTKl2xtTUTR7mvt_-uzsOXzYOMVvvRBxRZPFOE2ubN3msqaJ4xWO98mI5sqSP7exWK5dzczCyfwzMnA24PwddrGr3HkiyQvoPfh01EzkJLmA5bB6M41l7Dx2lubGU2Sk8bPXh8Q0DihKyb42Tk2mMFMqDyl9csP8wxho6K6UxhV55Y_2TYTGsxSDLaBmSAx0WCE3iLvtyjW"
-    ],
-    "phone": "(540) 668-5037",
-    "website": "https://elpitayomexican.com/",
-    "detail_primary_type": "mexican_restaurant"
-  },
-  {
     "google_place_id": "ChIJTanbWEXhyYkRPBDIm897i48",
     "name": "Papa Johns Pizza",
     "address": "1201 Dutchmans Creek Dr D, Brunswick, MD 21716, USA",
@@ -7084,51 +6856,6 @@
     "editorial_summary": "Pizza take-out & delivery chain offering classic & specialty pizzas, plus wings, sides & desserts.",
     "review_snippet": "Joseph provided awesome customer service when previous door dashers miss-handled an order and he replaced the order so fast my delivery time wasn’t even affected. The DoorDash customer was very appreciative as well",
     "review_author": "Zach Brashear"
-  },
-  {
-    "google_place_id": "ChIJx8Ul6ncftokR8aTetVGG7uA",
-    "name": "Rodeo's Mexican Grill",
-    "address": "26 E Broad Way D, Lovettsville, VA 20180, USA",
-    "primary_type": "mexican_restaurant",
-    "location": {
-      "latitude": 39.27242340000001,
-      "longitude": -77.63678329999999
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    },
-    "lat": 39.27242340000001,
-    "lng": -77.63678329999999,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 11:00 AM – 9:00 PM",
-      "Tuesday: 11:00 AM – 9:00 PM",
-      "Wednesday: 11:00 AM – 9:00 PM",
-      "Thursday: 11:00 AM – 9:00 PM",
-      "Friday: 11:00 AM – 9:00 PM",
-      "Saturday: 11:00 AM – 9:00 PM",
-      "Sunday: 11:00 AM – 8:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.7,
-    "user_rating_count": 316,
-    "photo_names": [
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-uY8NsaoZ2peO8wqmeryxdop_q7uE7Pyj2xH3T3v19wiCJZDjUofxNgRuh8-gVc2OQYt_DVcVyOZHNjA3Wsyhbgq6S9cLXv5wCZIF84lRZY9rqrmyH0wSSpXAeUgQlWEMaQcx3gOYjVfwQnPduCan8waO_ZtHJL-_a_Q_q91Tib-AmXyCJOUO5gWN9aSeYP7q9sgv29gafP6KTESd9LdajEWTKj7R3Z-_1L4UoAqRp4PclwuBetwARgcJNCnb6fhnMtzK9oh7yhCZiqMpauf3JUAXZvLe1CW2Wb4gQbkrdm7Q",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-vKGtN8SXlHAJH_3maOtDWpTjqda-vSJaTKiA5qhB3O61rTTixbTxdZ0j6ot981GV5zm1VA2fkIWmXFsLZJPS0nwTJTeylGBNifrLAuWtzQsyNCcYsxP8T_wmRfedIU_I7BhGgJP5WMC-aXRDCy5Dx3nOT_N6_DTfmXm0otD0-Dy_kZcm7DrX4f48JW763xI83leouBOR8-x2AmHG7b8BLQJWIhk_BpVunD2XSOmzu3wryqoBwhAXoyLCqGt_kaVGIddrau9QIqH8gzn9ls9WzU4VVXuuCX0Vj-DrSf_ZWGxA",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-uPObJMjEqdaMrtwQE3OXm57sHhGItKIoIZJ0qNrB2iBzFn8FtP99Ykoil6XKDR-mlpran9egAJcOxsbsrK8I187VoCBiHACavvBN_QPBq_TW_ccXvP6oQizFwTAstE3gHd_RzRh0Qlpst7fwJ7adWUQqV_ez2BFohrPYki287-Ed_fuzlIHDNID31NcrjOsGxebKmR0x8zrnxD5XRE7kSUxVFVScc05I1wPdQnyJRqPimvx1RPWQ7v9cGCGbneFbjYToEF829GtfeT79LQLi5AmFu_oBdZirFNtVwUpc6ZJQ",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-t4OGpl3BFfv5YaOTrZ-wo8zbS6ZO1daUDQHUcWqxQD4VbvfOpf3WCIiLfQDZEk5ZbUGsVz1CLFnv5mvgW6SXiYiEimxvPdadpF7NMqA-jXvIzCEWJagf5rinY8cSQHby2z_WPJUA_Fgo_SeFzFkIF1XVJrj-qoG-7xGLHeLf1rVPZK4qEP8N_zAJ8pCBjt-rNy_Nu0E-DMVlyIebiK9kWJ_H_earwCi06DNv155hVMuftg7K_FfMFsF_LuzcJNWPDywPJECSI5mLeKrHnnEVnXrw7CWRIpCEJdh-IZpdrL9w",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-vH9LuZ38eiIzQ5NVSN5oAdJ2GJJYPL4zNsApBmS3g7wwfjO607ziNX4Yu0LXcmz562SBzoLJK0537yLIaxbOu98FhvUA8hVe3RN9iFT0BgWs2-b0DWgAIrh6OcnP-wmcROMwSy26VQ-RSFrFYErPIBGSkmAdsw7P132i35EzvQmAU8FVh7Wh6fzadUiDwXVgn-uz5ek9nA-diJkp5wt4U26t4b9LKZiv9xtnyo8AXZZQ0CJ0k4Nh1V8w3vaI30UVPAOiQMONdZWW4iBD3OMO8-fQA8gJB6oYs_x-wKU6zKgYXPp32VZekh4ONZ8FVW8uPN1yyikuhy5w3npifWYVuwsFEMyUKloGsVk2OlVlwvOSUbGxF2Mj3lfAMh7Pp3C6g1xTXjFGHChfiAY6bTL3i0u30twNIZsi--qDg4esBG4TrPKoU7d3tXBUHVyCkh",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-skVAp1g_AwxsXWMqCS-_DLt7ibCaSYoOeSQM1T8jEwIr2dgYmGoLIDLRhRue7f_YqXuSranaxb06-eJcdaDWVCRvTE3w5e4PABBkrd8KK0zFrZLcIqHfJyl_RK4K7hfFFmuYF6iO0SLFzBOfNTgDdhVT9W1r8fPXM7TnHaacwOBwE1yFPkg9ZaDKoK1URRooS8pDOELG9-Pe9dP83CF8f87SdFWkkGAFXuHH8J9s1Uv_IDcKjs2ejJ32m3vN5JEmAoslh62J8EazOWE_kNNY3gIJd05LVYEb4Py7JqFq9EMw",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-uQayKF4Gqzej1Klswn-hShGlXNOk7LF2vQjCKiNYVzqwzq54_WVSQMjlsjd3i4dg-UXyRLsnLcxQ9Mh_a9MA4NObRAWyfl8nW9mLYLqGyH_GnhOnQhjJQmbYo6Mz9p8Qjd7wT6YeMAeSDDHRntyqEJ10L2Onz7gtp0sQGbV4niLfhQCLc7GJagtkS9elhApNyJboSa-Ohm-s7QCXLyhcVLiK-ysTVf-3asWlD3HLR3W-zYJU3xADimUsnLP01sQOruandgYqBOwPRx14ygC2o2BiOuZYI8r55uldAakuQ5fsqYSkYsjgWe6Z6uV0yzcT1DIAt5ievW9f2zucpKS8dLF0uWoO35WfzK6Et_zVZ2EKGdoOAnFBV30mIpFWuGXrWOWhodRUuhGKhmrpGR9nnPF4Vf45SJj6KX7otnE3FJhHxV8nqEzcC4O2xkv4UA",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-tJXt3eBHOJkIYh00rtFgNLNi7PxZfJnkjbH1mLp2e9xA9NVpWt8J712q2osULMf3L5ugRDFv0CANkdyY7WRsIsfOnyHmuG-BwCNLTKDgXM76mdfxt9dkB5Lv7oRQkmSp9uvDVK9_96wQWUza1HNsJgVA1TKunjFMhmt2vkxsspvnH3VEIAswZPDkvpjwtj56Kxr8q0IrOdxksu9HVA5x15k9LzkFda2WQhW0_l5cwmJ5V04NlxyVdRV3kVNKyzLdiUgCuGHCVOgzZPG3d1N9GXPlK6W9QL7Zv5U-aXPV0hWw",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-tY2KDlXw_sNeYcyWrc5GD-Wz2APIn3afEWRjMNErWRDxa57YTQGbaJl31h5A-aQ9Meejk2SMyiPoPbBgHbX8fdrIYm8Y_fFg57sQJZPUybojOn0AjWyX5HxAuL78PVO4D5U5JCMf4RwhHwZPmqG5iiRvdxFWKRVQyALynIkAI6hethAMAjefVf_v0zAL664N1gj-Qp5NtnoktwimVHj-vrvqg2tpBNfgD0EVpq5Oys6O4mTDP6G8bFlnJIJ10aH1Fu_Ia-Donu41niFlnCu0Pe4OJsVmN9p-GC0DnUY61hlg",
-      "places/ChIJx8Ul6ncftokR8aTetVGG7uA/photos/Ab43m-sQHcjIuvAcI4FmkA6r_BrByc88_ubHnxPhyALm-ZdvBivTkf8QORuUYZg8VsENJb4viGiL9p_qdHoBhezyKkb72mQXLoHwtanave9httxo0gbx-Y3VIDaM3VPmIrjkRswmuLXu7QeHVhOFvdZJcOSoxqqT_AkbWL6Jc3iCNV_27WGVPvcJj6izkK04NTNUk6g4jNNyezkMhmOLAPfeXf5fZ2Rvqur_HFBkefR7GP1Z9Q8b6OKKDXc_4xdb4iio76T_6eltqJY5GDPhjmhw73T_wegbEe0md2jggV7QBPkV9g"
-    ],
-    "phone": "(540) 822-4400",
-    "website": "http://rodeoslovettsville.com/",
-    "detail_primary_type": "mexican_restaurant"
   },
   {
     "google_place_id": "ChIJPRQToYTHyYkRsc6oDb_MG7g",
@@ -7497,45 +7224,6 @@
     "phone": "(301) 447-2366",
     "website": "https://chouseinn.com/on-site-catering/",
     "detail_primary_type": "event_venue"
-  },
-  {
-    "google_place_id": "ChIJPZX7nIawyYkR2ez-3iadXbM",
-    "name": "Frontier Bar B Q",
-    "address": "801 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "barbecue_restaurant",
-    "location": {
-      "latitude": 39.7350241,
-      "longitude": -77.3705938
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Emmitsburg"
-    },
-    "lat": 39.7350241,
-    "lng": -77.3705938,
-    "municipality": "emmitsburg",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [],
-    "has_hours": false,
-    "rating": 4.7,
-    "user_rating_count": 277,
-    "photo_names": [
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-twmC00py0MDPBRtwJRqp4GCTDdnr4biPBclSMjAQzNUPXL9h4zRG8GynwT46tUTW1UwoMkGBv7wSPDFvNvwF2PF2kpXogZie3Co5vpLfh28GAdL4F5in-iomZdzFB_T3cDx36D5-8dBT0WRYi2um_ccIvdc_IpWkhEnHpH66uz6BgUZ1LYDYBcGZN6CCFUkf9SNYyCjI6l7jMwJnjYPehHrr_4Y3AZesxePjpGiW-Kxhv0ut5vLqNm4ZuSBkx4e4ziI7gxZgIMfpuXTC3MyyGEegfF1ye8NVGVNhVU_h4HiM6gzmBTOZBOEkUdqKMnvhxdGwHr21JNhEBcC1gFhJvcFpo128rd-re9LlbZ4Njj5kejlAYDveQk3B5SnHAWzrGM9NzvlThHIq_FhNfaClQApgbnYPG1rcTtn5oamDsQzQ",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-tKhDakqFhe_a4axxa8HzY__rbCwGxfljxikz26IX_L3g2bN-Uno48M5XJtOvClWft_N0udhdOyp6LCuHyH4xAqLXzipLQnsrktFChmbPCROgDGr5omoW4wEFKpEI7d9G7Hg8IR9DCp3lnrK_kHMeWaajKxnQ6WdvxDQhidL3YOT4IDAQ_uWVlKmAkht7yIIGVomOfg1FfoV_VlI7GVjbd0QpRjIQl6TunesiWlxKVf-iNT3-2QIC2AaKcRM3mwt-LnmWhiLjVISHz1gSN2ZYZE9HsiC0DBVp7NTzkBVgEuuRue8eHCA7GKdAF4fVByb887UEjWfjuGtGAf6kO-4rljZBoZvwXSPsz1tVdrxitpSf_gCNU5j6o088ubC_ZO_ey9g4DwnaPAOOegXEHjHkzhwnLsEc8zNloxdXiXe4DMNdEz",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-sUbxgWnRdETVv22Js-CXb16QtRWym1ruQP2GDBZ4aP42zv3BCIKeVsDDSnCw57wwfHwRhbrQr2mkILCRflzh98hSMYYFZmMq2NGPplDumr5UZs1zF1qoDn9D8gXcOnjq5dZmZuK6TCTmjT6LlrydiJkMpmD5FTlrV0Br2txyheqU4StaHrhcTbwsnlYFpCAQ4SaN-bJzV6xhXWaMFh6iD9iL3ecN3pq0CXpuKLQebSpATSidoO0if9sYO-zIJEfiVW_FOlhiMV6Fb0WRHvJQK4uux5YRJsJ7822OnTUk52Fg",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-ugQjNNAiPpfD5ONZIsc3ITgyBO8YKq9XezOumgifSH1h59Ts3ZgQsI7R5OHiscHrBNLTabjNcDqyNJUV684lA8mzsfFUNvqDt-g9AtIZKZ7iKwzyXa04B635hbD6Ng5CKTUbtMnGzI3mTTQU-8VJrK74ZqRdYCZ0P_5bzIcMe2v5N7yEbxvJmJVwRMSGxrS1u_dh4xMItxKreMVV7DtsGhKqOC7yYUTYwcQntFFUSBpZMV21vOdvL4aDUK3CoIEyiwx-3J5IiPCG8wl-jzDw--f1dL27EURvZFqN4sGdpA2eu77E38fi1mXDsJ3O6S748JCUmOGGvXS58WO84MLUv82V6RMvVi4GIpzvOSdGcd7DkvZGDd3_-ga7wkaLNXAGI8tut77O7ZmlynsOnAcufq2ETOGVOZ59GBJpH-kF5Bl8pG",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-v--GLGyrkwcjZ5TEdMMa7YuZbw5nfihsF_4jjwZaeH6f4PaI-avP9ot6ybfstHy7jdUuvTGLhKbH0nd_0DeEf4JD42GsKi5Qseq_SO70MWhikaI2tJRe22F283wiG6ZU2_rLVqcY4ppHJmKWE24aIpPMqaJ_4iKG-ukv46DBqz--VjZOJiFw0ZF45nr6RquvvgjTRGSGb00GEN-Ml5NX5tOqCxNI460McRoyLYazWEgWvhXBk-a-zSF6ukfvj5tAv0S0_ULyLGKW9w_jp0yrm_6m8C2cK3HvmUs8woWjFHUEObOrt_RmMDDGFm-um_rMSNvPRNdcZM--pYpcIl_9aiNrhGesGawpsKeJ7CoW85pQ59A8oWjU4YWTNVzI28ya28NaJrZw0XxDd_yS6Dt9XIiokwPZdY3zdGWfpL2-oF8sAr",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-uGPd3XM2JuvepiXomFzuFbQF83m-b5ilCX9dq0QcjkAc8s0csTHmANQfhyhJSmvAnp_jFkBy4vPjiZsZds72p4UdY9J1XoOJMXL-Hr7S6a9SagstbxsZclGZ0RMYFKNq8xz_I7Zzr-FJqMQMVXVyjNLCu92SnyAgdStOHfsCEE0GwvfQAXmc6ZVBHADGAX5L_aOvKoNIq5OkJ-RyNfandSagQH-L6-S7gKw6d4UY9DZasuwGhN9zoS7AuBvqOm-UUTwnP8PQ-c2a2FWWI3Vewqe58feJTO4XHQ24eauwQPJKBp5F8mj9BbLQ37mZXfkFKS9aJRdlhJa01dfL5YOK0dOuGbJirvS104YRaD69UVR4HZlh4T_fEF2r7mtWHicoTa7B4cVRGxIBHlwlYGff4bNA9m4hwJpX9p_-1yP2H0hw",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-upLZDwEkDpYsD5C9JKNRmm1GfB1x79TiqTtLn8RBhN16IJYQ-vCGKPDDGc7NWvZm7X7H3UC3Zty7g_Zk-hwuibYFAhfOdXTF7_nAdjAPYNjn7h7eJJzKi_1S2cKd5H5r-W7g6wX7OceZMZjUZYcUYjcdA1U617oLPeoaFPEYy2459bN89xt30H18HVyhK8dflighmsIyGjDvUhLfUeJrGsMyVXl4hdba1aiPL9jTWzUj4wg9jSa3gYumL7s166G6gzbi8i80wLNNsuI4JdW4dStuxYCEcmsnQGsmaCaxHFzcBtfJqFDfONlGwIGAixYgX6dOrNTU4ghGTvyAZ6dzUQh0Ao8uSF62UA3-EWjRPB115Zax-ivSbsRtVi9r4C12tEOTxeLEnxs2_njtbHX7VlIbqpd_iS-qiHxua2h9L-WQ",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-sqBB3rTgkBE-zPD9xpbyARjP6_iEaAkRIRKin7qgCbSqQxbhj8ArBqg-95h0NGsbmZQuq5vbrSfGp3UVV4D51g_-B8RktXVcthfrgQb7dRGIjv3Ewpcc72pxiYNCvHq3CPsUuAQuI6MpiDsDbao8x-V4S66uTNAxFw1igv76tm7MUH6FGqEVQBLyUTtQrAJAd4ElXq1EfCJYEeFYQvkCzEVT3-b6uduk7R2sOry5hN1FrNER901tLLO6EnX6JtaIqvPL5N-d-nYcER4L5HC0abZebwo00F_1ZZgfuSDpOUjshy5nvPJ4VgIcgRKJM62XTqKFNpGtvEj_l-In4QyhcS64B6WGsIucFBreNTGKVMUAejDTsdx6sxPQg42LCqMx60tSGAGF7pPQ6O8tVhC3fhwJhfXhb8YuX5gr4t_Y2Ha3Y",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-uCKg6WC-ld7129x7LOF0NMRL4TAEPN0_5b6zCimwUAnK2_7VFajfQfInCzuz_Va6c-RNFS6Vjl-UppnUoZmYcjgFscnsh6Dgl1XSOfkJ39s9DnqDcNPDE1_GsMV53ZpeaX9YIpExAOTe7Lr1Ph7Q_gWufLP-dUTWZ2W8MOyr-BPR-Oph96eeRJekXcke2NdmUNZNpX3XvDbOQ9EyG84ZGR9hFGpyWB6HsMESs9uutht4PvVCAiwezpmB7DHoOmdSbFyJQMZyPO-g6mbkZwJ5cVEkilLvAzTog09UFw3z2B-fI6L2UE9YToSzu3MUzzFQA0nhHT41DjY668Q4AnS_knQx83P-MXeH863yHcFIBzV0yeblQi1Pnha18fZKuR1kkOr2SHCMOh79oQJU9d44Wtjr-2JTVM7Upd2DWAhOE",
-      "places/ChIJPZX7nIawyYkR2ez-3iadXbM/photos/Ab43m-sTkmephJX6mqbif1rOWSSe50NgPryt3XB6te6sjt8bzP2c1ph8eAINbyY652d9pahIW56f9kYWGLuzSMIG9-J500_fXzzWU32_BoS9M0NqbmujRm1dISUIkmDG4nvTVCrAhXnW0hfoSIhGz80AZbbDkAff0Ef683a1JBfrXImrYVWMnXrHct9o88K7wiMuabzM99lc4n0CO5oYqxKXd6dOgF2Vzr2kt0rrb45cuF16nJhz_1OfLXih5N_PKqr9ZCvh61p10eKNz-ZN7vXzFyk-tIomlZirqvWpNQ-o_Z1SNxMIsNemi7UHC_WOXCZgzp0RYUkZ5jLTX2RumKJ5h0Y2lo0E_EAKbYcRmmCy7ojD3_Bdh6Kra3JS3cXlzRyF86OYQ3-BrDa9LJgW6LJZIK1XCSDW9-snYpXgxQMnK4ZecA"
-    ],
-    "phone": "(717) 642-0030",
-    "website": "http://www.frontierbarbq.com/",
-    "detail_primary_type": "barbecue_restaurant",
-    "review_snippet": "Cash only. Big parking lot. Delicious pulled pork sandwich. BBQ ribs ok. I love the beans and sausage. Fast and friendly service. Awesome pictures and decorations!",
-    "review_author": "Marga S"
   },
   {
     "google_place_id": "ChIJddP5f7zXyYkRDZW_8Q3xYh8",
@@ -8659,51 +8347,6 @@
     "review_author": "Ankur Panchbudhe"
   },
   {
-    "google_place_id": "ChIJm-tFAw-9yYkRpJKSya7TdJI",
-    "name": "Michaux Brewing Company",
-    "address": "11657 Buchanan Trail E, Waynesboro, PA 17268, USA",
-    "primary_type": "brewery",
-    "location": {
-      "latitude": 39.7384713,
-      "longitude": -77.5251723
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Thurmont"
-    },
-    "lat": 39.7384713,
-    "lng": -77.5251723,
-    "municipality": "thurmont",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Closed",
-      "Tuesday: Closed",
-      "Wednesday: Closed",
-      "Thursday: 11:30 AM – 9:00 PM",
-      "Friday: 11:30 AM – 10:00 PM",
-      "Saturday: 12:00 – 10:00 PM",
-      "Sunday: 12:00 – 8:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.7,
-    "user_rating_count": 170,
-    "photo_names": [
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-s51L1qu2ExzF8QlbyhlTjFJ7KXhYTHKRFK7EvGNXvby5wfFzXL-VTV7R-eZckF1NwV4eG3Bl__AMnj-If-XZEFgy__feOc81GYbgMAiewfG5GHKZMY8q-xXTyWsbV8yX_qskBM7NEf2VHqOVYHTTQMwZUrQ4Vw6VmcggfWP64jZEVPgSv_ft5G8_HGdHzr058hBoweq4EbYwTW4uiYnH3ZT4HNWWYtkIkUurwY3oH7ludVgDYDx49DUUPbFOMrksR-pCmtWz3PlfA4Q2C0rNIm9Zvwv-eLti_SUsyhW6otiw",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-s0Nlr4p7sSLvEdkVJx9vW-9GNQo22NKaZ2apumkHpTFggYDoqRbW1u1AXktBoSCaVXEtNMane13U5IdHvR_H3YHvYra4K7LXDYyZ2bHqUUwB_70zvOevfR19AHvc2U9G1Mo07Bv1kKksH5SxtWzUFjT-AcNBLoePQvDEyyn2RgqAJhUoY3zJdYT3j4AFaqmryRWdKJanU9Fm0w16U0cpZ6BAXISp-ONYxTcEPOD5cRLs48qV_9ZDLEFGqpL1aMBWienI6HaOlFhPYrjPeSIKT35kDid-SPtV9N3OUSSeyBxA",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-srDmC1QK6AYDHJV-r7biJR-EgxydaQjkoAgyYGrtl8xUfvScfP3WulBtGnScOqYIrsDKYLnCmGRD-3dz2djT1kwOQnAJDt31DvpCYLJORty-6JNl0JpouukDrHHklHEe9gi5yLm22zbysFUwljF4tm-AoSrO2v0gnA-B4QouMw7c2C8X9lBF_iNmh9H-6ieMTuFx3gA-Pt3RlcfTLqAIevvPJc0M-8GvJdzmaUKQldvDoT5EQaWLiF4fsALiuZbcx7cBGFKFlSntLcZ8nmL5SwolgJiyGFwoLQ8Z-ofh5bw4cZeIQQY9THouoSPY060K4gl57hG3cGz_WT5kwEKUpuUZw0PzTbUUydsnYQmYfTz6n0BikkR6HxeSNeqRsl5v53pVxj_iErDSToxMiWY9DqZO8ehQcFD7r7Gkz_1RaE6k8",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-sghIEj8EffW-TAlgWX8b9p8y3_Yp0-uFsG8Beda3gzs-W9ImyB_YBQf8NRbitTr-UpGHKPl0ESadek7lfZEPEyAo6n9v7sBlEGICTJr_mGHWyyqM65-229YFOVK0x2O-x3tMw6EnhBiwLQKiMVe6FgQmkgI1oTF9-NPyVDlSR4y-dvZhua5KkH5gwzmGcsyZs51ogpbKUCmyALDcHST3rGU-1vWNHEF574YYmDJ8AM64Qje1zTHOq3kKvlOxaPcLaxhtmPjg1zgpW_kTOBVYMesZfZJr-hx-u4QT_gUxpTNEMEcZ18vvt6JFCzPVpI-sCNPJ1hbVCE2XV2H4RFoq5jQKZNcbZa2o15nI8ChnBjWZ_add2Hr5G1fj9_cPExkGjLjCryQLDct171mlaBBuutx700NX9wMp5k6fiJvpFqrQ",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-thOY-DxE4YujLIhWWBq2pmbEAoVXumcekhxyOj3rS82YV82UdjN5Ms0bCGz7gFoa24In21ewVqn9RUQk3fDL9_YQ5wPesHqDv29VK7iXNRfbpWYVWgbXkJG-HisAOKh8p6s9ygwNFKaX76tv4-FHOqc-JVtSAS4jdOLDTj2e89GA8GuDaOPSeE8AblHfn38mBpeE5tI44zLUYZHKdEJjqNYqILzVlS9lxqmpCsVWDL73Ln3i2MLKv1snUMKnZkI180l8LV7kjX4Ld55rKJrWx4FSHEesHggsYRwThJHf--a0r7ysowrbmq3QDj8zCT_e1TCQXY9ejGPfRe-mOvrn5Obn-KSRww2mdunqxifHmU6ohhdmgizn-fVtoVPNhE_JJqBEepkUTQeSaQ33GKox-QTWg693gZ3NG7SQzcfWGwQg",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-tR-u91RrgfUNxfOSuvtRqNeSxKKRd7DMFDPsyYwvVDoAaro8GwwQ6QKeak-XbVAJejGkkgJx6uteuRmpa5-HTFHZFEuAQ02In6Ifg3vboTWWtPUSwpr-ZUNt9e1R-grubJQNEwlDbCO8-p1LiJ3gJ9AyM87AacF-mcs8ZAKL7-AAAan5o6B4bpklT9xGZiSnLeiuVoto4Cl68rkXG0GkNkfnmfu4a0HGLFegsQm-6rYcLP-5kEqRU26_G4yfd96s_nD5Z2vQcbnCrJ0ixziTfrAnXW85ATrCp4YnaZgnt7ARKt3hf5C-jOX4StF-SWTIYWAWBquHsmJ2ZnmBEZiY5Z5ibNEy7NXwS53E4o7k1y_TCfBpGiXjAhjMADULIq4jMy8yOvFhAMAxyOunjSSudLbU0yzdBFSEIxNJ9LUk9g9A",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-sPjwLlA4xGtqt5b6znHerJ6P3phqGCenEprwjEgHOJ057MikjsPxR4FxVnlHtffy_vuADLqCQDmDvC2WYQt2RufiLGizx1aU_eu8-qN1B7NJdohRpiD3OcTxcnNQ-947bHQUpqQy4M4UoS6RUKxtLM1TyNIvrOyH0AYS8imKNApNRXXpoQhyGS01Feu-8AuLF0t2y5h-5WOMFC7f31lsm-q60HWn-ZN3IWs8p7EZD96aZAduwdEpx-2H8YeEaHhiKmYhDwcwLgxYkYswdzP8RSNZCgACU82uT9rDtbPlbBA-lr_kK8WbZ-sUME2Ep3I6WASTJS58pIPTRW58BljScsXwQhRj-MEr55VaWk557hd38i8yuaf52wk8AhiSZzNBLyQdufBnZhKgxWN9bbwTovZKQd4-kXjjmEyGnbJSMhhj8r",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-uh70oB9-5P6Tkx5e4gJxIolOREMXeDgIHACJu7ISKEEB82gKs1v3j4o0VUIDe8lcZHXowArQGHE_7_Xdt3BPl3C3MnBXHbPtohV8jqWzcKx90l4C6dHT2YWKgrjYoeylj0rAR0QGjjYz5eP99J1K9Y87DOjyfdaYrYmhVpC09bn9MuUN3CK-oHx9xeQumj8WHkuwlREI4-Xm6YTIf6DY2REzv9YK77mJ00MdlsQc-SUOi4ScGj_o-2pEgo7Rj50CHX7K29tGn3asu1jgVe3WRHjwfBp0zXMQrQuzmkQ_zw-rNPiN1oSrSzRkl8PoaxB9GQ4BAixP6j0unyD8VqsQV_ML8oscZDckxBzn8mxNdyVWX65s17ouRamkJqhmlhK--70vI9EuW4qu_2E5qVOYCFPy4IYi1FO5jqyq1LDq08-w",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-uGQcUC7_TG-_fKMp5uO9LW1qQAkXi3B2anRL38YEV-quvx66T--LopRTFcdObLqSTiGG-dTZ-w1vHm-mF_19mNX7WeMshq6BaPjH-5dbMrg3vGTU8pFARCRW0nDBsl1SYnzMieVicBzE-3PV2br4f7WlgHMtggCjHVdqVbwzhRnOw9spjTxYmJPz5uo8dA33EVR-_dxzSNQmxpENVuDk3tRTjHFkIdxYiNIp_FecyxA0zQ7OD78DfgW5iN2pARkUsDkJMveJooHbd64XhlkRmAeNvLc8El4myJKXhHCMJLnYBST20XB-n4QlCaOKA5kqFFeMXd6cawnkYin6Xfp7JYBVI3837j8RU4e5_hWCyZX7rX6jxG8a1ZLnyihJdVuywGMvnEnFUPdbJxg8MD9VGZg_vTgtEThDPZRVAe0wGxgFY",
-      "places/ChIJm-tFAw-9yYkRpJKSya7TdJI/photos/Ab43m-uxIn2FA5gYhLuL93YwKscttvMJf1-0OdK4S7i2VqXH9sYTA2RGUIqXLW3CvZiM8S86Ap9FiK5sZvtngNrR1ACF_lWPjQCiiYqYI3Z6SlwkUw4svidCLP2Ot9pD-92sMQPOCyqYYwGoaMVuGffxJpWc4pw3qml33JM4HOToLCfYNqcc4KlFrVwWqaZQbevNzUzQurHn_tE0TCiNPTiwBt4aUXIeMAGejS1AE1B5FDz2pEfDcYim1YLrlOikwQgQ7UYZQbFf8Xk94x69biPqfFr29wC373XmyPgL7xzO3-lPT8cY83atKOFf8VXu95UsQeahnalHKeMHTEVvOJv0AGTEKBjlipTsMJhzMbS8eWSsG_StnwJH4_3IJQCyqqD097aesNzl_S8pyfKpMf0L2WG_Wc512dZ0XGLspewHTUbAsA-T"
-    ],
-    "phone": "(717) 765-7474",
-    "website": "http://michauxbrewing.com/",
-    "detail_primary_type": "brewery"
-  },
-  {
     "google_place_id": "ChIJdXekOBE1yIkRqM3b7TNZ3CU",
     "name": "Flood Zone Marketplace & Brewery",
     "address": "50 N Main St, Union Bridge, MD 21791, USA",
@@ -9780,53 +9423,6 @@
     "review_author": "Dean Fitzgerald"
   },
   {
-    "google_place_id": "ChIJNX4ak0gdtokRk_spVZ3l1iE",
-    "name": "Stockyard Brewery",
-    "address": "12428 Mountain Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "brewery",
-    "location": {
-      "latitude": 39.270784899999995,
-      "longitude": -77.6873631
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Rosemont"
-    },
-    "lat": 39.270784899999995,
-    "lng": -77.6873631,
-    "municipality": "rosemont",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Closed",
-      "Tuesday: Closed",
-      "Wednesday: Closed",
-      "Thursday: Closed",
-      "Friday: 4:00 – 8:00 PM",
-      "Saturday: 12:00 – 9:00 PM",
-      "Sunday: 12:00 – 9:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.9,
-    "user_rating_count": 35,
-    "photo_names": [
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-vEulA8WevsBF4uhE5qg3AZiXrIrLX7N3-XjAwef4htgs8NJYWQRseUSJTd0Y3CwZLmqo-1O_O5Kfng9U8dLmDqBiyW4Y629k7Wmm2gyECGVUkXHkSkXJ32aUJmIu3o605MaXye2cu_fcprMrrS_GG12tpvqqlsTq4n8N4hROnYP-ihLd3wahqaCWeWeMKzJZwzqE28pfW6CB8yrYnL3-0nH5ZFMJ89nxBxn8ltnwNwYO_zIFJFCAjdOjcIYI9YzGG82Xgnpou08R66_3kmUp2SaBkMnynrAXiK3iHPlJh8xQqG-6oky3gTIbp1s-oQG-HbtKrTyVY6ZVMXFCVk2Ol8uNSuKdggQuchQ5Bwi_jGU4kvwwsF27vzjC1ddgSH3Z7Ff2jYoahTBI_4p2POpJVNF0wB7YE-oncK4Yrvhjc0GZsmxm777g4MkAGxEg",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-tOO27Jsgy_ohJN_Lg2uoqb-RNC9K7H5-s8MSFLT9G6toB1EwgCOwVV0GpiIqeEUh5dt5MlhW9OhDEzRjfBqg_IU4ZH3fRjn5784fsuRweanxxXrBdiBUHG9SESqXTdIaPIvaNa28b-tCfVH02SDv1YZk318_UTHGIkPvyjRnYDHAkzN2BYH-zm23R-TAWQYA8oAFW2EYqb8SiiZSVyQI5ij2QHsNRRyGDuJkvzw6owLGLopOOoXaH6w5o0Cs6hXg3nIj96nzcBP3bpDo_scdguCXd820XyfFNVPm8xT0spsvssotTZDXdETQmtyRQUDPZaWJeS1L5L3o9WJnRV104uzKX5QARFmaNQ-_UZSQ8j6iyKHMxuoTqGTuuCTrVMRsgRq5GqNh5QKgIewaqA6WWrPfVC7B9sa9EKpu21FV5QMhjOIkq9QKR7fUlIwBPX",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-uGtltqcpTKAIFCocmZEJjrO6v-DZkhCYa2AuI3PKU2wk4Owx46s6iA2ieDy7xiElk-GOIuNLCLYgFIMI0JPJ00oLjsSZRBp2959QlD_kfauKNEwJWLHj7qEWwDCoSCsdPlxaZvTesAxWjO9mGJBMk7bjJwedTO-etKE7lv9wCgtve6v_efluodFPYhg6c3agaZ7coJ5W4gxXwvbR3B8R09hxrIIw3hsilXj5xklaPFPuOntFWbWajrMplZ6NP3-CJI43RbmjF2a1z9l2EmcNB_A3MQVlngcL4GRlfuNhn2MdoFF9v9riaL4KT1XPeKRDZ4yjJA1VxPirApVeHUi_EQjvUEKHPDZNE3mCQHkxXM1aHRaOq1B7srL2seR1duD7XJxSWicDDJNqTfBi0eA9ZL_ptK6MtNBDxXjj5yEz8dWm-6cxV5QwA3Nc09naRJ",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-vv7O0zTDF7tWUXvt_N9Fi9lGou7o-iiz_IWzR0bj_oKcWG3d_ZiWElVk-Rjg00ja4YnqNh3ANpLQn-fU1Z2i1HPYw0lvPm1mUsVi00bdIPbM2nZ-EhnRTgjKZ5f88aE8Rl3bmtfO84ttZZPxVKpT_wlSWKyeM2wwUzmY7nefpgQU10wGXc1TrleTRW0E3LqzEeDDaBcWTX9386v0AiptEd1Oj-h9JK-wsRczYrXk76Omw5EgizjI_NChBapNP57eqIGKI7g9NoHvcilamohx5Ui3Q4mOe7h9A0QLFmKykqVkr74KZ4Cz-UWDcR6dQOj37VgwsDf2hZGnazh3N_KewSvovSiNWWViJJKIv47YQ9mK6ZMLuJJorEqOqqJyj9d39tz8U9zi0JLybo-L52L_gQTqqvC7dAGItpCQ6fywuqVIvKPVKu4yrvBsWFm6Fg",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-sa8cDQ_U1ARqjoAz9IFCASNoQMTCPukt7S8f3RNUVCN36dorWP2N0O7bDpdVYSQPmUtHNR9bRPWhflduWHfVA85MXAJFpFTVBzRFQLrPMcmbJe1Fu4WdAxngw2ySCT499jZ2rDqEbW2IZFsOuWv556kmzqtr4XB9kvPlaSA7xkrB20GIFeaPb1ISGnR0--sy1RDU5SoQidsS5f6-ggmAOTcFaD3X4uqMw8cXeJBf2UFeTiDgVjHdkrkPw6E4h1_Bddt2K23CteTjOXAS1jcyqcr5GHiB3II-ypNVPtNBQUP-A8MIJu-AQRxYA0m8G07UUoTuO9tddbfpSJtSlsj89yhiyxcpaTRzNqdZo5Isyn7a0FCnf998NX1ou63EbL69uWeUuyNi0RMjvjwjz0-bwyZ8H0SGGqkqMteok75BogLApHYn7shwMSrsdWnlQE",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-tID-Kja1Nb7PlUpubBkBkeUwi4SY33peCL_5kogtdX0eu7RLhoWiOtnpebQb0H5l4MRJA_r2HhG57Qnu1RYoB3mTFl-H8cSBvpx7uhg6K3fbHElhIhydONKU4yxUvKBH1uofaHamlwSMpLSpCBVeY_DDKwxhWR-hyX07rDZiVU9T8d1JZjSVQoJRMJXlq_jaRkLFHyhJJmw175ZmzEy-SpHen10eDE7f6w-TvABTr0RJ_ijz90PuEzHR7Z97f4uy8PtzgDTFT9GfjaYS2EP3hDIeWcrqBkQN7Q5Z43pANdB6fOoKQ1iO3lxDBrq2DANVvxbbb7MJK38M-kXmjO7LdKX4hxc9r-R9oxmDpNEWSGl-9DXLrWoQ75VCrbPAqr3QAr7skArN5efRUGeTA2D7rLH9otrIcRFw_DFhVmeI5avOqRYGYYs7k0idnNoQ",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-umU3DZZgYF_oqIMKfiXSaw1fIpBy140m76_CZs_XuoJS_0wrrOjVCNosJ85YvkPE-22uThSIqytn9Nx9dUAq0xDAx1nasKf7oHhMJMPolpAZMubAH7YqKLBMpyHchcsO-1Q-a51HINzN01aVoYzSRE277zyW-nvy5APDF7Btf34KuxGwajKu1jiSvi1b2SD6x19wRCjnLAZ9o4yERDfoeePAuzdjgu9DUkosiyEAghbt8HU63P-r2ZVtlBVkaCKShsmxMjSUMpKlOmWanwi1KqKxVq9eUGUSM4krzcQJz0puPOvM8ueySRYG7SlfayFWf2I_KxS6I9zqLnMbIEoiy8UlMfDNbTFF986cRlrlxoAnsLV_K6CDBmwDSYhdfpJXnRJJmFvG-1ZvuuiBPynvq3HbkDI3m6701sJOhdpkoGamxrbmfT6hx8ZHukYpsn",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-v_uPN_ItZx6Hp6gJpXUPPYYvgP_Gj-d7TXVuqZR_C5jBsDiT3WNj7uH-JEJFCzN4lYzlSH1dJB8lJgBC0FqkH_DlWO9NQyFSmNa85PIXGfov10yUA2P-sn19GDfZrccI3eyO3Pp0QvbnU5W4qQN0w9uAN1mJUwrnsu5ng-Ncm9SIZNoQnGZLfeYu1TRgA7bABFckMawWCppqZH27n9adGsMcZAPW2Z1kcWC6PhaPncWMZC_myCAXRHIyoWMSHbvxejmd9W6zdX7e1gAwIy_zf7V0sE6llx5YeVIbmHBTZ4wedA9cnLrMPzuXapwB3Gcv0FVQVepJeOt1YuAk2FPSSd5vY_8RESkUr50jg8jElP4h5-CRVcqG8B5fAsRSoL-5TMXnp5LBg8xSlHBEC8mZllPmF6KwTcMWy6BjwXBrLR7bTnUUs0Q4XaUIQh1w",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-svZnQtn1VECj4bGTAhZKX50F4Fb82--rBkPNqggYLCBdW1KYlbCNtMN2WiXb-CI8Tgbn02bYK8K104f4ROpOhCn9-Oclgmg4a0LJw8KANJqmFi7n7hL_Q5wyO-mTpwSxOEeeLlecsTHWlFczy6gnvR7GcubECv0AYB0iuJQpAbliLLg_yFi-uuo-VDrpNZMB3etSuKLn5SllTIMqXh4cJe06eOYsXPTym3Y1ErIldFmo-klvELtynJJhB5D3JAhnfQeURsGizv8yfNCN7Ks37DcP0480GwCBja5lbxrUQIHTtjexSeI3vYUd5e7geP43qmYbVKjxCg0OQMVTcdW0FINLD0vrtv7husLe89rLVGpKXyq28b11arET_tSnvdTIi1QKoHyn1Qj8gmnGDSgORDdZ1-A2ni5sUelzNcRnJZ-DmZ1urDZYDoepJnZV4T",
-      "places/ChIJNX4ak0gdtokRk_spVZ3l1iE/photos/Ab43m-tRvK4u05kmgkwak-I_JtdRQmZtlGZgyUcgVMWCNBM1nkOIs10LRpJpsHC1OtCT2ET2V5JUOS8rE02K75HsqLNGm8QukpnUuSFFq4C-rRYgxK6egqB-3XKOa4q-FXw8nfaqodQFJNMo5Bcya38mVIZOsDEPo0bWPoQZsR74Z5-0I1pmmob_yGv5uk9q_FhEr26U9I7CzJKI9iQcIjTjb8pXpWbbA9Y4aKi0E-DzPn4y9QRO3x0KBrs5HqD1bczTJqV-cU0M1GQsZUTpVzODFvipyW2I4rUa3et57y6oL9ChRaEVH5dt4OwWiy2dKb_rtaB-roUbQw_ZfIy9rGWQaVOWrTBsC7IJDuYHWNDaWnzmTIWgPwwvDj9bRg33AYZZ_01QJOhif-kjU7xk22N5xlJnhMZw5QhRb66SRTrs9_2UpVZdYk3H-AEVCcMi3Ubf"
-    ],
-    "phone": "(540) 524-2739",
-    "website": "https://stockyardbrewery.com/",
-    "detail_primary_type": "brewery",
-    "review_snippet": "Went for a painting event. Very nice venue with lots of indoor and outdoor space. Would recommend: sour cherry beer, pretzel, flight, and brisket sandwich. And you get to say hi to some highland cows!",
-    "review_author": "Ashley Carswell"
-  },
-  {
     "google_place_id": "ChIJUxNbV0TbyYkRx32tTuvkdB8",
     "name": "Puerto Rico Distillery",
     "address": "402 5th Ave, Brunswick, MD 21716, USA",
@@ -10249,91 +9845,6 @@
     "detail_primary_type": "food",
     "review_snippet": "This is a fun place to taste traditional hard ciders, buy historic apple varieties that no one else has anywhere, and chat with random fellow visitors. Friendly staff.",
     "review_author": "Bill Pabst"
-  },
-  {
-    "google_place_id": "ChIJK2PlEN0ftokRck_Rsxf1rX8",
-    "name": "Flying Ace Farm",
-    "address": "40950 Flying Ace Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.2770791,
-      "longitude": -77.5827865
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Rosemont"
-    },
-    "lat": 39.2770791,
-    "lng": -77.5827865,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Closed",
-      "Tuesday: Closed",
-      "Wednesday: 3:00 – 8:00 PM",
-      "Thursday: 11:30 AM – 8:00 PM",
-      "Friday: 11:30 AM – 9:00 PM",
-      "Saturday: 11:30 AM – 9:00 PM",
-      "Sunday: 11:30 AM – 8:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.6,
-    "user_rating_count": 309,
-    "photo_names": [
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-vtKR8e5O4IdTHp0R1YDCQoC7m59IPOS7hRWwCO4SxcbKGuQItU7ZpFUKF_oy8mLQ5G4ljkkvqi2ybqihVZdNUwe8bKwv402S0C_nrjZeoGCwem3uJZEt_6NS5g4VEwtPcJoXxkKQV69c5KAZ96LSvTNGrKnz1H8t-gD2gx-vaZwCz8ynPyrsmhiZopVa0rOFiTzIuxfTs3uxxRi1bY2FLzk6El1gv0dvlE1f3x34x8bngdwQqQsOvzt-Ows-JyIZJRmJk_m3HsEO8E-9TtA3HLj09B1r_Y0B7vx8Qcw5sxzY9ZnMUXcYj0D13ww7mAP2PGSCUobFpwFnEmnoT088hseAxiP7oO5huJ_C0D-chIk6TFFPSEXqURbQnparHt6Pl-lp7NyoRv2o4sQ3KTTbvrtJEDf99RX_0KFuNX26Q",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-uYa2LAzwEX3rgrDfnFQF2WYpR0Oi4UuMj1rwsKJQcyGCa8JrZTmv8GSmJgog5BnFEHTl-jnYh1fgT0Z5s22LZU4QKD482zIX3AXKkL3cJOPA4Wx4FX4Cjcn07KRV_jadAO5RHar4XriEtkBN9jqdrSkv3-tqqAj2cb0uDCBRTQh__jP8IdPoqkLJ1JwIy1qh7_aZB1LwoKdc3MYa1Z0Dat6ZV5Zz8J-oNzw7OUUcSTa0pRcspSTk_PebBgyas6RejVXkhSdZgknpREpmjj7c2_EkFuZyuTKn4_d4rkGEZ7VZD9be7rUn9rD0hzGwC_imCJucIfrmx8exUtLeKmPsopoTp4gyTREDU4REltrFWzx6W9y2jnqQjxeBBUpmWROBrFkkWwxwL9UyvIVfQ_0YWt49I92WxyXRl_HP8srPb6-w",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-ulmgcTnenPtB78lVkdj8Xa6YFXLqJp_IyX3On_tgEBuFMFEstHcoTFRSg63LKEHhkq1rIIo5UJFWhj_qA25cRWJgCnHgxh58RsrofIa7U8hrJI3buo8Zf0Km5FjO8jFYDnYnSce2HgEvWcI0rhhsmJX5Mx5u6Kvl9YELxXXsv-27QRCCo30PCT1RCOjlGyFcxMFyxZu8htp9Rr12lkP7EPV9HVrp8AQm2u_l4ocSBPBn3WuhjOe4bcmirJRB6-mzLo3SlsMZU1sqpeL19Hq6LgUxjDtbt1kniDc1UrhHuaKwq6zp_iK1p0_lmVZKcIDkGHGxTmnmfhQpPVmK_HKyLN9uKbS8iqBsrmQKvom3FLjHWPNbmzA42vGufFtnsGELWw78PSvVx1Ip6CYK9JdgrYG6BXBQ0ludl8fe-2v7g",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-vbkSzOxv1nG4CnKWBTshLZv2TFHH4Yvf4VD8UldvrWzX-AWPUvEXi-ueBvmukYK-aZFnd2pRGZK563eFD0lBWu8WVzwm_UrtzZaeUkTlDGFuQldzWlCQUd4KLarPEVvCEf91y9V9adTAdh5W7EjqTL8jm9BNEBuJdPKHyWnLiHgxmfevCyf0kUyYT1f9_fzS_UgE8YJq8E6R4WfE0LOyOnzI5W_THXBoZo9fAhRUfoVNdXnTGt_p7pBy5eT9UB-UxNsZzanwIYiT5PxuBsMpNIVCq-cNQHZl4tQkekrENIM75FrVyNStJJT5beWiyYRiOxQRz4aqC3x99r6KQ2gOu7Wef4JhMAKxpF18rEo51A5fnFVien3Og0spcU5hLRu77NMGOAEUzMYJJzfiZpuzjg2WnI5bg3kivzS8WYAoYCdw",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-vE8l_y42OQOYUkueROygT7u4Z4pMiTvXlVWAy9wfyWEiOtGIVTTrMwBvsq0ZRnQucx554YGEiVg2LgR7OFklU9WP2NCj0-emhfdkuoix2yjzIfMdbvj7qHK0mNwByqNNZowgc3vy9TOtOXYwv2ScG59CEyT-BoFTzPlvZlFJe8242smVltcPwO3BgGUU_zYnKgCx1BlW8sYB048B4slHx064Aa7uTFmQ49Agttp4n9lPHTJy8Pmbag_025P4vV7U_Y4n31Hf1bfZgA4MGQtM-5VwYM9p9J9BpBzwXpsROivxitwEaWmHh8iBysEop0csf_Ns3DUOrGralEjzID_Onu6DaSfOeLLjOyEFq2JjeqOKVTwQ2N2ufyeMyy18LlZiDZgUOMfIqM8G-sutKXFCU5F3ZKHiUGCcFqIBX2P3SC_qy-",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-vsPAnhogspCnfuuyJ7RH4P31p8FJ64k__iNhpQasQ0wxUWeh6P2GfI4ShwAflhuP1MolwUBSj7x0xDTXJ1O0zAjF6wwAXHT7xkWV8OWZhp-0MpxBVUZOQxf3S_l6FC4y4SPY3NvwgbIYhrA4vIGpqFfhDElFf1xv4osn_1S3iiKmXtnCm79ov3sYcBB_4AqX9i95qaiJdaZl6Uqpvoov6Dts7yaDbFCkpwVLZKWgG4gl8P0yop7WxNMWMS4qmTi31TJ56rqsFCktxM40-pewrgLK4gmDogpLI-USsw1h0EIh70TCwKr9F2ej60JZkzToJ_eSege_CHZ1Da8WLb-OBqevf7tS13YUVtaSFGzX99PPoCR9ZpD8obngcrIBzIKqI5oT4BZDIGTiLFMsSb2eeMZAE9WWamBgw8RdWmddJW-w",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-vuM2tcBa-flPVGs6eviaT2Q-aF0rdaemAcNUzF00UOSiTNKZuEDsjWKUTr_UAjQn8q8pLUV5Q9O_bh5NpWEyGtBBemNPCgdtjPlfGa3l0kbiQ154UAyENMGFV5PdphVtzO2S8bTFGBzTMziFdop1xfIHwIETbIRaRdJfBW506bi2yOTYlx12hhuUTrn9dE4MHeJLGnNBuX-lYAdh8wdU8DWDdtIgW0vLc9QrtI_-TdYJiWSil3wr4xfWRWLQZKEy7ABrxG4em-yma-iQeIEvzrsQMje5ztyaiHFJh_pJk7tRi0r-SjDjeDKKargS8Bn6fwa7za4PAlKV1gmoGfs1w_nzWgp-vsZC6b5-KFlUT4XKIRaYKAWWOJtITSvEqn31QeWFcG2o7hRgakT9dz6ZwuXKld7u-0YQjKVkXa0Vc7kA",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-uxP8LFQ5u0096twMzYFzdVSwPdmGMJyDYVgTywjSlQKqd4EEBE395IagMvjEGqeEjK_V9UZnjSUCHsO5F-RDwVpT3zYo5oMILzll14OJbDpyHztvPsDfj-YISsKpNal3biIxxss_uI2OVAN238OCHkXh18exLsDIAFsoJ-5vkJx_wuTUc3KavJ34LOGU3PoK9eeXGQXvf3sj4LbTvK8OIeMRZ3FoFJg73JXaOEDRdC-oIDNN4F5P7bhPllzWJook55IUmUSxMFewrpa_TNGiXKmN63M7A7gv-2fVig0BVXTijZjhUxV1iWyS_EWNILlwGIzqCLBDV6bgduSrZxfhW7IA43YRMHIa4TDHoiO-4Gvdzlm0VIwSofvwFN7X6mdtPoLO-8_RsYNIYQAXoCRgHJ9YWZLCZ_VrGwnjOxpfEqMetEvcRteS3Kj3sEazO_",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-s7-Do2U9_JV8N1jsb5IyJajM_fY7Km1DC97hUA6RChDGD1xChDfTSja6GU0Rn9iMe8Mr1Vvgs2mUPVKKUZZa3lQTWc-E_x6koOjFih4U6guapo5JWf-PFHLmPEmSGDgaUiBjBneTIPEa8cw44M9kw7nakrX1uANzhDCUVRYqQROXXWUYImX85lwP6BURpqJCtkGGGuwt4NvdHy0x998gB8FSFKA9Q7fIJ8ywGHxo-Ybp0N_6ufEyObxsw61Nivsx0AWYbjAF8SFd5vm_oXtdgvebr6p3d7yqOhq9hH9NqR9oNX8JruN_uE0xam93OdDXaBnpzrHnn96Fx1Bbqyol5UN9EwFqinLFKnX6Na6u_Gvkif6yoCJmRZTOr4tIFnVGUfo31ja7eOUBC9rqfPL5TD_zlapL2EvRL6QOWOPoE",
-      "places/ChIJK2PlEN0ftokRck_Rsxf1rX8/photos/Ab43m-vQSt8zr4qwJ_XqkPIgcLXjsWuyO-6xlYmqG1jW0zG_QLDg05nXv9TmHA-e35zFHQ-Ba-pWq7stqL30IMb7w2ONHVP5r3rq5uaFDY8PuRDLZ7w4XNBcNgtfGnw56zGMZwklbGyoc0BqT0AkrX-jmjtLkdTaw-MkgjneNZPF8m8lHkJ4u3hFO-KofZmFSE65DmeIqQ-rx4_jjvnqzVvFqiYR_HWA4pdnKHnn7bGWa2mUCN9204k9x3qeX7bPKEnjSC6y7BVSekssh7dBWKwM_nEIVGWnOZ8Rvv8AAsItjeRG0AC2BgRErfoiiE7P1s_WUxuuCjna9OH5sypnjixC9Ym_XqtMFW_EbNVURit38kdvbG8atynnO2bey1qZC8DH45xOox0jvIxrG3WOMm0I0aCL0hnDSMt6qYnCpbXsTaaR-w"
-    ],
-    "phone": "(540) 579-2007",
-    "website": "http://www.flyingacefarm.com/",
-    "detail_primary_type": "manufacturer"
-  },
-  {
-    "google_place_id": "ChIJyUEFYQAdtokRlomSivVPmPw",
-    "name": "Cool Spring Distillery",
-    "address": "37871 Nicewarner Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.2770413,
-      "longitude": -77.6907894
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Rosemont"
-    },
-    "lat": 39.2770413,
-    "lng": -77.6907894,
-    "municipality": "rosemont",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Closed",
-      "Tuesday: Closed",
-      "Wednesday: Closed",
-      "Thursday: Closed",
-      "Friday: 12:00 – 6:00 PM",
-      "Saturday: 12:00 – 6:00 PM",
-      "Sunday: 12:00 – 6:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 5,
-    "user_rating_count": 9,
-    "photo_names": [
-      "places/ChIJyUEFYQAdtokRlomSivVPmPw/photos/Ab43m-sKRxD0UPqPfEYbhFoPEXMEnnx-03Y8hdn-_MLE2xNSbxZ7jPDtQkb7O29duMQD0VxeE6kIm3WVKczbBj2mA1SAlzYvxGltR_9t1OOTx1Azgj9HhDyOze3ytIZmDDZR99ta_G-eEowjb38iVIaTSL_sd--DSiXEGX0DvtB7pxk1bImZm4GeFWAv_ng2OhEjI7XfmC3DkstWaTUhwVSkggvSH6cf7DM0xS2VkxSRaUasp0AGwiVWST40fNjta7sAEKJlSqeZWZ9-Nlwzjzz--ilyyFsRSJbmcdKwWolLb1bBoFCReyEA0JdbL-PGRV_zI9nqOliQ9wKKZRTRu1g67LcoPPNNsAUOsOwhvyNr9KUY6596yt3CR55HDhgpDHbttM9MwxMPgS-ePdTSluXeGH-hpdZyr2snPzldG199J7BK4yZ4vnmdCb_w3nDOaw",
-      "places/ChIJyUEFYQAdtokRlomSivVPmPw/photos/Ab43m-tEk-_HQtCcSiZOdCopS-yJvAkm7ewope1kq3j45Kbo0lhBybo9N9L5ClqVIVstA7dxBlQdn16NjPJAobr1u0x4HDuJ3TKYE5mecphfe051AE_mEtSAeqxsLLJs98PwTRp0iyT27q6NvnP70AZnEMjXLeaiIJ-Hp_zXLyK372zi47yPTc5zuUmKGCU22oGeV3YMo0Uy0Bck0wfJzBdkzzCpr7V42XJYFAzzDGjol9G7hacCVwQlZKQrP9VrYS3QegbjTPt6CAj3aSyWyFLNidaP4rFgvSBHJMuKcF8XOjL4u38GKQkUT5xSv3lil8YysiZy4Wi3Um8bRKNuAMPvN09emHx0_7CD8xALmQBf1DzDAcDvv04UqZj2fviUvsu03obCDRT4DyWBgFKzorztA8r5X9gYg0D91notd8i0shTfQgaioTLBurB7ibm5gaJu",
-      "places/ChIJyUEFYQAdtokRlomSivVPmPw/photos/Ab43m-viSsEjzcEIFm0S9Sd8JbdIU-J1shFCrPqfePqEJVC7uU2uDDZ_UdFNgjFeupHz-2T2t6sKCNbd2nIZOX_04MFTDp_RI2hhj0zPyxhbIIs82FbgdLu4F7Mi5g-FLyi6E7ncAF2mrT55m1lEhDWkSH-yMoH6qg6AvU0D1RUFpsmjdY02lNt18nA1XI1nV0asyc3O61g9eIRrFKp32JEjGllH1xl7mzUcauk543Eim0Mjs5nhq0VThU5uMNcMTw2cunI82hkjE28wzkwrbqjwG2l_kA4cboMjjI70p2MAJIAgpsbDEGmLcrWcLTuq_3lfLyuKYNcZ0q5usH3MrzzQeGvgYm-dKpJsViVjTircHn85k3uH2pmPoPAKjxu95z81lDskwl7Qfmuw1-8j52MISjN0XTR0p8669tKNwu303yqVK218bbvUX6Sk_PjW8S2F",
-      "places/ChIJyUEFYQAdtokRlomSivVPmPw/photos/Ab43m-um82VrRI6XWbJoGcOmnZGCyV6Vgusld72zo8MSzJCz00qouwtppoXj97OSzWeSWq_5ALHj8tBi4mgx6KT2Buv84LKgXwVAXMPCkem9SzzBqxOY5VtKe9ACwTTgjq9-HUhD0RATBe2DgSlWlOSbfVYHo3UD4ak3Ry231CNPr5ME3SEzx0vAPWiuozFbv2Ro82I9rR_MHnEav5p-9hqkh-BwGrum_lYFyv6IZ8RFfU8qUjLvkDRvqgBV238Fy2uQyGxZ6RqaiO2veFakfsjaopBrFGmtgq4yHeLV6888zgt6X9s072L8o8keJk3Ax4-avM4MGyWQZfaDOui5peS3jFPoM7GG_kGXTnKLn5S0HrLXvgJ5NEUF-ptgIsnKGJnoRyKe7htmQ1zxJJz4eSaRgwS_k-qssXN3dxi6OtUOlUJ4AG6tAwHw324bt7pris55"
-    ],
-    "website": "https://www.facebook.com/CSDguy/?http_ref=eyJyIjoiaHR0cHM6XC9cL3d3dy5nb29nbGUuY29tXC8iLCJ0cyI6IjE3NjI2MjU0MzUwMjkifQ%3D%3D",
-    "detail_primary_type": "manufacturer",
-    "review_snippet": "Wish I could do 10 stars. Great cocktail, fun menu and excellent bourbon. That Apple Pie Shine is 😮‍💨 excited to enjoy their bottles at home. A warm, friendly place to hang.",
-    "review_author": "MJ Eashum"
   },
   {
     "google_place_id": "ChIJRxayRpTbyYkRSGPYCz4GA48",
@@ -10789,53 +10300,6 @@
     ],
     "website": "http://www.61vineyard.com/",
     "detail_primary_type": "winery"
-  },
-  {
-    "google_place_id": "ChIJGzbhbDgctokR3MKy0qJxmMY",
-    "name": "Hiddencroft Vineyards, LLC",
-    "address": "12202 Axline Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.2717455,
-      "longitude": -77.6743712
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    },
-    "lat": 39.2717455,
-    "lng": -77.6743712,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Closed",
-      "Tuesday: Closed",
-      "Wednesday: Closed",
-      "Thursday: Closed",
-      "Friday: 11:00 AM – 6:00 PM",
-      "Saturday: 11:00 AM – 6:00 PM",
-      "Sunday: 11:00 AM – 6:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.8,
-    "user_rating_count": 107,
-    "photo_names": [
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-s61TRXFuQ0Jh2A_2hnpo2GbyppFvXSe8CBFVJJJi0BlBApzAudz-5YfazjyyXLw82wRmy_uVaLPvjkWIZSrsjmJIhFCz2grF378tjIEcpcDEYCunruQil-c1bWSa_NxHM4p9HTqSIXpVL773DtFGyEMuo9LManqJizWAQ27cNeGAFMTkqefTAZuDHXK1CmMfNwgehFwooO1TnJWF8BS_L4W0BL0yeSS5TgYcI9zDk7r_VLUj4OY1uTdtuenT2DWuBf6e-snqPedJpx6md_mA9l4-oA3MNddcSw2FvX1HA",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-udj0itLxdgegzFfeIQG9__4lfS98pmI9I2ipv_sm3Fg2f-TxspK0Ei49xQ2wzwNWuXnZZwWel5fdZU38UAc11ikc_DipoOALEla0PFC4l8PPw-zogGxsZrS1ngSEYY4twap3AJSuZ2eQoV5NjBfZ-7LhZAgBvrha_norEhm0kDJm0GExV1Pn_EEZ3AnMRax0WeZjv7RD-Zay-olavHtwbMut2-ErhAmw_1e3TjP2wqaAdid4ft_va0tX39Kg7OlMYICceMRQCWtLnD_8BlsklnjDZ_jRpTvRAZl6cfRNU",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-ul85ZQIZ54NGQVp5c8MH1EYlxFx0qj5UljGjltCElyT4z9r8RAJb-8g88jwQct6t-N4NrH952Jw_hsOQR1Hsz1n49f_OjSFylVG0CXi_0T9kLZ6SH103oQ0n9osv4M_4FTAh1V_Kf3j9x5fobsV7PKZqBfah_KrYuV_blXOxhBGDm60IVhlrlsdZDRcsh6252SoDoHLiTr_QpZM_jcdUd-Kjo55PMMuMjJlM06fiIT_d2tDJYJOW03VMy3QbxYE6mgXYl9FzfUKe1d4Vq5W6YiwOziBU1WaoU39WBHAAA",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-sfwHquVERdChwhZcCFVxmWUL779c3wdBG7-6RN4Huukjr1dAb_cK_0fTG6VOcG4xk3hAMOkBX-_yyfTfhVz8oUMU7dQNDjMtZWouxfCE85ZUNOqZ3zZysVmY5vRw3jPclzNNgBvBaCpOJ1rUp8ZvWwMLbFUPtcX9hLYI5eTLHk6fINUUZ4lEaEhjAJSI87RTxZuxF6FxG02XXV5_6b04VYq_HV_KRvHKnr2klHVyedcpHhr3p4pPKr2RImdpTbPfQU31hBQtkN2bK-a2L7Z8dSX-JPr_eRFjt4Z27uNz_j16k_GEsFX8WovLSjLSX3zWdlvVr_v5OzZwNwmAIUENwBmRu0vGazl-PdMEmKbinHHmjE9ARkJZa3qX-QIuF9DCJ7KM1H2thomtF6YPexW5LWtOx64USySzP0G0heHLM",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-t7wmEoFMA2DH8so7bVtwDIljZQbMWtahZCdwh45-CMsYt2Qh4NGx-Tj5sbJcdB44PmZGcteH8YmqFtMMxAq7KgADAlQL50ZT_HOyXZhy9CRBNkInWOp3QO8FOUj5qf7r3zW-sU1gZ7kOcVMcdxvSoRR1AQLQiDvXGIGf73Kwzs-t7aihU-WcyTq5BWrc-9zLgumCYiifBgzQsxvmUX__avhl2gg4Mmi5bMWjPdr4z7SFZRSOK1G_Sy9GXCriv1s461JBQMCdwfEzf_L4OrzzZJxdE5PPe-ESxysxzRvw0QyObR3MyIlbCMSFePVo9Kafq4wJ88ZlUXv8Sf0p7s3p58SNZ7bd1UgUsmVX6FIGZEFlVn3OyZPUvW8fHUssCCLMj6PGU-W4YMmj0_iBDSoPfluq52YdEpU9t5BSwOOkIz5evo",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-uYHzzdHhJQ3sC4nR_-GTtx33tm_Asx4E_8cLJ2OgIIdV2PzLAwOT7KIB04e0ol8Alq7bCmzM4vr3eA1qRDXGoF4M1Ayl6EByX3si9RttuwZ3j4SAdFmJOLMxboHZUzSB4CKW0ePUdUwQCetEWIxiqdS9N8tSI2CAF5HMc8AgoWPvz6vScKqnox7P6w7w1CgmKu8r96Mf-0NnemtfxxRcFmxfoUjsmz3bb_GrKDJP477lZzdTPQOjG_MOWiULZnknZA9KmczPEclrGFkGvIV28kxsEmjpb5KUxYhUP039E",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-tqX_wQeq9kLFKC2-3N_iTqiBzRB3niFBaQIkZqvZVcWCM8AbmIJOi42FJcwUztc2V-DrSpDtho4VSK2Pt6yAe_ohhgTyUdOig6Oxahlbs-W6LfLqLNnc3pMoTrMj2-vtHnzjan2Mh_rHwiyY-WUtrr10NdOs0wdo_rDIo7nhYZBfv98neWkDgZ1PAsyN9sv_wa7tUidymqNvc7Ys1-qXDpfzE45-4aEeNiF548N_Oc_Ljy76GbOLEKE6s23ZOljY9t00gOUDeBVZSFu3ibvZQaAEOb_2EJ6JJyGLVlWxF4MtDCd5-WcFbxIqx70YfOrH8xfsutpL6lBXCHPT173cnohtAUmUrCGlkAaJSUs9NW8XvHJTdsrNW3GKzI_FLx5naMnlRrp17FWSD8cFCfcC55GH-w5Af6Icpt2Cenl60",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-vrcCcHePzjDxHGO_EsUYci71qCx--18q9RbJvSJatsNiQdjc3UPzbAHgBL1xeex8u6fu27d6DmtRVSpsjhSlVf-Dlj2mCdXzOpcisfzAOafqlIKij5QdPo378E8P-OURN-SOVuXLrdmuhED7ZhDO0_c-Ylddtg6xiItZV9aZCmuJ1FxWg6vO7T3NT4j-wWMbgyPNCcied6vQVV23WNF4SMef0H9uy0aI0BHt6T5mHINjvr49bvRhUxoV3D1IfSeY8Q9o95ztjUvfAIwqbNR1Lx2_NA_sNQGo-EfgUK0Vc",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-uGnQrh7S-2-dcdvoXs-B8hfAMLq2SR2oHD5d8mzdfPLCRj8pMHDwFmKkcvYMMN72GNFYuSXwGhBp0Hl3EqvaBrqm1iF4foW-zCBGndaEFsjIGWitAncvxXegius_wYTheWYPhtfBwxkUh2jESCDkPhGynNIZHZctTRWFr1mCO_oJnJWoDVlBEVanGuPPuXToegefLscdNy0EagJTq0xluNvTDSBB9vfttYc8V8zd9dHIZYLdGHGZ_K2GuXIYYv9gC9zXSnlGXMLfN61llGUFUTsA6KvoAUS5Vzoh-AsJuMxQ4hMg3KUFxrJKaylAEUpzz6QCSV-lSDByxZBd1hGxm2UjcCX0cScwTjnGjjEaUd0-DAyf7vpjfNwvrragBcosEaVaT3oot7lee_dWyc1tv3Yzo13EEzHV8w61IMP98m2g",
-      "places/ChIJGzbhbDgctokR3MKy0qJxmMY/photos/Ab43m-t0YKj9gTQKmM7rgXf5WdETKAzhFONbgQW08O6VYgvnwK7zCUqYTmiKkEIu1yG15mfItBP8MG9KJI6-yymQFHJtZxUc2kEKRkvQ9Zp8YWWZceRBucJ0WvTyCxDOVd3kQHHAFO_kFyWSJPhS3HgqxKo9aZ6f9caFrcNuX3NEsu8Mx003iSXrIeEJcDmlI0yh7DH2bBcniezHqzV2vunzkobbMmUZfDet6GE1zoPAIIwMfm4DQwSmImLiDlvsqtJeVj6l70GlKOgh1aJakAphc2sDpOfkT0d7P0JrBi8wGUSxkB576cki6OXh4oN-s3py7va1SE0xjiFOrnkYGolP6F1Lzve44WY-Ss3q_QhRpGn_yAety-onN9hVab9lWp6CADvoSusr7bageNFnWgLiXg_E8YQGuvo0hMNQs2xk7d9lHA"
-    ],
-    "phone": "(540) 535-5367",
-    "website": "http://www.hiddencroftvineyards.com/",
-    "detail_primary_type": "winery",
-    "review_snippet": "Delicious variety of sweet and white wines - their wines are unique and flavorful! Surrounded by beautiful gardens and vineyards and owned by a very sweet couple who really know their stuff!",
-    "review_author": "Kayla Cooper"
   },
   {
     "google_place_id": "ChIJD9rl7r7PyYkRqCWBPk_Oxsk",
@@ -16604,53 +16068,6 @@
     "review_author": "Mark Abbott"
   },
   {
-    "google_place_id": "ChIJFxAEwNEdtokRKxZ77SvvDU4",
-    "name": "Georges Mill Farm Artisan Cheese",
-    "address": "11873 Georges Mill Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "farmers_market",
-    "location": {
-      "latitude": 39.2891178,
-      "longitude": -77.66369069999999
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Burkittsville"
-    },
-    "lat": 39.2891178,
-    "lng": -77.66369069999999,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Open 24 hours",
-      "Tuesday: Open 24 hours",
-      "Wednesday: Open 24 hours",
-      "Thursday: Open 24 hours",
-      "Friday: Open 24 hours",
-      "Saturday: Open 24 hours",
-      "Sunday: Open 24 hours"
-    ],
-    "has_hours": true,
-    "rating": 4.9,
-    "user_rating_count": 190,
-    "photo_names": [
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-vv4oBX708MLa-iSUb5_QVsJS1LmuW3DrkMI8h9xQfAhnAcyg-9MowRxkcx5xB7Cki3bKZBAYagjgKNkAb2vp7fJpreLe7JLDf6qvWDClH_O7PNPcVqlNxPMYTLHg0RGtOGo3x6HUrmCF9mqv0Cyf9F_v6lges5timK1hMvUXimpPItD7gYCNht3p58ho4ZZZnV1EeFwMC_ZHksNXJgGWFCsH58WVnzfX46o2bNqDFA3ZA92pRhxkWyAjBciuDbBOKQXh0GqTqeeVrfS1w05bxSjhmzm7ScFTqFn61b5_czbg",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-vIkwqjfnKk8Z3gDS6RiG7X9JQK3AgD9Zi9wYJegZifaVbDKxxyAatTv5HOzFg2bIGqz63wOTl1khGDIZ_7VVJNPM40PPDi1wEnxhYd18Nz1JZjO_SFszQa-aIKn3E99aMWYUh4ydTW9EGZWErJHBhEfdihw_6gsPs7JYgGaNQTxI02FLcWvQQLkqEoBUcCDj25iKaQKVAlSW7POtylFuNvpCFf57PC_-xUwYRfYxOaL3BMytYcLMp1GloQHAiT1EAEd3g6MZnwW7xmaOyGEyWxr2va1GJIY8MBr62dCM5uK_9pPGOnD9URO4axDaqgHLDbDxsuKxDk5FL3snW-t8dRmhFNC60iIE5JePl45cCcvmU_40L49d2rDrIvWvs2uTdmZ0CaQYd6ywQtVS4EXI_dY6Rao8MT3OWoT2Navq6mjZUi",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-uit7YLPhMLKLXqrE7OG3OYE9LOummSWMCdzqc0sP1NKkcGCsnNjtqqHxooFhY7F-oUtyQpbzMCYbG_-rBDMt8ngnSdWFamj3npEhRkZQwUMxoSYo-unYkCF8MvneUkTfo4QzGaRrlZyL8_oMz7SJX2Tof1kLLHL1prjShfxqLxBUXMJph7frSJXRO0ltp3WYpJYPdQAxyLA-2kzGxsqTcFoGbR2JWRA6ltViJ87nHTF70wavyiq1zRJfPTZWA9bl8SuOk20bVtdOr2SVddPBurCbp0gIqhEm3hDq1zGoAF37WuFz9jrqkxpL5bgusxTMhbcagPOJWbdGFx485usgdHK5rSbOD3QN6mqYTRf_FbaREKjmts28TFSP03wk5OvZonGRiKP8t_EWxAsLSszf56c6-lXO-zE-N17UhhSunrVQ",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-tzspMBB_PklMAnnI3OI_Z3wdjInVIu9fi_uDhSogpNV9kJ5KEJ4An7c0AiqN-16oCMmK_ML8ESbIL59X1ry7tQJFk8DFDu7jhDHks8JquSGUvLWxeYYhAXJQPwEbx38wQ38lfSYC6ahhRafJhng2mVyYpY0BxUYjOuLnzF9ojq-xznkatHd8uBPYCaTZ-PtaVYJ-KTNOsTUQcsaW-370CuG2JHK6ILsj5eQUVKaCR5_rBsy3e4s6wa0Raj0SmL5RhIeXeI6_U8u-qjSJOHs4b1A9uAO5Jji6G67iGjVS1LqQC_EVHzrX7V7Q3TRi6ddO5Sh7faE8JgtLCeX1s2c023jeP4th5E12SN-v4ADQLOzLMAUFR-d-8sU0VbPXBJkLtnkFBj-GgyOvnv9dis-Oa3XGKjZ1ffUCJDemHnz5w_o40",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-sEhyEOKu1KvCVCICSVVeGfp3DLP8m44Q03cD18_wClKj3CpbYAi3WZfVBCot5vHQzuyAOl2U0vDJWxcXOTdZaj_J-scVFymjRLwZG7SQFlJ7KhLzN9TVYs-wdZUotRrlJQ7433UbWY-pfA0r7sdEtcEvbWp4ozS28Zk-bRl5XeCHQRXODQgnQ4X1UaVzENwtnl2eKH94t7XJUjNz7dhSEia-3O8hHvz89AVJ5-aPzi6dJsKGpBhoVFdPJUQGoL0k4L1S2Z323VuqMR9qBjKrLW5j2oMeH5aKA99SHCIDP-xxGpvpnAuiAoq3wIa-sFPsViOb4XtQfOHyC29NMGFLc4iW_k513-9TdQPMoF-2rJT_BUo_gAQSyFEZ_bTCq49hVlSRTlPNsychingPGI1KvbfrQS_1sBa2HMjZZLZVx5YDk",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-uIG5YLwUVkTev0ph8fDWSz0t7M6j7m-pHs7UyW5R48MtQWgeHDrzLVp3LPbmQ4y260C03dWfBFkBfBmtYdUhnKzENouM1AXaxmqFZepOkHx8yp12_FO5pLy0-IncfL0UBNQaIkBbWnfjB0rCHMNXY5R_JBliKcni0Iaq1DLZAnzFA93hCRqyykejCNrZepmXPnP7bnRgfvtaXZatqB-WLKD52Ku9uPZ1fV4FJlOrK41ZolKk-n5udyI4tZIIg1juhJYr1zMt-79mdIZ2a9LOKdSBIYIGnyO5vF7NnpDAj6rU--Eku3-zXd7XogqzEGoVcaCSsmXeJA7sIeikcPWms4UysutD697sJHr3okXKsD1Q_Ja-GMpH_0BmumpbXWPD2YhL5Ubptwlvublo1bXEaMjCXloBkC9Q0KbASLsBNhz3ro",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-sqAoFEkir3A8cbaw1DD7YiFYws9TWFPeb27jvlA7cZn80lYq-sKlC_sjrub4br_L8szxUy0z_9HBCuh1X1H0X-Hh1hylEbqCl5BOIC-2H2y6uqHALXnyYnuZsoqW0oW6G9VaUegYev_zxcHzjHotGKvwY9RqbheXi2lmScOWurfAVwZlaalvHDzUnrmVPos23XYL77vn8bTSnuMyNIyZNr17qFAzoB3u0Tf_Kl7fzgsIeNQouePTE_3S9ae5XvjBTNgc933eA_hohlM4gYUA0IDTbohxbxnDleQm1qNBopJ8ZIhuXUoqnjUpdB84O7c7sDPu032b0fnSmAZ5hU6nyA8dNaC8iytOb5PeSH2_n-f-pEWyVDgVgnKJ8SNxkXHwx7kHAjzQ_qr9xf-R1NnDJw6NI1yoXbz8RinxjmUQHLMSti1CyngHMPhoR-Ag",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-s8mXcF8labtp_K8h-h1ILYB2S6hxr11GVJij-rw3h8A4iEGMGfY28rk-PVxgiMs82L6BqdAb0i2bfGv2JVIIDCgwfTB8XVbVZmxxbp0LhEpzLLZp6T-aOc9BP1XO_v-24wCvdj7usgRwFgGNDElC7t5xQ0nicicjcRrdJMFDhGaVmx17L36afFM3E1uW9gpNuM9RobLuoC8G4D2Bk-xY80A9leKtsmilbpiGRYvT2Q6oe-yKanKer2fjv99cNB9wHVTEN4lt4C9DEwAD4GDRb_dusvmnWC1BOZ-U6PjMCjwLsffTrOhIhslmWZR1Oynpi7puBRAJ2Y1mhtjd0OFTGKg8ZifMqdciIzlyW5PxQI_vRlYAD4Wt8h1_IUKTMrCwSnLOu6ReVTnjDuF3Sg204S6rAWGjslttgYsEVndar2WQ",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-uoxj5jBMAJ8FVsp6o8oJRSR-Jun_ldWn0CHd5nIGgLWpV1bwMoSdmyOYb9kvG-pCeRnFcskA75l0RbKr_D2A2JCU6s6uBzNgkIaYF7a4OLM1V4V-sGYaICq1ZzbZoKSSROJGqWiIZroRQIOSa0RTuaergADNF0qy1ktR7kC5B_DDI4ZizCo5khR01rGj1zd9b3CfJ2o4F3qLLhbvzn0mt-FwKbP6W6SUj6eT2DpChXAtxvdctP759pVkKR6msZEsYDYQzwhpG9SiKsSuu63BTYc25z-eJMKZbclmdi-EkSzA9FmbX_un-8Sxu_LHBokwzJqXAZCPNJIdmmuwjHrOmKNdlu-HP5SgN0buPoaXGL58pvWSxuoLP33uuo0pdGG3vlqqiuE_YpNR0IwKPz9Nr53Q18RVW5qhMsP8BbPkVFlA",
-      "places/ChIJFxAEwNEdtokRKxZ77SvvDU4/photos/Ab43m-vWXuzc8RmfRHfH-nPu-o2sVhroGzKQRnnKXLVu3S4lAYPoi_7FvcPdW94bnDUfK00H3_Z5kJEXXDEPRgCpQLYsq1C4fy2Y64NvKgwvymyUiDCVvaGQIb4w81KQlj6gY7epmfLX-c-ZkpVXYw3cJ0vwYbdEftofiqlUoY7vBp7xPz8nTkLbV4aa-qealTFcWEXjSNzzuhwoK7TwATMSqUNDr0WrSclLGtOs7gYlaYy2qdiiFW-O4hDIw8F71JBqHCXG6N8ZZ2VEuEdxGD7LMvYFkDqVKQ4pu57h9hAwM6FGTkt26bAT66mZcv3I7lMDaR07cdO6Wo8Rg36rEst5qV-82bRToNqAQyp0A-rDibjTbS5iG_wZiZNbTIu3MzB8k2HX6fw8d5wfMEMeiwQiNpx3EoVz4CPkvLoqk3pyJkSLHsWVeTC1v7JJcUsVbR6d"
-    ],
-    "phone": "(571) 442-7444",
-    "website": "https://www.georgesmillcheese.com/",
-    "detail_primary_type": "farmers_market",
-    "review_snippet": "Came here because i like supporting local farmers very tiny and cute store first time i got some goat cheese was very good you could taste the freshness left feeling pleased 😁😁",
-    "review_author": "Billy Dingle"
-  },
-  {
     "google_place_id": "ChIJuYW27y_oyYkRmUDhjrRViws",
     "name": "Frog Hollow Schoolmaster's Homestead",
     "address": "2812A Monument Rd, Myersville, MD 21773, USA",
@@ -16696,53 +16113,6 @@
     "detail_primary_type": "farmers_market",
     "review_snippet": "Always a pleasure to do business here.. Beautiful eggs! And the bread! Yum",
     "review_author": "Kimberlee Ballenger"
-  },
-  {
-    "google_place_id": "ChIJoSr6xDEftokRLo_8vM9SpvI",
-    "name": "Lovettsville Co-op Market",
-    "address": "11 Town Center Dr suite 150, Lovettsville, VA 20180, USA",
-    "primary_type": "grocery_store",
-    "location": {
-      "latitude": 39.2747854,
-      "longitude": -77.64036879999999
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Burkittsville"
-    },
-    "lat": 39.2747854,
-    "lng": -77.64036879999999,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 8:00 AM – 9:00 PM",
-      "Tuesday: 8:00 AM – 9:00 PM",
-      "Wednesday: 8:00 AM – 9:00 PM",
-      "Thursday: 8:00 AM – 9:00 PM",
-      "Friday: 8:00 AM – 9:00 PM",
-      "Saturday: 8:00 AM – 9:00 PM",
-      "Sunday: 8:00 AM – 9:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.7,
-    "user_rating_count": 133,
-    "photo_names": [
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-vepVORZAHKpRsRzjVjijyh1IhkQF0TPuGuNUKqgOX47TMRdGJHlULnH2RlFbDB32f_AdisAl9MsLBHh1DiQAhO_F5V27obhW8w110uGg7t0cNrjtNb30HCAEUqV6ixP7G3qSteCzkWS4R84ruxHJCu0Hhb-WNN3CN6Yt1wyLEPrfsY7RAhsklWhPCpgey10WSPJNlFEVJZO66Lj_T05cqO-a8eZLb3xsXEKdkOAYOXPL1WemC3tcjXM5zrr2JT6UQa7C3YiSbf2qUvYZwUIS0YT6GBCT_PfvzHZUW3iCka_A",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-v0wuRhE0fBpn0wWwEgymWCz4QZIHDFwiATlMT51eyUaXlEMAgawfvAatBIU1HLqvRUhAY5emNi1_doeTjs1L_tRWGNozcq7Z-kF8-K0WgQwyZFOjd61wcsKiN9FRxCZH1V1G20-MZPVimIxlzL3uPkk3XyzG0dskMzfjAgkozZVvAGIQmnNUvbE_onGYFzIIx3A5HoW11iqigv-MAJX__ELwunGOSjThz9KJKfJV7IDlggnCkMQqM0ppoMenjkGdxefoij58hfGbrBXn7FlcQVpRlb6dcYCe9dLzEGTpkWNvrj_NE7Uq-LCePYofJp6-oF838mM_1IaWpMY57hMM0cDvhHFau-s9upGhXSUqwUXbAR6CUmcOWpmRULUj9hqa_bahiNWwJ0iM_6jybiFFhLEhv0RVX2-HORSl5HvJ1m5Q",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-uuCqdJRLQQekPNe9BVbct3pG-ML8BJ4tqOcu-zPdea4XyUcQQve0uPQWVMGWgkPFeR0YdQ-zuzKE_sC5Y77MfzH7JMDehV-gv91Chp4v_SGZDfabMaPqsE3-EIi-abAy4i3uUKwhzq2rp3wStGoLCYQm1m2NDEb7Vfmhq6-mcY_pOWD2eZsP5fFyudgpNI_mX7EYj0oVoCFAjXkSrAXR9BNLcZ4YJyFR00KvhSCktnyYih9PydEAhNxY_pJBZe6TV8DBIbJ_DhK2JRgXbx-YkRZr_p8GpssNfOftcUfWhWWg",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-sORf7tn-0vesvYICl0BEpZ5ePM4GXKCRXZIQ_ArXtZzQl3oNS5BSgRg3DL_bN2md_HV5m51owph_rqJ5HyqBcSJRVxC_WESXw2_e5BrcXhV0snL1cck2aH-mocAP2TLkY-GMPDtQC8Wi1dwhq22Yl3VXHIBAQ6Gx5M4Fbe0Y_ImCPyCOw8uC7jaMiHt7c9Umvm4-cJ59Nw3ZkxptYXzQufAurArTUz6kpoPU0GfeqMLK_Fu8wUn5mtMXVDgKuV7EMVdqWa5QRLUIjq5sKVoGGRTd_0womkX7wwUW4XMIAZc3btp_FS0trFSnDverUdirjbtIsJoME7lNfob3GnJaXdfOsil3h8OG9TqnQwO3xiMgng5TM_87NPZlSmWm2wwLPWmcrMJ6FSJX1rNo45dS5FCdhlyrV7l4Fio4xASGYD81-J",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-u0mFAhNsCUdLNokq3K1DFL3CnTDZWx7T4mOmJiqGSpVUl_9xvh6WsTWzkY0rpXQcO3-wMCRYZADCmN1-c_pfw2GIa8h639CPf4fRpRNdpNhAlh7kQInaDViHP_5mbLv-MIyJEamasIY0LiwwBiQVc7og0IFAKsXYhNP480pZcm8FLIITrY99QKMnsD5KoeOQR5fCJqloP85CJP4V3vaydbAN5CUjjv3WdkwPo77ESzLQyQhy_EM6EGrkYGMh5lXE5KpBfd4mVitHwCEKHwhDg1G9YDCLZ7P6poIerY550Y1M9Muc1_7iO-1JBWQrD7bT1TK8MyHxQAb7AYL64yHDdOJAC3oWOnjUATlRXrE5FX7RK5SckdxWlIIJfJnDad5JTs-IPkcNH6OVoUQX9IFS6WHPO-BGfk0ysrbU86d3jgowj0USyxeULAlcK0GA",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-slLq5yHd9GPCO7lDbGYdIpuriuRsOG6h9l5GPkhkhduYeQcPNnKMY4-cfIN7sRNIkTeYGKndLzoLNMX0g5sRmGqwHglkh8XNGluOephvbiSso5osVsfOGMA51rSEIsu0oBqvLcPgwe-xFNDKDhO8OZaVfnQDO5kLrP0uU3YvOqH7YhZOPp-y9arLzXUsFYoWGEb8N1D4hyKGUWaqHA7WuiuaccRfZn2v4NEygWIHWTljAd1149PPwEnvyIVWI_7tWz6EjgoMiYlY2zFTKKriile2BJBwVvC-Wlwyy1IP2UQB_wZ-bnsqg9jr40oa4EUxiOcBti5kmRle4_g2kPPklu4KYkvokysSaU005_nNkwYQ3vnsUvoucD7DUUD-SHXBOX6QJ4-gbnv_li702EWopOq9-OQHVUknxEB7PwV5jwoa9I7GDNhnMO8MiF8j3Q",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-vQKIzoZSQQXtmy_sDR1cgtALl65d8zHPL6uQUiQb-qJ96yofSTvatR_e8maWyOuMjeBxq85b7OOLeskFV48HnbeTZp0udVEcTxC1zTThJcfXnyvqDvX9MP2yvrlIAVzHkSMzfqsM-wePB0Xitlk9Gw3u7IVF-XIAwPvMgY5wff4NX3fzg_LGi1HMZXd_DJzf6Nllf3Y7Ze4KKBUZyjVwxdN3STso6WfG8JIHVEWPvRIcEqYVXUa1DlMLAnUdGGpZ-n1hx-98yILTJVtYAP5-gAM40ijQioksMxfgxVlTYIQvHtcTkFL4rdDXMOjDJkDhhY8ql6lUVQqT8IxB4yZ7A-w3qwAf7b6-NYKzUB6aMW2KBpV8-p9rLhCwrYiIE486_94uilHsdgHACsa2Qdcznxh2o3ANrKyQBC2hvbhMYwQw",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-uB9RdJ4TbMRtsZ9fpkNNZR2ESYqMdN-V4XlnG2lTb9e93T7TMZdu9m1B2ipF0ztmxZb8tsnxA6vrjkV9DejiiuGtX34ft0kDsABpWZnLVwFilcCR3Ic5fzocVdBN1Hm0i4J0NeMmd2f53q6GF8aeu27nmobUVNkCTEpXP-zCj4J8MNkGA4ElukQ2N8DPqmrl4YunKpwgGSeCS87XNLNdlQ-UBfXrMOy5Y9FaAlmmaMxr9ORFrVjVscGPQ5gcUs33CZ5eVSqpdO8QzzjLtl7a_Qyiw-u_zVgU4oXYuQB16h3iDLNyByuldc7yrD8PpQR3Ql2UkXCdHDPC3Mmcma9Oo1rs6TpS3yzgpI4ul-EVIxx4vAaKN2eVUzyiH5oG7AMynjNXpBmPVfqkW6oKlidn2sdvMQ7VNK4GJRYwWLKwua4Kpg",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-vL-c7BT-qDpRkpTP9hlRni4hRObrvKGEHm5N6XiYiHTRDBnrm5cJLzDb7zPPXZ6CmsQgVVvt9WZ1V_iwoiVRDutUEahyeDS_ztD5pNasg7Fz4TTxqZ6qS1-LIasGo2OaH1BdVwOfTWJnxDuORKljBU6QunAew_TXnif8SnRJYj_E6lDS-4arJtiG5Z3eXC4OJxfiP-h2Jsfg2OgAcCGLy3y4t0tZo_9YLaXPq0Ld2vJWvpVXM6IyfGKlToRijDZKSeZJiu_2OWmHdOl2mcfBheeBhCRpB4rV8rhJWEOG9UEG9Vg71WDvKA00a-W0G3PhF1Cmab_ojVgbSHk4cp72QvW_nK4Wrpt4nBqxM7TKInx46c_0rOvrEN0fJ-rzWeEft41pKLOMSV0xXICNs5TOgRw3r6D4EVLzytpZpsyqQ",
-      "places/ChIJoSr6xDEftokRLo_8vM9SpvI/photos/Ab43m-twpDA0LL4PpXTrdUSzaWExjhSjmF-3ze9FhxqgwJp6IQge7uyo4vxgf1aEIvCkaot7unmDoJfGLV6f_hkXR6V4Fw9Uo4PMuzJCSYHpOZrVuhmDVycxvqZHqBHJ1V0BjovwHBWjhe6gjCAC4sa22umqLB5hC8aDRB5dsx94GM9vL8MJlWIhjlpk_X9LHUnZ8RFTCR05USu8Z4MwaNKQ9NnpZMFn48HzCNFGKIwliLBwbfpQFPq7yvC2IFN8Kp63SkJ4Y2JcRHoPxe25vvfkSjMWD0--J2_eJ8rhMD-WoVICKzOhfngd004kdctxE1mM-YOEvc9sEi02tVMqqgYmwx7p1a-dSRbbJYBsv8j4xdiaVu90zcwIYCUYBzxgAYFwaRpZjJybTgDfEvv7K4UmtbYgu2w1RiFU-dPUMoMrfYz8wOqY"
-    ],
-    "phone": "(540) 579-8070",
-    "website": "https://lovettsvillemarket.coop/",
-    "detail_primary_type": "grocery_store",
-    "review_snippet": "Great place to stop by to grab a bit to eat and some groceries. it is clean the people there are nice.",
-    "review_author": "Jean w"
   },
   {
     "google_place_id": "ChIJ_YjvHhPtyYkRtKd44GpLViw",
@@ -18096,51 +17466,6 @@
     "review_author": "Chele From The Block (Cheley)"
   },
   {
-    "google_place_id": "ChIJQToyw44etokR1Z1hU9k5Gm8",
-    "name": "Lovettsville Historical Society & Museum",
-    "address": "4 E Pennsylvania Ave, Lovettsville, VA 20180, USA",
-    "primary_type": "museum",
-    "location": {
-      "latitude": 39.2736678,
-      "longitude": -77.6384897
-    },
-    "discovered_for": {
-      "category": "museum",
-      "area": "Rosemont"
-    },
-    "lat": 39.2736678,
-    "lng": -77.6384897,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Closed",
-      "Tuesday: Closed",
-      "Wednesday: Closed",
-      "Thursday: Closed",
-      "Friday: Closed",
-      "Saturday: 1:00 – 4:00 PM",
-      "Sunday: Closed"
-    ],
-    "has_hours": true,
-    "rating": 4.4,
-    "user_rating_count": 15,
-    "photo_names": [
-      "places/ChIJQToyw44etokR1Z1hU9k5Gm8/photos/Ab43m-sL-s7sbs8K3xddSS_mxRNopnGVbozoOpL49JIK_00VxD3WeOufJwx8WegYlA-4sUsxqU7kijWv58mTtfJ2HW72D213eUJIJze86042k0KpqC9rcQge0M18VjAkrdM6XV32ndHsDml_OcEM5edwBO-ldIad6nB2Uq5fN4mb3T0vLFzZUmZjdOUmJkEt0aBd0RxSvus0vTdkcOakC8TgKALKL4sSsjOy2rkAs2eYbdOXoRSeXXAz9kg_Lma346yczjv9W09ZUk78Jwn-ZyeEoaBKGnplgRSIHA-FwqO16_mZWTF8-fVXJMsuc9-Sm4H7u6OADU6ShH0AFdJP8PDhzFXtkJ64M10WO3YHdJRUvK4FxYy3Q3nVNaJHJuU50mdQY4HvMQr8RmCp7PaSBaEd64dpXsgO_iAZWM-uRSP2uU6gJEZt",
-      "places/ChIJQToyw44etokR1Z1hU9k5Gm8/photos/Ab43m-vY-xqVYchK46biRrR5dI5Idhna3XwXRSYZ1_46UC7kdfkb573I7uHh70Mvea0unXOdRMi2GH0_AftrcPq27xxrDtFlNR3NcfeG116RdH38c68xeVjY5Nkf9gUwv0GhGJpBrNSY_IS_Nah0RkzXkjawfdbcVhaLfWWcD1lMPG7D7u2Dj4_0mAtwJWgRS6cbXk7K0KzIAoM2_wgR-BupSz7tJTWxvq6ViqhO0qpHjdIPmF10uxzHOEzHEU-XL34zLUAAbs4C7GPq-I-Kk7F-vGhZdiW17u26iD9mhN8J_D82-tS2kXf_SCOoWoicyLqbkn3d_u3GzVfqrgeFQYTeGxCN__otBvSlBiUOieQ95rzQttgn0FRE_sFl_LXYS9N8CpIRCsjhhXY7eSav-LrMJIKjFwRpbX72pMQ0xKGYzQLc7BPf",
-      "places/ChIJQToyw44etokR1Z1hU9k5Gm8/photos/Ab43m-ugLwWfChJljfBFhU-2vSX0-25VK30uRiDQFs6_cIFJFKcDESn_W7UN53Y-azqBT85r-45EhaYXJOOXzF3iZQ9Z6fjBtXMsfjV7d0Kh9p4r1U_KI5xxo8rUn5k5Zra_hEIM3PiOdXB_ksTUndznUvm_UO_pFP5JR4QptF5ygIaAkj4M2PbpRztEpAyUkJsHP4-ZwbGwBU0fbR55iul_sjk7VO6zO3b09tJ-S6LilqxsmyF6NR7rwVcohtUYjb--05hfuCBIj9N9Cg7Vu7_KW0KpHrbsxPJkoSeLHTfA5IrRdtC8jGUmFkQuN2ouY87mj1rNwT2TLhoaipTkfgTYZOYreBKR7jrR-_nmQatt_C4-14uhDaNbIn2JZeQMx6BduAOYxHocAaUZFg3a7x14_4Q6QEt3Ph9j7IM3nxeliYY",
-      "places/ChIJQToyw44etokR1Z1hU9k5Gm8/photos/Ab43m-tFZXdu7tzJ_loI1NWDwEHP4acdbow7_W3jXVVBmDc-2ncSu6KoFvQ-y9rozUEbTLtYBTsFzUemYrtGPcunJRWLy6ihOFroC2jE3TQzQNuRNoCQWSnoPkzHlgWowc-HQYDK_JyqfLSr_22LBm5dsbjzvyS6Lrfn7Z5CIfd3jnC7LHfh09lM0tpl2fox6-9lBkkVFkkPx6RJ7XTlbgC4Il62Lfo0YLmQDTu-TXjUOx5zfmZI4rWV8_eiGdRj9XMHd1vyV1IYjOU4uHlKPs2eUHn6oxNnKyqKvvN2E-QUsQtFDj2-eXogEYxwtfp_A5JQt9vKoL927sRVgayzUYvXccHlHtRllh3AqspSsAjTm6mmkF8lA-HI0q3Z7yavUkLSqCCFCix42wG2-9RnjMFEfXe-z5fGzvgbnxGC2CkdPTlZmlrk",
-      "places/ChIJQToyw44etokR1Z1hU9k5Gm8/photos/Ab43m-vHfu7HIvaS0XSaZw9KbFC0cjtdbkIrtfuL5R9n1ffyLoXBScwS08kd94uoWHDPHd-i6deWtsnLY27qdbH2QYM5NgVqi_rBmYeH4Bs-INNj_lCfARV3GCenH7Tqp9exHyRSqt-gj6pJU_TjZaKNDdd6yl_WLGU35S5d26uWivFSggzNMtdqEqKYZoivFCcwK0zoDq5YtI7oqQCYrb-IUtqoMQk9r5v6BrsmZj_m1mdNR2Trq4RToXwxgiuNhCdXjxMuf60C8xHc77BzGQ8z1DKMsUzvmzpIGmvLkqhjLo8YrLqoUcl99eqT3t7EjgPxaPcC65-nKLxWOfeHEZSIUtoMkZIoeubtl2Ffan4rvkN-a19SZJJZvrQ_En_DqpW4ZDFFZodBi-lLV4jn-hUkoZiEGJi8ameuoUq7qf5Q2bpFRg",
-      "places/ChIJQToyw44etokR1Z1hU9k5Gm8/photos/Ab43m-vskHXxewlFfVAuHnwrN_R4ibO-5D_Wsy3qik4k6YvTpQjsFniw1o5ZGv60RvkSQD1UafQ7qXK8Tr3RUlmZrdrs_8EhAgGnwr8GCeIWAYg1sBlzdBzAK66NBfEW9RSnXv0ORxbarUppHqK_5vaxU7P697W9kJmj1hA1kIwJmXu10_GtZTjwCOj5hjC-qOkw_yUSQmEkoKnfF30d0CWRSunhWskxs7Xt1v_FuC6c_WyzfzX6xw3bAYvnm6EuFV-4BHFQonJu4d0j05Sy3D1tObTy6VguOBX8Hg0bv04tzn3VZI7gwU2vOZmW3sHGwZfWZrr2CagOF5jIio2EwyPy3i4QLoaiKdOk0zS2gUWb5p8r9nOA_JslD_AHmAQcy9-USDoDQhoZKIbEaUJHnOeE5X7jV1bzMGfA1tSH97o4NdKqhwAb",
-      "places/ChIJQToyw44etokR1Z1hU9k5Gm8/photos/Ab43m-sdTPFnEA9jbASxsb7BK_72ShTw-1qZ-_ksJLjGYiMPZZrf4_4l3ksSmcZKFvmrL2c6tsoVPiM1vyK-Ri7eZpBRyGXAVlQNycpP_Nmk8CbKxMXptWpqe4GdfpMIHTOQvLxsfh20ys-yEYFOPpT8zaKL7qIZuGKFKqQwRe7fAsNj7LE3Vz5gACIYYKFOoBX7gSKnlFC-G-YgUCL4nZVyi72EwvG8KCBNdaGvDOBhTHmokGHwuGqSi82f2da5hgOimLNVK00lkLZ-1ADp47yWZtUYi22vNzN__RrwIBdtQrpqxZHh5-72DrN6gIB5jmb_7IZkxWMY7ed_pI4768e5P6Jg0jVEaVeRdFstZ4JEu6Vhz7-B_gzaUqUphgcPrwUzFVh2L4mv4SWDErtcghtqyrtVVyUR-LU-CbfkFRwk_kbuNNk",
-      "places/ChIJQToyw44etokR1Z1hU9k5Gm8/photos/Ab43m-vh-LPEhnVCo7A-tHWeEvEtlh9caWRZ6-n67axhElunxvT952uIAAOTAPousAmTBhA77q9bFAcFdIevMinfAjAX987V_DPglNQApDeBKuszANES6E_LYZOzj2-IsWPDYfgi262fEczjyO8EpOyAQrrBjqz1SisEhsVUlrKg9ifk4aDNNlUpxdfjHx1GBHcH99qotbNJGW5ftsOYsXwG1l0itMtXLdMB9vfYp4gaLuxoQLunu9GNCN9VY93SpKb-xEJ3YGLvmpEWBIGgHLCZI69e1U31P0PveiO5OBi8VmiQ4NWui5eyoJqQ0IACNlpVuQtDuXpggbTSZXa61OjsFKmYzJhVfjemyr7WUs86SC4ui3CkJ4Qv2sNeM3wZ1sxF3MDvuP_cFR-0sQdD_L581ITYzFlBFgPl0MXq9ZlD3b4fYA"
-    ],
-    "phone": "(540) 822-9194",
-    "website": "http://www.lovettsvillehistoricalsociety.org/",
-    "detail_primary_type": "museum",
-    "review_snippet": "If you are looking for an off-the-beaten-path activity for you and your family, I highly recommend this small museum. The curators are knowledgeable about the history of the area, and everyday life in Northern Virginia. Worth the visit!",
-    "review_author": "G M"
-  },
-  {
     "google_place_id": "ChIJC4zOpBLbyYkRQ_18mGPZw98",
     "name": "Eastside Artists' Gallery",
     "address": "313 E Patrick St, Frederick, MD 21701, USA",
@@ -18945,52 +18270,6 @@
     "phone": "(301) 447-5308",
     "website": "https://msmary.edu/academics/majors-minors/visual-and-performing-arts.html",
     "detail_primary_type": "university"
-  },
-  {
-    "google_place_id": "ChIJRQz5U3OxyYkRqi7S1JR5QG8",
-    "name": "TomAntolinArtWood",
-    "address": "66 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "art_gallery",
-    "location": {
-      "latitude": 39.720631499999996,
-      "longitude": -77.3521426
-    },
-    "discovered_for": {
-      "category": "art gallery",
-      "area": "Emmitsburg"
-    },
-    "lat": 39.720631499999996,
-    "lng": -77.3521426,
-    "municipality": "emmitsburg",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Closed",
-      "Tuesday: Closed",
-      "Wednesday: Closed",
-      "Thursday: Closed",
-      "Friday: 1:00 – 6:30 PM",
-      "Saturday: 1:00 – 6:30 PM",
-      "Sunday: 1:00 – 6:30 PM"
-    ],
-    "has_hours": true,
-    "rating": 5,
-    "user_rating_count": 3,
-    "photo_names": [
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-vQs_j7tTyWAl86ong4IepjdbAbWg5OqoTifwbFZKO9W1e9b9dosKES1F4Y7n7j74e4pdR-Zs4BJWeB2uAoxC9NujLVWCk6jSWDvOkqKUquDKt016lMLtcFhnPgTiE5I04OiIlGsLRz6QCXqqpz7my_y5XD7886RG32eKhe9r60g7RY8EW44q7qx6unBIen8hLnj0Yk1DbiN1kWPnU1dKVfGKUfruE25cVdImPKOWrMCVmd1FEX_xLYMTfLrLlbDvucWF6D26XJ7kCdJ6O6d5uN5F03HZityZNLM5Oub0hdHQ",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-v7ImN41pK7TPvI_IrZOh28P2JtTtfMUGicTTdX-2CF54-l_KdSdISgDwtubCo_ngeKkOPD-CcawZqdUZN2VwY5Eb0UL962Wp6vKbtnp3S-rhxMxJN-VverobNTVTG0gzHUoBZP7C4Y987K3VNQfk978D83bsqWFwiJQlOZWwNQi64oO3ojIXoGaqdNrMYU8DFqjo3nso6Bg72zkRuMPo1hiZGqxsJH3abuczYd2LIeehkvBHpggjlHwdTRYheyAsGShXdGvRqLnzRwnth_t6NIId1ZHTKo6SKsR-NPx-AHSw",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-uOFxoK7YdCuE6qPn5AQFDGCMmNmUmZMPsz0sEBc6OxF3sk7viWp_U2DDpg33TFMeCdvGTd2GyMrX3aCMKcQMmynPJQbqLOImasbq-Vz0vENe-zaMo960zaSo8uz7bFpi1qTy8p48qfzCzlFeMzqLGuoD5FmiYQ49ac-HxLqpsQRllC2BcFPKd6SAc2zlZDAEkH7mYnpcsxZDzLg1SQmtGNk7yucc-JNWBYOnjXQtKywYLVfwaPYRwGt8nc8awYDwG8uSXhEtextaP6iU80Ngw6goD-puSub6tYJ-nxybkrsA",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-t1XcJRtXPhkbO2g8QKuJBe2tgllGwxFVbdW_So6lVLnigz-nQU6xvc43Al1UHlMVe82UOlXz0BLJ04SwS1WujTykvlja7QcxuS_jJaOfuvbAN-1wml_2U1cAYc6t7SHs1q8pKNOLI3km_-k3xN76hhExIyCvTLvYhHkO4CV9RiWqwsSAou37t4zXrJ3rj6obsJKAXrjmzzceaPBy3b3KCZZ_7S29tjxqPrYaWCTgltsbKSMF7owYTto79bMTqAkKZqPX6QiHneNNnfxVrOdi1ylEw6OxQlJNUHs2Fx5BLStA",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-veIXHt4vnVOM1UmI9LLoi6VAOxkzhV877wVwwhMSOVUWgmuWngK5yX8sMfDohRqIWlKQA69-986gzmZ4QW90mhi626yJ5ZqzujQ2CAc14PkiZBhFxCKcdFTl-aHpFL7sgQnVec6N8Jgz68zVitgxkKvs3jRk7Dj41ByGFG-n-wSz9cWKeoeyNwX01jVlPZxbMWeoBscwrX6pWgcHAl-BiFDDN3sCk3TFnftSeio3VR8-0oCsrhR-vhy54ybj50zqOqipiGb3cWKobob-1nrWXpLaqfFPAJOOSbIbFtZhhYBQ",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-sqiOKs6bsgWyqS5zMrqrXlgB5C8TR8gGi22kQxLdFKe7kHMb0xxB2djoIDcWYsxxgMJnDemGdBF6xuHR4Y7p9pyNomhG9ru17jl7QIXEoPQVRgLbBLy3cw5zzMk1P6PaeTrfavRp9BhRsKk8QbllcMT4X6_vnURlU-rdJuaRcgOQl3ppKRhJsItIsAKz7_Y3jmJymgxtk3y2SRAmEXGkNKYpYluzRhIlIGsxpPCEN9_UGedyTbnpu57rrEuZJN7LO9i4KIQLRSnxwgMIdAx1D2WWbHzXBK1EexK8-Ba_rWTw",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-sa8Wy3VPsGOHKBJ0yFbzZIpugKiJuG--pF0eDd-a8jRbaxUpoWrNicb15MqRkYI996kR0VlF4QMuJJ0GhsDmD3lAWJ3uvZXVB5C-0VwITJvK5STdKBQ9BYrtUrX9dXzaPGRHeclaVW-NAEsoO1eUpGeFFKhzebHITiFG6extcnmcS1nec-8ZPWgztLSGm4gSOfMJpNgQpO-w0PuzpD3L1x6BH8EbvND_IvdsRqMgguSNS0MocnHQ2DV0viKOkW-3mRiIx2Easrji0szB5oTfoqBN9ANvt8ppbqQDtobDOHPQ",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-uTuUtPsd22My9AW_uXw8FlYly3hcnxAJeZdoaAC2c7XGy14u8zqZH--hUJ74em2jYwX7C-R74OL5MqV4TXtQ5PJlbo-WiMKfmoXUHOL_vMn9Cq81rXLO8duVqC6w21Tr62O_MxJMfFt7XoXuGZeZDmt_6xRlDNG1YQhboYzFE5HKOgE28b6Nfg6ZAytldwSpD14pWfUe2JsFIX_VFwjmonrRnYRK7iUV-w6AIRJmSpOEXX2EIkzYQcALWxK7NC1YEb2aUDuKKQBVUu8NcXInUwn5csoEpZ_aQ2aDqGvUUvBg",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-usqQ3XnATkSADQGdMDOwTnc04st2B0ujHpTGgfqR7p4p6ZMqlDuS2xyaAlQ11INscRayThVFL3kuToH237Lokll2pBdQSf949xeNLuCxGwZmYow-Z2tze1eo1IBfPglFoTmNXSNQe1iTEl_iPRNCA5w_cm7Ppfw5xJctj-VGOWJmA4wJObV7mcK-05cyYC56p7k9KrHkKeUduOqs3-MCvCrmIzDdSpXSeJ69ahF7P38sQLQ5OXAf_p19ADS63PCyHY0GtxJo7A5i5fRiqY3QKxoNYmrTBB_ODRB7PJQXG6Qg",
-      "places/ChIJRQz5U3OxyYkRqi7S1JR5QG8/photos/Ab43m-sOc4ApNdYmYyyyCEcAko2lRVZ2Go29n11UqQprbzh9rArkq9zavsk6nR8zg8McCnAx5pUz0gTzKjUU7itbXWCrjI2Eb6hgFdpg8CMAP2HRQFCWq60vCdQ420hiwfopOc-0aGEdosvhQkQmbh0zob8zySug6NPeDoZ-W5rhiE3l-5_mJTkdB9Ce2_CqZSCH1K6LZI2iVjD14C_VLudnTmaG2cuD2cgv7TAWNP9RuuEKvBv2Ifz9kiViQsUYt447HkR7VXdYv1DZBCt_QDRQ47oX10n53FzlrE57hHFQsaZotw"
-    ],
-    "phone": "(717) 752-9355",
-    "detail_primary_type": "art_gallery",
-    "review_snippet": "Tom Antolin brings imagination to dimensional wooden sculpture. His thoughtful craftsmanship comes with more than a bit of whimsy. From simple geometries he builds an alternate universe in fine hardwoods. Worth seeing!",
-    "review_author": "Michael Stricker"
   },
   {
     "google_place_id": "ChIJ-VZgHiyxyYkRELY23OMyfjs",
@@ -28966,53 +28245,6 @@
     "review_author": "Matthew J. Bowerman"
   },
   {
-    "google_place_id": "ChIJ-V_XDowetokRmCByuLdrKCM",
-    "name": "Lovettsville Library",
-    "address": "12 N Light St, Lovettsville, VA 20180, USA",
-    "primary_type": "library",
-    "location": {
-      "latitude": 39.274252,
-      "longitude": -77.63551799999999
-    },
-    "discovered_for": {
-      "category": "library",
-      "area": "Rosemont"
-    },
-    "lat": 39.274252,
-    "lng": -77.63551799999999,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 9:30 AM – 9:00 PM",
-      "Tuesday: 9:30 AM – 9:00 PM",
-      "Wednesday: 9:30 AM – 9:00 PM",
-      "Thursday: 9:30 AM – 9:00 PM",
-      "Friday: 9:30 AM – 5:00 PM",
-      "Saturday: 9:30 AM – 5:00 PM",
-      "Sunday: Closed"
-    ],
-    "has_hours": true,
-    "rating": 5,
-    "user_rating_count": 14,
-    "photo_names": [
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-uO3_5sczWJHBlInPEEFhE7L7OxrNJzfF4MUWtSSSwGR39oQftc00Vg0Uxby6z92kBp2etEOthVgRMjmd8E0cViqcmzO7N4OUqJaNzOxWgjuOzAdGtE8nm-xa_4IHrECbBeM-H796rpmenxnCbDiurkxHOn3S3332CXgBmf9RAy1cQHw8dVZI68_zzxyQbZesyW9-YzW0tW40leGXpxAXUilYBGkZ0NclLfR-4ian_S1xPBu7wiwhXeDUVl2KOuS8JVAY5aeDxM8mC-f1__TC25lcwCCIhY1npu2Cp54N00oA",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-vwU2fGRsGmHwcO33xNFLp0FjyI0KUrRW_xUVexYsVvJZ9TFsJrtOByvbaQwvotUaSKDykbLfnS2MTaC2DK6wu1CTO-43nkbLz-20kKq22-EOeGWYxf90CHSIJcs4YQkNUOuBLvYrbR0NRjMNtZ53P9z0o2KiCOoqj4o26ot5WOccjJ8cO8iB6ufLElqywt8mj7xTj0uO1IZ-9jvMpx3G1Z6JKTsTXKvAl30OS3w63ijOUrgS7lVHK78YhDFS8lTRSnfwSxKMcTejkQRYqDnO-W7y4PkB7ABSH9r4dU03qp5w",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-tzN0rfGHFtdmq0Ggcsqk-EIR7fpXcZRwk8YIM3VPjBmdrP7ZxSE_N1GC04oGtfS1Q68tJCNlbvvch9OZqNcSzYUue2MMwu2hEt1ibz44PpETvFLSAG0n5oCnXxbVcVPMg8KCE57c8PuaHljRd9gZJktQO-Otfxh7iDCgtgPNLwPJ_OV1MDgphiXL3CeFPX4REbRyhzqF5HbAxy1OOJ2Dh6BwvqG-p-RW1YP-TKJZylnGTt17GD68Xwe0gTTADffD_C0-U_IEB5rcyLMaXrqhzh2jfKA54rznOG9ja9IqTtDQ",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-v3SVLOAGbedAAxeFWwHjCvOi7FoNI41-IYd9PjEjsoRxntczH1pBOY_jxdTwZvqm1gnojAuBlHDWBx-ZsYLPdREzqpu9I-X-3kz8ieQPtWNIUJHj8WSLRa6d9qLNmnjj6mOWU6Y2kwlfz-pXqqUh9rCmIyWWiPw1xSD6sWkV6t4jrJsN4cbWb4BecglHY04oEekpYQM2wap7gP-CGYZ5XXYBVQFi7Dv82gG1m1UgM-N1DZsbC_rlf1ymTLLzJnTAwPQo61zu7ljDCL5Patg_qmBisW-fGihAZLobqqz8LnSA",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-vR3-5kXGr9kf6b4pJE6WBoRLUejlHM2VB8SvCRqLmgGn7VlLu-GyMmtETXin1rpGdrn2XPkKrrnB4OV3-2IGW--6iPGOj3UpoE9b-AVlK0BHYsEuMyXa87xKO4R2--yAk9V9LgjX2XKxBZkB7q_WsK26C1hHLeVC8kVoaZcCstfPs_sXUd5sBrGefBbDB0sFEgzIv_Ihr63juXlJ5EaactyfQ9DFdx2CqwVLQXyVhWO-IMwxvMLseianUMKweCh0HfENdBflGFRDczitPicpUL-NSAj3pWJpuiBGErjOk0ZA",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-tLz9QIOYMrC7yUWixTamYoLQmzlkggDQeWtOc5ERy8NQyVjsrJxk7oSSld9pRlZbuIKwTwT4w5GAaq-YJ7LS49nOzgjtbjcs7lqiHuXy7R5f1TlfJ2SHlkKvu-dsgm2OnoZ-gRvtraDqTPsCqsgb_1q6J-Ujcjz0YkSLTzAnIBNQQ9tcORATFm_qGc8ZKEyNT1U4XzM7W_BejuekCVJccMzniceHo3t1u7ogCAvksrzP6C8PYEwVzVBI6rsCkWsRSiyjs-nguL5nI0IazREiS4wyib-vnwMJQdkv9NlTAT7A",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-uV-RTzQhDeOj3mpLkOvjSBynVZpPnyeaEZx6JTfaaG84mMzJQPD5M--eCAd18FS_X8DKNN2e7psCmVnGGxnP8pcDvhzU6yMoyz05MvjZe1Rlroe5ENUga1v_QVOVpzZxfkTVXoZe4rsmbHQrF0m1yhsHBZk8R3s7hTDcy8dF36GzR72P5Bcaqkp2RrxDf_DI1jLyVT4HUtA03SFca8W0BdlKqugKAXOmk7apDAoSTn5PH4BHm9-HrqnL6dSdhDziENOZAXu8ATf3sjsGWbGe_tmGN95SwocJFkVxiwKjRrOQ",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-su4zol-k2Cs2MmL-KSUGcmkUMJdHq4yaFubqT22-DB5kM2OX5CdsSuO3g-o3N659oPfTVMXEWaktD1ldTobq_ylXNPi-xSImMema2SWbHIf4sYmw55aeQN61YIIFpwKn-9sSVGMqZU2VLEUo_GcJ7oK4D77j2hSQKperE1O_BfE4t-TmgTy4e8v6PuR-hjEnWWJ0z8qjIJgpr2mga0-FlsGBYjyVHFWc9SMmIMtWDnFEO9An9rwBQiXCbdrN6FK5v1eKUjbQfcsxRbSo6G1TX0Nota7Bleol6IpMC-u8r1F4cna77jLcR-wgA4TPhpgP4f56nwHjclHsNpAYEUaJd0tgM0QOwXTpoavv4yA1YaE-5MP1biei_DhOQzUt0p8kFK38jd2foFUJ4pbD9tvDbYTO6ZZ5pkq9PKs87M2XEwMPb8",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-uxXmymxCQwOnp99_iLchJmt3-0INp6pHDqgQdg6CoEJUAmLLPnXxSavFmv9eGV1rTJOqK04MvnOrYFD7U4O_jq4H6P5Ce2B2UFP7DYRg4IBHz_XdKS0_NObCSLKG_zOYVQn2J1c_ALhr9CDPrSq1nrEU-FZ798cFpV5EihuoDKXoNcv1IxnESQEiVhKke3r43db1fjdCwWh_9uKmt7OqWVbroCt2Pe20Bw-xLGM7ZVxtpzTTOl06bGceXy6QlXA_NJNt5bYUli7U5LCXMpPKQtBWC9s12zvln5a9JvaOs8Z0dm1prNceJfVH2xIU7DOhH8EkYbP1KD8cnvDrJtkj_GsrIhyIpr95Gy3_sX3qnJW1PrAOnDQVCTzZwRCIXvCnEjKGeqdQaQa_DcaSoGQG-_VyQnOQysgxX_tAW1pR-aHss",
-      "places/ChIJ-V_XDowetokRmCByuLdrKCM/photos/Ab43m-ttS9a8-GpGobbWtGGreITZATm98i-qnbjd4bbScCq1wvZrQgmnLQ7fZap66uaKeMMLXKVIp0nx5b9vRaNFYxctM1qscfZjyiwPRbEYEDDV1wQdBf7avKfOita41f01cttASZnMQOLVKG93NaDcNlxbsrHUH_Y49gYSR6rpfTI3WSoxxXQEr4WV7FPPPydvfElYbrBoiwWG_MN495JzR11vzPVlllu8Ocp3mFBQ_376-0XmUxVya45xUJb-4WEJHPXPS1SbMpVCFL7HlbVmq3OKtK2Hict9lwlUhve0-PzaQZkpsC6dl-3f4pmPuZ-SdCHxEovsMiET6APSAJSZIUJaJ273K9T1RiGMerYnRCQDTnPkRCw56hFOgm6WnX2Crc8zycoNBtGfabKMt07I5Y96AoYBNznauLK0Hw43jrI"
-    ],
-    "phone": "(703) 737-8050",
-    "website": "https://library.loudoun.gov/Lovettsville",
-    "detail_primary_type": "library",
-    "review_snippet": "Awesome town library. The staff is really friendly and the events they h e for students are really good. My kids love coming here and would spend the day if I let them.",
-    "review_author": "Jacob Moore"
-  },
-  {
     "google_place_id": "ChIJSTqrPoDlyYkR8c_gyKqxq6Q",
     "name": "Keedysville Library",
     "address": "22 Taylor Dr, Keedysville, MD 21756, USA",
@@ -31261,100 +30493,6 @@
     "review_author": "TheVirginiaStew"
   },
   {
-    "google_place_id": "ChIJQ-3q37W9yYkRB_HbSCJHMuo",
-    "name": "Pen Mar Antique Market",
-    "address": "11870 Buchanan Trail E, Waynesboro, PA 17268, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.7377389,
-      "longitude": -77.5217861
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Thurmont"
-    },
-    "lat": 39.7377389,
-    "lng": -77.5217861,
-    "municipality": "thurmont",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 10:00 AM – 5:00 PM",
-      "Tuesday: 10:00 AM – 5:00 PM",
-      "Wednesday: 10:00 AM – 5:00 PM",
-      "Thursday: 10:00 AM – 5:00 PM",
-      "Friday: 10:00 AM – 5:00 PM",
-      "Saturday: 10:00 AM – 5:00 PM",
-      "Sunday: 10:00 AM – 5:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.6,
-    "user_rating_count": 438,
-    "photo_names": [
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-uDuY2GEbqDhNyUJMkNlFHxGqsfik7aGq0je-4Z04_Q47pxsX9wD5bk34IdOFTqVzwahrIeL7WGwJiebxN3DByqUnxwiEQETsgA_rPVE_dsVzPETc3Je9DB82FoSW1TAWoAdEunN3TesWByMhj5yiY22Vii6OCnNZzpNGrg3D1R-w64euOaHwn00T240npCzYp-ewWLGmrJFp0yiicydZcQlIS2pnAo__sJmJkzb4VbqZDP3pEBNQrrUy5dgF_HoHEOipVzcHe7Z-5KBPJV7TyyrO-M41YVzaF_z7m_u0sw7uJi2UcUBP2P8FG00SyXJNI-oW_HUw9u2hcty0T9FYfg0h3dHXeBdtqNW25orDMbvUs-7tkWTMHsFj_OfF9jfeNeMtjt4pThYIZvy-U77-7FOQ6xCCtUpkPWiAzOXgOqPfs-",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-tGt0T23svHpnDzsD3ig-svq0EQdP1hVanQ0XtYgam0jx9cvuRoAaT5xrYINp_p5Jk24y5yr8eaKe5K8lysEHNOZJwwlZksreGYacc7rVXcVByHlums0XtAkhZCYp2CYWpb0sQhJbNqzWtEnVf2HIDHxGaLa7-ojRslXpBPq6X-Qi_iHfXoMW35tkADiPm1o68ckO6qBHn1S7b8Vc3TjH01SEIUpOu3f7X13CJL4L0xGfmesUr8UyqQFgyEjVKAUrntAalbl2xFrcxxTdnuzlxgDTibgZHO6AiUruAW8dLvzXx8-NyI3wMu4-bjNZnlKLJ19CEr9p7Qsuryo39ro-6jUt07X_oUDjOSe397aoBqfnUfjigT33ZYTtC8z6i85NCQC30kqHYt48lKE6r0QeSuPqgS2COE4lQU3X-mE_GDXg",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-t78eb1tUi4Y-bMRNChKskNvdOWnVMipGBUUfKAMheMCw7UWGoGnfeA1SAx1y3Ra6NlnAu3Yc4t2ZEtwu2jtTETmW18Ut5ajXp3d4UlKhyvhJx24OqW_EiNqpnaLbBo68ZcZ5JkDnzgML0s3YoOlk-Z8swCZNsPa4O5O7JvBRVJjlUtg5-VK7cNAXds38Xa-MCQWYSoD8nC__F0E7K-71RmvMtS3VRY7BLAJwEfCTgn1MrYkfIEWuZ17HGvW4ULn7m0okFU5PQ7kLadfkgz6WuNtsCPo_oA7XFIxWs2U3jBlwL4b-BneXIVJXeTViQuS6QXyyjjbB2NVi-TOpFPNBPHaiDQ3XJjiG1ORU_9413cXAzygm1H70JsyYCuM1GMD1DHmb6cd1aK0e7KXCso4D8Sw_vs3zqXDnY9mZHL6n36W_o",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-vbzmmZoEpqliLDpWxpnh8xJ3vR9SKdaWSLW5hQhYCVgE2AgwAacxUXMEAUXWI7k3lpfeQS7jOGtFnpYldMbUfSeXZ_P1ZQduKuJeUkbSsC60ktC7crZ_zIFaqARI1Opn8ZLB7RTvNg0T8npoNU1_khpqtFr-b4Kvi8tEi1gy2PgQ3jDX4XxMVE1lOLeTt0NYNqGNT9P_zW7OHGdkUVNYNAnzczN1eNEoMlTHaczZ2daNBGCmSkg7HcRui2QJy6xzhBuFh0ApTiu8byIfkafLwBQGZ8tzcWv8gF0guzkGStRm7JplBhvUPbDt-GoD1SU8i-TSq-nsJXxLkmCokEdPLkrBVGY8Ch3oFDCxp52JTBKaNb0q0jCqPNKtN-XQPZkoRJAYEUHBuwqDzw69h88vnozLbnMJcTMmGUlDOTbWV6eA",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-vL3HxFDVxnBH_7_rxPdQCsP8ZsWc4fVUULE55mig3DIfVARtac_U0IGvxEv7idhE-7e_wlU1gATQCEVjXGHmcMT_CzOjjN0epElW1NfSSfyov9gozN3YIcQH57zQ1rLgbqqPgJd0CKqeWlaB-ViMMKrF_in2P-tVIb4zV1g1Xl6m-VU-lh7-Mc90NHDz8w8_FmWCYX_xEq3rWxOiYv-oh_uEqEOxxDm_7Fl5NdKO5cF0CDlJ-91Qqv6xTIH0eHguUKsE9iotqWOFUwMbnBYILP10Q78lc4-wU5TMwDRjOQkZ5OXMp-66JlpIhsVgLDfHfaiCLr80wQLvmdxu83v7L7Qi5baPaPwCGLa8BG7txJPTzgwFT1XyxoI6HQBois5Y74E_R9E4PwQu31GMntfJBI5E6KgBSPFwhtl-BBvPwMeGE",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-s0h7Z9REKJJUhxU9fJnRojXyy7BRVlSawGcMy6BLNBvJmvfgtxhqY1syPF3Yu5mIYjMsajR46dz36QgoCbxRqADCSJygo_b9N5Xc1nH0IXOrEqTTMFUw79opw6mC-jtLuMXKqgTbi2H6oWfs2Bv32O0Es2FfquNkkix5etrWoQFRNdIMdtwkFCxhFBGiIfKao1Z2hfo8cVeESMMu23EWMMgsXMh12PLILxEYdUZvuEemUvjxFbrjfOyR4yHIWThdmOLPIusyQDEAGDIfm0aMr8QDs_0tDKoys32H9GFAikzczfM7AHrZAglzyOCXgjy6E5UYhksPIhHQg-z337J1WnSExoM1W8WjjpbGtc4SBgAFtd5oR2TfjmPZSifCl4lGg-vM9tTCTb_p3NnFwUCgb79btxCMzYMK7_DNCk2-o",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-vRxQ9Oc84DL32W2jmDhKpeAXSB4tUcnYg60615UsQJdXR8Ip12uEmU2tNxX-R0AfBDhUEfSKUEBG9Wafaxly5EVRFOcrgoAGxqosHFiAuVmeZ_en3QJZFhLZhkPNdP5fiUIq9DI9RR88BwHRZrYXwlW7iROJmo_7vhwsjPQ5FJ1zFW0tsv259o4v_eVxWJiu44OLk5VMM1bNP21oJsRHMo3CL7JS_AHJiRB0BFfDJR4zzCeQk0669w3S4Jrj321aX93eSvSsdmFkQ6j8L4esJ5O1pxdNXahMjGwuPxhd_Go7Ht8kvI-5rMDI28qfzdbak1W8B_qf-BA1OjNg0ioRK4zt7aOx2PFk5PTyoK17KdO5MWtMcwi34JjxIwTXZdfkgg8gUAZpzDO3ugY1sVC3Ek9JgC5HsIofavn_CghEsToL4",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-uTClgeT7OTAx6p7D8cXM2i4eZSLRtAJaNMdwAI3dVBSUD2lAS3gOTZl3vRBJ66O5inRff6qBzESTx_Wda9KT6sHkctX-_iAsYE1gYLe8dRGEWe_gTvblykq3cB0NxT9sJErc_DSVeE7PWZV0NHvQ7SYcw5qzZiBMjhRSwZoGfdku5HmivzeIzqGU1aJwbqMY5l33OJou9f4puFauzxMs8CeSuvSIm3EritZRuzbTIDFj3FPfJ3UbSZOkQSJBePQ6bk0oUNXfsHzt5-rrP5Y_gZADF7_JfWtWcwae58UdxT_75JqDe8DLT8vaDjLDhtHZ6By3-y5mtVVTm0ON8_Tya__stdi_U_TOX5HsXhFiNi_QDRCLgz-i9UWhlp_ro98g-t51ySgeFbWg3Ln1Ys_z-yAIoyW4x2mBb6vE8OQ-xjxGya",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-uLCFOaS1iNygk0kTz2jke6J6M2PV_-K1tpNM4heFT_CW3uwUYh-9dSUbM9uGeyObQXiXdq9uTnj-LFfdcwtr7dSnF5IDfVOhFw0YGXZ-D5MeIMpK5Kq2BicAyVeD_FvTCUeM6T_qerVdEqzRFVrHcULk0ZAsC02UAeqy0Nw5y_NPwIh9Kyq_JdYiqv0vAFn9vfsZ38dX0MQgWohfTx-jHZBkWayXbK7JcCurY9hUs1BUt-rHnPcK3bl-sD2jLrRvt2aaTrC2A6gyKdVeQmp1NFXREJIVfHze2P6VvgTQDvwdtSj19b2JQ__P0GDzi9HHJBRtFBfEp7rZYrgf55b_U7BZEr_iS4WZ9UAf2RtrETjFwJN3LYKVG8g4ZhlOeZ5GuMdQXHWP4bZB_5wPb6jnIejqlk5gLWxTyOGUty8NYoSw",
-      "places/ChIJQ-3q37W9yYkRB_HbSCJHMuo/photos/Ab43m-vQ1PX58SDWB-plx_n6G46HIvAPrUGkUL1EF70RA59CA0UeusTzpPD4NdnQlg75QRG-aXY9W7J502l7btaDS1dNzPQkUV7T9NwftFRz8t3DK-hdj8Q7Y_RS8kxMDm1rbSeKq7HbvxkHEZ9wkNgJggVrbq7E7Is0qgLuzNKOEdUMc4mJahIkwkjz9znZn5Mp1S1wUsETrdxZp31R2gUptSXvws-l7KinvW_l2iuuoL-CNk2_XXoF2q8i26IIHmDQmhMP8_EA6kGJ9g6vTnWwwO1OwSEKqVw01zELa3beriuTD1hsgrHpxf1KzvxRRNWpMao826eoQMBQzkCh5t1h_V8Ue1dOPeO9etKKd7NiJ3tS5-067V3mfa5WjDUWAfY-UKjQRsF5TwZhXNxrQ5a8JXkB_OlIiw0mYcGL7xV73no"
-    ],
-    "phone": "(717) 387-5179",
-    "website": "https://m.facebook.com/pages/category/Antique-Store/Pen-Mar-Antique-Market-1086252628185374/",
-    "detail_primary_type": "home_goods_store",
-    "review_snippet": "I love this place, we spend endless hours here, we always buy something.",
-    "review_author": "Madeline Vargas"
-  },
-  {
-    "google_place_id": "ChIJXWCAMYixyYkRy85fE-Ud68Q",
-    "name": "Bowden's The Farm",
-    "address": "1042 Bullfrog Rd, Fairfield, PA 17320, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.743701099999996,
-      "longitude": -77.28687339999999
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Thurmont"
-    },
-    "lat": 39.743701099999996,
-    "lng": -77.28687339999999,
-    "municipality": "emmitsburg",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 10:00 AM – 5:00 PM",
-      "Tuesday: 10:00 AM – 5:00 PM",
-      "Wednesday: 10:00 AM – 5:00 PM",
-      "Thursday: 10:00 AM – 5:00 PM",
-      "Friday: 10:00 AM – 5:00 PM",
-      "Saturday: 10:00 AM – 5:00 PM",
-      "Sunday: 10:00 AM – 5:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 4.9,
-    "user_rating_count": 16,
-    "photo_names": [
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-tQKeoyfAURS0P4sw2Hvc9lXmlGMpb1ORsLs5RC0w_AYE_RyVutqi6w0B6f0ueOLS_cTh4gVebrdL7STaop_xDFhf9oMBuUtsdWkWT4lcMCxSvO_k2kvUgp_d2t_d045SOFVLThOaWo01eizgJFrKA4KrIIiBoCTYgDuYjb5oILxU3ghsPT4skCiyy_7qnuBQMF9J8gXSBR1BWMZze3y8nODzHXd0te3dZTGEhvecawtESdonPsKKB8gRxt-68-Gd46lCtCabMTUJwKBgjUoiAk7vg5VwibIgWMuVU5Qjz25H-QT9Kgdl0asrMal1q4UbAKujIzwXtDCD05ccaVOy9WrWcohJF09gtzkYuKoU3f2hq96m-xtpAFuLTcFrT2PvgTdwutSck-tB5W9OuDf2PsiLfZR8cu7Z49Kf5IevfAl2BX",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-ugAIdXJBjNSwkNyt2TgteN-d49sgzbTOec9uS348aPWBe0FSrOMStUnPUQTLDyXHL2N5_40lUdS6KjAE8jcpbjWKFB1E-zDgpIaXgE4_lXLW8s7YUrzVn3ymlX1MqCk9y24qCFbDiYlVCSish7V4fzL9v3wo52e7ROe6vCtBo8lbX-aQv0RXQJW9F-I4Pu7_jLRsy2OYPA2QTW-RZj3K4CtTNe58ZXgP-nwCLztMfreBquEeNogEqRNQ4AxhhmXGuYxS6UmhX3bA_b2FCO22825Z3dEZpqQzdn0CnRU2POdA",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-vxBFCeVlWhrQTOGWQMHCunJrLaYXvoLZVkyZ-mYRCHWqa5m7e6QT-PgM_KtR2fuKlCAR4iDgZWcAjYBEKFoylpeF_TXj6soS9krWlubbmIVTRF8-qlOMVO_7-NLd14aHNU_hMTZCgCZ0i3v-u6g5SQLdDKcTP_BzddJBmX-UXS1EygyU6gbaTn0fflBYKlI791zc_bVRa29klWoXQNt026eu8KOdhHMnL1btShqqhTSkjn_b-oqL2KdDt7RwKq8RdaAgdGOf3HW4zmJS22P84K84SoePuZqGfKex6B0ILCS2No23WKG42jPhqegCeQir2e_Iu2hahVXXJX68SlsnBRD7dm3SZKtQzUL3G-P3p3ygQg8kMBT4CaPrzhITrqkciXsjyoZTnpSekHlMSwEkEiJjBDZ3BFrdFwo84j41mJtcxJ",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-tG_8_EqoC3JV8m5NTbIFmir5rOXxK1z5piCk-FSyOHQZEyZxYzH7NdYF9tlROVmgV7ztjprmQR5aQFDp9iaBFHfyqVWxdA0CNsYFb_cBWlIiM80t_4QM3rfasCUl0ugOMMiVHGKVxcwQM0DLRUce6yL4Uel52oaFBpMVesL-ieM0p6gXVahD2ShjK1-rgySh5RZYyuQ9WN6LUIiL3PhZkJodPXIe84MlzFsUyCBrLdYgDN8yvPumoTjQlrCrUu2wC8TOgHt5yXg1ka52tH-PyPLdCTUHQovQyCLVmoWcx8_Q",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-vDsAFserUcAGu3dTA7dgJECtTgvfEGFCnVW6vSIZj3Pe_dS2VhKqHd7RJfXwMl6bHypUco6HXHLeKS8XQ5UoMFjRCHOE1RHI9VKvqhX8Bh-3ZMp71mF-oXJ5RxWay3nJla1cI1CD2ZDjVDw1xRWa0t9NqstiP-Izlimm3TMJp81Fxcv9yep8e1jXAj1e_bZekvHDBiRH7pGb3i7Jeqaali9b0ShfejQ0xoMzfSMhK1cNbFMa99QH8r3E15Ggx5NtcTdaLb3sBDNeRPrGmlbmHPcIf7cHOg_v720_x2wYL1XoGYQfE8yzpZnqgL76W37w8eiHqjjnjJkwDgtIaOy7_shoJryRPCl1ZxekTTR3IioEUtsrZ1eYmJIEO1rplSqBVPgWU83j0s3j8yhm0oD4329Azeq5eI8-U0uRzlavjD0w",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-sBUcTfR4apVH4EAQAljtGubjSd9MNfz9p6kDv0ncfqqfe8tBrrKchvQsiAoX_iQCAYiZ2ooKOFs-2Y0vbxsq0DlSXSypmG9VcFkDyh00Poxc3YKKfRPP9J-28KGbUfJwDvW-PMZ-xxR7N4clQ_s1A7l4V3tmUYSac_RXMXrsjAeQf9mjHgoPqLDR92SZhlsGPt85yxUquOVY2UhG9WWuu_7OgD8ZYQmt011EudEVspaPQKfw4s7qmu8l5iJRIB-s01IoPtWNt0oN4lVbL9XiYj4SshonlsFAMDR-lUJ7c6HMCqzCcYLDXe_FdV3SW_Zuzx_g1ru69d2Db3sXkLLbS7EEZGVJ_lk4Kb8m142t0FgCIY5Z-GdwKFHaI0Kw9JAIbSZJtMWPFDuRkYxcFy2yQrWNIWR2xBbbeFLI7Hva7YDA",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-t4zpFVvfwCAqaLGmkYPXAPZ7OeFeD4fNdm801RkiJlAmR1XfRvdldUaPpoGWXclD-CvHW3YazU6Ow-PPGT2Xxw_7ITYIopjTtVhVrIu5Zi-31snAYVlYuAlxBjp3SGM83ykXWYcG7cK96sLybpXizJtcg90vykFKrDmyvsvLLiq0kkD02Kv2Cd2pHkIn1CQdHI8qnXUtxGKr0_45TeT41QTgPk0gZ0drzBvNnG3aq9NJTe23TgMtuFIwe3sN6Qq2x2mevi6l8Y9IolwUymWN_PahzOhO0tTDMK9Gowcczz5A",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-tskh-zh7-7YZdAz2X8OXCdCuhqbswoWDUmECHOeMFY9EJBoRuzEf8R298cyko_UiqKCxGe8ToqXmlhkBaQ8bY92Ei6Ud9DoFwENw6KbLVdXkMm130yoTeHSmRhifW43dpHsKfdmExyQtl1DaPD_sAs_c-FeI0uVRrnMRU9_OLvi8--Y-9XWHfUqaSQD4-iNDD1Vn6mD9Qemd7pqdfERfLYk5wcxqxqHFOqejA04tio41vHq4k2DE0aXXPQEVHRrYYAMwUYeD0PyikF3tuV_olhIQiEmjheyaXDVfl7dSifUrokRihqXCRuSDMwAVBjH0vmTwycEp5KHF7oEn3p7uXr7yzHf1qrf0a7ga-BjcyoF4P2fcuo8tK-LDn2-djVuA-Ti8uobK3n8j6Jx7C8-Vm0COsgxxei53haGWn9fCY",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-vGHcF0WzUi7BqjW5EuEyIkmevBJ2WmzPqYQ8bMWb0GTpZQ1vIjSB6YDF3UkQFN2GALRloIZ4xFiH5fM6inVkLXXralifQXm4UbTN2cu_fHLdr1ej5aWXmOL_CJIehQIZgoocidATJhz_xTIo5KOqZ79tRYm1y_USteZMMOXgaZ9iMLL-qLAbi_lQS6zs5AO3bQPEEKsLCY2drutWMW0e7G9-g7QZS6dfsYnyLroc9mF1-zt2ph0UpMrnSx38rEFdH1CQHAQPTpmJ6UQh4Nu0myiB7AjxiBQH-JA_W9E-zRw97SglHkpgzl9VgkJmkDcl67xSTky9IPrFqXUa10uk5LFKWvRQ3CX19OQsBE7cy806yhPSOBkEuwZEpBRv6xmPeKP6FE7oxZYjYHdxJxF8Td46h2UxvhJRXbxj5YJW6lsJxe",
-      "places/ChIJXWCAMYixyYkRy85fE-Ud68Q/photos/Ab43m-tLquAMRQ_kuZ7G0Jn6afS3EbU4Smffo5dsQwR5J5p7QY2TexLYIWduA_pxJjl8p3Hlg85gF9yxi809qGMkJgeTYw4tVvYSIhbQfM_j8znV2qbGOQdcXQt5LXG3gNwX8yMM8q5ST5vEOz1q_m53ql_aYIaoUXu6TW_j1tJgbFFeAbVVoS3Du574CaQWtzg7t0pfA-zoTd0NUJgUxOz5_9J75UI14fAWjar6FFdY-jzxiBQ1etzMyhjfLioI5KhIDZVkigjMeWOgsPz1FjHb0CTCpzunUgZc5kIAuuTHCIXGOxiURLl4FvdUNFtomIxiGk5KXTikFf4V1rXjL4C4gP-yKN3bCWOkPOpIWh7aT7u1H9v2TJgPO8T8W6udlpUQXXfHi48LEUFA_U6fZYjHLenqMFbERymm2JB7X4oN0GSOj7YW"
-    ],
-    "phone": "(717) 387-3978",
-    "website": "http://www.gettysburgantiques.com/",
-    "detail_primary_type": "home_goods_store",
-    "review_snippet": "Amazing property and friendly owner. A history lesson, museum and shopping experience all in own. Buyers beware though these are real deal items and come with the price tag as such. Not for beginners.",
-    "review_author": "K S"
-  },
-  {
     "google_place_id": "ChIJOcOI4IDKyYkR0TLVy-4ws3s",
     "name": "Cotton & Co Vintage Boutique & Marketplace",
     "address": "900 Francis Scott Key Hwy rear building, Keymar, MD 21757, USA",
@@ -31893,53 +31031,6 @@
     "detail_primary_type": "building_materials_store",
     "review_snippet": "Best place to buy flooring. We purchased our hickory floors from them 20 years ago, and now we have built a house and purchased hickory flooring again. They are beautiful",
     "review_author": "Debbie Thompson"
-  },
-  {
-    "google_place_id": "ChIJ47Q_K-sftokRLxI4SoRg3CA",
-    "name": "Willows Vintage Charm",
-    "address": "3 S Berlin Pike, Lovettsville, VA 20180, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.273561099999995,
-      "longitude": -77.6393162
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Burkittsville"
-    },
-    "lat": 39.273561099999995,
-    "lng": -77.6393162,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: 11:00 AM – 5:00 PM",
-      "Tuesday: 11:00 AM – 5:00 PM",
-      "Wednesday: 11:00 AM – 5:00 PM",
-      "Thursday: 11:00 AM – 5:00 PM",
-      "Friday: 11:00 AM – 5:00 PM",
-      "Saturday: 10:00 AM – 5:00 PM",
-      "Sunday: 11:00 AM – 5:00 PM"
-    ],
-    "has_hours": true,
-    "rating": 5,
-    "user_rating_count": 22,
-    "photo_names": [
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-vvcWqtfQ0x9XcfXp8i4QlPjE2lBGjmjtlKcWJEVlrVjNScGgwxD6yGN9Y4jGplvUB2SdVN9yEzVl751QK_OH7kqCGyt3LFpvtg-UVbe9IFGDMOFeO0U50NSKeDU_W_LcAiHT7cxgH3vo1_9w-sfYLKJpSaV8t1SEGuMzK-qBz9CE9L-shDLpIy_j7nRcmQKdLMfVuGzyukq54y2aTe8GJeM78yKEa6DXDaFcOkTq6qoccJ703zHylAV6DPV8THwWJ_U3h418cbKaKZHRyklO13G24vtp70YzZV_Nsz8lxFomzxUFmUhL9pyGjkuyuXMGfwP8PT1Lcj_XBYr2mxfwrylMOTP58850Mbtsq8nOf0Zd2GYPQS870P8TJ7LImqbE5c4z5D9EH99TN_R6Es--doMRlYz0Y_sjCyk-NCJ_kl9Q",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-s4uQG8Spos8G3ZRPNkC_x3E-uZNNnG4lSO22_uH8e07kkDRk2b92WGrNxQz8rPqPfF7qiuA63sX3QqycFIcBDrpaGFd-b8xFaV_PXsAyBUIR6peVztQTfU8EymCdhMqvC1RLggT52nhnaQ2os9xwV0NpE6CHgfnaqcRDo-gjvNdAUE_D731griMi0V3mXL-cK590hdp9--cZXciMEEx_n3t_MCH1erhwrwPqM8IIkOHvtUXbctcLxHElOJPhBzzImvFwNuZDObkMRyq0145tBHlWlPG0uVDc8Wd5b7aK5qaodFNystYwSeoChgEPa8SYkporWGCJcgZSiFmas5iHy5tInzWXszZ_9d1YZaOCIGw2R7cRDYhqOqoe2uYTbfhaXs9tZn1CbmLx_ZhjNBp4u1HxZB2KSjPoCqwqIT9PAe4NIe",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-sWgaw4xJ9ctAl82qpYFtfmfBsqAfYHblUoHLW-wvcRk5sf5gPCC8oVlKTR1hUCm1mDyG27jmCExxP-OoTgxwQbpxZJiyabQqq8m5QaxMQUC6rVvjtljoMkWPY8Z-WZ5kTjo-ztVSlPViCGejOUVpyoMa_XVc6mLbtEYCb4zKR2Bkvd-WTB8MZuae5zzHza064M-tbrG2g9PR3oHBkSbM6tDISeCOHAH42V16pW6x4qvUspyQD5PNXgkFwXa3TeeV5QU32cAhOndtFxSfLRNF2sZ0EI55hZwGwq0Tmze5p7fbGMLAu-M9SxRWO8a9D1JAX6hqvr_rgbMYIPjKRbhoZVqTfCRJC37GMYQ8D7GEvS4LTa82NdvqPFW17qbDQn7Q3dgPXDNzUgTP_L8rEct9m5hKe0WbTL8aXzmIG4sbIbVQE",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-uBcA4ieriLMHwUhWtxODZAu7-4nqGU78q3d4MCVPuukDJQBAQfZMeTxS8mGPkDGY5qihOdQYXzM9e7PcFyXbBc_A_3h7eC9JACeOmK1TT7zu8U1quXoYRCcie0jj6L2b31a83aspEyRWEJHPlTJKa2jkxdITmRKHORdLNN4iHVaGiw6q_e53nAJSSqkY86uttBZ3d8x5iU9nr8GDvNrZDSMCCWTmH4QXs-03HfdqEU7pdPDdgAo5CYRWIgugfaKIHWAwngpcn8it0NdMxb8CxgsIzBGeA4Ef5gEvvJsrHLetheqo3azIWv7kQiI7nSV-Totf8pvg3WtcCwpskQLGca4i8v5bAdXKJg1DP6WjOvD1Ouc_KGMbLvf7wF945rbqxG4qRrq2po2IABFpbl1imLa3M5HS7vG7fChVwVYWo-fQqL",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-unbGvUFcRCwjNQcoM2zuKp3Tt7Q_URGri7rP4ehYp0RHvWsjat3v4u9kbMsLv5TbCHrNguOsXNuSHiQJZcEhDXByQRKZEMcAlxjAil0UVf9_5G30YSvgDgTsm2pL45lGbsGpwE3jv8HzGiIAc0DmiUS_5H1nqCZ9wQrGSQqlEGVs0wvI-JqFxib-dGmjtD7voly4fx3wRJrN3aYqDj0KT35aNL1GcQPf6KQWlJgwWEiARFYQwKyVQcicg1OOEWEyWgcRSxzUvW5QZzAkPkV43YvzvwoytU-rSa1hNtb1z1jIxUOxAhg1LQInDdzUJ5bwbY8q3MwbCg5eBkc3vUcIVAQu_Q6Z4azbmlB2svTDAZx123T9gV1sLcQcIQya_rgNbtC4MK9LW2h8TA5vqbLIAHLrg4jbWMfB7Yx5F00GRFzA",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-tgPDKbwiurS1vMJaUOXLJeDrcGEg0OrO2Jc-vIV4exZTrym6wyVBGGscaUgeZ0a-J77sDRj4CkPXK7Hw1WkF66YoiQtHOIpyxNlskn3jIH2CeC_r9a9rRgohgkVLDjjDcgFLW8FDLbV8IF0O34liTJ6HwKYCi9GY55Yj4stBe1ra0Pays3USXT35dx9ylv_q45gofmzDOHTFCaWi6FuJvJbXABVel11ITPfdOPv2bBq1AY92QYnSthswYomUxiNzIVWjN9DkIVBEten25Lu5z6q5PPxvm9vjBsn1YuTwheW-yQ2toj9-_TbjS4RGVGl35UNVbI8scxRvaGPCf5ccHb8t2mr2-pp1RrcUQ5rvMQ42DTNwPiEBpRIIP7OoHq-xDtAANiyJIUt0aSR4DkgNKa5sSC2OcUd5PrXdHJDuNdBQ",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-vL0nmnwyFxoM88mpaw5GjPlz6o6mlSReYzU5L4miAMBhRsJjBmcqo0_CG4cCRnfaHgYUDQ1dUSVgeS6XVgBt_osRAoK1jEEPR1T0VqaAMpUSsLNrKTAajg0o05Mu_hIpc03o-c7Uurm36YpfcyxIfRzVrxkOeRRdzeJvxvJb_5yr_Ztu5Kav_iU0G663xJlaDOVxs4x_AORtaP6S8V_ZeY1dsRZjMR86SKRi30oW1TpUoEq0AIxHxQ8_z4oM8b5wY7kgPie3aDdA13m9590Rs868VK60ExoNvKFHPNWklgltzZZJJ0dq-xJGglz9Lzk6oqItOP2-mm0haGtzPWM-FSsyeMjJFFzQiru5TpRcV51cpLg3lM7ewQcXcoJxw2eyR1lbU-kDgFZnWXsu5IEQQAIAQIyH9posqcr2CphN3qkw",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-vAPpvE56AMrsHxtWt-Ds6KcHQHgmSeRFKOL_RslBl1H7m2FIAVxixLOWGSU4DyH1VEg3zuGFs994vC01e1So8WrTDLNt4kEHYSRcZhQI1f05QoA1tYG_tPh4ezT93YuX7tSnGah6NB773HvHoOnRfztYtWSr894kVZLYvEXt9Zz0bpYOK1CiqXKGyn2KQJZ5yxfBksRX_18Z9TWWzEBEhGTdKhEH8JCVlC1pnGFDt-7RqkiD9Ysgiepf5znUmgEd13oCgwU1W3AC9jJme2ebnzDrsJ5BK8fFSD5piIs3Bw8AF5QdyDovFd5HnSa6orsZKIYU675eASrerPPZ3YXAZOw3FYjRX-yaR5qN3vbJ8rb6Yb3YkytECa2JGHJwV02VBF6vNXdPgqpB55wSFjwt4DL4vEeTAecPEvrSr68jKeyw",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-tyLWAx5zIBrXSfPH32sLmtM6FIqpN4Jtm6flWYihBZRjHkh3lwYIRdElWXYcE5FDXSqcFKdzoeorNHTOO78doTzGUJ6xQCkI9xn-zVVYeZ__1XJvsRBbiT9r4Vh-BO4MejGlNY97HkPV-JSLAfz_G3SXkmqxmQOosNX_4YlZ889QrPxUP8BdjYtRmXM78W8K_FiRoP7-aV7iJ6jtj0gOCxsL7aTyUuKe6fMl3d_V-sxt-yqTxQZljlbMMx1MeS6e8ek3nqyUtmwaOYhlveeBikqf2wlGRhh2LQ_kMF4pv9G8ToDFyZDEP00HpRWVB4CTB213SY0JzIxa7uKan55Kwt8MJedpUU5N5RtbKruaUUlo7V5Xl9ajnpMF-Sor9k_I1cwifGJv9FSgyjNX1pgd3CeZsM0P6t85MEC6PhD8PiSUl9",
-      "places/ChIJ47Q_K-sftokRLxI4SoRg3CA/photos/Ab43m-sYlN7FYyBzxYQ29OQFT9KRQBhW5P26MMREcFtuXMHKbh8oWvMcPugVVAl0LKZUZiXOTzkDxuPSeZvU9MsIkeqSmKYbjw-bACHuIs9z9rgNNezqwLLFCU18npoux-7i688yajKqj6xO7zmCRc701GJTfjcW2ObM_cxk6JhF6M852r0tdYu--iXeOzhuIHHLK8z_zNIjC0SMZdhG-oiEjna0_l9v46Na5ppkdeHSXMYRNE08N5Y2zvDvYaSVsy_P0uoeGeyheAB60Ufhqg-iM1Ai92t2GS-FLdO16AmYJbEA4_jRSfiw-Ij4aQ0xkAbyefOrRdHYFqNRcyyCNp2X2UWeOy1e6O3_Wsgv7mz5flFgHG7gvHo0LlGM5zXun-EBlrNqFGr4j-v_XnZKBgPZ4KCTBsMnolTq_5bH_aK94SAL-qLv"
-    ],
-    "phone": "(540) 326-6506",
-    "website": "https://www.facebook.com/Willowsvintagecharm-271903163692815/",
-    "detail_primary_type": "home_goods_store",
-    "review_snippet": "I love this little shop they have ao many unique and beautiful things..",
-    "review_author": "Mary Jane Watson"
   },
   {
     "google_place_id": "ChIJ2cT1WqcfyIkRS9TtGQPy4As",
@@ -33378,38 +32469,6 @@
     "detail_primary_type": "gym"
   },
   {
-    "google_place_id": "ChIJA6P7IswftokRH-KAdwt8Ga8",
-    "name": "Good Stretch Yoga",
-    "address": "39090 Dobbins Farm Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "yoga_studio",
-    "location": {
-      "latitude": 39.2798667,
-      "longitude": -77.6492947
-    },
-    "discovered_for": {
-      "category": "yoga studio",
-      "area": "Burkittsville"
-    },
-    "lat": 39.2798667,
-    "lng": -77.6492947,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [],
-    "has_hours": false,
-    "photo_names": [
-      "places/ChIJA6P7IswftokRH-KAdwt8Ga8/photos/Ab43m-vvpVW6wnXMr74PIjAFwpylzkcIVuZfs59DwltG9T34OQhzSezWI90nW09g8GESc9O2t5SWfx1UzRwG3cX5axF9yciAPdeGNawGv6sr48CUpfqoKPJGLggWFpP9OY6Q9Lqcd-89LuNyHU76E35NhF0BfG_skk4M922f--CLbIstB0i4G30Gl1QlE67aIpZzpRGUg0NLt1plhc5FUcbT1SEeaLi6GXzc4hu_Hnap60P-YQur_XbKGlCgJPdBIgem-dcPkxnyBXWbHwFqYt3p6kr9hHqBpdiKWTzjB0d50lNzVQ",
-      "places/ChIJA6P7IswftokRH-KAdwt8Ga8/photos/Ab43m-sDhuT1iFku8EnQYhz9QUep7hS83uPYIoC4WEFtBjLZd5QymJjdnLKspUfmYmsF4PVH55SLBTDG1ZiFWrkggah03Kptrc4iLg6JgR2x3knVN3CqF2GBQEHV_EgF8zSrobzD9EBI6XRSLjYFWAtZQMA--m_RTzxB9CJPe0Qa7mj4w3MJCaFp_ml0oEKO5sbbKJorRPySKZ1pfxbOZu87rOrACWfeVl6zh1aNGFJtGFUKFGR1Ohlpxk8lek5ebayJ0QNKRolxmIT3SMu46a3PxCRvg1DSphfEfmizsngl-7kkfQ",
-      "places/ChIJA6P7IswftokRH-KAdwt8Ga8/photos/Ab43m-shLMwid2R9Vfbfz3T4EanQsWV5NJbK0qVy8qU0iqj23ymKfrtQMofe4yg8N78tosaBj_Jky0XEshvZlA5ZdJW7EPo1KWsRcJkXSWaAtZtQdGKSTYbh4Ne8_8vMctdWt_OpF3U63xMmWff1a4RGL1VaT9ugJLZTAMbJSesXVCd5CxMo534eyDqGYHNFDHMEZ6vix-r1Giq3P1VsQ0QdfbraLqCz6rqw8yASjyAu968uOgrrKg8Ldwl8C_SnwtrPhyNX88euO4GeusazJSVMvGuMZKtQXFsDwZmojZvVhwOMaA",
-      "places/ChIJA6P7IswftokRH-KAdwt8Ga8/photos/Ab43m-sQyEitM0-c_KOLMwz0TrtqLtCLnHnusMfKiV8y9tQUWWt5bJ1EP90oKniKCzsGT2QlrAj-wbF3SSfCtrZnoRJ5lphma5FNq7QG611XNvi2nJMfGpXPPICwV4JZAr1IZqn_AJu59pZ02FwR4_GE7feunYPcN5mlh1LOs36ePnNoPUa0CDviaS4Czvja1CmKVKb38FbsdVIsx_9a-dLUIwAnsxjvIEUSGmdnCv7n4ZKeUyBVaQnfDoMWkUJziZq-oT9NgisBy2n1AyCwNV5jjRpKKIjpXGZA-WxkjfLYjQcL1A",
-      "places/ChIJA6P7IswftokRH-KAdwt8Ga8/photos/Ab43m-uDN1WZNoMHEY_eOBaV9l6Ty2JlQf-pbolTsMSAIF90zh8smEMqxCeozO3g1-cf6Or9XAUUTbxqrZepWQkeFAxGNLe6WsxPIdJrXTLEgzg0pamP962IuZPw1BrxhjeaUCirWUJ-UatRfPjk2bcEcZmHTCsB1tHrKYesdYVu45nVMRdzqpCSMFY-j1xeIDkqOAiBy7yfmeb-qBxBS_eOkbkR7xemQfMS7Zrj5u6tca0IwZch0SnGK6xyzGxzNY_HJNz3E3IyfdEL4mRcTzjI4M29pRhxeW-84U1bqpIST1bRAg",
-      "places/ChIJA6P7IswftokRH-KAdwt8Ga8/photos/Ab43m-uoYOQ6bWWbIHCiXzSiKmk54V26VAoLeU0H0LMwAZLLuI6XblNDYR37tGLR4RTLWKdZfllx6olWGjrZEYi2ZzDHqqcV7IRTXS11qtYk5o6fey_bOEiMS7ke-bVBNf8iQb3V62SlPEfmeqCMpVP85LKYNsmdCGTcIHQ4vDr2dKP-S6dU32mMB7vCwURmwjMn7bwWFjGuVzXyjEo-HYGWX1thlHSh6PhAgfuZWYe0Kcrlpr0rU4fnKHAC2hK3s4_bdsBgX6QFKmHoiimCbH_Pq_JWbarExjFEcRklKOVH2s7gqQ",
-      "places/ChIJA6P7IswftokRH-KAdwt8Ga8/photos/Ab43m-vQdwNC80iigfJre4W6kOmh9jNvVMbU3R91G7NMb6sbfbGdvuoUwGHqG1eumidqeowhmYegJ4x8lWc1wgiX0UY8nnokxz2Hk7HjWBUiImOQu56kiNQ-MrqoXJK_oQLmh_89Xgvq6XyVU-2D4ppLkXNjw58iwHIE1rnAlDRD3FedmrNGJ8kGQfsmbtx9stMX5z-QUvlOTwPHhCkedUOSDdDlNAa8coumwoueoDdiL8R7Rf9MOycj5E08aDRganYcBdGULM7lSt0WrDrlmje-NxJCULo1hP09K1T0q3Bk1JVYDg"
-    ],
-    "phone": "(703) 798-7703",
-    "website": "https://goodstretchyoga.com/",
-    "detail_primary_type": "yoga_studio"
-  },
-  {
     "google_place_id": "ChIJt0FY16HbyYkRfu8Fk1k0qTI",
     "name": "Unrivaled Iron Gym",
     "address": "605 E Church St, Frederick, MD 21701, USA",
@@ -34842,31 +33901,6 @@
     "detail_primary_type": "coworking_space"
   },
   {
-    "google_place_id": "ChIJRT8dDzoftokRsSP2mDaQ25E",
-    "name": "Wild's Edge Fitness",
-    "address": "27 S Loudoun St, Lovettsville, VA 20180, USA",
-    "primary_type": "health",
-    "location": {
-      "latitude": 39.269197299999995,
-      "longitude": -77.6388687
-    },
-    "discovered_for": {
-      "category": "gym",
-      "area": "Burkittsville"
-    },
-    "lat": 39.269197299999995,
-    "lng": -77.6388687,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [],
-    "has_hours": false,
-    "rating": 5,
-    "user_rating_count": 22,
-    "photo_names": [],
-    "website": "http://www.wildsedgefitness.com/",
-    "detail_primary_type": "health"
-  },
-  {
     "google_place_id": "ChIJASizFznbyYkR-96yJ1F-EkA",
     "name": "Frederick Fit Body Boot Camp",
     "address": "5634 Buckeystown Pike, Frederick, MD 21704, USA",
@@ -35696,41 +34730,6 @@
     "detail_primary_type": "hotel"
   },
   {
-    "google_place_id": "ChIJM753gdEdtokR1WL15C3DXPk",
-    "name": "Georges Mill Farm Bed & Breakfast",
-    "address": "11867 Georges Mill Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.287790199999996,
-      "longitude": -77.66322890000001
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    },
-    "lat": 39.287790199999996,
-    "lng": -77.66322890000001,
-    "municipality": "brunswick",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [],
-    "has_hours": false,
-    "rating": 4.8,
-    "user_rating_count": 13,
-    "photo_names": [
-      "places/ChIJM753gdEdtokR1WL15C3DXPk/photos/Ab43m-tTvpHLXj6rn0zbfSwITyP6k0g1aaB5uKSRMKRQqtwKsnWuoUcYos9RJgcxLQD7JY97RfkikKfzf08LHW4ozK-wjtD95Vn-ifILOq2TOX2ert7MPm8qlvWEef4P0jVVpavZmc8wtmbXMXyIEgqedsVZtMsw5g6I5HGK32uh_TWVv0OWBA3nwZ-iF0CxXosF7lmeCggPG1_elKYVlaw60Y8yDof-d-TM7iFuR5rZs6kNvj815sGQ8k7uEW7s5yOAUh2wDwETVG8hd8BaKUei8HimGfr21vmsjeIz2nSSEzDIwg",
-      "places/ChIJM753gdEdtokR1WL15C3DXPk/photos/Ab43m-spZmAvwv9bbpF0YlCyxkOiad5BUqu8obW5O_XOiRlNEJIMBeSWQX42xYvyOsh2q_c062Frhqji_0TfApVuy8hIggSNRqDXGUiIoY2j5JSvoMP4M41H_VPS_wjCaECGG9oZBSkagUHkP0xnLHTman70uDKfemcW-rVACY1CkforrXEHFCRCuJObp1RYc8KVbpn10aRMjTnozgnRViw-iKgpdZsvPd5Wn0OICNb2pQHK-UgKLr4LDsbeZl1MlF0HZ41jsebjZG6Xg0ruky3E0-d3P6gnxu8tCVVVeTuI0WqRRNoENzIm9SpqZ1c51QoKdg3KyjOBnO-PoGBKtKcrsqc6WWpJz8wYDSdbFShgXyQkP8EaduJF-kShIooJxMEqXesXW_kJgaEJiFjDzdR6yKYbfQ1g3bEWKECAd-F8hROuj_s",
-      "places/ChIJM753gdEdtokR1WL15C3DXPk/photos/Ab43m-vXFLpkEB6AUBJCVrkPoXPZvmnPAaMLIXUN-3HUUEd-MaM_JmvlnGTRfQApJPtt6wbp7Gv0pATB790JX8lodaoXK2n5W_d7WgRqfYA20VRGYtl6_VSxKJhN5DCxRWBlmk25hBICS2f1uXV6UrqahrvXKC9AwmJGfvGjawpXYFMvR8xgfEF5hHdXzyj5Wg_lEjHq08guecQCQCC_g-HpN_NFy9vM8HREbJ3IdJK7KHM3ByMZsPvrbQc_icjnuqU74Yxd43RXCJV9qcxq4QlJ5DrlyzS51b9OkzkJDCAtEgoLWMbMebHaTY-ZPs-Lue4rMhdtnpWbPcqDQA-G3DbUOzvjSJcpPtN9v3IXCOTBZELQcr75V59DjxriA-jyC6rO5p7VgbnfI19mt7h6svRMF0s77802-bhm9r5oJRVOz9g",
-      "places/ChIJM753gdEdtokR1WL15C3DXPk/photos/Ab43m-u9YhHs7r7nxYEFAz6hl7ku8v4lKHVm0E1J7zXjInpNyR6WAV6OleCldj4M-t52QkHQTV3w1FTP5FS3VV8EJV2ayeg77i9YnsS_g25E2tt8JK14jKj8ISnhRqOXUutRAYyF2cU7Yj5vqAgfHt__WreKAAOr6cgUivSaq-SYcLdY56feYID0OAhiNsPOHz6XvymG-AbeFyUUjh0j71uWs7fyYZlQrWbf6dlTa80HHTEE5sxD__O1jwOcd7rTr9N6c_4m9wpuCzhIkSgE4t1b5NvQZ_apK042mLB0OwNpkGJ9LNlJzGSXMycVFjL1P0FcDh_1MCsAIR7TDAQjSXVI7mRKjPHI2jicNWH5zIijGsFMUE_DmctsJ8O225nWE21UM_15JRCmVLLBDRVFawRymFkoOD7_0Bx4oUaNK3i1aMHGlg",
-      "places/ChIJM753gdEdtokR1WL15C3DXPk/photos/Ab43m-sAAi1p-1Ts7SbW6-tfmhW6DRU7Urg3mMk8lQRexkPNjJcXlYeQtL55mILknAn55qXa-CB49wlcBiSXoh-OeAT67nIh-vIN5OV1D3xS7BXYyJwHM493_55T_Q38R9yuRF0o__Jt1AI3M3tvqOVaf_B_xR14cBXbNDxHNfkrp3Y8RmFrYq-1EiNkw50AC1423Qzr6aPBgeRniE5rQk0wemQ1nGqkPnN3EYu-Xl6XY0qajGHxCd7Z8THXo9qZHsgRW_KqtdXSs2H-WFSi0pmPPihHR-MyUDfeilKuawuptUARgTE4ovBUXxx_mo_W45F3nyqHZtd6wNx3GzBMDM_dJEHBjpsxUKyVNo5MrQehThsnusSbze0nG8KNX5bZjV2_dR0HxL8_SNbRI_xl0fl6GK2yaYCrmort88D_OSCZZks"
-    ],
-    "phone": "(540) 822-5224",
-    "website": "http://airbnb.com/h/georgesmillfarm",
-    "detail_primary_type": "bed_and_breakfast",
-    "editorial_summary": "Quaint rooms with antique furniture in an informal guesthouse set in an 1800s home on a farm.",
-    "review_snippet": "Wonderful spot! We stayed overnight after eating at the Restaurant at Patowmack Farm and it was a lovely experience. Kind and friendly people, nice rooms, tasty breakfast!",
-    "review_author": "Paul Selker"
-  },
-  {
     "google_place_id": "ChIJZdPFwa7myYkRsOvbB7LEkdc",
     "name": "The Treehouse Camp At Maple Tree LLC",
     "address": "20716 Townsend Rd, Rohrersville, MD 21779, USA",
@@ -35898,54 +34897,6 @@
     "editorial_summary": "Informal hotel offering modern rooms & suites, plus free breakfast, an indoor pool & a fitness room.",
     "review_snippet": "This property (Bollinger Construction) did an excellent job of keeping the parking lot cleared of snow during the January 2026 snow event.",
     "review_author": "Nikki Pipkins"
-  },
-  {
-    "google_place_id": "ChIJUwu6ybC9yYkRwx6bqkl7ze8",
-    "name": "Cobblestone Hotel & Suites - Waynesboro",
-    "address": "12695 Washington Twp Blvd, Waynesboro, PA 17268, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.7441253,
-      "longitude": -77.52716819999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    },
-    "lat": 39.7441253,
-    "lng": -77.52716819999999,
-    "municipality": "thurmont",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [
-      "Monday: Open 24 hours",
-      "Tuesday: Open 24 hours",
-      "Wednesday: Open 24 hours",
-      "Thursday: Open 24 hours",
-      "Friday: Open 24 hours",
-      "Saturday: Open 24 hours",
-      "Sunday: Open 24 hours"
-    ],
-    "has_hours": true,
-    "rating": 4.2,
-    "user_rating_count": 289,
-    "photo_names": [
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-smrvo6LRSbGsHiVfBhr-uhNEsfZ_yIxmDtDMs31BNckQQ1JB1cME8fk5pbucqntiD9SV6ShYprmMFV6zPaBfakBXtnmTEH-dXCBKN1v7lGC-qWz25MBrnzBkxjFBptTcFZSj_r-f7RQGyy66p8iBcpfWNUIKn9aWh79IZcHMCw5WMWACmL0d-zqHK2Jx-vX7NLNC3RKsfIl6BBwR2Qhg6qMU0wvzdB9mDs86W8LfwCNZkqP_Xz_D_u12uXv68fvo_4z6_T5AhBi-cERw3YYTOQd1hlRP-TNMpsL0VWyHaFpzxE0jf_7gRJQlTiuzsemKhm5_5FnuXcBfYhD0Ttd7NOifL22ogimZbCxHoas5Le_ie4u0QvnIZrEgLmi3WHiCdstKwSjDJvr0ApYlQ5zUDrxgNZRSIvKSDbrC1a-lmCfw",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-u7Ub52JzHRrw2H2FXcVgmiTwFOr7Hb05VgP6twYiRiee9E8yPaayj72AiHcGKnLfRp0u_inN2TAZ8svlZ07RNbJdShv_OS2h-1EQSWDKtDNXpjlgQ-dCuZ3lV7uhv0msUUA1RKBN4ys9iPO19QGwx_-vj2Gl2B__6Wa-tPNHzR59lBW2xRSgpadYrTi-9MPBQsfM_MPNEk3waATJlBNDBe6B9869moov2HhL1RyuQhcHn_rdLtdbCbqUT_VVeYZDJPOtJJseCLYdfCuONkJZOS1skfsf5orTm6NA92o5kaS5UBM_2a1aQB_fbu2rzFLgWYRehY05-lhhIMUcw9POmrcYjrQwwoJWkBHjUyA5oUS9a2kfotSQk8uamvPllW7jSoisdNzxq1Kj1rklxXFMwgprcWxkgXBiscSCncylH4C8fL",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-t0PZVYtdgS79o6QjDjQcm11zJfrnd_qMM4Ep_b7xXi_gkGk3dTi4kBPkrH-oqnI2rSV0K30rfueXKgREvzmQ7dSKPsdEx1LlPlh7bpF42f2WiqrFqA6JVqvtfvwnmIUP2GVk-Lx1pQJINla-HcXwsYKSVWLjgXE-MoIQ_ljfaJzgkjis7GgJ4w9HUPMi-m_dKJWpMmJWvYWQ1mxBEeyacMtApziC33hZAAfzWLAKKqn71M4Mormcg-YVrXa3TSxkfcoxyelIF1EweKrtMHag0MnQCj-RY0fv5cCU8BSSPp9Xr5KZ9rr3gkjsPUHkXv6raJrP05H41K8yrMp6Y2ZngCrqBBo5GGODpqy-4rw29BvE7EkCS3C46D0OWi2Y0IlLqAK2f8VNibMXeMF-I8RuQyOrLWXu_zxHXShYjbQSzYkP06",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-uzdIOsUETWheeKSDz4jkojZfiOapxOBjjgRUt2QqIFKjzYelYkK4_qRVJljTg-PKxl_o9TwVbq88w0uivm2Dh11uJQ1JSyOL5fSfazLasK5QKWy6Q2ZO-51F1tZYKPZoEQwpFrKHXxGXIDWLUkwwd0aAaCBwSiKRRCcwmQ9HKbu_mrm5q_XOrW6YcAJppAj8u5xS3rdhLorjGFF7OU3k17b4PhVuVy1WPbJxR2GdsKFV3x6Mzo-aMhmnA2znUiQdrB4im8nUFD44iO2xOV_hWFoGgxxhsiNEMlrL4vdqkW-_THD_8w4dwC1srdmd6b3JrxbTbGAN9f006-8oNMLvmMFT5kmGE8rqJSXldUwybFhhu8wVxsqSCM8Lf5PV2EY2k9eCX7upyBiSYxCHysiQNZVvyiR9IddFMNqS8uwmqTDi8",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-vgRPdz88Y0ANqNiTTw-V7AnQ5x8mawP4QBZ5FJsGZGmJ5eoGKKoycvQznbgqvBk3MrR1BNjZN6LrEPQAk_rxalUBs15l3IeVqBHAEUbsekjyOoDyiSZukjBRUXFNWry4Vf4d9DX2zz2vbwMnFoqyYtHx5WDkLrvYCgpk-ndn9D0Z1fMeRXr-KY13hHnS2pR0BROr31YcGsrZFIBEw7eQgefBG3ybGlhEr2FXE44ODcx6fix87pkhGrTZykhI5pGULAA_RhlbD3n_NedIM_RDFhLhpuaZs3obzr_TNvCgzxTd11fUf7HX3yNm379Qu6KsvJgTnQcMboTSoegZknieY51YT1hjS6G8m2lhLNzrZ9xqRVCIAj0TtnXxh_4qzEMazAXxOPxUF-zcPaarYqJkXHt_ap5kOzG81UwrhbmJegoiOt",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-sjpNQLwCAEMiZ985RW30OgeSLeyIlTbxFvkbXzMZNUow6b1F-6xHnDQl1ELosaUJH51LK6pnaSqyQSkVJm8JjUsJQv3biev8t7OicBSYOqJOqFageb6CDT6eQKRQVLPiPLKw9YTf9K_7eWAgesX3lPBoHx_92Bo0HNyZdXAi2wHYxKiinzXYogVOGDRM1HZDU1sz93N6PchA4z-VcJc0BX98L35erBkhRJ-_TSCKLlPefD8q5ux0cQ7MUVymbHbmPSVUHdPIFCk5v3D6rGGTHD6fZZKklutb0nBrZV8U5_JjtDzpuJeyOGBlbZE_OuWtvpc5MTmPa2Gh2vVLc-oJNDC6ojUV7_GBNtlseCzYrlvVOq47t3rlslJpKVTPTsBjd5r38sBtN-P0SlujTx_2Ijzq_6biTczqStj61q0mgmW0k",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-u2I1p5syeGuYs1Dh2Q637MNqYT_UNOjEJlcHVT0QS4nRb-5TfCxE2iM7mEPEE8roIHs1pXgyRQGjuG6GJzEuHWTfq8LBrpXLynal6RfAvBwNzqi0A8zQnvfPt1BY22logTEgtsAAN1ylr3zbu8ikrJ5dRC8AezNKZzJxmEHgje25CIwO_CTYSZzrk3xZcKZwHezbWJv0KpUdbAjS0xht0p2NH-Fh96BUe-QNZ_iyDnOXE6cATIWcFTaU3kr1UGziS0eIzeiEk1tivXNK8AbMyjaBIoqggFSra69VWySyEWRUesXoKg9jY5Poo41eiB3wMNFVFwGRFuYdd9eXn1Vr5GWRtHLR8JIeNmtrB05k-JIdlmuDEArlwTeWoyLTwRxO9ku6J8fx2tiGfeGXzOuPp9zjnoy2fIHJygGpQ8Z0Z96g",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-uEWD2kD5Ie14WAjm5R2IvRtrzUJWgGCgtGl6rymxjL859D2SL3pOOG54pyKRKQje4oY3wtvdLyueueZJPAYdeetmx4t90gjlZR-ROX2wXqGOlxxfTu3ocGOKW_4fv4ZNm4j23UlCseICtcCew-q5GonUOG2WTaN2gpdlYQ7KSe66sYgvpkvU2IpOtH1DmveFLEKowvcnF92u8ONnvG3mmioZx3pnlXCaQ1XVz1-vsTjSFWUFcxoHgbI8w4bxzm2C1jDeY7KJlv6jsMsd9xLjjUMtYn7wQ1zqa8lUdxFjjzbTTJkdU7wd7uaBfV6uP_TsX0pdHb3ItlbCV76SAt96PCW1ahIftr7WPwLiGJARRamCjkS4NREcwjDMAloNd1r07DHfk169GimjqTpKQ4jHNyEJxscEcXQu5vlaww3JX1xA",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-tXxqoR7tV_5XZOmGS4dqVqRyIpEZsvozU4lU93JSw-tdCFCPHffcmgBceMXuUgnNZR_79X3madnGxf56ykEoq5RLkryEvwiAYim7osceL6v-GfQXrKbQtuQ-dp0p1PFrrZHBlvgfC2rw-5qXNoAEfnSqcIviKBlK6d8-1IX9N2GTejk_1zBp2706k3zkZjCzdet9XCkSEYwPos2bm_eV_OflMPwn0g5IWVlA5FoeKLbeUXP3OEZXn3bILvh41Y5tVCy7vmN-f5GN1-Z7bScCCbJSdX9dOgetu6FG15s4zD-0rw9fi_PtGSBPo7hjaBPhdf6Z22un2IHVpxRwE0j9WJJxOYZANJTIt2uyUJjvjkgf6gPUG02KL7fqCUU8hyaCK6K7rqttNW31cp81F5kjMVYPAHFR0aGg4VlklyBI59Bg",
-      "places/ChIJUwu6ybC9yYkRwx6bqkl7ze8/photos/Ab43m-vimFJS7oNqelkgOnFdepDAyMrDzElE6zJ_bFCllpBSOIpMOCyR5R5u6GDIOKZPDVhTfo-d2TbZZckGsnfUvSR5czFMV1bgB5zLP9de-FYIy4tOIsxF9zE82iNvIYehc7Lk2ZdAWcPvCvEuppVl-dStk5gbP8Oqgm8KD78Hq9hXGdhA5qvNwCnRn-1Urf0LKMcY4XrSnQHt_5iNxHmGnFPfcy4i79B1Vm-J5St0IMDJW9sgNOogicWs9GUB-lhVI-hrVcWiVJgvLe8bT1FgIJO1m-xFYNIaPewA8w6cSj654FiG75R-X4Rx5y243BYOa4Kum0ony-oTeo-RKfLgR3wl1wZmhWyPqV2IvuxPdsAANHR_WGwGlUvTPQGXl654IeQDaVGZ0iWijCwmJaSOqCF5cbC3dJytSNjg6sA_AXHH-srs"
-    ],
-    "phone": "(717) 765-0034",
-    "website": "http://www.staycobblestone.com/pa/waynesboro/",
-    "detail_primary_type": "hotel",
-    "editorial_summary": "Classic rooms with fridges & microwaves in a business hotel with an indoor pool & fitness center.",
-    "review_snippet": "Cobblestone Hotel is conveniently located next to Walmart. The rooms are neat-n-clean and quite. Staff is friendly & caring. There's nice parking & the landscape & atmosphere is beautiful.",
-    "review_author": "Zia Qureshi"
   },
   {
     "google_place_id": "ChIJRaQZDB_ByYkRlip722LYcp4",
@@ -36134,44 +35085,6 @@
     "detail_primary_type": "inn",
     "review_snippet": "The host is very nice and the house is beautiful! Very comfortable stay.",
     "review_author": "Antonio Kang"
-  },
-  {
-    "google_place_id": "ChIJfwahaPuyyYkR2TqOd59AXgg",
-    "name": "Mary-Penn Bed & Breakfast",
-    "address": "716 Mason Dixon Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.719918199999995,
-      "longitude": -77.23421859999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    },
-    "lat": 39.719918199999995,
-    "lng": -77.23421859999999,
-    "municipality": "emmitsburg",
-    "business_status": "OPERATIONAL",
-    "weekday_hours": [],
-    "has_hours": false,
-    "rating": 5,
-    "user_rating_count": 7,
-    "photo_names": [
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-tIk513fT1_QeBh4OOLTmH-P3m-Ip59zWy43QYKT3rfRzkGO1JbqoRSbL5kjVXca8wt_p-zN7afHha7TxyCkdd_5GbLZMHXCadzxr-7vKXxQxZK5VSOSdDs3lALiAHuU1rryhXrCvVOvPLhdbKpSVMCl1wk0tgbtyoj8i7oibb90razx8hKlEg-ZlDB_kdHxmR7kQ6hn1h5WCxFcFkSdrrkM9Vfc_h7cctB4fCyDxphe0WzzSCWHADtW2BNaqj6psndTANNhpsEee4bkRLTyqttjZF7AISOt4EOzEQ7okTdyMqGqHEZj9Za9wem3zI3Dh-UQZkhnhOMDeWjEDuzOUlaoUFLkNc91d8EUdQ9muJGJm3U3sygJg9KA9iLV8GsC8CqGkCTJaUxv0KLsYju_lQnmFQ3hVxwLjX1lrWhgaD74X-Z",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-uzAdpcmcFQ_CbE2GR-YXElcMRug8FuJ-0UuldjE6CcBQP8SO4V9xoheL-4d4oIbymbSfZnfI50c-n-0AVdJltjkH-JvCDwa9plMqqycmaIoK4Qp6ClaMc0eG-Iim5qX787xxroDdrh1TokXwSLzqWjM48lj1m4RzsLz72D8SWf-sBDEjd0Yq_iCJaL9-klUN0xvwVvcfejN7tups_oCDxwVtP8WV8e99UITpuXA9_-CSXyKs_nsWsCPlW2diap4y47kdu7H8FKVLsxG-dQH0MpZv98uq5hWxyfbI0L_NRmoCllkM-trZq2usegqK5bcrL2jSHlnHXxlcD6l7NNGgRy5omLTWrps6_GsJZ4fhRkAnu1OCTYQOe6mxXJ4sc2bKLpm7D_ogvjENW1BK_CXf6EIjtW0_HBGlcCioavGI7vYg",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-uBjR9LkAD9CHmcvbqzrQZVfiawsBxJNYkJ7yNw0xx5SFF2u3hTx7Wa3SX11tlYhQyOz3XvvY2ZembiAWBR0amkdNf4s-68T_q7LyV2MbLAg5KIJKPFqbwmN9eDcCsQIudMbf-kTZxoF_y_bxJ5HuE-PLa7RKTh1fN_f7fTU4Kzh3GwNlQwa_Bkrv1hJftFJxHbO5FAg3mcnLORN8o73kHwjV7acxHaaq1o92Ce2bd7-TNMQ9nwQFU4IPB_JqKNEIGgUs2Q6KTXSd11v3SElrZR0QTzID93e06baRAyxS2fovFEIQV_Kjrjf0QTuesvaMNOjQHn5UPAGt1npPtxZAqpn7nbXQ6cBLA07YgH4hApJwZIv7dw9Q5wXuB-gSCm2Pzjtyam5WKB3o8X7rHXvnpdoMJIAEexMf7HRavf09JNrw",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-uyMdok600MpjKwHo_sH0jPVrshK-j6vJpX_CKZJpwcPYtXmrNEReZeGopReHEu6AykJAOuj0VxVZgFZtDNVpgUHwCPW5n1waah8ERzOe4o2fkQ2qEKbnolJKzXtbASkL1Qr5wd-AyYKoWnoFb0iBfwM1PdK-dbfyfXVS24Hb7o_aeL_KWtGoKTtjSsXPsoAaV-HJRiXmEsrP1osIxQqlyNCETq4WAVve1JSxevuaGI-vtEDzc-CJ1MJXiSZnPJUfJFg0a4WFh018XypjAiR4lVkBY82r1cR2zpk-OEqaz5wClx_q4I8gbX7k9xD-fWgOxhAHJwkLKOfelKlL9o3hEfebY2cM5-vIwSM5CMWm9LyPAiYJSODDqt76aXyNSEY0SV8uiMcL-l5dNRjCtonweU3JdFMO12TpXKz6KlYG0",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-sg34HUkFthcI7v9yYOSNZX5UFIm2qK-2Zfip8EY1_hEpp9bIxpl8JmKb4qJ1JdgkEvzk7Bnrk6cG0W0uFnJdHWmY6nz9gX552tJCchBRpPp8uiNC5nPrUfj196r09qYdrGyW_i68G6XWFGTWTGwf9BF_c52ZABpH4bW1Fc7rOmlY36m9xmS-sYH1I0QzD7JyXlN5svTGWnPgD5Qq9T7mhEZ8eexFUa1Z6xTONIHKei-QWjTVqzq10A6ub-wXtg8pD1MnY_tli0TX4JDids0fCe8puKdMbGp2l7zPfPLcUW5MOiwGg45xfRCi7xcHrM1zUnS7jcx1KgZh-LA1dLGKY1lCIDbYZyVLmZemHBHQC4QN3wqopsT6Nhwd9eXN-e7BMUXgARPCqtQ-RvEChPNvhdlzTvEb2GE9_SgXgEs82duQ",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-vmvhnuY3yEXxys46tHK5LK3Nt18IzdtffER0OLQQt7_MObI8h7a3LR9lR-vqU7y7bnHVGyECP60cu2lM3flIoNZ2fFvA3F_nimaH-C6W_lzGTgUwtZQX7vB_V1NR13Wnv_9XCAVQMVQyvrG_ATdy3pJ7c4NFGdNYO_CgyNJZVs6-b_cvlkbslHb1OQ6Gw-wD4HYUzvyA0pD_lPz6vscF1xzIUzFePGPPF5r-77eQY1qvJtzRRjx43VatMyycYljwPcQYJF8jvYa8K2TsyggORQSJZ5-2j4z4reijHE_pmpaDeN1oL-KV4N9jX5047t1vj8OBtB2d4cVmX5x2WvrS2Ej62IbtneQGQllZ_hPR5P24vgD0hg0rPqd08xgaeeYf_z-vRZx73pLHPMdisigxjixVUuqlE45jgFN3_BqzULFs6B",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-s_9INpGpZveV6UNK4xhFlRc0IvRXW23yZjwrfaGQBt4mdlk2_cYoqnobEMqrgIVDgxnmNjsUzy-cC30r3k5UF7OHV72ocfMiDOsdUfDqL049Of8Tk4M2wdKSrDAhbt5basMa4nmUu9WICw6i7MKilqVWTi7YV9uATLkoW0vMvDfgKKt1AAXGLuV7vwUOL1pnXMEs-MIirvMzxlKfeDLmLotYx2pVHXWJKs5fk0glJQFLpJnnpqKkvXkRgkQfxAFLaGMxNEomIAkeWPLdAoBx8g25M_n-kBD1iMubrIj5pVFPnB28R_EGeIvQrz1EtxMhmE70KVO9xcrM8pXtLBoqCjuL9tC_-hkuf5lWbOXQhTcOUgQUNZF8cvdKBYtdQxHwfeFnY-4qm84HnpcqhSlqAOXrNRAJttqCLknbRIRc0mq82k",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-tLi_dCHrbbNyfrxNFSCpgE0QIVL88SrLYpsCJBgsok3X-TgxKrr7t1lKmfwCRq74Z9nF_e3TIgyZqWDbzNiXZ-NVSNo5r_jC8jhrBeikk7rNRMFNvMrGmM-dYl-St_5PKJuy3M3qaIHyXjHCLv13LHUC2cGPtVXnybcH9bt_d4ff5YgghGdli5UdOEW6eYhjs9EjWcAQzeR6nS5YL8Vm2dYcKrl4TJ3lgO980B17NH6GM3pcWAEkTXIfZkyFZRxR64TVM0P1JcV2MK9a5Gabc18BBIevpJYPc4bYbUMzJ18Bs7my_W3QT3rxexEbjah3d0267h3KE2qeeEaPARTxWVHeYoRK3mOZ4lp7pL9QXwyx72Q2UJnPGTIk-1zLTm-KRPNe2RRXVSTKn8YP1r5X-_lx7-EbXen-ME0g",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-szjpIGesapeFxhdgf3rcAspuWEE6FUuU1C8xrmdx3c8sbWqoqdEY29sQFAF987OYKHE6jB594qxto657JhQxb8Ndji0BtVk62cFh5XVncchw_K0tXs5Sas7O8bh5voEwuRS-zlo39SX0pmi5F0sa0s3cA2gMtGHG4xMwq8iij-0hWB34ZMxjSIKhi2wOJUCRzassMRdIMQXsLqCeENjvKOkcc2lCyG2uk50MzjzBYRaoCzIsk3lKS29cQUmx_p5p8hS5eVFOe0B8lWeDW1JWjV6qU8clBOEf5sTD3ddE08QbLcpFClUMtVBL3RCMTqCAJqKQFfEUTdC5RK5Wu3I-0xHEgpEsGiGaq7iR4IgSQKoRba1E4EA7H4UOpu-Mz2RS76iv5phCH-ZZJp0CntP1S7lfvnsFej9R2m6Ga_c44oLONu",
-      "places/ChIJfwahaPuyyYkR2TqOd59AXgg/photos/Ab43m-vzMPxlxrr-uTXf8MeUhuoNBCRuinOlEbfWKvjV3R7vyU80sogVYj3-yEhd4gSuJTYu9PqwpIxVbSqlj8_fplottXwbjCOs3srJimljqkzGt1f77QPYFvlpsmW7hkg8j6tRrXqqNEqjiS8XfJN9KVyaW33I1Dw3lpgT1VPvkyQ1WUNNzsoXHcFJhIneQ1AhODe4rOZC6-67TLPVi26ZQ-4mYTj_Ou6vB_BNrugEBT49s2r0B-qGiK1djzU1da5MeR-fL-BYobA88CjRgpqcow4prkCF_2-OyHK2tH8rjuJxEI8jeAlF7nzLOERugwFj8WJ0LPT_kNfJbdmD3SzXKLpOvE894o4Dxbajw5r_w6UwJ8Eh5V4XDLJGR46q7r39oei8geZ-EsAss_3kK6z6-q8UZqI7M4mUAEeecdIJlV4"
-    ],
-    "phone": "(717) 334-5055",
-    "detail_primary_type": "bed_and_breakfast",
-    "review_snippet": "Bea is an excellent host. Our room was comfortable and clean. We were served wine, cheese and crackers upon arrival and woke up for a beautiful homestyle breakfast in the morning. I am excited to stay here again.",
-    "review_author": "Rachel Eirmann"
   },
   {
     "google_place_id": "ChIJc1Jfl4_ZyYkRk2aaPMMU3oA",

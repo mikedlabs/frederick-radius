@@ -238,20 +238,6 @@
     }
   },
   {
-    "google_place_id": "ChIJe61Ako4etokRSPGx3Fvkfoc",
-    "name": "Back Street Brews Coffee & Tea House",
-    "address": "11 E Pennsylvania Ave, Lovettsville, VA 20180, USA",
-    "primary_type": "cafe",
-    "location": {
-      "latitude": 39.2730162,
-      "longitude": -77.6375961
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Brunswick"
-    }
-  },
-  {
     "google_place_id": "ChIJYU3HjpkftokR8z11aVYE_hk",
     "name": "Whistle Punk Farm Delicatessen",
     "address": "30 W Potomac St Suite 103, Brunswick, MD 21716, USA",
@@ -301,20 +287,6 @@
     "location": {
       "latitude": 39.3125202,
       "longitude": -77.626786
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJg0LgT1odtokRQ6qcQActeIQ",
-    "name": "Battle Grounds Bakery & Coffee",
-    "address": "180 High St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "cafe",
-    "location": {
-      "latitude": 39.323879,
-      "longitude": -77.7315639
     },
     "discovered_for": {
       "category": "coffee shop",
@@ -392,20 +364,6 @@
     }
   },
   {
-    "google_place_id": "ChIJjRcBHoBIqY0RJcYcRujF750",
-    "name": "Fortitude Coffee Company",
-    "address": "14004A Willard Rd, Chantilly, VA 20151, USA",
-    "primary_type": "coffee_roastery",
-    "location": {
-      "latitude": 38.886592,
-      "longitude": -77.430931
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Thurmont"
-    }
-  },
-  {
     "google_place_id": "ChIJhTqk5He4yYkR2rPE3OQAro0",
     "name": "Thurmont Kountry Kitchen",
     "address": "17 Water St, Thurmont, MD 21788, USA",
@@ -441,34 +399,6 @@
     "location": {
       "latitude": 39.633983099999995,
       "longitude": -77.4099049
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJu2qOtPOsyYkRqA2PI4LSnAI",
-    "name": "Bantam Coffee Roasters",
-    "address": "82 Steinwehr Ave, Gettysburg, PA 17325, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.8225363,
-      "longitude": -77.2320575
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJF2_WSc2xyYkR8SynaESDk44",
-    "name": "Deja Brew at Miney Branch",
-    "address": "815 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.7353909,
-      "longitude": -77.371696
     },
     "discovered_for": {
       "category": "coffee shop",
@@ -742,76 +672,6 @@
     }
   },
   {
-    "google_place_id": "ChIJxdE_KP5WyIkRpsMPVNA6g-I",
-    "name": "Deja Brew Coffee & Bakery",
-    "address": "16 Center Sq, New Oxford, PA 17350, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.8638554,
-      "longitude": -77.05641469999999
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJU5-h1oqnyYkRCYS-Z-y8O6Q",
-    "name": "Caledonia Café",
-    "address": "6195 Chambersburg Rd, Fayetteville, PA 17222, USA",
-    "primary_type": "cafe",
-    "location": {
-      "latitude": 39.899187999999995,
-      "longitude": -77.4357189
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJxYYMDaNRyIkRnYz4nqqlDio",
-    "name": "Britton Coffee Co - McSherrystown",
-    "address": "639 South St, McSherrystown, PA 17344, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.806787299999996,
-      "longitude": -77.01078989999999
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJfX_7GYysyYkRYK-sxN_s4_Y",
-    "name": "Ragged Edge Coffee House",
-    "address": "110 Chambersburg St, Gettysburg, PA 17325, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.8307023,
-      "longitude": -77.23365249999999
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJH33fA_-tyYkRyRi29m-GoD0",
-    "name": "Filled Coffee Company",
-    "address": "545 Long Ln, Gettysburg, PA 17325, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.824081899999996,
-      "longitude": -77.2375593
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJTyKnHHvTyYkRCbP92eAsEWs",
     "name": "5 West Cafe",
     "address": "5 W Main St, New Market, MD 21774, USA",
@@ -1057,20 +917,6 @@
     "location": {
       "latitude": 39.180599699999995,
       "longitude": -77.2717308
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Mount Airy"
-    }
-  },
-  {
-    "google_place_id": "ChIJrfHYtiE9UogRsrMQ17zs4UI",
-    "name": "Foothills Coffee Shop",
-    "address": "526 W Lebanon St #150, Mt Airy, NC 27030, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 36.5154795,
-      "longitude": -80.6139151
     },
     "discovered_for": {
       "category": "coffee shop",
@@ -1400,20 +1246,6 @@
     }
   },
   {
-    "google_place_id": "ChIJ7Z8oKGQDtokRC7h1blt021g",
-    "name": "H. B. Snallygaster's General Store & Cafe",
-    "address": "1102 W Washington St, Bolivar, WV 25425, USA",
-    "primary_type": "cafe",
-    "location": {
-      "latitude": 39.3263931,
-      "longitude": -77.74610129999999
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Burkittsville"
-    }
-  },
-  {
     "google_place_id": "ChIJfzD7i8_hyYkRhOZcmlvY7bY",
     "name": "Burkittsville Historic District",
     "address": "106-110 E Main St, Burkittsville, MD 21718, USA",
@@ -1421,48 +1253,6 @@
     "location": {
       "latitude": 39.3921279,
       "longitude": -77.6281699
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJSx4ni0sDtokRiL2kKTpLq2E",
-    "name": "Snallygasters Cafe and Wine Bar",
-    "address": "1102 Washington St, Bolivar, WV 25425, USA",
-    "primary_type": "restaurant",
-    "location": {
-      "latitude": 39.3263932,
-      "longitude": -77.746141
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJS_NKb-EdtokRB9O5_aCBw5A",
-    "name": "Appalachian Snail Market & Cafe",
-    "address": "970 W Washington St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "cafe",
-    "location": {
-      "latitude": 39.3264803,
-      "longitude": -77.74373659999999
-    },
-    "discovered_for": {
-      "category": "coffee shop",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJHwaa2z7-yYkR6mtRJF7bonA",
-    "name": "The Black Dog Coffee Company",
-    "address": "8001 Charles Town Rd, Shenandoah Junction, WV 25442, USA",
-    "primary_type": "coffee_shop",
-    "location": {
-      "latitude": 39.362407999999995,
-      "longitude": -77.8642998
     },
     "discovered_for": {
       "category": "coffee shop",
@@ -2128,48 +1918,6 @@
     }
   },
   {
-    "google_place_id": "ChIJC8jhWgqwyYkRbi7BpiW4yuM",
-    "name": "Eagle & The Owl",
-    "address": "121 Sanders Rd, Fairfield, PA 17320, USA",
-    "primary_type": "pub",
-    "location": {
-      "latitude": 39.7637571,
-      "longitude": -77.3761323
-    },
-    "discovered_for": {
-      "category": "cafe",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJ32FKAwC7yYkRLA-OPNVE8VY",
-    "name": "Fairfield Diner",
-    "address": "10 McDannell Ln, Fairfield, PA 17320, USA",
-    "primary_type": "american_restaurant",
-    "location": {
-      "latitude": 39.7752289,
-      "longitude": -77.3810027
-    },
-    "discovered_for": {
-      "category": "cafe",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJ-7M6g-awyYkRWeTploKWNN0",
-    "name": "Dave & Jane's Crabhouse",
-    "address": "2989 Tract Rd, Fairfield, PA 17320, USA",
-    "primary_type": "seafood_restaurant",
-    "location": {
-      "latitude": 39.720953099999996,
-      "longitude": -77.339709
-    },
-    "discovered_for": {
-      "category": "cafe",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJx5gybFhLyIkRyp_avERGoaU",
     "name": "Cafe Au Bouchon",
     "address": "5525 Taneytown Pike, Taneytown, MD 21787, USA",
@@ -2702,34 +2450,6 @@
     }
   },
   {
-    "google_place_id": "ChIJic8M0Y0etokRXMJtwarbccI",
-    "name": "1836 Kitchen and Taproom",
-    "address": "34 E Broad Way, Lovettsville, VA 20180, USA",
-    "primary_type": "american_restaurant",
-    "location": {
-      "latitude": 39.271696,
-      "longitude": -77.63592299999999
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJv2jwbHsftokRrWsl2p2n438",
-    "name": "El Pitayo Mexican Restaurant",
-    "address": "5 Town Center Dr, Lovettsville, VA 20180, USA",
-    "primary_type": "mexican_restaurant",
-    "location": {
-      "latitude": 39.274451899999995,
-      "longitude": -77.640087
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    }
-  },
-  {
     "google_place_id": "ChIJTanbWEXhyYkRPBDIm897i48",
     "name": "Papa Johns Pizza",
     "address": "1201 Dutchmans Creek Dr D, Brunswick, MD 21716, USA",
@@ -2737,20 +2457,6 @@
     "location": {
       "latitude": 39.333987,
       "longitude": -77.63748199999999
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJx8Ul6ncftokR8aTetVGG7uA",
-    "name": "Rodeo's Mexican Grill",
-    "address": "26 E Broad Way D, Lovettsville, VA 20180, USA",
-    "primary_type": "mexican_restaurant",
-    "location": {
-      "latitude": 39.27242340000001,
-      "longitude": -77.63678329999999
     },
     "discovered_for": {
       "category": "restaurant",
@@ -2863,62 +2569,6 @@
     "location": {
       "latitude": 39.702827899999996,
       "longitude": -77.3280901
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJPZX7nIawyYkR2ez-3iadXbM",
-    "name": "Frontier Bar B Q",
-    "address": "801 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "barbecue_restaurant",
-    "location": {
-      "latitude": 39.7350241,
-      "longitude": -77.3705938
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJlVaLuvOsyYkREVaenfxPDG0",
-    "name": "Dobbin House Tavern",
-    "address": "89 Steinwehr Ave, Gettysburg, PA 17325, USA",
-    "primary_type": "american_restaurant",
-    "location": {
-      "latitude": 39.8227269,
-      "longitude": -77.2327548
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJf2YD2aa6yYkRgMF7-QgRaNs",
-    "name": "Taverna 5450",
-    "address": "5450 Fairfield Rd, Fairfield, PA 17320, USA",
-    "primary_type": "american_restaurant",
-    "location": {
-      "latitude": 39.7673503,
-      "longitude": -77.38153109999999
-    },
-    "discovered_for": {
-      "category": "restaurant",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJSfOrQ9utyYkRhK6UZSmqr7E",
-    "name": "Farmhouse Restaurant at the Barn Resort",
-    "address": "75 Cunningham Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "restaurant",
-    "location": {
-      "latitude": 39.768265799999995,
-      "longitude": -77.2765261
     },
     "discovered_for": {
       "category": "restaurant",
@@ -3304,20 +2954,6 @@
     }
   },
   {
-    "google_place_id": "ChIJm-tFAw-9yYkRpJKSya7TdJI",
-    "name": "Michaux Brewing Company",
-    "address": "11657 Buchanan Trail E, Waynesboro, PA 17268, USA",
-    "primary_type": "brewery",
-    "location": {
-      "latitude": 39.7384713,
-      "longitude": -77.5251723
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Thurmont"
-    }
-  },
-  {
     "google_place_id": "ChIJdXekOBE1yIkRqM3b7TNZ3CU",
     "name": "Flood Zone Marketplace & Brewery",
     "address": "50 N Main St, Union Bridge, MD 21791, USA",
@@ -3570,62 +3206,6 @@
     }
   },
   {
-    "google_place_id": "ChIJXUX5VoGtyYkRLT-sXRK1A5M",
-    "name": "Michaux Brewing Company- Gettysburg",
-    "address": "15 Baltimore St, Gettysburg, PA 17325, USA",
-    "primary_type": "brewery",
-    "location": {
-      "latitude": 39.830248999999995,
-      "longitude": -77.2313072
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJpTFKP1-oyYkRkWHPOCea-Qk",
-    "name": "Thirsty Farmer Brew Works",
-    "address": "290 Cashtown Rd, Biglerville, PA 17307, USA",
-    "primary_type": "brewpub",
-    "location": {
-      "latitude": 39.9012526,
-      "longitude": -77.3507699
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJA2HCVfityYkRZAsqggUbSb0",
-    "name": "Fourscore Beer Co.",
-    "address": "603 S Washington St, Gettysburg, PA 17325, USA",
-    "primary_type": "brewpub",
-    "location": {
-      "latitude": 39.8231014,
-      "longitude": -77.23349089999999
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJA6yIc2OsyYkR1KAnaKswiUE",
-    "name": "Appalachian Brewing Company of Gettysburg - Battlefield",
-    "address": "259 Steinwehr Ave, Gettysburg, PA 17325, USA",
-    "primary_type": "brewpub",
-    "location": {
-      "latitude": 39.8202062,
-      "longitude": -77.2342919
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJn539DwC_yYkRFI_imJvIYtU",
     "name": "Top Secret Tap Room",
     "address": "14332 Barrick Ave, Fort Ritchie, MD 21719, USA",
@@ -3633,20 +3213,6 @@
     "location": {
       "latitude": 39.7075773,
       "longitude": -77.4919184
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJQZvE2FiryYkRZPq3wU6nFc4",
-    "name": "Battlefield Brew Works & Spirits of Gettysburg Distillery",
-    "address": "248 Hunterstown Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.845909400000004,
-      "longitude": -77.2104446
     },
     "discovered_for": {
       "category": "brewery",
@@ -3780,20 +3346,6 @@
     }
   },
   {
-    "google_place_id": "ChIJNX4ak0gdtokRk_spVZ3l1iE",
-    "name": "Stockyard Brewery",
-    "address": "12428 Mountain Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "brewery",
-    "location": {
-      "latitude": 39.270784899999995,
-      "longitude": -77.6873631
-    },
-    "discovered_for": {
-      "category": "brewery",
-      "area": "Rosemont"
-    }
-  },
-  {
     "google_place_id": "ChIJUxNbV0TbyYkRx32tTuvkdB8",
     "name": "Puerto Rico Distillery",
     "address": "402 5th Ave, Brunswick, MD 21716, USA",
@@ -3822,48 +3374,6 @@
     }
   },
   {
-    "google_place_id": "ChIJYcEjFa-tyYkRvHmHY6zsgRA",
-    "name": "Chicken Hill Distillery at Gettysburg",
-    "address": "1 Chambersburg St, Gettysburg, PA 17325, USA",
-    "primary_type": "bar",
-    "location": {
-      "latitude": 39.8311195,
-      "longitude": -77.23155659999999
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJ91A095CsyYkRqL6tA99x8P4",
-    "name": "Mason Dixon Distillery",
-    "address": "331 E Water St, Gettysburg, PA 17325, USA",
-    "primary_type": "american_restaurant",
-    "location": {
-      "latitude": 39.833553599999995,
-      "longitude": -77.2258124
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJH5raWcStyYkR9t3Kc3L426Q",
-    "name": "Gettysburg Moonshine Company",
-    "address": "271 Baltimore St, Gettysburg, PA 17325, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.8269403,
-      "longitude": -77.2313321
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJp1SSgVHtyYkRlGQnDYzf-I8",
     "name": "Meinelschmidt Distillery",
     "address": "54 S Potomac St, Hagerstown, MD 21740, USA",
@@ -3871,20 +3381,6 @@
     "location": {
       "latitude": 39.6408582,
       "longitude": -77.72095340000001
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJy4iLuwqIyYkR9p5r2FpzZbM",
-    "name": "Cold Spring Hollow Distillery Llc",
-    "address": "8 Findlay Dr, Mercersburg, PA 17236, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.837630999999995,
-      "longitude": -77.9065708
     },
     "discovered_for": {
       "category": "distillery",
@@ -4045,34 +3541,6 @@
     }
   },
   {
-    "google_place_id": "ChIJm-f-pDUdyokRBmKd4WInnn4",
-    "name": "BootLeg Distilling",
-    "address": "384 Yeakley Dr, Martinsburg, WV 25403, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.521408199999996,
-      "longitude": -77.93462989999999
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Myersville"
-    }
-  },
-  {
-    "google_place_id": "ChIJTUlEv2P_yYkR9joAHu5SVvs",
-    "name": "Devil's Due Distillery",
-    "address": "315 James Burr Blvd, Kearneysville, WV 25430, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.3526465,
-      "longitude": -77.8641334
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Myersville"
-    }
-  },
-  {
     "google_place_id": "ChIJ9W56_1LgyYkRmlrqRGnebJY",
     "name": "Crown Rose Estate Weddings and Distillery",
     "address": "1902 Jefferson Pike, Knoxville, MD 21758, USA",
@@ -4098,48 +3566,6 @@
     "discovered_for": {
       "category": "distillery",
       "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJK2PlEN0ftokRck_Rsxf1rX8",
-    "name": "Flying Ace Farm",
-    "address": "40950 Flying Ace Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.2770791,
-      "longitude": -77.5827865
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJyUEFYQAdtokRlomSivVPmPw",
-    "name": "Cool Spring Distillery",
-    "address": "37871 Nicewarner Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.2770413,
-      "longitude": -77.6907894
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJAdWMEWoQtokRVjvbDwpdszE",
-    "name": "Catoctin Creek Distilling Company",
-    "address": "120 W Main St, Purcellville, VA 20132, USA",
-    "primary_type": "manufacturer",
-    "location": {
-      "latitude": 39.1365068,
-      "longitude": -77.7150616
-    },
-    "discovered_for": {
-      "category": "distillery",
-      "area": "Rosemont"
     }
   },
   {
@@ -4325,48 +3751,6 @@
     }
   },
   {
-    "google_place_id": "ChIJm6B0Y2gftokRnv1ngTl3wfc",
-    "name": "Creek's Edge Winery",
-    "address": "41255 Annas Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.2558298,
-      "longitude": -77.5727272
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJGzbhbDgctokR3MKy0qJxmMY",
-    "name": "Hiddencroft Vineyards, LLC",
-    "address": "12202 Axline Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.2717455,
-      "longitude": -77.6743712
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJVxfAKtgatokRz4shpZQG7EE",
-    "name": "Hillsborough Vineyards & Brewery",
-    "address": "36716 Charles Town Pike, Hillsboro, VA 20132, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.2060865,
-      "longitude": -77.734521
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    }
-  },
-  {
     "google_place_id": "ChIJLb6Ok9LkyYkRhb3S9lWsNRk",
     "name": "Antietam Creek Vineyards",
     "address": "4835 Branch Ave, Sharpsburg, MD 21782, USA",
@@ -4374,20 +3758,6 @@
     "location": {
       "latitude": 39.445575999999996,
       "longitude": -77.743392
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJe4keJEEbtokRc6N0IvhBImw",
-    "name": "Breaux Vineyards",
-    "address": "36888 Breaux Vineyards Ln, Purcellville, VA 20132, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.231417,
-      "longitude": -77.72698
     },
     "discovered_for": {
       "category": "winery",
@@ -4409,62 +3779,6 @@
     }
   },
   {
-    "google_place_id": "ChIJT_hXlnsZtokRDoP9uld5kXM",
-    "name": "Carriage House Wineworks",
-    "address": "40817 Browns Ln, Waterford, VA 20197, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.1887902,
-      "longitude": -77.5895571
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJLxMwORcUtokRiqbgUosq75U",
-    "name": "Stone Tower Winery",
-    "address": "19925 Hogback Mountain Rd, Leesburg, VA 20175, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.0646116,
-      "longitude": -77.6367452
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJSzRMZ7sftokR_ckYkatr5z0",
-    "name": "Domaine Fortier Vineyards",
-    "address": "13235 Milltown Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.2498358,
-      "longitude": -77.623837
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJv_ppUb0ctokR2_cq8TvmiMY",
-    "name": "Two Twisted Posts Winery & Tavern",
-    "address": "12944 Harpers Ferry Rd, Purcellville, VA 20132, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.2589107,
-      "longitude": -77.7214533
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Brunswick"
-    }
-  },
-  {
     "google_place_id": "ChIJD9rl7r7PyYkRqCWBPk_Oxsk",
     "name": "Walker's Overlook",
     "address": "8939 Woodsboro Pike, Walkersville, MD 21793, USA",
@@ -4479,20 +3793,6 @@
     }
   },
   {
-    "google_place_id": "ChIJ_WIky_KsyYkRi0ad2lvZszU",
-    "name": "Reid's Winery Tasting Room and Cider House",
-    "address": "400 Baltimore St, Gettysburg, PA 17325, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.825756399999996,
-      "longitude": -77.23086940000002
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJFSzB9AE6yIkRJEv-AOU-WUM",
     "name": "Serpent Ridge Vineyard",
     "address": "2962 Nicodemus Rd, Westminster, MD 21157, USA",
@@ -4500,34 +3800,6 @@
     "location": {
       "latitude": 39.4946172,
       "longitude": -77.0042118
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJbf8GhKuoyYkRJb-AMrp4HsU",
-    "name": "Adams County Winery",
-    "address": "251 Peach Tree Rd, Orrtanna, PA 17353, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.864672,
-      "longitude": -77.37303
-    },
-    "discovered_for": {
-      "category": "winery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJ3U2YrkyoyYkRcHjkqAByviE",
-    "name": "Screaming Bambino at Boyer Cellars",
-    "address": "405 Boyer Nursery Rd, Biglerville, PA 17307, USA",
-    "primary_type": "winery",
-    "location": {
-      "latitude": 39.9124361,
-      "longitude": -77.3329134
     },
     "discovered_for": {
       "category": "winery",
@@ -4969,20 +4241,6 @@
     }
   },
   {
-    "google_place_id": "ChIJM8buQBT7yYkRM4-Kw0qZOAs",
-    "name": "Stoney’s Pub",
-    "address": "107 S Princess St, Shepherdstown, WV 25443, USA",
-    "primary_type": "bar",
-    "location": {
-      "latitude": 39.4297666,
-      "longitude": -77.80438869999999
-    },
-    "discovered_for": {
-      "category": "bar",
-      "area": "Burkittsville"
-    }
-  },
-  {
     "google_place_id": "ChIJt02N7YYhyIkRgs4Rna1sCMY",
     "name": "Barrington Tap & Table",
     "address": "2050 Marriottsville Rd, Marriottsville, MD 21104, USA",
@@ -4990,34 +4248,6 @@
     "location": {
       "latitude": 39.3155857,
       "longitude": -76.90003899999999
-    },
-    "discovered_for": {
-      "category": "bar",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJV9KJb7ADtokRQoWRdb0hG-M",
-    "name": "Alstadts Ale House",
-    "address": "408 Alstadts Hill Rd, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bar_and_grill",
-    "location": {
-      "latitude": 39.3157406,
-      "longitude": -77.7690186
-    },
-    "discovered_for": {
-      "category": "bar",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJu-bbTVodtokRR7Gi1I8bD64",
-    "name": "Almost Heaven Pub and Grill",
-    "address": "177 Potomac St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bar_and_grill",
-    "location": {
-      "latitude": 39.3239408,
-      "longitude": -77.7312324
     },
     "discovered_for": {
       "category": "bar",
@@ -5039,20 +4269,6 @@
     }
   },
   {
-    "google_place_id": "ChIJYfIptb8CtokR82WBR2gAcAI",
-    "name": "White Horse Tavern",
-    "address": "4328 William L Wilson Fwy, Harpers Ferry, WV 25425, USA",
-    "primary_type": "american_restaurant",
-    "location": {
-      "latitude": 39.317132099999995,
-      "longitude": -77.7661719
-    },
-    "discovered_for": {
-      "category": "bar",
-      "area": "Burkittsville"
-    }
-  },
-  {
     "google_place_id": "ChIJ0wN1mO7zyYkRMBHHMVNr-eE",
     "name": "Third Base",
     "address": "35 N Conococheague St, Williamsport, MD 21795, USA",
@@ -5060,20 +4276,6 @@
     "location": {
       "latitude": 39.60001,
       "longitude": -77.82101399999999
-    },
-    "discovered_for": {
-      "category": "bar",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJsSmZUlodtokRlqdA88lerRQ",
-    "name": "Coach House Bar & Grill",
-    "address": "160 High St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bar_and_grill",
-    "location": {
-      "latitude": 39.3236896,
-      "longitude": -77.7310528
     },
     "discovered_for": {
       "category": "bar",
@@ -5298,34 +4500,6 @@
     "location": {
       "latitude": 39.3529578,
       "longitude": -77.6889039
-    },
-    "discovered_for": {
-      "category": "bakery",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJqdAVxvUdtokR_6eSXzKP-JY",
-    "name": "Bolivar Bread Bakery",
-    "address": "914 Washington St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bakery",
-    "location": {
-      "latitude": 39.3262201,
-      "longitude": -77.74286099999999
-    },
-    "discovered_for": {
-      "category": "bakery",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJXYBVxUkhtokRr84huX2Zs9I",
-    "name": "Dunn From Scratch Bakery",
-    "address": "13493 Arcadian Dr, Leesburg, VA 20176, USA",
-    "primary_type": "bakery",
-    "location": {
-      "latitude": 39.242266,
-      "longitude": -77.5071414
     },
     "discovered_for": {
       "category": "bakery",
@@ -5571,20 +4745,6 @@
     }
   },
   {
-    "google_place_id": "ChIJZZwx5h2tyYkRlzZYB9fwQLI",
-    "name": "Sugarlips Bakery Co.",
-    "address": "110 Chambersburg St Rear, Gettysburg, PA 17325, USA",
-    "primary_type": "bakery",
-    "location": {
-      "latitude": 39.8306776,
-      "longitude": -77.2336716
-    },
-    "discovered_for": {
-      "category": "bakery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJJwyHQS-xyYkRrfsb1PKYnxk",
     "name": "Emmitsburg Antique Mall",
     "address": "1 Chesapeake Ave, Emmitsburg, MD 21727, USA",
@@ -5599,20 +4759,6 @@
     }
   },
   {
-    "google_place_id": "ChIJ-fRVPACxyYkRBbJD5DBBw8k",
-    "name": "The Bakery",
-    "address": "78 Country Club Trail, Fairfield, PA 17320, USA",
-    "primary_type": "bakery",
-    "location": {
-      "latitude": 39.7633934,
-      "longitude": -77.3753511
-    },
-    "discovered_for": {
-      "category": "bakery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJFUp8NC-xyYkRlIkVwyi6-5Q",
     "name": "Swan’s Antiques - Booths 52 & 53 - Emmitsburg Antique Mall",
     "address": "Chesapeake Ave, Emmitsburg, MD 21727, USA",
@@ -5620,48 +4766,6 @@
     "location": {
       "latitude": 39.7030349,
       "longitude": -77.32650730000002
-    },
-    "discovered_for": {
-      "category": "bakery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJS_1dwRqpyYkRIgnwioF4Xhg",
-    "name": "Victoria's Casita Bakery",
-    "address": "202 Main St, Arendtsville, PA 17303, USA",
-    "primary_type": "bakery",
-    "location": {
-      "latitude": 39.9245677,
-      "longitude": -77.29400609999999
-    },
-    "discovered_for": {
-      "category": "bakery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJh5mKFzFRyIkRnnYH2pbXV9I",
-    "name": "Sweeter than SAP",
-    "address": "756 York Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "bakery",
-    "location": {
-      "latitude": 39.8356013,
-      "longitude": -77.218239
-    },
-    "discovered_for": {
-      "category": "bakery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJoWoxMlJSyIkRy57C7MbHQ2k",
-    "name": "Karen Rodkey Cakes",
-    "address": "815 Hickory Rd, Littlestown, PA 17340, USA",
-    "primary_type": "cake_shop",
-    "location": {
-      "latitude": 39.7906547,
-      "longitude": -77.1397305
     },
     "discovered_for": {
       "category": "bakery",
@@ -5984,20 +5088,6 @@
     "location": {
       "latitude": 39.4556086,
       "longitude": -77.7468257
-    },
-    "discovered_for": {
-      "category": "bakery",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJrfef15H7yYkRP9eTA87o85o",
-    "name": "Shepherdstown Sweet Shop Bakery",
-    "address": "100 W German St, Shepherdstown, WV 25443, USA",
-    "primary_type": "bakery",
-    "location": {
-      "latitude": 39.43075290000001,
-      "longitude": -77.8059416
     },
     "discovered_for": {
       "category": "bakery",
@@ -6435,48 +5525,6 @@
     "discovered_for": {
       "category": "ice cream shop",
       "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJ22LCJP4DtokRpWib0l2qq3k",
-    "name": "Ice Cream D and E Novelties",
-    "address": "3807 Chestnut Hill Rd, Harpers Ferry, WV 25425, USA",
-    "primary_type": "ice_cream_shop",
-    "location": {
-      "latitude": 39.30773,
-      "longitude": -77.74763
-    },
-    "discovered_for": {
-      "category": "ice cream shop",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJyXfa0zv7yYkRduO-q4si7vc",
-    "name": "Rock Hill Creamery",
-    "address": "111 W German St, Shepherdstown, WV 25443, USA",
-    "primary_type": "ice_cream_shop",
-    "location": {
-      "latitude": 39.431232300000005,
-      "longitude": -77.806148
-    },
-    "discovered_for": {
-      "category": "ice cream shop",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJQ8u2rVsdtokRpZtZC9q1nNk",
-    "name": "A La Mode Café",
-    "address": "113 Potomac St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "ice_cream_shop",
-    "location": {
-      "latitude": 39.3236476,
-      "longitude": -77.730655
-    },
-    "discovered_for": {
-      "category": "ice cream shop",
-      "area": "Rosemont"
     }
   },
   {
@@ -7081,20 +6129,6 @@
     }
   },
   {
-    "google_place_id": "ChIJFxAEwNEdtokRKxZ77SvvDU4",
-    "name": "Georges Mill Farm Artisan Cheese",
-    "address": "11873 Georges Mill Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "farmers_market",
-    "location": {
-      "latitude": 39.2891178,
-      "longitude": -77.66369069999999
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Burkittsville"
-    }
-  },
-  {
     "google_place_id": "ChIJuYW27y_oyYkRmUDhjrRViws",
     "name": "Frog Hollow Schoolmaster's Homestead",
     "address": "2812A Monument Rd, Myersville, MD 21773, USA",
@@ -7109,34 +6143,6 @@
     }
   },
   {
-    "google_place_id": "ChIJkQ-RxucatokRWgXr3A40qR0",
-    "name": "Stoneybrook Farm and Market",
-    "address": "37091 Charles Town Pike, Hillsboro, VA 20132, USA",
-    "primary_type": "farmers_market",
-    "location": {
-      "latitude": 39.1977906,
-      "longitude": -77.7205207
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJoSr6xDEftokRLo_8vM9SpvI",
-    "name": "Lovettsville Co-op Market",
-    "address": "11 Town Center Dr suite 150, Lovettsville, VA 20180, USA",
-    "primary_type": "grocery_store",
-    "location": {
-      "latitude": 39.2747854,
-      "longitude": -77.64036879999999
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Burkittsville"
-    }
-  },
-  {
     "google_place_id": "ChIJW2NQhGUltokR0S56XmxuYac",
     "name": "Locals Farm Market",
     "address": "19929 Fisher Ave, Poolesville, MD 20837, USA",
@@ -7144,34 +6150,6 @@
     "location": {
       "latitude": 39.146201700000006,
       "longitude": -77.4159142
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJeQCxWkAitokRfaXSKlym9DA",
-    "name": "Brossman's Farm",
-    "address": "14740 James Monroe Hwy, Leesburg, VA 20176, USA",
-    "primary_type": "farmers_market",
-    "location": {
-      "latitude": 39.2073013,
-      "longitude": -77.5359399
-    },
-    "discovered_for": {
-      "category": "farmers market",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJmXCAk0EitokRtvg_NGH8onE",
-    "name": "Loudounberry",
-    "address": "14917 James Monroe Hwy, Leesburg, VA 20176, USA",
-    "primary_type": "farmers_market",
-    "location": {
-      "latitude": 39.202093399999995,
-      "longitude": -77.5378096
     },
     "discovered_for": {
       "category": "farmers market",
@@ -7382,20 +6360,6 @@
     "location": {
       "latitude": 39.376859100000004,
       "longitude": -77.154094
-    },
-    "discovered_for": {
-      "category": "museum",
-      "area": "New Market"
-    }
-  },
-  {
-    "google_place_id": "ChIJEREno4z9dkARxuvzOXwWBMw",
-    "name": "Virginia Museum of the Civil War",
-    "address": "8895 George Collins Pkwy, New Market, VA 22844, USA",
-    "primary_type": "museum",
-    "location": {
-      "latitude": 38.66188,
-      "longitude": -78.6708348
     },
     "discovered_for": {
       "category": "museum",
@@ -7795,20 +6759,6 @@
     }
   },
   {
-    "google_place_id": "ChIJQToyw44etokR1Z1hU9k5Gm8",
-    "name": "Lovettsville Historical Society & Museum",
-    "address": "4 E Pennsylvania Ave, Lovettsville, VA 20180, USA",
-    "primary_type": "museum",
-    "location": {
-      "latitude": 39.2736678,
-      "longitude": -77.6384897
-    },
-    "discovered_for": {
-      "category": "museum",
-      "area": "Rosemont"
-    }
-  },
-  {
     "google_place_id": "ChIJC4zOpBLbyYkRQ_18mGPZw98",
     "name": "Eastside Artists' Gallery",
     "address": "313 E Patrick St, Frederick, MD 21701, USA",
@@ -8112,20 +7062,6 @@
     }
   },
   {
-    "google_place_id": "ChIJRQz5U3OxyYkRqi7S1JR5QG8",
-    "name": "TomAntolinArtWood",
-    "address": "66 Waynesboro Pike, Fairfield, PA 17320, USA",
-    "primary_type": "art_gallery",
-    "location": {
-      "latitude": 39.720631499999996,
-      "longitude": -77.3521426
-    },
-    "discovered_for": {
-      "category": "art gallery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJ-VZgHiyxyYkRELY23OMyfjs",
     "name": "The National Shrine of Saint Elizabeth Ann Seton",
     "address": "339 S Seton Ave, Emmitsburg, MD 21727, USA",
@@ -8175,20 +7111,6 @@
     "location": {
       "latitude": 39.7055566,
       "longitude": -77.3314329
-    },
-    "discovered_for": {
-      "category": "art gallery",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJReX9xYisyYkRoTrOr0MrxGg",
-    "name": "Schmucker Art Gallery",
-    "address": "Schmucker Hall, 300 N Washington St, Gettysburg, PA 17325, USA",
-    "primary_type": "art_gallery",
-    "location": {
-      "latitude": 39.8341971,
-      "longitude": -77.2336852
     },
     "discovered_for": {
       "category": "art gallery",
@@ -8384,34 +7306,6 @@
     "location": {
       "latitude": 39.4277349,
       "longitude": -77.18147619999999
-    },
-    "discovered_for": {
-      "category": "art gallery",
-      "area": "Mount Airy"
-    }
-  },
-  {
-    "google_place_id": "ChIJc9SQcaO5xokRswCy0nX1Ykk",
-    "name": "Mount Airy Contemporary",
-    "address": "25 W Mt Airy Ave, Philadelphia, PA 19119, USA",
-    "primary_type": "art_gallery",
-    "location": {
-      "latitude": 40.0594787,
-      "longitude": -75.19164219999999
-    },
-    "discovered_for": {
-      "category": "art gallery",
-      "area": "Mount Airy"
-    }
-  },
-  {
-    "google_place_id": "ChIJAQAAAKO5xokRSMumxAZ1H5U",
-    "name": "Mt Airy Art Garage",
-    "address": "7054 Germantown Ave, Philadelphia, PA 19119, USA",
-    "primary_type": "art_gallery",
-    "location": {
-      "latitude": 40.0581649,
-      "longitude": -75.1893279
     },
     "discovered_for": {
       "category": "art gallery",
@@ -8723,20 +7617,6 @@
     }
   },
   {
-    "google_place_id": "ChIJW58j2LKvyYkRqpMiDNBAIGg",
-    "name": "Gettysburg Bluegrass Festival",
-    "address": "3340 Fairfield Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "live_music_venue",
-    "location": {
-      "latitude": 39.8038397,
-      "longitude": -77.3324177
-    },
-    "discovered_for": {
-      "category": "live music venue",
-      "area": "Thurmont"
-    }
-  },
-  {
     "google_place_id": "ChIJS5EDJWxIyIkRNkM8WtLrbAU",
     "name": "Rob's Bluegrass Barn",
     "address": "1037 Pinch Valley Rd, Westminster, MD 21158, USA",
@@ -8828,20 +7708,6 @@
     "location": {
       "latitude": 39.4440952,
       "longitude": -77.5466146
-    },
-    "discovered_for": {
-      "category": "live music venue",
-      "area": "Middletown"
-    }
-  },
-  {
-    "google_place_id": "ChIJk7IiRVMdtokRicg6c1UYxYM",
-    "name": "The Barn of Harpers Ferry",
-    "address": "1062 W Washington St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bar",
-    "location": {
-      "latitude": 39.3268647,
-      "longitude": -77.74616940000001
     },
     "discovered_for": {
       "category": "live music venue",
@@ -9003,48 +7869,6 @@
     }
   },
   {
-    "google_place_id": "ChIJER2kGmGsyYkRgRi3Ncr6xRQ",
-    "name": "Music Gettysburg",
-    "address": "61 Seminary Ridge, Gettysburg, PA 17325, USA",
-    "primary_type": "live_music_venue",
-    "location": {
-      "latitude": 39.831058,
-      "longitude": -77.2447249
-    },
-    "discovered_for": {
-      "category": "live music venue",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJXybK3k-tyYkRdDR_mNrBVSY",
-    "name": "The Barn Resort",
-    "address": "75 Cunningham Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "event_venue",
-    "location": {
-      "latitude": 39.7683689,
-      "longitude": -77.276714
-    },
-    "discovered_for": {
-      "category": "live music venue",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJl7vxD4ysyYkRAsDIO9eB7F0",
-    "name": "Garryowen Irish Pub",
-    "address": "126 Chambersburg St, Gettysburg, PA 17325, USA",
-    "primary_type": "irish_pub",
-    "location": {
-      "latitude": 39.8306927,
-      "longitude": -77.2341354
-    },
-    "discovered_for": {
-      "category": "live music venue",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJ3ZJeyMIEyIkRHwG8Tgil-gA",
     "name": "Ottobar",
     "address": "2549 N Howard St, Baltimore, MD 21218, USA",
@@ -9052,20 +7876,6 @@
     "location": {
       "latitude": 39.318881,
       "longitude": -76.61958179999999
-    },
-    "discovered_for": {
-      "category": "live music venue",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJ63i1aI6syYkRT-8880Zwqbc",
-    "name": "Majestic Theater",
-    "address": "25 Carlisle St, Gettysburg, PA 17325, USA",
-    "primary_type": "performing_arts_theater",
-    "location": {
-      "latitude": 39.8317129,
-      "longitude": -77.2307623
     },
     "discovered_for": {
       "category": "live music venue",
@@ -9296,20 +8106,6 @@
     }
   },
   {
-    "google_place_id": "ChIJe-SJPiIitokRwaj-kuc8aZI",
-    "name": "Vanish Farmwoods Brewery",
-    "address": "42245 Black Hops Ln, Leesburg, VA 20176, USA",
-    "primary_type": "brewery",
-    "location": {
-      "latitude": 39.22335950000001,
-      "longitude": -77.5379674
-    },
-    "discovered_for": {
-      "category": "live music venue",
-      "area": "Burkittsville"
-    }
-  },
-  {
     "google_place_id": "ChIJf60WZnnNt4kRKvUUAj4PucA",
     "name": "Bialek's Music",
     "address": "932 Hungerford Dr #3b, Rockville, MD 20850, USA",
@@ -9321,20 +8117,6 @@
     "discovered_for": {
       "category": "live music venue",
       "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJS4gQ77IhtokRzhVQ0ha8vb0",
-    "name": "Tarara Summer Concert Series",
-    "address": "13648 Tarara Ln, Leesburg, VA 20176, USA",
-    "primary_type": "live_music_venue",
-    "location": {
-      "latitude": 39.2361493,
-      "longitude": -77.4844
-    },
-    "discovered_for": {
-      "category": "live music venue",
-      "area": "Rosemont"
     }
   },
   {
@@ -9519,20 +8301,6 @@
     }
   },
   {
-    "google_place_id": "ChIJ3RCxs6tUyIkRalH_V9V_qTU",
-    "name": "R/C Gateway Theater 8",
-    "address": "20 Presidential Cir, Gettysburg, PA 17325, USA",
-    "primary_type": "movie_theater",
-    "location": {
-      "latitude": 39.8439179,
-      "longitude": -77.1910505
-    },
-    "discovered_for": {
-      "category": "theater",
-      "area": "Thurmont"
-    }
-  },
-  {
     "google_place_id": "ChIJzf5aLwTHyYkRgL8dsrra9PQ",
     "name": "Catoctin Wildlife Preserve",
     "address": "13019 Catoctin Furnace Rd, Thurmont, MD 21788, USA",
@@ -9582,20 +8350,6 @@
     "location": {
       "latitude": 39.623978,
       "longitude": -77.77252
-    },
-    "discovered_for": {
-      "category": "theater",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJfxCHszaWyYkRGFUYq7QcjCw",
-    "name": "Waynesboro Theatre",
-    "address": "75 W Main St, Waynesboro, PA 17268, USA",
-    "primary_type": "movie_theater",
-    "location": {
-      "latitude": 39.756770700000004,
-      "longitude": -77.5791905
     },
     "discovered_for": {
       "category": "theater",
@@ -9680,20 +8434,6 @@
     "location": {
       "latitude": 39.445414899999996,
       "longitude": -77.5507628
-    },
-    "discovered_for": {
-      "category": "theater",
-      "area": "Middletown"
-    }
-  },
-  {
-    "google_place_id": "ChIJoUY-YGx1x4kR8iAoUltAxTI",
-    "name": "Westown Movies",
-    "address": "150 Commerce Dr, Middletown, DE 19709, USA",
-    "primary_type": "movie_theater",
-    "location": {
-      "latitude": 39.447247,
-      "longitude": -75.7410218
     },
     "discovered_for": {
       "category": "theater",
@@ -9924,34 +8664,6 @@
     }
   },
   {
-    "google_place_id": "ChIJbyCICfuvyYkRr1lGoSd5da4",
-    "name": "Gettysburg Civil War Era Dinner Theater",
-    "address": "15 W Main St, Fairfield, PA 17320, USA",
-    "primary_type": "performing_arts_theater",
-    "location": {
-      "latitude": 39.7870286,
-      "longitude": -77.36963879999999
-    },
-    "discovered_for": {
-      "category": "theater",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJJWAbL_esyYkR0sVo67Zoxw8",
-    "name": "Gettysburg Battle Theatre",
-    "address": "571 Steinwehr Ave, Gettysburg, PA 17325, USA",
-    "primary_type": "museum",
-    "location": {
-      "latitude": 39.8171274,
-      "longitude": -77.236476
-    },
-    "discovered_for": {
-      "category": "theater",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJqYYKATntyYkR_0sTzSC4_H8",
     "name": "Washington County Playhouse Dinner Theater",
     "address": "44 N Potomac St Rear, Hagerstown, MD 21740, USA",
@@ -9959,20 +8671,6 @@
     "location": {
       "latitude": 39.6427688,
       "longitude": -77.7189636
-    },
-    "discovered_for": {
-      "category": "theater",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJM3AnAY6syYkRcurot4gc8zw",
-    "name": "Gettysburg Community Theatre",
-    "address": "49 York St, Gettysburg, PA 17325, USA",
-    "primary_type": "performing_arts_theater",
-    "location": {
-      "latitude": 39.8306281,
-      "longitude": -77.229278
     },
     "discovered_for": {
       "category": "theater",
@@ -12680,20 +11378,6 @@
     }
   },
   {
-    "google_place_id": "ChIJ-V_XDowetokRmCByuLdrKCM",
-    "name": "Lovettsville Library",
-    "address": "12 N Light St, Lovettsville, VA 20180, USA",
-    "primary_type": "library",
-    "location": {
-      "latitude": 39.274252,
-      "longitude": -77.63551799999999
-    },
-    "discovered_for": {
-      "category": "library",
-      "area": "Rosemont"
-    }
-  },
-  {
     "google_place_id": "ChIJSTqrPoDlyYkR8c_gyKqxq6Q",
     "name": "Keedysville Library",
     "address": "22 Taylor Dr, Keedysville, MD 21756, USA",
@@ -12736,20 +11420,6 @@
     }
   },
   {
-    "google_place_id": "ChIJn14BX5D7yYkRGxp4fViXQj8",
-    "name": "Scarborough Library",
-    "address": "301 N King St, Shepherdstown, WV 25443, USA",
-    "primary_type": "library",
-    "location": {
-      "latitude": 39.432812600000005,
-      "longitude": -77.8042382
-    },
-    "discovered_for": {
-      "category": "library",
-      "area": "Rosemont"
-    }
-  },
-  {
     "google_place_id": "ChIJ31ffTSTayYkRWjsX3PSxqsg",
     "name": "Barnes & Noble",
     "address": "5500 Buckeystown Pike, Frederick, MD 21703, USA",
@@ -12757,20 +11427,6 @@
     "location": {
       "latitude": 39.3837893,
       "longitude": -77.40671019999999
-    },
-    "discovered_for": {
-      "category": "library",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJexZOX6UCtokRy1d6bLXPl_0",
-    "name": "Bolivar-Harpers Ferry Public Library",
-    "address": "151 Polk St, Bolivar, WV 25425, USA",
-    "primary_type": "library",
-    "location": {
-      "latitude": 39.3242841,
-      "longitude": -77.7567294
     },
     "discovered_for": {
       "category": "library",
@@ -12988,20 +11644,6 @@
     }
   },
   {
-    "google_place_id": "ChIJUU2lvdYXtokRXZPkT8jrKnw",
-    "name": "Books and Other Found Things",
-    "address": "13 Loudoun St SW, Leesburg, VA 20175, USA",
-    "primary_type": "book_store",
-    "location": {
-      "latitude": 39.1144941,
-      "longitude": -77.5663448
-    },
-    "discovered_for": {
-      "category": "bookstore",
-      "area": "Brunswick"
-    }
-  },
-  {
     "google_place_id": "ChIJHYJtGACPyokRXomQ2S4nZeU",
     "name": "Lily Books & Cafe",
     "address": "127 Baltimore St, Cumberland, MD 21502, USA",
@@ -13128,20 +11770,6 @@
     }
   },
   {
-    "google_place_id": "ChIJN-r2UQ6XyYkR_ZZKGTQeemo",
-    "name": "Wee Scot Book Shoppe",
-    "address": "4 E Main St, Waynesboro, PA 17268, USA",
-    "primary_type": "book_store",
-    "location": {
-      "latitude": 39.7552844,
-      "longitude": -77.5775836
-    },
-    "discovered_for": {
-      "category": "bookstore",
-      "area": "Thurmont"
-    }
-  },
-  {
     "google_place_id": "ChIJ78ypuyfHyYkRa8XYHvYKSyM",
     "name": "P.S. Jackson Enterprises",
     "address": "12259 Baugher Rd, Thurmont, MD 21788, USA",
@@ -13177,20 +11805,6 @@
     "location": {
       "latitude": 39.6138817,
       "longitude": -77.4176291
-    },
-    "discovered_for": {
-      "category": "bookstore",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJCc6E4Gy7yYkR54f8m0mIpo8",
-    "name": "Balls Fore Books",
-    "address": "14 Gladys Trail, Fairfield, PA 17320, USA",
-    "primary_type": "non_profit_organization",
-    "location": {
-      "latitude": 39.7535628,
-      "longitude": -77.3956065
     },
     "discovered_for": {
       "category": "bookstore",
@@ -13380,20 +11994,6 @@
     }
   },
   {
-    "google_place_id": "ChIJve_5aB9ItokRt1zhAlBotfs",
-    "name": "Scrawl Books",
-    "address": "11911 Freedom Dr, Reston, VA 20190, USA",
-    "primary_type": "book_store",
-    "location": {
-      "latitude": 38.959097199999995,
-      "longitude": -77.3562955
-    },
-    "discovered_for": {
-      "category": "bookstore",
-      "area": "Walkersville"
-    }
-  },
-  {
     "google_place_id": "ChIJrSxEhwcQyIkRGXkuioSMwGc",
     "name": "Ivy Bookshop",
     "address": "5928 Falls Rd, Baltimore, MD 21209, USA",
@@ -13401,20 +12001,6 @@
     "location": {
       "latitude": 39.3699663,
       "longitude": -76.6493291
-    },
-    "discovered_for": {
-      "category": "bookstore",
-      "area": "Walkersville"
-    }
-  },
-  {
-    "google_place_id": "ChIJcUZUytE3tokRYAl0Cwdi0sg",
-    "name": "Reston's Used Book Shop",
-    "address": "1623 Washington Plaza North Lake Anne, Village Center, Reston, VA 20190, USA",
-    "primary_type": "book_store",
-    "location": {
-      "latitude": 38.9688784,
-      "longitude": -77.3404227
     },
     "discovered_for": {
       "category": "bookstore",
@@ -13758,20 +12344,6 @@
     }
   },
   {
-    "google_place_id": "ChIJObmA5FodtokRrWxJAvUVD3A",
-    "name": "Harpers Ferry Park Bookshop",
-    "address": "723 Shenandoah St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "book_store",
-    "location": {
-      "latitude": 39.322496,
-      "longitude": -77.73114699999999
-    },
-    "discovered_for": {
-      "category": "bookstore",
-      "area": "Rosemont"
-    }
-  },
-  {
     "google_place_id": "ChIJyeuhmy_nt4kRBLk1hd3dL8E",
     "name": "The Book Life",
     "address": "9125A Bursa Rd, Laurel, MD 20723, USA",
@@ -14080,34 +12652,6 @@
     }
   },
   {
-    "google_place_id": "ChIJQ-3q37W9yYkRB_HbSCJHMuo",
-    "name": "Pen Mar Antique Market",
-    "address": "11870 Buchanan Trail E, Waynesboro, PA 17268, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.7377389,
-      "longitude": -77.5217861
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJXWCAMYixyYkRy85fE-Ud68Q",
-    "name": "Bowden's The Farm",
-    "address": "1042 Bullfrog Rd, Fairfield, PA 17320, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.743701099999996,
-      "longitude": -77.28687339999999
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Thurmont"
-    }
-  },
-  {
     "google_place_id": "ChIJOcOI4IDKyYkR0TLVy-4ws3s",
     "name": "Cotton & Co Vintage Boutique & Marketplace",
     "address": "900 Francis Scott Key Hwy rear building, Keymar, MD 21757, USA",
@@ -14402,34 +12946,6 @@
     }
   },
   {
-    "google_place_id": "ChIJ47Q_K-sftokRLxI4SoRg3CA",
-    "name": "Willows Vintage Charm",
-    "address": "3 S Berlin Pike, Lovettsville, VA 20180, USA",
-    "primary_type": "home_goods_store",
-    "location": {
-      "latitude": 39.273561099999995,
-      "longitude": -77.6393162
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJ61DfTlodtokRGT42wvPh9WU",
-    "name": "Tenfold Fair Trade Collection",
-    "address": "180 High St #1A, Harpers Ferry, WV 25425, USA",
-    "primary_type": "gift_shop",
-    "location": {
-      "latitude": 39.323893999999996,
-      "longitude": -77.73146
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Burkittsville"
-    }
-  },
-  {
     "google_place_id": "ChIJ2cT1WqcfyIkRS9TtGQPy4As",
     "name": "Vintage Bliss Boutique",
     "address": "Dibs Antiques, 3601 Buckeystown Pike, Buckeystown, MD 21717, USA",
@@ -14437,20 +12953,6 @@
     "location": {
       "latitude": 39.332521,
       "longitude": -77.432002
-    },
-    "discovered_for": {
-      "category": "antique store",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJfdjTT1odtokRXGRrHz-DPPA",
-    "name": "Vintage Lady",
-    "address": "196 High St #229.39, Harpers Ferry, WV 25425, USA",
-    "primary_type": "clothing_store",
-    "location": {
-      "latitude": 39.3240069,
-      "longitude": -77.73176690000001
     },
     "discovered_for": {
       "category": "antique store",
@@ -14752,20 +13254,6 @@
     }
   },
   {
-    "google_place_id": "ChIJkcvKsdavyYkRsdgxfcVqCRk",
-    "name": "RISE Yoga Gettysburg",
-    "address": "430 Baltimore St, Gettysburg, PA 17325, USA",
-    "primary_type": "yoga_studio",
-    "location": {
-      "latitude": 39.8249761,
-      "longitude": -77.2307483
-    },
-    "discovered_for": {
-      "category": "yoga studio",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJ53rmFymxyYkRodXNCkRqjfQ",
     "name": "Emmitsburg Senior Center",
     "address": "300 S Seton Ave, Emmitsburg, MD 21727, USA",
@@ -14773,20 +13261,6 @@
     "location": {
       "latitude": 39.701315900000004,
       "longitude": -77.3292664
-    },
-    "discovered_for": {
-      "category": "yoga studio",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJR5PUK52tyYkRwMNs9rc4vIg",
-    "name": "Hidden Wisdom Yoga",
-    "address": "18 Carlisle St Suite 213, Gettysburg, PA 17325, USA",
-    "primary_type": "yoga_studio",
-    "location": {
-      "latitude": 39.831727099999995,
-      "longitude": -77.2317472
     },
     "discovered_for": {
       "category": "yoga studio",
@@ -14808,20 +13282,6 @@
     }
   },
   {
-    "google_place_id": "ChIJnSKxuj27yYkRn8c6MWXNQqg",
-    "name": "Pilates- On The Mountain",
-    "address": "11702 Furnace Rd, Blue Ridge Summit, PA 17214, USA",
-    "primary_type": "gym",
-    "location": {
-      "latitude": 39.74682500000001,
-      "longitude": -77.463807
-    },
-    "discovered_for": {
-      "category": "yoga studio",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJa79MyzOxyYkRaPdhp2rdG9Y",
     "name": "Pivot PT - Emmitsburg, an Athletico company",
     "address": "17750 Creamery Rd Suite B7, Emmitsburg, MD 21727, USA",
@@ -14829,20 +13289,6 @@
     "location": {
       "latitude": 39.6981964,
       "longitude": -77.3172302
-    },
-    "discovered_for": {
-      "category": "yoga studio",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJo9Xnd46syYkR1USKqs_H9DE",
-    "name": "Gettyoga",
-    "address": "304 York St # B, Gettysburg, PA 17325, USA",
-    "primary_type": "yoga_studio",
-    "location": {
-      "latitude": 39.8321377,
-      "longitude": -77.22540699999999
     },
     "discovered_for": {
       "category": "yoga studio",
@@ -15053,20 +13499,6 @@
     "location": {
       "latitude": 39.344764,
       "longitude": -77.7286907
-    },
-    "discovered_for": {
-      "category": "yoga studio",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJA6P7IswftokRH-KAdwt8Ga8",
-    "name": "Good Stretch Yoga",
-    "address": "39090 Dobbins Farm Ln, Lovettsville, VA 20180, USA",
-    "primary_type": "yoga_studio",
-    "location": {
-      "latitude": 39.2798667,
-      "longitude": -77.6492947
     },
     "discovered_for": {
       "category": "yoga studio",
@@ -15410,20 +13842,6 @@
     }
   },
   {
-    "google_place_id": "ChIJH7h7e9ytyYkR3_iAG9rzkyo",
-    "name": "Gettysburg Performance Gym",
-    "address": "1863 Gettysburg Village Dr, Gettysburg, PA 17325, USA",
-    "primary_type": "gym",
-    "location": {
-      "latitude": 39.796100599999995,
-      "longitude": -77.2009034
-    },
-    "discovered_for": {
-      "category": "gym",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJVWyApb7TyYkRfc9N7kVlYhs",
     "name": "FreeZone Fitness",
     "address": "11670 Old National Pike, New Market, MD 21774, USA",
@@ -15673,20 +14091,6 @@
     "discovered_for": {
       "category": "gym",
       "area": "Woodsboro"
-    }
-  },
-  {
-    "google_place_id": "ChIJRT8dDzoftokRsSP2mDaQ25E",
-    "name": "Wild's Edge Fitness",
-    "address": "27 S Loudoun St, Lovettsville, VA 20180, USA",
-    "primary_type": "health",
-    "location": {
-      "latitude": 39.269197299999995,
-      "longitude": -77.6388687
-    },
-    "discovered_for": {
-      "category": "gym",
-      "area": "Burkittsville"
     }
   },
   {
@@ -16040,104 +14444,6 @@
     }
   },
   {
-    "google_place_id": "ChIJi_hxorICtokRpL3CVf8Kcn4",
-    "name": "Quality Inn Harpers Ferry - Charles Town",
-    "address": "25 Union St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.321867,
-      "longitude": -77.746674
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJn8JfRb4CtokRk0RrOlGNkD8",
-    "name": "Clarion Inn Harpers Ferry-Charles Town",
-    "address": "4328 William L Wilson Fwy, Harpers Ferry, WV 25425, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.316635,
-      "longitude": -77.76647799999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJx1q4sKwCtokRGRxUPvuTViQ",
-    "name": "Light Horse Inn",
-    "address": "1084 W Washington St, Bolivar, WV 25425, USA",
-    "primary_type": "inn",
-    "location": {
-      "latitude": 39.3264055,
-      "longitude": -77.74584190000002
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJN5dtjmn7yYkRkXEhJr1NIfA",
-    "name": "Quality Inn & Suites Shepherdstown",
-    "address": "70 Maddex Square Dr, Shepherdstown, WV 25443, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.435434300000004,
-      "longitude": -77.8197428
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJM753gdEdtokR1WL15C3DXPk",
-    "name": "Georges Mill Farm Bed & Breakfast",
-    "address": "11867 Georges Mill Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.287790199999996,
-      "longitude": -77.66322890000001
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJGfc9LHABtokRXXx3yuB4Rag",
-    "name": "Rodeway Inn & Suites Charles Town",
-    "address": "741 E Washington St, Charles Town, WV 25414, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.292671,
-      "longitude": -77.8504659
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJsWo633gBtokRJDE_n8UykQo",
-    "name": "Motel 6 Charles Town, WV",
-    "address": "106 Jefferson Terrace Rd, Charles Town, WV 25414, USA",
-    "primary_type": "motel",
-    "location": {
-      "latitude": 39.298224499999996,
-      "longitude": -77.8327525
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
     "google_place_id": "ChIJZdPFwa7myYkRsOvbB7LEkdc",
     "name": "The Treehouse Camp At Maple Tree LLC",
     "address": "20716 Townsend Rd, Rohrersville, MD 21779, USA",
@@ -16145,34 +14451,6 @@
     "location": {
       "latitude": 39.410119,
       "longitude": -77.646519
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJ28VHVocctokRR2ZCTOcEqzQ",
-    "name": "Stone Manor Boutique Inn",
-    "address": "13193 Mountain Rd, Lovettsville, VA 20180, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.251177500000004,
-      "longitude": -77.6980734
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Brunswick"
-    }
-  },
-  {
-    "google_place_id": "ChIJn78JR24BtokRNkRecRu9osI",
-    "name": "Days Inn by Wyndham Charles Town/Harpers Ferry",
-    "address": "642 E Washington St, Charles Town, WV 25414, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.291150699999996,
-      "longitude": -77.8519204
     },
     "discovered_for": {
       "category": "hotel",
@@ -16222,76 +14500,6 @@
     }
   },
   {
-    "google_place_id": "ChIJJVkXham6yYkRm6RvnBRr05Q",
-    "name": "The Fairfield Lodge",
-    "address": "5104 Fairfield Rd, Fairfield, PA 17320, USA",
-    "primary_type": "motel",
-    "location": {
-      "latitude": 39.7759809,
-      "longitude": -77.3806632
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJJyAZjQmyyYkRlmK0U6Y1vqA",
-    "name": "Western Inn",
-    "address": "2520 Emmitsburg Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "motel",
-    "location": {
-      "latitude": 39.7682266,
-      "longitude": -77.2698745
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJUwu6ybC9yYkRwx6bqkl7ze8",
-    "name": "Cobblestone Hotel & Suites - Waynesboro",
-    "address": "12695 Washington Twp Blvd, Waynesboro, PA 17268, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.7441253,
-      "longitude": -77.52716819999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJ0xWOkfWtyYkRN5HdSvpjM1Q",
-    "name": "Red Carpet Inn Gettysburg, PA",
-    "address": "2450 Emmitsburg Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.770187299999996,
-      "longitude": -77.2681808
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJc8mw2zWWyYkRbtJRPyE7-nQ",
-    "name": "Days Inn by Wyndham Waynesboro",
-    "address": "239 W Main St, Waynesboro, PA 17268, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.758880999999995,
-      "longitude": -77.58300860000001
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
     "google_place_id": "ChIJRaQZDB_ByYkRlip722LYcp4",
     "name": "Ole Mink Farm Recreation Resort",
     "address": "12806 Mink Farm Rd, Thurmont, MD 21788, USA",
@@ -16320,20 +14528,6 @@
     }
   },
   {
-    "google_place_id": "ChIJxZz5HQmyyYkRA2CAooovdrY",
-    "name": "Eisenhower Hotel & Conference Center",
-    "address": "2634 Emmitsburg Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.7656042,
-      "longitude": -77.2690707
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
     "google_place_id": "ChIJS2gOtj9LyIkR4gNGLJLgRfM",
     "name": "Antrim 1844",
     "address": "30 Trevanion Rd, Taneytown, MD 21787, USA",
@@ -16341,20 +14535,6 @@
     "location": {
       "latitude": 39.654916,
       "longitude": -77.1730675
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJw3jUlwmyyYkRkKaA4NkhIHA",
-    "name": "Aspire Hotel and Suites",
-    "address": "2632 Emmitsburg Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.7663803,
-      "longitude": -77.2703247
     },
     "discovered_for": {
       "category": "hotel",
@@ -16373,76 +14553,6 @@
     "discovered_for": {
       "category": "hotel",
       "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJfwahaPuyyYkR2TqOd59AXgg",
-    "name": "Mary-Penn Bed & Breakfast",
-    "address": "716 Mason Dixon Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.719918199999995,
-      "longitude": -77.23421859999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJQQ0rSgqwyYkRfDKpYAfLHus",
-    "name": "Liberty Mountain Resort",
-    "address": "78 Country Club Trail, Fairfield, PA 17320, USA",
-    "primary_type": "ski_resort",
-    "location": {
-      "latitude": 39.76366,
-      "longitude": -77.37545899999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Thurmont"
-    }
-  },
-  {
-    "google_place_id": "ChIJpcbXpm6gx4kRahJm2uwVnxI",
-    "name": "Hampton Inn Middletown",
-    "address": "117 Sandhill Dr, Middletown, DE 19709, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.4510672,
-      "longitude": -75.7302751
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Middletown"
-    }
-  },
-  {
-    "google_place_id": "ChIJAcCM-AOhx4kRBwCY8RRZnsk",
-    "name": "Holiday Inn Express & Suites Middletown by IHG",
-    "address": "315 Auto Park Dr, Middletown, DE 19709, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.444688899999996,
-      "longitude": -75.731689
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Middletown"
-    }
-  },
-  {
-    "google_place_id": "ChIJpZpWAj-gx4kRtgsx2VuuN18",
-    "name": "Fairfield by Marriott Inn & Suites Middletown",
-    "address": "411 Merrimac Ave, Middletown, DE 19709, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.444638999999995,
-      "longitude": -75.74058699999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Middletown"
     }
   },
   {
@@ -16502,62 +14612,6 @@
     }
   },
   {
-    "google_place_id": "ChIJJaUUaPGsyYkRKcrLD1qT6l8",
-    "name": "Colton Motel",
-    "address": "232 Steinwehr Ave, Gettysburg, PA 17325, USA",
-    "primary_type": "motel",
-    "location": {
-      "latitude": 39.820525599999996,
-      "longitude": -77.2335998
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJSVu86POsyYkRd-DPoV7ZvTM",
-    "name": "Budget Host Three Crowns Motor Lodge",
-    "address": "205 Steinwehr Ave, Gettysburg, PA 17325, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.821555599999996,
-      "longitude": -77.23342889999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJcxPNdaSsyYkR5ffVbnixaN8",
-    "name": "Days Inn by Wyndham Gettysburg",
-    "address": "865 York Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.8371971,
-      "longitude": -77.2116218
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJQ7-2s--tyYkRrD_ZJrF5rNs",
-    "name": "Americas Best Value Inn Gettysburg",
-    "address": "983 York Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.8389193,
-      "longitude": -77.2092805
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJc6g1cnY4yIkRMFyCSzV_FzU",
     "name": "Days Inn by Wyndham Westminster",
     "address": "25 S Cranberry Rd, Westminster, MD 21157, USA",
@@ -16565,20 +14619,6 @@
     "location": {
       "latitude": 39.572919399999996,
       "longitude": -76.9810305
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJi1WyIiytyYkRQWE7bHAMoFk",
-    "name": "Holiday Inn Express & Suites Gettysburg by IHG",
-    "address": "1871 Gettysburg Village Dr, Gettysburg, PA 17325, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.7928413,
-      "longitude": -77.20507049999999
     },
     "discovered_for": {
       "category": "hotel",
@@ -16635,20 +14675,6 @@
     "location": {
       "latitude": 39.3597478,
       "longitude": -77.15755
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Mount Airy"
-    }
-  },
-  {
-    "google_place_id": "ChIJJcvEpY4jUogR2XTqSs3PvxQ",
-    "name": "Mount Airy Motel",
-    "address": "1421 Fancy Gap Rd, Mt Airy, NC 27030, USA",
-    "primary_type": "motel",
-    "location": {
-      "latitude": 36.5333727,
-      "longitude": -80.6340574
     },
     "discovered_for": {
       "category": "hotel",
@@ -16810,20 +14836,6 @@
     }
   },
   {
-    "google_place_id": "ChIJDXiDJJf7yYkRg_JIJ4X2HiE",
-    "name": "Bavarian Inn, Resort and Brewing Company",
-    "address": "164 Shepherd Grade Rd, Shepherdstown, WV 25443, USA",
-    "primary_type": "resort_hotel",
-    "location": {
-      "latitude": 39.436409600000005,
-      "longitude": -77.80470199999999
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Myersville"
-    }
-  },
-  {
     "google_place_id": "ChIJg_iThvjsyYkRIn3af2-oWS0",
     "name": "Comfort Suites Hagerstown Southeast",
     "address": "1801 Dual Hwy, Hagerstown, MD 21740, USA",
@@ -16849,188 +14861,6 @@
     "discovered_for": {
       "category": "hotel",
       "area": "Myersville"
-    }
-  },
-  {
-    "google_place_id": "ChIJSYAGAE7jyYkRohO44GqrFpY",
-    "name": "Plum Lazy on the Potomac",
-    "address": "28 McShanes Landing Ln, Shepherdstown, WV 25443, USA",
-    "primary_type": "hotel",
-    "location": {
-      "latitude": 39.404103,
-      "longitude": -77.7425559
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJuZ121Y_7yYkRLF-QzhGLJIY",
-    "name": "The Mecklenburg Inn",
-    "address": "128 E German St, Shepherdstown, WV 25443, USA",
-    "primary_type": "bar",
-    "location": {
-      "latitude": 39.4303996,
-      "longitude": -77.8049106
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJbzcXfukDtokR5zHmS8sY6k8",
-    "name": "La Soledad Lavender Farm and Guesthouse",
-    "address": "1090 Putnam St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "guest_house",
-    "location": {
-      "latitude": 39.3289979,
-      "longitude": -77.7453199
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJYc7oWlodtokRlpJ_lla0VPQ",
-    "name": "The Town's Inn",
-    "address": "179 High St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "inn",
-    "location": {
-      "latitude": 39.323803,
-      "longitude": -77.7317464
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Burkittsville"
-    }
-  },
-  {
-    "google_place_id": "ChIJ59EPU1odtokRN5D28DZUM14",
-    "name": "Stonehouse Bed & Breakfast",
-    "address": "156 High St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.323599,
-      "longitude": -77.7310318
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJtTktBFMdtokRNmL3GhEwVSE",
-    "name": "Rockhaven B&B",
-    "address": "900 Fillmore St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.3250696,
-      "longitude": -77.74278980000001
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJtdVr3lMdtokR2pWCfYbGDRI",
-    "name": "Lily Garden Bed & Breakfast",
-    "address": "701 Washington St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.32510800000001,
-      "longitude": -77.7397479
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJkSaDbyQbtokRybGTHg8PBQQ",
-    "name": "Buckskin Manor",
-    "address": "13452 Harpers Ferry Rd, Purcellville, VA 20132, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.241932899999995,
-      "longitude": -77.7230747
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJm5Tx7FMdtokRzBOd1j5B8jw",
-    "name": "Harpers Ferry Guest House",
-    "address": "800 Washington St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "guest_house",
-    "location": {
-      "latitude": 39.325881599999995,
-      "longitude": -77.7407321
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJ59e6nX4dtokRThSf4KYw1PU",
-    "name": "Trouvaille Guest House",
-    "address": "884 Washington St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "inn",
-    "location": {
-      "latitude": 39.3260897,
-      "longitude": -77.7420116
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJ3Udx5rMdtokRWEhmzr43qAU",
-    "name": "1799 Inn Harpers Ferry",
-    "address": "221 Potomac St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "inn",
-    "location": {
-      "latitude": 39.3244529,
-      "longitude": -77.7321429
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJl-p8mFMdtokR5QrFMhFuweU",
-    "name": "Angler's Inn",
-    "address": "867 Washington St, Harpers Ferry, WV 25425, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.325651,
-      "longitude": -77.741755
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
-    }
-  },
-  {
-    "google_place_id": "ChIJ00jqy20BtokRefxrLbEbRS8",
-    "name": "The Carriage Inn Bed and Breakfast",
-    "address": "417 E Washington St, Charles Town, WV 25414, USA",
-    "primary_type": "bed_and_breakfast",
-    "location": {
-      "latitude": 39.2903215,
-      "longitude": -77.8550439
-    },
-    "discovered_for": {
-      "category": "hotel",
-      "area": "Rosemont"
     }
   },
   {
@@ -17481,20 +15311,6 @@
     }
   },
   {
-    "google_place_id": "ChIJr0y_03OsyYkROoNSOtbTe2E",
-    "name": "The Gardens at Gettysburg",
-    "address": "741 Chambersburg Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "health",
-    "location": {
-      "latitude": 39.841744999999996,
-      "longitude": -77.25822610000002
-    },
-    "discovered_for": {
-      "category": "garden",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJg-WKNB1LyIkRZ1ZqB8oy_uI",
     "name": "Bear Run Green House",
     "address": "2311 Bear Run Rd, Taneytown, MD 21787, USA",
@@ -17537,20 +15353,6 @@
     }
   },
   {
-    "google_place_id": "ChIJd3G0wiKlyYkRwNPMo-bbA1c",
-    "name": "Strawberry Hill Foundation",
-    "address": "1537 Mt Hope Rd, Fairfield, PA 17320, USA",
-    "primary_type": "educational_institution",
-    "location": {
-      "latitude": 39.803509999999996,
-      "longitude": -77.41425799999999
-    },
-    "discovered_for": {
-      "category": "garden",
-      "area": "Emmitsburg"
-    }
-  },
-  {
     "google_place_id": "ChIJ2wK2Yjy3yYkRi_-nzyWn8eE",
     "name": "Mount St. Mary's University",
     "address": "16300 Old Emmitsburg Rd, Emmitsburg, MD 21727, USA",
@@ -17572,20 +15374,6 @@
     "location": {
       "latitude": 39.6837587,
       "longitude": -77.3571606
-    },
-    "discovered_for": {
-      "category": "garden",
-      "area": "Emmitsburg"
-    }
-  },
-  {
-    "google_place_id": "ChIJpcKAPgCvyYkRYwb-OCmp9bs",
-    "name": "Thirty Acre Gardens",
-    "address": "300 Knorr Rd, Gettysburg, PA 17325, USA",
-    "primary_type": "hiking_area",
-    "location": {
-      "latitude": 39.8060336,
-      "longitude": -77.3029229
     },
     "discovered_for": {
       "category": "garden",
