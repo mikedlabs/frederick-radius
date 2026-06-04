@@ -1,5 +1,6 @@
 import "server-only";
 import { search } from "@/lib/search";
+import { matchCivicAction } from "@/data/civic-actions";
 
 /**
  * "Ask Frederick" — the grounded concierge brain.
@@ -121,6 +122,18 @@ export async function askFrederick(query: string): Promise<AskResult> {
   const lines: string[] = [];
   const sources: AskSource[] = [];
 
+  // Civic intent grounding: if the question is a "how do I…" (register to
+  // vote, report a pothole, pay a bill, permits…), surface the county's
+  // AUTHORITATIVE link so the model cites a real action, never an invented
+  // one. Listed first so it leads the answer when relevant.
+  const civic = matchCivicAction(q);
+  if (civic) {
+    sources.push({ slug: civic.id, name: civic.label, category: "civic", city: "", href: civic.url });
+  }
+  const civicLine = civic
+    ? `OFFICIAL CIVIC ACTION (cite this link if relevant): ${civic.label} → ${civic.url}\n`
+    : "";
+
   for (const h of hits) {
     if (lines.length >= 14) break;
     if (h.type === "place") {
@@ -152,7 +165,7 @@ export async function askFrederick(query: string): Promise<AskResult> {
     lines.length > 0
       ? lines.join("\n")
       : "(no matching places or events were found in the Frederick catalog)";
-  const userContent = `The user asked: "${q}"\n\nFREDERICK DATA (the only facts you may use):\n${dataBlock}\n\nAnswer using only this data.`;
+  const userContent = `The user asked: "${q}"\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${dataBlock}\n\nAnswer using only this data.`;
 
   const answer = await callModel(userContent);
   return { configured: answer !== null || hasKey(), answer, sources };

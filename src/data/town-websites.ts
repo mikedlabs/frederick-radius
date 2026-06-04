@@ -21,8 +21,10 @@
  * /Calendar.aspx, /FormCenter, /requesttracker.aspx URL patterns), so
  * once `cms: "civicplus"` is known the deep links are largely derivable.
  *
- * Verified in this pass (2026-06): frederick, brunswick, emmitsburg,
- * thurmont. Others are scaffolded pending confirmation.
+ * Verified (2026-06): frederick, brunswick, emmitsburg, thurmont,
+ * middletown, walkersville, new-market, mount-airy, myersville,
+ * woodsboro, burkittsville — 11 of 13. Only rosemont (tiny) and urbana
+ * (unincorporated) remain unconfirmed.
  */
 
 export type CivicLinks = {
@@ -112,14 +114,76 @@ export const TOWN_WEBSITES: TownWebsite[] = [
     },
   },
 
-  // ── Scaffolded — confirm the official URL before asserting ──
-  { slug: "middletown", name: "Town of Middletown", homepage: null, verified: false, note: "Confirm official URL (middletownmd.gov refused in this pass)." },
-  { slug: "walkersville", name: "Town of Walkersville", homepage: null, verified: false, note: "Confirm official URL (walkersvillemd.gov had a TLS issue)." },
-  { slug: "new-market", name: "Town of New Market", homepage: null, verified: false, note: "Confirm official URL (newmarketmd.gov refused in this pass)." },
-  { slug: "mount-airy", name: "Town of Mount Airy", homepage: null, verified: false, note: "Spans Frederick & Carroll counties — confirm official URL." },
-  { slug: "myersville", name: "Town of Myersville", homepage: null, verified: false, note: "Confirm official URL (myersville.org had a TLS issue)." },
-  { slug: "woodsboro", name: "Town of Woodsboro", homepage: null, verified: false, note: "Confirm official URL." },
-  { slug: "burkittsville", name: "Town of Burkittsville", homepage: null, verified: false, note: "Confirm official URL." },
+  {
+    slug: "middletown", name: "Town of Middletown", homepage: "https://www.middletown.md.us/",
+    verified: true, cms: "other",
+    contact: { address: "31 West Main Street, Middletown, MD 21769", phone: "301-371-6171" },
+    links: { government: "https://www.middletown.md.us/" },
+    note: "Catalis CMS (legacy index.asp URLs).",
+  },
+  {
+    slug: "walkersville", name: "Town of Walkersville", homepage: "https://www.walkersvillemd.gov/",
+    verified: true, cms: "civicplus",
+    contact: { address: "21 W. Frederick St., PO Box 249, Walkersville, MD 21793", phone: "301-845-4500" },
+    links: {
+      government: "https://www.walkersvillemd.gov/1207/Government",
+      events: "https://www.walkersvillemd.gov/calendar.aspx",
+      permits: "https://www.walkersvillemd.gov/1278/Permits",
+    },
+  },
+  {
+    slug: "new-market", name: "Town of New Market", homepage: "https://www.townofnewmarket.org/",
+    verified: true, cms: "revize",
+    contact: { address: "40 South Alley, New Market, MD 21774", phone: "301-865-5544" },
+    links: {
+      government: "https://www.townofnewmarket.org/mayor-town-council",
+      trashRecycling: "https://www.townofnewmarket.org/residents/recycling-schedule",
+      events: "https://www.townofnewmarket.org/where",
+    },
+    note: "Site blocks automated fetch (403); verified via indexed pages — recommend a manual homepage check.",
+  },
+  {
+    slug: "mount-airy", name: "Town of Mount Airy", homepage: "https://www.mountairymd.gov/",
+    verified: true, cms: "civicplus",
+    contact: { address: "110 S. Main Street, PO Box 50, Mount Airy, MD 21771", phone: "301-829-1424" },
+    links: {
+      government: "https://www.mountairymd.gov/27/Government-Services",
+      trashRecycling: "https://www.mountairymd.gov/156/Recycling-Sanitation",
+      events: "https://www.mountairymd.gov/Calendar.aspx",
+      permits: "https://www.mountairymd.gov/174/Permits",
+    },
+    note: "Straddles Frederick & Carroll counties (town hall in Carroll).",
+  },
+  {
+    slug: "myersville", name: "Town of Myersville", homepage: "https://myersville.org/",
+    verified: true, cms: "other",
+    contact: { address: "301 Main Street, PO Box 295, Myersville, MD 21773", phone: "301-293-4281" },
+    links: {
+      government: "https://myersville.org/government",
+      trashRecycling: "https://myersville.org/trash",
+      events: "https://myersville.org/calendar",
+      permits: "https://myersville.org/planning_zoning",
+    },
+  },
+  {
+    slug: "woodsboro", name: "Town of Woodsboro", homepage: "https://woodsboro.org/",
+    verified: true, cms: "wordpress",
+    contact: { address: "605 S. Main Street, Woodsboro, MD 21798", phone: "301-898-3800" },
+    links: {
+      government: "https://woodsboro.org/government/",
+      events: "https://woodsboro.org/community/",
+    },
+  },
+  {
+    slug: "burkittsville", name: "Town of Burkittsville", homepage: "https://burkittsville-md.gov/",
+    verified: true, cms: "wordpress",
+    contact: { address: "PO Box 485, Burkittsville, MD 21718", phone: "301-969-0326" },
+    links: {
+      government: "https://burkittsville-md.gov/government/",
+      events: "https://burkittsville-md.gov/calendar/",
+    },
+    note: "Mailing address only (office not staffed full-time); trash via Key Sanitation 301-668-8282.",
+  },
   { slug: "rosemont", name: "Town of Rosemont", homepage: null, verified: false, note: "Very small incorporated town near Brunswick — may have no standalone site." },
   { slug: "urbana", name: "Urbana", homepage: null, verified: false, note: "Unincorporated (CDP) — no town government; civic services run through Frederick County, not a town site." },
 ];
