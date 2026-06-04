@@ -104,6 +104,7 @@ import {
 } from "@/lib/integrations/transitFrederick";
 import TransitMap from "@/components/transit/TransitMap";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
+import LiveTransitPill from "@/components/transit/LiveTransitPill";
 import PageBloom from "@/components/ui/PageBloom";
 import { Suspense } from "react";
 
@@ -220,6 +221,8 @@ export default async function TransitPage() {
           route drawn here is a real one, in service today. Stops and
           schedules live on the county&apos;s site for now.
         </p>
+        {/* Live "N buses moving now" from the GTFS-realtime feed. */}
+        <div className="pt-1"><LiveTransitPill /></div>
       </header>
 
       {/* Common requests — intent-led entry tiles for the things
