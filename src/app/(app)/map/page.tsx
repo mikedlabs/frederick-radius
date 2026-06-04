@@ -11,6 +11,7 @@ import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFreder
 import { getMunicipalBoundaries } from "@/lib/integrations/fcGis";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
 import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
+import { getVisibleEvents } from "@/lib/events/visible";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
@@ -266,7 +267,15 @@ export default async function MapPage({
     // view needs (no SSR bloat). RadiusBuilder filters these to the
     // chosen reach. Same shared loader as browse, so the event set is
     // identical across modes; ISR caching bounds the cold-path cost.
-    const radiusEvents = (await withTimeout(loadUpcomingEvents(new Date()), 8000, [] as EventWithMeta[]))
+    const radiusNow = new Date();
+    const radiusEvents = getVisibleEvents(
+      await withTimeout(loadUpcomingEvents(radiusNow), 8000, [] as EventWithMeta[]),
+      radiusNow,
+    )
+      // Belt-and-suspenders against past events leaking into "within reach":
+      // getVisibleEvents (above) is the shared rule, applied here so a merged
+      // live-feed row can't slip a finished event past the curated
+      // allUpcoming() filter (the audit saw a May event under radius).
       // Draw-only on the map: civic meetings/hearings aren't map answers
       // (shared event-kind rule — consistent with Today and /events).
       .filter((e) => !isUtilityEvent(e))

@@ -388,7 +388,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
                 <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
                 <span className="inline-flex items-center gap-1 text-[10px] font-medium" style={{ color: "var(--app-positive)" }}>
                   <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-positive)" }} aria-hidden />
-                  Verified by Google
+                  Confirmed by Google
                 </span>
               </>
             )}
