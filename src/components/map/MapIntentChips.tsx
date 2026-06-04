@@ -138,7 +138,10 @@ export default function MapIntentChips({
   // Open-now lens active. Empty string when openNow is off so we don't
   // pollute URLs with stray params.
   const openSuffix = openNow ? "&open=now" : "";
-  const clearHref = openNow ? "/map?open=now" : "/map";
+  // Preserve browse mode when clearing with an active open-now filter —
+  // otherwise /map defaults to radius mode where open-now doesn't exist,
+  // silently dropping the filter (and the chips). (UX review fix.)
+  const clearHref = openNow ? "/map?mode=browse&open=now" : "/map";
   return (
     <div
       className="pointer-events-none absolute inset-x-0 top-0 z-30 space-y-2 px-2.5 sm:px-3"
