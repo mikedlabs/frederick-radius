@@ -33,6 +33,7 @@
     "ingest:candidates": "tsx --tsconfig tsconfig.json scripts/ingest-candidates.ts",
     "ingest:rec": "tsx --tsconfig tsconfig.json scripts/ingest-rec-locations.ts",
     "merge:rec": "tsx --tsconfig tsconfig.json scripts/merge-rec-locations.ts",
+    "apply:rec": "tsx --tsconfig tsconfig.json scripts/apply-rec-merge.ts",
     "enrich:discovered": "tsx --tsconfig tsconfig.json scripts/enrich-discovered.ts",
     "merge:discovered": "tsx --tsconfig tsconfig.json scripts/merge-discovered.ts",
     "vet": "tsx --tsconfig tsconfig.json scripts/vet-places.ts",
