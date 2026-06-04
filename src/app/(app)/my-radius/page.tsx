@@ -38,8 +38,8 @@ export default async function MyRadiusPage() {
             className="mt-1.5 text-[14px] leading-relaxed text-pretty"
             style={{ color: "var(--app-ink-2)" }}
           >
-            The places and events you&apos;re keeping — spots to visit and
-            things to do, organized by town.
+            Your saved Frederick starts here. Save places, events, and ideas —
+            we&apos;ll group them by town, distance, and what&apos;s coming up next.
           </p>
         </div>
         <Link
