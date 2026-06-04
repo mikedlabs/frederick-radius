@@ -20,8 +20,10 @@ function tierFor(place: PlaceCardData): Tier | null {
   if (place.source === "seed" || place.source === "manual") return "curated";
   // "Official" — government / county GIS imports.
   if (place.source === "arcgis") return "official";
-  // "Verified" — Google says it's operational and we've enriched
-  // (we have a rating + hours), so the row is current.
+  // "Confirmed" — Google says it's operational and we've enriched it
+  // (rating + hours), so the basics are current. NOTE this is NOT
+  // owner-maintained — do not label it "Verified" (which the Trust page
+  // reserves for owner/official-maintained records). (Audit #4.)
   if (place.is_verified && place.google_verified) return "verified";
   // "Community" — DFP / scraped / discovered. Real but not curated.
   if (place.source === "dfp" || place.source === "google") return "community";
@@ -36,7 +38,7 @@ const META: Record<Tier, { label: string; color: string; icon: typeof CheckCircl
   // can read. Previously the title was just "Source: Curated" which
   // tells you nothing if you don't already know what curated means.
   curated:   { label: "Hand-picked", color: "#A03A22", icon: Sparkles,    tooltip: "We picked this one ourselves." },
-  verified:  { label: "Verified",  color: "#1E6B3A", icon: CheckCircle2,  tooltip: "Maintained by the owner. Hours and details come straight from them." },
+  verified:  { label: "Confirmed", color: "#1E6B3A", icon: CheckCircle2,  tooltip: "Confirmed operational and current — basics enriched from Google. Not owner-managed." },
   community: { label: "Community", color: "#2F5470", icon: Users,         tooltip: "Submitted by a local or pulled from a community feed. Reliable but not directly verified." },
   official:  { label: "Official",  color: "#7E2C6F", icon: Database,      tooltip: "From an official county or government feed." },
 };
