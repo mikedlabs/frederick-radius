@@ -95,8 +95,8 @@ function main() {
         geom: { lng: r.lng, lat: r.lat },
         address: r.address ?? "", website: r.website ?? undefined,
         google_photo_url: r.photoUrl ?? undefined,
-        short_blurb: `${r.kind === "trail" ? "Trail" : r.kind === "playground" ? "Playground" : "Park"} in Frederick County.`,
-        tags: ["free", "outdoor", r.kind === "playground" ? "kids-6-12" : "year-round"],
+        short_blurb: "Park in Frederick County.",
+        tags: ["free", "outdoor", "year-round"],
         source: "fc-gis", is_verified: true, is_operational: "operational",
         feature_score: 5.0, updated_at: now, last_verified_at: `${now}T00:00:00Z`,
       });

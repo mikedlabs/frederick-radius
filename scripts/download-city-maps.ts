@@ -17,7 +17,7 @@ const DIR = process.env.OUT_DIR ?? "./.city-maps";
 async function main() {
   mkdirSync(DIR, { recursive: true });
   const upload = process.argv.includes("--upload");
-  let put: ((k: string, b: Buffer, o: unknown) => Promise<{ url: string }>) | null = null;
+  let put: typeof import("@vercel/blob").put | null = null;
   if (upload) {
     try {
       ({ put } = await import("@vercel/blob"));
