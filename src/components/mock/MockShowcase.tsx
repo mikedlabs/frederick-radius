@@ -65,6 +65,11 @@ export default function MockShowcase({
   const lead = cards[0];
   const rail = cards.slice(1, 4);
   const discover = cards.slice(0, 5);
+  const plan = cards.slice(0, 5).map((p, i) => ({
+    ...p,
+    time: ["9:30 AM", "11:00 AM", "1:00 PM", "3:15 PM", "5:30 PM"][i] ?? "",
+    walk: [6, 9, 7, 8][i] ?? 5,
+  }));
 
   return (
     <div style={{ background: "var(--app-bg)" }}>
@@ -301,6 +306,57 @@ export default function MockShowcase({
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* ════════════════ SCREEN 4 — PLAN (itinerary) ════════════════ */}
+      <section className="mx-auto min-h-screen w-full max-w-[440px] px-5 pb-12 pt-12">
+        <Eyebrow>Your plan · Saturday</Eyebrow>
+        <h1 className="mt-2 text-[30px] font-semibold tracking-[-0.015em]" style={{ ...DISPLAY, color: "var(--app-ink)" }}>A day downtown</h1>
+        <p className="mt-2 text-[13.5px]" style={{ color: "var(--app-ink-3)" }}>{plan.length} stops · 2.1 mi · about 6 hours</p>
+
+        {/* controls */}
+        <div className="mt-4 flex gap-2.5">
+          <span className="inline-flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-[13.5px] font-semibold text-white" style={{ background: "var(--app-brand)", boxShadow: ELEV_SM }}>
+            <Navigation className="h-4 w-4" strokeWidth={2.25} aria-hidden /> Optimize route
+          </span>
+          <span className="inline-flex flex-1 items-center justify-center gap-2 rounded-full px-4 py-3 text-[13.5px] font-semibold" style={{ background: "var(--app-bg-elevated-solid)", color: "var(--app-ink-2)", border: "1px solid var(--app-border)" }}>
+            <Sparkles className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden /> Auto-fill
+          </span>
+        </div>
+
+        {/* timeline */}
+        <ol className="mt-6">
+          {plan.map((p, i) => (
+            <li key={p.slug}>
+              <div className="flex gap-3.5">
+                <div className="flex flex-col items-center">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[13px] font-bold text-white" style={{ background: "var(--app-brand)", boxShadow: ELEV_SM }}>{i + 1}</span>
+                  {i < plan.length - 1 && <span aria-hidden className="my-1 w-px flex-1" style={{ background: "var(--app-border)" }} />}
+                </div>
+                <div className="flex-1 overflow-hidden rounded-[18px]" style={{ background: "var(--app-bg-elevated-solid)", boxShadow: ELEV_SM, border: "1px solid var(--app-border)" }}>
+                  <div className="flex gap-3.5 p-2.5">
+                    <span className="relative block h-[64px] w-[64px] shrink-0 overflow-hidden rounded-[13px]">
+                      <Image src={p.photo} alt={p.name} fill sizes="64px" className="object-cover" />
+                    </span>
+                    <span className="min-w-0 flex-1 py-0.5">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                        <span className="text-[12px] font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>{p.time}</span>
+                      </span>
+                      <span className="mt-1 block truncate text-[16px] font-semibold tracking-[-0.01em]" style={{ ...DISPLAY, color: "var(--app-ink)" }}>{p.name}</span>
+                      <span className="mt-0.5 block truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>{p.category}{p.open ? " · Open" : ""}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {i < plan.length - 1 && (
+                <div className="ml-[46px] flex items-center gap-1.5 py-2 text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+                  <MapPin className="h-3 w-3" strokeWidth={2} aria-hidden /> {p.walk} min walk · Directions
+                </div>
+              )}
+            </li>
+          ))}
+        </ol>
       </section>
     </div>
   );
