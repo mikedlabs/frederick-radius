@@ -35,11 +35,80 @@ function fieldScore(haystack: string, terms: string[]): number {
   return score;
 }
 
+/**
+ * Intent profiles — "kid friendly" / "rainy day" / "date night" are
+ * INTENTS, not keywords. When the query expresses one, boost the
+ * categories/tags that answer it and downrank the ones that don't (bars
+ * for kids, outdoor for rain). This surfaces the right places even when
+ * the literal words don't appear in their fields, and sinks mismatches
+ * that only matched a stray token.
+ */
+type Intent = {
+  triggers: string[]; // any of these in the query activates the profile
+  boostCats: Set<string>;
+  boostTags: Set<string>;
+  downCats: Set<string>;
+  downTags: Set<string>;
+  downName?: RegExp;
+};
+
+const INTENTS: Intent[] = [
+  {
+    triggers: ["kid", "kids", "family", "children", "child", "kid-friendly", "toddler"],
+    boostCats: new Set(["park", "playground", "trail", "museum", "library", "market"]),
+    boostTags: new Set(["family", "kids-0-5", "kids-6-12", "kid-friendly", "playground"]),
+    downCats: new Set(["bar", "brewery", "distillery", "winery"]),
+    downTags: new Set(["21+", "nightlife", "date-night"]),
+    downName: /\b(brew|distiller|winer|taproom|tap\s?house|tavern|\bbar\b|pub|lounge|cocktail|dispensar)/i,
+  },
+  {
+    triggers: ["rainy", "rain", "indoor", "indoors"],
+    boostCats: new Set(["museum", "library", "gallery", "theater", "coffee", "book-store", "market", "arts"]),
+    boostTags: new Set(["indoor"]),
+    downCats: new Set(["park", "trail", "playground"]),
+    downTags: new Set(["outdoor"]),
+  },
+  {
+    triggers: ["date", "romantic", "date-night"],
+    boostCats: new Set(["restaurant", "bar", "brewery", "gallery", "theater", "coffee"]),
+    boostTags: new Set(["date-night"]),
+    downCats: new Set(["civic", "playground", "park"]),
+    downTags: new Set(["kids-0-5", "kids-6-12"]),
+  },
+];
+
+function detectIntent(query: string): Intent | null {
+  const q = ` ${query.toLowerCase()} `;
+  for (const intent of INTENTS) {
+    if (intent.triggers.some((t) => q.includes(` ${t} `) || query.toLowerCase().includes(t))) return intent;
+  }
+  return null;
+}
+
+/** Signed intent adjustment for a place. Positive surfaces it; negative sinks it. */
+function intentScore(
+  cat: string,
+  tags: readonly string[],
+  name: string,
+  intent: Intent,
+): number {
+  let v = 0;
+  if (intent.boostCats.has(cat)) v += 6;
+  if (intent.downCats.has(cat)) v -= 8;
+  if (intent.downName?.test(name)) v -= 10;
+  for (const tag of tags) {
+    if (intent.boostTags.has(tag)) v += 3;
+    if (intent.downTags.has(tag)) v -= 4;
+  }
+  return v;
+}
+
 export function search(query: string, limit = 30): SearchHit[] {
   const terms = normalize(query);
   if (terms.length === 0) return [];
 
   const hits: SearchHit[] = [];
+  const intent = detectIntent(query);
 
   for (const p of clientPlaces()) {
     const s =
@@ -49,7 +118,10 @@ export function search(query: string, limit = 30): SearchHit[] {
       fieldScore(p.category, terms) * 2 +
       fieldScore(p.city, terms) * 1 +
       (p.tags ?? []).reduce((acc, t) => acc + fieldScore(t, terms), 0);
-    if (s > 0) hits.push({ type: "place", place: p, score: s + p.feature_score });
+    // Intent can SURFACE a relevant place with no keyword match (boost),
+    // and SINK a mismatch that only caught a stray token (downrank).
+    const iv = intent ? intentScore(p.category, p.tags ?? [], p.name, intent) : 0;
+    if (s > 0 || iv > 0) hits.push({ type: "place", place: p, score: s + p.feature_score + iv });
   }
 
   for (const e of EVENTS) {
