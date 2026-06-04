@@ -4,6 +4,7 @@ import { PLACES } from "@/data/places";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
+import { easternDayKey } from "@/lib/tz";
 
 export const metadata: Metadata = {
   // Root layout's metadata.title.template adds " · Frederick Radius";
@@ -45,6 +46,8 @@ export default function AdminHome() {
           Admin
         </h1>
       </header>
+
+      <BuildStamp />
 
       <section className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <Stat label="Places" value={totals.places} />
@@ -162,6 +165,45 @@ function SourceRow({ label, wired, setupDoc, purpose }: { label: string; wired: 
         {wired ? "Wired" : `See ${setupDoc}`}
       </span>
     </li>
+  );
+}
+
+/**
+ * BuildStamp — which build is actually live, and what the server thinks
+ * "today" is. The audit's scariest finding was routes disagreeing about
+ * the date (a stale-cached "/" showing May 31 while /today showed June 4).
+ * This page is force-dynamic, so loading /admin on production renders
+ * these fresh on every request: if the commit SHA here lags the latest
+ * deploy, prod is serving a stale build; if the Eastern date here is
+ * wrong, the server clock/timezone is the culprit. A timestamp you can
+ * read beats guessing about caches.
+ */
+function BuildStamp() {
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA ?? null;
+  const ref = process.env.VERCEL_GIT_COMMIT_REF ?? null;
+  const renderedAt = new Date();
+  const easternDay = easternDayKey(renderedAt);
+  return (
+    <div
+      className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[var(--app-radius-md)] border px-3 py-2 text-[11px]"
+      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-3)" }}
+    >
+      <span>
+        <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>Build</span>{" "}
+        <code>{sha ? sha.slice(0, 12) : "dev (local / no Vercel SHA)"}</code>
+        {ref ? <span> · {ref}</span> : null}
+      </span>
+      <span aria-hidden>·</span>
+      <span>
+        <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>Rendered</span>{" "}
+        {renderedAt.toISOString()}
+      </span>
+      <span aria-hidden>·</span>
+      <span>
+        <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>Eastern day</span>{" "}
+        {easternDay}
+      </span>
+    </div>
   );
 }
 

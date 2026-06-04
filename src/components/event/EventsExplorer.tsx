@@ -302,7 +302,7 @@ export default function EventsExplorer({
   // for. They drive the existing state; the deeper facets stay in the
   // Filters drawer so the main area leads with these, not controls.
   const QUICK: { key: string; label: string; on: boolean; toggle: () => void }[] = [
-    { key: "tonight", label: "Tonight", on: time === "today", toggle: () => setTime(time === "today" ? "all" : "today") },
+    { key: "today", label: "Today", on: time === "today", toggle: () => setTime(time === "today" ? "all" : "today") },
     { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
     { key: "music", label: "Live music", on: cat === "music", toggle: () => setCat(cat === "music" ? null : "music") },
     { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
