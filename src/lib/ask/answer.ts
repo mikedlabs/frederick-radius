@@ -1,6 +1,7 @@
 import "server-only";
 import { search } from "@/lib/search";
 import { matchCivicAction } from "@/data/civic-actions";
+import { matchDepartment } from "@/data/department-contacts";
 
 /**
  * "Ask Frederick" — the grounded concierge brain.
@@ -132,6 +133,16 @@ export async function askFrederick(query: string): Promise<AskResult> {
   }
   const civicLine = civic
     ? `OFFICIAL CIVIC ACTION (cite this link if relevant): ${civic.label} → ${civic.url}\n`
+    : "";
+
+  // Department grounding: "number for animal control / parks & rec" →
+  // the real phone + address, never invented.
+  const dept = matchDepartment(q);
+  if (dept) {
+    sources.push({ slug: `dept-${dept.slug}`, name: dept.name, category: "civic", city: "", href: dept.url });
+  }
+  const deptLine = dept
+    ? `OFFICIAL DEPARTMENT CONTACT (cite if relevant): ${dept.name}${dept.phone ? ` — ${dept.phone}` : ""}${dept.address ? ` — ${dept.address}` : ""}\n`
     : "";
 
   for (const h of hits) {
