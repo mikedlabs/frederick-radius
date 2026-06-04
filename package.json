@@ -31,6 +31,7 @@
     "data:review": "tsx --tsconfig tsconfig.json scripts/data-review.ts",
     "prune:enrichment": "tsx --tsconfig tsconfig.json scripts/prune-enrichment.ts",
     "ingest:candidates": "tsx --tsconfig tsconfig.json scripts/ingest-candidates.ts",
+    "ingest:rec": "tsx --tsconfig tsconfig.json scripts/ingest-rec-locations.ts",
     "enrich:discovered": "tsx --tsconfig tsconfig.json scripts/enrich-discovered.ts",
     "merge:discovered": "tsx --tsconfig tsconfig.json scripts/merge-discovered.ts",
     "vet": "tsx --tsconfig tsconfig.json scripts/vet-places.ts",
