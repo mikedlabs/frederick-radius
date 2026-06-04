@@ -3,126 +3,158 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Frederick Radius — Reveal/Hide Patterns</title>
+<title>Frederick Radius — Reveal/Hide, polished</title>
 <style>
   :root{
     --paper:#E5D8BF; --paper-2:#ECE5D5;
-    --elevated:#F7F0E0; --sunken:#E1D5BF;
+    --elevated:#F7F0E0; --elevated-solid:#F7F0E0; --sunken:#E1D5BF;
     --border:#D6CDBB; --border-strong:rgba(26,24,21,.10);
     --ink:#1A1815; --ink-2:#4A4844; --ink-3:#5C5A50;
     --brand:#A03A22; --green:#2E3B2C; --gold:#C99632; --cool:#2F5470; --positive:#1E6B3A;
     --r-sm:8px; --r-md:14px; --r-lg:22px;
     --serif:ui-serif,Georgia,Cambria,"Times New Roman",Times,serif;
     --sans:ui-sans-serif,system-ui,-apple-system,sans-serif;
+    --spring:cubic-bezier(.34,1.4,.5,1);
     --edge:0 0 0 .5px var(--border-strong);
-    --elev:0 1px 2px rgba(26,24,21,.05),0 6px 16px -8px rgba(26,24,21,.18);
+    --hi:inset 0 1px 0 rgba(255,255,255,.5);
+    --elev-1:0 1px 2px rgba(26,24,21,.05);
+    --elev-2:0 1px 2px rgba(26,24,21,.05),0 8px 20px -10px rgba(26,24,21,.22);
+    /* daypart accent — recomputed at load from the current hour */
+    --accent:var(--brand);
   }
   *{box-sizing:border-box}
+  html,body{overflow-x:hidden}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
-       -webkit-font-smoothing:antialiased;line-height:1.45;padding:0 0 80px}
-  .wrap{max-width:430px;margin:0 auto;padding:18px 16px}
+       -webkit-font-smoothing:antialiased;line-height:1.45}
+  .stage{transition:transform .34s var(--spring),filter .34s ease;transform-origin:50% 0;will-change:transform}
+  .stage.pushed{transform:scale(.965) translateY(8px);filter:saturate(.94)}
+  .wrap{max-width:430px;margin:0 auto;padding:18px 16px 90px}
   .doc-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
   h1.t{font-family:var(--serif);font-size:27px;font-weight:600;letter-spacing:-.01em;margin:.3em 0 .2em}
   .lede{color:var(--ink-3);font-size:14px;margin:0 0 8px}
-  .pattern-label{font-family:var(--serif);font-size:19px;font-weight:600;margin:34px 0 4px}
+  .pattern-label{font-family:var(--serif);font-size:19px;font-weight:600;margin:34px 0 4px;display:flex;align-items:center;gap:8px}
+  .pattern-label .no{font-size:11px;font-weight:700;color:var(--accent);letter-spacing:.06em}
   .pattern-note{font-size:12.5px;color:var(--ink-3);margin:0 0 12px;max-width:46ch}
-  .card{background:var(--elevated);border:1px solid var(--border);border-radius:var(--r-lg);
-        box-shadow:var(--edge),var(--elev);overflow:hidden}
   .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
 
-  /* ── collapse rows ── */
+  /* ── collapsible card: sunken when closed, lifts open ── */
+  .card{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-lg);
+        box-shadow:var(--edge),var(--elev-1);overflow:hidden;
+        transition:background .3s var(--spring),box-shadow .3s var(--spring)}
+  .card.open{background:var(--elevated-solid);box-shadow:var(--edge),var(--hi),var(--elev-2)}
   .row{display:flex;width:100%;align-items:center;gap:10px;background:none;border:0;
-       padding:14px 16px;text-align:left;cursor:pointer;font-family:inherit;color:inherit}
-  .row:active{opacity:.72}
-  .row .chev{margin-left:auto;transition:transform .22s cubic-bezier(.34,1.4,.5,1);color:var(--ink-3);flex:0 0 auto}
-  .row[aria-expanded="true"] .chev{transform:rotate(180deg)}
+       padding:14px 16px;text-align:left;cursor:pointer;font-family:inherit;color:inherit;position:relative}
+  .row:active{opacity:.78}
+  .row .chev{margin-left:auto;transition:transform .3s var(--spring);color:var(--ink-3);flex:0 0 auto}
+  .row[aria-expanded="true"] .chev{transform:rotate(180deg);color:var(--accent)}
   .row .lbl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);flex:0 0 auto}
+  .row[aria-expanded="true"] .lbl{color:var(--accent)}
   .row .fact{font-size:13px;color:var(--ink-2);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .row .fact b{color:var(--ink);font-weight:600}
-  .panel{display:none;padding:0 16px 16px;border-top:1px solid var(--border)}
+  /* field-guide hairline that draws across as the section opens */
+  .fg-rule{position:absolute;left:16px;right:16px;bottom:0;height:1px;background:var(--accent);
+           transform:scaleX(0);transform-origin:left;opacity:.55;transition:transform .42s var(--spring)}
+  .row[aria-expanded="true"] .fg-rule{transform:scaleX(1)}
+  .panel{display:none;padding:0 16px 16px}
   .panel.open{display:block}
-  .hairline{height:1px;background:var(--border)}
+  /* choreographed reveal: children rise + fade, staggered */
+  .panel.open > *{animation:revealUp .46s var(--spring) backwards}
+  .panel.open > *:nth-child(1){animation-delay:.02s}
+  .panel.open > *:nth-child(2){animation-delay:.07s}
+  .panel.open > *:nth-child(3){animation-delay:.12s}
+  .panel.open > *:nth-child(4){animation-delay:.17s}
+  @keyframes revealUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
   .hourly{display:flex;gap:6px;overflow-x:auto;padding-top:14px;scrollbar-width:none}
   .hourly::-webkit-scrollbar{display:none}
   .hr{flex:0 0 auto;width:48px;text-align:center;font-size:11px;color:var(--ink-3)}
   .hr .tmp{display:block;font-weight:700;color:var(--ink);font-size:14px;font-variant-numeric:tabular-nums;margin:4px 0}
-  .bar{height:28px;width:5px;background:var(--cool);border-radius:3px;margin:2px auto 0;opacity:.7}
+  .bar{width:5px;background:var(--cool);border-radius:3px;margin:2px auto 0;opacity:.7}
 
-  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;
-         padding:2px 8px;border-radius:999px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:999px}
   .badge.dot::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
   .src{color:var(--ink-3);border:1px solid var(--border)}
   .fresh{color:var(--positive)}
-  .stale{color:var(--gold)}
 
-  /* good vs bad compare */
-  .compare{display:grid;grid-template-columns:1fr;gap:10px}
+  .compare{display:grid;grid-template-columns:1fr;gap:12px}
   .tag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:6px;display:inline-block;margin-bottom:6px}
   .tag.bad{background:color-mix(in srgb,var(--brand) 14%,transparent);color:var(--brand)}
   .tag.good{background:color-mix(in srgb,var(--positive) 16%,transparent);color:var(--positive)}
 
-  /* ── funnel ── */
+  /* funnel */
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .tile{position:relative;min-height:92px;border-radius:var(--r-lg);border:0;cursor:pointer;
-        text-align:left;padding:14px;color:#fff;font-family:inherit;overflow:hidden;
-        box-shadow:var(--edge),var(--elev)}
-  .tile .ico{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
-             background:rgba(255,255,255,.22);font-size:18px;margin-bottom:auto}
+  .tile{position:relative;min-height:96px;border-radius:var(--r-lg);border:0;cursor:pointer;text-align:left;
+        padding:14px;color:#fff;font-family:inherit;overflow:hidden;box-shadow:var(--edge),var(--elev-2);
+        transition:transform .18s var(--spring)}
+  .tile:active{transform:scale(.96)}
+  .tile .ico{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:rgba(255,255,255,.22);font-size:18px}
   .tile .nm{position:absolute;left:14px;bottom:24px;font-weight:700;font-size:15.5px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
   .tile .ct{position:absolute;left:14px;bottom:8px;font-size:11px;font-weight:600;opacity:.92;text-shadow:0 1px 2px rgba(0,0,0,.5)}
   .tile::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05),rgba(0,0,0,.5))}
   .tile>*{position:relative;z-index:1}
-  .back{background:none;border:0;color:var(--ink-2);font-weight:700;font-size:13px;cursor:pointer;
-        font-family:inherit;display:inline-flex;align-items:center;gap:4px;padding:6px 0;margin-bottom:8px}
-  .res{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--r-md);background:var(--elevated);
-       border:1px solid var(--border);margin-bottom:8px;box-shadow:var(--edge)}
+  .back{background:none;border:0;color:var(--ink-2);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px;padding:6px 0;margin-bottom:8px}
+  .res{display:flex;align-items:center;gap:12px;padding:12px;border-radius:var(--r-md);background:var(--elevated-solid);border:1px solid var(--border);margin-bottom:8px;box-shadow:var(--edge)}
   .res .th{width:46px;height:46px;border-radius:10px;flex:0 0 auto;background:var(--sunken);display:grid;place-items:center;font-size:20px}
   .res .nm{font-weight:600;font-size:14px}
   .res .mt{font-size:12px;color:var(--ink-3)}
-  .lead{border:1.5px solid color-mix(in srgb,var(--brand) 35%,var(--border));background:color-mix(in srgb,var(--brand) 5%,var(--elevated))}
+  .lead{border:1.5px solid color-mix(in srgb,var(--brand) 35%,var(--border));background:color-mix(in srgb,var(--brand) 5%,var(--elevated-solid))}
   .hide{display:none}
+  /* funnel step transition */
+  .step-enter{animation:stepIn .4s var(--spring)}
+  @keyframes stepIn{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+  .funnel-results .res{animation:revealUp .44s var(--spring) backwards}
+  .funnel-results .res:nth-child(2){animation-delay:.04s}
+  .funnel-results .res:nth-child(3){animation-delay:.09s}
+  .funnel-results .res:nth-child(4){animation-delay:.14s}
 
-  /* ── dismiss / restore ── */
+  /* dismiss / restore */
   .sec-head{display:flex;align-items:baseline;gap:10px;padding:14px 16px 0}
   .sec-head h3{font-family:var(--serif);font-size:18px;font-weight:600;margin:0}
-  .x{margin-left:auto;background:none;border:0;color:var(--ink-3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;gap:4px;align-items:center}
+  .x{margin-left:auto;background:none;border:0;color:var(--ink-3);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+  .dcard{transition:opacity .28s ease,transform .32s var(--spring),max-height .38s var(--spring),margin .3s ease;max-height:240px;overflow:hidden}
+  .dcard.gone{opacity:0;transform:translateY(-6px) scale(.98);max-height:0;margin-bottom:0!important;border-width:0}
   .restore{border:1px dashed var(--border);border-radius:var(--r-md);padding:12px 14px;margin-top:12px}
   .restore .hd{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);display:flex;justify-content:space-between}
-  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;
-        padding:5px 11px;font-size:12px;font-weight:600;color:var(--ink-2);background:none;cursor:pointer;font-family:inherit;margin:8px 6px 0 0}
-  .link{color:var(--brand);font-weight:600;font-size:12px;background:none;border:0;cursor:pointer;font-family:inherit}
+  .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;color:var(--ink-2);background:none;cursor:pointer;font-family:inherit;margin:8px 6px 0 0}
+  .chip:active{transform:scale(.95)}
+  .link{color:var(--accent);font-weight:600;font-size:12px;background:none;border:0;cursor:pointer;font-family:inherit}
 
-  /* ── peek sheet ── */
-  .scrim{position:fixed;inset:0;background:rgba(0,0,0,0);transition:background .2s;pointer-events:none;z-index:40}
-  .scrim.on{background:rgba(0,0,0,.42);pointer-events:auto}
-  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--elevated);
-         border-radius:24px 24px 0 0;box-shadow:0 -8px 40px rgba(26,24,21,.28);
-         transform:translateY(100%);transition:transform .34s cubic-bezier(.32,1.2,.4,1);
-         max-width:430px;margin:0 auto}
-  .sheet.peek{transform:translateY(calc(100% - 230px))}
-  .sheet.full{transform:translateY(calc(100% - 90vh))}
-  .handle{width:40px;height:4px;border-radius:3px;background:var(--border);margin:10px auto 4px}
-  .sheet-body{padding:4px 20px 28px;max-height:90vh;overflow-y:auto}
+  /* peek sheet */
+  .scrim{position:fixed;inset:0;background:#000;opacity:0;transition:opacity .3s ease;pointer-events:none;z-index:40}
+  .scrim.on{pointer-events:auto}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--elevated-solid);
+         border-radius:24px 24px 0 0;box-shadow:0 -10px 44px rgba(26,24,21,.30);
+         transform:translateY(100%);max-width:430px;margin:0 auto;touch-action:none}
+  .sheet.snap{transition:transform .4s var(--spring)}
+  .grip{padding:10px 0 2px;cursor:grab;touch-action:none}
+  .grip:active{cursor:grabbing}
+  .handle{width:40px;height:5px;border-radius:3px;background:var(--border);margin:0 auto}
+  .sheet-body{padding:6px 20px 28px;max-height:86vh;overflow-y:auto;overscroll-behavior:contain}
   .sheet h2{font-family:var(--serif);font-size:22px;font-weight:600;margin:6px 0 2px}
   .sheet .acts{display:flex;gap:8px;margin:14px 0}
-  .act{flex:1;text-align:center;padding:10px;border-radius:999px;font-size:12.5px;font-weight:700;color:#fff;background:var(--brand)}
+  .act{flex:1;text-align:center;padding:11px;border-radius:999px;font-size:12.5px;font-weight:700;color:#fff;background:var(--brand);box-shadow:var(--hi)}
   .act.alt{background:var(--cool)}
-  .act.gho{background:none;color:var(--ink-2);border:1px solid var(--border)}
-  .more-hint{text-align:center;font-size:11px;color:var(--ink-3);margin-top:6px}
+  .act.gho{background:none;color:var(--ink-2);border:1px solid var(--border);box-shadow:none}
+  .more-hint{text-align:center;font-size:11px;color:var(--ink-3);margin-top:4px;transition:opacity .2s}
   .ph{height:150px;border-radius:var(--r-md);background:linear-gradient(135deg,var(--sunken),var(--paper-2));margin-top:14px;display:grid;place-items:center;color:var(--ink-3);font-size:13px}
+  .extra{transition:opacity .3s ease}
   hr.ruled{border:0;border-top:1px solid var(--border);margin:18px 0}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important;transition:none!important}
+  }
 </style>
 </head>
 <body>
+<div class="stage" id="stage">
 <div class="wrap">
-  <p class="doc-eyebrow">Frederick Radius · Interactive reference</p>
-  <h1 class="t">Reveal &amp; hide patterns</h1>
-  <p class="lede">Five mechanisms, each matched to a kind of county data. Tap everything — the point is how it feels to open and close. Built on the app's real tokens (brick&nbsp;#A03A22, paper cream, serif heads).</p>
+  <p class="doc-eyebrow">Frederick Radius · Polished reference</p>
+  <h1 class="t">Reveal &amp; hide — with feel</h1>
+  <p class="lede">Same five mechanisms, now with choreographed motion, field-guide plate hairlines, sunken→lifted depth, and a real velocity-aware peek sheet. The top accent borrows the current daypart. Tap, drag, flick — reduced-motion respected.</p>
 
-  <!-- ─────────── PATTERN 1: summary-row collapse, the headline-fact rule ─────────── -->
-  <p class="pattern-label">1 · Summary-row collapse</p>
-  <p class="pattern-note">The most important rule: the collapsed row states its <b>headline fact</b>, not just a title. The closed state is already an answer; expanding is for depth.</p>
+  <!-- PATTERN 1 -->
+  <p class="pattern-label"><span class="no">01</span>Summary-row collapse</p>
+  <p class="pattern-note">Collapsed = sunken. Open = the card lifts to paper, a plate hairline draws across, and the detail rises in beneath the headline fact (which stays put — it was already the answer).</p>
 
   <div class="compare">
     <div>
@@ -131,6 +163,7 @@
         <button class="row" aria-expanded="false" onclick="tog(this)">
           <span class="lbl">Recycling</span>
           <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="m6 9 6 6 6-6"/></svg>
+          <span class="fg-rule"></span>
         </button>
         <div class="panel"><p style="margin:14px 0 0;font-size:13px;color:var(--ink-2)">Next curbside pickup is <b>Thursday, June 5</b>. Yard waste resumes the same day.</p></div>
       </div>
@@ -142,23 +175,23 @@
           <span class="lbl">Recycling</span>
           <span class="fact"><b>Next pickup Thu</b> · yard waste too</span>
           <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="m6 9 6 6 6-6"/></svg>
+          <span class="fg-rule"></span>
         </button>
         <div class="panel">
           <p style="margin:14px 0 8px;font-size:13px;color:var(--ink-2)">Curbside recycling &amp; yard waste collect <b>Thursday, June 5</b> for the 21701 route. Bins out by 6&nbsp;AM.</p>
-          <span class="badge src dot">City of Frederick</span>
-          <span class="badge fresh dot">Updated today</span>
+          <div><span class="badge src dot">City of Frederick</span> <span class="badge fresh dot">Updated today</span></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- weather, the canonical example -->
-  <p class="pattern-note" style="margin-top:14px">Your live example — weather hourly. The closed pill answers the glance; the grid is one tap for those who want it.</p>
+  <p class="pattern-note" style="margin-top:14px">Your live weather example — the closed pill answers the glance; the grid staggers in on tap.</p>
   <div class="card">
     <button class="row" aria-expanded="false" onclick="tog(this)">
       <span class="lbl">Hourly</span>
       <span class="fact"><b>Peaks 80° at 7 PM</b> · clear through evening</span>
       <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="m6 9 6 6 6-6"/></svg>
+      <span class="fg-rule"></span>
     </button>
     <div class="panel">
       <div class="hourly">
@@ -174,18 +207,18 @@
     </div>
   </div>
 
-  <!-- ─────────── PATTERN 2: two-stage peek sheet ─────────── -->
-  <p class="pattern-label">2 · Two-stage peek sheet</p>
-  <p class="pattern-note">A place card opens to a short <b>peek</b> — name, open status, the 3 actions — so you can triage fast. Drag the handle (or tap “Full details”) to commit to the whole record. This is the upgrade over your current single-height sheet.</p>
+  <!-- PATTERN 2 -->
+  <p class="pattern-label"><span class="no">02</span>Two-stage peek sheet</p>
+  <p class="pattern-note">Tap to peek (name · status · 3 actions). Then <b>drag the handle</b> — slow drag tracks your finger, a quick flick snaps up to full or down to dismiss. The page behind scales back as it rises.</p>
   <button class="res" style="width:100%;cursor:pointer" onclick="openSheet()">
     <span class="th">🍺</span>
     <span style="flex:1"><span class="nm" style="display:block">Olde Mother Brewing</span><span class="mt">Brewery · downtown · <span style="color:var(--positive);font-weight:600">Open now</span></span></span>
     <span style="color:var(--ink-3)">›</span>
   </button>
 
-  <!-- ─────────── PATTERN 3: drill-in funnel ─────────── -->
-  <p class="pattern-label">3 · Drill-in funnel</p>
-  <p class="pattern-note">Broad need → narrowed answer. Each tap reveals the next set and hides the last. The reverse (Back) is always one tap. ≤2 taps to a ranked answer.</p>
+  <!-- PATTERN 3 -->
+  <p class="pattern-label"><span class="no">03</span>Drill-in funnel</p>
+  <p class="pattern-note">Need → answer. The next set slides in; results stagger. Back is always one tap.</p>
   <div id="funnel">
     <div id="f-intent">
       <div class="grid2">
@@ -195,7 +228,7 @@
         <button class="tile" style="background:linear-gradient(135deg,#2F5470,#1f3a50)" onclick="drill('arts')"><span class="ico">🎭</span><span class="nm">Arts</span><span class="ct">● 27 places</span></button>
       </div>
     </div>
-    <div id="f-results" class="hide">
+    <div id="f-results" class="hide funnel-results">
       <button class="back" onclick="undrill()">‹ Back</button>
       <p class="eyebrow" id="r-eyebrow" style="margin:0 0 2px"></p>
       <h3 style="font-family:var(--serif);font-size:21px;margin:0 0 12px" id="r-title"></h3>
@@ -205,15 +238,15 @@
     </div>
   </div>
 
-  <!-- ─────────── PATTERN 4: dismiss + restore ─────────── -->
-  <p class="pattern-label">4 · Dismiss &amp; restore</p>
-  <p class="pattern-note">The only <b>user-curated</b> rung. Let people hide standing modules they don't want; a quiet footer offers them back. Never used for time-sensitive data.</p>
+  <!-- PATTERN 4 -->
+  <p class="pattern-label"><span class="no">04</span>Dismiss &amp; restore</p>
+  <p class="pattern-note">User-curated. Hiding eases the card out (height + fade); a quiet footer offers it back.</p>
   <div id="dismiss-area">
-    <div class="card" data-sec="reddit" style="margin-bottom:10px">
+    <div class="card dcard" data-sec="reddit" style="margin-bottom:10px;background:var(--elevated-solid)">
       <div class="sec-head"><h3>r/frederickmd pulse</h3><button class="x" onclick="hideSec('reddit','r/frederickmd pulse')">⊘ Hide</button></div>
       <p style="padding:8px 16px 16px;margin:0;font-size:13px;color:var(--ink-2)">“Best spot for crab soup downtown?” — 34 comments · 2h ago</p>
     </div>
-    <div class="card" data-sec="news">
+    <div class="card dcard" data-sec="news" style="background:var(--elevated-solid)">
       <div class="sec-head"><h3>What's new in Frederick</h3><button class="x" onclick="hideSec('news','What\'s new in Frederick')">⊘ Hide</button></div>
       <p style="padding:8px 16px 16px;margin:0;font-size:13px;color:var(--ink-2)">Carroll Creek summer concert series lineup announced.</p>
     </div>
@@ -223,26 +256,27 @@
     </div>
   </div>
 
-  <!-- ─────────── PATTERN 5: lazy / on-demand ─────────── -->
-  <p class="pattern-label">5 · Lazy / on-demand reveal</p>
-  <p class="pattern-note">Heavy or costly data (parcel records, venue events, photo galleries) loads only when revealed — nothing is fetched until the section is opened or scrolls into view.</p>
+  <!-- PATTERN 5 -->
+  <p class="pattern-label"><span class="no">05</span>Lazy / on-demand reveal</p>
+  <p class="pattern-note">Costly data loads only when revealed — the shimmer is honest, then the record rises in.</p>
   <div class="card">
     <button class="row" aria-expanded="false" onclick="lazyLoad(this)">
       <span class="lbl">City record</span>
       <span class="fact">Zoning, schools, district — tap to load</span>
       <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="m6 9 6 6 6-6"/></svg>
+      <span class="fg-rule"></span>
     </button>
     <div class="panel"><div id="lazy-slot" style="padding-top:14px;font-size:13px;color:var(--ink-3)">Fetching City of Frederick parcel…</div></div>
   </div>
 
   <hr class="ruled">
-  <p style="font-size:11.5px;color:var(--ink-3);text-align:center">Reference artifact · maps to CollapsibleSection · PlaceSheet · FunnelFlow · DismissibleSection + HiddenSectionsBar · DeferUntilVisible</p>
+  <p style="font-size:11.5px;color:var(--ink-3);text-align:center">Maps to CollapsibleSection · PlaceSheet · FunnelFlow · DismissibleSection + HiddenSectionsBar · DeferUntilVisible</p>
+</div>
 </div>
 
-<!-- peek sheet -->
-<div class="scrim" id="scrim" onclick="closeSheet()"></div>
+<div class="scrim" id="scrim" onclick="snapTo('closed')"></div>
 <div class="sheet" id="sheet">
-  <div class="handle" onclick="toggleSheet()"></div>
+  <div class="grip" id="grip"><div class="handle"></div></div>
   <div class="sheet-body">
     <p class="eyebrow" style="color:var(--brand)">Brewery</p>
     <h2>Olde Mother Brewing</h2>
@@ -252,11 +286,11 @@
       <div class="act alt">Call</div>
       <div class="act gho">Save</div>
     </div>
-    <p class="more-hint" id="more-hint">↑ Drag up or tap the handle for full details</p>
-    <div id="sheet-extra" class="hide">
+    <p class="more-hint" id="more-hint">↑ Drag the handle for full details</p>
+    <div id="sheet-extra" class="extra" style="opacity:0">
       <div class="ph">📷 Photo gallery</div>
       <p style="font-size:14px;color:var(--ink-2);margin-top:14px">Taproom pouring house-brewed beer with rotating food trucks. Dog-friendly patio.</p>
-      <span class="badge src dot">Google</span> <span class="badge fresh dot">Verified · updated today</span>
+      <div><span class="badge src dot">Google</span> <span class="badge fresh dot">Verified · updated today</span></div>
       <hr class="ruled">
       <p class="eyebrow" style="color:var(--ink-3)">Upcoming here</p>
       <div class="res" style="margin-top:8px"><span class="th" style="font-size:13px;flex-direction:column;color:var(--brand)"><b style="font-size:9px">JUN</b><b>07</b></span><span style="flex:1"><span class="nm" style="display:block">Trivia Night</span><span class="mt">Sat · 7:00 PM</span></span></div>
@@ -265,70 +299,152 @@
 </div>
 
 <script>
+  // ── daypart accent: warm at golden hour, slate midday, brand otherwise
+  (function(){
+    const h=new Date().getHours();
+    let a='var(--brand)';
+    if(h>=6&&h<10) a='#C9772E';        // morning amber
+    else if(h>=10&&h<16) a='#2F5470';  // midday slate
+    else if(h>=16&&h<20) a='#A03A22';  // golden/brick
+    else a='#3A4A66';                  // night indigo
+    document.documentElement.style.setProperty('--accent',a);
+  })();
+
   function tog(btn){
-    const open = btn.getAttribute('aria-expanded')==='true';
-    btn.setAttribute('aria-expanded', String(!open));
-    const panel = btn.parentElement.querySelector('.panel');
-    panel.classList.toggle('open', !open);
+    const open=btn.getAttribute('aria-expanded')==='true';
+    btn.setAttribute('aria-expanded',String(!open));
+    const card=btn.closest('.card');
+    const panel=btn.parentElement.querySelector('.panel');
+    card.classList.toggle('open',!open);
+    panel.classList.toggle('open',!open);
   }
   function lazyLoad(btn){
-    const open = btn.getAttribute('aria-expanded')==='true';
+    const open=btn.getAttribute('aria-expanded')==='true';
     tog(btn);
     if(!open){
-      const slot = document.getElementById('lazy-slot');
-      slot.textContent = 'Fetching City of Frederick parcel…';
-      setTimeout(()=>{ slot.innerHTML =
+      const slot=document.getElementById('lazy-slot');
+      slot.textContent='Fetching City of Frederick parcel…';
+      setTimeout(()=>{ slot.innerHTML=
         '<div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13px;color:var(--ink-2)">'+
         '<span style="color:var(--ink-3)">Zoning</span><span>DB — Downtown Business</span>'+
         '<span style="color:var(--ink-3)">Schools</span><span>Hillcrest / West Frederick / Gov. T. Johnson</span>'+
         '<span style="color:var(--ink-3)">Election district</span><span>2</span></div>'+
         '<div style="margin-top:10px"><span class="badge" style="color:var(--positive);border:1px solid var(--border)">● City record</span></div>';
-      }, 650);
+      },650);
     }
   }
+
   // funnel
   function drill(k){
     const map={eat:['EAT · BEST NEARBY','Eat'],coffee:['COFFEE · OPEN NOW','Coffee'],outdoor:['OUTDOORS · NEAR YOU','Outdoors'],arts:['ARTS · TOP PICKS','Arts']};
     document.getElementById('r-eyebrow').textContent=map[k][0];
     document.getElementById('r-title').textContent=map[k][1];
     document.getElementById('f-intent').classList.add('hide');
-    document.getElementById('f-results').classList.remove('hide');
+    const r=document.getElementById('f-results');
+    r.classList.remove('hide');
+    r.classList.remove('step-enter');void r.offsetWidth;r.classList.add('step-enter');
   }
   function undrill(){
     document.getElementById('f-results').classList.add('hide');
-    document.getElementById('f-intent').classList.remove('hide');
+    const i=document.getElementById('f-intent');
+    i.classList.remove('hide');
+    i.classList.remove('step-enter');void i.offsetWidth;i.classList.add('step-enter');
   }
+
   // dismiss/restore
   const hidden={};
   function hideSec(id,label){
-    const el=document.querySelector('[data-sec="'+id+'"]'); if(el) el.style.display='none';
-    hidden[id]=label; renderRestore();
+    const el=document.querySelector('[data-sec="'+id+'"]');
+    if(el){el.classList.add('gone');setTimeout(()=>{el.style.display='none';},360);}
+    hidden[id]=label;renderRestore();
   }
   function showOne(id){
-    const el=document.querySelector('[data-sec="'+id+'"]'); if(el) el.style.display='';
-    delete hidden[id]; renderRestore();
+    const el=document.querySelector('[data-sec="'+id+'"]');
+    if(el){el.style.display='';void el.offsetWidth;el.classList.remove('gone');}
+    delete hidden[id];renderRestore();
   }
-  function showAll(){ Object.keys(hidden).forEach(showOne); }
+  function showAll(){Object.keys(hidden).forEach(showOne);}
   function renderRestore(){
     const keys=Object.keys(hidden);
-    const box=document.getElementById('restore');
-    box.classList.toggle('hide', keys.length===0);
+    document.getElementById('restore').classList.toggle('hide',keys.length===0);
     document.getElementById('hidden-count').textContent='Hidden ('+keys.length+')';
     document.getElementById('restore-chips').innerHTML=keys.map(k=>
       '<button class="chip" onclick="showOne(\''+k+'\')">👁 '+hidden[k]+'</button>').join('');
   }
-  // peek sheet
-  let sheetState='closed';
-  function setSheet(s){
-    sheetState=s; const sh=document.getElementById('sheet'), sc=document.getElementById('scrim');
-    sh.classList.remove('peek','full');
-    if(s==='peek'){sh.classList.add('peek');sc.classList.add('on');}
-    else if(s==='full'){sh.classList.add('full');sc.classList.add('on');document.getElementById('sheet-extra').classList.remove('hide');document.getElementById('more-hint').style.display='none';}
-    else {sc.classList.remove('on');document.getElementById('sheet-extra').classList.add('hide');document.getElementById('more-hint').style.display='';}
+
+  // ── velocity-aware peek sheet with three detents ──
+  const sheet=document.getElementById('sheet'), scrim=document.getElementById('scrim'),
+        grip=document.getElementById('grip'), stage=document.getElementById('stage'),
+        extra=document.getElementById('sheet-extra'), hint=document.getElementById('more-hint');
+  let H=0, cur=0, state='closed';
+  function detents(){
+    H=sheet.offsetHeight;
+    const fullVisible=Math.min(H, window.innerHeight*0.88);
+    return { closed:H, peek:Math.max(H-250,0), full:H-fullVisible };
   }
-  function openSheet(){ setSheet('peek'); }
-  function closeSheet(){ setSheet('closed'); }
-  function toggleSheet(){ setSheet(sheetState==='peek'?'full':'peek'); }
+  function applied(y){
+    cur=y;
+    sheet.style.transform='translateY('+y+'px)';
+    const d=detents();
+    // progress 0 at peek → 1 at full, drives scrim + background push
+    const p=Math.min(1,Math.max(0,(d.peek-y)/(d.peek-d.full||1)));
+    const shown=y<d.closed-20;
+    scrim.style.opacity=(shown?0.18+0.28*p:0).toFixed(3);
+    scrim.classList.toggle('on',shown);
+    stage.classList.toggle('pushed',p>0.04);
+    extra.style.opacity=p.toFixed(2);
+    hint.style.opacity=(1-p).toFixed(2);
+  }
+  function snapTo(name){
+    const d=detents();
+    sheet.classList.add('snap');
+    state=name;
+    applied(d[name]);
+    if(name==='closed'){scrim.classList.remove('on');stage.classList.remove('pushed');}
+  }
+  function openSheet(){ sheet.classList.add('snap'); requestAnimationFrame(()=>snapTo('peek')); }
+
+  // pointer drag on the grip
+  let dragging=false, startPtr=0, startCur=0, lastY=0, lastT=0, vel=0;
+  function down(e){
+    dragging=true; sheet.classList.remove('snap');
+    startPtr=e.clientY; startCur=cur; lastY=e.clientY; lastT=performance.now(); vel=0;
+    grip.setPointerCapture&&grip.setPointerCapture(e.pointerId);
+  }
+  function move(e){
+    if(!dragging)return;
+    const d=detents();
+    let y=startCur+(e.clientY-startPtr);
+    y=Math.max(d.full-30,Math.min(d.closed,y)); // a little rubber past full
+    applied(y);
+    const now=performance.now(), dt=now-lastT;
+    if(dt>0){vel=(e.clientY-lastY)/dt; lastY=e.clientY; lastT=now;}
+  }
+  function up(){
+    if(!dragging)return; dragging=false;
+    const d=detents();
+    const FLICK=0.55; // px/ms
+    let target;
+    if(vel>FLICK){           // fast downward → one detent down
+      target = state==='full'?'peek':'closed';
+    }else if(vel<-FLICK){    // fast upward → one detent up
+      target = state==='closed'?'peek':'full';
+    }else{                   // settle to nearest
+      const order=[['full',d.full],['peek',d.peek],['closed',d.closed]];
+      target=order.reduce((a,b)=>Math.abs(b[1]-cur)<Math.abs(a[1]-cur)?b:a)[0];
+    }
+    snapTo(target);
+  }
+  grip.addEventListener('pointerdown',down);
+  window.addEventListener('pointermove',move);
+  window.addEventListener('pointerup',up);
+  // tap the handle (no drag) toggles peek↔full
+  let downAt=0;
+  grip.addEventListener('pointerdown',e=>downAt=e.clientY);
+  grip.addEventListener('pointerup',e=>{ if(Math.abs(e.clientY-downAt)<4) snapTo(state==='peek'?'full':'peek'); });
+  // init position off-screen
+  applied(window.innerHeight);
+  window.addEventListener('resize',()=>{ if(state!=='closed') snapTo(state); });
 </script>
 </body>
 </html>
