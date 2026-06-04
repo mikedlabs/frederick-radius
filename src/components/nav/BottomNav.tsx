@@ -59,9 +59,14 @@ export default function BottomNav() {
 
   return (
     <div
-      aria-hidden
-      // Hide the floating bottom pill at lg+ where the SideRail
-      // takes over as the primary nav.
+      // Hide the floating bottom pill at lg+ where the SideRail takes
+      // over as the primary nav. The hide is `display:none` (lg:hidden),
+      // which removes this nav from the a11y tree AND the tab order at
+      // lg+, so only one "Primary" nav is ever exposed. NOTE: do not put
+      // aria-hidden on this wrapper — it contains the focusable <nav>, so
+      // aria-hidden here would hide the mobile primary nav from screen
+      // readers while leaving its links keyboard-focusable (a WCAG
+      // focusable-inside-aria-hidden failure the audit flagged).
       className="pointer-events-none fixed inset-x-0 bottom-0 px-3 lg:hidden"
       // Tokenized z-index (--z-nav) — see globals.css :root --z-*
       // scale. Lift the pill above the iOS safe-area inset so the

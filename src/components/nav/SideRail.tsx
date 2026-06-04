@@ -63,9 +63,14 @@ export default function SideRail() {
 
   return (
     <div
-      aria-hidden
-      // Hidden below lg; BottomNav owns small viewports. Fixed to
-      // the left edge so it stays put as the content scrolls.
+      // Hidden below lg (`hidden … lg:flex`); BottomNav owns small
+      // viewports. The hide is `display:none`, which removes this nav
+      // from the a11y tree AND the tab order below lg, so only one
+      // "Primary" nav is ever exposed. NOTE: do not put aria-hidden on
+      // this wrapper — it contains the focusable <nav>, so aria-hidden
+      // here would hide the desktop primary nav from screen readers
+      // while leaving its links keyboard-focusable (the WCAG
+      // focusable-inside-aria-hidden failure the audit flagged).
       className="pointer-events-none fixed bottom-0 left-0 top-0 z-40 hidden py-4 pl-3 lg:flex lg:items-center"
       style={{ zIndex: "var(--z-nav)" }}
     >
