@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Frederick Radius — Disclosure that thinks</title>
+<style>
+  :root{
+    --paper:#E5D8BF; --paper-2:#ECE5D5; --elevated:#F7F0E0; --sunken:#E1D5BF;
+    --border:#D6CDBB; --border-strong:rgba(26,24,21,.10);
+    --ink:#1A1815; --ink-2:#4A4844; --ink-3:#5C5A50;
+    --brand:#A03A22; --green:#2E3B2C; --gold:#C99632; --cool:#2F5470; --positive:#1E6B3A;
+    --r-sm:8px; --r-md:14px; --r-lg:22px;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",Times,serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,sans-serif;
+    --spring:cubic-bezier(.34,1.4,.5,1);
+    --edge:0 0 0 .5px var(--border-strong);
+    --hi:inset 0 1px 0 rgba(255,255,255,.5);
+    --elev-1:0 1px 2px rgba(26,24,21,.05);
+    --elev-2:0 1px 2px rgba(26,24,21,.05),0 8px 20px -10px rgba(26,24,21,.22);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.45}
+  .wrap{max-width:430px;margin:0 auto;padding:18px 16px 70px}
+  .doc-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  h1.t{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-.01em;margin:.3em 0 .2em}
+  .lede{color:var(--ink-3);font-size:13.5px;margin:0 0 16px}
+
+  /* context simulator */
+  .ctx{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px 14px;margin-bottom:6px;box-shadow:var(--edge),var(--hi)}
+  .ctx .lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
+  .ctx-row{display:flex;gap:6px;margin-bottom:9px;flex-wrap:wrap}
+  .ctx-row:last-child{margin-bottom:0}
+  .ctx-row .grp-lbl{font-size:11px;font-weight:600;color:var(--ink-3);align-self:center;width:54px;flex:0 0 auto}
+  .seg{display:inline-flex;background:var(--elevated);border:1px solid var(--border);border-radius:999px;padding:2px;gap:2px}
+  .seg button{border:0;background:none;font-family:inherit;font-size:12px;font-weight:600;color:var(--ink-2);padding:5px 11px;border-radius:999px;cursor:pointer;transition:all .2s var(--spring);white-space:nowrap}
+  .seg button.on{background:var(--ink);color:var(--paper);box-shadow:var(--hi)}
+  .now-read{font-size:12px;color:var(--ink-3);margin:4px 0 18px;text-align:center;font-style:italic}
+
+  /* sections stack */
+  .stack{display:flex;flex-direction:column;gap:10px}
+  .card{background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;
+        box-shadow:var(--edge),var(--elev-1);transition:background .35s var(--spring),box-shadow .35s var(--spring),opacity .35s,transform .4s var(--spring)}
+  .card.open{background:var(--elevated);box-shadow:var(--edge),var(--hi),var(--elev-2)}
+  .card.demoted{opacity:.72}
+  .reorder{animation:slot .5s var(--spring)}
+  @keyframes slot{from{opacity:0;transform:translateY(12px) scale(.99)}to{opacity:1;transform:none}}
+  .head{display:flex;align-items:flex-start;gap:10px;width:100%;background:none;border:0;text-align:left;
+        font-family:inherit;color:inherit;cursor:pointer;padding:13px 15px;position:relative}
+  .head .ttl-wrap{flex:1;min-width:0}
+  .eyebrow{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+  .ttl{font-family:var(--serif);font-size:17px;font-weight:600;margin:1px 0 0;line-height:1.15}
+  .chev{flex:0 0 auto;color:var(--ink-3);transition:transform .3s var(--spring);margin-top:2px}
+  .card.open .chev{transform:rotate(180deg);color:var(--accent,var(--brand))}
+  /* the differentiator: a reason chip that explains the auto-decision */
+  .reason{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font-size:11px;font-weight:600;
+          padding:3px 9px;border-radius:999px;background:color-mix(in srgb,var(--accent,var(--brand)) 12%,transparent);
+          color:var(--accent,var(--brand));animation:rise .4s var(--spring) backwards}
+  .reason::before{content:"✦";font-size:9px}
+  .body{display:none;padding:0 15px 15px}
+  .card.open .body{display:block}
+  .card.open .body>*{animation:rise .44s var(--spring) backwards}
+  .card.open .body>*:nth-child(2){animation-delay:.05s}
+  .card.open .body>*:nth-child(3){animation-delay:.1s}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .fact{font-size:13.5px;color:var(--ink-2)}
+  .fact b{color:var(--ink)}
+  .collapsed-note{font-size:11.5px;color:var(--ink-3);padding:0 15px 12px;font-style:italic}
+
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:6px 11px;font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--elevated)}
+  .ev{display:flex;gap:10px;align-items:center;padding:9px 0}
+  .ev .when{width:46px;height:46px;border-radius:10px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;background:color-mix(in srgb,var(--brand) 12%,var(--elevated));color:var(--brand)}
+  .ev .when b{font-size:17px;font-family:var(--serif);line-height:1}
+  .ev .when span{font-size:9px;font-weight:700;letter-spacing:.06em}
+
+  /* trust tiers */
+  .tier{display:flex;align-items:center;gap:9px;padding:10px 0;border-top:1px solid var(--border)}
+  .tier:first-child{border-top:0}
+  .tier .badge{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;flex:0 0 auto}
+  .b-ver{background:color-mix(in srgb,var(--positive) 16%,transparent);color:var(--positive)}
+  .b-prob{background:color-mix(in srgb,var(--gold) 20%,transparent);color:#8a6a1e}
+  .b-unc{background:var(--sunken);color:var(--ink-3)}
+  .tier .claim{font-size:13px;color:var(--ink)}
+  .tier .claim small{display:block;color:var(--ink-3);font-size:11px;font-weight:400}
+
+  .note{font-size:11.5px;color:var(--ink-3);text-align:center;margin-top:22px;line-height:1.6}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="doc-eyebrow">Frederick Radius · Intelligent reveal</p>
+  <h1 class="t">Disclosure that decides — and tells you why</h1>
+  <p class="lede">Every other local app makes you operate the accordions. This one opens the <em>right</em> section for the moment — and shows a reason. Flip the context below and watch the page re-sort, open, and explain itself. This is the reveal/hide layer that feels like a knowledgeable local.</p>
+
+  <div class="ctx">
+    <div class="lbl">Pretend it's…</div>
+    <div class="ctx-row"><span class="grp-lbl">Time</span>
+      <div class="seg" data-axis="time">
+        <button data-v="morning">Weekday AM</button>
+        <button data-v="midday" class="on">Midday</button>
+        <button data-v="fri-eve">Fri evening</button>
+      </div>
+    </div>
+    <div class="ctx-row"><span class="grp-lbl">Sky</span>
+      <div class="seg" data-axis="weather">
+        <button data-v="clear" class="on">Clear</button>
+        <button data-v="rain">Raining</button>
+      </div>
+    </div>
+    <div class="ctx-row"><span class="grp-lbl">Near</span>
+      <div class="seg" data-axis="near">
+        <button data-v="downtown" class="on">Downtown</button>
+        <button data-v="brunswick">Brunswick</button>
+      </div>
+    </div>
+  </div>
+  <p class="now-read" id="now-read"></p>
+
+  <div class="stack" id="stack"></div>
+
+  <p class="note">The reason chips are the love: people trust a reveal that explains its judgment. Maps to <b>CollapsibleSection</b> + a context resolver fed by your daypart clock, NWS, and geolocation — and your <b>TrustChip / FreshnessChip</b> for the confidence tiers.</p>
+</div>
+
+<script>
+  // context state
+  const ctx={time:"midday",weather:"clear",near:"downtown"};
+  const TOWN={downtown:"Downtown Frederick",brunswick:"Brunswick"};
+
+  // Each section returns its decision for the current context:
+  //   open (auto-expand), weight (sort; higher = nearer the top),
+  //   reason (the chip that explains WHY), accent, collapsedNote.
+  const SECTIONS=[
+    {
+      id:"recycling", eyebrow:"Civic", title:"Recycling & trash",
+      accent:"var(--positive)",
+      body:`<p class="fact"><b>Next pickup: Thursday, June 5.</b> Yard waste resumes the same day. Bins out by 6&nbsp;AM.</p>
+            <div class="pill-row"><span class="pill">🗑️ Trash · Thu</span><span class="pill">♻️ Recycling · Thu</span><span class="pill">🌿 Yard waste · Thu</span></div>`,
+      decide:c=>{
+        if(c.time==="morning") return {open:true, weight:90, reason:"It's morning — trash day is Thursday"};
+        return {open:false, weight:30, reason:null};
+      }
+    },
+    {
+      id:"tonight", eyebrow:"What's on", title:"Tonight in Frederick",
+      accent:"var(--brand)",
+      body:`<div class="ev"><div class="when"><span>JUN</span><b>06</b></div><div><div style="font-weight:600;font-size:13.5px">First Saturday: In the Streets</div><div style="font-size:12px;color:var(--ink-3)">Market St · 5–9 PM · free</div></div></div>
+            <div class="ev"><div class="when"><span>JUN</span><b>06</b></div><div><div style="font-weight:600;font-size:13.5px">Live music — Olde Mother</div><div style="font-size:12px;color:var(--ink-3)">Taproom · 8 PM</div></div></div>`,
+      decide:c=>{
+        if(c.time==="fri-eve") return {open:true, weight:95, reason:"It's Friday evening — here's tonight"};
+        if(c.time==="midday") return {open:false, weight:40, reason:null};
+        return {open:false, weight:20, reason:null};
+      }
+    },
+    {
+      id:"indoor", eyebrow:"Good right now", title:"Cozy & indoor",
+      accent:"var(--cool)",
+      body:`<p class="fact">Warm, dry, and open now.</p>
+            <div class="pill-row"><span class="pill">☕ Cafe Nola</span><span class="pill">📚 Curious Iguana</span><span class="pill">🏛️ Civil War Medicine</span></div>`,
+      decide:c=>{
+        if(c.weather==="rain") return {open:true, weight:85, reason:"It's raining — indoor picks first"};
+        return {open:false, weight:35, reason:null};
+      }
+    },
+    {
+      id:"patios", eyebrow:"Good right now", title:"Patios & outdoors",
+      accent:"var(--green)",
+      body:`<p class="fact">Open-air and open now.</p>
+            <div class="pill-row"><span class="pill">🍺 Olde Mother patio</span><span class="pill">🌳 Baker Park</span><span class="pill">💧 Carroll Creek</span></div>`,
+      decide:c=>{
+        if(c.weather==="rain") return {open:false, weight:10, reason:null, collapsedNote:"Tucked away — it's raining out."};
+        return {open:true, weight:70, reason:"Clear skies — patios are calling"};
+      }
+    },
+    {
+      id:"town", eyebrow:"Your town", title:"—",
+      accent:"var(--gold)",
+      body:"",
+      decide:c=>{
+        const t=TOWN[c.near];
+        const body = c.near==="brunswick"
+          ? `<p class="fact">The Potomac river town — railroad heritage, the C&O towpath, and a walkable Main Street.</p><div class="pill-row"><span class="pill">🚂 B&O Railroad Museum</span><span class="pill">🚶 C&O Towpath</span><span class="pill">☕ Beans in the Belfry</span></div>`
+          : `<p class="fact">The historic core — Market Street, the spires, Carroll Creek, First Saturday.</p><div class="pill-row"><span class="pill">🎨 Delaplaine</span><span class="pill">💧 Carroll Creek</span><span class="pill">🍽️ Market Street</span></div>`;
+        return {open:true, weight:60, reason:`You're near ${t}`, title:t, dynBody:body};
+      }
+    },
+    {
+      id:"trust", eyebrow:"Trust tiers", title:"How confidence drives the reveal",
+      accent:"var(--ink-2)", alwaysOpen:true,
+      body:`
+        <div class="tier"><span class="badge b-ver">Verified</span><div class="claim">Olde Mother — <b>Open till 11 PM</b><small>Google-confirmed today · asserts, auto-opens</small></div></div>
+        <div class="tier"><span class="badge b-prob">Probable</span><div class="claim">Juno Bakery — <b>likely open</b><small>Hours as of 3 weeks ago · hedges, shows the date</small></div></div>
+        <div class="tier"><span class="badge b-unc">Unconfirmed</span><div class="claim">Corner Diner — <b>hours not confirmed</b><small>Raw feed · never asserts open/closed, stays closed</small></div></div>`,
+      decide:()=>({open:true, weight:5, reason:"Verified asserts · Probable hedges · Unconfirmed stays quiet"})
+    },
+  ];
+
+  function readout(){
+    const t={morning:"Weekday, 8 AM",midday:"Tuesday, 1 PM","fri-eve":"Friday, 6 PM"}[ctx.time];
+    const w={clear:"clear skies",rain:"rain"}[ctx.weather];
+    return `It's ${t} · ${w} · you're near ${TOWN[ctx.near]}.`;
+  }
+
+  const stack=document.getElementById('stack');
+  function render(){
+    document.getElementById('now-read').textContent=readout();
+    const decided=SECTIONS.map(s=>{
+      const d=s.decide(ctx);
+      return {s, open:s.alwaysOpen||d.open, weight:d.weight, reason:d.reason,
+              collapsedNote:d.collapsedNote, title:d.title||s.title, body:d.dynBody||s.body};
+    }).sort((a,b)=>b.weight-a.weight);
+
+    stack.innerHTML=decided.map(d=>{
+      const demoted = !d.open && d.weight<25 ? " demoted":"";
+      const reason = d.reason ? `<div class="reason">${d.reason}</div>`:"";
+      const note = (!d.open && d.collapsedNote) ? `<div class="collapsed-note">${d.collapsedNote}</div>`:"";
+      return `<section class="card reorder${d.open?" open":""}${demoted}" style="--accent:${d.s.accent}">
+        <button class="head" onclick="toggle('${d.s.id}')">
+          <div class="ttl-wrap">
+            <div class="eyebrow">${d.s.eyebrow}</div>
+            <div class="ttl">${d.title}</div>
+            ${reason}
+          </div>
+          <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        ${note}
+        <div class="body">${d.body}</div>
+      </section>`;
+    }).join('');
+  }
+  // manual override still works — the user is never locked out of the auto-decision
+  const overrides={};
+  window.toggle=(id)=>{
+    const card=[...stack.children].find(c=>c.querySelector('.head').getAttribute('onclick').includes(id));
+    if(card) card.classList.toggle('open');
+  };
+
+  document.querySelectorAll('.seg').forEach(seg=>{
+    const axis=seg.dataset.axis;
+    seg.addEventListener('click',e=>{
+      const b=e.target.closest('button');if(!b)return;
+      seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+      ctx[axis]=b.dataset.v; render();
+    });
+  });
+  render();
+</script>
+</body>
+</html>

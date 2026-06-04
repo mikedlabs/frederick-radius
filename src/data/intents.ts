@@ -352,7 +352,7 @@ export const INTENTS: Intent[] = [
     key: "eat",
     label: "Eat & drink",
     blurb: "Where to sit down, where to grab something, where to drink.",
-    color: "#A8462C",
+    color: "#A03A22",
     icon: "Utensils",
     match: (p) => FOOD.has(p.category),
     preferOpen: true,

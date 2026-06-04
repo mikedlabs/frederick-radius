@@ -87,24 +87,30 @@ export function googlePlacesConfigured(): boolean {
   return Boolean(key());
 }
 
-const DETAILS_FIELD_MASK = [
-  "id",
-  "displayName",
-  "formattedAddress",
-  "businessStatus",
-  "primaryType",
-  "currentOpeningHours.weekdayDescriptions",
-  "regularOpeningHours.weekdayDescriptions",
-  "rating",
-  "userRatingCount",
-  "nationalPhoneNumber",
-  "websiteUri",
-  "location",
-  "photos",
-  "editorialSummary",
-  "primaryTypeDisplayName",
-  "reviews",
-].join(",");
+/**
+ * Field sets, chosen to control the Places API (New) billing SKU:
+ *   - "full"   → includes `reviews` ⇒ Enterprise + Atmosphere (priciest).
+ *                Use ONLY at build time, where we actually store reviews.
+ *   - "lean"   → everything except reviews ⇒ Enterprise tier. The runtime
+ *                default — the per-view enrich route never returns reviews,
+ *                so paying the Atmosphere SKU for them was pure waste.
+ *   - "status" → id + businessStatus only ⇒ cheapest tier. For the
+ *                business-status cron, which reads nothing else.
+ */
+export type GoogleFieldSet = "status" | "lean" | "full";
+
+const FIELDS_FULL = [
+  "id", "displayName", "formattedAddress", "businessStatus", "primaryType",
+  "currentOpeningHours.weekdayDescriptions", "regularOpeningHours.weekdayDescriptions",
+  "rating", "userRatingCount", "nationalPhoneNumber", "websiteUri", "location",
+  "photos", "editorialSummary", "primaryTypeDisplayName", "reviews",
+];
+const FIELDS_LEAN = FIELDS_FULL.filter((f) => f !== "reviews");
+const FIELDS_STATUS = ["id", "businessStatus"];
+
+function fieldsFor(set: GoogleFieldSet): string[] {
+  return set === "status" ? FIELDS_STATUS : set === "full" ? FIELDS_FULL : FIELDS_LEAN;
+}
 
 type GApiPlace = {
   id?: string;
@@ -180,8 +186,12 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
   };
 }
 
-/** Fetch Place Details by a known place id ("ChIJ…" or "places/ChIJ…"). */
-export async function getPlaceDetails(placeId: string): Promise<PlaceEnrichment | null> {
+/** Fetch Place Details by a known place id ("ChIJ…" or "places/ChIJ…").
+ *  `fields` controls the billing SKU — defaults to "lean" (no reviews). */
+export async function getPlaceDetails(
+  placeId: string,
+  fields: GoogleFieldSet = "lean",
+): Promise<PlaceEnrichment | null> {
   const k = key();
   if (!k) return null;
   const id = placeId.startsWith("places/") ? placeId : `places/${placeId}`;
@@ -189,7 +199,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceEnrichment 
     const res = await fetch(`${BASE}/${id}`, {
       headers: {
         "X-Goog-Api-Key": k,
-        "X-Goog-FieldMask": DETAILS_FIELD_MASK,
+        "X-Goog-FieldMask": fieldsFor(fields).join(","),
       },
       // 24h ISR-friendly; real TTL is owned by the enrichment table.
       next: { revalidate: 86400 },
@@ -211,17 +221,59 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceEnrichment 
  * Resolve a place id from a name + address (+ optional bias point) via
  * Text Search. Returns the first, best match's full enrichment in one call.
  */
+/** Meters between two lat/lng. */
+function metersBetween(la1: number, lo1: number, la2: number, lo2: number): number {
+  const R = 6371000, dLa = ((la2 - la1) * Math.PI) / 180, dLo = ((lo2 - lo1) * Math.PI) / 180;
+  const a = Math.sin(dLa / 2) ** 2 +
+    Math.cos((la1 * Math.PI) / 180) * Math.cos((la2 * Math.PI) / 180) * Math.sin(dLo / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+/** Lenient name check — true unless the names clearly disagree. Distance is
+ *  the strong gate; this catches same-building wrong-tenant matches. */
+function namesPlausible(ours: string, theirs?: string): boolean {
+  if (!theirs) return true;
+  const toks = (s: string) =>
+    new Set(
+      s.toLowerCase()
+        .replace(/\b(the|llc|inc|co|company|of|frederick|md|maryland)\b/g, " ")
+        .replace(/[^a-z0-9 ]/g, " ")
+        .split(/\s+/)
+        .filter((w) => w.length > 2),
+    );
+  const A = toks(ours), B = toks(theirs);
+  if (A.size === 0 || B.size === 0) return true; // can't judge → let distance decide
+  let inter = 0;
+  for (const w of A) if (B.has(w)) inter++;
+  const jaccard = inter / (A.size + B.size - inter);
+  // Accept on decent overlap OR a shared distinctive (longer) token.
+  return jaccard >= 0.34 || [...A].some((w) => B.has(w) && w.length >= 5);
+}
+
+/**
+ * Resolve a place by name/address to its Google record AND verify the
+ * match before trusting it. Without this gate, searchText's top hit (a
+ * better-named business in another block/town) was applied wholesale —
+ * the source of wrong photos/hours/ratings on cards. Confidence gate:
+ * reject a candidate that's >250m from our known coords or whose name
+ * clearly disagrees. Returns null rather than a wrong place (the
+ * data-confidence rule: no photo beats the wrong photo).
+ */
+const MAX_MATCH_METERS = 250;
+
 export async function resolveAndEnrich(opts: {
   name: string;
   address?: string;
   lat?: number;
   lng?: number;
-}): Promise<PlaceEnrichment | null> {
+}, fields: GoogleFieldSet = "lean"): Promise<PlaceEnrichment | null> {
   const k = key();
   if (!k) return null;
   const textQuery = [opts.name, opts.address].filter(Boolean).join(", ");
   try {
-    const body: Record<string, unknown> = { textQuery, maxResultCount: 1 };
+    // Pull a few candidates so we can take the first that PASSES the gate,
+    // not blindly the top hit.
+    const body: Record<string, unknown> = { textQuery, maxResultCount: 5 };
     if (opts.lat != null && opts.lng != null) {
       body.locationBias = {
         circle: {
@@ -235,7 +287,7 @@ export async function resolveAndEnrich(opts: {
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": k,
-        "X-Goog-FieldMask": `places.${DETAILS_FIELD_MASK.split(",").join(",places.")}`,
+        "X-Goog-FieldMask": fieldsFor(fields).map((f) => `places.${f}`).join(","),
       },
       body: JSON.stringify(body),
       next: { revalidate: 86400 },
@@ -246,10 +298,21 @@ export async function resolveAndEnrich(opts: {
       return null;
     }
     const data = (await res.json()) as { places?: GApiPlace[] };
-    const first = data.places?.[0];
-    return first ? normalize(first) : null;
+    for (const cand of data.places ?? []) {
+      const r = normalize(cand);
+      if (!r) continue;
+      // Distance gate (strong) — only when we know where the place is.
+      if (opts.lat != null && opts.lng != null && r.lat != null && r.lng != null) {
+        const d = metersBetween(opts.lat, opts.lng, r.lat, r.lng);
+        if (d > MAX_MATCH_METERS) continue;
+      }
+      // Name gate (catches same-building wrong tenant).
+      if (!namesPlausible(opts.name, r.display_name)) continue;
+      return r; // first candidate that passes
+    }
+    return null; // nothing trustworthy — no photo beats a wrong photo
   } catch (err) {
-     
+
     console.error("[google-places] searchText failed:", err);
     return null;
   }

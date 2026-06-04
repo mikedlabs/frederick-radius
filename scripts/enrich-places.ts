@@ -92,14 +92,14 @@ async function main() {
     const p = targets[i];
     let data: PlaceEnrichment | null = null;
     if (p.google_place_id && /^ChIJ/.test(p.google_place_id)) {
-      data = await getPlaceDetails(p.google_place_id);
+      data = await getPlaceDetails(p.google_place_id, "full");
     } else {
       data = await resolveAndEnrich({
         name: p.name,
         address: `${p.address}, ${p.city}, MD`,
         lat: p.geom?.lat,
         lng: p.geom?.lng,
-      });
+      }, "full");
     }
     if (!data) {
       miss++;

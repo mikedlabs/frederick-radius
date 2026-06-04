@@ -1,0 +1,107 @@
+/**
+ * Frederick County government department contacts — phone + address.
+ *
+ * The "who do I call" civic-moat data for residents/visitors. Compiled
+ * from each department's official page on frederickcountymd.gov
+ * (confirmed 2026-06). Where a department publishes no direct number/
+ * address (it routes through the main county line), the field is null —
+ * never guessed. Pairs with civic-actions.ts (the "how do I…" tasks).
+ *
+ * Main county line: 301-600-9000 · Winchester Hall, 12 E. Church St,
+ * Frederick, MD 21701.
+ */
+
+export type DepartmentContact = {
+  slug: string;
+  name: string;
+  url: string;
+  phone: string | null;
+  address: string | null;
+  jurisdiction?: "county" | "city";
+};
+
+export const DEPARTMENT_CONTACTS: DepartmentContact[] = [
+  { slug: "aging-independence", name: "Aging & Independence", url: "https://www.frederickcountymd.gov/54/Aging-and-Independence", phone: "301-600-1234", address: "1440 Taney Avenue, Frederick, MD 21702" },
+  { slug: "agriculture", name: "Agriculture", url: "https://www.frederickcountymd.gov/8675/Agriculture", phone: "301-600-3039", address: "118 N. Market St., Frederick, MD 21701" },
+  { slug: "animal-control", name: "Animal Control", url: "https://www.frederickcountymd.gov/15/Animal-Control", phone: "301-600-1546", address: "1832 Rosemont Ave., Frederick, MD 21702" },
+  { slug: "budget", name: "Budget", url: "https://www.frederickcountymd.gov/66/Budget-Office", phone: "301-600-1185", address: "Winchester Hall, 12 E. Church St., Frederick, MD 21701" },
+  { slug: "communications", name: "Communications & Public Engagement", url: "https://www.frederickcountymd.gov/6758/Communications-and-Public-Engagement-Off", phone: "301-600-6740", address: "Winchester Hall, 12 E. Church St., Frederick, MD 21701" },
+  { slug: "administrative-services", name: "County Administrative Services", url: "https://www.frederickcountymd.gov/8350/County-Administrative-Services", phone: "301-600-9000", address: "12 E. Church St., Frederick, MD 21701" },
+  { slug: "county-attorney", name: "County Attorney", url: "https://www.frederickcountymd.gov/60/County-Attorney", phone: "301-600-1030", address: "12 E. Church St., Frederick, MD 21701" },
+  { slug: "county-council", name: "County Council", url: "https://www.frederickcountymd.gov/591/County-Council", phone: "301-600-1135", address: "Winchester Hall, 12 E. Church St., Frederick, MD 21701" },
+  { slug: "county-executive", name: "County Executive", url: "https://www.frederickcountymd.gov/5931/County-Executive", phone: "301-600-9000", address: "12 E. Church St., Frederick, MD 21701" },
+  { slug: "courts", name: "Courts", url: "https://www.frederickcountymd.gov/2027/Courts", phone: null, address: null },
+  { slug: "economic-opportunity", name: "Economic Opportunity", url: "https://www.frederickcountymd.gov/8699/Economic-Opportunity", phone: "301-600-1202", address: "118 N. Market St., Frederick, MD 21701" },
+  { slug: "emergency-management", name: "Emergency Management", url: "https://www.frederickcountymd.gov/2001/Emergency-Management", phone: "301-600-6790", address: "5370 Public Safety Place, Frederick, MD 21704" },
+  { slug: "energy-environment", name: "Energy & Environment", url: "https://www.frederickcountymd.gov/8496/Energy-and-Environment", phone: "301-600-1416", address: "30 North Market Street, Frederick, MD 21701" },
+  { slug: "equity-inclusion", name: "Equity & Inclusion", url: "https://www.frederickcountymd.gov/8166/Equity-and-Inclusion-Office", phone: null, address: null },
+  { slug: "family-services", name: "Family Services", url: "https://www.frederickcountymd.gov/16/Family-Services", phone: "301-600-1200", address: "401 Sagner Avenue, Frederick, MD 21701" },
+  { slug: "finance", name: "Finance", url: "https://www.frederickcountymd.gov/26/Finance", phone: "301-600-1117", address: "Winchester Hall, 12 E. Church St., Frederick, MD 21701" },
+  { slug: "fire-rescue", name: "Fire & Rescue Services", url: "https://www.frederickcountymd.gov/24/Division-of-Fire-Rescue-Services-DFRS", phone: null, address: null },
+  { slug: "health", name: "Health Department", url: "https://health.frederickcountymd.gov/", phone: "301-600-1029", address: "350 Montevue Lane, Frederick, MD 21702" },
+  { slug: "housing", name: "Housing", url: "https://www.frederickcountymd.gov/6366/Housing", phone: "301-600-1061", address: "401 Sagner Avenue, Frederick, MD 21701" },
+  { slug: "human-resources", name: "Human Resources", url: "https://www.frederickcountymd.gov/18/Human-Resources", phone: "301-600-1070", address: "12 E. Church St., Frederick, MD 21701" },
+  { slug: "information-technologies", name: "Interagency Information Technologies", url: "https://www.frederickcountymd.gov/17/Information-Technologies", phone: null, address: "Winchester Hall, 12 E. Church Street, Frederick, MD 21701" },
+  { slug: "parks-recreation", name: "Parks & Recreation", url: "https://recreater.com/", phone: "301-600-2936", address: "355 Montevue Lane, Suite 100, Frederick, MD 21702" },
+  { slug: "planning-permitting", name: "Planning & Permitting", url: "https://www.frederickcountymd.gov/8497/Planning-Permitting", phone: "301-600-1153", address: "30 North Market Street, Frederick, MD 21701" },
+  { slug: "procurement", name: "Procurement & Contracting", url: "https://www.frederickcountymd.gov/67/Procurement-and-Contracting", phone: "301-600-1067", address: "Winchester Hall, 12 East Church St., Frederick, MD 21701" },
+  { slug: "public-works", name: "Public Works", url: "https://www.frederickcountymd.gov/19/Public-Works", phone: "301-600-1129", address: "355 Montevue Lane, Suite 200, Frederick, MD 21702" },
+  { slug: "risk-management", name: "Risk Management", url: "https://www.frederickcountymd.gov/8434/Risk-Management", phone: "301-600-1177", address: "Winchester Hall, 12 E. Church St., Frederick, MD 21701" },
+  { slug: "sheriff", name: "Sheriff's Office", url: "https://www.frederickcosheriff.com/", phone: "301-600-1046", address: "110 Airport Drive East, Frederick, MD 21701" },
+  { slug: "solid-waste", name: "Solid Waste & Recycling", url: "https://www.frederickcountymd.gov/5634/Solid-Waste-and-Recycling", phone: "301-600-2960", address: "9031 Reichs Ford Road, Frederick, MD 21704" },
+  { slug: "transit", name: "Transit Services", url: "https://www.frederickcountymd.gov/105/Transit-Services", phone: "301-600-2065", address: "1040 Rocky Springs Road, Frederick, MD 21702" },
+  { slug: "water-sewer", name: "Water & Sewer Utilities", url: "https://www.frederickcountymd.gov/106/Water-and-Sewer-Utilities", phone: "301-600-1825", address: "4520 Metropolitan Court, Frederick, MD 21704" },
+];
+
+export const DEPARTMENT_BY_SLUG: Record<string, DepartmentContact> =
+  Object.fromEntries(DEPARTMENT_CONTACTS.map((d) => [d.slug, d]));
+
+/**
+ * City of Frederick departments (distinct from the county). Compiled from
+ * cityoffrederickmd.gov (confirmed 2026-06). Slugs prefixed `city-` so
+ * they never collide with the county set.
+ */
+export const CITY_DEPARTMENTS: DepartmentContact[] = [
+  { slug: "city-mayor", name: "Mayor's Office", url: "https://www.cityoffrederickmd.gov/57/Mayors-Office", phone: "301-600-1380", address: "101 N. Court Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-aldermen", name: "Board of Aldermen (City Council)", url: "https://www.cityoffrederickmd.gov/122/City-Council", phone: "301-600-1380", address: "101 N. Court Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-police", name: "Frederick Police Department", url: "https://www.cityoffrederickmd.gov/99/Frederick-Police-Department", phone: "301-600-2101", address: "100 E. All Saints Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-public-works", name: "Public Works (DPW)", url: "https://www.cityoffrederickmd.gov/67/Public-Works", phone: "301-600-1440", address: "111 Airport Drive E, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-planning", name: "Planning", url: "https://www.cityoffrederickmd.gov/221/Planning", phone: "301-600-1499", address: "140 W. Patrick Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-engineering", name: "Engineering", url: "https://www.cityoffrederickmd.gov/179/Engineering", phone: "301-600-1405", address: "140 W. Patrick Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-parks-rec", name: "Parks & Recreation (City)", url: "https://www.cityoffrederickmd.gov/255/Parks-and-Recreation", phone: "301-600-1492", address: "121 N. Bentz Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-economic-dev", name: "Economic Development", url: "https://www.businessinfrederick.com/", phone: "301-600-6360", address: "111 Council Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-finance", name: "Finance (City)", url: "https://www.cityoffrederickmd.gov/193/Finance", phone: "301-600-1399", address: "101 N. Court Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-hr", name: "Human Resources (City)", url: "https://www.cityoffrederickmd.gov/199/Human-Resources", phone: "301-600-1810", address: "101 N. Court Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-permits", name: "Building, Permits & Inspections", url: "https://www.cityoffrederickmd.gov/214/Building-Permits", phone: "301-600-3808", address: "140 W. Patrick Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-sustainability", name: "Sustainability", url: "https://www.cityoffrederickmd.gov/891/Sustainability", phone: "301-600-2843", address: "140 W. Patrick Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-housing", name: "Housing & Human Services (City)", url: "https://hhs.cityoffrederickmd.gov/", phone: "301-600-1506", address: "100 S. Market Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-public-affairs", name: "Public Affairs", url: "https://www.cityoffrederickmd.gov/277/Public-Affairs", phone: "301-600-1380", address: "101 N. Court Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-utility-billing", name: "Utility Billing (Water & Sewer)", url: "https://www.cityoffrederickmd.gov/198/Utility-Billing", phone: "301-600-1421", address: "101 N. Court Street, Frederick, MD 21701", jurisdiction: "city" },
+  { slug: "city-code-enforcement", name: "Code Enforcement (City)", url: "https://www.cityoffrederickmd.gov/157/Code-Enforcement", phone: "301-600-3825", address: "140 W. Patrick Street, Frederick, MD 21701", jurisdiction: "city" },
+];
+
+/** County + city, every department in one list. */
+export const ALL_DEPARTMENTS: DepartmentContact[] = [
+  ...DEPARTMENT_CONTACTS.map((d) => ({ ...d, jurisdiction: "county" as const })),
+  ...CITY_DEPARTMENTS,
+];
+
+/** Naive intent match for the Ask: query term in the department name. */
+export function matchDepartment(query: string): DepartmentContact | null {
+  const q = query.toLowerCase();
+  let best: DepartmentContact | null = null, bestScore = 0;
+  for (const d of ALL_DEPARTMENTS) {
+    if (!d.phone && !d.address) continue; // nothing to offer
+    const hay = d.name.toLowerCase().replace(/&/g, "and");
+    let score = 0;
+    for (const term of q.split(/\s+/)) if (term.length > 3 && hay.includes(term)) score += term.length;
+    if (score > bestScore) { bestScore = score; best = d; }
+  }
+  return bestScore > 0 ? best : null;
+}
+
+export const MAIN_COUNTY_LINE = {
+  phone: "301-600-9000",
+  address: "Winchester Hall, 12 E. Church St., Frederick, MD 21701",
+  hours: "Mon–Fri 8:00 AM – 4:00 PM",
+} as const;

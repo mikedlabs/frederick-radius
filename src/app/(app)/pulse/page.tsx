@@ -54,6 +54,7 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleDashSection from "@/components/pulse/CollapsibleDashSection";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
+import LiveTransitPill from "@/components/transit/LiveTransitPill";
 import {
   Users,
   Square,
@@ -249,6 +250,8 @@ export default async function PulsePage() {
             <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
             Refreshed {nowClock()} · auto-updates every couple of minutes
           </p>
+          {/* Live "what's moving" — TransIT buses on the road right now. */}
+          <div className="pt-1.5"><LiveTransitPill /></div>
         </div>
       </header>
 

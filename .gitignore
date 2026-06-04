@@ -84,3 +84,4 @@ screenshots/
 /*-run.mjs
 /*_tmp.mjs
 /.render-*.mjs
+.city-maps/

@@ -18,14 +18,14 @@ export type Category = {
 };
 
 export const CATEGORIES: Category[] = [
-  { slug: "food", name: "Food & Drink", icon: "Utensils", color: "#A8462C", display_order: 10, blurb: "Restaurants, cafes, bars, breweries — all open-now aware." },
-  { slug: "restaurant", name: "Restaurants", parent: "food", icon: "UtensilsCrossed", color: "#A8462C", display_order: 11, blurb: "Sit-down restaurants from quick to refined." },
+  { slug: "food", name: "Food & Drink", icon: "Utensils", color: "#A03A22", display_order: 10, blurb: "Restaurants, cafes, bars, breweries — all open-now aware." },
+  { slug: "restaurant", name: "Restaurants", parent: "food", icon: "UtensilsCrossed", color: "#A03A22", display_order: 11, blurb: "Sit-down restaurants from quick to refined." },
   { slug: "coffee", name: "Coffee", parent: "food", icon: "Coffee", color: "#8B5A2B", display_order: 12, blurb: "Cafes, roasters, third-wave spots, and quick-stop shops." },
   { slug: "bar", name: "Bars", parent: "food", icon: "Wine", color: "#7E1F1F", display_order: 13, blurb: "Cocktail bars, pubs, dives, and tap rooms." },
   { slug: "brewery", name: "Breweries", parent: "food", icon: "Beer", color: "#C99632", display_order: 14, blurb: "Independent local brewers, tap rooms, and beer gardens." },
   { slug: "bakery", name: "Bakeries", parent: "food", icon: "Cookie", color: "#B26B00", display_order: 15, blurb: "Pastry, bread, and the morning rituals worth the line." },
-  { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#A8462C", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
-  { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#A8462C", display_order: 17, blurb: "Frederick's food trucks rotate weekly — here's where they reliably park, plus the festivals built around them." },
+  { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#A03A22", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
+  { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#A03A22", display_order: 17, blurb: "Frederick's food trucks rotate weekly — here's where they reliably park, plus the festivals built around them." },
 
   { slug: "outdoors", name: "Parks & Trails", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, playgrounds, water, and views." },
   { slug: "park", name: "Parks", parent: "outdoors", icon: "Trees", color: "#1E6B3A", display_order: 21, blurb: "Public parks across all 12 municipalities and the county." },

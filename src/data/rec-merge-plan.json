@@ -1,0 +1,914 @@
+{
+  "generatedAt": "2026-06-04T15:37:54.266Z",
+  "source": "fc-gis (survey123 rec locations)",
+  "summary": {
+    "destinationFeatures": 69,
+    "matched": 48,
+    "enrichments": 15,
+    "coordConflicts": 14,
+    "newPlaces": 21,
+    "amenityParks": 33,
+    "passportMarkers": 17
+  },
+  "enrich": [
+    {
+      "slug": "fountaindale-park-middletown",
+      "name": "Fountaindale Park",
+      "addPhoto": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/234/attachments/6"
+    },
+    {
+      "slug": "point-of-rocks-community-commons-park-brunswick",
+      "name": "Point of Rocks Community Commons Park",
+      "coordConflictMeters": 437
+    },
+    {
+      "slug": "utica-park-walkersville",
+      "name": "Utica Park",
+      "coordConflictMeters": 505
+    },
+    {
+      "slug": "ballenger-creek-trail-frederick",
+      "name": "Ballenger Creek Trail",
+      "coordConflictMeters": 497
+    },
+    {
+      "slug": "othello-regional-park-brunswick",
+      "name": "Othello Regional Park",
+      "coordConflictMeters": 650
+    },
+    {
+      "slug": "point-of-rocks-community-commons-park-brunswick",
+      "name": "Point of Rocks Community Commons Park",
+      "coordConflictMeters": 495
+    },
+    {
+      "slug": "utica-park-walkersville",
+      "name": "Utica Park",
+      "coordConflictMeters": 409
+    },
+    {
+      "slug": "middletown-park-middletown",
+      "name": "Middletown Park",
+      "coordConflictMeters": 535
+    },
+    {
+      "slug": "middletown-park-middletown",
+      "name": "Middletown Park",
+      "coordConflictMeters": 409
+    },
+    {
+      "slug": "pinecliff-park-frederick",
+      "name": "Pinecliff Park",
+      "coordConflictMeters": 404
+    },
+    {
+      "slug": "pinecliff-park-frederick",
+      "name": "Pinecliff Park",
+      "coordConflictMeters": 439
+    },
+    {
+      "slug": "utica-park-walkersville",
+      "name": "Utica Park",
+      "coordConflictMeters": 903
+    },
+    {
+      "slug": "utica-park-walkersville",
+      "name": "Utica Park",
+      "coordConflictMeters": 647
+    },
+    {
+      "slug": "utica-park-walkersville",
+      "name": "Utica Park",
+      "coordConflictMeters": 450
+    },
+    {
+      "slug": "utica-park-walkersville",
+      "name": "Utica Park",
+      "coordConflictMeters": 812
+    }
+  ],
+  "newPlaces": [
+    {
+      "slug": "creagerstown-park-woodsboro",
+      "name": "Creagerstown Park",
+      "category": "park",
+      "municipality": "woodsboro",
+      "state": "MD",
+      "geom": {
+        "lng": -77.351655,
+        "lat": 39.564583
+      },
+      "address": "12014 Penterra Manor Ln, Thurmont, MD 21788",
+      "website": "https://www.recreater.com/211/Creagerstown-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/232/attachments/4",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 232
+    },
+    {
+      "slug": "devilbiss-bridge-walkersville",
+      "name": "Devilbiss Bridge",
+      "category": "park",
+      "municipality": "walkersville",
+      "state": "MD",
+      "geom": {
+        "lng": -77.377521,
+        "lat": 39.507155
+      },
+      "address": "8276 Devilbiss Bridge Rd, Walkersville, MD 21793",
+      "website": "https://www.recreater.com/219/Devilbiss-Bridge",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/233/attachments/5",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 233
+    },
+    {
+      "slug": "green-hill-park-urbana",
+      "name": "Green Hill Park",
+      "category": "park",
+      "municipality": "urbana",
+      "state": "MD",
+      "geom": {
+        "lng": -77.47109,
+        "lat": 39.311181
+      },
+      "address": "2810 Decatur Dr, Adamstown, MD 21710",
+      "website": "https://www.recreater.com/227/Green-Hill-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/236/attachments/8",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 236
+    },
+    {
+      "slug": "libertytown-park-woodsboro",
+      "name": "Libertytown Park",
+      "category": "park",
+      "municipality": "woodsboro",
+      "state": "MD",
+      "geom": {
+        "lng": -77.237008,
+        "lat": 39.483169
+      },
+      "address": "12201 Liberty Rd, Libertytown, MD 21762",
+      "website": "https://www.recreater.com/231/Libertytown-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/238/attachments/10",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 238
+    },
+    {
+      "slug": "loys-station-park-thurmont-2",
+      "name": "Loy’s Station Park",
+      "category": "park",
+      "municipality": "thurmont",
+      "state": "MD",
+      "geom": {
+        "lng": -77.351813,
+        "lat": 39.609049
+      },
+      "address": "13506 Old Frederick Rd, Rocky Ridge, MD 21778",
+      "website": "https://www.recreater.com/234/Loys-Station-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/239/attachments/11",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 239
+    },
+    {
+      "slug": "rocky-ridge-landing-woodsboro",
+      "name": "Rocky Ridge Landing",
+      "category": "park",
+      "municipality": "woodsboro",
+      "state": "MD",
+      "geom": {
+        "lng": -77.29499,
+        "lat": 39.603578
+      },
+      "address": "10611 Rocky Ridge Rd, Thurmont, MD 21788",
+      "website": "https://www.recreater.com/260/Rocky-Ridge-Landing",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/246/attachments/18",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 246
+    },
+    {
+      "slug": "roddy-road-park-thurmont",
+      "name": "Roddy Road Park",
+      "category": "park",
+      "municipality": "thurmont",
+      "state": "MD",
+      "geom": {
+        "lng": -77.393725,
+        "lat": 39.641322
+      },
+      "address": "7885 Roddy Creek Rd, Thurmont, MD 21788",
+      "website": "https://www.recreater.com/262/Roddy-Road-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/247/attachments/19",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 247
+    },
+    {
+      "slug": "rose-hill-manor-park-frederick",
+      "name": "Rose Hill Manor Park",
+      "category": "park",
+      "municipality": "frederick",
+      "state": "MD",
+      "geom": {
+        "lng": -77.405656,
+        "lat": 39.436411
+      },
+      "address": "1611 N Market St, Frederick, MD 21701",
+      "website": "https://www.recreater.com/404/Rose-Hill-Manor-Park-Museums",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/248/attachments/20",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 248
+    },
+    {
+      "slug": "urbana-community-park-urbana",
+      "name": "Urbana Community Park",
+      "category": "park",
+      "municipality": "urbana",
+      "state": "MD",
+      "geom": {
+        "lng": -77.361773,
+        "lat": 39.327596
+      },
+      "address": "3230 Stone Barn Dr, Frederick, MD 21704",
+      "website": "https://www.recreater.com/269/Urbana-Community-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/249/attachments/21",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 249
+    },
+    {
+      "slug": "libertytown-park-trail-woodsboro",
+      "name": "Libertytown Park Trail",
+      "category": "trail",
+      "municipality": "woodsboro",
+      "state": "MD",
+      "geom": {
+        "lng": -77.237678,
+        "lat": 39.482549
+      },
+      "address": "12201 Liberty Rd, Libertytown, MD 21762",
+      "website": "https://www.recreater.com/316/Trails",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/312/attachments/214",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 312
+    },
+    {
+      "slug": "loys-station-park-trail-thurmont",
+      "name": "Loy's Station Park Trail",
+      "category": "trail",
+      "municipality": "thurmont",
+      "state": "MD",
+      "geom": {
+        "lng": -77.352325,
+        "lat": 39.608403
+      },
+      "address": "13506 Old Frederick Rd, Rocky Ridge, MD 21778",
+      "website": "https://www.recreater.com/316/Trails",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/313/attachments/215",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 313
+    },
+    {
+      "slug": "rose-hill-manor-park-trail-frederick",
+      "name": "Rose Hill Manor Park Trail",
+      "category": "trail",
+      "municipality": "frederick",
+      "state": "MD",
+      "geom": {
+        "lng": -77.406292,
+        "lat": 39.436695
+      },
+      "address": "1611 N Market St, Frederick, MD 21701",
+      "website": "https://www.recreater.com/316/Trails",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/319/attachments/221",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 319
+    },
+    {
+      "slug": "urbana-community-park-trail-urbana",
+      "name": "Urbana Community Park Trail",
+      "category": "trail",
+      "municipality": "urbana",
+      "state": "MD",
+      "geom": {
+        "lng": -77.362087,
+        "lat": 39.328033
+      },
+      "address": "3230 Stone Barn Dr, Frederick, MD 21704",
+      "website": "https://www.recreater.com/316/Trails",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/320/attachments/224",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "year-round"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 320
+    },
+    {
+      "slug": "creagerstown-park-playground-woodsboro",
+      "name": "Creagerstown Park Playground",
+      "category": "playground",
+      "municipality": "woodsboro",
+      "state": "MD",
+      "geom": {
+        "lng": -77.351466,
+        "lat": 39.564232
+      },
+      "address": "12014 Penterra Manor Ln, Thurmont, MD 21788",
+      "website": "https://www.recreater.com/211/Creagerstown-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/346/attachments/118",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "kids-6-12"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 346
+    },
+    {
+      "slug": "green-hill-park-playground-urbana",
+      "name": "Green Hill Park Playground",
+      "category": "playground",
+      "municipality": "urbana",
+      "state": "MD",
+      "geom": {
+        "lng": -77.470869,
+        "lat": 39.311186
+      },
+      "address": "2810 Decatur Dr, Adamstown, MD 21710",
+      "website": "https://www.recreater.com/227/Green-Hill-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/348/attachments/209",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "kids-6-12"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 348
+    },
+    {
+      "slug": "libertytown-park-playground-woodsboro",
+      "name": "Libertytown Park Playground",
+      "category": "playground",
+      "municipality": "woodsboro",
+      "state": "MD",
+      "geom": {
+        "lng": -77.235859,
+        "lat": 39.482923
+      },
+      "address": "12201 Liberty Rd, Libertytown, MD 21762",
+      "website": "https://www.recreater.com/231/Libertytown-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/351/attachments/123",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "kids-6-12"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 351
+    },
+    {
+      "slug": "loys-station-park-playground-thurmont",
+      "name": "Loy's Station Park Playground",
+      "category": "playground",
+      "municipality": "thurmont",
+      "state": "MD",
+      "geom": {
+        "lng": -77.352439,
+        "lat": 39.608578
+      },
+      "address": "13506 Old Frederick Rd, Rocky Ridge, MD 21778",
+      "website": "https://recreater.com/234/Loys-Station-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/352/attachments/124",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "kids-6-12"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 352
+    },
+    {
+      "slug": "old-national-pike-park-playground-1-new-market",
+      "name": "Old National Pike Park - Playground 1",
+      "category": "playground",
+      "municipality": "new-market",
+      "state": "MD",
+      "geom": {
+        "lng": -77.229672,
+        "lat": 39.377833
+      },
+      "address": "12406 Old National Pike, Mount Airy, MD 21771",
+      "website": "https://www.recreater.com/248/Old-National-Pike-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/355/attachments/127",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "kids-6-12"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 355
+    },
+    {
+      "slug": "old-national-pike-park-playground-2-new-market",
+      "name": "Old National Pike Park - Playground 2",
+      "category": "playground",
+      "municipality": "new-market",
+      "state": "MD",
+      "geom": {
+        "lng": -77.227167,
+        "lat": 39.379347
+      },
+      "address": "12406 Old National Pike, Mount Airy, MD 21771",
+      "website": "https://www.recreater.com/248/Old-National-Pike-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/356/attachments/128",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "kids-6-12"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 356
+    },
+    {
+      "slug": "urbana-community-park-playground-urbana",
+      "name": "Urbana Community Park Playground",
+      "category": "playground",
+      "municipality": "urbana",
+      "state": "MD",
+      "geom": {
+        "lng": -77.36087,
+        "lat": 39.328564
+      },
+      "address": "3230 Stone Barn Dr, Frederick, MD 21704",
+      "website": "https://www.recreater.com/269/Urbana-Community-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/361/attachments/133",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "kids-6-12"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 361
+    },
+    {
+      "slug": "old-national-pike-park-playground-3-new-market",
+      "name": "Old National Pike Park - Playground 3",
+      "category": "playground",
+      "municipality": "new-market",
+      "state": "MD",
+      "geom": {
+        "lng": -77.226173,
+        "lat": 39.382545
+      },
+      "address": "12406 Old National Pike, Mount Airy, MD 21771",
+      "website": "https://www.recreater.com/248/Old-National-Pike-Park",
+      "google_photo_url": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/429/attachments/206",
+      "source": "fc-gis",
+      "is_verified": true,
+      "is_operational": "operational",
+      "tags": [
+        "free",
+        "outdoor",
+        "kids-6-12"
+      ],
+      "feature_score": 5,
+      "_rec_objectId": 429
+    }
+  ],
+  "amenityRollup": {
+    "Parks & Recreation Offices": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Ballenger Creek Park": {
+      "shelters": 2,
+      "fields": 11,
+      "facilities": 1,
+      "maxShelterCap": 160
+    },
+    "Pinecliff Park": {
+      "shelters": 5,
+      "fields": 0,
+      "facilities": 1,
+      "maxShelterCap": 96
+    },
+    "Catoctin Creek Park": {
+      "shelters": 1,
+      "fields": 0,
+      "facilities": 1,
+      "maxShelterCap": 96
+    },
+    "Centerville Rec Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Deer Crossing Rec Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Fountain Rock Park": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Middletown Rec Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Oakdale Rec Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Rock Creek Rec Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Rose Hill Manor Park": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Scott Key Community Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Sugarloaf Recreation Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Thurmont Rec Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Tuscarora Rec Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Urbana Community Park": {
+      "shelters": 0,
+      "fields": 5,
+      "facilities": 1
+    },
+    "Walkersville Rec Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Kemptown Park": {
+      "shelters": 4,
+      "fields": 3,
+      "facilities": 0,
+      "maxShelterCap": 152
+    },
+    "Libertytown Park": {
+      "shelters": 1,
+      "fields": 4,
+      "facilities": 0,
+      "maxShelterCap": 48
+    },
+    "Loy's Station Park": {
+      "shelters": 1,
+      "fields": 0,
+      "facilities": 0,
+      "maxShelterCap": 64
+    },
+    "Middletown Park": {
+      "shelters": 5,
+      "fields": 1,
+      "facilities": 0,
+      "maxShelterCap": 168
+    },
+    "Old National Pike Park": {
+      "shelters": 3,
+      "fields": 7,
+      "facilities": 0,
+      "maxShelterCap": 144
+    },
+    "Othello Regional Park": {
+      "shelters": 4,
+      "fields": 6,
+      "facilities": 0,
+      "maxShelterCap": 84
+    },
+    "Point of Rocks Community Common": {
+      "shelters": 1,
+      "fields": 0,
+      "facilities": 0,
+      "maxShelterCap": 64
+    },
+    "Roddy Road Park": {
+      "shelters": 1,
+      "fields": 0,
+      "facilities": 0,
+      "maxShelterCap": 30
+    },
+    "Urbana District Park": {
+      "shelters": 4,
+      "fields": 6,
+      "facilities": 0,
+      "maxShelterCap": 288
+    },
+    "Utica District Park": {
+      "shelters": 6,
+      "fields": 12,
+      "facilities": 0,
+      "maxShelterCap": 320
+    },
+    "Fountaindale Park": {
+      "shelters": 0,
+      "fields": 1,
+      "facilities": 0
+    },
+    "Green Hill Park": {
+      "shelters": 0,
+      "fields": 1,
+      "facilities": 0
+    },
+    "Point of Rocks Community Park": {
+      "shelters": 0,
+      "fields": 2,
+      "facilities": 0
+    },
+    "Middletown Learning Studio": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Brunswick Recreation Center": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    },
+    "Middletown Park Skate Spot": {
+      "shelters": 0,
+      "fields": 0,
+      "facilities": 1
+    }
+  },
+  "passport": [
+    {
+      "name": "Libertytown Park",
+      "lat": 39.48253,
+      "lng": -77.23772,
+      "difficulty": "Easy",
+      "features": "This park features ball fields, basketball courts, grills, multipurpose field, picnic shelter, picnic tables, playground, tennis and volleyball courts, and an additional hilly grass nature walking trail.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/323/attachments/95"
+    },
+    {
+      "name": "Old National Pike Park",
+      "lat": 39.37967,
+      "lng": -77.22735,
+      "difficulty": "Moderate",
+      "features": "This well-manicured park features a baseball field, multipurpose fields, grills, horseshoe pits, mister posts, picnic shelters, picnic tables, playground, volleyball nets and a gorgeous nature/mulched walking trail.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/324/attachments/96"
+    },
+    {
+      "name": "Kemptown Community Park",
+      "lat": 39.33317,
+      "lng": -77.23548,
+      "difficulty": "Moderate",
+      "features": "This hidden park features an amphitheater, fire ring, picnic shelters, picnic tables, grills, ball fields, tennis courts, volleyball courts, horseshoe pits and a playground.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/325/attachments/97"
+    },
+    {
+      "name": "Point of Rocks Community Commons Park",
+      "lat": 39.274151,
+      "lng": -77.539901,
+      "difficulty": "Easy",
+      "features": "The 2.2-acre park, located near the town’s historic train station along the Potomac River, includes aspects specific to parks located in flood plans. Amenities include a picnic shelter, restrooms, trails, an amphitheater, historic storyboards and Obelisk, benches, water fountains, pedestrian bridge, and reforestation landscaping. Community Commons is adjacent to the Baltimore and Ohio Railroad and the Chesapeake and Ohio Canal National Historic Park and Towpath.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/326/attachments/98"
+    },
+    {
+      "name": "Ballenger Creek Park",
+      "lat": 39.38139,
+      "lng": -77.45146,
+      "difficulty": "Moderate",
+      "features": "This gigantic park features Community Gardens, dog park, Community Building, synthetic turf field, lighted softball fields, grills, horseshoe pits, multipurpose fields, picnic shelters, picnic tables, playgrounds, soccer fields, volleyball courts, youth baseball fields and restrooms.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/327/attachments/99"
+    },
+    {
+      "name": "Catoctin Creek Park",
+      "lat": 39.39063,
+      "lng": -77.56284,
+      "difficulty": "Moderate",
+      "features": "This park features a Nature Center, over four (4) miles of trails, mid-19th Century structures, picnic shelters, and a playground.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/328/attachments/100"
+    },
+    {
+      "name": "Urbana District Park",
+      "lat": 39.33382,
+      "lng": -77.36179,
+      "difficulty": "Moderate",
+      "features": "This park features Wi-Fi, ball fields, a football/lacrosse field, picnic shelters, playgrounds, restrooms, scenic walking trails, mister posts, and soccer fields.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/329/attachments/101"
+    },
+    {
+      "name": "Carrollton Park",
+      "lat": 39.40259,
+      "lng": -77.42392,
+      "difficulty": "Moderate",
+      "features": "This park features a baseball field, basketball courts, bathrooms, benches/bleachers, a pavilion area, picnic tables, and a playground.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/330/attachments/102"
+    },
+    {
+      "name": "Baker Park Bell Tower",
+      "lat": 39.41534,
+      "lng": -77.41778,
+      "difficulty": "Moderate",
+      "features": "This Park features a band shell with restrooms and electricity. It also features a gazebo, tennis courts, softball fields, pavilions, picnic tables, a playground, a multipurpose field, and volleyball area. The Carillon Bell Tower and a fountain are also located in this area. This park is handicap accessible.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/331/attachments/103"
+    },
+    {
+      "name": "Baker Park Pool",
+      "lat": 39.41527,
+      "lng": -77.42081,
+      "difficulty": "Moderate",
+      "features": "This park features a multipurpose field, tennis courts, a swimming pool, and a playground. It also includes a pavilion area with picnic tables, benches/bleachers, and grills.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/332/attachments/104"
+    },
+    {
+      "name": "Emmitsburg Community Park",
+      "lat": 39.702729,
+      "lng": -77.331157,
+      "difficulty": "Moderate",
+      "features": "This park features a playscape for children, a covered pavilion with picnic tables that may be reserved for functions, restrooms, ball fields, a swimming complex, grills, tennis court, horseshoe pit and bike racks.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/333/attachments/105"
+    },
+    {
+      "name": "Loy's Station Park",
+      "lat": 39.608711,
+      "lng": -77.351804,
+      "difficulty": "Easy",
+      "features": "This park features a covered bridge, fishing, grills, horseshoe pits, picnic shelter, picnic tables and play equipment.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/334/attachments/106"
+    },
+    {
+      "name": "Hospital Park",
+      "lat": 39.422871,
+      "lng": -77.413412,
+      "difficulty": "Easy",
+      "features": "This park features benches, picnic tables, a playground, walking and biking path, and water fountain.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/335/attachments/107"
+    },
+    {
+      "name": "Bourne Building (Frederick County Division of Parks and Recreation Main Office)",
+      "lat": 39.43314,
+      "lng": -77.43686,
+      "difficulty": "Easy",
+      "features": "At Frederick County Parks and Recreation’s Main Office you can register for programs, reserve a shelter or building on-site. Our business hours are from 7:30 am - 4:30 pm Monday-Friday. We are conveniently located across from the Frederick County Health Department. The Bourne Building is the final Passport stop and is the location to turn in your Passports and receive prizes.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/336/attachments/108"
+    },
+    {
+      "name": "Heritage Farm Park",
+      "lat": 39.500206,
+      "lng": -77.350109,
+      "difficulty": "Easy",
+      "features": "This park contains a nine-hole golf course, eighteen-hole disc golf course, jogging/walking trails, baseball fields, softball fields, soccer fields, multi-purpose fields, 2 covered pavilions, and playground areas. There are also garden plots for rent, and a historic manor house with outbuildings.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/337/attachments/109"
+    },
+    {
+      "name": "Walkersville Community Park",
+      "lat": 39.476544,
+      "lng": -77.366028,
+      "difficulty": "Easy",
+      "features": "This hidden park features a creek, access to the Fountain Rock trail system, a playground, tennis courts, restrooms, picnic shelters, horseshoe pits, volleyball court and grills.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/338/attachments/110"
+    },
+    {
+      "name": "Othello Regional Park",
+      "lat": 39.346205,
+      "lng": -77.601962,
+      "difficulty": "Moderate",
+      "features": "This park features over 2 miles of equestrian trails, ball fields, a multipurpose field, a turf field, restrooms, picnic shelters, grills, picnic tables, and a playground.",
+      "photoUrl": "https://services5.arcgis.com/o8KSxSzYaulbGcFX/arcgis/rest/services/survey123_4590893d5fdc4e6ab6d653f985715200_results/FeatureServer/0/339/attachments/111"
+    }
+  ]
+}

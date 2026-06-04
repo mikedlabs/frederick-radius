@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Frederick Radius — The Living Radius</title>
+<style>
+  :root{
+    --paper:#E5D8BF; --paper-2:#ECE5D5; --elevated:#F7F0E0; --sunken:#E1D5BF;
+    --border:#D6CDBB; --border-strong:rgba(26,24,21,.10);
+    --ink:#1A1815; --ink-2:#4A4844; --ink-3:#5C5A50;
+    --brand:#A03A22; --green:#2E3B2C; --gold:#C99632; --cool:#2F5470; --positive:#1E6B3A;
+    --r-md:14px; --r-lg:22px;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",Times,serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,sans-serif;
+    --spring:cubic-bezier(.34,1.4,.5,1);
+    --edge:0 0 0 .5px var(--border-strong);
+    --hi:inset 0 1px 0 rgba(255,255,255,.5);
+    --elev-2:0 1px 2px rgba(26,24,21,.05),0 8px 20px -10px rgba(26,24,21,.22);
+    --mode:var(--cool);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.45}
+  .wrap{max-width:430px;margin:0 auto;padding:18px 16px 60px}
+  .doc-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  h1.t{font-family:var(--serif);font-size:26px;font-weight:600;letter-spacing:-.01em;margin:.3em 0 .2em}
+  .lede{color:var(--ink-3);font-size:13.5px;margin:0 0 16px}
+
+  /* headline answer */
+  .answer{font-family:var(--serif);font-size:22px;font-weight:600;line-height:1.2;margin:0 0 2px}
+  .answer .num{color:var(--mode);font-variant-numeric:tabular-nums;transition:color .3s}
+  .answer-sub{font-size:12.5px;color:var(--ink-3);margin:0 0 12px}
+
+  /* the map plane */
+  .plane{position:relative;width:100%;aspect-ratio:1;border-radius:var(--r-lg);overflow:hidden;
+         background:radial-gradient(120% 120% at 50% 42%,#F2EAD7,#E7DAC2 70%,#DECFB2);
+         box-shadow:var(--edge),var(--hi),var(--elev-2);touch-action:none;user-select:none}
+  .grid-line{position:absolute;background:rgba(26,24,21,.05)}
+  .creek{position:absolute;left:-10%;right:-10%;top:54%;height:8px;border-radius:8px;
+         background:linear-gradient(90deg,transparent,rgba(47,84,112,.28),rgba(47,84,112,.22),transparent);
+         transform:rotate(-7deg)}
+  .ref-ring{position:absolute;border:1px dashed rgba(26,24,21,.10);border-radius:50%;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none}
+  .ref-lbl{position:absolute;left:50%;transform:translateX(-50%);font-size:8.5px;font-weight:700;color:var(--ink-3);opacity:.55;letter-spacing:.04em;pointer-events:none}
+
+  /* reach ring */
+  .reach{position:absolute;left:50%;top:50%;border-radius:50%;
+         background:radial-gradient(circle,color-mix(in srgb,var(--mode) 16%,transparent),color-mix(in srgb,var(--mode) 9%,transparent) 70%,transparent);
+         border:2px solid var(--mode);transform:translate(-50%,-50%);
+         transition:width .5s var(--spring),height .5s var(--spring),border-color .3s,background .3s;
+         box-shadow:0 0 0 1px color-mix(in srgb,var(--mode) 30%,transparent)}
+  .reach.breathe{animation:breathe 3.4s ease-in-out infinite}
+  @keyframes breathe{0%,100%{box-shadow:0 0 0 1px color-mix(in srgb,var(--mode) 30%,transparent),0 0 0 0 color-mix(in srgb,var(--mode) 22%,transparent)}50%{box-shadow:0 0 0 1px color-mix(in srgb,var(--mode) 30%,transparent),0 0 0 10px color-mix(in srgb,var(--mode) 0%,transparent)}}
+
+  /* you */
+  .you{position:absolute;left:50%;top:50%;width:14px;height:14px;border-radius:50%;background:var(--ink);
+       transform:translate(-50%,-50%);z-index:5;box-shadow:0 0 0 4px var(--paper),0 0 0 5px var(--border)}
+  .you::after{content:"";position:absolute;inset:-9px;border-radius:50%;border:2px solid var(--ink);opacity:.3;animation:ping 2.6s ease-out infinite}
+  @keyframes ping{0%{transform:scale(.6);opacity:.5}100%{transform:scale(1.7);opacity:0}}
+
+  /* place dots */
+  .dot{position:absolute;width:26px;height:26px;border-radius:50%;transform:translate(-50%,-50%) scale(.62);
+       display:grid;place-items:center;font-size:12px;z-index:3;cursor:pointer;
+       background:var(--elevated);border:1.5px solid var(--border);filter:grayscale(.9);opacity:.42;
+       transition:transform .5s var(--spring),opacity .4s,filter .4s,border-color .3s,box-shadow .3s}
+  .dot.in{transform:translate(-50%,-50%) scale(1);opacity:1;filter:none;z-index:4;
+          border-color:var(--dc);box-shadow:0 3px 9px -3px var(--dc),var(--hi)}
+  .dot.in:hover{transform:translate(-50%,-50%) scale(1.18)}
+
+  /* controls */
+  .controls{margin-top:14px}
+  .modes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .mode{padding:11px 0;border-radius:var(--r-md);border:1.5px solid var(--border);background:var(--elevated);
+        font-family:inherit;font-weight:700;font-size:13px;color:var(--ink-2);cursor:pointer;
+        display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .25s var(--spring)}
+  .mode .ic{font-size:17px}
+  .mode.on{color:#fff;border-color:transparent;box-shadow:var(--hi),0 6px 16px -7px var(--mode)}
+  .mode:active{transform:scale(.97)}
+
+  .slider-wrap{margin-top:14px}
+  .slider-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .slider-top .k{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .slider-top .v{font-family:var(--serif);font-size:18px;font-weight:600;color:var(--mode);font-variant-numeric:tabular-nums;transition:color .3s}
+  input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:6px;border-radius:999px;
+    background:linear-gradient(90deg,var(--mode) var(--pct,40%),var(--sunken) var(--pct,40%));outline:none}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;
+    background:#fff;border:2.5px solid var(--mode);box-shadow:0 3px 8px -2px rgba(26,24,21,.4);cursor:grab}
+  input[type=range]::-moz-range-thumb{width:26px;height:26px;border-radius:50%;background:#fff;border:2.5px solid var(--mode);cursor:grab}
+
+  /* reorganizing list */
+  .list-head{display:flex;align-items:baseline;justify-content:space-between;margin:22px 0 8px}
+  .list-head h2{font-family:var(--serif);font-size:18px;font-weight:600;margin:0}
+  .list-head .ct{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .place{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:var(--r-md);
+         background:var(--elevated);border:1px solid var(--border);margin-bottom:8px;box-shadow:var(--edge)}
+  .place .av{width:40px;height:40px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;font-size:18px;background:var(--sunken)}
+  .place .nm{font-weight:600;font-size:14px;line-height:1.2}
+  .place .mt{font-size:12px;color:var(--ink-3);display:flex;gap:8px;align-items:center;margin-top:2px}
+  .place .tt{color:var(--mode);font-weight:700;font-variant-numeric:tabular-nums}
+  .place .star{color:var(--gold);font-weight:700}
+  .in-anim{animation:rise .44s var(--spring) backwards}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .beyond{text-align:center;font-size:12px;color:var(--ink-3);padding:10px;border:1px dashed var(--border);border-radius:var(--r-md);margin-top:4px}
+  .note{font-size:11px;color:var(--ink-3);text-align:center;margin-top:18px;line-height:1.5}
+
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="doc-eyebrow">Frederick Radius · Signature instrument</p>
+  <h1 class="t">The living radius</h1>
+  <p class="lede">Not “places near you” — everything you can actually <em>reach</em>, by foot, bike, or car, in the time you have. Drag the time. Switch the mode. The county reorganizes around your reach. (Real downtown Frederick places; reach is approximated — production uses Mapbox isochrones.)</p>
+
+  <p class="answer"><span class="num" id="ans-num">—</span> <span id="ans-rest"></span></p>
+  <p class="answer-sub" id="ans-sub"></p>
+
+  <div class="plane" id="plane">
+    <div class="creek"></div>
+    <div class="reach breathe" id="reach"></div>
+    <div class="you" title="You · downtown Frederick"></div>
+  </div>
+
+  <div class="controls">
+    <div class="modes" id="modes">
+      <button class="mode" data-mode="walk"><span class="ic">🚶</span>Walk</button>
+      <button class="mode on" data-mode="bike"><span class="ic">🚲</span>Bike</button>
+      <button class="mode" data-mode="drive"><span class="ic">🚗</span>Drive</button>
+    </div>
+    <div class="slider-wrap">
+      <div class="slider-top"><span class="k">Time</span><span class="v" id="time-v">12 min</span></div>
+      <input type="range" id="time" min="5" max="30" step="1" value="12" />
+    </div>
+  </div>
+
+  <div class="list-head"><h2>Within reach</h2><span class="ct" id="list-ct"></span></div>
+  <div id="list"></div>
+  <div class="beyond" id="beyond" hidden></div>
+
+  <p class="note">The radius is the signature — the same ring is the loading state, the brand mark, and the answer. No national app leads with reachability-as-geometry for one county.</p>
+</div>
+
+<script>
+  const C={lat:39.4143,lng:-77.4105};
+  const PLACES=[
+    {n:"Simple Theory Wine Co",c:"bar",lat:39.41515,lng:-77.41107,r:5},
+    {n:"Gaslight Gallery",c:"gallery",lat:39.41508,lng:-77.40776,r:5},
+    {n:"The Little Pottery Shop",c:"gallery",lat:39.4157,lng:-77.40527,r:5},
+    {n:"Blue Elephant",c:"gallery",lat:39.42026,lng:-77.41053,r:5},
+    {n:"K Town Takeout",c:"restaurant",lat:39.4238,lng:-77.4136,r:5},
+    {n:"The Irish Garden",c:"park",lat:39.41548,lng:-77.42318,r:5},
+    {n:"YMCA Farmers' Market",c:"market",lat:39.42686,lng:-77.40718,r:5},
+    {n:"Ar Workshop",c:"gallery",lat:39.42676,lng:-77.40269,r:5},
+    {n:"Monocacy Village Park",c:"park",lat:39.42883,lng:-77.40229,r:4.9},
+    {n:"Swirls of Frederick",c:"restaurant",lat:39.43164,lng:-77.4184,r:4.8},
+    {n:"Beef 'n Buns 'n Paradise",c:"restaurant",lat:39.4081,lng:-77.38883,r:4.6},
+    {n:"EM's Garden Market",c:"market",lat:39.42708,lng:-77.42998,r:5},
+    {n:"Dream Free Art",c:"gallery",lat:39.41633,lng:-77.38206,r:5},
+    {n:"Farm Museum",c:"museum",lat:39.43767,lng:-77.40501,r:5},
+    {n:"Treats and More by Noy",c:"bakery",lat:39.39133,lng:-77.42191,r:5},
+    {n:"Monocacy Brewing Company",c:"brewery",lat:39.44023,lng:-77.39885,r:4.7},
+    {n:"LowCarb Avenue",c:"bakery",lat:39.44124,lng:-77.40726,r:4.9},
+    {n:"Tous les Jours Bakery",c:"bakery",lat:39.41749,lng:-77.44971,r:4.8},
+    {n:"Rockwell Brewery",c:"brewery",lat:39.44018,lng:-77.38088,r:4.6},
+    {n:"Gwenie's Pastries",c:"bakery",lat:39.44739,lng:-77.39457,r:4.6},
+    {n:"Monocacy Nat'l Battlefield",c:"park",lat:39.37745,lng:-77.39729,r:4.6},
+    {n:"Baltimore Coffee & Tea",c:"coffee",lat:39.37759,lng:-77.4164,r:4.6},
+    {n:"Firebirds Wood Fired Grill",c:"restaurant",lat:39.37488,lng:-77.41082,r:4.5},
+    {n:"Rivermist Park",c:"park",lat:39.44297,lng:-77.37414,r:5},
+    {n:"Ballenger Creek Park",c:"park",lat:39.38166,lng:-77.44883,r:4.7},
+    {n:"Beanvenido",c:"coffee",lat:39.42651,lng:-77.46896,r:5},
+    {n:"Token Cookies",c:"bakery",lat:39.40683,lng:-77.3505,r:5},
+    {n:"Avery's Maryland Grille",c:"restaurant",lat:39.39627,lng:-77.35203,r:4.6},
+    {n:"Gambrill Mill Trail",c:"trail",lat:39.36743,lng:-77.38751,r:5},
+    {n:"Lake Whittier",c:"park",lat:39.45652,lng:-77.4486,r:4.6},
+  ];
+  const CAT={restaurant:["🍽️","#A03A22"],brewery:["🍺","#C99632"],coffee:["☕","#7A4A2B"],
+    bar:["🍷","#2F5470"],bakery:["🥐","#C99632"],park:["🌲","#2E3B2C"],museum:["🏛️","#2F5470"],
+    gallery:["🎨","#2F5470"],market:["🧺","#2E3B2C"],trail:["🥾","#2E3B2C"],distillery:["🥃","#C99632"]};
+  // effective km/h including street friction (not straight-line); production = isochrones
+  const MODES={walk:{kmh:4.5,f:.78,col:"#2E3B2C",ic:"🚶",word:"walk"},
+               bike:{kmh:14,f:.80,col:"#2F5470",ic:"🚲",word:"bike ride"},
+               drive:{kmh:32,f:.62,col:"#A03A22",ic:"🚗",word:"drive"}};
+
+  // geometry
+  function dKm(p){const R=6371,dLat=(p.lat-C.lat)*Math.PI/180,dLng=(p.lng-C.lng)*Math.PI/180,
+    la1=C.lat*Math.PI/180,la2=p.lat*Math.PI/180,
+    x=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+    return R*2*Math.asin(Math.sqrt(x));}
+  PLACES.forEach(p=>p.d=dKm(p));
+
+  let mode="bike", mins=12;
+  const plane=document.getElementById('plane'), reach=document.getElementById('reach');
+  let SIZE=plane.clientWidth, R_PX, PXKM, MAXKM=6.3;
+  function layout(){
+    SIZE=plane.clientWidth; R_PX=SIZE/2; PXKM=(R_PX-22)/MAXKM;
+    // ref rings at 1..5 km
+    plane.querySelectorAll('.ref-ring,.ref-lbl,.dot').forEach(e=>e.remove());
+    for(let k=1;k<=5;k++){
+      const rr=document.createElement('div');rr.className='ref-ring';
+      const dia=2*k*PXKM;rr.style.width=dia+'px';rr.style.height=dia+'px';plane.appendChild(rr);
+      const lb=document.createElement('div');lb.className='ref-lbl';lb.textContent=k+'km';
+      lb.style.top=(R_PX - k*PXKM - 9)+'px';plane.appendChild(lb);
+    }
+    // dots
+    PLACES.forEach((p,i)=>{
+      const dLat=(p.lat-C.lat), dLng=(p.lng-C.lng)*Math.cos(C.lat*Math.PI/180);
+      const scale=PXKM*111; // deg -> px
+      const x=R_PX + dLng*scale, y=R_PX - dLat*scale;
+      const d=document.createElement('div');d.className='dot';d.dataset.i=i;
+      const [emo,col]=CAT[p.c]||["📍","#5C5A50"];
+      d.style.left=x+'px';d.style.top=y+'px';d.style.setProperty('--dc',col);d.textContent=emo;
+      d.title=p.n;plane.appendChild(d);
+    });
+    p_dots=[...plane.querySelectorAll('.dot')];
+    render();
+  }
+  let p_dots=[];
+
+  function reachKm(){const m=MODES[mode];return m.kmh*(mins/60)*m.f;}
+  function ttMin(p){const m=MODES[mode];return Math.max(1,Math.round(p.d/(m.kmh*m.f)*60));}
+
+  function render(){
+    const m=MODES[mode];
+    document.documentElement.style.setProperty('--mode',m.col);
+    const rk=reachKm(), rpx=Math.min(rk*PXKM, R_PX-2);
+    reach.style.width=reach.style.height=(rpx*2)+'px';
+
+    const inReach=PLACES.map((p,i)=>({p,i,tt:ttMin(p)})).filter(o=>o.p.d<=rk)
+      .sort((a,b)=>a.p.d-b.p.d);
+    const inSet=new Set(inReach.map(o=>o.i));
+    p_dots.forEach(d=>d.classList.toggle('in',inSet.has(+d.dataset.i)));
+
+    // headline
+    document.getElementById('ans-num').textContent=inReach.length;
+    document.getElementById('ans-rest').innerHTML=`place${inReach.length===1?'':'s'} within a <b>${mins}-min ${m.word}</b>`;
+    const cats=[...new Set(inReach.map(o=>o.p.c))];
+    document.getElementById('ans-sub').textContent=inReach.length
+      ? `Reaching ${cats.slice(0,4).join(' · ')}${cats.length>4?' · …':''}` : 'Nothing in reach yet — give yourself more time.';
+    document.getElementById('list-ct').textContent=`${inReach.length} reachable`;
+
+    // list
+    const list=document.getElementById('list');
+    list.innerHTML=inReach.slice(0,12).map((o,idx)=>{
+      const [emo]=CAT[o.p.c]||["📍"];
+      return `<div class="place in-anim" style="animation-delay:${Math.min(idx*0.035,0.4)}s">
+        <div class="av">${emo}</div>
+        <div style="flex:1;min-width:0">
+          <div class="nm">${o.p.n}</div>
+          <div class="mt"><span class="tt">${MODES[mode].ic} ${o.tt} min</span>
+            <span>·</span><span>${o.p.d.toFixed(1)} km</span>
+            ${o.p.r?`<span>·</span><span class="star">★ ${o.p.r}</span>`:''}</div>
+        </div></div>`;}).join('');
+
+    const beyond=document.getElementById('beyond');
+    const out=PLACES.length-inReach.length;
+    if(out>0){beyond.hidden=false;beyond.textContent=`+ ${out} more just beyond your reach — more time or a faster mode brings them in.`;}
+    else beyond.hidden=true;
+  }
+
+  // controls
+  document.getElementById('modes').addEventListener('click',e=>{
+    const b=e.target.closest('.mode');if(!b)return;
+    mode=b.dataset.mode;
+    document.querySelectorAll('.mode').forEach(x=>{x.classList.toggle('on',x===b);
+      x.style.background=x===b?MODES[mode].col:'';});
+    render();
+  });
+  const slider=document.getElementById('time');
+  function syncSlider(){const pct=((mins-5)/25*100).toFixed(1)+'%';slider.style.setProperty('--pct',pct);
+    document.getElementById('time-v').textContent=mins+' min';}
+  slider.addEventListener('input',()=>{mins=+slider.value;syncSlider();render();});
+
+  // init
+  window.addEventListener('resize',layout);
+  document.querySelector('.mode.on').style.background=MODES.bike.col;
+  syncSlider();layout();
+</script>
+</body>
+</html>

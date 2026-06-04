@@ -62,7 +62,7 @@ const MOOD_TILES: Array<{
   Icon: typeof Coffee;
   color: string;
 }> = [
-  { slug: "food", label: "Eat & drink", caption: "Coffee, brewery, dinner",  Icon: Coffee, color: "#A8462C" },
+  { slug: "food", label: "Eat & drink", caption: "Coffee, brewery, dinner",  Icon: Coffee, color: "#A03A22" },
   { slug: "outdoors", label: "Outdoors", caption: "Parks, trails, water",     Icon: Trees,  color: "#1E6B3A" },
   { slug: "family",   label: "With kids", caption: "Family-friendly spots",   Icon: Baby,   color: "#C99632" },
 ];

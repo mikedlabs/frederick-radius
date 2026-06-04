@@ -16,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { DEPARTMENTS, formatPhone, type DepartmentContact } from "@/data/departments";
+import { CIVIC_ACTIONS_BY_VERB, CIVIC_VERB_LABEL, type CivicVerb } from "@/data/civic-actions";
 import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
@@ -243,6 +244,48 @@ export default function ContactsPage() {
         accent="var(--app-cool)"
         items={county}
       />
+
+      {/* How do I… — the county's resident-intent tasks, browsable.
+          (Also answerable in natural language via the Ask concierge.) */}
+      <section aria-labelledby="howdoi-heading" className="space-y-2.5">
+        <header className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="grid h-7 w-7 place-items-center rounded-full"
+            style={{ background: "color-mix(in srgb, var(--app-positive) 14%, transparent)", color: "var(--app-positive)" }}
+          >
+            <FileText className="h-3.5 w-3.5" strokeWidth={2.25} />
+          </span>
+          <h2 id="howdoi-heading" className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            How do I&hellip;
+          </h2>
+        </header>
+        {(Object.keys(CIVIC_VERB_LABEL) as CivicVerb[]).map((verb) => {
+          const acts = CIVIC_ACTIONS_BY_VERB(verb);
+          if (acts.length === 0) return null;
+          return (
+            <div key={verb}>
+              <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>{CIVIC_VERB_LABEL[verb]}</p>
+              <ul className="mt-1.5 flex flex-wrap gap-2">
+                {acts.map((a) => (
+                  <li key={a.id}>
+                    <a
+                      href={a.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12.5px] font-medium"
+                      style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+                    >
+                      {a.label}
+                      <ExternalLink className="h-3 w-3 opacity-60" strokeWidth={2} aria-hidden />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </section>
 
       <footer
         className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"

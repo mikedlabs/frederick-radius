@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Frederick Radius — Aerial Time Machine</title>
+<style>
+  :root{
+    --paper:#E5D8BF; --elevated:#F7F0E0; --sunken:#E1D5BF; --border:#D6CDBB;
+    --border-strong:rgba(26,24,21,.10); --ink:#1A1815; --ink-2:#4A4844; --ink-3:#5C5A50;
+    --brand:#A03A22; --gold:#C99632; --cool:#2F5470;
+    --r-md:14px; --r-lg:22px;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",Times,serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,sans-serif;
+    --spring:cubic-bezier(.34,1.4,.5,1);
+    --edge:0 0 0 .5px var(--border-strong); --hi:inset 0 1px 0 rgba(255,255,255,.5);
+    --elev-2:0 1px 2px rgba(26,24,21,.05),0 8px 20px -10px rgba(26,24,21,.22);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.45}
+  .wrap{max-width:440px;margin:0 auto;padding:18px 16px 60px}
+  .doc-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  h1.t{font-family:var(--serif);font-size:25px;font-weight:600;letter-spacing:-.01em;margin:.3em 0 .2em}
+  .lede{color:var(--ink-3);font-size:13px;margin:0 0 14px}
+
+  .stage{position:relative;width:100%;aspect-ratio:760/520;border-radius:var(--r-lg);overflow:hidden;
+    box-shadow:var(--edge),var(--hi),var(--elev-2);background:#222;touch-action:none;user-select:none;cursor:ew-resize}
+  .stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  #imgOld{z-index:2;clip-path:inset(0 50% 0 0)}    /* left = old year, revealed up to the divider */
+  .yr{position:absolute;top:10px;z-index:4;font-family:var(--serif);font-weight:700;font-size:22px;
+    color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8);padding:2px 8px}
+  #yrOld{left:10px} #yrNew{right:10px}
+  .divider{position:absolute;top:0;bottom:0;width:2px;background:#fff;z-index:5;transform:translateX(-1px);
+    box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+  .knob{position:absolute;top:50%;left:50%;width:38px;height:38px;border-radius:50%;background:#fff;
+    transform:translate(-50%,-50%);display:grid;place-items:center;color:var(--ink-2);font-size:15px;
+    box-shadow:0 3px 10px rgba(0,0,0,.35)}
+  .loading{position:absolute;inset:0;z-index:1;display:grid;place-items:center;color:#aaa;font-size:12px}
+
+  .scrub{margin-top:14px}
+  .scrub .lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+  .years{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+  .years::-webkit-scrollbar{display:none}
+  .years button{flex:0 0 auto;border:1.5px solid var(--border);background:var(--elevated);font-family:var(--serif);
+    font-weight:700;font-size:15px;color:var(--ink-2);padding:8px 13px;border-radius:999px;cursor:pointer;transition:all .2s var(--spring)}
+  .years button.on{background:var(--brand);color:#fff;border-color:transparent;box-shadow:var(--hi),0 5px 14px -6px var(--brand)}
+  .years button:active{transform:scale(.95)}
+  .hint{font-size:12px;color:var(--ink-3);text-align:center;margin-top:12px}
+  .stat{margin-top:14px;display:flex;gap:8px}
+  .stat .c{flex:1;border:1px solid var(--border);border-radius:var(--r-md);background:var(--elevated);padding:10px 12px;box-shadow:var(--edge)}
+  .stat .k{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .stat .v{font-family:var(--serif);font-size:16px;font-weight:600;margin-top:2px}
+  .note{font-size:11.5px;color:var(--ink-3);text-align:center;margin-top:18px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="doc-eyebrow">Frederick Radius · From above</p>
+  <h1 class="t">The aerial time machine</h1>
+  <p class="lede">Drag the handle to wipe between then and now — real City of Frederick orthoimagery, 1958 → 2025, over the same downtown extent. Pick a "before" year below. Your street, across 67 years.</p>
+
+  <div class="stage" id="stage">
+    <div class="loading">loading imagery…</div>
+    <img id="imgNew" alt="2025 aerial" />
+    <img id="imgOld" alt="older aerial" />
+    <span class="yr" id="yrOld">1958</span>
+    <span class="yr" id="yrNew">2025</span>
+    <div class="divider" id="divider"><span class="knob">⇄</span></div>
+  </div>
+
+  <div class="scrub">
+    <div class="lbl">Before year</div>
+    <div class="years" id="years"></div>
+  </div>
+
+  <div class="stat">
+    <div class="c"><div class="k">Imagery years</div><div class="v">16 · 1958–2025</div></div>
+    <div class="c"><div class="k">Source</div><div class="v" style="font-size:13px">City of Frederick GIS</div></div>
+  </div>
+
+  <p class="hint">Tip: in the full version this rides a real map you can pan & zoom — every block, every decade.</p>
+  <p class="note">One of dozens of open City GIS layers (parcels, zoning, historic district, bike paths, council districts, development review…). The historical aerials are the rare one no competitor surfaces — a swipe through your neighborhood's history.</p>
+</div>
+
+<script>
+  const YEARS=[1958,1970,1988,2003,2014,2025];
+  const NEW=2025;
+  const bbox="-77.4235,39.4055,-77.4005,39.4205";
+  const url=(yr)=>`https://spires.cityoffrederick.com/arcgis/rest/services/Aerial_${yr}/MapServer/export?bbox=${bbox}&bboxSR=4326&imageSR=3857&size=1000,684&format=jpg&f=image`;
+
+  const stage=document.getElementById('stage');
+  const imgOld=document.getElementById('imgOld'), imgNew=document.getElementById('imgNew');
+  const divider=document.getElementById('divider');
+  const yrOldEl=document.getElementById('yrOld'), yrNewEl=document.getElementById('yrNew');
+  let oldYear=1958, pos=0.5;
+
+  imgNew.src=url(NEW); yrNewEl.textContent=NEW;
+  function setOld(yr){ oldYear=yr; yrOldEl.textContent=yr; imgOld.src=url(yr);
+    document.querySelectorAll('#years button').forEach(b=>b.classList.toggle('on',+b.dataset.y===yr)); }
+
+  function setPos(p){ pos=Math.max(0,Math.min(1,p));
+    imgOld.style.clipPath=`inset(0 ${(1-pos)*100}% 0 0)`;
+    divider.style.left=(pos*100)+'%'; }
+
+  // year chips
+  document.getElementById('years').innerHTML=YEARS.filter(y=>y!==NEW)
+    .map(y=>`<button data-y="${y}" class="${y===1958?'on':''}">${y}</button>`).join('');
+  document.getElementById('years').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setOld(+b.dataset.y);});
+
+  // drag the divider
+  let drag=false;
+  function fromEvent(clientX){ const r=stage.getBoundingClientRect(); setPos((clientX-r.left)/r.width); }
+  stage.addEventListener('pointerdown',e=>{drag=true;fromEvent(e.clientX);stage.setPointerCapture(e.pointerId);});
+  stage.addEventListener('pointermove',e=>{if(drag)fromEvent(e.clientX);});
+  stage.addEventListener('pointerup',()=>drag=false);
+
+  setOld(1958); setPos(0.5);
+</script>
+</body>
+</html>

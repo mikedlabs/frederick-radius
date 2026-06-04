@@ -49,6 +49,15 @@ function slugify(s: string): string {
     .trim().replace(/\s+/g, "-").replace(/-+/g, "-").slice(0, 60);
 }
 
+// Pull the USPS state abbreviation from a "…, ST 12345" formatted address.
+// Returns null when there's no state+ZIP signature — an in-county row we
+// keep and stamp MD by default. Used to clip out-of-state results that
+// the radius discovery pulls across the line at border towns.
+function stateFromAddress(addr?: string): string | null {
+  const m = /,\s*([A-Z]{2})\s+\d{5}/.exec(addr ?? "");
+  return m ? m[1] : null;
+}
+
 // Discovery search terms → our taxonomy, the honest fallback when
 // Google's primaryType is vague.
 const SEARCH_CAT: Record<string, string> = {
@@ -81,9 +90,20 @@ function main() {
 
   const places: Record<string, unknown>[] = [];
   const now = new Date().toISOString().slice(0, 10);
+  let skippedOutOfState = 0;
 
   for (const e of enriched) {
     if (!e.name || typeof e.lat !== "number" || typeof e.lng !== "number") continue;
+    // Boundary guard. Discovery searches a 6km radius around each
+    // municipality centroid, so border towns (Brunswick on the Potomac,
+    // Thurmont/Emmitsburg on the PA line) pull in places ACROSS the state
+    // line — Lovettsville VA, Waynesboro PA, Harpers Ferry WV. Drop any
+    // record whose address carries a non-MD state+ZIP so out-of-county
+    // data never folds into a Frederick County, MD app. (Root-cause fix
+    // for the out-of-state leak; previously state was hardcoded "MD",
+    // which masked these.)
+    const addrState = stateFromAddress(e.address);
+    if (addrState && addrState !== "MD") { skippedOutOfState++; continue; }
     const muniName = MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? "Frederick County";
     let slug = `${slugify(e.name)}-${e.municipality}`;
     if (!slug || slug === `-${e.municipality}`) continue;
@@ -103,7 +123,7 @@ function main() {
       short_blurb: e.editorial_summary?.trim() || `${catName} in ${muniName}.`,
       address: (e.address ?? "").replace(/, USA$/, ""),
       city: muniName,
-      state: "MD",
+      state: addrState ?? "MD",
       postal_code: "",
       municipality: e.municipality,
       geom: { lng: e.lng, lat: e.lat },
@@ -142,6 +162,8 @@ function main() {
   const byMuni: Record<string, number> = {};
   for (const p of places) byMuni[p.municipality as string] = (byMuni[p.municipality as string] ?? 0) + 1;
   console.log(`\n  Built ${places.length} discovered Place records.`);
+  if (skippedOutOfState > 0)
+    console.log(`  Skipped ${skippedOutOfState} out-of-state record(s) at the MD boundary guard.`);
   console.log("  by town:", Object.entries(byMuni).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join("  "));
   console.log("  wrote src/data/places-discovered.json + appended places-enrichment.json\n");
 }

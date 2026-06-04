@@ -12,6 +12,7 @@
  * validate the shape to prevent the route being used as an open proxy.
  */
 import { NextRequest } from "next/server";
+import { list, put } from "@vercel/blob";
 import { photoUrl } from "@/lib/integrations/google-places";
 import { isRateLimited, isSameOriginRequest } from "@/lib/origin-check";
 import { PLACE_BY_SLUG } from "@/data/places";
@@ -20,6 +21,40 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 export const runtime = "nodejs";
 // Cache the proxied image aggressively — photos rarely change.
 export const revalidate = 604800; // 7 days
+
+/**
+ * Cost control: mirror each Google photo to Vercel Blob the FIRST time
+ * it's requested, then 308-redirect to the CDN copy forever after. Google
+ * Place Photo (~$7/1k) is billed once per photo ever — not once per
+ * edge-cache cycle — and the image bytes then serve from cheap blob/CDN
+ * instead of streaming through this function. No-ops gracefully when
+ * BLOB_READ_WRITE_TOKEN isn't set (falls back to streaming below).
+ */
+async function serveFromBlob(name: string, w: number, googleUrl: string): Promise<Response | null> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
+  const key = `place-photos/${name.replace(/[^A-Za-z0-9_-]/g, "_")}_${w}.jpg`;
+  const redirect = (u: string) =>
+    new Response(null, {
+      status: 308,
+      headers: { Location: u, "Cache-Control": "public, max-age=2592000, s-maxage=2592000" },
+    });
+  try {
+    const { blobs } = await list({ prefix: key, limit: 1 });
+    const existing = blobs.find((b) => b.pathname === key);
+    if (existing) return redirect(existing.url); // already mirrored — no Google call
+    const up = await fetch(googleUrl, { redirect: "follow" });
+    if (!up.ok) return null; // let the streaming path handle the failure/placeholder
+    const buf = Buffer.from(await up.arrayBuffer());
+    const { url } = await put(key, buf, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: up.headers.get("content-type") || "image/jpeg",
+    });
+    return redirect(url);
+  } catch {
+    return null; // any blob hiccup → graceful fallback to streaming
+  }
+}
 
 const VALID_NAME = /^places\/[A-Za-z0-9_-]+\/photos\/[A-Za-z0-9_-]+$/;
 const VALID_SLUG = /^[a-z0-9-]+$/;
@@ -62,7 +97,7 @@ function placeholderSvg(name: string, w: number, slug?: string): string {
   const place = slug ? PLACE_BY_SLUG[slug] : undefined;
   if (place) {
     const cat = CATEGORY_BY_SLUG[place.category];
-    const accent = cat?.color ?? "#A8462C";
+    const accent = cat?.color ?? "#A03A22";
     const ini = initialsOf(place.name);
     const fontSize = Math.round(hgt * 0.42);
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}" preserveAspectRatio="xMidYMid slice">
@@ -141,6 +176,12 @@ export async function GET(req: NextRequest) {
     // page still renders coherently in dev / on misconfigured deploys.
     return placeholderResponse(name, w, "no-key", slug);
   }
+
+  // Serve from (or populate) the blob mirror first — bills Google once
+  // per photo ever. Returns null when blob isn't configured / fails, in
+  // which case we fall through to the original streaming path.
+  const mirrored = await serveFromBlob(name, w, url);
+  if (mirrored) return mirrored;
 
   try {
     const upstream = await fetch(url, {

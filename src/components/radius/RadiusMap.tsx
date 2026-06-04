@@ -50,7 +50,7 @@ const COUNTY_BOUNDS: [[number, number], [number, number]] = [
 const MODE_HEX: Partial<Record<TravelMode, string>> = {
   walk: "#2F5470",
   bike: "#3B7A52",
-  drive: "#A8462C",
+  drive: "#A03A22",
 };
 
 /** 72-step polygon approximating a circle of `meters` around `center`. */
@@ -356,7 +356,7 @@ export default function RadiusMap({
           name: props.name,
           // Events ride a fixed brand tint (their ring marker isn't
           // category-colored); places keep their category color.
-          color: isEvent ? "#A8462C" : props.color ?? "#7A828C",
+          color: isEvent ? "#A03A22" : props.color ?? "#7A828C",
           kind: isEvent ? "event" : "place",
         });
         return;
@@ -675,7 +675,7 @@ export default function RadiusMap({
               "circle-radius": 6,
               "circle-color": "#ffffff",
               "circle-opacity": 0.95,
-              "circle-stroke-color": "#A8462C",
+              "circle-stroke-color": "#A03A22",
               "circle-stroke-width": 2.5,
             }}
           />

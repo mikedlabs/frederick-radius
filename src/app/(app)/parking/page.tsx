@@ -21,7 +21,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
-import { PARKING_GARAGES } from "@/data/parking-garages";
+import {
+  PARKING_GARAGES,
+  PARKING_RATE_SCHEDULE,
+  PARKING_OFFICE,
+  PARKING_ACCESSIBILITY,
+} from "@/data/parking-garages";
 
 // "Common requests" — intent-led entry tiles, same pattern as
 // /contacts. Each tile routes to either the specific garage best
@@ -122,10 +127,9 @@ export const metadata: Metadata = {
  * visitors tap through to the place page for hours-verified status
  * and the directions handoff.
  *
- * The page deliberately doesn't list per-hour rates — those drift
- * and the editor hasn't confirmed them yet. Linking out to the
- * City's parking page for current rates is the honest move until
- * we have rate data we trust.
+ * Rates are now surfaced (PARKING_RATE_SCHEDULE) — verified against
+ * the City's published schedule (2026-06). We still link out to the
+ * City for ticket/permit/tow specifics that genuinely drift.
  *
  * Phase B (deferred): street-parking ParkMobile zone polygons.
  * Requires shapefile from the City Parking Department.
@@ -157,6 +161,66 @@ export default function ParkingPage() {
           right garage saves a five-minute walk.
         </p>
       </header>
+
+      {/* Garage rate schedule — verified against the City's published
+          schedule (2026-06). Uniform across all five garages, so it
+          shows once here as the at-a-glance answer to "what'll it cost?" */}
+      <section
+        aria-labelledby="parking-rate-heading"
+        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <h2
+            id="parking-rate-heading"
+            className="eyebrow"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Garage rates
+          </h2>
+          <span
+            className="text-[11px] font-medium"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Cash or credit · all garages
+          </span>
+        </div>
+        <p
+          className="mt-1.5 font-serif text-[20px] font-semibold leading-snug"
+          style={{ color: "var(--app-ink)" }}
+        >
+          {PARKING_RATE_SCHEDULE.hourly} · {PARKING_RATE_SCHEDULE.dailyMax} max
+        </p>
+        <dl className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
+          {[
+            ["Daytime 6:30 AM – 3:30 PM", PARKING_RATE_SCHEDULE.daytimeMax],
+            ["Overnight 3:30 PM – 6:30 AM", PARKING_RATE_SCHEDULE.nighttimeMax],
+          ].map(([k, v]) => (
+            <div
+              key={k}
+              className="rounded-[var(--app-radius-md)] border px-3 py-2"
+              style={{ borderColor: "var(--app-border)" }}
+            >
+              <dt style={{ color: "var(--app-ink-3)" }}>{k}</dt>
+              <dd
+                className="mt-0.5 font-semibold tabular-nums"
+                style={{ color: "var(--app-ink)" }}
+              >
+                {v}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <p
+          className="mt-2.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold"
+          style={{
+            background: "color-mix(in srgb, var(--app-positive) 12%, transparent)",
+            color: "var(--app-positive)",
+          }}
+        >
+          {PARKING_RATE_SCHEDULE.freeWindow}
+        </p>
+      </section>
 
       {/* Common requests — intent-led entry tiles, same pattern as
           /contacts. Routes the user straight to the right garage
@@ -675,12 +739,58 @@ export default function ParkingPage() {
         </p>
       </section>
 
+      {/* Accessible parking + the City parking office — the buried-civic
+          answers (verified against the City, 2026-06). */}
+      <section
+        aria-labelledby="parking-access-heading"
+        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <h2
+          id="parking-access-heading"
+          className="eyebrow"
+          style={{ color: "var(--app-ink-3)" }}
+        >
+          Accessible parking
+        </h2>
+        <ul className="mt-2 space-y-1.5">
+          {PARKING_ACCESSIBILITY.map((rule) => (
+            <li
+              key={rule}
+              className="flex gap-2 text-[13px] leading-snug"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              <span aria-hidden style={{ color: "var(--app-cool)" }}>
+                ♿
+              </span>
+              <span>{rule}</span>
+            </li>
+          ))}
+        </ul>
+        <div
+          className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-[12.5px]"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        >
+          <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            City Parking Office
+          </span>
+          <span>{PARKING_OFFICE.address}</span>
+          <a
+            href={`tel:${PARKING_OFFICE.phone.replace(/[^0-9]/g, "")}`}
+            className="font-semibold underline-offset-2 hover:underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            {PARKING_OFFICE.phone}
+          </a>
+        </div>
+      </section>
+
       <footer
         className="space-y-2 border-t pt-4 text-[12px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
         <p>
-          For current rates, monthly permit pricing, and event-day
+          For monthly permit pricing and event-day
           surge information, see the City of Frederick&rsquo;s parking
           page:{" "}
           <a

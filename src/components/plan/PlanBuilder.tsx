@@ -72,7 +72,7 @@ const VIBES: {
   { value: "active",   label: "Active",   tagline: "Move, climb, ride.",     Icon: Zap, color: "#C99632" },
   { value: "cultural", label: "Cultural", tagline: "Galleries, music, words.", Icon: Drama, color: "#7E2C6F" },
   { value: "outdoors", label: "Outdoors", tagline: "Trails, water, sky.",     Icon: Footprints, color: "#2E3B2C" },
-  { value: "food",     label: "Food first", tagline: "Eat. Then everything else.", Icon: UtensilsCrossed, color: "#A8462C" },
+  { value: "food",     label: "Food first", tagline: "Eat. Then everything else.", Icon: UtensilsCrossed, color: "#A03A22" },
 ];
 
 type Preset = {
@@ -89,7 +89,7 @@ type Preset = {
 
 const PRESETS: Preset[] = [
   { id: "library-date", Icon: BookOpen, label: "Library date", tagline: "Quiet, smart, charming.", audience: "date", vibe: "cultural", hours: 3, start: "afternoon", color: "#7E2C6F" },
-  { id: "date-night", Icon: Heart, label: "Date night", tagline: "Dinner. Drinks. A walk.", audience: "date", vibe: "easy", hours: 4, start: "evening", color: "#A8462C" },
+  { id: "date-night", Icon: Heart, label: "Date night", tagline: "Dinner. Drinks. A walk.", audience: "date", vibe: "easy", hours: 4, start: "evening", color: "#A03A22" },
   { id: "first-date", Icon: Coffee, label: "First date", tagline: "Coffee, walk, dessert.", audience: "date", vibe: "easy", hours: 2, start: "afternoon", color: "#8B5A2B" },
   { id: "girls-night", Icon: Wine, label: "Girls' night", tagline: "Wine and somewhere fun.", audience: "friends", vibe: "food", hours: 4, start: "evening", color: "#7E1F1F" },
   { id: "family-sunday", Icon: Trees, label: "Family Sunday", tagline: "Park, ice cream, easy.", audience: "family", vibe: "easy", hours: 4, start: "afternoon", color: "#1E6B3A" },

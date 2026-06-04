@@ -6,10 +6,11 @@
  * park.
  *
  * Source: cityoffrederickmd.gov/parking (publicly published).
- * Rates and capacity are PLACEHOLDERS to be verified — left blank
- * here rather than guessed so a visitor never trusts wrong data.
- * The editor should confirm rates with the City Parking Department
- * before they ship; the structure is here, the values are honest.
+ * Rates VERIFIED against the City's published rate schedule (2026-06).
+ * The schedule is uniform across all five city garages, so it lives
+ * once in PARKING_RATE_SCHEDULE rather than being repeated per garage.
+ * Capacity is still unset (the City doesn't publish per-garage counts);
+ * left blank rather than guessed so a visitor never trusts wrong data.
  *
  * NOT included:
  *   - "Second Chances Garage" — charity / vehicle-repair non-profit
@@ -29,8 +30,9 @@ export type ParkingGarage = {
   address: string;
   /** Always 24/7 for downtown Frederick city garages per municipal policy. */
   hours: string;
-  /** Payment methods supported on-site. */
-  payment: ("park-mobile" | "pay-at-exit" | "monthly-permit" | "validated")[];
+  /** Payment methods supported on-site. All city garages take cash or
+   *  credit cards (verified 2026-06). */
+  payment: ("cash" | "credit-card" | "park-mobile" | "pay-at-exit" | "monthly-permit" | "validated")[];
   /** True if EV charging stations are present in this garage. Verified
    *  with the city's published EV-charging map. Left undefined when
    *  the editor has not yet confirmed. */
@@ -43,13 +45,51 @@ export type ParkingGarage = {
   notes?: string;
 };
 
+/**
+ * The City of Frederick's downtown garage rate schedule — uniform across
+ * all five garages. Verified against the City's published schedule
+ * (2026-06). Surface this once on /parking rather than per-garage.
+ */
+export const PARKING_RATE_SCHEDULE = {
+  /** Base: $1/hour, capped at $12/day, every day. */
+  hourly: "$1 / hour",
+  dailyMax: "$12 / day",
+  /** 6:30 AM – 3:30 PM. */
+  daytimeMax: "$12 max",
+  /** 3:30 PM – 6:30 AM. */
+  nighttimeMax: "$5 max",
+  /** Free Sundays 8:00 AM – 2:00 PM; hourly rate resumes after 2:00 PM. */
+  freeWindow: "Free Sundays 8 AM – 2 PM",
+  acceptsCashAndCredit: true,
+  summary: "$1/hr · $12/day max · $5 max overnight · free Sun 8 AM–2 PM",
+} as const;
+
+/** City of Frederick main parking office. */
+export const PARKING_OFFICE = {
+  address: "2 S Court St, Frederick, MD 21701",
+  phone: "301-600-1429",
+} as const;
+
+/**
+ * Accessible-parking rules for the Downtown Business District, per the
+ * City (Maryland MVL §13-616). Surfaced verbatim-in-spirit so we never
+ * misstate a legal allowance.
+ */
+export const PARKING_ACCESSIBILITY = [
+  "A valid H/C tag or hangtag may park in a regular metered zone for twice the posted time, at no charge (e.g. a 2-hour meter = 4 hours).",
+  "No accessible parking in SHORT-TERM loading zones 6–10 AM; after 10 AM those become regular spaces (2× the zone applies).",
+  "No accessible parking in LONG-TERM loading-zone spaces.",
+  "All city garages are accessible, with H/C spaces on every level; garage patrons pay the prevailing rates.",
+] as const;
+
 export const PARKING_GARAGES: ParkingGarage[] = [
   {
     slug: "west-patrick-street-parking-deck",
     name: "West Patrick Street Garage",
     address: "138 W Patrick St, Frederick, MD",
     hours: "24/7",
-    payment: ["park-mobile", "pay-at-exit", "monthly-permit"],
+    payment: ["cash", "credit-card", "park-mobile", "pay-at-exit", "monthly-permit"],
+    hourly_rate: PARKING_RATE_SCHEDULE.summary,
     notes:
       "On the west side of downtown — closest to City Hall, the courthouse, and the W Patrick Street restaurant strip.",
   },
@@ -58,7 +98,8 @@ export const PARKING_GARAGES: ParkingGarage[] = [
     name: "Court Street Garage",
     address: "2 S Court St, Frederick, MD",
     hours: "24/7",
-    payment: ["park-mobile", "pay-at-exit", "monthly-permit"],
+    payment: ["cash", "credit-card", "park-mobile", "pay-at-exit", "monthly-permit"],
+    hourly_rate: PARKING_RATE_SCHEDULE.summary,
     notes:
       "Adjacent to the City Hall and the courthouse complex. Most central garage for civic business.",
   },
@@ -67,7 +108,8 @@ export const PARKING_GARAGES: ParkingGarage[] = [
     name: "Carroll Creek Parking Deck",
     address: "44 E Patrick St, Frederick, MD",
     hours: "24/7",
-    payment: ["park-mobile", "pay-at-exit", "monthly-permit"],
+    payment: ["cash", "credit-card", "park-mobile", "pay-at-exit", "monthly-permit"],
+    hourly_rate: PARKING_RATE_SCHEDULE.summary,
     notes:
       "Best garage for Carroll Creek Linear Park, Alive @ Five concerts, and the East Patrick restaurant row.",
   },
@@ -76,7 +118,8 @@ export const PARKING_GARAGES: ParkingGarage[] = [
     name: "Church Street Garage",
     address: "17 E Church St, Frederick, MD",
     hours: "24/7",
-    payment: ["park-mobile", "pay-at-exit", "monthly-permit"],
+    payment: ["cash", "credit-card", "park-mobile", "pay-at-exit", "monthly-permit"],
+    hourly_rate: PARKING_RATE_SCHEDULE.summary,
     notes:
       "Closest to the Weinberg Center for the Arts and the N Market Street shopping/dining stretch.",
   },
@@ -85,7 +128,8 @@ export const PARKING_GARAGES: ParkingGarage[] = [
     name: "East All Saints Street Parking Garage",
     address: "125 E All Saints St, Frederick, MD",
     hours: "24/7",
-    payment: ["park-mobile", "pay-at-exit", "monthly-permit"],
+    payment: ["cash", "credit-card", "park-mobile", "pay-at-exit", "monthly-permit"],
+    hourly_rate: PARKING_RATE_SCHEDULE.summary,
     notes:
       "South of Carroll Creek — convenient for the All Saints restaurant row and breweries.",
   },

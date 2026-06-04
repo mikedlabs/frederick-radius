@@ -74,11 +74,11 @@ const KNOWN: Array<[string, SourceMeta]> = [
   // ── Print / news outlets ──────────────────────────────────────────
   [
     "frederick news-post",
-    { lane: "press", mediaType: "print", brandColor: "#A8462C", display: "Frederick News-Post", monogram: "FN" },
+    { lane: "press", mediaType: "print", brandColor: "#A03A22", display: "Frederick News-Post", monogram: "FN" },
   ],
   [
     "fredericknewspost",
-    { lane: "press", mediaType: "print", brandColor: "#A8462C", display: "Frederick News-Post", monogram: "FN" },
+    { lane: "press", mediaType: "print", brandColor: "#A03A22", display: "Frederick News-Post", monogram: "FN" },
   ],
   [
     "baltimore sun",
@@ -246,7 +246,7 @@ export const LANE_META: Record<
   press: {
     label: "Press & Broadcast",
     tagline: "Newsrooms, TV stations, radio, and wires covering Frederick County.",
-    color: "#A8462C",
+    color: "#A03A22",
   },
   community: {
     label: "Community",

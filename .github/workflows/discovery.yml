@@ -1,0 +1,63 @@
+name: discovery
+
+# Weekly place-discovery dry run. The `discover` script spends $0 by
+# default: it builds the full query plan (discoverable taxonomy ×
+# municipalities) and prints the candidate count + a real dollar
+# projection, but never calls the paid API and never merges places.
+# This job surfaces those numbers each week so the owner can see the
+# discovery surface growing and decide when a live, cost-capped run is
+# worth it.
+#
+# TODO: wire a Claude review step (anthropics/claude-code-action@v1)
+# that reads the dry-run plan and recommends which categories/towns are
+# worth a `--live --confirm` pass, then opens a PR with the review.
+# Requires the ANTHROPIC_API_KEY secret (see docs/AGENTS_SCHEDULE.md).
+
+on:
+  schedule:
+    - cron: "0 7 * * 1" # Mondays, 07:00 UTC (~2-3 AM Eastern)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Dry run only ($0, no API key needed). Capture output so the
+      # candidate counts land in the job summary and an artifact.
+      - name: Discovery dry run
+        run: |
+          set -o pipefail
+          npm run discover 2>&1 | tee discovery-plan.log
+
+      - name: Publish plan to job summary
+        if: always()
+        run: |
+          {
+            echo '## Discovery dry run'
+            echo '```'
+            cat discovery-plan.log || echo "(no output)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload discovery plan
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: discovery-plan
+          path: discovery-plan.log
+          if-no-files-found: ignore

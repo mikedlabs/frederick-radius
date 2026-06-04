@@ -31,6 +31,10 @@
     "data:review": "tsx --tsconfig tsconfig.json scripts/data-review.ts",
     "prune:enrichment": "tsx --tsconfig tsconfig.json scripts/prune-enrichment.ts",
     "ingest:candidates": "tsx --tsconfig tsconfig.json scripts/ingest-candidates.ts",
+    "ingest:rec": "tsx --tsconfig tsconfig.json scripts/ingest-rec-locations.ts",
+    "merge:rec": "tsx --tsconfig tsconfig.json scripts/merge-rec-locations.ts",
+    "apply:rec": "tsx --tsconfig tsconfig.json scripts/apply-rec-merge.ts",
+    "build:park-amenities": "tsx --tsconfig tsconfig.json scripts/build-park-amenities.ts",
     "enrich:discovered": "tsx --tsconfig tsconfig.json scripts/enrich-discovered.ts",
     "merge:discovered": "tsx --tsconfig tsconfig.json scripts/merge-discovered.ts",
     "vet": "tsx --tsconfig tsconfig.json scripts/vet-places.ts",
@@ -48,10 +52,12 @@
     "pipeline:freshness": "tsx --tsconfig tsconfig.json pipeline/freshness_check.ts",
     "build:amenities": "tsx --tsconfig tsconfig.json scripts/build-amenities.ts",
     "build:client-places": "tsx --tsconfig tsconfig.json scripts/build-client-places.ts",
+    "build:transit": "tsx --tsconfig tsconfig.json scripts/build-transit-gtfs.ts",
     "build:marc-schedule": "tsx --tsconfig tsconfig.json scripts/build-marc-schedule.ts",
     "optimize:images": "tsx --tsconfig tsconfig.json scripts/optimize-images.ts",
     "optimize:seasons": "tsx --tsconfig tsconfig.json scripts/optimize-seasonal-photos.ts",
-    "download:photos": "tsx --tsconfig tsconfig.json scripts/download-photos.ts"
+    "download:photos": "tsx --tsconfig tsconfig.json scripts/download-photos.ts",
+    "maps:download": "tsx --tsconfig tsconfig.json scripts/download-city-maps.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",

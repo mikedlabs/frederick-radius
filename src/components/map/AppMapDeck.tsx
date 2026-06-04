@@ -222,7 +222,7 @@ export default function AppMapDeck({
                         onClick={() => pickSearch(p)}
                         className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
                       >
-                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: cat?.color ?? "#A8462C" }} />
+                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: cat?.color ?? "#A03A22" }} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
                             {p.name}

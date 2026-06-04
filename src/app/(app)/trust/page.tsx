@@ -259,7 +259,7 @@ const BADGES: Array<{
 }> = [
   {
     label: "Hand-picked",
-    color: "#A8462C",
+    color: "#A03A22",
     icon: Sparkles,
     body: "We picked this one ourselves. Vetted by hand, blurb written by a person, not auto-filled.",
   },

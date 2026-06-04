@@ -71,7 +71,7 @@ export function buildActivities({
       title: e.title,
       subtitle: `Happening at ${e.venue_name}`,
       href: `/events/${e.slug}`,
-      accent: "#A8462C",
+      accent: "#A03A22",
       icon: "music",
     });
   }
