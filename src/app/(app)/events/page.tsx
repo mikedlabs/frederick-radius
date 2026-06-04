@@ -425,9 +425,9 @@ export default async function EventsIndexPage({
           categories={categories}
           towns={towns}
           nowISO={now.toISOString()}
-          {/* end-of-today, so the explorer's "Today" group matches the
-              lead tier above and never includes tomorrow (the prop name
-              is historical; the value is the next Eastern midnight). */}
+          // next24ISO carries end-of-today (next Eastern midnight) so the
+          // explorer's "Today" group matches the lead tier and never
+          // includes tomorrow. (Prop name is historical, not a rolling +24h.)
           next24ISO={todayEnd.toISOString()}
           weekendStartISO={friday.toISOString()}
           weekendEndISO={monday.toISOString()}
