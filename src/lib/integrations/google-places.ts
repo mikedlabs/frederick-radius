@@ -144,17 +144,26 @@ function pickReview(
   reviews: GApiPlace["reviews"],
 ): { snippet: string; author?: string } | undefined {
   if (!Array.isArray(reviews) || reviews.length === 0) return undefined;
-  const ranked = [...reviews].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-  for (const r of ranked) {
-    const raw = r.text?.text?.replace(/\s+/g, " ").trim() ?? "";
-    if (raw.length < 40 || raw.length > 240) continue;
-    if ((r.rating ?? 0) < 4) continue; // lead with positive, honest signal
-    return {
-      snippet: raw,
+  // Logistics-y reviews ("clean bathroom", "easy parking", "they were
+  // closed") make odd "human highlights" — skip them when a substantive
+  // one exists (the library showing a bathroom quote, audit QA).
+  const LOGISTICS = /\b(bathroom|restroom|toilet|parking|was closed|were closed|closed early|rude staff)\b/i;
+  const candidates = reviews
+    .map((r) => ({
+      snippet: r.text?.text?.replace(/\s+/g, " ").trim() ?? "",
+      rating: r.rating ?? 0,
       author: r.authorAttribution?.displayName?.trim() || undefined,
-    };
-  }
-  return undefined;
+    }))
+    .filter((c) => c.snippet.length >= 40 && c.snippet.length <= 240 && c.rating >= 4);
+  if (candidates.length === 0) return undefined;
+  const substantive = candidates.filter((c) => !LOGISTICS.test(c.snippet));
+  const pool = substantive.length > 0 ? substantive : candidates;
+  // Highest rating first, then prefer a descriptive length (~140 chars)
+  // over a terse "Great!" or a rambling wall of text.
+  pool.sort(
+    (a, b) => b.rating - a.rating || Math.abs(a.snippet.length - 140) - Math.abs(b.snippet.length - 140),
+  );
+  return { snippet: pool[0].snippet, author: pool[0].author };
 }
 
 function normalize(p: GApiPlace): PlaceEnrichment | null {
