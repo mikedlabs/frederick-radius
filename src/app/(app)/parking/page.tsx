@@ -27,6 +27,7 @@ import {
   PARKING_OFFICE,
   PARKING_ACCESSIBILITY,
 } from "@/data/parking-garages";
+import { cityMapsFor } from "@/data/city-maps";
 
 // "Common requests" — intent-led entry tiles, same pattern as
 // /contacts. Each tile routes to either the specific garage best
@@ -783,6 +784,33 @@ export default function ParkingPage() {
             {PARKING_OFFICE.phone}
           </a>
         </div>
+      </section>
+
+      {/* Printable City maps relevant to parking (downtown parking, snow
+          routes, street sweeping, mobility district). */}
+      <section
+        aria-labelledby="parking-maps-heading"
+        className="rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4"
+        style={{ borderColor: "var(--app-border)" }}
+      >
+        <h2 id="parking-maps-heading" className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+          Printable maps
+        </h2>
+        <ul className="mt-2 flex flex-wrap gap-2">
+          {cityMapsFor("/parking").map((m) => (
+            <li key={m.id}>
+              <a
+                href={m.blobUrl ?? m.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium"
+                style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
+              >
+                {m.title} (PDF)
+              </a>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <footer

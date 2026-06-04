@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { socialFor, type SocialPlatform } from "@/data/social-sources";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -542,6 +543,36 @@ export default async function AboutPage() {
             How we verify everything we publish →
           </Link>
         </p>
+
+        {/* Official government accounts (verified handles, so residents
+            don't follow impersonators). */}
+        <div className="space-y-1.5">
+          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>Official accounts</p>
+          {(["county", "city"] as const).map((j) => {
+            const accts = socialFor(j);
+            if (accts.length === 0) return null;
+            const platformLabel: Record<SocialPlatform, string> = { x: "X", instagram: "Instagram", facebook: "Facebook", youtube: "YouTube", nextdoor: "Nextdoor" };
+            return (
+              <p key={j} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                  {j === "county" ? "Frederick County" : "City of Frederick"}
+                </span>
+                {accts.map((a) => (
+                  <a
+                    key={a.url}
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline-offset-2 hover:underline"
+                    style={{ color: "var(--app-cool)" }}
+                  >
+                    {platformLabel[a.platform]}
+                  </a>
+                ))}
+              </p>
+            );
+          })}
+        </div>
       </footer>
     </div>
   );

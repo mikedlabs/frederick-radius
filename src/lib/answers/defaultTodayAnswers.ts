@@ -35,7 +35,7 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
     out.push({
       id: "open-now",
       status: "open-now",
-      title: `${place(input.openCount)} open near you`,
+      title: `${place(input.openCount)} open near downtown`,
       answer: "Confirmed open right now, close to downtown.",
       whyShown: "Open this hour, within reach",
       sourceLabel: "Google Places",
