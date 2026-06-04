@@ -160,14 +160,13 @@ export default function TopBar() {
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-            {/* Calm, static placeholder — short on phones so it never
-                clips, a concrete capability hint from sm: up. Replaces
-                the rotating-prompt motion the design audit flagged as
-                header noise. */}
-            <span className="truncate text-left">
-              <span className="sm:hidden">What&apos;s open?</span>
-              <span className="hidden sm:inline">What&apos;s open right now?</span>
-            </span>
+            {/* Calm, static placeholder. ONE text node (truncates on
+                narrow phones) — the previous two responsive spans both
+                lived in the DOM, so non-CSS readers and audit tools saw
+                them concatenated ("What's open?What's open right now?").
+                The button's aria-label is the accessible name; this text
+                is decorative. */}
+            <span className="truncate text-left">What&apos;s open right now?</span>
             <kbd
               className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}

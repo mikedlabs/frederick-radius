@@ -68,8 +68,8 @@ export default function TrustPage() {
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Our hand-picked set.</strong>{" "}
             1,700+ Frederick County places we vetted by hand. The Saturday-only
-            bakery, the trail nobody talks about, the brewery that beats the
-            one downtown.
+            bakery, the trail nobody talks about, the brewery people drive
+            across the county for.
           </li>
           <li>
             <strong style={{ color: "var(--app-ink)" }}>Live event feeds.</strong>{" "}

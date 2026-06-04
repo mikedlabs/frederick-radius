@@ -82,7 +82,7 @@ export function placeReasons(
     const daysOld =
       (now.getTime() - Date.parse(p.last_verified_at)) / (24 * 3600_000);
     if (daysOld <= FRESH_WITHIN_DAYS) {
-      out.push({ kind: "recently_verified", label: "Verified", tone: "verified" });
+      out.push({ kind: "recently_verified", label: "Confirmed", tone: "verified" });
     }
   }
 
