@@ -264,10 +264,10 @@ const BADGES: Array<{
     body: "We picked this one ourselves. Vetted by hand, blurb written by a person, not auto-filled.",
   },
   {
-    label: "Verified",
+    label: "Confirmed",
     color: "#1E6B3A",
     icon: CheckCircle2,
-    body: "Maintained directly by the owner. Hours, details, specials all come straight from them.",
+    body: "Operational and current — the basics (hours, category, rating) confirmed and enriched, with a confirmed-on date. This is NOT owner-managed; once a business claims its listing it earns the stronger “Verified”.",
   },
   {
     label: "Community",
