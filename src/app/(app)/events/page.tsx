@@ -161,19 +161,23 @@ export default async function EventsIndexPage({
     .map((s) => ({ slug: s, name: MUNICIPALITY_BY_SLUG[s]?.name ?? s }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Server-computed window boundaries. start24 is a pure +24h offset
-  // (TZ-independent). The weekend window MUST be America/New_York wall
-  // time — the old server-local setHours(17) put it at ~1 PM ET on a UTC
-  // production server (the date-window bug). Mirror the loader's
-  // eventsWeekend() ET math.
-  const start24 = new Date(now);
-  start24.setHours(now.getHours() + 24);
+  // Server-computed window boundaries. The today + weekend windows MUST
+  // be America/New_York wall time — the old server-local setHours(17) put
+  // the weekend at ~1 PM ET on a UTC production server (the date-window
+  // bug). Mirror the loader's eventsWeekend() ET math.
   const et = easternParts(now);
   const daysToFri = (5 - et.weekday + 7) % 7;
   const friBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri, 12)));
   const monBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri + 3, 12)));
   const friday = new Date(Date.parse(easternWallToUtcISO(friBase.year, friBase.month, friBase.day, 17, 0)));
   const monday = new Date(Date.parse(easternWallToUtcISO(monBase.year, monBase.month, monBase.day, 0, 0)));
+  // End of TODAY in America/New_York (next Eastern midnight). The lead
+  // tier is bounded to today, not a rolling +24h — so a section that
+  // says "Today" can never quietly include tomorrow's events, and an
+  // afternoon event reads honestly as today rather than "Tonight". The
+  // day+1 rollover goes through easternParts so month/year-end is safe.
+  const todayEndBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + 1, 12)));
+  const todayEnd = new Date(Date.parse(easternWallToUtcISO(todayEndBase.year, todayEndBase.month, todayEndBase.day, 0, 0)));
 
   // Parse the deep-link view server-side so the explorer's first paint
   // already reflects it.
@@ -189,7 +193,7 @@ export default async function EventsIndexPage({
 
   // ── Tier windows (ms; absolute arithmetic, DST-safe) ────────────────
   const nowMs = +now;
-  const next24Ms = +start24;
+  const todayEndMs = +todayEnd;
   const weekendStartMs = +friday;
   const weekendEndMs = +monday;
   const weekEndMs = nowMs + 7 * 864e5;
@@ -207,17 +211,18 @@ export default async function EventsIndexPage({
   const heroEvent: EventWithMeta | null =
     allEvents.find((e) => +new Date(e.starts_at) >= nowMs) ?? allEvents[0] ?? null;
 
-  // "Tonight" — events starting in the next 24h (the honest "today &
-  // tonight" horizon). Drives the section count and the highlights rail.
-  const tonightEvents = allEvents.filter((e) => {
+  // "Today" — events still to come TODAY (now → next Eastern midnight),
+  // tonight included. Bounded to today, not a rolling +24h, so the
+  // section never silently includes tomorrow. Drives the count + rail.
+  const todayEvents = allEvents.filter((e) => {
     const t = startsMs(e);
-    return t >= nowMs && t < next24Ms;
+    return t >= nowMs && t < todayEndMs;
   });
   // Highlights rail under the hero: what's starting soonest. Prefer
-  // tonight; if the evening is thin, widen to the soonest upcoming so
-  // the rail still answers "what's next." Hero is excluded so it isn't
+  // today; if the day is thin, widen to the soonest upcoming so the
+  // rail still answers "what's next." Hero is excluded so it isn't
   // shown twice.
-  const highlightPool = (tonightEvents.length >= 3 ? tonightEvents : allEvents)
+  const highlightPool = (todayEvents.length >= 3 ? todayEvents : allEvents)
     .filter((e) => e.slug !== heroEvent?.slug)
     .slice(0, 8);
 
@@ -232,7 +237,7 @@ export default async function EventsIndexPage({
   // hero is excluded too. Collapsed by default ("Show N more").
   const shownSlugs = new Set<string>([
     ...(heroEvent ? [heroEvent.slug] : []),
-    ...tonightEvents.map((e) => e.slug),
+    ...todayEvents.map((e) => e.slug),
     ...weekendEvents.map((e) => e.slug),
   ]);
   const laterThisWeek = allEvents.filter((e) => {
@@ -300,16 +305,17 @@ export default async function EventsIndexPage({
         );
       })()}
 
-      {/* ── 3. TONIGHT — the lead tier (expanded). ONE hero event
+      {/* ── 3. TODAY — the lead tier (expanded). ONE hero event
           (soonest upcoming) carrying a real "why it matters" line,
-          then a highlights rail of what's starting soon. When nothing
-          is literally tonight the hero honestly reads as "Next up." */}
+          then a highlights rail of what's starting soon. Bounded to
+          today (tonight included); when nothing is left today the hero
+          honestly reads as "Next up." */}
       {heroEvent && (
         <CollapsibleSection
-          title="Tonight"
-          count={tonightEvents.length}
-          countLabel={tonightEvents.length === 1 ? "event" : "events"}
-          storageKey="fr.events.tonight"
+          title="Today"
+          count={todayEvents.length}
+          countLabel={todayEvents.length === 1 ? "event" : "events"}
+          storageKey="fr.events.today"
           defaultOpen
         >
           <div className="space-y-3">
@@ -317,7 +323,7 @@ export default async function EventsIndexPage({
               className="eyebrow inline-flex items-center gap-1.5"
               style={{ color: "var(--app-ink-3)" }}
             >
-              {tonightEvents.length > 0 ? (
+              {todayEvents.length > 0 ? (
                 <>
                   <Sparkles
                     className="h-3 w-3"
@@ -325,7 +331,7 @@ export default async function EventsIndexPage({
                     style={{ color: "var(--app-brand)" }}
                     aria-hidden
                   />
-                  Tonight&rsquo;s lead
+                  Today&rsquo;s lead
                 </>
               ) : (
                 <>
@@ -335,7 +341,7 @@ export default async function EventsIndexPage({
                     style={{ color: "var(--app-cool)" }}
                     aria-hidden
                   />
-                  Quiet tonight &middot; next up
+                  Quiet today &middot; next up
                 </>
               )}
             </p>
@@ -419,7 +425,10 @@ export default async function EventsIndexPage({
           categories={categories}
           towns={towns}
           nowISO={now.toISOString()}
-          next24ISO={start24.toISOString()}
+          // next24ISO carries end-of-today (next Eastern midnight) so the
+          // explorer's "Today" group matches the lead tier and never
+          // includes tomorrow. (Prop name is historical, not a rolling +24h.)
+          next24ISO={todayEnd.toISOString()}
           weekendStartISO={friday.toISOString()}
           weekendEndISO={monday.toISOString()}
           initialView={initialView}

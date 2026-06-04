@@ -7,9 +7,16 @@ import { CheckCircle2, Clock, AlertCircle } from "lucide-react";
  * FreshnessChip — visible age signal for any timestamped row.
  *
  * Three states based on age:
- *   - Fresh (≤ 14d):   green check + "Verified · 3d ago"
- *   - Recent (≤ 90d):  neutral clock + "Verified Apr 18"
- *   - Stale (> 90d):   amber alert + "Last verified Mar 2026"
+ *   - Fresh (≤ 14d):   green check + "Confirmed · 3d ago"
+ *   - Recent (≤ 90d):  neutral clock + "Confirmed Apr 18"
+ *   - Stale (> 90d):   amber alert + "Last confirmed Mar 2026"
+ *
+ * Says "Confirmed", never "Verified". Per the trust vocabulary each
+ * badge means exactly one thing: "Confirmed" = we spot-checked the
+ * basics on this date; "Verified" is reserved for owner-managed
+ * listings (which earn the stronger word). A freshness timestamp is a
+ * confirmation date, not an owner endorsement, so it must not say
+ * "Verified" — that was the badge-confusion the audit flagged.
  *
  * Honest by design: when the data is old, the chip says so — we'd
  * rather show the truth quietly than imply false freshness.
@@ -18,10 +25,10 @@ function formatAge(ms: number): { tier: "fresh" | "recent" | "stale"; label: str
   const days = ms / 86_400_000;
   if (days < 1) {
     const hrs = Math.max(1, Math.round(ms / 3_600_000));
-    return { tier: "fresh", label: `Verified · ${hrs}h ago` };
+    return { tier: "fresh", label: `Confirmed · ${hrs}h ago` };
   }
   if (days < 14) {
-    return { tier: "fresh", label: `Verified · ${Math.round(days)}d ago` };
+    return { tier: "fresh", label: `Confirmed · ${Math.round(days)}d ago` };
   }
   return { tier: days < 90 ? "recent" : "stale", label: "" };
 }
@@ -30,7 +37,7 @@ function formatAbsolute(d: Date, stale: boolean): string {
   const opts: Intl.DateTimeFormatOptions = stale
     ? { month: "short", year: "numeric" }
     : { month: "short", day: "numeric" };
-  const prefix = stale ? "Last verified" : "Verified";
+  const prefix = stale ? "Last confirmed" : "Confirmed";
   return `${prefix} ${d.toLocaleDateString("en-US", opts)}`;
 }
 

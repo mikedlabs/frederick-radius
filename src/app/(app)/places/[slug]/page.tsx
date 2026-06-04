@@ -26,6 +26,7 @@ import PlacePhotoGallery from "@/components/place/PlacePhotoGallery";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
 import PlaceAmenityIcons from "@/components/place/PlaceAmenityIcons";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { getVisibleEvents } from "@/lib/events/visible";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
 import SourceBadge from "@/components/place/SourceBadge";
@@ -120,7 +121,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   const orderActions = actions.filter((a) => a.category === "order");
   const parkActions = actions.filter((a) => a.category === "park");
   const socialActions = actions.filter((a) => a.category === "social");
-  const eventsAtThisVenue = place.upcoming_events.map((e) => ({
+  // Drop anything that has already ended before mapping. place.upcoming_events
+  // is baked at data-build time, so without this a venue can show a past
+  // event as "upcoming" once the build is a day or two old (the audit caught
+  // a June 1 event still listed on June 4). getVisibleEvents is the shared
+  // rule every "upcoming" surface uses, so they all agree on what's past.
+  const eventsAtThisVenue = getVisibleEvents(place.upcoming_events).map((e) => ({
     ...e,
     distance_m: undefined,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,

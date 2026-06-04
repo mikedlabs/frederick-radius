@@ -16,7 +16,11 @@ export type Horizon = "live" | "today" | "weekend" | "week" | "later";
 
 export const HORIZON_LABEL: Record<Horizon, string> = {
   live: "Happening now",
-  today: "Today & tonight",
+  // "Today", not "Today & tonight": callers pass `next24` = end of today
+  // (next Eastern midnight), so this bucket is today only and the label
+  // can't quietly include tomorrow's events (the audit flagged that the
+  // old rolling +24h window let "Today & tonight" spill into tomorrow).
+  today: "Today",
   weekend: "This weekend",
   week: "Later this week",
   later: "Coming up",
@@ -25,7 +29,9 @@ export const HORIZON_LABEL: Record<Horizon, string> = {
 export type HorizonBounds = {
   /** ms — the current instant. */
   now: number;
-  /** ms — end of the "today/tonight" window (page passes next-24h). */
+  /** ms — end of the "today" bucket: callers pass the next Eastern
+   *  midnight, so "today" never includes tomorrow. (Field name is
+   *  historical; the value is end-of-today, not a rolling +24h.) */
   next24: number;
   /** ms — Friday 5pm of the upcoming weekend. */
   weekendStart: number;

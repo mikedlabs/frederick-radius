@@ -6,6 +6,7 @@ import { clientPlaces } from "@/lib/loaders/places-client";
 import { EVENTS, type Event } from "@/data/events";
 import { MUNICIPALITIES, type Municipality } from "@/data/municipalities";
 import { CATEGORIES, type Category } from "@/data/categories";
+import { isUpcomingEvent } from "@/lib/events/visible";
 
 export type SearchHit =
   | { type: "place"; place: Place; score: number }
@@ -103,12 +104,73 @@ function intentScore(
   return v;
 }
 
+/**
+ * Event intents — some queries are asking for something to DO, not a
+ * place to be. "live music" is the canonical case the audit caught:
+ * the literal token "live" matched a candle shop ("Liveyoung") and it
+ * outranked every actual Alive @ Five show. When a query is an event
+ * intent, upcoming matching events should lead, soonest first; real
+ * venues stay in play; and incidental name-token places step aside.
+ */
+type EventIntent = {
+  triggers: string[];
+  /** event.category values that strongly answer this intent. */
+  eventCats: Set<string>;
+  /** an event qualifies for the boost if its text reads on-topic. */
+  topicalRx: RegExp;
+  /** place categories that are genuine venues for this intent. */
+  venueCats: Set<string>;
+};
+
+const EVENT_INTENTS: EventIntent[] = [
+  {
+    triggers: ["live music", "music", "concert", "concerts", "karaoke", "open mic", "open-mic"],
+    eventCats: new Set(["music"]),
+    topicalRx: /\b(music|concert|band|live|dj|karaoke|jazz|acoustic|open[- ]mic|singer|songwriter|orchestra|symphony|blues|bluegrass)\b/i,
+    venueCats: new Set(["bar", "brewery", "theater", "music", "arts"]),
+  },
+];
+
+function detectEventIntent(query: string): EventIntent | null {
+  const q = ` ${query.toLowerCase()} `;
+  const lower = query.toLowerCase();
+  for (const intent of EVENT_INTENTS) {
+    if (intent.triggers.some((t) => q.includes(` ${t} `) || lower.includes(t))) return intent;
+  }
+  return null;
+}
+
+/** Does this event read as on-topic for the event intent? */
+function eventMatchesIntent(e: Event, intent: EventIntent): boolean {
+  return (
+    intent.eventCats.has(e.category) ||
+    intent.topicalRx.test(e.title) ||
+    intent.topicalRx.test(e.description ?? "")
+  );
+}
+
+/**
+ * Signed event-intent adjustment for an event. Upcoming on-topic events
+ * get a strong, recency-weighted lift (today > weekend > later); past
+ * ones are sunk so they never lead over something you can actually go to.
+ */
+function eventIntentScore(e: Event, intent: EventIntent, now: Date): number {
+  if (!eventMatchesIntent(e, intent)) return 0;
+  if (!isUpcomingEvent(e, now)) return -30; // past show → never above upcoming
+  let v = 14;
+  const days = (Date.parse(e.starts_at) - now.getTime()) / 86_400_000;
+  v += days <= 1 ? 6 : days <= 3 ? 4 : days <= 7 ? 2 : 0;
+  return v;
+}
+
 export function search(query: string, limit = 30): SearchHit[] {
   const terms = normalize(query);
   if (terms.length === 0) return [];
 
   const hits: SearchHit[] = [];
   const intent = detectIntent(query);
+  const eventIntent = detectEventIntent(query);
+  const now = new Date();
 
   for (const p of clientPlaces()) {
     const s =
@@ -121,7 +183,11 @@ export function search(query: string, limit = 30): SearchHit[] {
     // Intent can SURFACE a relevant place with no keyword match (boost),
     // and SINK a mismatch that only caught a stray token (downrank).
     const iv = intent ? intentScore(p.category, p.tags ?? [], p.name, intent) : 0;
-    if (s > 0 || iv > 0) hits.push({ type: "place", place: p, score: s + p.feature_score + iv });
+    // Event intent ("live music"): genuine venues stay in play, but a
+    // place whose only claim was an incidental name token (the candle
+    // shop "Liveyoung") steps aside for the actual events below.
+    const ev = eventIntent ? (eventIntent.venueCats.has(p.category) ? 2 : -6) : 0;
+    if (s > 0 || iv > 0) hits.push({ type: "place", place: p, score: s + p.feature_score + iv + ev });
   }
 
   for (const e of EVENTS) {
@@ -130,7 +196,11 @@ export function search(query: string, limit = 30): SearchHit[] {
       fieldScore(e.description, terms) * 1 +
       fieldScore(e.venue_name, terms) * 2 +
       fieldScore(e.category, terms) * 2;
-    if (s > 0) hits.push({ type: "event", event: e, score: s });
+    // For an event intent, an on-topic upcoming event leads (soonest
+    // first); a past one is sunk. Lets a music show with no literal
+    // term match still surface above places for "live music".
+    const ev = eventIntent ? eventIntentScore(e, eventIntent, now) : 0;
+    if (s > 0 || ev > 0) hits.push({ type: "event", event: e, score: s + ev });
   }
 
   for (const m of MUNICIPALITIES) {

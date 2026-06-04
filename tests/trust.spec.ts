@@ -3,10 +3,21 @@ import { eventTrust, placeHoursTrust, formatChecked, TRUST_COLOR } from "@/lib/t
 import type { OpenStatus } from "@/lib/hours";
 
 describe("eventTrust", () => {
-  it("is_verified wins over any source", () => {
+  it("a confirmed live-feed event reads 'Confirmed', never 'Verified'", () => {
+    // "Verified" is reserved for owner-managed records; a checked live-feed
+    // row is "Confirmed". The basis must not echo the label (the old rule
+    // produced the duplicated "Verified · Verified by Frederick Radius").
     const t = eventTrust({ source: "manual", is_verified: true });
-    expect(t.level).toBe("verified");
-    expect(t.label).toBe("Verified");
+    expect(t.level).toBe("official");
+    expect(t.label).toBe("Confirmed");
+    expect(t.basis).toMatch(/Confirmed by Frederick Radius/);
+  });
+
+  it("a named partner source wins over is_verified (reads 'Official')", () => {
+    // Alive @ Five (DFP) must read "Official", not "Verified".
+    const t = eventTrust({ source: "dfp", is_verified: true });
+    expect(t.level).toBe("official");
+    expect(t.label).toBe("Official");
   });
 
   it("seed is hand-picked/verified-level with editorial basis", () => {

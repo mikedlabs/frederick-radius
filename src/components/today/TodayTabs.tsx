@@ -67,7 +67,7 @@ export default function TodayTabs({
             : { color: "var(--app-ink-3)", background: "var(--app-bg-sunken)" }
         }
       >
-        {verified ? "Verified open" : "Likely open"}
+        {verified ? "Confirmed open" : "Likely open"}
       </span>
     );
   };

@@ -41,18 +41,24 @@ const SOURCE_BASIS: Record<EventTrustInput["source"], string> = {
   seed: "Picked by Frederick Radius",
 };
 
-/** Trust for an event, from its provenance and verification flag. */
+/** Trust for an event, from its provenance and verification flag.
+ *  Source drives the label so it reads honestly and never says "Verified"
+ *  (reserved for owner-managed records): a Downtown Frederick Partnership
+ *  event is "Official", a seed pick is "Hand-picked", a live-feed row is
+ *  "Live" — bumped to "Confirmed" once we've checked it. The basis never
+ *  repeats the label (the old is_verified branch produced the duplicated
+ *  "Verified · Verified by Frederick Radius" the audit caught). */
 export function eventTrust(e: EventTrustInput): TrustSignal {
-  if (e.is_verified) {
-    return { level: "verified", label: "Verified", basis: "Verified by Frederick Radius" };
-  }
   if (e.source === "seed") {
     return { level: "verified", label: "Hand-picked", basis: SOURCE_BASIS.seed };
   }
   if (e.source === "dfp" || e.source === "celebrate" || e.source === "county") {
     return { level: "official", label: "Official", basis: SOURCE_BASIS[e.source] };
   }
-  return { level: "likely", label: "Live", basis: SOURCE_BASIS.manual };
+  // manual / live feed
+  return e.is_verified
+    ? { level: "official", label: "Confirmed", basis: "Confirmed by Frederick Radius" }
+    : { level: "likely", label: "Live", basis: SOURCE_BASIS.manual };
 }
 
 /**
@@ -67,8 +73,8 @@ export function placeHoursTrust(status: OpenStatus): TrustSignal {
     case "closed":
       return {
         level: "verified",
-        label: "Verified",
-        basis: "Confirmed against verified hours",
+        label: "Confirmed",
+        basis: "Checked against current hours",
       };
     case "unverified":
       return {
