@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Frederick Radius — Parks & Rec Atlas</title>
+<style>
+  :root{
+    --paper:#E5D8BF; --paper-2:#ECE5D5; --elevated:#F7F0E0; --sunken:#E1D5BF;
+    --border:#D6CDBB; --border-strong:rgba(26,24,21,.10);
+    --ink:#1A1815; --ink-2:#4A4844; --ink-3:#5C5A50;
+    --brand:#A03A22; --green:#2E3B2C; --gold:#C99632; --cool:#2F5470; --positive:#1E6B3A;
+    --r-sm:8px; --r-md:14px; --r-lg:22px;
+    --serif:ui-serif,Georgia,Cambria,"Times New Roman",Times,serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,sans-serif;
+    --spring:cubic-bezier(.34,1.4,.5,1);
+    --edge:0 0 0 .5px var(--border-strong);
+    --hi:inset 0 1px 0 rgba(255,255,255,.5);
+    --elev-1:0 1px 2px rgba(26,24,21,.05);
+    --elev-2:0 1px 2px rgba(26,24,21,.05),0 8px 20px -10px rgba(26,24,21,.22);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.45}
+  .wrap{max-width:430px;margin:0 auto;padding:18px 16px 40px}
+  .doc-eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+  h1.t{font-family:var(--serif);font-size:25px;font-weight:600;letter-spacing:-.01em;margin:.3em 0 .2em}
+  .lede{color:var(--ink-3);font-size:13px;margin:0 0 14px}
+
+  .modes{display:flex;background:var(--sunken);border:1px solid var(--border);border-radius:999px;padding:3px;margin-bottom:12px}
+  .modes button{flex:1;border:0;background:none;font-family:inherit;font-weight:700;font-size:13px;color:var(--ink-3);padding:8px;border-radius:999px;cursor:pointer;transition:all .25s var(--spring)}
+  .modes button.on{background:var(--elevated);color:var(--ink);box-shadow:var(--edge),var(--hi),var(--elev-1)}
+
+  .count{font-family:var(--serif);font-size:17px;font-weight:600;margin:0 0 9px}
+  .count .n{color:var(--brand);font-variant-numeric:tabular-nums}
+
+  .chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--border);background:var(--elevated);
+    border-radius:999px;padding:7px 12px;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--ink-2);cursor:pointer;
+    transition:all .2s var(--spring)}
+  .chip .ct{font-variant-numeric:tabular-nums;opacity:.7;font-weight:600}
+  .chip.on{color:#fff;border-color:transparent;box-shadow:var(--hi),0 5px 14px -7px var(--cc)}
+  .chip:active{transform:scale(.95)}
+
+  .plane{position:relative;width:100%;aspect-ratio:1;border-radius:var(--r-lg);overflow:hidden;margin-top:8px;
+    background:radial-gradient(130% 130% at 50% 38%,#F2EAD7,#E7DAC2 72%,#DECFB2);box-shadow:var(--edge),var(--hi),var(--elev-2);touch-action:none}
+  .creek{position:absolute;left:-12%;right:-12%;top:50%;height:9px;border-radius:9px;background:linear-gradient(90deg,transparent,rgba(47,84,112,.26),rgba(47,84,112,.2),transparent);transform:rotate(-9deg)}
+  .ridge{position:absolute;left:-12%;right:-12%;top:26%;height:7px;border-radius:9px;background:linear-gradient(90deg,transparent,rgba(46,59,44,.20),transparent);transform:rotate(5deg)}
+  .pin{position:absolute;width:24px;height:24px;border-radius:50%;transform:translate(-50%,-50%) scale(0);display:grid;place-items:center;
+    font-size:11px;cursor:pointer;background:var(--elevated);border:1.5px solid var(--pc);box-shadow:0 2px 7px -2px var(--pc),var(--hi);
+    transition:transform .42s var(--spring),opacity .3s;z-index:2}
+  .pin.show{transform:translate(-50%,-50%) scale(1)}
+  .pin.show:hover{transform:translate(-50%,-50%) scale(1.25);z-index:6}
+  .pin.sel{transform:translate(-50%,-50%) scale(1.35);z-index:7;box-shadow:0 4px 14px -2px var(--pc)}
+  .pin.collected{background:var(--gold);border-color:var(--gold);color:#fff}
+  .legend-hint{position:absolute;left:10px;bottom:10px;font-size:9.5px;font-weight:700;letter-spacing:.06em;color:var(--ink-3);background:color-mix(in srgb,var(--paper) 70%,transparent);padding:3px 7px;border-radius:6px;backdrop-filter:blur(3px)}
+
+  /* peek card */
+  .peek{margin-top:12px;border-radius:var(--r-lg);border:1px solid var(--border);background:var(--elevated);box-shadow:var(--edge),var(--hi),var(--elev-2);overflow:hidden;
+    max-height:0;opacity:0;transition:max-height .4s var(--spring),opacity .3s,margin .3s}
+  .peek.open{max-height:320px;opacity:1}
+  .peek-in{padding:15px 16px}
+  .peek .eyebrow{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--pc,var(--brand))}
+  .peek h2{font-family:var(--serif);font-size:20px;font-weight:600;margin:2px 0 1px}
+  .peek .sub{font-size:12.5px;color:var(--ink-3);margin:0}
+  .facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+  .f{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:5px 10px;font-size:12px;font-weight:600;color:var(--ink-2);background:var(--sunken)}
+  .prov{margin-top:11px;display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--ink-3)}
+  .prov .v{display:inline-flex;align-items:center;gap:4px;color:var(--positive);font-weight:600}
+  .prov .v::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--positive)}
+
+  /* passport */
+  .pp-head{display:flex;align-items:center;gap:14px;background:var(--sunken);border:1px solid var(--border);border-radius:var(--r-lg);padding:13px 15px;margin-bottom:12px;box-shadow:var(--edge),var(--hi)}
+  .ring{--p:0;width:54px;height:54px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;
+    background:conic-gradient(var(--gold) calc(var(--p)*1%), var(--border) 0);position:relative}
+  .ring::after{content:"";position:absolute;inset:5px;border-radius:50%;background:var(--sunken)}
+  .ring b{position:relative;z-index:1;font-family:var(--serif);font-size:15px;font-weight:700;color:var(--ink)}
+  .pp-head .lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .pp-head .big{font-family:var(--serif);font-size:18px;font-weight:600;line-height:1.15;margin-top:2px}
+  .pp-note{font-size:11.5px;color:var(--ink-3);text-align:center;margin:14px 0 0}
+  @keyframes pop{0%{transform:translate(-50%,-50%) scale(1)}45%{transform:translate(-50%,-50%) scale(1.6)}100%{transform:translate(-50%,-50%) scale(1.35)}}
+  .pin.justgot{animation:pop .5s var(--spring)}
+  .note{font-size:11.5px;color:var(--ink-3);text-align:center;margin-top:16px;line-height:1.6}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="doc-eyebrow">Frederick Radius · Parks &amp; Rec atlas</p>
+  <h1 class="t">203 real places. One warm container.</h1>
+  <p class="lede">Live Frederick County GIS — every park, shelter, field, playground, trail &amp; passport marker. Tap layers to toggle (the count always agrees), tap a pin for details, or switch to Passport to collect them. This is the field guide, not an Esri dashboard.</p>
+
+  <div class="modes" id="modes">
+    <button data-mode="atlas" class="on">🗺 Atlas</button>
+    <button data-mode="passport">🎫 Passport</button>
+  </div>
+
+  <div id="atlas-ui">
+    <p class="count"><span class="n" id="shown">0</span> <span id="shown-lbl">spots shown</span></p>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div id="pp-ui" style="display:none">
+    <div class="pp-head">
+      <div class="ring" id="ring"><b id="ring-n">0/17</b></div>
+      <div><div class="lbl">Your park passport</div><div class="big" id="pp-big">Tap a marker to collect it</div></div>
+    </div>
+  </div>
+
+  <div class="plane" id="plane">
+    <div class="ridge"></div><div class="creek"></div>
+    <div class="legend-hint" id="hint">Catoctin ridge ↖ · Monocacy ↘</div>
+  </div>
+
+  <div class="peek" id="peek"><div class="peek-in" id="peek-in"></div></div>
+  <p class="pp-note" id="pp-note" style="display:none"></p>
+
+  <p class="note">Same map powers both modes. Toggling a layer pops its pins in with a spring; the headline count never disagrees with what's on the map (the data-confidence gate). Passport collection persists locally — the gamified loop the county's Wegmans program already has data for.</p>
+</div>
+<script>
+const DATA=[{"n":"Ballenger Creek Park","t":"park","lat":39.38301,"lng":-77.44702},{"n":"Buckeystown Park","t":"park","lat":39.32665,"lng":-77.41514},{"n":"Catoctin Creek Park","t":"park","lat":39.39187,"lng":-77.56477},{"n":"Creagerstown Park","t":"park","lat":39.56458,"lng":-77.35165},{"n":"Devilbiss Bridge","t":"park","lat":39.50715,"lng":-77.37752},{"n":"Fountaindale Park","t":"park","lat":39.43122,"lng":-77.5141},{"n":"Fountain Rock Park","t":"park","lat":39.47569,"lng":-77.36965},{"n":"Green Hill Park","t":"park","lat":39.31118,"lng":-77.47109},{"n":"Kemptown Park","t":"park","lat":39.33345,"lng":-77.236},{"n":"Libertytown Park","t":"park","lat":39.48317,"lng":-77.23701},{"n":"Loy’s Station Park","t":"park","lat":39.60905,"lng":-77.35181},{"n":"Middletown Park","t":"park","lat":39.44586,"lng":-77.52948},{"n":"Old National Pike Park","t":"park","lat":39.38016,"lng":-77.22747},{"n":"Othello Regional Park","t":"park","lat":39.34436,"lng":-77.60281},{"n":"Pinecliff Park","t":"park","lat":39.38971,"lng":-77.37747},{"n":"Point of Rocks Community Park","t":"park","lat":39.27803,"lng":-77.53779},{"n":"Point of Rocks Community Commons Park","t":"park","lat":39.27424,"lng":-77.53982},{"n":"Rocky Ridge Landing","t":"park","lat":39.60358,"lng":-77.29499},{"n":"Roddy Road Park","t":"park","lat":39.64132,"lng":-77.39373},{"n":"Rose Hill Manor Park","t":"park","lat":39.43641,"lng":-77.40566},{"n":"Urbana Community Park","t":"park","lat":39.3276,"lng":-77.36177},{"n":"Urbana District Park","t":"park","lat":39.33957,"lng":-77.36317},{"n":"Utica District Park","t":"park","lat":39.51605,"lng":-77.40253},{"n":"Parks & Recreation Offices","t":"facility","lat":39.43329,"lng":-77.43697},{"n":"Ballenger Creek Community Building","t":"facility","lat":39.38402,"lng":-77.44497,"park":"Ballenger Creek Park","cap":127},{"n":"Browning Building","t":"facility","lat":39.38961,"lng":-77.37413,"park":"Pinecliff Park"},{"n":"Catoctin Creek Nature Center","t":"facility","lat":39.39188,"lng":-77.56476,"park":"Catoctin Creek Park"},{"n":"Centerville Rec Center","t":"facility","lat":39.33499,"lng":-77.33397},{"n":"Deer Crossing Rec Center","t":"facility","lat":39.40367,"lng":-77.29185},{"n":"Fountain Rock Nature Center","t":"facility","lat":39.47572,"lng":-77.36866,"park":"Fountain Rock Park"},{"n":"Middletown Rec Center","t":"facility","lat":39.43697,"lng":-77.53951},{"n":"Oakdale Rec Center","t":"facility","lat":39.39567,"lng":-77.31875},{"n":"Rock Creek Rec Center","t":"facility","lat":39.48064,"lng":-77.35423},{"n":"Rose Hill Manor Children’s Museum","t":"facility","lat":39.43778,"lng":-77.40462,"park":"Rose Hill Manor Park"},{"n":"Scott Key Community Center","t":"facility","lat":39.43571,"lng":-77.43889},{"n":"Sugarloaf Recreation Center","t":"facility","lat":39.32697,"lng":-77.36528},{"n":"Thurmont Rec Center","t":"facility","lat":39.6206,"lng":-77.40415},{"n":"Tuscarora Rec Center","t":"facility","lat":39.37023,"lng":-77.44398},{"n":"Urbana Community Park Skate Spot","t":"facility","lat":39.32767,"lng":-77.36126,"park":"Urbana Community Park"},{"n":"Walkersville Rec Center","t":"facility","lat":39.47426,"lng":-77.3626},{"n":"Ballenger Creek Park Shelter #1","t":"shelter","lat":39.38183,"lng":-77.44603,"park":"Ballenger Creek Park","cap":120,"tables":15},{"n":"Ballenger Creek Park Shelter #2","t":"shelter","lat":39.38055,"lng":-77.44867,"park":"Ballenger Creek Park","cap":160,"tables":20},{"n":"Catoctin Creek Park Shelter #1","t":"shelter","lat":39.39203,"lng":-77.56318,"park":"Catoctin Creek Park","cap":96,"tables":12},{"n":"Kemptown Park Shelter #1","t":"shelter","lat":39.33215,"lng":-77.23584,"park":"Kemptown Park","cap":104,"tables":13},{"n":"Kemptown Park Shelter #2","t":"shelter","lat":39.3344,"lng":-77.235,"park":"Kemptown Park","cap":152,"tables":19},{"n":"Kemptown Park Shelter #3","t":"shelter","lat":39.33359,"lng":-77.23545,"park":"Kemptown Park","cap":144,"tables":18},{"n":"Kemptown Park Shelter #4","t":"shelter","lat":39.33342,"lng":-77.23589,"park":"Kemptown Park","cap":48,"tables":6},{"n":"Libertytown Park Shelter #1","t":"shelter","lat":39.48264,"lng":-77.23583,"park":"Libertytown Park","cap":48,"tables":6},{"n":"Loy’s Station Park Shelter #1","t":"shelter","lat":39.60839,"lng":-77.35229,"park":"Loy's Station Park","cap":64,"tables":8},{"n":"Middletown Park Shelter #1","t":"shelter","lat":39.44611,"lng":-77.53014,"park":"Middletown Park","cap":120,"tables":15},{"n":"Middletown Park Shelter #2","t":"shelter","lat":39.44544,"lng":-77.53032,"park":"Middletown Park","cap":168,"tables":21},{"n":"Middletown Park Shelter #3","t":"shelter","lat":39.44481,"lng":-77.53128,"park":"Middletown Park","cap":96,"tables":12},{"n":"Middletown Park Shelter #4","t":"shelter","lat":39.44529,"lng":-77.52838,"park":"Middletown Park","cap":64,"tables":8},{"n":"Middletown Park Shelter #5","t":"shelter","lat":39.44577,"lng":-77.52826,"park":"Middletown Park","cap":64,"tables":8},{"n":"Old National Pike Park Shelter #1","t":"shelter","lat":39.37767,"lng":-77.23031,"park":"Old National Pike Park","cap":64,"tables":8},{"n":"Old National Pike Park Shelter #2","t":"shelter","lat":39.37873,"lng":-77.22679,"park":"Old National Pike Park","cap":144,"tables":18},{"n":"Old National Pike Park Shelter #3","t":"shelter","lat":39.37962,"lng":-77.22723,"park":"Old National Pike Park","cap":64,"tables":8},{"n":"Othello Regional Park Shelter #1","t":"shelter","lat":39.34813,"lng":-77.6009,"park":"Othello Regional Park","cap":14},{"n":"Othello Regional Park Shelter #2","t":"shelter","lat":39.34737,"lng":-77.60214,"park":"Othello Regional Park","cap":32},{"n":"Othello Regional Park Shelter #3","t":"shelter","lat":39.34643,"lng":-77.60195,"park":"Othello Regional Park","cap":84},{"n":"Othello Regional Park Shelter #4","t":"shelter","lat":39.34649,"lng":-77.60047,"park":"Othello Regional Park","cap":14},{"n":"Pinecliff Park Shelter #1","t":"shelter","lat":39.38794,"lng":-77.3788,"park":"Pinecliff Park","cap":64,"tables":8},{"n":"Pinecliff Park Shelter #2","t":"shelter","lat":39.38886,"lng":-77.37829,"park":"Pinecliff Park","cap":64,"tables":8},{"n":"Pinecliff Park Shelter #3","t":"shelter","lat":39.38765,"lng":-77.37755,"park":"Pinecliff Park","cap":96,"tables":12},{"n":"Pinecliff Park Shelter #4","t":"shelter","lat":39.38839,"lng":-77.37647,"park":"Pinecliff Park","cap":64,"tables":8},{"n":"Pinecliff Park Shelter #5","t":"shelter","lat":39.38963,"lng":-77.37572,"park":"Pinecliff Park","cap":64,"tables":8},{"n":"Point of Rocks Community Commons Park Shelter #1","t":"shelter","lat":39.27433,"lng":-77.54064,"park":"Point of Rocks Community Common","cap":64,"tables":8},{"n":"Roddy Road Park Shelter #1","t":"shelter","lat":39.64115,"lng":-77.39391,"park":"Roddy Road Park","cap":30,"tables":3},{"n":"Urbana District Park Shelter #1","t":"shelter","lat":39.33953,"lng":-77.36635,"park":"Urbana District Park","cap":144,"tables":18},{"n":"Urbana District Park Shelter #2","t":"shelter","lat":39.33991,"lng":-77.36598,"park":"Urbana District Park","cap":96,"tables":12},{"n":"Urbana District Park Shelter #3","t":"shelter","lat":39.34015,"lng":-77.36507,"park":"Urbana District Park","cap":288,"tables":36},{"n":"Urbana District Park Shelter #4","t":"shelter","lat":39.33766,"lng":-77.36577,"park":"Urbana District Park","cap":96,"tables":12},{"n":"Utica District Park Shelter #1","t":"shelter","lat":39.51682,"lng":-77.40216,"park":"Utica District Park","cap":320,"tables":40},{"n":"Utica District Park Shelter #2","t":"shelter","lat":39.5184,"lng":-77.4026,"park":"Utica District Park","cap":96,"tables":12},{"n":"Utica District Park Shelter #3","t":"shelter","lat":39.51953,"lng":-77.40311,"park":"Utica District Park","cap":128,"tables":16},{"n":"Utica District Park Shelter #4","t":"shelter","lat":39.52001,"lng":-77.40332,"park":"Utica District Park","cap":120,"tables":15},{"n":"Utica District Park Shelter #5","t":"shelter","lat":39.5122,"lng":-77.40205,"park":"Utica District Park","cap":32,"tables":4},{"n":"Utica District Park Shelter #6","t":"shelter","lat":39.5117,"lng":-77.40585,"park":"Utica District Park","cap":32,"tables":4},{"n":"Ballenger Creek Park","t":"trail","lat":39.38148,"lng":-77.45116,"park":"Ballenger Creek Park","paved":0.7},{"n":"Ballenger Creek Linear Trail","t":"trail","lat":39.37341,"lng":-77.42073,"paved":4.2},{"n":"Catoctin Creek Park Trail","t":"trail","lat":39.39151,"lng":-77.56387,"park":"Catoctin Creek Park","paved":0.5},{"n":"Fountain Rock Park Trail","t":"trail","lat":39.47551,"lng":-77.36825,"park":"Fountain Rock Park","paved":0.4},{"n":"Kemptown Park Trail","t":"trail","lat":39.33314,"lng":-77.23565,"park":"Kemptown Park","paved":0.4},{"n":"Libertytown Park Trail","t":"trail","lat":39.48255,"lng":-77.23768,"park":"Libertytown Park","paved":0.3},{"n":"Loy's Station Park Trail","t":"trail","lat":39.6084,"lng":-77.35233,"park":"Loy's Station Park","paved":0.3},{"n":"Middletown Park","t":"trail","lat":39.44575,"lng":-77.5281,"park":"Middletown Park","paved":0.4},{"n":"Old National Pike District Park Trail","t":"trail","lat":39.37793,"lng":-77.22947,"park":"Old National Pike Park","paved":0.9},{"n":"Othello Regional Park Equestrian Trail","t":"trail","lat":39.34167,"lng":-77.60127,"park":"Othello Regional Park"},{"n":"Othello Regional Park Walking Trail","t":"trail","lat":39.34631,"lng":-77.60144,"park":"Othello Regional Park","paved":1.8},{"n":"Point of Rocks Community Park Trail","t":"trail","lat":39.2782,"lng":-77.53624,"park":"Point of Rocks Community Park","paved":0.25},{"n":"Rose Hill Manor Park Trail","t":"trail","lat":39.43669,"lng":-77.40629,"park":"Rose Hill Manor Park"},{"n":"Urbana Community Park Trail","t":"trail","lat":39.32803,"lng":-77.36209,"park":"Urbana Community Park","paved":0.25},{"n":"Urbana District Park Trail","t":"trail","lat":39.33672,"lng":-77.36312,"park":"Urbana District Park","paved":1.2},{"n":"Utica District Park","t":"trail","lat":39.5164,"lng":-77.4014,"park":"Utica District Park","paved":2.8},{"n":"Libertytown Park","t":"passport","lat":39.48253,"lng":-77.23772,"park":"Libertytown Park","len":0.75,"feat":"This park features ball fields, basketball courts, grills, multipurpose field, p","pdiff":"Easy"},{"n":"Old National Pike Park","t":"passport","lat":39.37967,"lng":-77.22735,"park":"Old National Pike Park","len":0.83,"feat":"This well-manicured park features a baseball field, multipurpose fields, grills,","pdiff":"Moderate"},{"n":"Kemptown Community Park","t":"passport","lat":39.33317,"lng":-77.23548,"park":"Kemptown Park","len":0.75,"feat":"This hidden park features an amphitheater, fire ring, picnic shelters, picnic ta","pdiff":"Moderate"},{"n":"Point of Rocks Community Commons Park","t":"passport","lat":39.27415,"lng":-77.5399,"park":"Point of Rocks Community Common","len":0.18,"feat":"The 2.2-acre park, located near the town’s historic train station along the Poto","pdiff":"Easy"},{"n":"Ballenger Creek Park","t":"passport","lat":39.38139,"lng":-77.45146,"park":"Ballenger Creek Park","len":1,"feat":"This gigantic park features Community Gardens, dog park, Community Building, syn","pdiff":"Moderate"},{"n":"Catoctin Creek Park","t":"passport","lat":39.39063,"lng":-77.56284,"park":"Catoctin Creek Park","len":0.45,"feat":"This park features a Nature Center, over four (4) miles of trails, mid-19th Cent","pdiff":"Moderate"},{"n":"Urbana District Park","t":"passport","lat":39.33382,"lng":-77.36179,"park":"Urbana District Park","len":1,"feat":"This park features Wi-Fi, ball fields, a football/lacrosse field, picnic shelter","pdiff":"Moderate"},{"n":"Carrollton Park","t":"passport","lat":39.40259,"lng":-77.42392,"len":0.24,"feat":"This park features a baseball field, basketball courts, bathrooms, benches/bleac","pdiff":"Moderate"},{"n":"Baker Park Bell Tower","t":"passport","lat":39.41534,"lng":-77.41778,"len":0.5,"feat":"This Park features a band shell with restrooms and electricity. It also features","pdiff":"Moderate"},{"n":"Baker Park Pool","t":"passport","lat":39.41527,"lng":-77.42081,"len":0.58,"feat":"This park features a multipurpose field, tennis courts, a swimming pool, and a p","pdiff":"Moderate"},{"n":"Emmitsburg Community Park","t":"passport","lat":39.70273,"lng":-77.33116,"len":1.25,"feat":"This park features a playscape for children, a covered pavilion with picnic tabl","pdiff":"Moderate"},{"n":"Loy's Station Park","t":"passport","lat":39.60871,"lng":-77.3518,"park":"Loy's Station Park","len":0.3,"feat":"This park features a covered bridge, fishing, grills, horseshoe pits, picnic she","pdiff":"Easy"},{"n":"Hospital Park","t":"passport","lat":39.42287,"lng":-77.41341,"len":0.25,"feat":"This park features benches, picnic tables, a playground, walking and biking path","pdiff":"Easy"},{"n":"Bourne Building (Frederick County Division of Pa","t":"passport","lat":39.43314,"lng":-77.43686,"len":0.05,"feat":"At Frederick County Parks and Recreation’s Main Office you can register for prog","pdiff":"Easy"},{"n":"Heritage Farm Park","t":"passport","lat":39.50021,"lng":-77.35011,"len":1.25,"feat":"This park contains a nine-hole golf course, eighteen-hole disc golf course, jogg","pdiff":"Easy"},{"n":"Walkersville Community Park","t":"passport","lat":39.47654,"lng":-77.36603,"len":0.9,"feat":"This hidden park features a creek, access to the Fountain Rock trail system, a p","pdiff":"Easy"},{"n":"Othello Regional Park","t":"passport","lat":39.3462,"lng":-77.60196,"park":"Othello Regional Park","len":1.8,"feat":"This park features over 2 miles of equestrian trails, ball fields, a multipurpos","pdiff":"Moderate"},{"n":"Ballenger Creek Park - Playground 1","t":"play","lat":39.3831,"lng":-77.44785,"park":"Ballenger Creek Park","bf":"Yes"},{"n":"Ballenger Creek Park - Playground 2","t":"play","lat":39.38328,"lng":-77.44764,"park":"Ballenger Creek Park","bf":"No"},{"n":"Ballenger Creek Park - Playground 3","t":"play","lat":39.38024,"lng":-77.44856,"park":"Ballenger Creek Park","bf":"No"},{"n":"Ballenger Creek Park - Playground 4","t":"play","lat":39.38205,"lng":-77.44545,"park":"Ballenger Creek Park","bf":"No"},{"n":"Buckeystown Park Playground","t":"play","lat":39.3272,"lng":-77.41548,"park":"Buckeystown Park","bf":"No"},{"n":"Catoctin Creek Park Playground","t":"play","lat":39.39188,"lng":-77.56344,"park":"Catoctin Creek Park","bf":"No"},{"n":"Creagerstown Park Playground","t":"play","lat":39.56423,"lng":-77.35147,"park":"Creagerstown Park","bf":"No"},{"n":"Fountain Rock Park Playground","t":"play","lat":39.47526,"lng":-77.36912,"park":"Fountain Rock Park","bf":"No"},{"n":"Green Hill Park Playground","t":"play","lat":39.31119,"lng":-77.47087,"park":"Green Hill Park","bf":"No"},{"n":"Kemptown Park - Playground 1","t":"play","lat":39.33205,"lng":-77.23511,"park":"Kemptown Park","bf":"No"},{"n":"Kemptown Park - Playground 2","t":"play","lat":39.33341,"lng":-77.23567,"park":"Kemptown Park","bf":"No"},{"n":"Libertytown Park Playground","t":"play","lat":39.48292,"lng":-77.23586,"park":"Libertytown Park","bf":"No"},{"n":"Loy's Station Park Playground","t":"play","lat":39.60858,"lng":-77.35244,"park":"Loy's Station Park","bf":"No"},{"n":"Middletown Park - Playground 1","t":"play","lat":39.4475,"lng":-77.53146,"park":"Middletown Park","bf":"No"},{"n":"Middletown Park - Playground 2","t":"play","lat":39.44576,"lng":-77.53034,"park":"Middletown Park","bf":"No"},{"n":"Old National Pike Park - Playground 1","t":"play","lat":39.37783,"lng":-77.22967,"park":"Old National Pike Park","bf":"Yes"},{"n":"Old National Pike Park - Playground 2","t":"play","lat":39.37935,"lng":-77.22717,"park":"Old National Pike Park","bf":"No"},{"n":"Pinecliff Park - Playground 1","t":"play","lat":39.38799,"lng":-77.37691,"park":"Pinecliff Park","bf":"Yes"},{"n":"Pinecliff Park - Playground 2","t":"play","lat":39.38855,"lng":-77.37854,"park":"Pinecliff Park","bf":"No"},{"n":"Pinecliff Park - Playground 3","t":"play","lat":39.39248,"lng":-77.37583,"park":"Pinecliff Park","bf":"No"},{"n":"Point of Rocks Park Playground","t":"play","lat":39.27754,"lng":-77.53829,"park":"Point of Rocks Community Park","bf":"No"},{"n":"Urbana Community Park Playground","t":"play","lat":39.32856,"lng":-77.36087,"park":"Urbana Community Park","bf":"No"},{"n":"Urbana District Park - Playground 1","t":"play","lat":39.34005,"lng":-77.36572,"park":"Urbana District Park","bf":"No"},{"n":"Urbana District Park - Playground 2","t":"play","lat":39.33763,"lng":-77.3646,"park":"Urbana District Park","bf":"Yes"},{"n":"Utica District Park - Playground 1","t":"play","lat":39.51198,"lng":-77.40569,"park":"Utica District Park","bf":"No"},{"n":"Utica District Park - Playground 2","t":"play","lat":39.51227,"lng":-77.40229,"park":"Utica District Park","bf":"No"},{"n":"Utica District Park - Playground 3","t":"play","lat":39.51668,"lng":-77.40185,"park":"Utica District Park","bf":"No"},{"n":"Utica District Park - Barrier Free Playground 4","t":"play","lat":39.52156,"lng":-77.40296,"park":"Utica District Park","bf":"Yes"},{"n":"Ballenger Creek Park Chuck Foreman Turf Field","t":"field","lat":39.38473,"lng":-77.44614,"park":"Ballenger Creek Park","use":"Multi-Purpose","style":"Turf Field"},{"n":"Ballenger Creek Park Field #1","t":"field","lat":39.38265,"lng":-77.44776,"park":"Ballenger Creek Park","use":"Softball","style":"Diamond"},{"n":"Ballenger Creek Park Field #2","t":"field","lat":39.38328,"lng":-77.44846,"park":"Ballenger Creek Park","use":"Softball","style":"Diamond"},{"n":"Ballenger Creek Park Field #3","t":"field","lat":39.38379,"lng":-77.44732,"park":"Ballenger Creek Park","use":"Softball","style":"Diamond"},{"n":"Ballenger Creek Park Field #4","t":"field","lat":39.3819,"lng":-77.44457,"park":"Ballenger Creek Park","use":"Soccer,Lacrosse","style":"Field"},{"n":"Ballenger Creek Park Field #5","t":"field","lat":39.38164,"lng":-77.44554,"park":"Ballenger Creek Park","use":"Little_League","style":"Diamond"},{"n":"Ballenger Creek Park Field #6","t":"field","lat":39.38067,"lng":-77.4468,"park":"Ballenger Creek Park","use":"Little_League","style":"Diamond"},{"n":"Ballenger Creek Park Field #7","t":"field","lat":39.38074,"lng":-77.44769,"park":"Ballenger Creek Park","use":"Soccer,Lacrosse","style":"Field"},{"n":"Ballenger Creek Park Field #9","t":"field","lat":39.38337,"lng":-77.44397,"park":"Ballenger Creek Park","use":"Soccer","style":"Field"},{"n":"Ballenger Creek Park Field #10","t":"field","lat":39.38538,"lng":-77.44716,"park":"Ballenger Creek Park","use":"Soccer","style":"Field"},{"n":"Ballenger Creek Park Field #8","t":"field","lat":39.38327,"lng":-77.44628,"park":"Ballenger Creek Park","use":"Soccer","style":"Field"},{"n":"Kemptown Park Tennis / Pickleball Courts","t":"field","lat":39.33519,"lng":-77.23458,"park":"Kemptown Park","use":"Tennis","style":"Court"},{"n":"Fountaindale Park Field #1","t":"field","lat":39.42957,"lng":-77.51299,"park":"Fountaindale Park","use":"Multi-Purpose","style":"Field"},{"n":"Green Hill Park Field #1","t":"field","lat":39.31226,"lng":-77.47084,"park":"Green Hill Park","use":"Soccer","style":"Field"},{"n":"Kemptown Park Field #1","t":"field","lat":39.33413,"lng":-77.2338,"park":"Kemptown Park","use":"Baseball","style":"Diamond"},{"n":"Kemptown Park Field #2","t":"field","lat":39.3331,"lng":-77.23665,"park":"Kemptown Park","use":"Little_League","style":"Diamond"},{"n":"Libertytown Park Field #1","t":"field","lat":39.48298,"lng":-77.23641,"park":"Libertytown Park","use":"Little_League","style":"Diamond"},{"n":"Libertytown Park Field #2","t":"field","lat":39.48259,"lng":-77.23682,"park":"Libertytown Park","use":"Baseball","style":"Diamond"},{"n":"Libertytown Park Tennis / Pickleball Courts","t":"field","lat":39.48243,"lng":-77.2387,"park":"Libertytown Park","use":"Tennis,Pickle_Ball","style":"Court"},{"n":"Libertytown Park Field #3","t":"field","lat":39.48205,"lng":-77.23639,"park":"Libertytown Park","use":"Football,Soccer","style":"Field"},{"n":"Middletown Middle School Tennis / Pickleball Cou","t":"field","lat":39.44517,"lng":-77.53539,"park":"Middletown Park","use":"Tennis,Pickle_Ball","style":"Court"},{"n":"Old National Pike Park Field #1","t":"field","lat":39.37816,"lng":-77.2316,"park":"Old National Pike Park","use":"Soccer,Lacrosse","style":"Field"},{"n":"Old National Pike Park Field #2","t":"field","lat":39.3784,"lng":-77.23046,"park":"Old National Pike Park","use":"Soccer,Lacrosse","style":"Field"},{"n":"Old National Pike Park Field #3","t":"field","lat":39.37842,"lng":-77.22938,"park":"Old National Pike Park","use":"Baseball","style":"Diamond"},{"n":"Old National Pike Park Field #4","t":"field","lat":39.38041,"lng":-77.22825,"park":"Old National Pike Park","use":"Soccer,Lacrosse","style":"Court"},{"n":"Old National Pike Park Field #5","t":"field","lat":39.38032,"lng":-77.22715,"park":"Old National Pike Park","use":"Soccer,Lacrosse","style":"Field"},{"n":"Othello Park Field #1","t":"field","lat":39.3486,"lng":-77.60141,"park":"Othello Regional Park","use":"Baseball","style":"Diamond"},{"n":"Othello Park Turf Field","t":"field","lat":39.34737,"lng":-77.60016,"park":"Othello Regional Park","use":"Multi-Purpose","style":"Turf Field"},{"n":"Othello Park Field #2","t":"field","lat":39.34628,"lng":-77.59999,"park":"Othello Regional Park","use":"Little_League","style":"Diamond"},{"n":"Othello Park Field #3","t":"field","lat":39.34593,"lng":-77.60643,"park":"Othello Regional Park","use":"Softball","style":"Diamond"},{"n":"Othello Park Field #4","t":"field","lat":39.34553,"lng":-77.60486,"park":"Othello Regional Park","use":"Multi-Purpose","style":"Field"},{"n":"Othello Park Field #5","t":"field","lat":39.34452,"lng":-77.60675,"park":"Othello Regional Park","use":"Multi-Purpose","style":"Field"},{"n":"Point of Rocks Community Park Field #1","t":"field","lat":39.27764,"lng":-77.53714,"park":"Point of Rocks Community Park","use":"Soccer","style":"Field"},{"n":"Point of Rocks Community Tennis / Pickleball Cou","t":"field","lat":39.27835,"lng":-77.53699,"park":"Point of Rocks Community Park","use":"Tennis","style":"Court"},{"n":"Urbana Community Park Field #1","t":"field","lat":39.32933,"lng":-77.3598,"park":"Urbana Community Park","use":"Little_League","style":"Diamond"},{"n":"Urbana Community Park Field #2","t":"field","lat":39.32845,"lng":-77.36029,"park":"Urbana Community Park","use":"Little_League","style":"Diamond"},{"n":"Urbana Community Park Field #3","t":"field","lat":39.32789,"lng":-77.36092,"park":"Urbana Community Park","use":"Little_League","style":"Diamond"},{"n":"Urbana Community Park Field #4","t":"field","lat":39.32686,"lng":-77.36269,"park":"Urbana Community Park","use":"Soccer","style":"Field"},{"n":"Urbana Community Park Tennis / Pickleball Courts","t":"field","lat":39.32755,"lng":-77.36216,"park":"Urbana Community Park","use":"Tennis,Pickle_Ball","style":"Court"},{"n":"Urbana District Park Field #1","t":"field","lat":39.33718,"lng":-77.36659,"park":"Urbana District Park","use":"Soccer,Lacrosse","style":"Field"},{"n":"Urbana District Park Field #2","t":"field","lat":39.33658,"lng":-77.3647,"park":"Urbana District Park","use":"Soccer","style":"Field"},{"n":"Urbana District Park Field #3","t":"field","lat":39.3359,"lng":-77.36545,"park":"Urbana District Park","use":"Soccer","style":"Field"},{"n":"Urbana District Park Field #4","t":"field","lat":39.33859,"lng":-77.36541,"park":"Urbana District Park","use":"Little_League","style":"Diamond"},{"n":"Urbana District Park Field #5","t":"field","lat":39.33844,"lng":-77.36461,"park":"Urbana District Park","use":"Baseball","style":"Diamond"},{"n":"Urbana District Park Field #6","t":"field","lat":39.33723,"lng":-77.3641,"park":"Urbana District Park","use":"Softball","style":"Diamond"},{"n":"Utica District Park Soccer Court","t":"field","lat":39.52058,"lng":-77.40216,"park":"Utica District Park","use":"Soccer","style":"Court"},{"n":"Utica Park Field #1","t":"field","lat":39.51331,"lng":-77.40111,"park":"Utica District Park","use":"Multi-Purpose","style":"Field"},{"n":"Utica Park Field #2","t":"field","lat":39.51307,"lng":-77.40204,"park":"Utica District Park","use":"Multi-Purpose","style":"Field"},{"n":"Utica Park Field #3","t":"field","lat":39.51241,"lng":-77.40351,"park":"Utica District Park","use":"Softball","style":"Diamond"},{"n":"Utica Park Field #4","t":"field","lat":39.51198,"lng":-77.40494,"park":"Utica District Park","use":"Little_League","style":"Diamond"},{"n":"Utica Park Field #5","t":"field","lat":39.51116,"lng":-77.4059,"park":"Utica District Park","use":"Little_League","style":"Diamond"},{"n":"Utica Park Field #6","t":"field","lat":39.52117,"lng":-77.40157,"park":"Utica District Park","use":"Multi-Purpose","style":"Turf Field"},{"n":"Utica Park Field #7","t":"field","lat":39.52122,"lng":-77.40046,"park":"Utica District Park","use":"Multi-Purpose","style":"Turf Field"},{"n":"Utica Park Field #8","t":"field","lat":39.52248,"lng":-77.40057,"park":"Utica District Park","use":"Multi-Purpose","style":"Field"},{"n":"Utica Park Field #9","t":"field","lat":39.5233,"lng":-77.40266,"park":"Utica District Park","use":"Multi-Purpose","style":"Field"},{"n":"Utica Park Field #10","t":"field","lat":39.52223,"lng":-77.40375,"park":"Utica District Park","use":"Multi-Purpose","style":"Field"},{"n":"Utica Park Tennis / Pickleball Courts","t":"field","lat":39.52052,"lng":-77.40283,"park":"Utica District Park","use":"Tennis,Pickle_Ball","style":"Court"},{"n":"Kemptown Park - Playground 3","t":"play","lat":39.33481,"lng":-77.23485,"park":"Kemptown Park","bf":"Yes"},{"n":"Middletown Learning Studio","t":"facility","lat":39.44727,"lng":-77.5311,"cap":20},{"n":"Old National Pike Park Field #6","t":"field","lat":39.38233,"lng":-77.22751,"park":"Old National Pike Park","use":"Baseball,Softball","style":"Diamond"},{"n":"Old National Pike Park Field #7","t":"field","lat":39.38328,"lng":-77.22747,"park":"Old National Pike Park","use":"Baseball,Softball","style":"Diamond"},{"n":"Old National Pike Park - Playground 3","t":"play","lat":39.38254,"lng":-77.22617,"park":"Old National Pike Park","bf":"No"},{"n":"Brunswick Recreation Center","t":"facility","lat":39.31882,"lng":-77.63322},{"n":"Middletown Park Skate Spot","t":"facility","lat":39.44782,"lng":-77.5265}];
+const TYPES={
+  park:    {lbl:"Parks",      emoji:"🌳", col:"#2E3B2C"},
+  play:    {lbl:"Playgrounds",emoji:"🛝", col:"#C99632"},
+  field:   {lbl:"Fields/Courts",emoji:"🏀",col:"#A03A22"},
+  shelter: {lbl:"Shelters",   emoji:"⛺", col:"#2F5470"},
+  trail:   {lbl:"Trails",     emoji:"🥾", col:"#3f6d3a"},
+  facility:{lbl:"Facilities", emoji:"🚻", col:"#5C5A50"},
+  passport:{lbl:"Passport",   emoji:"🎫", col:"#C99632"},
+};
+const ATLAS_LAYERS=["park","play","field","shelter","trail","facility"];
+let enabled=new Set(["park","play","trail"]);
+let mode="atlas", selIdx=null;
+let collected=new Set(JSON.parse(localStorage.getItem("fr.passport")||"[]"));
+
+const plane=document.getElementById("plane");
+const pins=[]; // {el, d, i}
+
+// projection
+let proj=null;
+function buildProj(){
+  const S=plane.clientWidth, cLat=(39.274+39.703)/2, cLng=(-77.633+-77.226)/2;
+  const kx=d=>(d.lng-cLng)*111*Math.cos(cLat*Math.PI/180), ky=d=>(d.lat-cLat)*111;
+  let mx=0; DATA.forEach(d=>{mx=Math.max(mx,Math.abs(kx(d)),Math.abs(ky(d)));});
+  const scale=(S/2-26)/mx;
+  proj=d=>({x:S/2+kx(d)*scale, y:S/2-ky(d)*scale});
+}
+function makePins(){
+  pins.length=0;
+  [...plane.querySelectorAll(".pin")].forEach(e=>e.remove());
+  DATA.forEach((d,i)=>{
+    const T=TYPES[d.t]; const {x,y}=proj(d);
+    const el=document.createElement("div");
+    el.className="pin"; el.style.left=x+"px"; el.style.top=y+"px";
+    el.style.setProperty("--pc",T.col); el.textContent=T.emoji;
+    el.title=d.n; el.onclick=()=>tap(i);
+    plane.appendChild(el); pins.push({el,d,i});
+  });
+}
+function refreshPins(){
+  let shown=0, n=0;
+  pins.forEach(({el,d,i})=>{
+    const vis = mode==="passport" ? d.t==="passport" : (d.t!=="passport" && enabled.has(d.t));
+    el.classList.toggle("collected", mode==="passport" && collected.has(i));
+    el.classList.toggle("sel", i===selIdx);
+    if(vis){ if(!el.classList.contains("show")){ el.style.transitionDelay=Math.min(n*0.012,0.4)+"s"; n++; } el.classList.add("show"); shown++; }
+    else { el.classList.remove("show"); el.style.transitionDelay="0s"; }
+  });
+  return shown;
+}
+
+function renderChips(){
+  const counts={}; DATA.forEach(d=>counts[d.t]=(counts[d.t]||0)+1);
+  document.getElementById("chips").innerHTML=ATLAS_LAYERS.map(k=>{
+    const T=TYPES[k], on=enabled.has(k);
+    return `<button class="chip${on?" on":""}" style="--cc:${T.col};${on?`background:${T.col}`:""}" data-k="${k}">
+      ${T.emoji} ${T.lbl} <span class="ct">${counts[k]||0}</span></button>`;
+  }).join("");
+}
+function updateCount(shown){
+  document.getElementById("shown").textContent=shown;
+  document.getElementById("shown-lbl").textContent = shown===1?"spot shown":"spots shown";
+}
+
+function tap(i){
+  const d=DATA[i];
+  if(mode==="passport"){
+    if(collected.has(i)) collected.delete(i); else { collected.add(i); pins[i].el.classList.add("justgot"); setTimeout(()=>pins[i].el.classList.remove("justgot"),520); }
+    localStorage.setItem("fr.passport",JSON.stringify([...collected]));
+    renderPassport(); refreshPins(); return;
+  }
+  selIdx=i; refreshPins();
+  const T=TYPES[d.t];
+  const facts=[];
+  if(d.len) facts.push(`🥾 ${d.len} mi trail`);
+  if(d.paved) facts.push(`♿ ${d.paved} mi paved`);
+  if(d.diff) facts.push(`📈 ${d.diff}`);
+  if(d.cap) facts.push(`👥 seats ${d.cap}`);
+  if(d.tables) facts.push(`🪑 ${d.tables} tables`);
+  if(d.use) facts.push(`🏀 ${d.use}`);
+  if(d.style) facts.push(`🛝 ${d.style}`);
+  if(d.bf) facts.push(`♿ Barrier-free`);
+  const factsHtml = facts.length?`<div class="facts">${facts.map(f=>`<span class="f">${f}</span>`).join("")}</div>`:"";
+  document.getElementById("peek-in").innerHTML=`
+    <div style="--pc:${T.col}">
+      <div class="eyebrow">${T.emoji} ${T.lbl}</div>
+      <h2>${d.n}</h2>
+      <p class="sub">${d.park&&d.park!==d.n?`in ${d.park} · `:""}Frederick County</p>
+      ${factsHtml}
+      <div class="prov"><span class="v">Verified</span><span>· Frederick County Parks &amp; Rec · from GIS</span></div>
+    </div>`;
+  document.getElementById("peek").classList.add("open");
+}
+
+function renderPassport(){
+  const total=DATA.filter(d=>d.t==="passport").length;
+  const got=[...collected].filter(i=>DATA[i]&&DATA[i].t==="passport").length;
+  const pct=total?Math.round(got/total*100):0;
+  const ring=document.getElementById("ring"); ring.style.setProperty("--p",pct);
+  document.getElementById("ring-n").textContent=`${got}/${total}`;
+  document.getElementById("pp-big").textContent = got===0?"Tap a marker to collect it" : got===total?"Passport complete! 🎉" : `${total-got} markers to go`;
+  const note=document.getElementById("pp-note");
+  note.textContent = got===0 ? "The county's Wegmans Park Passport — 17 markers across the county. Collect them all." : `Collected ${got} of ${total}. Stamps saved on this device.`;
+}
+
+function setMode(m){
+  mode=m; selIdx=null;
+  document.querySelectorAll("#modes button").forEach(b=>b.classList.toggle("on",b.dataset.mode===m));
+  document.getElementById("atlas-ui").style.display = m==="atlas"?"":"none";
+  document.getElementById("pp-ui").style.display = m==="passport"?"":"none";
+  document.getElementById("pp-note").style.display = m==="passport"?"":"none";
+  document.getElementById("peek").classList.remove("open");
+  document.getElementById("hint").textContent = m==="passport"?"🎫 Tap markers to collect":"Catoctin ridge ↖ · Monocacy ↘";
+  if(m==="passport") renderPassport();
+  updateCount(refreshPins());
+}
+
+document.getElementById("modes").onclick=e=>{const b=e.target.closest("button");if(b)setMode(b.dataset.mode);};
+document.getElementById("chips").onclick=e=>{
+  const b=e.target.closest(".chip");if(!b)return;
+  const k=b.dataset.k; if(enabled.has(k))enabled.delete(k);else enabled.add(k);
+  renderChips(); updateCount(refreshPins());
+};
+window.addEventListener("resize",()=>{buildProj();pins.forEach(({el,d})=>{const{x,y}=proj(d);el.style.left=x+"px";el.style.top=y+"px";});});
+
+buildProj(); makePins(); renderChips(); updateCount(refreshPins());
+</script>
+</body>
+</html>
