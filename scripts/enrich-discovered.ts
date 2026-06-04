@@ -89,7 +89,7 @@ async function main() {
   let ok = 0, miss = 0;
   for (let i = 0; i < clean.length; i++) {
     const c = clean[i];
-    const d = await getPlaceDetails(c.google_place_id).catch(() => null);
+    const d = await getPlaceDetails(c.google_place_id, "full").catch(() => null);
     if (d) {
       ok++;
       out.push({

@@ -87,24 +87,30 @@ export function googlePlacesConfigured(): boolean {
   return Boolean(key());
 }
 
-const DETAILS_FIELD_MASK = [
-  "id",
-  "displayName",
-  "formattedAddress",
-  "businessStatus",
-  "primaryType",
-  "currentOpeningHours.weekdayDescriptions",
-  "regularOpeningHours.weekdayDescriptions",
-  "rating",
-  "userRatingCount",
-  "nationalPhoneNumber",
-  "websiteUri",
-  "location",
-  "photos",
-  "editorialSummary",
-  "primaryTypeDisplayName",
-  "reviews",
-].join(",");
+/**
+ * Field sets, chosen to control the Places API (New) billing SKU:
+ *   - "full"   → includes `reviews` ⇒ Enterprise + Atmosphere (priciest).
+ *                Use ONLY at build time, where we actually store reviews.
+ *   - "lean"   → everything except reviews ⇒ Enterprise tier. The runtime
+ *                default — the per-view enrich route never returns reviews,
+ *                so paying the Atmosphere SKU for them was pure waste.
+ *   - "status" → id + businessStatus only ⇒ cheapest tier. For the
+ *                business-status cron, which reads nothing else.
+ */
+export type GoogleFieldSet = "status" | "lean" | "full";
+
+const FIELDS_FULL = [
+  "id", "displayName", "formattedAddress", "businessStatus", "primaryType",
+  "currentOpeningHours.weekdayDescriptions", "regularOpeningHours.weekdayDescriptions",
+  "rating", "userRatingCount", "nationalPhoneNumber", "websiteUri", "location",
+  "photos", "editorialSummary", "primaryTypeDisplayName", "reviews",
+];
+const FIELDS_LEAN = FIELDS_FULL.filter((f) => f !== "reviews");
+const FIELDS_STATUS = ["id", "businessStatus"];
+
+function fieldsFor(set: GoogleFieldSet): string[] {
+  return set === "status" ? FIELDS_STATUS : set === "full" ? FIELDS_FULL : FIELDS_LEAN;
+}
 
 type GApiPlace = {
   id?: string;
@@ -180,8 +186,12 @@ function normalize(p: GApiPlace): PlaceEnrichment | null {
   };
 }
 
-/** Fetch Place Details by a known place id ("ChIJ…" or "places/ChIJ…"). */
-export async function getPlaceDetails(placeId: string): Promise<PlaceEnrichment | null> {
+/** Fetch Place Details by a known place id ("ChIJ…" or "places/ChIJ…").
+ *  `fields` controls the billing SKU — defaults to "lean" (no reviews). */
+export async function getPlaceDetails(
+  placeId: string,
+  fields: GoogleFieldSet = "lean",
+): Promise<PlaceEnrichment | null> {
   const k = key();
   if (!k) return null;
   const id = placeId.startsWith("places/") ? placeId : `places/${placeId}`;
@@ -189,7 +199,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceEnrichment 
     const res = await fetch(`${BASE}/${id}`, {
       headers: {
         "X-Goog-Api-Key": k,
-        "X-Goog-FieldMask": DETAILS_FIELD_MASK,
+        "X-Goog-FieldMask": fieldsFor(fields).join(","),
       },
       // 24h ISR-friendly; real TTL is owned by the enrichment table.
       next: { revalidate: 86400 },
@@ -256,7 +266,7 @@ export async function resolveAndEnrich(opts: {
   address?: string;
   lat?: number;
   lng?: number;
-}): Promise<PlaceEnrichment | null> {
+}, fields: GoogleFieldSet = "lean"): Promise<PlaceEnrichment | null> {
   const k = key();
   if (!k) return null;
   const textQuery = [opts.name, opts.address].filter(Boolean).join(", ");
@@ -277,7 +287,7 @@ export async function resolveAndEnrich(opts: {
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": k,
-        "X-Goog-FieldMask": `places.${DETAILS_FIELD_MASK.split(",").join(",places.")}`,
+        "X-Goog-FieldMask": fieldsFor(fields).map((f) => `places.${f}`).join(","),
       },
       body: JSON.stringify(body),
       next: { revalidate: 86400 },

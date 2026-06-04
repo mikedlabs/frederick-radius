@@ -44,7 +44,7 @@ export async function GET(request: Request) {
   const mismatches: Array<{ slug: string; name: string; current: string; google: string }> = [];
 
   for (const p of targets) {
-    const details = await getPlaceDetails(p.google_place_id as string);
+    const details = await getPlaceDetails(p.google_place_id as string, "status");
     if (!details) continue;
     const mapped = googleStatusToOperational(details.business_status);
     const current = p.is_operational ?? "operational";
