@@ -1,0 +1,75 @@
+name: data-steward
+
+# Nightly data steward. Probes the critical feeds (informational), then
+# runs the committed-artifact refresh scripts that keep the app's local
+# data fresh: business status, transit GTFS, and park amenities. Each
+# refresh is guarded with `|| true` so one upstream hiccup never aborts
+# the others. If anything changed on disk, it opens a PR (PR-gated, never
+# a direct push to a content branch) so a human reviews the data diff.
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # 06:00 UTC nightly (~1-2 AM Eastern)
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: data-steward
+  cancel-in-progress: false
+
+jobs:
+  steward:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Informational only — the dedicated feed-health.yml job is what
+      # turns a feed outage red. Here we just log it alongside the refresh.
+      - name: Feed health (informational)
+        run: tsx scripts/feed-health.ts || true
+
+      # Refresh committed data artifacts. Guard each so a single failure
+      # (e.g. a missing key or a transient upstream error) does not abort
+      # the rest of the nightly refresh.
+      - name: Refresh business status
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+        run: npm run refresh:business-status || true
+
+      - name: Rebuild transit GTFS
+        run: npm run build:transit || true
+
+      - name: Rebuild park amenities
+        run: npm run build:park-amenities || true
+
+      # On any change, open (or update) a PR so a human reviews the data
+      # diff before it merges. Never pushes straight to a content branch.
+      - name: Open PR on changes
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: bot/data-steward
+          base: ${{ github.ref_name }}
+          commit-message: "data: nightly steward refresh (automated)"
+          title: "data: nightly steward refresh"
+          body: |
+            Automated nightly refresh from the data-steward workflow.
+
+            Ran: refresh:business-status, build:transit, build:park-amenities
+            (each guarded with `|| true`). Review the data diff before merging.
+          labels: |
+            data-pipeline
+            automated
+          delete-branch: true

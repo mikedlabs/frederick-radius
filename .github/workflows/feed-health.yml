@@ -1,0 +1,36 @@
+name: feed-health
+
+# Daily tripwire for the critical external feeds the app reads (transit
+# GTFS, county rec FeatureServer, city GIS, town homepages). The script
+# probes each endpoint and exits non-zero only when a CRITICAL feed is
+# down, so this job goes red exactly when a feed has moved or died — the
+# signal an upstream change broke ingest before users notice. Add an
+# alert (Slack/email) on this workflow's failure if you want a page.
+
+on:
+  schedule:
+    - cron: "0 12 * * *" # 12:00 UTC daily (~7-8 AM Eastern)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # No `|| true` here — a critical feed being down MUST fail the job.
+      - name: Check feed health
+        run: tsx scripts/feed-health.ts
