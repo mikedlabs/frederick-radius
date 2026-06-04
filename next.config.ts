@@ -148,6 +148,18 @@ const nextConfig: NextConfig = {
   // Update destinations here if a category slug ever renames.
   async redirects() {
     return [
+      // Canonical host: force www → apex so there is ONE origin. Two
+      // origins meant two separate PWA/service-worker caches and split
+      // SEO; a returning visitor on www could see a different cached
+      // build than one on the apex. (Owner: also confirm both domains
+      // alias the SAME production deployment in the Vercel dashboard —
+      // this redirect only takes effect once www serves this build.)
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.frederickradius.app" }],
+        destination: "https://frederickradius.app/:path*",
+        permanent: true,
+      },
       // Editorial micro-pages → canonical category surfaces.
       { source: "/tonight", destination: "/today?t=tonight", permanent: true },
       { source: "/markets", destination: "/category/market", permanent: true },
