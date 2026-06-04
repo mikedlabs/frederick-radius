@@ -223,8 +223,8 @@ export default function PlaceMock() {
               fontWeight: 500,
             }}
           >
-            A mile of waterway, gardens, and seasonal sailboats threading the
-            heart of downtown.
+            A mile of waterway, gardens, and seasonal sailboats threading
+            straight through downtown.
           </p>
         </div>
 
