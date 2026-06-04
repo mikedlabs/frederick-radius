@@ -28,6 +28,12 @@ export type Aerial = {
 
 const AERIALS = AERIAL_MANIFEST as Aerial[];
 
+/** The highest-altitude shot in the archive — the "from way up" frame
+ *  the descent starts from. */
+export function highestAerial(): Aerial {
+  return [...AERIALS].sort((a, b) => (b.altM ?? 0) - (a.altM ?? 0))[0];
+}
+
 /** Current season in Eastern time (matches SeasonalPhoto's ranges). */
 export function currentSeason(now: Date = new Date()): Season {
   const md = new Intl.DateTimeFormat("en-CA", {
