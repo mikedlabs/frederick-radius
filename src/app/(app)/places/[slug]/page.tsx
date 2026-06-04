@@ -15,6 +15,7 @@ import EventCard from "@/components/event/EventCard";
 import MyRadiusButton from "@/components/place/MyRadiusButton";
 import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
+import ParkAmenitiesStrip from "@/components/place/ParkAmenitiesStrip";
 import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
 import { businessInfoFor } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
@@ -225,6 +226,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             knownFor={place.known_for}
             customersLoved={place.customers_loved}
           />
+          {/* Park amenity rollup (shelters/fields/playgrounds/trails) from
+              the county GIS — renders only for parks that have it. */}
+          <ParkAmenitiesStrip slug={place.slug} />
           {/* "Good to know" — happy hour / specials / a notable detail
               pulled straight from the place's OWN website by the
               business-info agent, with source + freshness. Renders
