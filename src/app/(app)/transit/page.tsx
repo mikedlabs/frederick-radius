@@ -102,7 +102,7 @@ import {
   getFrederickTransitStops,
   getTransitFreshness,
 } from "@/lib/integrations/transitFrederick";
-import TransitMap from "@/components/transit/TransitMap";
+import TransitMap from "@/components/transit/TransitMapClient";
 import NextTrainBoard from "@/components/transit/NextTrainBoard";
 import LiveTransitPill from "@/components/transit/LiveTransitPill";
 import PageBloom from "@/components/ui/PageBloom";
