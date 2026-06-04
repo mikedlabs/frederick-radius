@@ -15,6 +15,7 @@ import TownStrip from "@/components/municipality/TownStrip";
 import AerialBeat from "@/components/place/AerialBeat";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
 import CivicCard from "@/components/municipality/CivicCard";
+import TownLinks from "@/components/municipality/TownLinks";
 import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
@@ -201,6 +202,9 @@ export default async function MunicipalityPage(
           permits, utilities, with source + freshness. Self-hides until
           the extraction agent has populated this town. */}
       <CivicCard rec={civic} />
+
+      {/* Official town website + civic deep links (town-websites.ts). */}
+      <TownLinks slug={m.slug} />
 
       {/* Worth your time — the answer to "what's here." Top 8 by
           feature score; grid-by-default so a scroll feels like a
