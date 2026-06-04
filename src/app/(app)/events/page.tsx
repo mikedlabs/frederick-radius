@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Sparkles, Moon } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, dedupeCuratedClusters, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
+import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
@@ -160,16 +161,19 @@ export default async function EventsIndexPage({
     .map((s) => ({ slug: s, name: MUNICIPALITY_BY_SLUG[s]?.name ?? s }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Server-computed window boundaries (no client TZ math).
+  // Server-computed window boundaries. start24 is a pure +24h offset
+  // (TZ-independent). The weekend window MUST be America/New_York wall
+  // time — the old server-local setHours(17) put it at ~1 PM ET on a UTC
+  // production server (the date-window bug). Mirror the loader's
+  // eventsWeekend() ET math.
   const start24 = new Date(now);
   start24.setHours(now.getHours() + 24);
-  const dow = now.getDay();
-  const friday = new Date(now);
-  friday.setDate(friday.getDate() + ((5 - dow + 7) % 7));
-  friday.setHours(17, 0, 0, 0);
-  const monday = new Date(friday);
-  monday.setDate(monday.getDate() + 3);
-  monday.setHours(0, 0, 0, 0);
+  const et = easternParts(now);
+  const daysToFri = (5 - et.weekday + 7) % 7;
+  const friBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri, 12)));
+  const monBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri + 3, 12)));
+  const friday = new Date(Date.parse(easternWallToUtcISO(friBase.year, friBase.month, friBase.day, 17, 0)));
+  const monday = new Date(Date.parse(easternWallToUtcISO(monBase.year, monBase.month, monBase.day, 0, 0)));
 
   // Parse the deep-link view server-side so the explorer's first paint
   // already reflects it.
@@ -196,7 +200,12 @@ export default async function EventsIndexPage({
   // photo, so the page leads with a real event even when nothing is
   // photo-backed — the old "no photo → cold SeasonalPhoto" gap). Live
   // events sort first via allEvents' chronological order + the live set.
-  const heroEvent: EventWithMeta | null = allEvents[0] ?? null;
+  // Prefer the soonest event that actually STARTS in the future, so the
+  // featured card never leads with a past start date (e.g. a multi-day
+  // event that began last week). Falls back to the soonest in-progress
+  // event only when nothing upcoming is left.
+  const heroEvent: EventWithMeta | null =
+    allEvents.find((e) => +new Date(e.starts_at) >= nowMs) ?? allEvents[0] ?? null;
 
   // "Tonight" — events starting in the next 24h (the honest "today &
   // tonight" horizon). Drives the section count and the highlights rail.
