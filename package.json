@@ -53,7 +53,8 @@
     "build:marc-schedule": "tsx --tsconfig tsconfig.json scripts/build-marc-schedule.ts",
     "optimize:images": "tsx --tsconfig tsconfig.json scripts/optimize-images.ts",
     "optimize:seasons": "tsx --tsconfig tsconfig.json scripts/optimize-seasonal-photos.ts",
-    "download:photos": "tsx --tsconfig tsconfig.json scripts/download-photos.ts"
+    "download:photos": "tsx --tsconfig tsconfig.json scripts/download-photos.ts",
+    "maps:download": "tsx --tsconfig tsconfig.json scripts/download-city-maps.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",
