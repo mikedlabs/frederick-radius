@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
+import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
@@ -147,32 +148,24 @@ function eventTimePredicate(
     };
   }
   if (mode === "tonight") {
-    // Anchor "tonight" in Eastern time so the same definition holds
-    // for a Vercel UTC server and a Frederick user. 16:00 ET = 21:00
-    // UTC (or 20:00 UTC during EDT — close enough for a coarse map
-    // filter; the seed events themselves are precise.)
-    const today = new Date(now);
-    today.setHours(16, 0, 0, 0);
-    const start = Math.max(nowMs, today.getTime());
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(2, 30, 0, 0);
-    const end = tomorrow.getTime();
+    // Anchor "tonight" to America/New_York WALL TIME so it matches /today
+    // and /events on a UTC (Vercel) server. 4:00 PM ET today → 2:30 AM ET
+    // tomorrow. easternWallToUtcISO converts to the correct UTC instant
+    // (DST-aware); Date.UTC inside it normalizes the day+1 overflow.
+    const { year, month, day } = easternParts(now);
+    const start = Math.max(nowMs, Date.parse(easternWallToUtcISO(year, month, day, 16, 0)));
+    const end = Date.parse(easternWallToUtcISO(year, month, day + 1, 2, 30));
     return (s) => {
       const sMs = Date.parse(s);
       return Number.isFinite(sMs) && sMs >= start && sMs <= end;
     };
   }
   if (mode === "weekend") {
-    const dow = now.getDay();
-    const friday = new Date(now);
-    friday.setDate(friday.getDate() + ((5 - dow + 7) % 7));
-    friday.setHours(17, 0, 0, 0);
-    const monday = new Date(friday);
-    monday.setDate(monday.getDate() + 3);
-    monday.setHours(0, 0, 0, 0);
-    const fMs = friday.getTime();
-    const mMs = monday.getTime();
+    // Friday 5 PM ET → Monday 12:00 AM ET, in Eastern wall time.
+    const { year, month, day, weekday } = easternParts(now);
+    const daysToFri = (5 - weekday + 7) % 7;
+    const fMs = Date.parse(easternWallToUtcISO(year, month, day + daysToFri, 17, 0));
+    const mMs = Date.parse(easternWallToUtcISO(year, month, day + daysToFri + 3, 0, 0));
     return (s) => {
       const sMs = Date.parse(s);
       return Number.isFinite(sMs) && sMs >= fMs && sMs <= mMs;
