@@ -192,7 +192,7 @@ export default function TransitMap({
             type="circle"
             paint={{
               "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 4, 12, 7],
-              "circle-color": "#A8462C",
+              "circle-color": "#A03A22",
               "circle-stroke-color": "#ffffff",
               "circle-stroke-width": 2,
             }}
@@ -208,7 +208,7 @@ export default function TransitMap({
               "text-optional": true,
             }}
             paint={{
-              "text-color": "#A8462C",
+              "text-color": "#A03A22",
               "text-halo-color": "#ffffff",
               "text-halo-width": 1.5,
             }}

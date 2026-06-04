@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 const KIND_META: Record<HistoryEntry["kind"], { label: string; icon: typeof Landmark; color: string }> = {
-  moment: { label: "Moment", icon: Calendar, color: "#A8462C" },
+  moment: { label: "Moment", icon: Calendar, color: "#A03A22" },
   person: { label: "Person", icon: Users, color: "#7E2C6F" },
   fact: { label: "Did you know", icon: Sparkles, color: "#2F5470" },
 };

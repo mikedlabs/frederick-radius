@@ -12,7 +12,7 @@
 import type { Map as GLMap } from "mapbox-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
-const DEFAULT_COLOR = "#A8462C";
+const DEFAULT_COLOR = "#A03A22";
 
 type Bucket =
   | "food" | "brewery" | "wine" | "bar" | "coffee" | "bakery"
@@ -65,7 +65,7 @@ export function bucketOf(slug: string): Bucket {
 
 /** Cluster tint per macro bucket — a glance tells you what an area is. */
 export const BUCKET_COLOR: Record<Bucket, string> = {
-  food: "#A8462C", brewery: "#C99632", wine: "#6E2233", bar: "#7E1F1F",
+  food: "#A03A22", brewery: "#C99632", wine: "#6E2233", bar: "#7E1F1F",
   coffee: "#8B5A2B", bakery: "#C9852B", music: "#9B3F8A",
   outdoors: "#1E6B3A", arts: "#7E2C6F", family: "#B26B00",
   library: "#2F5470", shopping: "#B26B00", wellness: "#A02929",

@@ -32,7 +32,7 @@ const SAVED_SORT_STORAGE_KEY = "fr.saved-sort";
 
 // Deterministic per-town accent so each town reads as its own colored
 // "chapter" of the field guide (matches the town grid on /places).
-const TOWN_ACCENTS = ["#A8462C", "#2F5470", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
+const TOWN_ACCENTS = ["#A03A22", "#2F5470", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
 function townAccent(slug: string): string {
   let h = 0;
   for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;

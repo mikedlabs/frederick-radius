@@ -548,7 +548,7 @@ export default function AppMap({
         slug: p.slug,
         name: p.name,
         category: p.category,
-        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#A8462C",
+        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#A03A22",
         bucket: bucketOf(p.category),
         // Draw order within the curated tier: verified places first so
         // the strongest pins win the spot when icons stack.
@@ -566,7 +566,7 @@ export default function AppMap({
       features: p
         ? [{
             type: "Feature" as const,
-            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#A8462C" },
+            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#A03A22" },
             geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
           }]
         : [],
@@ -1464,13 +1464,13 @@ export default function AppMap({
                   ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
                   [
                     "case",
-                    ["==", ["var", "mx"], 0], "#A8462C",
+                    ["==", ["var", "mx"], 0], "#A03A22",
                     ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
                     ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
                     ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
                     ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
                     ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
-                    "#A8462C",
+                    "#A03A22",
                   ],
                 ],
                 "circle-opacity": 0.18,
@@ -1494,13 +1494,13 @@ export default function AppMap({
                   ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
                   [
                     "case",
-                    ["==", ["var", "mx"], 0], "#A8462C",
+                    ["==", ["var", "mx"], 0], "#A03A22",
                     ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
                     ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
                     ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
                     ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
                     ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
-                    "#A8462C",
+                    "#A03A22",
                   ],
                 ],
                 // Calm category tint. The count label below restores
@@ -1663,14 +1663,14 @@ export default function AppMap({
               id="ring-fill"
               type="fill"
               beforeId="curated-clusters"
-              paint={{ "fill-color": "#A8462C", "fill-opacity": 0.07 }}
+              paint={{ "fill-color": "#A03A22", "fill-opacity": 0.07 }}
             />
             <Layer
               id="ring-line"
               type="line"
               beforeId="curated-clusters"
               paint={{
-                "line-color": "#A8462C",
+                "line-color": "#A03A22",
                 "line-width": 2,
                 "line-opacity": 0.55,
                 "line-dasharray": [2, 2],
@@ -1757,9 +1757,9 @@ export default function AppMap({
                   ["get", "season"],
                   "spring", "#859076",
                   "summer", "#C99632",
-                  "fall", "#A8462C",
+                  "fall", "#A03A22",
                   "winter", "#2F5470",
-                  "#A8462C",
+                  "#A03A22",
                 ],
                 "circle-opacity": 0.22,
               }}
@@ -1774,9 +1774,9 @@ export default function AppMap({
                   ["get", "season"],
                   "spring", "#859076",
                   "summer", "#C99632",
-                  "fall", "#A8462C",
+                  "fall", "#A03A22",
                   "winter", "#2F5470",
-                  "#A8462C",
+                  "#A03A22",
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1.6,
@@ -1816,7 +1816,7 @@ export default function AppMap({
                       position: "absolute",
                       inset: 0,
                       borderRadius: 9999,
-                      background: "#A8462C",
+                      background: "#A03A22",
                       opacity: 0.5,
                       animation: "fr-ft-pulse 2.2s ease-out infinite",
                     }}
@@ -1831,7 +1831,7 @@ export default function AppMap({
                       height: 28,
                       borderRadius: 9999,
                       background: "#fff",
-                      border: "1.5px solid #A8462C",
+                      border: "1.5px solid #A03A22",
                       boxShadow: "var(--app-shadow-2)",
                       fontSize: 15,
                       lineHeight: 1,
@@ -1899,9 +1899,9 @@ export default function AppMap({
                       color: ({
                         spring: "#859076",
                         summer: "#C99632",
-                        fall: "#A8462C",
+                        fall: "#A03A22",
                         winter: "#2F5470",
-                      }[selectedAerial.season]) ?? "#A8462C",
+                      }[selectedAerial.season]) ?? "#A03A22",
                     }}
                   >
                     {selectedAerial.season}
@@ -2037,7 +2037,7 @@ export default function AppMap({
                     position: "absolute",
                     inset: 4,
                     borderRadius: 9999,
-                    background: e.category_color || "#A8462C",
+                    background: e.category_color || "#A03A22",
                     opacity: 0.32,
                     animation: "fr-ev-pulse 2.6s ease-out infinite",
                   }}
@@ -2055,7 +2055,7 @@ export default function AppMap({
                       // 36px dot at up to 3× DPR → a 128px variant is
                       // plenty; the raw hero.jpg blob is 1–2 MB.
                       ? `center/cover no-repeat url("${sizedImage(e.hero_image, 128)}")`
-                      : e.category_color || "#A8462C",
+                      : e.category_color || "#A03A22",
                     border: `2px solid #fff`,
                     boxShadow: "var(--app-shadow-2)",
                     color: "#fff",

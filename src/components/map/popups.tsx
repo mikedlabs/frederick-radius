@@ -33,7 +33,7 @@ export function EventPopup({ e }: { e: EventPin }) {
         hour: "numeric",
         minute: "2-digit",
       }).format(start);
-  const color = e.category_color || "#A8462C";
+  const color = e.category_color || "#A03A22";
   return (
     <div style={{ minWidth: 230, padding: 4 }}>
       <p
@@ -121,7 +121,7 @@ export function FoodTruckPopup({ t }: { t: DemoFoodTruck }) {
     <div style={{ minWidth: 220, padding: 4 }}>
       <p style={{
         fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-        textTransform: "uppercase", color: "#A8462C", marginBottom: 4,
+        textTransform: "uppercase", color: "#A03A22", marginBottom: 4,
       }}>
         Food truck · Preview
       </p>
@@ -136,7 +136,7 @@ export function FoodTruckPopup({ t }: { t: DemoFoodTruck }) {
       <ul style={{ listStyle: "none", margin: "0 0 10px", padding: 0, display: "flex", flexDirection: "column", gap: 3 }}>
         {t.menu.map((m) => (
           <li key={m} style={{ fontSize: 12, color: "#4A4A48", display: "flex", gap: 6 }}>
-            <span aria-hidden style={{ color: "#A8462C" }}>·</span>{m}
+            <span aria-hidden style={{ color: "#A03A22" }}>·</span>{m}
           </li>
         ))}
       </ul>
@@ -164,7 +164,7 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
     <div style={{ minWidth: 200, padding: 4 }}>
       <p style={{
         fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-        textTransform: "uppercase", color: cat?.color ?? "#A8462C", marginBottom: 4,
+        textTransform: "uppercase", color: cat?.color ?? "#A03A22", marginBottom: 4,
       }}>
         {cat?.name ?? p.category}
       </p>

@@ -97,7 +97,7 @@ function placeholderSvg(name: string, w: number, slug?: string): string {
   const place = slug ? PLACE_BY_SLUG[slug] : undefined;
   if (place) {
     const cat = CATEGORY_BY_SLUG[place.category];
-    const accent = cat?.color ?? "#A8462C";
+    const accent = cat?.color ?? "#A03A22";
     const ini = initialsOf(place.name);
     const fontSize = Math.round(hgt * 0.42);
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${hgt}" width="${w}" height="${hgt}" preserveAspectRatio="xMidYMid slice">

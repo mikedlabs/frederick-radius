@@ -9,7 +9,7 @@ import { COLLECTION_BY_SLUG } from "@/data/collections";
 // and so can't resolve CSS variables. Keep in sync with globals.css.
 // New collection accent tokens should be added here when introduced.
 const COLLECTION_ACCENT_HEX: Record<string, string> = {
-  "var(--app-brand)": "#A8462C",
+  "var(--app-brand)": "#A03A22",
   "var(--app-brand-2)": "#2E3B2C",
   "var(--app-cool)": "#2F5470",
   "var(--app-accent)": "#C99632",
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
   // we don't try to bake open-status into the card here. The card has
   // to read true a day from now.
   let blurb: string | null = null;
-  let accent = "#A8462C";
+  let accent = "#A03A22";
 
   if (type === "place") {
     const p = PLACE_BY_SLUG[slug];
