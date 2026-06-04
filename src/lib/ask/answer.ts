@@ -176,7 +176,7 @@ export async function askFrederick(query: string): Promise<AskResult> {
     lines.length > 0
       ? lines.join("\n")
       : "(no matching places or events were found in the Frederick catalog)";
-  const userContent = `The user asked: "${q}"\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${dataBlock}\n\nAnswer using only this data.`;
+  const userContent = `The user asked: "${q}"\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${dataBlock}\n\nAnswer using only this data.`;
 
   const answer = await callModel(userContent);
   return { configured: answer !== null || hasKey(), answer, sources };
