@@ -30,11 +30,44 @@ nearest, top 6 + "See all N") and added a "Useful nearby" amenity section
       amenity in "Useful nearby."
 
 ## Next structure-pass order
-Owner directive (June 2026): after /map (#433), do **category pages before
-municipality pages**, then **events**. Category pages are the most likely to
-read as raw directories, so they have the bigger "show all the data better"
-problem. One clean step at a time — do NOT start the next page until the
-current one is merged or tuned.
+Owner directive (June 2026), updated: **#433 /map → UI hygiene foundation →
+category pages (coffee) → events.** One clean step at a time — do NOT start
+the next step until the current one is merged. UI hygiene was inserted before
+coffee/events on purpose: every new surface built before it inherits the same
+uncoordinated overlay/z-index problem (see "UI cleanliness" below).
+
+### Pass 2.5 — UI HYGIENE foundation (do AFTER #433 merges, BEFORE coffee)
+A **foundation pass, not a beauty pass.** Owner scope (June 2026): stop every
+floating thing from fighting for the top of the screen. **Do NOT turn this into
+a design-system rewrite** — no restyling the whole app, no rebuilding every
+primitive. Scope is strictly the overlay/stacking class of bugs.
+
+Scope:
+- [ ] Create a **named z-index scale** (tokens), e.g. base content < sticky
+      nav < floating buttons (FAB) < drawers < dropdowns < search overlay <
+      modals/sheets < toast/install/pull-to-refresh < lightbox < skip link.
+      (Exact ordering to be finalized in the pass; the point is one owner per
+      layer.)
+- [ ] Replace ad-hoc z-index values **where they affect overlays/floating UI**
+      (leave unrelated local z-10s alone — don't churn the whole app).
+- [ ] Make these stop competing blindly: `BottomDrawer`, `Sheet`,
+      `SearchOverlay`, `PlaceSheet`, `SortDropdown`, `InstallPrompt`,
+      `PullToRefresh`, `FloatingPlanFab`.
+- [ ] Fix the **map overlay collision** (`DESIGN_UX_AUDIT.md` §7): road/alert
+      overlays covering primary controls/drawers.
+- [ ] Add a **short doc** (the layer scale) so future components don't invent
+      their own z-index.
+- [ ] Add a **lightweight lint/check if practical** so random `z-[999]` / new
+      ad-hoc overlay values can't creep back in.
+
+Acceptance criteria:
+- No two unrelated floating systems sit at the same z-index by accident.
+- Map overlays do not cover primary controls/drawers.
+- Search, sheets, dropdowns, lightbox, FABs, install prompt, pull-to-refresh
+  all have predictable stacking.
+- Mobile review shows no obvious overlap/collision.
+- The pass does NOT restyle the whole app or rebuild every primitive.
+- Local verification documented (same as other PRs while Actions is blocked).
 
 ### Pass 3 — category pages, starting with COFFEE (pattern page)
 Goal: *stop making categories feel like directories; make them feel like
