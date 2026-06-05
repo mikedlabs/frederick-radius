@@ -46,7 +46,10 @@ export default function CategoryView({
   const total = all.length;
   const openCount = all.filter((p) => isOpenNow(p.open_status)).length;
 
-  const best = bestMatches(all, ctx, 6);
+  // Best matches is the LEAD: a tight 3-up tile row (mixed density — one
+  // strong lead over the scannable rows below), not a 6-tile block that
+  // reads at parity with the dense sections and doubles the mobile scroll.
+  const best = bestMatches(all, ctx, 3);
   const bestSlugs = new Set(best.map((p) => p.slug));
   const notBest = (list: typeof all) => list.filter((p) => !bestSlugs.has(p.slug));
 
