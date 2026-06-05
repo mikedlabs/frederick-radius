@@ -10,6 +10,7 @@ import PlaceList from "@/components/place/PlaceList";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
+import CategoryView from "@/components/category/CategoryView";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 
 export const revalidate = 600;
@@ -61,6 +62,21 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // share a single source of truth.
   const store = await cookies();
   const homeMuni = store.get("fr_home_muni")?.value ?? null;
+
+  // Coffee is the context-aware category PATTERN (Pass 3). It proves a
+  // category page can rank from the user's town for real, be honest when
+  // it has no context, and surface small towns — instead of silently
+  // ranking everything from downtown. Other categories stay on the legacy
+  // layout below until the pattern is proven and rolled out.
+  if (slug === "coffee") {
+    return (
+      <CategoryView
+        category={{ slug: c.slug, name: c.name, color: c.color, blurb: c.blurb }}
+        homeMuni={homeMuni}
+      />
+    );
+  }
+
   const homeCentroid: LngLat | null = homeMuni
     ? (MUNICIPALITY_BY_SLUG[homeMuni]?.centroid ?? null)
     : null;
