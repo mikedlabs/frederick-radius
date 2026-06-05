@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import {
-  Fraunces,
-  Hanken_Grotesk,
+  Newsreader,
+  Public_Sans,
   JetBrains_Mono,
 } from "next/font/google";
 import "./globals.css";
@@ -15,10 +15,10 @@ import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 
 /**
- * Typography per the Experience and Visual brief.
- * Fraunces is the display face (dates, headlines, section titles, place
+ * Typography — Frederick Radius brand deck.
+ * Newsreader is the display face (dates, headlines, section titles, place
  * names) and carries the editorial, local warmth through its italic.
- * Hanken Grotesk is the working sans for labels, buttons, and dense UI.
+ * Public Sans is the working sans for labels, buttons, and dense UI.
  * JetBrains Mono carries every number and code-like value (times,
  * temperatures, distances, counts, tracked labels), which is what gives
  * the product its instrument quality.
@@ -27,7 +27,7 @@ import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
  * the downstream tokens (--font-sans / --font-serif / --font-mono in
  * globals.css) hold steady if the typefaces change again.
  */
-const sans = Hanken_Grotesk({
+const sans = Public_Sans({
   variable: "--font-sans-base",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
@@ -35,7 +35,7 @@ const sans = Hanken_Grotesk({
   display: "swap",
 });
 
-const display = Fraunces({
+const display = Newsreader({
   variable: "--font-display",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
