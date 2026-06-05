@@ -4,13 +4,15 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Frederick Radius",
     short_name: "Radius",
-    description: "A smarter way to experience Frederick County.",
+    description: "A better way to use Frederick County.",
     start_url: "/guide",
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",
-    background_color: "#0A0A0A",
-    theme_color: "#0A0A0A",
+    // Brand-deck launch: Spruce field (matches the app-icon ground) with
+    // a Paper in-app toolbar tint that blends with the UI ground.
+    background_color: "#16352B",
+    theme_color: "#EEE6D4",
     lang: "en-US",
     categories: ["lifestyle", "navigation", "travel", "utilities"],
     icons: [

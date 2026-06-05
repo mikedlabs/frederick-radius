@@ -10,16 +10,16 @@ export default function AppleIcon() {
         style={{
           width: "100%", height: "100%",
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "#A03A22",
+          background: "#16352B",
         }}
       >
         <div
           style={{
-            width: 80, height: 80, borderRadius: 999, border: "10px solid white",
+            width: 80, height: 80, borderRadius: 999, border: "10px solid #EEE6D4",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
-          <div style={{ width: 24, height: 24, borderRadius: 999, background: "white" }} />
+          <div style={{ width: 26, height: 26, borderRadius: 999, background: "#E14328" }} />
         </div>
       </div>
     ),

@@ -112,7 +112,7 @@ export const viewport: Viewport = {
   // browser chrome / status bar tints to match the app's warm-paper
   // identity instead of the prior System-Black dark. Dark mode is
   // opt-in (html.dark class) and ships when we wire a user toggle.
-  themeColor: "#F4EFE6",
+  themeColor: "#EEE6D4",
 };
 
 export default function RootLayout({

@@ -10,16 +10,16 @@ export default function Icon() {
         style={{
           width: "100%", height: "100%",
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "#A03A22", borderRadius: 8,
+          background: "#16352B", borderRadius: 8,
         }}
       >
         <div
           style={{
-            width: 14, height: 14, borderRadius: 999, border: "3px solid white",
+            width: 14, height: 14, borderRadius: 999, border: "3px solid #EEE6D4",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
         >
-          <div style={{ width: 4, height: 4, borderRadius: 999, background: "white" }} />
+          <div style={{ width: 5, height: 5, borderRadius: 999, background: "#E14328" }} />
         </div>
       </div>
     ),
