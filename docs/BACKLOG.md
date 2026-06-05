@@ -54,3 +54,62 @@ Strong data, still reads as a feed. Needs: stricter grouping, capped
 descriptions, civic calendar collapsed, and more human sections —
 **Tonight / Weekend / Free / With kids / Live music.** Audit before building;
 reuse existing event loaders/components, don't rebuild.
+
+---
+
+## Pre-existing issues — tracked elsewhere, NOT yet scheduled
+Carried over so the structure pass doesn't lose them. These are separate
+from the page-by-page UI work above. Owner asked (June 2026) to make sure
+none of these get forgotten.
+
+### 🖼️ Wrong / shared photos on place cards (the "twins" issue)
+User-reported: two cards showing the *same* thumbnail. Full audit in
+`docs/audits/2026-05-27-dfp-photo-twins.md`; raw clusters in
+`audit/photo-twins.json`. State: detector built, **15 true duplicates
+folded** (May 27) — but **~37 clusters remain unresolved**:
+- [ ] **22 MULTI_TENANT clusters** — different businesses sharing one
+      building photo (e.g. 3 tenants at 112 E Patrick St). Records are
+      correct; the shared photo is misleading. Fix = pick a distinct photo
+      per record (upstream enrichment side). **This is the most visible
+      "wrong photo on a card" symptom on /radius + /map.**
+- [ ] **9 MAYBE_MULTI_TENANT_OR_DUPE** — need an editor to decide per
+      cluster (some may be rebrands).
+- [ ] **2 REVIEW + 1 WRONG_PHOTO** — genuine enrichment misapplications
+      (same Google photo on unrelated records). Root cause: weak
+      `resolveAndEnrich` matches cross-pollinating photos.
+- [ ] Root-cause fix: add **photo-ChIJ extraction to the dedup pipeline**
+      (same thumbnail = strong dup signal the name-Jaccard pass misses) and
+      backfill real `ChIJ…` place IDs to replace the placeholder UUIDs.
+
+### 🔁 Daily data-pipeline failures (open GitHub issues, automated)
+7 sources fail the daily refresh (#383/#384/#387/#392/#397/#404/#423) and
+show as stale (#74/#393): **mdot_chart, celebrate_frederick, hood_college
+(HTTP 410), frederick_county_calendar, fcps_news (404), firstenergy_outages,
+usgs_water (400).** Upstream feeds moved/closed or changed format. Triage per
+`AGENTS.md` diagnose-failure; fix the source URL/parser or correct the
+cadence in `data/sources.yaml`. NOTE: `celebrate_frederick` + `hood_college`
+are the live event feeds — if they stay dead, /events coverage thins.
+
+### 🧪 Stale prototype / mockup PRs to triage (open, not merged)
+- [ ] **#422 `/reach`** — radius-as-gesture prototype.
+- [ ] **#421 `/mock`** — premium-redesign mockups (predates the locked
+      brand deck; likely superseded — confirm + close).
+- [ ] **#420 `/fly`** — cinematic descent prototype.
+- [ ] **#265** — Weinberg + Delaplaine event feeds, **inert** until
+      `WEINBERG_CALENDAR_URL` / `DELAPLAINE_CALENDAR_URL` env vars point at
+      real iCal URLs (venues don't expose one at the obvious paths).
+      Decision: close, or chase the venues for a calendar URL.
+
+### 📋 AUDIT.md half-working / broken (still open, see `AUDIT.md`)
+- [ ] `/business/manage/[token]` — email-the-token flow not firing (no SMTP).
+- [ ] `/business/claim` + `/submit/*` — write to DB but no review queue;
+      untested end-to-end on prod.
+- [ ] Inert event feeds: Ticketmaster, Bandsintown (need API keys + curation).
+- [ ] Image perf: some raw `<img>` for Google photos (not `next/image`).
+- [ ] `/places` directory index — the one surface not on the post-overhaul
+      card system.
+- [ ] Editorial routes (`/parks` `/trails` `/transit` `/water` `/history`)
+      under-surfaced from the main pages — the "connectedness" phase.
+- [ ] NOTE: `AUDIT.md` route names predate the structure pass (it lists
+      `/now`/`/browse`; these are now `/today`/`/map`). Refresh when the
+      structure pass lands.
