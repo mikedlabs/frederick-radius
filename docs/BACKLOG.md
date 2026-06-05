@@ -188,23 +188,45 @@ demonstrate the fix:
 - Sev: **High** · Surfaces: category (all), feeds map/today/radius origin ·
   When: **during coffee** · Type: [G] (the fallback is in code) + [P].
 
-### Pass 4 — events (the current biggest firehose)
-Firehose **confirmed** by the simulation (user 11) — and *empty* when feeds
-fail, which is the bigger live risk. Needs:
-- stricter grouping + more human sections: **Tonight / Weekend / Free / With
-  kids / Live music**.
-- **cap descriptions** (capped length, no walls of text).
-- **collapse civic/municipal harder** — separate **public/fun** from
-  **civic/private/recurring** (meetings, recurring civic items shouldn't dilute
-  the "what's on" answer).
-- **feed reliability + empty states**: Hood = HTTP 410 (dead), Celebrate +
-  County failing in the worker (issues #383–#423); warm, honest empty states
-  instead of a blank wall.
-- promote the event-detail **"dinner + parking + walk"** flow (a confirmed gem,
-  user 14) into discovery.
-- Audit before building; reuse existing event loaders/components, don't rebuild.
-- Sev: **High** · Surfaces: events, town pages (event sections), today ·
-  When: **during events** · Type: [G] (feed status) + [P].
+### Pass 4 — events — AUDITED, MOSTLY COMPLETE ✅ (do NOT rebuild)
+Audit (June 2026) verdict: the "firehose" label is **stale**. `/events` is
+already tiered and trustworthy — the `/radius` outcome. Confirmed against the
+code/data:
+- ✅ Tiered + answer-first: Today (hero + "why it matters" + rail) → This
+  weekend (grouped by vibe) → Later (collapsed) → Browse/Explorer (collapsed)
+  → Civic (collapsed). First screen answers "tonight/this weekend?".
+- ✅ Civic fully separated: `isCivicEvent` strips civic from the feed (0 civic
+  in the upcoming set); municipal calendar is its own collapsed section.
+- ✅ Descriptions capped: `line-clamp-2` everywhere + first-sentence "why it
+  matters" ≤150 chars. No walls of text in browse.
+- ✅ Recurring/low-relevance handled: `collapseRecurringEvents` folds weekly
+  RRULE shows; non-event venue open-status entries dropped.
+- ✅ Cancelled/stale: `deriveEventStatus` → red/amber badges + line-through;
+  past events filtered out.
+- ✅ Free / Family / Live music are data-backed (`is_free` + `category`), with
+  one-tap chips already in the Explorer.
+- ✅ Event detail intact + excellent: "Eat & drink before", "Parking nearby"
+  (1.5km cap), same-venue future events, weather at start.
+
+**Do NOT do an events structure pass.** Narrow real gaps only:
+- [ ] **Feed reliability = the #1 "feels useful" lever, but it's DATA/OPS, not
+      a UI pass.** `eventsLive` returns ~2; page leans on ~28 seed events
+      because Hood is dead (HTTP 410) and Celebrate/County fail in the worker
+      (issues #383–#423). Fix in the data cluster: repair Hood URL, Celebrate/
+      County parser, owner-set Ticketmaster/Eventbrite keys. Sev: **High** ·
+      Type: [G].
+- [ ] **(Optional small polish) Lift the human lenses higher.** The Live music
+      / Free / Family / Tonight / Weekend chips exist but sit inside the
+      *collapsed* "Browse & search" Explorer. A compact intent row above the
+      tiers, deep-linking the EXISTING lenses (reuse, ~1 component), would make
+      the page answer by intent without expanding Browse. Sev: Med · Type: [P].
+      Only if the owner wants it — not required.
+- [ ] **Live-feed facet reliability (minor data note):** for live (not curated)
+      events, `category`/`is_free` are keyword/default guesses; tighten as feeds
+      recover so Free/Family/Live-music stay trustworthy. Sev: Low · Type: [G].
+- [ ] **Downtown-defaulted** (24/28 upcoming are Frederick) — same county-wide
+      posture as coffee; events are genuinely sparser in towns. Covered by the
+      Cluster A posture work, not an events-specific fix.
 
 ---
 
@@ -258,6 +280,25 @@ Trust leaks from data, not design. (Users 5,20 + cross-cutting.)
 - [ ] **Stamp every place with its real municipality** (fixes "is this even in
       my town?"; pairs with GIS boundaries). Sev: High · Surfaces: all · When:
       later (GIS-assisted) · Type: [G].
+- [ ] **Event feed reliability — the real "events" work (Sev: HIGH).** `/events`
+      is audited & architecturally complete (see Pass 4); the actual problem is
+      DATA/OPS: `eventsLive` returns ~2, so the page leans on ~28 seed events.
+      Hood feed dead (HTTP 410), Celebrate + County failing in the worker
+      (issues #383–#423). Repair Hood URL / Celebrate+County parser; track
+      owner-set Ticketmaster/Eventbrite keys. This belongs to the data/pipeline
+      cluster, NOT an events structure pass. Surfaces: events, town pages, today
+      · Type: [G].
+- [ ] **Live-feed facet confidence (Sev: Low):** for live (not curated) events,
+      `category`/`is_free` are keyword/default guesses — keep documented, don't
+      overstate in UI; improve as feeds recover. Type: [G].
+
+### Optional — events intent-chip polish (DEFERRED, not trivial)
+Audited verdict: NOT trivial, so skipped per owner's "skip if not trivial" bar.
+Lifting Free/Family/Live-music chips above the fold would require force-opening
+a localStorage-persisted collapsed Explorer + reconciling two param systems
+(`lens` vs `cats`/`when`) — real dead-control risk. The lead tiers already
+answer Tonight/Weekend. Revisit only if events gets a larger pass later. Sev:
+Low · Type: [P].
 
 ### Cluster C — GIS pilot gating ⏸️ (do NOT implement yet)
 Justified by the simulation; use GIS to solve **posture / orientation / trust**,
