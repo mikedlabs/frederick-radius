@@ -361,6 +361,32 @@ export default async function HomePage({
         )}
       </section>
 
+      {/* ── BEST MOVE NOW + BUILD A PLAN ─────────────────────────────────
+          Lifted OUT of the collapsed "full briefing" below so the page's
+          two decision modules LEAD instead of hiding. TodayMoves = the
+          single "best move now"; MoveStack = "build a plan." The weather
+          hero, events, and news stay collapsed below as context — so the
+          ladder reads: Ask → quick intents → best move → plan → browse. */}
+      <section className="mt-4 space-y-3" aria-label="Your next move">
+        <Suspense fallback={<Skeleton.Block height={170} round="var(--app-radius-lg)" />}>
+          <TodayMoves
+            tonightCount={counts.tonight ?? 0}
+            tonightEvent={
+              featuredEvent
+                ? {
+                    slug: featuredEvent.slug,
+                    title: featuredEvent.title,
+                    venue_name: featuredEvent.venue_name ?? null,
+                  }
+                : null
+            }
+          />
+        </Suspense>
+        <Suspense fallback={<Skeleton.Block height={200} round="var(--app-radius-lg)" />}>
+          <MoveStack />
+        </Suspense>
+      </section>
+
       {/* RESPONSIVE SPLIT (desktop only):
        *   mobile  : everything stacks single-column (space-y-6).
        *   lg+     : two-column grid — LEFT carries the day/weather
@@ -445,35 +471,9 @@ export default async function HomePage({
           </Suspense>
         </SkyHero>
 
-        {/* Command center — the confident "what's the move?" answer lives
-            on PAPER just below the sky hook: one weather-aware primary
-            move + Tonight + Near you. Leads the page so the weather panel
-            and the rest read as supporting detail, not the headline. */}
-        <div className="mt-3">
-          <Suspense fallback={<Skeleton.Block height={170} round="var(--app-radius-lg)" />}>
-            <TodayMoves
-              tonightCount={counts.tonight ?? 0}
-              tonightEvent={
-                featuredEvent
-                  ? {
-                      slug: featuredEvent.slug,
-                      title: featuredEvent.title,
-                      venue_name: featuredEvent.venue_name ?? null,
-                    }
-                  : null
-              }
-            />
-          </Suspense>
-        </div>
-
-        {/* Move Stack — a confident "plan your next few hours" itinerary
-            (dinner → drinks → music), ranked + weather/time-aware. The
-            decision-engine payoff: one sequence, not a wall of options. */}
-        <div className="mt-3">
-          <Suspense fallback={<Skeleton.Block height={200} round="var(--app-radius-lg)" />}>
-            <MoveStack />
-          </Suspense>
-        </div>
+        {/* (Best move now + Build a plan were lifted OUT of this collapsed
+            briefing to the primary area above — see "Your next move". The
+            weather hero below stays as collapsed context.) */}
 
         {(() => {
           // Sky-aware wash on the weather sub-card stack so the
