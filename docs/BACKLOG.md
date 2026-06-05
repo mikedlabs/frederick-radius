@@ -31,10 +31,12 @@ nearest, top 6 + "See all N") and added a "Useful nearby" amenity section
 
 ## Next structure-pass order
 Owner directive (June 2026), updated: **#433 /map → UI hygiene foundation →
-category pages (coffee) → events.** One clean step at a time — do NOT start
-the next step until the current one is merged. UI hygiene was inserted before
-coffee/events on purpose: every new surface built before it inherits the same
-uncoordinated overlay/z-index problem (see "UI cleanliness" below).
+20-user simulation audit → category pages (coffee) → events.** One clean step
+at a time — do NOT start the next step until the current one is merged. UI
+hygiene was inserted before coffee/events on purpose: every new surface built
+before it inherits the same uncoordinated overlay/z-index problem (see "UI
+cleanliness" below). The simulation audit was inserted before coffee so we
+see what we're missing **before** locking the next major page patterns.
 
 ### Pass 2.5 — UI HYGIENE foundation (do AFTER #433 merges, BEFORE coffee)
 A **foundation pass, not a beauty pass.** Owner scope (June 2026): stop every
@@ -68,6 +70,86 @@ Acceptance criteria:
 - Mobile review shows no obvious overlap/collision.
 - The pass does NOT restyle the whole app or rebuild every primitive.
 - Local verification documented (same as other PRs while Actions is blocked).
+
+### Pass 2.75 — 20-USER SIMULATION AUDIT (do AFTER hygiene, BEFORE coffee)
+A pressure-test, not happy-path theater. Owner directive (June 2026):
+simulate 20 different user types across Frederick County trying to **break,
+misunderstand, stress, and distrust** the app — to expose flaws, leaks,
+confusing flows, weak/stale data, crowding/overlap, and anything that makes it
+feel like a directory instead of "the county finally has an interface."
+
+**Standard:** Frederick Radius should not feel like a directory. It should
+feel like the county finally has an interface.
+
+**Critical instruction:** half the value is from BORING, PRACTICAL, FRUSTRATED
+users — parking, bathrooms, civic info, no location permission, bad weather,
+smaller towns, stale business listings. That's where trust is built or lost.
+Do NOT only simulate users who want fun things.
+
+**The 20 user types:**
+1. Downtown Frederick visitor with 2 hours
+2. Longtime resident who hates tourist fluff
+3. Parent with young kids
+4. Older / low-tech user
+5. Business owner checking their listing
+6. New resident understanding the county
+7. Brunswick user
+8. Thurmont / northern county user
+9. Middletown / Myersville / western county user
+10. Walkersville / Woodsboro user
+11. Weekend visitor from DC or Baltimore
+12. Rainy-day user
+13. User looking for something free
+14. User looking for dinner before an event
+15. User trying to find parking quickly
+16. User looking for restrooms / practical needs
+17. Civic/practical user looking for municipal info
+18. User who only gives the app 30 seconds
+19. User WITHOUT location permission enabled
+20. User who distrusts the data — wants to know what's official, curated,
+    owner-submitted, or feed-based
+
+**Per-user documentation (all 17 fields):** 1 starting town/location · 2 user
+type · 3 mission · 4 expected fastest path · 5 actual path · 6 tap count /
+scroll depth · 7 what worked · 8 what felt confusing · 9 where UI felt
+crowded/overlapped · 10 any drawer/sheet/nav/prompt/map-control collision ·
+11 any incorrect/stale/weak/duplicate/suspicious data · 12 any missing
+source/freshness/trust signal · 13 downtown-biased vs county-wide · 14 clear
+next action? · 15 felt modern/fun/fresh/worth returning? · 16 severity
+(Critical/High/Medium/Low) · 17 recommended fix type (quick copy / UI-layout /
+data-ranking / component-system / larger product change).
+
+**Group findings three ways:** (1) by user type; (2) by app surface — Today,
+Map, Radius, Search/Ask Radius, Category pages, Events, Town pages, Place
+detail, Event detail; (3) by severity.
+
+**Must pressure-test specifically:**
+- Does the app answer quickly, or make users browse?
+- Are categories helping people decide, or just filtering data?
+- Do events feel useful, or like a firehose?
+- Does the map explain the area, or just show pins?
+- Are source/freshness signals strong enough?
+- Are small towns treated seriously (not downtown-biased)?
+- Does the app work without location access?
+- Are practical needs (parking/restrooms/civic) easy to find?
+- Are open-now and worth-your-time results trustworthy?
+- Are weak records promoted too high?
+- Does anything visually overlap or fight for attention?
+
+**Not just bugs — product insight.** Find: what's hard to use, what creates
+doubt, what feels like a database, what feels repetitive, what feels visually
+messy, what makes data seem wrong even if technically correct, what feels
+fresh and worth building on, what could make this a one-of-a-kind county
+experience.
+
+**Output must END with six top-10 lists:** (1) top 10 product problems ·
+(2) top 10 quick wins · (3) top 10 data-trust fixes · (4) top 10 UI/UX fixes ·
+(5) top 10 future-proofing risks · (6) top 10 ideas that make it more fun,
+modern, fresh, and one-of-one.
+
+NOTE on honesty: a simulated walk-through is reasoning over the real code +
+data, NOT a live device session — it can't validate drag-feel/render. Flag
+which findings are code/data-grounded vs would-need-a-device to confirm.
 
 ### Pass 3 — category pages, starting with COFFEE (pattern page)
 Goal: *stop making categories feel like directories; make them feel like
