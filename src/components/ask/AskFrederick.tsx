@@ -32,7 +32,21 @@ export default function AskFrederick() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ query: text }),
       });
-      setRes((await r.json()) as AskResult);
+      if (r.status === 429) {
+        // Rate limited (abuse guard on the paid LLM route). Show the
+        // server's friendly note, not a crash — the body is {error,message},
+        // not an AskResult, so never cast it straight into state.
+        const j = (await r.json().catch(() => ({}))) as { message?: string };
+        setRes({
+          configured: true,
+          answer: j.message ?? "Too many questions — give it a moment.",
+          sources: [],
+        });
+      } else if (!r.ok) {
+        setRes({ configured: true, answer: "Something went wrong — try again.", sources: [] });
+      } else {
+        setRes((await r.json()) as AskResult);
+      }
     } catch {
       setRes({ configured: true, answer: "Something went wrong — try again.", sources: [] });
     } finally {

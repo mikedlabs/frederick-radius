@@ -29,6 +29,7 @@ export default function ServiceWorkerRegister() {
 
     let toastId: string | number | undefined;
     let reloaded = false;
+    let registration: ServiceWorkerRegistration | null = null;
 
     /**
      * Show the "Update available" toast for a specific waiting worker.
@@ -58,6 +59,7 @@ export default function ServiceWorkerRegister() {
      * for the next install.
      */
     const wire = (reg: ServiceWorkerRegistration) => {
+      registration = reg;
       if (reg.waiting && navigator.serviceWorker.controller) {
         promptForUpdate(reg.waiting);
       }
@@ -88,6 +90,22 @@ export default function ServiceWorkerRegister() {
     };
     window.addEventListener("load", onLoad);
 
+    // Re-check for a new service worker whenever the user returns to the
+    // app. The browser only looks for an updated /sw.js on a fresh
+    // navigation, so an INSTALLED PWA (or a long-lived tab) can sit for
+    // hours on the old build — the "new version ready" toast never fires
+    // because the browser never noticed the deploy. Calling reg.update()
+    // on focus/visibility forces that check on every return, so a deploy
+    // surfaces within a tap of reopening the app. Errors are ignored:
+    // a failed update check just means we try again next time.
+    const checkForUpdate = () => {
+      if (document.visibilityState === "visible") {
+        registration?.update().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", checkForUpdate);
+    window.addEventListener("focus", checkForUpdate);
+
     // When the user accepts the prompt, the new SW activates and
     // fires `controllerchange`. Reload once so they're served by the
     // new worker immediately. Guarded so a rapid second event (rare
@@ -104,6 +122,8 @@ export default function ServiceWorkerRegister() {
 
     return () => {
       window.removeEventListener("load", onLoad);
+      document.removeEventListener("visibilitychange", checkForUpdate);
+      window.removeEventListener("focus", checkForUpdate);
       navigator.serviceWorker.removeEventListener(
         "controllerchange",
         onControllerChange,
