@@ -799,7 +799,7 @@ function InViewDrawer({
   return (
     <div
       ref={sheetRef}
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3 lg:hidden"
+      className="pointer-events-auto absolute inset-x-0 bottom-0 z-[var(--z-map-drawer)] mx-auto flex w-full max-w-screen-md flex-col rounded-t-[var(--app-radius-xl)] bg-[var(--app-bg-elevated)] tactile-e3 lg:hidden"
       style={{
         height: dragPx != null ? `${dragPx}px` : heights[snap],
         // No transition while the finger is down — the sheet must track

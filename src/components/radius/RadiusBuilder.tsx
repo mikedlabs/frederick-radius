@@ -984,7 +984,7 @@ export default function RadiusBuilder({
             information as the old standalone strip in 1/3 the page
             height because it borrows the map's space. */}
         <div
-          className="pointer-events-none absolute inset-x-3 bottom-3 z-20"
+          className="pointer-events-none absolute inset-x-3 bottom-3 z-[var(--z-map-control)]"
           aria-hidden
         >
           <div

@@ -114,7 +114,7 @@ export default function LocationChip() {
         <div
           role="menu"
           aria-label="Switch town or use location"
-          className="absolute right-0 top-full z-50 mt-1.5 w-[220px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+          className="absolute right-0 top-full z-[var(--z-dropdown)] mt-1.5 w-[220px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
           style={{ borderColor: "var(--app-border)" }}
         >
           {/* Location action — request OR clear depending on state. */}

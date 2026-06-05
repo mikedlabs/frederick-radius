@@ -71,7 +71,7 @@ export default function SideRail() {
       // here would hide the desktop primary nav from screen readers
       // while leaving its links keyboard-focusable (the WCAG
       // focusable-inside-aria-hidden failure the audit flagged).
-      className="pointer-events-none fixed bottom-0 left-0 top-0 z-40 hidden py-4 pl-3 lg:flex lg:items-center"
+      className="pointer-events-none fixed bottom-0 left-0 top-0 hidden py-4 pl-3 lg:flex lg:items-center"
       style={{ zIndex: "var(--z-nav)" }}
     >
       <nav

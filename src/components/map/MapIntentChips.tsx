@@ -144,7 +144,7 @@ export default function MapIntentChips({
   const clearHref = openNow ? "/map?mode=browse&open=now" : "/map";
   return (
     <div
-      className="pointer-events-none absolute inset-x-0 top-0 z-30 space-y-2 px-2.5 sm:px-3"
+      className="pointer-events-none absolute inset-x-0 top-0 z-[var(--z-sticky)] space-y-2 px-2.5 sm:px-3"
       // Pre-2026-05-28 this had paddingTop "calc(2.5rem + safe-area
       // + 18px)" to clear the floating MapModes shelf + toggle that
       // used to sit above it. Both have since moved into inline

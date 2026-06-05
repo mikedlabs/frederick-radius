@@ -85,7 +85,7 @@ export default function PullToRefresh() {
   return (
     <div
       aria-hidden={!showSpinner}
-      className="pointer-events-none fixed left-0 right-0 z-40 flex justify-center"
+      className="pointer-events-none fixed left-0 right-0 z-[var(--z-prompt)] flex justify-center"
       style={{
         top: "calc(56px + env(safe-area-inset-top, 0px))",
         height: 0,

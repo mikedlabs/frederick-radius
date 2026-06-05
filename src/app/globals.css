@@ -128,15 +128,26 @@
   --app-ink-tint-12:     color-mix(in srgb, var(--app-ink)     12%, transparent);
 
   /* ─────────────────────────────────────────────────────
-   * Z-INDEX SCALE — five named levels so layering is intentional.
-   * Anything stacking above the page surface picks one of these.
+   * Z-INDEX SCALE — one named owner per layer, so floating UI never
+   * fights for the top of the screen by accident. Every fixed/overlay
+   * element MUST pick a token from this ladder (never a raw z-[NNN]).
+   * Local in-card stacking (a badge over its own photo) stays a plain
+   * low z-0/z-10 and is intentionally NOT part of this scale.
+   * Full rationale + per-component map: docs/Z_INDEX.md.
    * ───────────────────────────────────────────────────── */
-  --z-base:    0;     /* default flow */
-  --z-raised:  10;    /* sticky cards, popovers, in-page overlays */
-  --z-sticky:  30;    /* TopBar, sticky section headers */
-  --z-nav:     40;    /* BottomNav floating pill */
-  --z-overlay: 50;    /* modal backdrops, drawer backdrops, sheets */
-  --z-toast:   70;    /* sonner toaster — always on top */
+  --z-base:        0;   /* default flow */
+  --z-raised:      10;  /* in-flow raised: sticky cards, local overlays */
+  --z-map-control: 20;  /* map in-canvas status/alert/error/directions chips */
+  --z-map-drawer:  25;  /* map in-view drawer — above map status, never covered */
+  --z-sticky:      30;  /* TopBar, sticky section headers, map top filter chips */
+  --z-nav:         40;  /* BottomNav, SideRail */
+  --z-fab:         42;  /* floating action button / compose dock */
+  --z-dropdown:    45;  /* menus/popovers anchored to a trigger */
+  --z-prompt:      48;  /* install prompt, pull-to-refresh — above chrome, BELOW overlays */
+  --z-overlay:     50;  /* modal/drawer backdrops + sheets + search — owns the screen */
+  --z-toast:       70;  /* sonner toaster */
+  --z-lightbox:    80;  /* media lightbox — above toast */
+  --z-skip:        100; /* skip-to-content link — reachable above everything */
 
   --app-radius-sm: 8px;
   --app-radius-md: 14px;

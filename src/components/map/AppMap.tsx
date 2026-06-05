@@ -890,7 +890,7 @@ export default function AppMap({
             what they want to see. Tapping a category drops its pins
             instantly (toggles activeCats); the prompt then disappears. */}
         {pinpointDefault && activeCats.size === 0 && !mapError && (
-          <div className="pointer-events-none absolute inset-x-0 top-[15%] z-10 flex justify-center px-4">
+          <div className="pointer-events-none absolute inset-x-0 top-[15%] z-[var(--z-map-control)] flex justify-center px-4">
             <div
               className="deck-card pop-in pointer-events-auto w-full max-w-sm rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-4 text-center"
               style={{ borderColor: "var(--app-border)" }}
@@ -933,7 +933,7 @@ export default function AppMap({
 
         {mapError && (
           <div
-            className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 px-6 text-center"
+            className="absolute inset-0 z-[var(--z-map-control)] flex flex-col items-center justify-center gap-2 px-6 text-center"
             style={{ background: "var(--app-bg)" }}
             role="alert"
           >
@@ -955,7 +955,7 @@ export default function AppMap({
         )}
         {geoMsg && (
           <div
-            className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
+            className="absolute bottom-3 left-1/2 z-[var(--z-map-control)] flex -translate-x-1/2 items-center gap-2 rounded-full border bg-white/95 px-3 py-1.5 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
             role="status"
           >
@@ -965,7 +965,7 @@ export default function AppMap({
         )}
         {(osmLoading || osmError || osmPlaces.length > 0) && (
           <div
-            className="absolute left-3 top-3 z-10 inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
+            className="absolute left-3 top-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
             style={{ color: "var(--app-ink-2)" }}
             aria-live="polite"
           >
@@ -989,7 +989,7 @@ export default function AppMap({
         )}
         {/* Directions chip — distance + drive estimate + native handoff */}
         {routeInfo && (
-          <div className="absolute inset-x-0 top-3 z-20 flex justify-center px-3">
+          <div className="absolute inset-x-0 top-3 z-[var(--z-map-control)] flex justify-center px-3">
             <a
               href={routeInfo.href}
               target="_blank"
@@ -1023,7 +1023,7 @@ export default function AppMap({
             <style>{"@keyframes fr-rp-pulse{0%{transform:scale(.55);opacity:.5}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}"}</style>
           )}
           <div
-            className="absolute inset-x-3 bottom-3 z-20 rounded-[var(--app-radius-md)] border p-3.5 shadow-[var(--app-shadow-3)] backdrop-blur"
+            className="absolute inset-x-3 bottom-3 z-[var(--z-map-control)] rounded-[var(--app-radius-md)] border p-3.5 shadow-[var(--app-shadow-3)] backdrop-blur"
             style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.96)" }}
             role="status"
           >

@@ -701,7 +701,7 @@ export default function PlanBuilder({
           {/* STICKY ACTION BAR (mobile) — keeps shuffle / new / share
               one tap away even after the user has scrolled past 5 stops. */}
           <div
-            className="pointer-events-none fixed inset-x-0 bottom-[env(safe-area-inset-bottom,0px)] z-30 px-3 pb-3"
+            className="pointer-events-none fixed inset-x-0 bottom-[env(safe-area-inset-bottom,0px)] z-[var(--z-fab)] px-3 pb-3"
             // Sit ABOVE BottomNav (which is ~68-72px tall). Bumping
             // this with a translate keeps a clean stack on mobile.
             style={{ transform: "translateY(-64px)" }}

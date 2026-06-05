@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
+    "lint:zindex": "node scripts/check-zindex.mjs",
     "perf": "tsx --tsconfig tsconfig.json scripts/lighthouse-audit.ts",
     "shots": "node scripts/screenshots.mjs",
     "test": "vitest run",
