@@ -40,34 +40,33 @@
   --app-paper: #F4EFE6;           /* warm almanac cream */
   --app-paper-2: #ECE5D5;         /* slightly deeper paper */
 
-  --app-bg: #E5D8BF;              /* warm almanac ground — deepened a second notch so the
-                                     empty canvas reads as printed paper, not white; cards
-                                     pop hard against it (ink-3 holds ≥4.5:1 AA) */
+  --app-bg: #EEE6D4;              /* Paper — Frederick Radius brand deck (was almanac #E5D8BF).
+                                     Slightly lighter/cleaner ground; dark ink gains contrast. */
   /* --app-bg-elevated is slightly translucent so the PageBloom aurora
      orbs tint cards from behind — the "glass" effect that lets the
      animated background read THROUGH the dense card stacks. Modals,
      sheets, popups that need full opacity should set their bg to
      --app-bg-elevated-solid instead. */
-  --app-bg-elevated-solid: #F7F0E0;  /* warm cream card — off pure-white so the app reads
-                                        as printed paper, not a white SaaS dashboard */
-  --app-bg-elevated: color-mix(in srgb, #F7F0E0 93%, transparent);
-  --app-bg-sunken: #E1D5BF;       /* deeper sunken, kept below the new ground (ink-3 ≥4.5:1) */
-  --app-border: #D6CDBB;          /* warm hairline, a touch crisper */
-  --app-border-strong: rgba(26, 24, 21, 0.10);
+  --app-bg-elevated-solid: #F8F2E6;  /* paper-2 — elevated cream card (brand deck) */
+  --app-bg-elevated: color-mix(in srgb, #F8F2E6 93%, transparent);
+  --app-bg-sunken: #E3D8C2;       /* paper-3 — deeper sunken (brand deck) */
+  --app-border: #DBD2BF;          /* warm hairline against the new paper */
+  --app-border-strong: rgba(22, 20, 14, 0.13);
 
-  --app-ink: #1A1815;             /* warm ink (was #1A1A1A) */
-  --app-ink-2: #4A4844;
-  --app-ink-3: #5C5A50;           /* WCAG AA: ≥4.5:1 on bg/sunken/elevated. Darkened from
-                                     #6A6862 after the v3 redesign deepened --app-bg-sunken
-                                     to #E6DECE, which dropped small ink-3 text to 4.16:1
-                                     (Lighthouse-caught), then re-darkened to #5C5A50 for the
-                                     v4 deeper canvas. Now 4.77 on sunken, 4.91 on bg. */
-  --app-ink-inverse: #F4EFE6;     /* paper cream on dark */
+  /* Body ink: warm near-black (brand-deck default). Spruce (#16352B) is
+     available as --app-brand-2 for headings/brand surfaces; flipping body
+     text to Spruce is a one-value change here if we prefer that read. */
+  --app-ink: #16140E;             /* warm near-black (was #1A1815) */
+  --app-ink-2: #423E34;
+  --app-ink-3: #5C5A50;           /* AA-held muted tone for metadata; even higher contrast on
+                                     the lighter Paper ground than on the old #E5D8BF. */
+  --app-ink-inverse: #EEE6D4;     /* Paper on dark */
 
-  --app-brand: #A03A22;           /* Frederick brick — deepened + saturated for the v3 refresh */
-  --app-brand-2: #2E3B2C;         /* Catoctin green (was #1E3A2F) */
-  --app-accent: #C99632;          /* almanac gold (was #D9A441) */
-  --app-cool: #2F5470;            /* Carroll Creek slate (was #2A5D8F) */
+  --app-brand: #E14328;           /* Signal vermilion — Frederick Radius brand deck (was brick #A03A22) */
+  --app-brand-press: #B5300F;     /* pressed / extra-contrast signal for text-on-light */
+  --app-brand-2: #16352B;         /* Spruce — deep county green (brand deck; was Catoctin #2E3B2C) */
+  --app-accent: #C0871F;          /* Almanac gold (brand deck; was #C99632) */
+  --app-cool: #20506A;            /* Slate — Carroll Creek / civic (brand deck; was #2F5470) */
   --app-cool-2: #4A7090;          /* lighter cool, for hovers */
   --app-sage: #859076;            /* topo-line sage — light nature accent */
 

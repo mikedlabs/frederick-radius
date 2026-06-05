@@ -9,10 +9,10 @@ import { COLLECTION_BY_SLUG } from "@/data/collections";
 // and so can't resolve CSS variables. Keep in sync with globals.css.
 // New collection accent tokens should be added here when introduced.
 const COLLECTION_ACCENT_HEX: Record<string, string> = {
-  "var(--app-brand)": "#A03A22",
-  "var(--app-brand-2)": "#2E3B2C",
-  "var(--app-cool)": "#2F5470",
-  "var(--app-accent)": "#C99632",
+  "var(--app-brand)": "#E14328",
+  "var(--app-brand-2)": "#16352B",
+  "var(--app-cool)": "#20506A",
+  "var(--app-accent)": "#C0871F",
   "var(--app-sage)": "#859076",
 };
 
@@ -46,7 +46,7 @@ export async function GET(request: Request) {
   // we don't try to bake open-status into the card here. The card has
   // to read true a day from now.
   let blurb: string | null = null;
-  let accent = "#A03A22";
+  let accent = "#E14328";
 
   if (type === "place") {
     const p = PLACE_BY_SLUG[slug];
@@ -104,12 +104,12 @@ export async function GET(request: Request) {
   // Instrument Serif aren't loaded here yet — that needs woff2
   // bundling (follow-up). For now the fallback serif chain renders
   // a respectable system serif on Vercel's @vercel/og runtime.
-  const PAPER = "#F4EFE6";
-  const PAPER_2 = "#ECE5D5";
-  const INK = "#1A1815";
-  const INK_2 = "#4A4844";
+  const PAPER = "#F8F2E6";
+  const PAPER_2 = "#EEE6D4";
+  const INK = "#16140E";
+  const INK_2 = "#423E34";
   const INK_3 = "#6A6862";
-  const HAIRLINE = "#D9D2C3";
+  const HAIRLINE = "#DBD2BF";
   const SERIF = "Newsreader, 'Iowan Old Style', Georgia, 'Times New Roman', serif";
   const ITALIC = "'Instrument Serif', Newsreader, Georgia, serif";
 
