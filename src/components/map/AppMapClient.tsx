@@ -3,13 +3,26 @@
 import dynamic from "next/dynamic";
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { MapPin, Calendar } from "lucide-react";
+import {
+  MapPin,
+  Calendar,
+  Toilet,
+  Wifi,
+  Zap,
+  Bike,
+  Trees,
+  Baby,
+  Waves,
+  Activity,
+  type LucideIcon,
+} from "lucide-react";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
+import { FREDERICK_CENTER, haversineMeters, formatDistance } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
 import { readCachedPosition } from "@/hooks/useGeolocation";
+import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
 
 const AppMap = dynamic(() => import("./AppMap"), {
   ssr: false,
@@ -57,9 +70,31 @@ const AppMap = dynamic(() => import("./AppMap"), {
 export type { CivicPin, MapLineFC, EventPin } from "./types";
 import type { CivicPin, MapLineFC, EventPin } from "./types";
 import type { OsmPlace } from "@/lib/integrations/overpass";
-import type { Amenity } from "@/lib/loaders/amenities";
 
 const EMPTY_FC: MapLineFC = { type: "FeatureCollection", features: [] };
+
+/**
+ * "Useful nearby" amenity display config — glyph + label + accent for
+ * each amenity kind the map can surface in the in-view list. Mirrors the
+ * AMENITY_KINDS labels in the loader but adds the icon/color the compact
+ * row needs. NOTE: parking and transit are deliberately absent — parking
+ * is a place *category* (handled by the places list), and transit stops
+ * aren't in the AmenityKind set yet (see docs/BACKLOG.md). When transit
+ * data is plumbed in, add it here and it surfaces automatically.
+ */
+const AMENITY_DISPLAY: Record<
+  AmenityKind,
+  { label: string; icon: LucideIcon; color: string }
+> = {
+  restroom: { label: "Restroom", icon: Toilet, color: "var(--app-cool)" },
+  wifi: { label: "Free Wi-Fi", icon: Wifi, color: "var(--app-cool)" },
+  ev_charging: { label: "EV charging", icon: Zap, color: "var(--app-brand-2)" },
+  bike_parking: { label: "Bike parking", icon: Bike, color: "var(--app-brand-2)" },
+  picnic: { label: "Picnic", icon: Trees, color: "var(--app-brand-2)" },
+  playground: { label: "Playground", icon: Baby, color: "var(--app-accent)" },
+  pool: { label: "Pool", icon: Waves, color: "var(--app-cool)" },
+  river_gauge: { label: "River gauge", icon: Activity, color: "var(--app-cool)" },
+};
 
 export default function AppMapClient({
   places,
@@ -140,15 +175,20 @@ export default function AppMapClient({
     return m;
   }, [places]);
 
-  // Already decorated server-side; only attach the viewport-relative
-  // distance here (pure, no loader/JSON in the client bundle). Measured
-  // from `origin` so the card distances match the list's sort home.
+  // Already decorated server-side; attach the viewport-relative distance
+  // (pure, no loader/JSON in the client bundle; measured from `origin` so
+  // the card distances match the list's sort home), then RANK by
+  // usefulness so the list reads "best in this view," not "first thing the
+  // map handed back." Order: open-now wins (a closed gem helps no one
+  // right now), then editorial/quality lead (feature_score), then nearest.
+  // Pure + deterministic, so the desktop pane and mobile drawer agree.
   const results = useMemo(
     () =>
       inView
         .map((slug) => bySlug.get(slug))
         .filter((p): p is PlaceCardData => Boolean(p))
-        .map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })),
+        .map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) }))
+        .sort(rankInView),
     [inView, bySlug, origin]
   );
 
@@ -160,6 +200,14 @@ export default function AppMapClient({
   const eventsHere = useMemo(
     () => eventsNearVisiblePlaces(events, results),
     [events, results],
+  );
+  // "Useful nearby" — the practical infrastructure (restrooms, water, EV,
+  // bike parking, Wi-Fi, playgrounds) within a short walk of what's in
+  // view. One per kind so the row reads as a checklist of what's handy,
+  // not a wall of identical restroom pins. Shared by both presentations.
+  const usefulHere = useMemo(
+    () => amenitiesNearVisiblePlaces(amenities, results),
+    [amenities, results],
   );
   const openCount = useMemo(
     () => results.filter((p) => isOpenNow(p.open_status)).length,
@@ -191,6 +239,7 @@ export default function AppMapClient({
           <InViewList
             results={results}
             eventsHere={eventsHere}
+            usefulHere={usefulHere}
             onPick={onPick}
             variant="pane"
           />
@@ -218,6 +267,7 @@ export default function AppMapClient({
           <InViewDrawer
             results={results}
             eventsHere={eventsHere}
+            usefulHere={usefulHere}
             openCount={openCount}
             initialSnap={autoOpenList ? "half" : "peek"}
             onPick={onPick}
@@ -271,6 +321,70 @@ export default function AppMapClient({
 }
 
 /**
+ * Rank comparator for the in-view places list ("Best in this view").
+ * Three tiers, each breaking ties for the next:
+ *   1. Open now beats closed — a closed place is no help to someone
+ *      standing here right now, however good it is.
+ *   2. Higher feature_score beats lower — the editorial/quality signal,
+ *      so the leads are places worth the trip, not arbitrary rows.
+ *   3. Nearer beats farther — among equally-open, equally-good places,
+ *      closest wins.
+ * Pure + total, so both presentations sort identically. Exported for
+ * unit tests.
+ */
+export function rankInView(a: PlaceCardData, b: PlaceCardData): number {
+  const ao = isOpenNow(a.open_status) ? 1 : 0;
+  const bo = isOpenNow(b.open_status) ? 1 : 0;
+  if (ao !== bo) return bo - ao;
+  const af = a.feature_score ?? 0;
+  const bf = b.feature_score ?? 0;
+  if (af !== bf) return bf - af;
+  return (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
+}
+
+/** An amenity decorated with its distance from the nearest visible place. */
+export type UsefulAmenity = Amenity & { distance_m: number };
+
+/**
+ * The "Useful nearby" set: practical infrastructure (restrooms, water,
+ * EV, bike parking, Wi-Fi, playgrounds…) within a short walk of what's
+ * currently in view. Mirrors eventsNearVisiblePlaces — an amenity counts
+ * if it sits within `maxMeters` of ANY visible place — but then keeps
+ * only the NEAREST one per kind, so the row reads as a checklist of what's
+ * handy ("restroom · water · EV") rather than a stack of identical pins.
+ * Tighter radius than events (800m vs 1.5km): "useful nearby" should mean
+ * a genuinely short walk. Nearest-kind first. Exported for unit tests.
+ *
+ * Data limits worth knowing: parking is a place *category*, not an
+ * amenity, so it shows up in the places list, not here; transit stops
+ * aren't in the AmenityKind set yet (docs/BACKLOG.md), so transit is
+ * absent until that data is plumbed in.
+ */
+export function amenitiesNearVisiblePlaces(
+  amenities: Amenity[],
+  visible: { geom: { lng: number; lat: number } }[],
+  maxMeters = 800,
+): UsefulAmenity[] {
+  if (amenities.length === 0 || visible.length === 0) return [];
+  // Nearest match per kind.
+  const best = new Map<AmenityKind, UsefulAmenity>();
+  for (const a of amenities) {
+    if (!Number.isFinite(a.lng) || !Number.isFinite(a.lat)) continue;
+    let nearest = Infinity;
+    for (const p of visible) {
+      const d = haversineMeters({ lng: a.lng, lat: a.lat }, p.geom);
+      if (d < nearest) nearest = d;
+    }
+    if (nearest > maxMeters) continue;
+    const cur = best.get(a.kind);
+    if (!cur || nearest < cur.distance_m) {
+      best.set(a.kind, { ...a, distance_m: nearest });
+    }
+  }
+  return [...best.values()].sort((x, y) => x.distance_m - y.distance_m);
+}
+
+/**
  * Filter events to those near the visible viewport. We use the set of
  * places currently in view as a proxy for the viewport: an event is
  * "nearby" if its venue sits within 1.5km of ANY place the user can
@@ -313,15 +427,26 @@ export function eventsNearVisiblePlaces(
 function InViewList({
   results,
   eventsHere,
+  usefulHere,
   onPick,
   variant,
 }: {
   results: PlaceCardData[];
   eventsHere: EventPin[];
+  usefulHere: UsefulAmenity[];
   onPick: (slug: string) => void;
   variant: "drawer" | "pane";
 }) {
   const isDrawer = variant === "drawer";
+  // Lead with the best handful; the long tail sits behind "See all N" so
+  // the list answers "what's worth my time here" before it becomes a
+  // directory. Collapsed by default; resets implicitly when the parent
+  // remounts with a new viewport is NOT desired (panning keeps your
+  // expansion), so this is plain local state.
+  const [showAll, setShowAll] = useState(false);
+  const CAP = 6;
+  const visiblePlaces = showAll ? results : results.slice(0, CAP);
+  const hiddenCount = results.length - visiblePlaces.length;
   return (
     <ul
       className={
@@ -346,10 +471,13 @@ function InViewList({
         </li>
       ) : (
         <>
-          {/* Events nearby — promoted ABOVE the places list when the
-              visible viewport has any. Time-sensitive beats time-flat:
-              a concert at Carroll Creek tonight should beat 12 restaurant
-              rows. Full details live on the event page. */}
+          {/* Promoted-section model: Events nearby → Useful nearby →
+              Best in this view. Time-sensitive leads, then the practical
+              infrastructure, then the ranked places. */}
+
+          {/* Events nearby — promoted ABOVE everything when the visible
+              viewport has any. A concert at Carroll Creek tonight should
+              beat 12 restaurant rows. Full details on the event page. */}
           {eventsHere.length > 0 && (
             <li>
               <p
@@ -389,20 +517,83 @@ function InViewList({
                   );
                 })}
               </ul>
-              <p
-                className="mt-3 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                Places in view
-              </p>
             </li>
           )}
-          {results.map((p) => (
+
+          {/* Useful nearby — the practical infrastructure within a short
+              walk. One compact chip per kind, nearest first. Non-tappable
+              (these are reference points, not detail pages); the distance
+              is the payload. */}
+          {usefulHere.length > 0 && (
+            <li>
+              <p
+                className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                style={{ color: "var(--app-cool)" }}
+              >
+                <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                Useful nearby
+              </p>
+              <ul className="flex flex-wrap gap-1.5">
+                {usefulHere.map((a) => {
+                  const d = AMENITY_DISPLAY[a.kind];
+                  const Icon = d.icon;
+                  return (
+                    <li key={a.kind}>
+                      <span
+                        title={a.name}
+                        className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] py-1 pl-1.5 pr-2.5"
+                        style={{ borderColor: "var(--app-border)" }}
+                      >
+                        <span
+                          aria-hidden
+                          className="grid h-5 w-5 shrink-0 place-items-center rounded-full"
+                          style={{ background: `color-mix(in srgb, ${d.color} 16%, transparent)` }}
+                        >
+                          <Icon className="h-3 w-3" strokeWidth={2.25} style={{ color: d.color }} />
+                        </span>
+                        <span className="text-[12px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                          {d.label}
+                        </span>
+                        <span className="text-[11px] font-bold tabular-nums" style={{ color: d.color }}>
+                          {formatDistance(a.distance_m)}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </li>
+          )}
+
+          {/* Best in this view — the ranked places (open now → quality →
+              nearest). Always labelled so the list reads as an answer, not
+              a raw count. */}
+          <li>
+            <p
+              className="mb-0.5 mt-0.5 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              Best in this view
+            </p>
+          </li>
+          {visiblePlaces.map((p) => (
             <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
               <PlaceCard place={p} />
             </li>
           ))}
+          {(hiddenCount > 0 || showAll) && results.length > CAP && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="tactile-interactive w-full rounded-[var(--app-radius-md)] border border-dashed px-3 py-2.5 text-[12px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+              >
+                {showAll ? "Show fewer" : `See all ${results.length}`}
+              </button>
+            </li>
+          )}
         </>
       )}
     </ul>
@@ -466,6 +657,7 @@ function InViewReadout({
 function InViewDrawer({
   results,
   eventsHere,
+  usefulHere,
   openCount,
   initialSnap = "peek",
   onPick,
@@ -474,6 +666,9 @@ function InViewDrawer({
   /** Events near the visible places — computed once in the parent and
    *  shared with the desktop pane so the two never drift. */
   eventsHere: EventPin[];
+  /** "Useful nearby" amenities — computed once in the parent and shared
+   *  with the desktop pane so the two never drift. */
+  usefulHere: UsefulAmenity[];
   /** Verified-open count in view — computed once in the parent. */
   openCount: number;
   /** Snap state on mount — "half" when arriving via a category so the
@@ -693,6 +888,7 @@ function InViewDrawer({
         <InViewList
           results={results}
           eventsHere={eventsHere}
+          usefulHere={usefulHere}
           onPick={onPick}
           variant="drawer"
         />
