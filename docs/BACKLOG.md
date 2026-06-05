@@ -116,6 +116,42 @@ are the live event feeds — if they stay dead, /events coverage thins.
 
 ---
 
+### 🧹 UI cleanliness — overlap, overlays, "stuff on top of each other" (NOT done)
+Owner asked (June 2026) whether the messy/overlapping UI is finally cleaned
+up. Honest answer: **no — this is a known, still-open systemic workstream**,
+separate from the page-by-page structure pass. Full diagnosis in
+`docs/DESIGN_UX_AUDIT.md`. The structure pass (/today #432, /map #433) is that
+doc's **Phase 3** (surface re-layout); the *root causes* of the mess are its
+**Phase 0–1** (foundation + primitives), which are largely **not done**:
+
+- [ ] **No central z-index scale → overlays can collide.** z-index is
+      hand-picked per component with no shared ladder. Several independent
+      floating elements sit at the **same `z-40`** with no coordination:
+      `InstallPrompt`, `PullToRefresh`, `FloatingPlanFab`, `BottomDrawer`
+      backdrop — plus a jumble above them (`PlaceSheet`/`Sheet`/`SearchOverlay`/
+      `SortDropdown` at z-50, `PhotoLightbox` z-[120], skip-link z-[100]).
+      Same-level + uncoordinated is exactly how things stack wrong. **Fix:**
+      a named z-scale token set (nav / sheet / overlay / toast / modal) adopted
+      everywhere.
+- [ ] **`DESIGN_UX_AUDIT.md` §7 (map) 🔴 still open:** "Road & alerts overlay
+      covers UI; overlay z-order needs a pass." Direct match for "stuff
+      overlaid on top of each other" on the map.
+- [ ] **Overlay/sheet primitive sprawl:** `Sheet` · `BottomDrawer` ·
+      `CollapsibleSection` · the map in-view drawer are independent
+      implementations that don't know about each other → inconsistent
+      stacking, focus, and dismiss behavior. **Fix:** one shared sheet/overlay
+      primitive (audit recommends Radix under the existing skin).
+- [ ] **Token non-adoption (the root cause per the audit):** ~20 ad-hoc
+      `text-[Npx]` sizes (1,000+ uses), 359 raw hex, inline `style={{}}` in
+      ~214 files, 3 button / 3 sheet / 5 chip variants. This drift is *why*
+      surfaces look inconsistent; lint guards + token-as-utilities stop it
+      recurring.
+- [ ] **Verification gap:** overlap/overlay bugs are **visual** — they need
+      eyes on a real device (the sandbox can't render Mapbox/live overlays).
+      No screenshot/visual-QA harness is wired yet, so these can't be
+      regression-caught automatically. **Until then, "is it clean?" requires a
+      device walk-through, not a green test.**
+
 ## 💡 Content & editorial ideas (owner notes — June 2026)
 Brainstorm capture, not scheduled. "Things people might want to know" —
 the texture that makes it a local field guide, not just a directory.
