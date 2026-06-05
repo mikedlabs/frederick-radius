@@ -113,3 +113,31 @@ are the live event feeds — if they stay dead, /events coverage thins.
 - [ ] NOTE: `AUDIT.md` route names predate the structure pass (it lists
       `/now`/`/browse`; these are now `/today`/`/map`). Refresh when the
       structure pass lands.
+
+---
+
+## 💡 Content & editorial ideas (owner notes — June 2026)
+Brainstorm capture, not scheduled. "Things people might want to know" —
+the texture that makes it a local field guide, not just a directory.
+
+- [ ] **Major routes / roads.** Surface the big arteries people actually
+      orient by: **I-270, US-15, I-70, US-340, US-40, MD-26, MD-355, MD-85.**
+      Could be a map overlay (label the corridors), a "getting around"
+      explainer, and/or live conditions. NOTE: there's already an
+      `mdot_chart` traffic source wired (currently failing — see the
+      data-pipeline issues above), so live road conditions are partly
+      scaffolded. Cross-ref `/transit`.
+- [ ] **County / city stats.** A "Frederick by the numbers" surface —
+      population, towns, area, founding date, elevation, etc. Some of this
+      already exists per-town (`/m/[slug]` shows population); idea is a
+      consolidated almanac-style stat block for the county + City of
+      Frederick.
+- [ ] **Famous people from here.** Notable Fredericktonians (e.g. Francis
+      Scott Key, Barbara Fritchie, Roger B. Taney) — an editorial "who's
+      from Frederick" piece. Verify each before publishing.
+- [ ] **Movies / TV shot here.** Productions filmed in Frederick County —
+      another "did you know" editorial angle. Verify filming locations.
+- [ ] Natural home for the above: the editorial routes (`/history`,
+      `/about`, or a new "almanac"/"did you know" surface). Reuse the
+      field-guide voice; keep facts sourced. Lower priority than the
+      structure pass + data fixes — these are enrichment, not plumbing.
