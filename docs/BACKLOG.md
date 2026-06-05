@@ -243,6 +243,54 @@ Walkersville / Woodsboro. This cluster is tracked **alongside** coffee/events;
 do NOT start implementing it yet unless it directly supports coffee (the
 context-ranking rule above does).
 
+### Cluster A0 — Recommendation quality / eligibility 🔴🔴 (TOP — June-5 live audit)
+**The spine of the next phase. Principle (owner): Radius should not show
+everything first — it should show the RIGHT thing first, then let people dig.
+The app currently treats "belongs to category" as "should be recommended."
+They are not the same.** This is editorial strictness, NOT new features.
+
+Evidence (live, June 5): `/category/family` "Worth your time" leads with
+**Maurice Arenas Guitar Academy, Hood College Admission Office, Lincoln
+Elementary, Phoenix Recovery Academy, The Banner School** — 16 of 38 records
+are schools/offices/institutions, not family outings. Root cause: these carry
+`feature_score: 10.0` and ranking is feature-score-dominated; real attractions
+(escape rooms, pinball, zoo, bowling) get buried.
+
+- [ ] **Eligibility / `isBrowseWorthy` layer (do FIRST).** Deterministically
+      exclude non-public-facing institution types from discovery/recommendation
+      surfaces via Google `primary_type`: `primary_school`, `secondary_school`,
+      `preschool`, `university`, `child_care_agency`, generic `school`, +
+      admin/office types. CAUTION: `educational_institution` is mixed (Earth &
+      Space Science Lab, Frederick Clay Studio are real attractions) → don't
+      blanket-exclude; use a curated allow/deny for the ambiguous bucket.
+      Extends `relevance.ts` (`isNonDiscoverable`). Type: data + code-light.
+- [ ] **Stop trusting raw `feature_score`** as the dominant signal (schools at
+      10.0). Roll the coffee `categoryScore` (normalized, context-aware) to the
+      other category surfaces once eligibility is in. Type: code (reuse).
+- [ ] **Category vs Intent vs Moment vs Confidence model** (owner's cleaner
+      taxonomy): Category = what it is; Intent = why (with kids / date night /
+      rainy day / free / walkable / live music / dog-friendly); Moment = when
+      (now/tonight/weekend); Confidence = should Radius recommend it (curated /
+      verified / owner / imported / low). Underpins search, map, cards, events,
+      home. Big; design before building.
+- [ ] **"Why this result"** on important cards (why am I seeing this · open? ·
+      who says so · how far · next action). Primitives exist (SourceBadge /
+      FreshnessChip / PlaceStatus) — make systematic, esp. dense cards.
+
+## June 5 2026 — live-site strategic review (owner) → priority order
+The product crossed from prototype to real shape; thesis is on screen. Next
+phase = **trust, ranking, restraint, polish — not features.** "Do not expand
+the interface until ranking + trust are tighter." Priorities:
+
+**Do now:** 1) category/ranking quality, esp. Family (→ Cluster A0) · 2) reduce
+Today density above the fold (answer-first → best moves → deep briefing) · 3)
+audit duplicate nav for a11y/SEO · 4) upgrade Search into real "Ask Radius"
+natural-language prompt cards · 5) "why this result" on cards (→ Cluster A0).
+**Do next:** recommendation scoring · category/intent/moment/confidence split ·
+better empty/low-confidence states · more visible town/municipality context ·
+make event pages the model for place pages.
+**Do NOT yet:** add random features / expand UI before ranking + trust tighten.
+
 ### Cluster A — Downtown posture / county-wide default 🔴
 The biggest hidden risk: claims county-wide, behaves downtown-first without
 context. (Users 6,7,8,9,10,19 — 8 of 20.)
