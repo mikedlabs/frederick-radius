@@ -163,7 +163,8 @@ If confirmed, GIS becomes a targeted product answer; if not, the pilot waits.
 ### Pass 3 — category pages, starting with COFFEE (pattern page)
 Goal: *stop making categories feel like directories; make them feel like
 guided local choices.* Use **coffee** as the single pattern page — do NOT
-build a giant category system yet. Surgical PR around:
+build a giant category system yet. Decision facets **confirmed by the
+simulation** (users 2/12/13 — directory feel is the proven gap):
 - coffee briefing (a short editorial intro, not a count)
 - best matches first
 - open now
@@ -173,11 +174,111 @@ build a giant category system yet. Surgical PR around:
 - nearby
 - full browse below (the directory, demoted under the guided sections)
 
+**NEW RULE (owner, June 2026) — coffee is not "make the page nicer."**
+Coffee must **prove the category system can rank from the user's context, not
+downtown by default.** Today `/category/[slug]` ranks from the `fr_home_muni`
+cookie but **silently falls back to `FREDERICK_CENTER`** when it's unset — so a
+first-time Thurmont user gets downtown picks with no explanation. Coffee has to
+demonstrate the fix:
+- If a town/location is known → rank from it + show "Ranked from {town}".
+- If NOT known → either **ask/set a town** inline, or be **transparent**:
+  "Using Downtown Frederick as the default center." Never silently downtown-bias.
+- This is the difference between a cleanup pass and a real product leap, and it
+  makes coffee the pattern for context-aware ranking across ALL categories.
+- Sev: **High** · Surfaces: category (all), feeds map/today/radius origin ·
+  When: **during coffee** · Type: [G] (the fallback is in code) + [P].
+
 ### Pass 4 — events (the current biggest firehose)
-Strong data, still reads as a feed. Needs: stricter grouping, capped
-descriptions, civic calendar collapsed, and more human sections —
-**Tonight / Weekend / Free / With kids / Live music.** Audit before building;
-reuse existing event loaders/components, don't rebuild.
+Firehose **confirmed** by the simulation (user 11) — and *empty* when feeds
+fail, which is the bigger live risk. Needs:
+- stricter grouping + more human sections: **Tonight / Weekend / Free / With
+  kids / Live music**.
+- **cap descriptions** (capped length, no walls of text).
+- **collapse civic/municipal harder** — separate **public/fun** from
+  **civic/private/recurring** (meetings, recurring civic items shouldn't dilute
+  the "what's on" answer).
+- **feed reliability + empty states**: Hood = HTTP 410 (dead), Celebrate +
+  County failing in the worker (issues #383–#423); warm, honest empty states
+  instead of a blank wall.
+- promote the event-detail **"dinner + parking + walk"** flow (a confirmed gem,
+  user 14) into discovery.
+- Audit before building; reuse existing event loaders/components, don't rebuild.
+- Sev: **High** · Surfaces: events, town pages (event sections), today ·
+  When: **during events** · Type: [G] (feed status) + [P].
+
+---
+
+## Simulation → tracked clusters (20-user audit, June 2026)
+Full report: `docs/audits/2026-06-simulation-20-users.md`. Folded here as a
+**small, sequenced** set — not 80 tickets. Each item: severity · surfaces ·
+when · type ([G] code/data · [P] product judgment · [D] needs device QA).
+
+**The sharper diagnosis (owner):** the real problem is **downtown posture +
+data trust**, not just "coffee & events need cleanup." When the app lacks user
+context it treats **downtown Frederick as the default center of gravity** — which
+breaks the county-wide brand promise for Brunswick / Thurmont / Middletown /
+Walkersville / Woodsboro. This cluster is tracked **alongside** coffee/events;
+do NOT start implementing it yet unless it directly supports coffee (the
+context-ranking rule above does).
+
+### Cluster A — Downtown posture / county-wide default 🔴
+The biggest hidden risk: claims county-wide, behaves downtown-first without
+context. (Users 6,7,8,9,10,19 — 8 of 20.)
+- [ ] Gentle **"set your town"** affordance when no location/home town exists.
+      Sev: **High** · Surfaces: today, map, category, all · When: **starts in
+      coffee** (context-ranking), broader rollout later · Type: [P].
+- [ ] **Don't silently default to downtown.** Show "Ranked from {town}" or
+      "Using Downtown Frederick as default" honestly. Sev: High · Surfaces:
+      category, map · When: during coffee · Type: [G]+[P].
+- [ ] Improve **no-location + cold-entry** states (map pinpoint-empty reads
+      "blank"; ensure `/today` is the default entry, not `/map`/`/events`).
+      Sev: High · Surfaces: map, today, events · When: later (not coffee) ·
+      Type: [P]+[D].
+- [ ] Make small towns **first-class starting points** (town discovery / index;
+      precursor to GIS County View). Sev: High · Surfaces: town pages, nav ·
+      When: later (GIS pilot) · Type: [P].
+
+### Cluster B — Data trust / provenance 🔴
+Trust leaks from data, not design. (Users 5,20 + cross-cutting.)
+- [ ] **Fix photo-twins** (the ~37 unresolved clusters — multi-tenant + wrong-
+      photo; see the photo-twins audit). Sev: **High** · Surfaces: map, radius,
+      category, town, place detail · When: **anytime / alongside coffee** ·
+      Type: [G].
+- [ ] **Consistent provenance badge**: official · owner · curated · feed ·
+      OSM/external. Sev: High · Surfaces: place detail, cards everywhere · When:
+      later · Type: [P].
+- [ ] **Visible last-verified dates** where possible. Sev: Med · Surfaces:
+      place detail · When: later · Type: [G].
+- [ ] **Open-now confidence** shown consistently (verified vs likely). Sev: Med
+      · Surfaces: all place cards · When: later · Type: [G].
+- [ ] **De-emphasize weak/odd records** (feature-score-only ranking surfaces
+      niche records — guitar studios/schools — over anchors). Sev: Med ·
+      Surfaces: category, map, radius, today · When: during coffee (ranking) ·
+      Type: [G]+[P].
+- [ ] **Stamp every place with its real municipality** (fixes "is this even in
+      my town?"; pairs with GIS boundaries). Sev: High · Surfaces: all · When:
+      later (GIS-assisted) · Type: [G].
+
+### Cluster C — GIS pilot gating ⏸️ (do NOT implement yet)
+Justified by the simulation; use GIS to solve **posture / orientation / trust**,
+not as a layer dump. Full detail: `docs/GIS_FEASIBILITY.md` §4.
+- County View **first** (top justified pilot — fixes the dominant small-town/
+  orientation failure). · Type: [P].
+- First Visit **second** (visitor sense-of-place). · Type: [P].
+- Getting Around **third** (narrower; needs a live parking feed to matter). ·
+  Type: [P].
+- When: **after coffee + events**, gated on this audit (now satisfied).
+
+### Cluster D — Device QA / future-proofing 🟡
+- [ ] Confirm **post-#434 overlay behavior on a real device** (the z-index pass
+      math is verified; on-device render isn't). Sev: Med · Surfaces: all
+      overlays/map · When: anytime · Type: [D].
+- [ ] Note the need for a **visual-regression / screenshot harness** later (no
+      automated catch for stacking/overlap regressions today). Sev: Med ·
+      When: later · Type: [P].
+- [ ] Keep the **GitHub Actions runner block** visible as a process risk (CI
+      trust rests on local runs until billing/runner is fixed). Sev: Med ·
+      When: owner task · Type: [G].
 
 ---
 
