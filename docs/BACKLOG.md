@@ -31,5 +31,26 @@ nearest, top 6 + "See all N") and added a "Useful nearby" amenity section
 
 ## Next structure-pass order
 Owner directive (June 2026): after /map (#433), do **category pages before
-municipality pages**. Category pages are the most likely to read as raw
-directories, so they have the bigger "show all the data better" problem.
+municipality pages**, then **events**. Category pages are the most likely to
+read as raw directories, so they have the bigger "show all the data better"
+problem. One clean step at a time — do NOT start the next page until the
+current one is merged or tuned.
+
+### Pass 3 — category pages, starting with COFFEE (pattern page)
+Goal: *stop making categories feel like directories; make them feel like
+guided local choices.* Use **coffee** as the single pattern page — do NOT
+build a giant category system yet. Surgical PR around:
+- coffee briefing (a short editorial intro, not a count)
+- best matches first
+- open now
+- local favorites
+- good for sitting / work
+- with food
+- nearby
+- full browse below (the directory, demoted under the guided sections)
+
+### Pass 4 — events (the current biggest firehose)
+Strong data, still reads as a feed. Needs: stricter grouping, capped
+descriptions, civic calendar collapsed, and more human sections —
+**Tonight / Weekend / Free / With kids / Live music.** Audit before building;
+reuse existing event loaders/components, don't rebuild.
