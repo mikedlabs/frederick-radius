@@ -151,6 +151,15 @@ NOTE on honesty: a simulated walk-through is reasoning over the real code +
 data, NOT a live device session — it can't validate drag-feel/render. Flag
 which findings are code/data-grounded vs would-need-a-device to confirm.
 
+**Also pressure-test the GIS hypotheses** (so a GIS pilot has to *earn* its
+place — see `docs/GIS_FEASIBILITY.md` §4). The simulation must explicitly answer:
+- Do smaller towns feel shortchanged? (→ would justify **County View**)
+- Do visitors need better orientation? (→ County View / First Visit)
+- Do people need parking / road context? (→ Getting Around)
+- Does the map feel generic? (→ all GIS modes)
+- Does county-wide context help users understand where they are? (→ County View)
+If confirmed, GIS becomes a targeted product answer; if not, the pilot waits.
+
 ### Pass 3 — category pages, starting with COFFEE (pattern page)
 Goal: *stop making categories feel like directories; make them feel like
 guided local choices.* Use **coffee** as the single pattern page — do NOT

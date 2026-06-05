@@ -183,3 +183,49 @@ its own living field-guide interface.*
 
 **Next step is a decision, not code:** pick the pilot set, then a scoped PR per
 layer (same discipline as the structure pass). No implementation until then.
+
+---
+
+## 4. Owner decision (June 2026) — parked as strategy, gated on the simulation
+
+GIS stays a **parallel research track**. It does NOT jump the queue. Locked
+order is unchanged: **#434 UI hygiene → 20-user simulation audit → coffee →
+events.** A GIS pilot only earns its place *after* the simulation confirms the
+underlying user problems are real.
+
+**Guiding rule:** *Do not show users more GIS. Use GIS to make the app smarter.*
+Raw GIS layers are not shown unless they directly help a decision.
+
+Owner's read on the recommendations:
+- **County View / town boundaries = strongest move.** Directly serves the
+  county-wide thesis, fights downtown bias, makes every town feel real, and the
+  data already exists (low risk). Top candidate.
+- **Historic District + cultural assets = strong "First Visit" / field-guide
+  layer.** Could make the map feel uniquely Frederick — but **subtle and
+  contextual, not a giant toggle dump.**
+- **Road closures / CHART = practical + trust-building, but treat as a
+  reliability/data fix FIRST** (the feed is currently failing), not a flashy
+  overlay.
+- **Hidden intelligence agreed:** parcels, address points, zoning, geocoder,
+  council districts stay behind the scenes (accuracy, town assignment,
+  geocoding, trust).
+
+### Possible future pilot shape (do NOT build yet)
+- **County View** — town boundaries · town identity framing · "you're in / near
+  {municipality}" context · county-wide discovery.
+- **First Visit** — historic district · cultural assets · public art · walkable
+  route · parking. (subtle/contextual)
+- **Getting Around** — road closures · parking · transit/route context (only if
+  reliable).
+
+### The simulation must pressure-test these GIS hypotheses
+Before any GIS pilot is greenlit, the 20-user simulation audit has to confirm
+the problems GIS would solve are real (see `docs/BACKLOG.md` Pass 2.75):
+- Do smaller towns feel shortchanged? (→ County View)
+- Do visitors need better orientation? (→ County View / First Visit)
+- Do people need parking / road context? (→ Getting Around)
+- Does the map feel generic? (→ all)
+- Does county-wide context help users understand where they are? (→ County View)
+
+If the simulation confirms these, GIS becomes a **targeted product answer**, not
+a shiny side quest. If it doesn't, the pilot waits.
