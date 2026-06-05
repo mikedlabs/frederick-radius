@@ -261,25 +261,44 @@ context. (Users 6,7,8,9,10,19 — 8 of 20.)
       When: later (GIS pilot) · Type: [P].
 
 ### Cluster B — Data trust / provenance 🔴
-Trust leaks from data, not design. (Users 5,20 + cross-cutting.)
-- [ ] **Fix photo-twins** (the ~37 unresolved clusters — multi-tenant + wrong-
-      photo; see the photo-twins audit). Sev: **High** · Surfaces: map, radius,
-      category, town, place detail · When: **anytime / alongside coffee** ·
-      Type: [G].
-- [ ] **Consistent provenance badge**: official · owner · curated · feed ·
-      OSM/external. Sev: High · Surfaces: place detail, cards everywhere · When:
-      later · Type: [P].
-- [ ] **Visible last-verified dates** where possible. Sev: Med · Surfaces:
-      place detail · When: later · Type: [G].
-- [ ] **Open-now confidence** shown consistently (verified vs likely). Sev: Med
-      · Surfaces: all place cards · When: later · Type: [G].
+Trust leaks from data, not design. (Users 5,20 + cross-cutting.) **Audited June
+2026 with live evidence — severities corrected below.**
+- [ ] **Fix photo-twins — CONFIRMED High, do FIRST.** Authoritative `photo_names`
+      check: **74 ChIJ clusters / 158 records (~10% of 1,540 photo'd places)**
+      share a Google photo. Three causes: multi-tenant building photos
+      (Brewer's Alley|Fountain Rock|Alley Wagon), wrong-photo on unrelated places
+      (3 different Thurmont restaurants share one), and dup records (Rockwell ×2,
+      Court St deck ×2). Surfaces: ALL place cards (today/map/radius/category/
+      town/detail). Smallest safe fix: (a) fold true dupes in `places-dedup.json`;
+      (b) deterministic shared-photo SUPPRESSION — keep the photo on one
+      canonical record per ChIJ cluster, drop to category placeholder on the rest
+      ("no photo" > "wrong photo"); (c) suppress junk records ("Best of Business
+      Listings"). Type: **data + small pipeline rule** (no UI change). When: now.
+- [ ] **Event feed cleanup — Medium (NOT the High outage previously assumed).**
+      Live evidence: runtime `getLiveEvents(60)` = **77 events** (County 62,
+      Celebrate 15); Celebrate + County HTTP 200 / valid. The page is well-fed.
+      The daily-worker "not JSON" failures (#383+) are **false alarms** — those
+      sources are iCal/RSS consumed at runtime, not JSON. Genuinely dead: **Hood
+      (410)** + **DFP scrape URL (404)**, both contribute 0. Smallest safe fix:
+      mark Celebrate/County runtime-only in `sources.yaml`/worker so they stop
+      opening daily-failure issues; remove dead Hood + stale DFP scrape; (owner)
+      set Ticketmaster/Eventbrite keys for additive coverage. Type: pipeline/
+      config. When: after photo-twins.
+- [ ] **Provenance on dense cards — Medium-low.** `SourceBadge`/`TrustChip`/
+      `FreshnessChip`/`PlaceStatus`/`/trust` all exist; detail + lead cards carry
+      trust, but `PlaceCard showSource` defaults OFF for row/tile/grid → map
+      drawer, category sections, town lists show none. Optional: a compact source
+      dot on dense cards. Lower value than fixing the wrong photos. Type: small
+      code. When: after feeds / later polish.
+- [x] **Municipality stamping — DONE (audited).** 1,649 places, **0 unstamped,
+      0 off-bbox/needs-review**; every place valid + in-county. Downtown's 53.2%
+      is real density (877), not a stamping error. No fix needed; GIS boundaries
+      could refine edge cases later, but there's no leak. (Posture/downtown bias
+      is Cluster A, a ranking matter — not a stamping one.)
 - [ ] **De-emphasize weak/odd records** (feature-score-only ranking surfaces
       niche records — guitar studios/schools — over anchors). Sev: Med ·
       Surfaces: category, map, radius, today · When: during coffee (ranking) ·
       Type: [G]+[P].
-- [ ] **Stamp every place with its real municipality** (fixes "is this even in
-      my town?"; pairs with GIS boundaries). Sev: High · Surfaces: all · When:
-      later (GIS-assisted) · Type: [G].
 - [ ] **Event feed reliability — the real "events" work (Sev: HIGH).** `/events`
       is audited & architecturally complete (see Pass 4); the actual problem is
       DATA/OPS: `eventsLive` returns ~2, so the page leans on ~28 seed events.
