@@ -113,7 +113,7 @@ export default function Sheet({
       aria-modal="true"
       role="dialog"
       aria-label={title ?? "Sheet"}
-      className="fixed inset-0 z-50"
+      className="fixed inset-0 z-[var(--z-overlay)]"
     >
       {/* Scrim */}
       <button

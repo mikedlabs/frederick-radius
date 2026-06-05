@@ -137,7 +137,7 @@ export default function AppMapDeck({
     return qs ? `${pathname}?${qs}` : (pathname ?? "/map");
   })();
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-30 px-2.5 pt-2.5 sm:px-3 sm:pt-3">
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-[var(--z-sticky)] px-2.5 pt-2.5 sm:px-3 sm:pt-3">
       <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
         {/* The Visitor / Resident mode-switch pill used to sit here
             on the map deck. Removed pre-launch — the map surface
@@ -206,7 +206,7 @@ export default function AppMapDeck({
             </button>
             {searchMatches.length > 0 && (
               <ul
-                className="absolute inset-x-0 top-full z-30 mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
+                className="absolute inset-x-0 top-full z-[var(--z-dropdown)] mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
                 style={{
                   borderColor: "var(--app-border)",
                   background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",

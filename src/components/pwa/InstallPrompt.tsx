@@ -19,7 +19,7 @@ export default function InstallPrompt() {
     <div
       role="complementary"
       aria-labelledby="install-title"
-      className="pop-in fixed inset-x-3 bottom-20 z-40 mx-auto max-w-sm overflow-hidden rounded-[var(--app-radius-xl)] border backdrop-blur-md"
+      className="pop-in fixed inset-x-3 bottom-20 z-[var(--z-prompt)] mx-auto max-w-sm overflow-hidden rounded-[var(--app-radius-xl)] border backdrop-blur-md"
       style={{
         borderColor: "var(--app-border)",
         // Soft brand wash fading to elevated paper — warm and on-brand

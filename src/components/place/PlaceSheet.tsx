@@ -84,7 +84,7 @@ export default function PlaceSheet({ place, onClose }: Props) {
   return (
     <AnimatePresence onExitComplete={onClose}>
       {open && place && (
-        <div className="fixed inset-0 z-50" aria-modal="true" role="dialog" aria-label={place.name}>
+        <div className="fixed inset-0 z-[var(--z-overlay)]" aria-modal="true" role="dialog" aria-label={place.name}>
           {/* Backdrop */}
           <motion.button
             type="button"

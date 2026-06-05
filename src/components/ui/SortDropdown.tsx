@@ -119,7 +119,7 @@ export default function SortDropdown<K extends string = string>({
         <div
           role="listbox"
           aria-label={label}
-          className={`absolute z-50 mt-1 min-w-[180px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-1 shadow-[var(--app-shadow-2)] ${
+          className={`absolute z-[var(--z-dropdown)] mt-1 min-w-[180px] overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-1 shadow-[var(--app-shadow-2)] ${
             align === "right" ? "right-0" : "left-0"
           }`}
           style={{ borderColor: "var(--app-border)" }}

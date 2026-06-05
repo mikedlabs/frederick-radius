@@ -65,7 +65,7 @@ export default function PhotoLightbox({
   return createPortal(
     <AnimatePresence>
       <motion.div
-        className="fixed inset-0 z-[120] flex items-center justify-center"
+        className="fixed inset-0 z-[var(--z-lightbox)] flex items-center justify-center"
         style={{ background: "rgba(8,6,4,0.93)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

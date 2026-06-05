@@ -46,7 +46,7 @@ export default function FloatingPlanFab() {
           navigator.vibrate?.(10);
         }
       }}
-      className={`fab-breath fixed right-4 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[var(--app-shadow-3)] sm:hidden ${
+      className={`fab-breath fixed right-4 z-[var(--z-fab)] inline-flex h-14 w-14 items-center justify-center rounded-full text-white shadow-[var(--app-shadow-3)] sm:hidden ${
         visible ? "opacity-100 translate-y-0 scale-100" : "pointer-events-none opacity-0 translate-y-3 scale-95"
       }`}
       style={{

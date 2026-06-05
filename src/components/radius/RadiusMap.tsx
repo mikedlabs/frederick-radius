@@ -871,7 +871,7 @@ export default function RadiusMap({
 
       {/* Center label pill — names the current center without making
           the user look at the dropdown below. */}
-      <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-4">
+      <div className="pointer-events-none absolute inset-x-0 top-3 z-[var(--z-map-control)] flex justify-center px-4">
         <span
           className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
           style={{
@@ -888,7 +888,7 @@ export default function RadiusMap({
       {/* Hint for the tap interaction — quiet, only visible when an
           onCenterChange handler is provided (i.e. user can move pins). */}
       {onCenterChange && (
-        <div className="pointer-events-none absolute bottom-3 left-3 z-10">
+        <div className="pointer-events-none absolute bottom-3 left-3 z-[var(--z-map-control)]">
           <span
             className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
             style={{
@@ -904,7 +904,7 @@ export default function RadiusMap({
 
       {/* Camera controls — Fit radius / Show county. Right side so they
           don't sit over the Mapbox attribution at the bottom-left. */}
-      <div className="absolute right-3 top-3 z-10 flex flex-col gap-1.5">
+      <div className="absolute right-3 top-3 z-[var(--z-map-control)] flex flex-col gap-1.5">
         <button
           type="button"
           onClick={fitToRadius}
