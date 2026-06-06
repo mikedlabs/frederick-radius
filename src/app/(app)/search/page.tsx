@@ -104,21 +104,33 @@ export default async function SearchPage({
 
       {!query && (
         <div className="space-y-3">
-          <p
-            className="eyebrow"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Try
+          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+            Try asking
           </p>
+          {/* Answer-style prompts — the same "Ask Radius" register as Today.
+              Each one ROUTES to a real surface that actually answers it
+              (a curated collection, a category, the weekend view, open-now
+              on the map) rather than running a dead text query. Only intents
+              with an honest destination are listed — no prompt that leads to
+              an empty result. */}
           <ul className="flex flex-wrap gap-2">
-            {["coffee", "live music", "park", "brewery", "antiques", "kid friendly", "rainy day"].map((q) => (
-              <li key={q}>
+            {[
+              { label: "I have 90 minutes downtown", href: "/collections/frederick-without-a-plan" },
+              { label: "A rain plan", href: "/collections/rainy-day-frederick" },
+              { label: "Out with the kids", href: "/collections/kid-energy-burners" },
+              { label: "Walkable date night", href: "/collections/walkable-date-night" },
+              { label: "Hidden gems", href: "/collections/hidden-gems" },
+              { label: "What's on this weekend", href: "/today?t=weekend" },
+              { label: "Coffee near me", href: "/category/coffee" },
+              { label: "What's open right now", href: "/map?mode=browse&open=now" },
+            ].map((p) => (
+              <li key={p.label}>
                 <Link
-                  href={`/search?q=${encodeURIComponent(q)}`}
+                  href={p.href}
                   className="tactile tactile-interactive inline-flex items-center rounded-full px-3.5 py-2 text-[13px] font-semibold"
                   style={{ color: "var(--app-ink-2)" }}
                 >
-                  {q}
+                  {p.label}
                 </Link>
               </li>
             ))}
