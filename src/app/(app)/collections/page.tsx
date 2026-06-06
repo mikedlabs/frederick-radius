@@ -5,6 +5,7 @@ import { COLLECTIONS } from "@/data/collections";
 import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/collections" },
   title: "Collections",
   description:
     "Editorial collections of Frederick places, picked by a resident. Walkable date nights, rainy-day spots, kid energy burners, and more.",

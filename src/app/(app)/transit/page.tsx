@@ -109,6 +109,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/transit" },
   title: "Transit",
   description:
     "Frederick County TransIT routes — the local bus network, where it runs, where it goes.",

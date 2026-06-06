@@ -29,6 +29,7 @@ export async function generateMetadata(
   return {
     title: `${c.name} in Frederick County`,
     description: c.blurb,
+    alternates: { canonical: `/category/${slug}` },
     openGraph: {
       title: `${c.name} in Frederick County`,
       description: c.blurb,

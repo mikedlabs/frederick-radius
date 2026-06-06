@@ -10,6 +10,7 @@ import HistoryTimeline from "@/components/history/HistoryTimeline";
 import { eraForYear } from "@/lib/history-era";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/history" },
   title: "History",
   description:
     "Frederick County in moments and facts. Barbara Fritchie, Monocacy, the 1864 Ransom, Camp David, the Clustered Spires, Mt St Mary's, the C&O Canal.",

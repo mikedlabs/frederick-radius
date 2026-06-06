@@ -74,7 +74,11 @@ export const metadata: Metadata = {
     "Brunswick MD", "Thurmont MD", "Middletown MD",
     "Catoctin", "Carroll Creek", "civic technology",
   ],
-  alternates: { canonical: "/" },
+  // No site-wide canonical (T1): a fixed root canonical here made EVERY
+  // route claim the homepage as its canonical, collapsing indexing onto
+  // "/". Each indexable route now sets its own self-canonical via
+  // `alternates.canonical` (static metadata or generateMetadata). Keep
+  // `metadataBase` so those relative canonicals resolve to absolute URLs.
   openGraph: {
     type: "website",
     locale: "en_US",

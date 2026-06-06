@@ -7,6 +7,7 @@ import { eventDateBlock } from "@/lib/loaders/events";
 import { getWeekendData, weekendDayKey, type WeekendDay } from "@/lib/weekend-picks";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/weekend" },
   title: "What's on this weekend",
   description:
     "The few worth planning around — festivals, music and markets across Frederick this weekend, curated from every venue and partnership feed.",

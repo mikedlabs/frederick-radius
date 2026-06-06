@@ -5,6 +5,7 @@ import { getMonthEvents } from "@/lib/loaders/calendar";
 import MonthGrid from "@/components/event/MonthGrid";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/events/calendar" },
   title: "Events Calendar",
   description: "Every Frederick County event — municipal, live feeds, and hand-picked — on one calendar.",
 };

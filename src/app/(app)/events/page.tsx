@@ -42,6 +42,7 @@ function whyItMatters(e: EventWithMeta): string | undefined {
 }
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/events" },
   title: "Events",
   description:
     "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, Hood College, and the Frederick Keys.",

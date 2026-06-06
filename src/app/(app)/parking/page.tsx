@@ -114,6 +114,7 @@ const PARK_INTENTS: ParkIntent[] = [
 ];
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/parking" },
   title: "Parking",
   description:
     "Downtown Frederick parking — the five city-owned garages, where to park for Alive @ Five, Carroll Creek, the Weinberg, and how the ParkMobile zone system works.",

@@ -74,6 +74,7 @@ export async function generateMetadata(
   return {
     title: `${m.name}, Maryland`,
     description: m.description,
+    alternates: { canonical: `/m/${municipality}` },
     openGraph: {
       title: m.name,
       description: m.hero_blurb,

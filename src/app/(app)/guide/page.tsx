@@ -5,6 +5,7 @@ import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/guide" },
   title: "What are you after?",
   description:
     "Tell Frederick Radius what you're after and it narrows, tap by tap, to the answer — no map, no menu to read.",

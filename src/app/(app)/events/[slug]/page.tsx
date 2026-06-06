@@ -55,6 +55,7 @@ export async function generateMetadata(
   return {
     title: event.title,
     description: blurb,
+    alternates: { canonical: `/events/${slug}` },
     openGraph: {
       title: event.title,
       description: blurb,
