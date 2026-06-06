@@ -61,6 +61,45 @@ run after deploy (can't hit prod from the sandbox); I verify code-level + local.
       "Frederick Keys" vs feed "Flying Cows"; 404 emits conflicting noindex +
       index,follow (keep noindex only); optional root `/`→/guide 307→308.
 
+## 🔴 Production audit #2 (2026-06-06) — event/geo/news trust + a11y
+Second live audit. **Principle: Radius should never act certain when the data
+is only approximate** — applies to events, map distance, news, recommendations.
+Same disease as #436 (belongs-to-feed ≠ should-be-promoted), now for events/geo.
+
+- [ ] **P0 — Event eligibility/trust pass (HIGHEST).** `/events` "This weekend"
+      still bleeds raw feed: private corporate events, weddings, graduations,
+      pavilion reservations, bulk-trash/yard-waste/mowing reminders, cancelled
+      meetings. Add an event classification layer — public event · civic meeting
+      · municipal service/reminder · private/internal · school/graduation ·
+      cancelled · recurring program · utility · reservation/rental — then lane
+      them: **What's on = public only**; **Civic & meetings**; **Town reminders**
+      (trash/yard waste); **suppress** private/internal/duplicate junk. Extends
+      the #436 eligibility pattern to events. (Note: `isCivicEvent` already
+      strips civic; this widens to the other non-public classes.)
+- [ ] **P1 — Geo confidence.** Map "Happening within reach" shows events "113 ft
+      away" when the geocode is just "Frederick" (vague). Add a confidence tier:
+      exact_address · venue_match · municipality_only · county_only · unknown.
+      Only exact_address + venue_match qualify for "within reach"/"near you";
+      weak geocodes still list in Events but never in proximity modules. "Near
+      me" is a promise — don't show wrong distances.
+- [x] **P2 — Entity decode (DONE #441).** cleanFeedText named entities +
+      residual guard. Deploys with the rest; prod still showed `&bull;` only
+      because it hadn't merged.
+- [ ] **P3 — Pulse news relevance.** Today's rail is fixed (#438) but `/pulse`
+      still shows loose Google News (MoCo, statewide politics, obituaries).
+      Split: local-official · local-reported · regional-mention · low-utility/
+      obituary/generic → hide low-utility or put behind "More news". (Pulse may
+      net wider than Today, but still needs editorial rules.)
+- [ ] **P4 — Duplicate nav a11y.** Responsive nav renders twice in the DOM
+      across guide/today/events/map/collections/pulse. Ensure the inactive nav
+      is `aria-hidden`/visibility-hidden so screen readers + crawlers read ONE
+      semantic nav, not two.
+- [ ] **P5 — Family restructure (intent subsections).** Filtering helped, but
+      Family needs lanes: Things to do with kids · Rainy-day/indoor · Parks &
+      play · Classes & creative · Family services/schools. Everything wears one
+      "Family" jacket; separate by intent. (Sub-bug "Looks like Family → Spinners
+      ×6" FIXED #442.)
+
 ## /radius — audited, mostly complete ✅
 `/radius` already follows the structure-pass playbook: leads with the `WithinReach`
 "best moves" strip, events are capped at top-5 with an "All N →" see-all, and the
