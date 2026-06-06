@@ -14,6 +14,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
+import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 
 /**
  * The one clean-slug authority for a live event. Both liveToCardEvent
@@ -71,6 +72,10 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
     distance_m: undefined,
+    // Live feeds carry no per-event geocode — every row sits on its feed's
+    // default centroid, so this resolves to "area" and never claims a
+    // distance. See lib/events/geo-confidence.
+    geo_confidence: eventGeoConfidence({ geom: e.geom }),
   };
 }
 

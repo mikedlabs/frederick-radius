@@ -178,6 +178,7 @@ describe("collapseRecurringEvents", () => {
       is_free: true,
       source: "manual",
       is_verified: false,
+      geo_confidence: "exact_address",
       category_name: "Food",
       municipality_name: "Frederick",
     } as EventWithMeta;

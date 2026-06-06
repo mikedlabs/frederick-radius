@@ -45,6 +45,7 @@ import {
   eventsNext24h,
   type EventWithMeta,
 } from "@/lib/loaders/events";
+import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { locations, type Location } from "@/lib/locations";
 import {
   resolveMunicipality,
@@ -181,17 +182,21 @@ export function nearbyNow(origin: LngLat, opts: NearbyOptions): NearbyContext {
 
   // eventsLive / eventsNext24h are county-wide and venue-closed-safe but
   // unanchored to a point; re-stamp distance from the user and bound it.
+  // A distance-led module ("within reach") is a reachability promise, so
+  // only addressable events qualify — an area-centroid event has no
+  // honest distance to bound or sort by (audit #2 P1).
   const stamp = (e: EventWithMeta): EventWithMeta => ({
     ...e,
     distance_m: haversineMeters(origin, e.geom),
   });
 
-  const liveEvents = withinRadius(eventsLive(now).map(stamp), radiusM).sort(
-    (a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0),
-  );
+  const liveEvents = withinRadius(
+    eventsLive(now).filter(isGeoPrecise).map(stamp),
+    radiusM,
+  ).sort((a, b) => (a.distance_m ?? 0) - (b.distance_m ?? 0));
 
   const upcomingEvents = withinRadius(
-    eventsNext24h(now).map(stamp),
+    eventsNext24h(now).filter(isGeoPrecise).map(stamp),
     radiusM,
   )
     .sort((a, b) => +new Date(a.starts_at) - +new Date(b.starts_at))

@@ -6,6 +6,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import { normalizeTitle, etYear, cleanEventSlug } from "@/lib/events/normalize";
+import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 
 /**
  * Venue events — produced by the extraction agent
@@ -105,6 +106,10 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
   const category = e.category || place?.category || "music";
   const { presenter, title } = normalizeTitle(e.title, { year: etYear(e.starts_at) });
   const isFree = e.price ? /free|no cover/i.test(e.price) : false;
+  // A resolved venue gives us the real Place geom → placement "venue"
+  // (precise). The FREDERICK_CENTER fallback is the Frederick centroid,
+  // so an unresolved venue resolves to "area" and never claims a distance.
+  const placement = place ? ("venue" as const) : undefined;
   return {
     slug: cleanEventSlug({ presenter, title, startsAt: e.starts_at }),
     title,
@@ -116,6 +121,7 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     is_all_day: false,
     is_recurring: false,
     venue_place_slug: place?.slug,
+    placement,
     hero_image: place?.google_photo_url,
     venue_name: cleanFeedText(e.venue_name),
     address: formatAddress(cleanFeedText(place?.address ?? "")),
@@ -133,6 +139,7 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
     municipality_name: MUNICIPALITY_BY_SLUG[municipality]?.name ?? municipality,
     distance_m: undefined,
+    geo_confidence: eventGeoConfidence({ placement, geom }),
   };
 }
 
