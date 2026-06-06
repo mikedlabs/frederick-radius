@@ -15,6 +15,7 @@ import KNOWN_FOR_RAW from "@/data/known-for.json" with { type: "json" };
 import PHOTO_SUPPRESS_RAW from "@/data/photo-suppress.json" with { type: "json" };
 import LOCAL_FAVORITES_RAW from "@/data/local-favorites.json" with { type: "json" };
 import SEASONAL_RAW from "@/data/seasonal-places.json" with { type: "json" };
+import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
@@ -424,6 +425,10 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     short_blurb,
     hours,
     is_operational,
+    // Editorial: wire the curated hidden-gem set onto the record so the
+    // field documented on the Place type is actually populated (and the
+    // "Hidden gem" reason chip + any future surface read one source).
+    hidden_gem: HIDDEN_GEM_SLUGS.has(p.slug),
     // Curated data wins; Google fills the gaps. This is why ~96% of places
     // (DFP scrapes with no phone/site) stay blank until enriched.
     phone: p.phone ?? e.phone,

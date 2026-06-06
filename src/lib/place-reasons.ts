@@ -1,6 +1,7 @@
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { ReasonTone } from "@/components/ui/ReasonChip";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { isHiddenGem } from "@/data/hidden-gems";
 
 /**
  * Derive the small "why this is shown" reason chips for a place,
@@ -22,6 +23,7 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 export type PlaceReason =
   | "verified_open"
   | "open_now"
+  | "hidden_gem"
   | "near"
   | "walkable"
   | "kid_friendly"
@@ -93,7 +95,16 @@ export function placeReasons(
     }
   }
 
-  // 2. Distance — only when an origin was set on the loader.
+  // 2. Hidden gem — a hand-curated local standout (src/data/hidden-gems).
+  // Placed high so this editorial "why you'd go" survives the 3-chip cap
+  // for the handful of places that earn it; it's the most distinctive
+  // single reason for those spots. Until now the curation never reached a
+  // screen — this is the wire-up.
+  if (isHiddenGem(p.slug)) {
+    out.push({ kind: "hidden_gem", label: "Hidden gem", tone: "rated" });
+  }
+
+  // 3. Distance — only when an origin was set on the loader.
   if (typeof p.distance_m === "number") {
     if (p.distance_m <= WALK_NEAR_M) {
       const mins = Math.max(1, Math.round(p.distance_m / WALK_SPEED_M_PER_MIN));
