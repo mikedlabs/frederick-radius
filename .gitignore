@@ -73,6 +73,10 @@ scripts/.lighthouse/
 # Visual-verification output (scripts/screenshots.mjs)
 screenshots/
 
+# Local-only UX simulation harness + its screenshot output (scratch)
+ux-sim.mjs
+ux-shots/
+
 # Generated mockup renders (reproducible from the .html + render script)
 .mockups/render/
 .mockups/render/

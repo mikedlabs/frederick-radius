@@ -28,6 +28,13 @@ const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER !== "0";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
 
+// Hard ceiling on a single feed fetch. These feeds normally answer in
+// ~1s, but the /events render awaits all of them in parallel, so one
+// hung upstream must not be able to hold the page hostage. Mirrors the
+// Ticketmaster/Bandsintown abort pattern; on timeout the fetch rejects,
+// the per-feed try/catch swallows it, and that source degrades to [].
+const FEED_FETCH_TIMEOUT_MS = 8_000;
+
 export type LiveEvent = {
   id: string;
   title: string;
@@ -489,8 +496,11 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
   // dashboard reflects the current fetch, not lifetime aggregates.
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(feed.url, {
+      signal: ctrl.signal,
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)",
         Accept: "text/calendar, text/plain",
@@ -564,17 +574,25 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
     recordSnapshot(feed.source, events);
     return events;
   } catch (err) {
-
-    console.error(`[ical-live] ${feed.source} failed:`, err instanceof Error ? err.message : err);
+    const aborted = err instanceof Error && err.name === "AbortError";
+    console.error(
+      `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"}:`,
+      err instanceof Error ? err.message : err,
+    );
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEvent[]> {
   resetFeedMetrics(feed.source);
   const fetchedAt = new Date().toISOString();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FEED_FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(feed.url, {
+      signal: ctrl.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; FrederickRadius/1.0; +https://frederickradius.app)" },
       next: { revalidate: 3600 },
     });
@@ -663,9 +681,14 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
     recordSnapshot(feed.source, events);
     return events;
   } catch (err) {
-
-    console.error(`[ical-live] ${feed.source} RSS failed:`, err instanceof Error ? err.message : err);
+    const aborted = err instanceof Error && err.name === "AbortError";
+    console.error(
+      `[ical-live] ${feed.source} RSS ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"}:`,
+      err instanceof Error ? err.message : err,
+    );
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 

@@ -95,6 +95,12 @@ export default async function EventsIndexPage({
   const seedLive = eventsLive(now);
   const curatedUpcoming = allUpcoming(now);
 
+  // Every async source here is fail-soft: a hung or throwing provider
+  // degrades to its empty fallback and the page still renders from seed +
+  // curated data (both synchronous, above). The live feeds already cap
+  // each fetch at FEED_FETCH_TIMEOUT_MS internally; these .catch guards
+  // ensure an *unexpected* throw (DB blip, parse error) can't take the
+  // page down either. "Feed failures must never block or break /events."
   const [
     { events: liveEventsRaw },
     ingestedSeries,
@@ -103,9 +109,11 @@ export default async function EventsIndexPage({
     tmSports,
     bitEvents,
   ] = await Promise.all([
-    getLiveEvents(60),
-    getIngestedSeries(),
-    getIngestedSummary(),
+    getLiveEvents(60).catch(() => ({
+      events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
+    })),
+    getIngestedSeries().catch(() => []),
+    getIngestedSummary().catch(() => ({ total: 0, series: 0, recurring: 0 })),
     fetchTicketmasterMusic().catch(() => []),
     // Sports adds the Frederick Keys home schedule (Nymeo Field, MiLB)
     // and any other Ticketmaster Sports entries inside the 25-mi geo
