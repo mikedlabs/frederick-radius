@@ -640,7 +640,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   return (
     <div className="space-y-5">
       <section
-        aria-label="What is My Radius?"
+        aria-label="About your saved list"
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 shadow-[var(--app-shadow-1)]"
         style={{ borderColor: "var(--app-border)" }}
       >
