@@ -31,6 +31,8 @@
  * a renamed place can't break a collection page.
  */
 
+import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
+
 export type CollectionDef = {
   /** URL slug; lives at /collections/<slug>. */
   slug: string;
@@ -48,6 +50,16 @@ export type CollectionDef = {
 };
 
 export const COLLECTIONS: CollectionDef[] = [
+  {
+    // Sourced from the curated HIDDEN_GEM_SLUGS (one source of truth, shared
+    // with the place card's "Hidden gem" chip + the /guide rail).
+    slug: "hidden-gems",
+    title: "Hidden gems",
+    blurb:
+      "Small finds locals actually remember. The spots a resident sends a visitor to, not the names everyone already knows.",
+    accent: "var(--app-accent)",
+    places: [...HIDDEN_GEM_SLUGS],
+  },
   {
     slug: "frederick-without-a-plan",
     title: "Frederick without a plan",

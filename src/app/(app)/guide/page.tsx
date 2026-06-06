@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import PageBloom from "@/components/ui/PageBloom";
 import FunnelFlow from "@/components/guide/FunnelFlow";
+import HiddenGemsRail from "@/components/guide/HiddenGemsRail";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
@@ -33,6 +34,10 @@ export default async function GuidePage() {
     <div className="relative">
       <PageBloom />
       <FunnelFlow weather={weather} />
+      {/* Editorial discovery beat — a small, deliberate home for the curated
+          hidden gems, below the funnel so it adds local taste without
+          competing with the intent paths. */}
+      <HiddenGemsRail />
     </div>
   );
 }
