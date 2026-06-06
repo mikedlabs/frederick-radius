@@ -25,15 +25,20 @@ import { PHOTOGENIC_CATEGORIES } from "@/lib/photogenic";
 // Visual-feed whitelist now lives in @/lib/photogenic (shared with the
 // FunnelFlow topic grid) so the two never drift apart.
 
-function pickPhotos(count: number, dayIdx: number, pool: PlaceCardData[]) {
+export function pickPhotos(count: number, dayIdx: number, pool: PlaceCardData[]) {
   const withPhotos = pool.filter(
     (p) => p.google_photo_url && PHOTOGENIC_CATEGORIES.has(p.category),
   );
-  if (withPhotos.length === 0) return [];
-  // Rotate the start cursor by day so the wall is *different*
-  // photos from visit to visit, but stable within a day.
-  const start = ((dayIdx % withPhotos.length) + withPhotos.length) % withPhotos.length;
-  return Array.from({ length: count }, (_, i) => withPhotos[(start + i * 17) % withPhotos.length]);
+  const n = withPhotos.length;
+  if (n === 0) return [];
+  // Never repeat a place: cap to what's actually available (a sparse pool —
+  // e.g. a category after eligibility filtering — must show FEWER tiles, not
+  // the same photo six times — the "Looks like Family → Spinners ×6" bug).
+  // Rotate the start by day for visit-to-visit variety, then walk
+  // sequentially so every tile is a DISTINCT place.
+  const take = Math.min(count, n);
+  const start = ((dayIdx % n) + n) % n;
+  return Array.from({ length: take }, (_, i) => withPhotos[(start + i) % n]);
 }
 
 export default function PhotoMosaic({
