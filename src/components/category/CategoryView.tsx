@@ -2,6 +2,7 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import { rankPlaces } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
+import { isRecommendable } from "@/lib/relevance";
 import {
   bestMatches,
   openNowOf,
@@ -43,24 +44,29 @@ export default function CategoryView({
   // One ranked, distance-decorated set from the resolved origin; every
   // section is a pure slice of it (no second loader pass).
   const all = rankPlaces({ category: category.slug, origin });
+  // Recommendation eligibility: the promoted sections lead with `rec`,
+  // which drops institutions (schools/daycares/admissions offices). Full
+  // browse below keeps `all` — they stay findable, just not recommended.
+  // (No-op for coffee; the rule is universal for the category pattern.)
+  const rec = all.filter(isRecommendable);
   const total = all.length;
   const openCount = all.filter((p) => isOpenNow(p.open_status)).length;
 
   // Best matches is the LEAD: a tight 3-up tile row (mixed density — one
   // strong lead over the scannable rows below), not a 6-tile block that
   // reads at parity with the dense sections and doubles the mobile scroll.
-  const best = bestMatches(all, ctx, 3);
+  const best = bestMatches(rec, ctx, 3);
   const bestSlugs = new Set(best.map((p) => p.slug));
   const notBest = (list: typeof all) => list.filter((p) => !bestSlugs.has(p.slug));
 
-  const openNow = notBest(openNowOf(all)).slice(0, 6);
-  const favs = notBest(localFavoritesOf(all, ctx)).slice(0, 6);
-  const nearby = notBest(nearestFrom(all)).slice(0, 6);
+  const openNow = notBest(openNowOf(rec)).slice(0, 6);
+  const favs = notBest(localFavoritesOf(rec, ctx)).slice(0, 6);
+  const nearby = notBest(nearestFrom(rec)).slice(0, 6);
 
   // Across the county: every town EXCEPT the user's (or downtown when no
   // town is set), one top pick each — the anti-downtown-bias section.
   const homeSlug = town?.slug ?? "frederick";
-  const county = groupByMunicipality(all, ctx)
+  const county = groupByMunicipality(rec, ctx)
     .filter((g) => g.municipality !== homeSlug)
     .slice(0, 8);
 

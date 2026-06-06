@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { rankPlaces } from "@/lib/loaders/places";
+import { isRecommendable } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
@@ -84,13 +85,19 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   const places = rankPlaces({ category: slug, origin });
   const subs = CATEGORIES.filter((x) => x.parent === c.slug);
-  const placesWithPhotos = places.filter((p) => p.google_photo_url);
+  // Recommendation eligibility: "Worth your time" + the photo wall are
+  // PROMOTIONAL, so institutions (schools/daycares/admissions offices that
+  // happen to carry this category) must not lead them. Browse below keeps
+  // the full set — they stay findable, just not recommended. This is the
+  // Family "school admissions office as a top kids' outing" fix.
+  const recommendable = places.filter(isRecommendable);
+  const placesWithPhotos = recommendable.filter((p) => p.google_photo_url);
 
   // C3: top 3 photo-backed picks lead the page. Falls back to the
   // top 3 by feature score if fewer than 3 places have photos.
   const topPicks = (placesWithPhotos.length >= 3
     ? placesWithPhotos
-    : places
+    : recommendable
   ).slice(0, 3);
 
   // A quiet "you are here" line so a user in Thurmont understands

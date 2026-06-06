@@ -96,3 +96,67 @@ export function isNonDiscoverable(
   if (!primaryType) return false;
   return NON_DISCOVERABLE_TYPES.has(primaryType.trim().toLowerCase());
 }
+
+/**
+ * RECOMMENDATION eligibility — the editorial-strictness layer.
+ *
+ * A school, preschool, university, or daycare is a real place that
+ * belongs in Search, Map, Saved, and its own detail page — but it is NOT
+ * "a thing to do." The product's judgment leak was treating "belongs to a
+ * category" as "should be recommended": e.g. Family's "Worth your time"
+ * led with an elementary school and a college admissions office. This
+ * predicate gates RECOMMENDATION surfaces only (Best matches / Worth your
+ * time / curated picks / Today best moves), never browse/search/map/saved/
+ * detail — so institutions stay findable, just not promoted.
+ *
+ * Deterministic + universal (one type-set, every category inherits it).
+ * Pure, unit-tested.
+ */
+export const RECOMMENDATION_DENY_TYPES: ReadonlySet<string> = new Set([
+  "primary_school",
+  "secondary_school",
+  "high_school",
+  "school",
+  "preschool",
+  "university",
+  "college",
+  "child_care_agency",
+]);
+
+/**
+ * Tiny GLOBAL rescue list — real destinations Google mis-typed as a
+ * school/university. The deterministic deny is blunt: Google labels
+ * Delaplaine Fine Arts Center, the Volpe Athletic Center, BBT Arena, and
+ * the Master Gardener gardens as "university". These are exactly the
+ * venues the app exists to surface, so they are explicitly recommendable.
+ *
+ * KEEP THIS SMALL. If it grows past a handful, that's a signal we need a
+ * better upstream classification field — not a giant manual patch table.
+ */
+export const RECOMMEND_ALLOW_SLUGS: ReadonlySet<string> = new Set([
+  "delaplaine-fine-arts-center-emmitsburg",
+  "ronald-j-volpe-athletic-center",
+  "bbt-arena",
+  "frederick-county-master-gardeners-demonstration-gardens-frederick",
+]);
+
+/**
+ * Should this record be allowed to LEAD a recommendation surface?
+ * False only when ALL hold: its Google primaryType is a pure institution
+ * (deny-set), it's a bulk-imported record (dfp/google — curated seed/
+ * manual is intentional and always kept), and it isn't on the rescue
+ * list. Vague/absent type → recommendable (never guess a place away).
+ */
+export function isRecommendable(p: {
+  primary_type?: string | null;
+  source: string;
+  slug: string;
+}): boolean {
+  if (RECOMMEND_ALLOW_SLUGS.has(p.slug)) return true;
+  const t = p.primary_type?.trim().toLowerCase();
+  if (!t || !RECOMMENDATION_DENY_TYPES.has(t)) return true;
+  // Source guard: a curated seed/manual record is an intentional editorial
+  // choice — never auto-denied. The leak is bulk dfp/google imports.
+  if (p.source !== "dfp" && p.source !== "google") return true;
+  return false;
+}
