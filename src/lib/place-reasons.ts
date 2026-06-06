@@ -1,5 +1,6 @@
 import type { PlaceCardData } from "@/lib/loaders/places";
 import type { ReasonTone } from "@/components/ui/ReasonChip";
+import { haversineMeters, type LngLat } from "@/lib/geo";
 
 /**
  * Derive the small "why this is shown" reason chips for a place,
@@ -12,14 +13,20 @@ import type { ReasonTone } from "@/components/ui/ReasonChip";
  * Priority rationale:
  *   1. Open / verified open — answers "can I go right now?"
  *   2. Distance — answers "how much effort?"
- *   3. Top rated / local favorite — answers "is it good?"
- *   4. Recently verified — answers "is the data current?"
+ *   3. ONE intent reason (kid-friendly / free / near a landmark) —
+ *      answers "does this fit what I'm doing?" Capped to one so it never
+ *      crowds out the decision signals.
+ *   4. Top rated / local favorite — answers "is it good?"
+ *   5. Recently verified — answers "is the data current?"
  */
 export type PlaceReason =
   | "verified_open"
   | "open_now"
   | "near"
   | "walkable"
+  | "kid_friendly"
+  | "free"
+  | "near_landmark"
   | "top_rated"
   | "local_favorite"
   | "recently_verified";
@@ -34,6 +41,41 @@ const TOP_RATED_MIN_STARS = 4.5;
 const TOP_RATED_MIN_COUNT = 50;
 const LOCAL_FAVORITE_MIN_FEATURE = 9;
 const FRESH_WITHIN_DAYS = 14;
+
+// Unambiguous kid destinations (category-level only — conservative; no
+// fuzzy "park is sort of kid-friendly" guessing).
+const KID_CATEGORIES: ReadonlySet<string> = new Set(["family", "playground"]);
+// Obviously-free public destinations.
+const FREE_CATEGORIES: ReadonlySet<string> = new Set([
+  "park", "trail", "outdoors", "public-art",
+]);
+
+// Tiny curated landmark set — the locators a local actually uses. Downtown
+// coords are the real place geoms; Hood/Monocacy are well-known points.
+// "Near {x}" fires only within NEAR_LANDMARK_M of one of these.
+const NEAR_LANDMARK_M = 500;
+const LANDMARKS: ReadonlyArray<{ name: string } & LngLat> = [
+  { name: "Carroll Creek", lng: -77.4109, lat: 39.4137 },
+  { name: "Baker Park", lng: -77.4198, lat: 39.4170 },
+  { name: "the Weinberg", lng: -77.4124, lat: 39.4145 },
+  { name: "Hood College", lng: -77.3985, lat: 39.4235 },
+  { name: "Monocacy Battlefield", lng: -77.3905, lat: 39.3730 },
+];
+
+/** Nearest curated landmark within NEAR_LANDMARK_M, else null. Pure. */
+function nearestLandmark(geom: LngLat): { name: string } | null {
+  let best: { name: string } | null = null;
+  let bestD = NEAR_LANDMARK_M;
+  for (const lm of LANDMARKS) {
+    const d = haversineMeters(geom, { lng: lm.lng, lat: lm.lat });
+    if (d <= bestD) {
+      bestD = d;
+      best = { name: lm.name };
+    }
+  }
+  return best;
+}
+
 
 export function placeReasons(
   p: PlaceCardData,
@@ -61,7 +103,19 @@ export function placeReasons(
     }
   }
 
-  // 3. Quality signal. The authoritative local-favorite flag (hand-pick
+  // 3. One intent reason — the single most useful "does this fit?" signal,
+  // derived from data we already have. Capped to ONE (kid-friendly → free →
+  // near a landmark) so it never crowds out open / distance / quality.
+  if (KID_CATEGORIES.has(p.category)) {
+    out.push({ kind: "kid_friendly", label: "Kid-friendly", tone: "neutral" });
+  } else if (FREE_CATEGORIES.has(p.category)) {
+    out.push({ kind: "free", label: "Free", tone: "free" });
+  } else {
+    const lm = nearestLandmark(p.geom);
+    if (lm) out.push({ kind: "near_landmark", label: `Near ${lm.name}`, tone: "near" });
+  }
+
+  // 4. Quality signal. The authoritative local-favorite flag (hand-pick
   // in local-favorites.json, or the verified high-rating data proxy —
   // see resolveLocalFavorite in the loader) is the same signal the
   // visitor ranking blends, so the chip and the ranking never disagree.

@@ -1,0 +1,84 @@
+import { describe, it, expect } from "vitest";
+import { placeReasons } from "@/lib/place-reasons";
+import type { PlaceCardData } from "@/lib/loaders/places";
+import type { OpenStatus } from "@/lib/hours";
+
+const OPEN: OpenStatus = { state: "open", closesAt: "9:00 PM", closingSoon: false };
+const CLOSED: OpenStatus = { state: "closed" };
+const CARROLL_CREEK = { lng: -77.4109, lat: 39.4137 };
+const FAR = { lng: -77.9, lat: 39.9 };
+
+function place(o: Partial<PlaceCardData> & { category: string }): PlaceCardData {
+  return {
+    slug: "x",
+    name: "X",
+    geom: FAR,
+    open_status: CLOSED,
+    feature_score: 5,
+    ...o,
+  } as unknown as PlaceCardData;
+}
+
+const kinds = (p: PlaceCardData) => placeReasons(p).map((r) => r.kind);
+
+describe("placeReasons — extended intent reasons", () => {
+  it("kid_friendly for clear kid categories (family, playground)", () => {
+    expect(kinds(place({ category: "family" }))).toContain("kid_friendly");
+    expect(kinds(place({ category: "playground" }))).toContain("kid_friendly");
+    expect(kinds(place({ category: "coffee" }))).not.toContain("kid_friendly");
+  });
+
+  it("free for obviously-free public destinations", () => {
+    expect(kinds(place({ category: "park" }))).toContain("free");
+    expect(kinds(place({ category: "trail" }))).toContain("free");
+    expect(kinds(place({ category: "outdoors" }))).toContain("free");
+    expect(kinds(place({ category: "public-art" }))).toContain("free");
+    expect(kinds(place({ category: "restaurant" }))).not.toContain("free");
+  });
+
+  it("near_landmark when within 500m of a curated landmark", () => {
+    const r = placeReasons(place({ category: "coffee", geom: CARROLL_CREEK }));
+    const lm = r.find((x) => x.kind === "near_landmark");
+    expect(lm?.label).toBe("Near Carroll Creek");
+  });
+
+  it("no near_landmark when far from every landmark", () => {
+    expect(kinds(place({ category: "coffee", geom: FAR }))).not.toContain("near_landmark");
+  });
+
+  it("emits only ONE intent reason (free wins over landmark for a park on the creek)", () => {
+    const r = kinds(place({ category: "park", geom: CARROLL_CREEK }));
+    expect(r).toContain("free");
+    expect(r).not.toContain("near_landmark");
+  });
+});
+
+describe("placeReasons — cap & priority unchanged", () => {
+  it("stays capped at 3", () => {
+    const r = placeReasons(
+      place({
+        category: "family",
+        open_status: OPEN,
+        open_confidence: "verified",
+        distance_m: 100,
+        local_favorite: true,
+        last_verified_at: new Date().toISOString(),
+      }),
+    );
+    expect(r.length).toBe(3);
+  });
+
+  it("priority: open → distance → intent survive the cap (quality/freshness drop)", () => {
+    const r = kinds(
+      place({
+        category: "family",
+        open_status: OPEN,
+        open_confidence: "verified",
+        distance_m: 100, // ~1 min walk
+        local_favorite: true,
+        last_verified_at: new Date().toISOString(),
+      }),
+    );
+    expect(r).toEqual(["verified_open", "near", "kid_friendly"]);
+  });
+});

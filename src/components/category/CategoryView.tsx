@@ -9,7 +9,6 @@ import {
   localFavoritesOf,
   nearestFrom,
   groupByMunicipality,
-  bestMatchReasons,
 } from "@/lib/category-ranking";
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
@@ -113,7 +112,6 @@ export default function CategoryView({
         color={category.color}
         places={best}
         variant="tile"
-        reasons={(p) => bestMatchReasons(p, ctx)}
       />
 
       <CategorySection title="Open now" color={category.color} places={openNow} />
