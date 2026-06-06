@@ -162,6 +162,17 @@ export default async function EventsIndexPage({
   const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder");
   const liveSlugs = seedLive.map((e) => e.slug);
 
+  // The ingested "Civic & municipal calendar" series is a SEPARATE data
+  // source (the daily-ingest table), so it must run through the same
+  // classifier — otherwise a private rental ("Attaboy … Wedding") or a
+  // CANCELLED meeting that landed in the feed renders raw (the live-audit
+  // leak). Keep civic/municipal/public series; drop private rentals and
+  // cancelled outright, exactly as the card lanes do.
+  const publicSeries = ingestedSeries.filter((s) => {
+    const lane = classifyEvent({ title: s.title, category: s.category ?? undefined });
+    return lane !== "private_rental" && lane !== "cancelled";
+  });
+
   // Facet lists, only for values actually present.
   const catSlugs = [...new Set(allEvents.map((e) => e.category).filter(Boolean))];
   const categories = catSlugs
@@ -492,15 +503,15 @@ export default async function EventsIndexPage({
           municipal series + notices (the ingested calendar), COLLAPSED by
           default so municipal gravity never competes with the events above.
           Present but tucked, never dumped. */}
-      {ingestedSeries.length > 0 && (
+      {publicSeries.length > 0 && (
         <CollapsibleSection
           title="Civic & municipal calendar"
-          count={ingestedSeries.length}
+          count={publicSeries.length}
           countLabel="series"
           storageKey="fr.events.official"
           defaultOpen={false}
         >
-          <MunicipalEvents series={ingestedSeries} summary={ingestedSummary} />
+          <MunicipalEvents series={publicSeries} summary={ingestedSummary} />
         </CollapsibleSection>
       )}
 

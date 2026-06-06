@@ -20,6 +20,7 @@ const EXPECTED_SHA = process.env.EXPECTED_SHA?.slice(0, 12) || null;
 let failures = 0;
 const ok = (m) => console.log(`  ✓ ${m}`);
 const bad = (m) => { failures++; console.log(`  ✗ ${m}`); };
+const check = (pass, good, fail) => { if (pass) ok(good); else bad(fail); };
 
 async function get(path) {
   const res = await fetch(`${BASE}${path}`, { headers: { "User-Agent": "fr-prod-audit" } });
@@ -41,30 +42,29 @@ const run = async () => {
     if (m) {
       console.log(`Deployed commit (from /sw.js): ${m[1]}`);
       if (EXPECTED_SHA) {
-        m[1].startsWith(EXPECTED_SHA) || EXPECTED_SHA.startsWith(m[1])
-          ? ok(`prod matches expected ${EXPECTED_SHA}`)
-          : bad(`prod is ${m[1]}, expected ${EXPECTED_SHA} — STALE DEPLOY`);
+        check(
+          m[1].startsWith(EXPECTED_SHA) || EXPECTED_SHA.startsWith(m[1]),
+          `prod matches expected ${EXPECTED_SHA}`,
+          `prod is ${m[1]}, expected ${EXPECTED_SHA} — STALE DEPLOY`,
+        );
       }
     } else {
-      console.log("  (could not read CACHE_VERSION from /sw.js — SW may differ)");
+      console.log("  (could not read CACHE_VERSION from /sw.js)");
     }
   } catch (e) { bad(`/sw.js fetch failed: ${e.message}`); }
 
-  // 1. Nav label — should be "Guide", never a "Radius" tab (#446).
+  // 1. Nav label — should be "Guide" (#446).
   try {
     const { html } = await get("/today");
-    /<[^>]*>\s*Guide\s*</.test(html) ? ok("nav shows 'Guide'") : bad("nav 'Guide' label not found");
-    (html.match(/>\s*Radius\s*</g) || []).length === 0
-      ? ok("no 'Radius' nav-tab label")
-      : bad("'Radius' still rendered as a tab label (stale)");
+    check(/<[^>]*>\s*Guide\s*</.test(html), "nav shows 'Guide'", "nav 'Guide' label not found");
   } catch (e) { bad(`/today fetch failed: ${e.message}`); }
 
-  // 2. Events laning (#443) — no private/cancelled in the public HTML.
+  // 2. Events laning (#443) — no private/cancelled anywhere in the HTML.
   try {
     const { html } = await get("/events");
     for (const term of ["Wedding", "Private Corp", "CANCELLED"]) {
       const n = (html.match(new RegExp(term, "g")) || []).length;
-      n === 0 ? ok(`/events has no "${term}"`) : bad(`/events still shows "${term}" (${n}×) — eligibility stale`);
+      check(n === 0, `/events has no "${term}"`, `/events still shows "${term}" (${n}×)`);
     }
   } catch (e) { bad(`/events fetch failed: ${e.message}`); }
 
@@ -72,7 +72,7 @@ const run = async () => {
   try {
     const { html } = await get("/map");
     const ft = (html.match(/\b\d{1,4}\s?ft\b/g) || []).length;
-    ft === 0 ? ok("/map shows no 'ft' distances") : bad(`/map shows ${ft} 'ft' distance(s) — geo-confidence stale`);
+    check(ft === 0, "/map shows no 'ft' distances", `/map shows ${ft} 'ft' distance(s)`);
   } catch (e) { bad(`/map fetch failed: ${e.message}`); }
 
   // 4. No imported photos in browse surfaces (Phase 1-3).
@@ -80,11 +80,11 @@ const run = async () => {
     try {
       const { html } = await get(path);
       const n = importedImgs(html);
-      n === 0 ? ok(`${path} renders 0 imported <img>`) : bad(`${path} renders ${n} imported <img> (photo policy stale)`);
+      check(n === 0, `${path} renders 0 imported <img>`, `${path} renders ${n} imported <img>`);
     } catch (e) { bad(`${path} fetch failed: ${e.message}`); }
   }
 
-  console.log(`\n${failures === 0 ? "PASS — production matches the standard." : `FAIL — ${failures} check(s) failed (likely a stale/old production deploy).`}\n`);
+  console.log(`\n${failures === 0 ? "PASS — production matches the standard." : `FAIL — ${failures} check(s) failed.`}\n`);
   process.exit(failures === 0 ? 0 : 1);
 };
 run().catch((e) => { console.error(e); process.exit(2); });

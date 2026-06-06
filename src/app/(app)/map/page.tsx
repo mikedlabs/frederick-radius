@@ -12,6 +12,7 @@ import { getMunicipalBoundaries } from "@/lib/integrations/fcGis";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
 import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
+import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
@@ -280,6 +281,12 @@ export default async function MapPage({
       // Draw-only on the map: civic meetings/hearings aren't map answers
       // (shared event-kind rule — consistent with Today and /events).
       .filter((e) => !isUtilityEvent(e))
+      // Geo confidence (audit #2 P1): "within reach" is a reachability
+      // promise, so ONLY addressable events qualify. A feed event pinned to
+      // the "Frederick" centroid has no honest distance — including it made
+      // the map claim "113 ft away" for a county-wide event. Drop the
+      // area-level/unknown ones here rather than render a false distance.
+      .filter(isGeoPrecise)
       .filter((e) => Number.isFinite(e.geom?.lng) && Number.isFinite(e.geom?.lat))
       .slice(0, 120)
       .map((e) => ({

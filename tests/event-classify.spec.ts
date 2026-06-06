@@ -43,6 +43,13 @@ describe("classifyEvent — non-public lanes", () => {
     expect(lane("Council Workshop", { status: "cancelled" })).toBe("cancelled");
     expect(lane("Joint City/Council Meeting CANCELLED")).toBe("cancelled");
   });
+
+  // Regression: the exact titles a live prod audit caught leaking through
+  // the ingested "Civic & municipal calendar" series (now classified too).
+  it("the real prod leaks classify out of the public flow", () => {
+    expect(lane("Attaboy Barrel House Wedding: Jessica Jenkins & Dakota Fernandez Ceremony & Reception")).toBe("private_rental");
+    expect(lane("Council Legislative Meeting CANCELLED")).toBe("cancelled");
+  });
 });
 
 describe("isPublicEvent — only public leads What's on", () => {
