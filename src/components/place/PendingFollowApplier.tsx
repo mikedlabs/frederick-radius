@@ -51,7 +51,7 @@ export default function PendingFollowApplier({
       if (!isFollowed) {
         const nowFollowed = await toggle();
         if (nowFollowed) {
-          toast.success(`Added ${name} to My Radius`);
+          toast.success(`Saved · ${name}`);
         }
       }
       // Clean the URL so a back-button + refresh doesn't re-apply.

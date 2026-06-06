@@ -12,10 +12,13 @@ import { toast } from "sonner";
  * MyRadiusButton — the prominent text-style follow CTA the user
  * spec'd for place detail pages.
  *
- * Three states (per the brief):
- *   - default (not followed)              "Add to My Radius"
- *   - followed                            "In My Radius"
+ * Three states:
+ *   - default (not followed)              "Save"
+ *   - followed                            "Saved"
  *   - followed + hover/long-press         "Remove"
+ * (Wording is literal — "Save"/"Saved" — to match the "Saved" nav tab +
+ * page. "My Radius" lingering on the button reintroduced the ambiguity the
+ * nav rename removed; the brand name isn't a verb.)
  *
  * Mobile UX:
  *   - The hover state doesn't exist on touch. To remove on mobile,
@@ -66,7 +69,7 @@ export default function MyRadiusButton({
         }}
       >
         <Bookmark className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-        Add to My Radius
+        Save
       </button>
     );
   }
@@ -96,11 +99,11 @@ export default function MyRadiusButton({
       const nowFollowed = await toggle();
       haptic(nowFollowed ? "medium" : "light");
       if (nowFollowed) {
-        toast.success(`Added to My Radius · ${name}`, {
+        toast.success(`Saved · ${name}`, {
           action: { label: "Undo", onClick: () => void toggle() },
         });
       } else {
-        toast(`Removed from My Radius · ${name}`, {
+        toast(`Removed from Saved · ${name}`, {
           action: { label: "Undo", onClick: () => void toggle() },
         });
       }
@@ -120,7 +123,7 @@ export default function MyRadiusButton({
         onMouseLeave={() => setHover(false)}
         disabled={busy}
         aria-pressed={true}
-        aria-label={`In My Radius — tap to remove ${name}`}
+        aria-label={`Saved — tap to remove ${name}`}
         className="tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
         style={{
           borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",
@@ -141,7 +144,7 @@ export default function MyRadiusButton({
         ) : (
           <>
             <BookmarkCheck className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-            In My Radius
+            Saved
           </>
         )}
       </button>
@@ -154,7 +157,7 @@ export default function MyRadiusButton({
       onClick={onClick}
       disabled={busy}
       aria-pressed={false}
-      aria-label={`Add ${name} to My Radius`}
+      aria-label={`Save ${name}`}
       className="tactile tactile-interactive tactile-glow-brand inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12px] font-semibold text-white transition active:scale-[0.96] disabled:opacity-60"
       style={{ background: "var(--app-brand)" }}
     >
@@ -166,7 +169,7 @@ export default function MyRadiusButton({
       ) : (
         <>
           <Bookmark className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Add to My Radius
+          Save
         </>
       )}
     </button>

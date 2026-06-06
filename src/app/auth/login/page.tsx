@@ -8,7 +8,7 @@ import LoginForm from "./LoginForm";
 export const metadata: Metadata = {
   title: "Sign in",
   description:
-    "Sign in to Frederick Radius to keep My Radius synced across your devices.",
+    "Sign in to Frederick Radius to keep your saved places synced across your devices.",
   robots: { index: false, follow: false },
 };
 
@@ -53,7 +53,7 @@ export default async function LoginPage({
           className="font-serif text-[28px] font-semibold leading-tight tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Sign in to My Radius
+          Sign in to sync your saves
         </h1>
         <p
           className="text-[14px] leading-relaxed"
