@@ -7,10 +7,8 @@ import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places"
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceList from "@/components/place/PlaceList";
 import EventCard from "@/components/event/EventCard";
-import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
-import Image from "next/image";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import TownStrip from "@/components/municipality/TownStrip";
 import AerialBeat from "@/components/place/AerialBeat";
@@ -18,7 +16,6 @@ import StayDeepLinks from "@/components/municipality/StayDeepLinks";
 import CivicCard from "@/components/municipality/CivicCard";
 import TownLinks from "@/components/municipality/TownLinks";
 import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 export const revalidate = 600;
 
@@ -30,11 +27,10 @@ export const revalidate = 600;
  * stat dashboard with parallel browse rails.
  *
  * New spine:
- *   1. Photo hero — name + blurb + type/era/population overlay
+ *   1. Curated hero — seasonal county photography + name/blurb overlay
  *   2. One-line description
  *   3. Worth your time — top 8 places (grid by default)
- *   4. Looks like {town} — photo mosaic (4+ photo-backed places)
- *   5. Upcoming in {town} — max 4 events (empty state shows the
+ *   4. Upcoming in {town} — max 4 events (empty state shows the
  *      submit-an-event door + a nearby fallback)
  *
  * What got cut
@@ -46,21 +42,6 @@ export const revalidate = 600;
  *
  * The page is about the town, not about the directory's shape.
  */
-
-/**
- * Per-town hero photo overrides — hand-curated "this is THE photo of
- * {town}" slug map. Used when the auto-pick keeps landing on a
- * restaurant interior that doesn't say "this is the town."
- *
- * Add a town here only after verifying the override place actually
- * has a recognizable photo (district park, train station, main
- * street, town hall) AND it's in places-client.json.
- */
-const HERO_OVERRIDES: Record<string, string> = {
-  // Urbana → District Park instead of "Monocacy Crossing Restaurant"
-  // (a Frederick-side restaurant that DFP filed under Urbana).
-  urbana: "urbana-district-park-new-market",
-};
 
 export async function generateStaticParams() {
   return MUNICIPALITIES.map((m) => ({ municipality: m.slug }));
@@ -95,9 +76,9 @@ export default async function MunicipalityPage(
     .map((p) => decoratePlace(p, m.centroid))
     .sort((a, b) => b.feature_score - a.feature_score);
 
-  // "Worth your time" is a destination-led reel, so it ranks differently
-  // from `places` (which still drives the hero/photo logic below by raw
-  // feature_score). Two fixes for audit T4 — the page promised breweries/
+  // "Worth your time" is a destination-led reel that ranks differently
+  // from the raw feature_score order. Two fixes for audit T4 — the page
+  // promised breweries/
   // arts but led with Crossfits, training studios, and a meeting house:
   //   1. isRecommendable drops pure institutions (a no-op today since these
   //      rows lack a Google primary_type, but it future-proofs the surface
@@ -122,32 +103,6 @@ export default async function MunicipalityPage(
   // null until the extraction agent populates it. The card self-hides.
   const civic = municipalCivicFor(m.slug);
 
-  // Town hero — each town gets its OWN identifiable photo instead of
-  // a generic rotating aerial. The picker has three tiers:
-  //
-  //   1. HERO_OVERRIDES — hand-curated "this is THE photo of {town}"
-  //      mapping by slug. Used when the auto-pick keeps landing on a
-  //      restaurant interior that doesn't say "this is the town"
-  //      (Urbana → district park instead of "Monocacy Crossing").
-  //   2. The top-scored photographed place WHOSE name actually
-  //      references the town (e.g. "Urbana Library Farmers' Market",
-  //      "Brunswick Railroad Bridge"). Better signal than the raw
-  //      feature_score winner, since DFP rolls plenty of restaurants
-  //      from neighboring towns under each municipality slug.
-  //   3. The top-scored photographed place in the town, as before.
-  //
-  // SeasonalPhoto remains the last-resort fallback for towns with no
-  // photographed places.
-  const placesWithPhotos = places.filter((p) => p.google_photo_url);
-  const override = HERO_OVERRIDES[m.slug];
-  const overrideHero = override
-    ? placesWithPhotos.find((p) => p.slug === override) ?? null
-    : null;
-  const townNameRe = new RegExp(`\\b${m.name}\\b`, "i");
-  const namedHero = placesWithPhotos.find((p) => townNameRe.test(p.name)) ?? null;
-  const heroPlace = overrideHero ?? namedHero ?? placesWithPhotos[0] ?? null;
-  const heroPhotoUrl = heroPlace?.google_photo_url ?? null;
-
   return (
     <div className="relative space-y-6">
       <PageBloom variant="single" />
@@ -159,43 +114,21 @@ export default async function MunicipalityPage(
           mental model. */}
       <TownStrip activeSlug={m.slug} />
 
-      {/* Photo hero — the place as a place, not a row. The image
-          carries identity; the overlay carries facts. */}
+      {/* Town hero — CURATED imagery only (Photo Policy, Phase 3). The
+          identity image is our own seasonal county photography, never a
+          random top place's imported Google photo (which used to define a
+          town by whatever storefront ranked highest). AerialBeat below
+          adds the controlled drone shot where the archive covers it. */}
       <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-72">
-          {heroPhotoUrl ? (
-            <Image
-              src={heroPhotoUrl}
-              alt={`${heroPlace?.name ?? m.name} in ${m.name}, MD`}
-              fill
-              sizes="(max-width: 720px) 100vw, 720px"
-              priority
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
-            />
-          ) : (
-            <SeasonalPhoto
-              season="auto"
-              alt={`Frederick County (near ${m.name})`}
-              priority
-              sizes="(max-width: 720px) 100vw, 720px"
-              className="absolute inset-0"
-            />
-          )}
+          <SeasonalPhoto
+            season="auto"
+            alt={`Frederick County (near ${m.name})`}
+            priority
+            sizes="(max-width: 720px) 100vw, 720px"
+            className="absolute inset-0"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
-          {heroPlace && (
-            <span
-              className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold backdrop-blur"
-              style={{
-                background: "rgba(255,255,255,0.18)",
-                color: "white",
-                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.18)",
-              }}
-            >
-              Photo · {heroPlace.name}
-            </span>
-          )}
           <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75">
               {m.type} · est. {m.est} · pop. {m.population.toLocaleString()}
@@ -241,15 +174,10 @@ export default async function MunicipalityPage(
         />
       </section>
 
-      {/* Photo wall — the page-level identity beat. A column of
-          pictures of a real place. Only renders when there are enough
-          photo-backed places to fill it. */}
-      {placesWithPhotos.length >= 4 && (
-        <section className="space-y-3">
-          <SectionHeading title={`Looks like ${m.name}`} />
-          <PhotoMosaic places={placesWithPhotos} />
-        </section>
-      )}
+      {/* (The "Looks like {town}" photo mosaic was removed — Photo Policy,
+          Phase 3. Its pool was imported place photos with no quality gate;
+          a guessy collage of scraped storefronts hurt more than it helped.
+          The curated SeasonalPhoto hero + AerialBeat carry town identity.) */}
 
       {/* Upcoming — answer to "what's happening." Kept tight (max 4);
           empty state surfaces the submit door + a nearby fallback. */}
