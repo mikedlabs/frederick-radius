@@ -6,8 +6,185 @@
   "remove": [],
   "keepApart": [],
   "patch": {
+    "alice-mccormick-acupuncture": {
+      "category": "wellness"
+    },
+    "all-american-lawn-landscape-llc-walkersville": {
+      "category": "services"
+    },
+    "allied-counseling-group": {
+      "category": "wellness"
+    },
+    "authentic-barber-company": {
+      "category": "services"
+    },
+    "be-u-nails-spa": {
+      "category": "services"
+    },
+    "best-kept-secret-hair-salon": {
+      "category": "services"
+    },
+    "brooks-behavioral-health-services-llc": {
+      "category": "wellness"
+    },
+    "city-park-psychological-services-associates-llc": {
+      "category": "wellness"
+    },
+    "clarity-psychotherapy": {
+      "category": "wellness"
+    },
     "crash-and-catharsis-rage-factory": {
       "category": "wellness"
+    },
+    "crystal-visions-massage": {
+      "category": "wellness"
+    },
+    "crystallume-medspa": {
+      "category": "wellness"
+    },
+    "dahlia-noir-salon": {
+      "category": "services"
+    },
+    "davita-ballenger-creek-dialysis": {
+      "category": "wellness"
+    },
+    "drewskiithebarber": {
+      "category": "services"
+    },
+    "east-patrick-barbershop": {
+      "category": "services"
+    },
+    "frederick-cosmetic-family-dentistry": {
+      "category": "wellness"
+    },
+    "frederick-dental-solutions": {
+      "category": "wellness"
+    },
+    "frederick-dentures-and-orthodontics": {
+      "category": "wellness"
+    },
+    "freestate-auto-repair-inc": {
+      "category": "services"
+    },
+    "gentlemens-choice-barber-stylist-rt-40-w": {
+      "category": "services"
+    },
+    "hampton-massage": {
+      "category": "wellness"
+    },
+    "hgm-lawncare-and-services-llc-myersville": {
+      "category": "services"
+    },
+    "in-fit-personal-training-studio": {
+      "category": "services"
+    },
+    "indigo-bloom-counseling": {
+      "category": "wellness"
+    },
+    "kens-automotive-transmission": {
+      "category": "services"
+    },
+    "kindway-counseling": {
+      "category": "wellness"
+    },
+    "krietz-auto-repair-sales-detailing": {
+      "category": "services"
+    },
+    "la-villa-nails": {
+      "category": "services"
+    },
+    "lohmanflynn-counseling-llc": {
+      "category": "wellness"
+    },
+    "maria-hawkins-aesthetics": {
+      "category": "wellness"
+    },
+    "marianne-riley-psychotherapy": {
+      "category": "wellness"
+    },
+    "mcclellan-veterinary-clinic": {
+      "category": "services"
+    },
+    "meadows-farms-nurseries-and-landscape-frederick": {
+      "category": "services"
+    },
+    "michabel-salon-and-spa": {
+      "category": "services"
+    },
+    "monocacy-health-partners-dental-clinic": {
+      "category": "wellness"
+    },
+    "new-york-new-york-hair-salon-spa": {
+      "category": "services"
+    },
+    "om-chakra-holistic-healing-and-massage-center": {
+      "category": "wellness"
+    },
+    "pain-management-massage-studio": {
+      "category": "wellness"
+    },
+    "psychiatric-guidance": {
+      "category": "wellness"
+    },
+    "quince-orchard-psychotherapy": {
+      "category": "wellness"
+    },
+    "red-canyon-physical-therapy": {
+      "category": "wellness"
+    },
+    "rose-nails-spa": {
+      "category": "services"
+    },
+    "safe-harbor-christian-counseling": {
+      "category": "wellness"
+    },
+    "sam-wong-salon": {
+      "category": "services"
+    },
+    "sandy-spring-bank-frederick-financial-center": {
+      "category": "services"
+    },
+    "savoir-salon": {
+      "category": "services"
+    },
+    "second-story-massage": {
+      "category": "wellness"
+    },
+    "shaestheticsss": {
+      "category": "wellness"
+    },
+    "six-east-salon-and-spa": {
+      "category": "services"
+    },
+    "skips-auto-repair": {
+      "category": "services"
+    },
+    "soft-images-salon-frederick-maryland": {
+      "category": "services"
+    },
+    "structures-salon-and-spa": {
+      "category": "services"
+    },
+    "the-affiliated-barbershop": {
+      "category": "services"
+    },
+    "the-cadillac-counselor": {
+      "category": "wellness"
+    },
+    "the-space-between-psychotherapy-llc-for-telehealth": {
+      "category": "wellness"
+    },
+    "unique-studio-hair-salon": {
+      "category": "services"
+    },
+    "verbena-salon-spa": {
+      "category": "services"
+    },
+    "vital-sources-psychological-services": {
+      "category": "wellness"
+    },
+    "wastlers-barber-shop": {
+      "category": "services"
     }
   }
 }
