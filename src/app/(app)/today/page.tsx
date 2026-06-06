@@ -365,12 +365,24 @@ export default async function HomePage({
         )}
       </section>
 
+      {/* ── HEADS UP — high-signal interruption layer, only if needed ────
+          "Before you make a plan, is there anything you need to know?"
+          Self-hides when nothing is active; shows ONE worst-first alert
+          (real, sourced, time-bound NWS/NPS), with a quiet "+N more →" to
+          /pulse. Sits after Ask, before the best move — never a banner
+          wall. See CivicAlerts. */}
+      <Suspense fallback={null}>
+        <div className="mt-4">
+          <CivicAlerts />
+        </div>
+      </Suspense>
+
       {/* ── BEST MOVE NOW + BUILD A PLAN ─────────────────────────────────
           Lifted OUT of the collapsed "full briefing" below so the page's
           two decision modules LEAD instead of hiding. TodayMoves = the
           single "best move now"; MoveStack = "build a plan." The weather
           hero, events, and news stay collapsed below as context — so the
-          ladder reads: Ask → quick intents → best move → plan → browse. */}
+          ladder reads: Ask → heads up → best move → what's on → details. */}
       <section className="mt-4 space-y-3" aria-label="Your next move">
         <Suspense fallback={<Skeleton.Block height={170} round="var(--app-radius-lg)" />}>
           <TodayMoves
@@ -389,6 +401,60 @@ export default async function HomePage({
         <Suspense fallback={<Skeleton.Block height={200} round="var(--app-radius-lg)" />}>
           <MoveStack />
         </Suspense>
+      </section>
+
+      {/* ── WHAT'S ON (today / tonight / weekend) ────────────────────────
+          Lifted OUT of the collapsed briefing's column to a TOP-LEVEL slot,
+          right after the best move. Events are the heart of "what should I
+          do today?", so they're a guided answer here — not buried under the
+          weather. The When? toggle drives the window; the full weather stack
+          and the rest stay collapsed below. */}
+      <section className="mt-6 space-y-3" aria-label="What's on">
+        <TimeToggle active={mode} counts={counts} />
+        <DismissibleSection
+          id="upcoming"
+          title={slice.title}
+          href="/events"
+          cta="See all"
+          eyebrow="What's on"
+          plateNo="No. 01"
+        >
+          {heroInSlice || upcomingRest.length > 0 ? (
+            <div className="space-y-3">
+              {heroInSlice && featuredEvent && (
+                <EventCard event={featuredEvent} variant="feature" />
+              )}
+              {upcomingRest.length > 0 && (
+                <div className="-mx-4 px-4">
+                  <div className="reveal-up shelf-rail gap-3 pb-1">
+                    {upcomingRest.map((e) => (
+                      <div key={e.slug} className="w-[280px] shrink-0">
+                        <EventCard event={e} variant="tile" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p
+              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
+              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+            >
+              Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
+              {fallbackSlice ? (
+                <Link href={`/today?t=${fallbackSlice}`} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                  See what&rsquo;s {SLICE_LABEL[fallbackSlice]}
+                </Link>
+              ) : (
+                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                  Browse all events
+                </Link>
+              )}
+              .
+            </p>
+          )}
+        </DismissibleSection>
       </section>
 
       {/* RESPONSIVE SPLIT (desktop only):
@@ -501,9 +567,9 @@ export default async function HomePage({
                 background: stackBg,
               }}
             >
-          <Suspense fallback={null}>
-            <CivicAlerts />
-          </Suspense>
+          {/* (CivicAlerts moved UP to the top-level "Heads up" slot — an
+              active warning belongs before the plan, not inside the
+              collapsed weather panel.) */}
           {/* All three weather subsections (Hourly · 7-Day · More
               Details) are disclosure pills for visual uniformity, and
               all three default CLOSED — each collapsed pill carries a
@@ -561,62 +627,11 @@ export default async function HomePage({
             the last, so the page feels alive on arrival. ──────────── */}
         <div className="space-y-4 stagger-children">
 
-      {/* CLEANUP PASS (the answer leads, the rest collapses):
-       *   1. When? toggle  2. Tonight/events (THE answer)
-       *   3. MoodTiles (quick needs)
-       *   4. "More for today" — everything secondary, collapsed by
-       *      default (partner apps, worth-a-look, local news, from-above),
-       *      so the page opens SHORT and scannable instead of a 13-section
-       *      wall you scroll forever. */}
-
-      {/* When? — temporal control for the events section directly below. */}
-      <TimeToggle active={mode} counts={counts} />
-
-      {/* ── THE ANSWER: what's happening, leads the action column. ── */}
-      <DismissibleSection
-        id="upcoming"
-        title={slice.title}
-        href="/events"
-        cta="See all"
-        eyebrow="What's on"
-        plateNo="No. 01"
-      >
-        {heroInSlice || upcomingRest.length > 0 ? (
-          <div className="space-y-3">
-            {heroInSlice && featuredEvent && (
-              <EventCard event={featuredEvent} variant="feature" />
-            )}
-            {upcomingRest.length > 0 && (
-              <div className="-mx-4 px-4">
-                <div className="reveal-up shelf-rail gap-3 pb-1">
-                  {upcomingRest.map((e) => (
-                    <div key={e.slug} className="w-[280px] shrink-0">
-                      <EventCard event={e} variant="tile" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p
-            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
-            {fallbackSlice ? (
-              <Link href={`/today?t=${fallbackSlice}`} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
-                See what&rsquo;s {SLICE_LABEL[fallbackSlice]}
-              </Link>
-            ) : (
-              <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
-                Browse all events
-              </Link>
-            )}
-            .
-          </p>
-        )}
-      </DismissibleSection>
+      {/* The right column is now the SECONDARY stack: quick needs + the
+       *  collapsed "more for today." "What's on" (the events answer) was
+       *  lifted to a top-level section above the full briefing so the page
+       *  reads Ask → best move → what's on → details, not a stacked
+       *  dashboard with the answer buried in a column. */}
 
       {/* MoodTiles — "what do you need right now" quick-needs row. */}
       <MoodTiles />
