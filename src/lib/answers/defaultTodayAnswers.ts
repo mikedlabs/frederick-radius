@@ -22,6 +22,13 @@ export type TodayAnswerInput = {
   weekendCount: number;
   weekendBest: Best;
   parking: { name: string; slug: string } | null;
+  /** Slug of the event already shown as the prominent featured hero
+   *  (TodayMoves "best move now" + the "What's on" hero). When a
+   *  tonight/weekend best bet IS that event, its answer card drops the
+   *  named "Best bet: X" line and becomes a count + door, so the same
+   *  event is never named twice on the page. A *different* best bet is
+   *  still named — that's additive, not a duplicate. */
+  featuredSlug?: string | null;
 };
 
 const place = (n: number) => `${n} ${n === 1 ? "place" : "places"}`;
@@ -45,29 +52,32 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
     });
   }
 
-  // 2. Tonight.
+  // 2. Tonight. Name the best bet only when it isn't already the
+  //    featured hero shown elsewhere on the page (else count + door).
   if (input.tonightCount > 0) {
     const b = input.tonightBest;
+    const named = b && b.slug !== input.featuredSlug ? b : null;
     out.push({
       id: "tonight",
       status: "tonight",
       title: input.tonightCount === 1 ? "1 event tonight" : `${input.tonightCount} events tonight`,
-      answer: b ? `Best bet: ${b.title}${atVenue(b)}.` : undefined,
+      answer: named ? `Best bet: ${named.title}${atVenue(named)}.` : undefined,
       whyShown: "Starting this evening",
       sourceLabel: "Frederick event calendars",
       primaryAction: { label: "See tonight", href: "/today?t=tonight" },
-      secondaryAction: b ? { label: "Details", href: `/events/${b.slug}` } : { label: "All events", href: "/events" },
+      secondaryAction: named ? { label: "Details", href: `/events/${named.slug}` } : { label: "All events", href: "/events" },
     });
   }
 
-  // 3. This weekend.
+  // 3. This weekend. Same rule — don't re-name the featured hero.
   if (input.weekendCount > 0) {
     const b = input.weekendBest;
+    const named = b && b.slug !== input.featuredSlug ? b : null;
     out.push({
       id: "weekend",
       status: "weekend",
       title: `${input.weekendCount} this weekend`,
-      answer: b ? `Don't miss ${b.title}${atVenue(b)}.` : undefined,
+      answer: named ? `Don't miss ${named.title}${atVenue(named)}.` : undefined,
       whyShown: "Coming up Friday to Sunday",
       sourceLabel: "Frederick event calendars",
       primaryAction: { label: "See the weekend", href: "/today?t=weekend" },
