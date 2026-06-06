@@ -12,13 +12,18 @@ import {
  * (desktop). One source of truth — change a label here and both
  * navs follow.
  *
- * Five tabs:
- *   - Radius    /guide      (the front door — "The Radius": what are you after?)
+ * Five tabs — each label names the destination literally (no brand
+ * words that point somewhere else):
+ *   - Guide     /guide      (the front door — "what are you after?")
  *   - Today     /today      (weather + what's on + the live county pulse —
  *                            the daily-return surface for locals)
  *   - Map       /map
  *   - Events    /events
- *   - Saved     /my-radius  (matches the page H1; "My Radius" is the brand eyebrow)
+ *   - Saved     /my-radius  (the page is titled "Saved" to match this tab)
+ *
+ * The first tab was "Radius" → /guide, which read as the personal page
+ * (the one titled "My Radius"). Relabeled "Guide" so the tab and the page
+ * it opens agree; "Radius" is the product name, not a nav destination.
  *
  * Today rejoined the primary nav (it had been demoted to a link under
  * the front door): the UI survey found the temporal / ambient-live-data layer is
@@ -37,7 +42,7 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/guide",     label: "Radius", icon: Compass,  fillOnActive: false },
+  { href: "/guide",     label: "Guide",  icon: Compass,  fillOnActive: false },
   { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
   { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
   { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },

@@ -7,9 +7,12 @@ import NotificationsNudge from "@/components/pwa/NotificationsNudge";
 import { getServerUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "My Radius",
+  // Titled "Saved" to match the bottom-nav tab that opens this page —
+  // the tab label and the page title now agree (no "My Radius" eyebrow
+  // pointing at a tab called "Saved"). Route stays /my-radius.
+  title: "Saved",
   description:
-    "Your personal Frederick Radius — the places, events, and routes you're keeping an eye on.",
+    "Your saved Frederick — the places, events, and routes you're keeping an eye on.",
 };
 
 /**
