@@ -141,6 +141,18 @@ export const RECOMMEND_ALLOW_SLUGS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Junk records suppressed from discovery entirely — bulk-import artifacts
+ * that are not real destinations (a generic SEO "listings" record, a
+ * single-letter scrape fragment that grabbed a neighbor's photo). Kept
+ * deliberately TIGHT and explicit: obvious junk only, never a subjective
+ * taste sweep. Not folded — they are not a duplicate of any real place.
+ */
+export const SUPPRESSED_JUNK_SLUGS: ReadonlySet<string> = new Set([
+  "best-of-business-listings",
+  "a",
+]);
+
+/**
  * Should this record be allowed to LEAD a recommendation surface?
  * False only when ALL hold: its Google primaryType is a pure institution
  * (deny-set), it's a bulk-imported record (dfp/google — curated seed/

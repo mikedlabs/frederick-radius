@@ -16,6 +16,7 @@
  */
 import { unstable_cache } from "next/cache";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
+import { isRecommendable } from "@/lib/relevance";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 
 /**
@@ -64,6 +65,7 @@ export const getWorthALookToday = unstable_cache(
     const ranked = rankPlaces({ origin, limit: 400 });
     const eligible = ranked.filter(
       (p) =>
+        isRecommendable(p) &&
         Boolean(p.google_photo_url) &&
         PHOTOGENIC.has(p.category) &&
         p.open_status?.state !== "closed",
