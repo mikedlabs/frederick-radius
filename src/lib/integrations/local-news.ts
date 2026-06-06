@@ -150,7 +150,27 @@ async function fetchOne(source: LocalNewsSource): Promise<LocalNewsItem[]> {
   }
 }
 
-/** Fetch + dedupe + sort + cap. Hides any source that errored. */
+/**
+ * Frederick County relevance — the deterministic editorial gate for the
+ * "What's new in Frederick" rail. A "frederick"-scoped source (FNP) is
+ * always kept; a "regional" source (Maryland Matters statewide, MoCo Show
+ * Montgomery County) is kept ONLY when an item's title or URL explicitly
+ * names the county, the city, one of its municipalities, or a signature
+ * local landmark/institution. Matched on title + url (the fields we
+ * already have — no scope expansion). Empty is better than wrong: the rail
+ * self-hides when the filter leaves nothing.
+ */
+export const FREDERICK_RELEVANCE =
+  /\b(frederick|brunswick|thurmont|middletown|myersville|walkersville|woodsboro|emmitsburg|mount\s*airy|new\s*market|burkittsville|urbana|ijamsville|jefferson|monrovia|adamstown|point\s+of\s+rocks|catoctin|monocacy|carroll\s+creek|fort\s+detrick|hood\s+college|fcps|frederick\s+health|weinberg)\b/i;
+
+/** Keep predicate: frederick-scoped sources pass unconditionally; regional
+ *  sources must match the relevance gate on title + url. Exported for tests. */
+export function isFrederickRelevant(item: LocalNewsItem): boolean {
+  if (item.source.scope === "frederick") return true;
+  return FREDERICK_RELEVANCE.test(`${item.title} ${item.url}`);
+}
+
+/** Fetch + dedupe + relevance-filter + sort + cap. Hides any source that errored. */
 export async function getLocalNews(limit = 6): Promise<LocalNewsItem[]> {
   const all = (
     await Promise.all(LOCAL_NEWS_SOURCES.map((s) => fetchOne(s)))
@@ -167,6 +187,9 @@ export async function getLocalNews(limit = 6): Promise<LocalNewsItem[]> {
     deduped.push(item);
   }
 
-  deduped.sort((a, b) => b.publishedAt - a.publishedAt);
-  return deduped.slice(0, limit);
+  // Editorial gate: drop regional-source items with no Frederick hook so
+  // "What's new in Frederick" is genuinely local — or self-hides.
+  const relevant = deduped.filter(isFrederickRelevant);
+  relevant.sort((a, b) => b.publishedAt - a.publishedAt);
+  return relevant.slice(0, limit);
 }
