@@ -6,6 +6,7 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/
 // (which static-imports the ~12MB enrichment into the bundle).
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { eventGeoConfidence, type GeoConfidence } from "@/lib/events/geo-confidence";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { easternParts, easternDayKey, easternWallToUtcISO } from "@/lib/tz";
 import {
@@ -117,6 +118,9 @@ const NEAR_TOWN_RADIUS_M = 16_000;
 
 export type EventWithMeta = Event & {
   distance_m?: number;
+  /** How well we know the position. A distance is only ever stamped for
+   *  "venue_match"/"exact_address"; "area"/"unknown" list without one. */
+  geo_confidence: GeoConfidence;
   category_name: string;
   municipality_name: string;
 };
@@ -130,9 +134,15 @@ export type EventWithMeta = Event & {
 const SEED_VERIFIED_AT = "2026-05-14T00:00:00Z";
 
 function decorate(e: Event, origin?: LngLat): EventWithMeta {
+  const geo_confidence = eventGeoConfidence(e);
+  const precise = geo_confidence === "venue_match" || geo_confidence === "exact_address";
   return {
     ...e,
-    distance_m: origin ? haversineMeters(origin, e.geom) : undefined,
+    // A distance is a promise: only stamp it when the coordinate is
+    // addressable. An area-centroid event still lists, but never claims
+    // "113 ft away" (audit #2 P1). See lib/events/geo-confidence.
+    distance_m: origin && precise ? haversineMeters(origin, e.geom) : undefined,
+    geo_confidence,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
     last_verified_at: e.last_verified_at ?? SEED_VERIFIED_AT,
@@ -445,7 +455,13 @@ export type TownEvents = {
 /**
  * Upcoming events near a town centroid, excluding events already in that
  * town. This backs the "happening near <town>" fallback so an empty town
- * is never a dead end. Distance is measured from the town centroid.
+ * is never a dead end.
+ *
+ * The centroid-to-event distance is used to FILTER and ORDER the
+ * fallback (a coarse "neighbor" measure, fine at the ~10-mile scale), but
+ * it is computed internally — the rendered `distance_m` stays gated by
+ * geo confidence in decorate(), so an area-centroid event shows up in
+ * the list without claiming a precise distance (audit #2 P1).
  */
 export function nearTown(
   slug: string,
@@ -454,15 +470,18 @@ export function nearTown(
 ): EventWithMeta[] {
   const m = MUNICIPALITY_BY_SLUG[slug];
   if (!m) return [];
+  const centroid = m.centroid;
   return EVENTS
     .filter((e) => e.municipality !== slug && new Date(e.ends_at) >= now)
-    .map((e) => decorate(e, m.centroid))
-    .filter((e) => (e.distance_m ?? Infinity) <= NEAR_TOWN_RADIUS_M)
-    .sort((a, b) => {
-      const d = (a.distance_m ?? 0) - (b.distance_m ?? 0);
-      return d !== 0 ? d : +new Date(a.starts_at) - +new Date(b.starts_at);
-    })
-    .slice(0, limit);
+    .map((e) => ({ e, near_m: haversineMeters(centroid, e.geom) }))
+    .filter((x) => x.near_m <= NEAR_TOWN_RADIUS_M)
+    .sort((a, b) =>
+      a.near_m !== b.near_m
+        ? a.near_m - b.near_m
+        : +new Date(a.e.starts_at) - +new Date(b.e.starts_at),
+    )
+    .slice(0, limit)
+    .map((x) => decorate(x.e, centroid));
 }
 
 /**

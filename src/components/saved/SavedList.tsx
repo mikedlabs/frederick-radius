@@ -17,6 +17,7 @@ import { Bookmark, MapPin, Sparkles, Calendar, UtensilsCrossed } from "lucide-re
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { haversineMeters } from "@/lib/geo";
+import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 
 type SavedSortKey = "town" | "category" | "recent" | "az" | "distance";
 
@@ -45,6 +46,7 @@ function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
   return {
     ...e,
     distance_m: undefined,
+    geo_confidence: eventGeoConfidence(e),
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
   };

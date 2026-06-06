@@ -130,6 +130,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   const eventsAtThisVenue = getVisibleEvents(place.upcoming_events).map((e) => ({
     ...e,
     distance_m: undefined,
+    // These are this venue's own upcoming events, so the position is the
+    // venue's — addressable by definition (audit #2 P1 geo confidence).
+    geo_confidence: "venue_match" as const,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: place.municipality_name,
   }));
