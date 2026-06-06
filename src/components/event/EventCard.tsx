@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import {
   Activity, Apple, Baby, Beer, Building2, CalendarDays, Church, Coffee,
   Heart, Landmark, Library, Music, Palette, ShoppingBag, Theater, Trees,
@@ -8,12 +7,10 @@ import {
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDateBlock } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
 import TrustChip from "@/components/ui/TrustChip";
 import { Chip } from "@/components/ui/Chip";
-import CategoryGraphic from "@/components/ui/CategoryGraphic";
 import { ReasonChipRow } from "@/components/ui/ReasonChip";
 import { eventReasons } from "@/lib/event-reasons";
 import { eventTrust } from "@/lib/trust";
@@ -61,12 +58,17 @@ export default function EventCard({
    *     pickups, municipal notices). No photo, no chips. The long tail.
    *   `compact` — single-line Rolodex row (date pill + title + meta).
    *   `glance`  — the default ~108px browsing card. Anchored by a left
-   *     accent rail; a real photo when one exists, otherwise a small
-   *     centered category icon on a tonal tile (NOT the old cropped
-   *     64px CategoryGraphic, which read as a broken image).
+   *     accent rail + a centered category icon on a tonal tile.
    *   `row`     — legacy list card with full chip row + actions.
-   *   `tile`    — grid/rail card with a cinematic photo banner.
-   *   `feature` — HERO: full-bleed editorial lead, one per surface.
+   *   `tile`    — grid/rail card, date-led header + category band.
+   *   `feature` — HERO: date-led editorial lead, one per surface.
+   *
+   * Photo Policy (Phase 2): event cards are CALENDAR-NATIVE — no imported
+   * photography. The decision factors are when / where / what kind / why /
+   * (distance only when geo-confident). The old `hero_image` was usually a
+   * borrowed VENUE photo, not the event, so it's dropped; the date block +
+   * category mark carry the card. Photos return only for a future curated
+   * editorial feature. See docs/PHOTO_POLICY.md.
    */
   variant?: "row" | "tile" | "feature" | "compact" | "glance" | "utility";
   /** Live right now — renders a small pulsing dot in the compact row so
@@ -97,7 +99,6 @@ export default function EventCard({
   // business and made the feed read inconsistent (the "everything looks
   // Civic" bug). A wrong label is worse than a neutral one.
   const accent: string = cat?.color ?? "#7A7975";
-  const hasPhoto = Boolean(event.hero_image);
   const categoryLabel = cat?.name ?? (event.category ? event.category : "Event");
 
   // Utility variant — TINY single muted line for the civic / municipal
@@ -246,95 +247,70 @@ export default function EventCard({
     );
   }
 
-  // Feature variant — the editorial lead card for a horizon group when
-  // we have a real photo. Full-bleed image, big serif headline, scrim
-  // overlay, date badge top-left. One per group, by design.
+  // Feature variant — the editorial lead card for a horizon group. A
+  // date-led typographic hero: a big calendar block anchors it, the serif
+  // title leads, "why it matters" gives the editorial reason. No photo —
+  // the event is the calendar entry, not a borrowed venue shot.
   if (variant === "feature") {
+    const reasons = eventReasons(event);
     return (
-      <article className="tactile tactile-feature tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]">
-        <div className="relative aspect-[16/10] w-full overflow-hidden">
-          {hasPhoto && event.hero_image ? (
-            <Image
-              src={event.hero_image}
-              alt=""
-              fill
-              sizes="(max-width: 720px) 100vw, 720px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-            />
-          ) : (
-            <CategoryGraphic
-              category={event.category}
-              seed={event.slug}
-              className="absolute inset-0"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+      <article
+        className="tactile tactile-feature tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
+        style={{ boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
+      >
+        <div aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent }} />
+        <div className="flex items-start gap-3.5 p-4">
+          {/* Calendar date block — the editorial anchor. */}
           <div
-            className="absolute left-3 top-3 inline-flex items-baseline gap-1.5 rounded-[var(--app-radius-sm)] bg-white/95 px-2 py-1 leading-none"
-            style={{ color: accent }}
+            aria-hidden
+            className="flex shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] px-3 py-2 leading-none"
+            style={{
+              minWidth: 60,
+              background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`,
+              boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)",
+            }}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              {date.month}
-            </span>
-            <span className="font-serif text-[18px] font-semibold">{date.day}</span>
-            <span className="text-[10px] font-medium opacity-80">{date.weekday}</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: accent }}>{date.month}</span>
+            <span className="font-serif text-[27px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
+            <span className="text-[10px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
           </div>
-          <span
-            className="absolute right-3 top-3 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white"
-            style={{ background: accent }}
-          >
-            {categoryLabel}
-          </span>
-          <div className="absolute inset-x-0 bottom-0 p-4">
-            {statusText && (
-              <span
-                className="mb-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
-                style={{ background: statusBg }}
-              >
-                {statusText}
-              </span>
-            )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{categoryLabel}</span>
+              {statusText && (
+                <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
+              )}
+              {event.distance_m !== undefined && (
+                <span className="ml-auto shrink-0 text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{formatDistance(event.distance_m)}</span>
+              )}
+            </div>
             <Link
               href={`/events/${event.slug}`}
-              className={`line-clamp-2 font-serif text-[22px] font-semibold leading-tight tracking-tight text-white outline-none focus-visible:underline ${isCancelled ? "line-through opacity-80" : ""}`}
+              className={`mt-0.5 block font-serif text-[21px] font-semibold leading-tight tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
+              style={{ color: "var(--app-ink)" }}
             >
               <span className="absolute inset-0" aria-hidden />
               {event.title}
             </Link>
-            <p className="mt-1 truncate text-[12px] text-white/85">
+            <p className="mt-1 truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
               {date.time}
               {event.venue_name ? ` · ${event.venue_name}` : ""}
             </p>
-            {/* "Why it matters" — one honest line, derived from the
-                event's real description upstream (never fabricated).
-                Only the hero card carries it; it's the editorial
-                difference between "an event exists" and "here's why
-                you'd go." */}
+            {/* "Why it matters" — one honest line derived upstream from the
+                event's real description, never fabricated. */}
             {whyItMatters && (
-              <p className="mt-1.5 line-clamp-2 font-serif text-[13px] italic leading-snug text-white/80">
+              <p className="mt-1.5 line-clamp-2 font-serif text-[13px] italic leading-snug" style={{ color: "var(--app-ink-3)" }}>
                 {whyItMatters}
               </p>
             )}
-            <div className="mt-2 flex items-center gap-2 text-[11px] text-white/80">
-              {event.is_free && (
-                <span
-                  className="rounded-full bg-white/15 px-2 py-0.5 font-semibold backdrop-blur-sm"
-                  style={{ color: "white" }}
-                >
-                  Free
-                </span>
-              )}
-              {event.price_text && !event.is_free && (
-                <span className="rounded-full bg-white/15 px-2 py-0.5 font-semibold backdrop-blur-sm">
-                  {event.price_text}
-                </span>
-              )}
-              {event.distance_m !== undefined && (
-                <span className="ml-auto tabular-nums">
-                  {formatDistance(event.distance_m)}
-                </span>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {reasons.length > 0 ? (
+                <ReasonChipRow reasons={reasons} />
+              ) : (
+                <>
+                  {event.is_free && <span className="text-[11px] font-semibold" style={{ color: "var(--app-positive)" }}>Free</span>}
+                  {event.price_text && !event.is_free && <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>}
+                </>
               )}
             </div>
           </div>
@@ -343,12 +319,11 @@ export default function EventCard({
     );
   }
 
-  // Tile variant — the workhorse grid card. Three modes by data shape:
-  //   1. has photo: photo banner on top, date badge overlay, content below
-  //   2. no photo, civic/quiet category: typographic block with color band
-  //   3. no photo, marquee category: tinted gradient block
-  // The category color is visible in every state, so a music event reads
-  // differently from a planning meeting at a glance.
+  // Tile variant — the workhorse grid card, now date-led (no photo
+  // banner). A category-tinted header strip carries the calendar date
+  // block + category + status; the body holds title, time/venue, and the
+  // reason chips. The category color stays the through-line so a music
+  // tile reads differently from a planning meeting at a glance.
   if (variant === "tile") {
     return (
       <article className="tactile tactile-interactive group relative flex h-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
@@ -357,119 +332,24 @@ export default function EventCard({
           boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
         }}
       >
-        {/* Banner — taller (152px) and more cinematic than v1 (112).
-            Photo, or category-tinted CategoryGraphic when no hero.
-            Same height in both modes so a grid never wobbles. */}
-        <div className="relative h-[152px] w-full overflow-hidden">
-          {hasPhoto && event.hero_image ? (
-            <Image
-              src={event.hero_image}
-              alt=""
-              fill
-              sizes="(max-width: 720px) 50vw, 360px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-            />
-          ) : (
-            <CategoryGraphic
-              category={event.category}
-              seed={event.slug}
-              className="absolute inset-0"
-            />
-          )}
-          {/* Stronger bottom gradient pulls the date/status pills off
-              the photo cleanly without darkening the upper image. */}
-          {hasPhoto && (
-            <div
-              aria-hidden
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(0,0,0,0.30) 0%, transparent 35%, transparent 55%, rgba(0,0,0,0.65) 100%)",
-              }}
-            />
-          )}
-
-          {/* Date glass pill — top-left. Was a stickered white card;
-              now a true glass pill with backdrop blur, sitting on the
-              photo like an editorial date stamp. The category color
-              tints the day number subtly so type signal carries here. */}
-          <div
-            className="absolute left-2 top-2 inline-flex items-baseline gap-1 rounded-full px-2 py-1 leading-none"
-            style={{
-              background: hasPhoto ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.45)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              boxShadow: hasPhoto
-                ? "0 2px 6px -1px rgba(0,0,0,0.30)"
-                : "inset 0 0 0 1px rgba(255,255,255,0.12)",
-              color: hasPhoto ? "var(--app-ink)" : "white",
-            }}
-          >
-            <span
-              className="text-[10px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: hasPhoto ? accent : "white" }}
-            >
-              {date.month}
-            </span>
-            <span
-              className="font-serif text-[16px] font-semibold"
-              style={{ color: hasPhoto ? "var(--app-ink)" : "white" }}
-            >
-              {date.day}
-            </span>
-            <span className="text-[10px] font-medium opacity-75">{date.weekday}</span>
-          </div>
-
-          {/* Category chip — top-right. Filled with category color
-              when on a photo (the way Airbnb's "Guest favorite" chip
-              calls out a status), glass when no photo so it reads
-              against the CategoryGraphic. */}
-          <span
-            className="absolute right-2 top-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
-            style={{
-              background: hasPhoto ? accent : "rgba(255,255,255,0.22)",
-              color: "white",
-              boxShadow: hasPhoto
-                ? "0 2px 6px -1px rgba(0,0,0,0.30)"
-                : "inset 0 0 0 1px rgba(255,255,255,0.22)",
-              backdropFilter: hasPhoto ? "none" : "blur(8px)",
-              WebkitBackdropFilter: hasPhoto ? "none" : "blur(8px)",
-            }}
-          >
-            {categoryLabel}
-          </span>
-
-          {/* Status pill — bottom-left ON THE PHOTO (the Airbnb
-              pattern). Only renders when there's a real status to
-              call out: Tonight / Live / Sold out / Cancelled. White
-              glass on photo, colored backdrop on no-photo. */}
-          {statusText && (
-            <span
-              className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em]"
-              style={{
-                background: statusBg,
-                color: "white",
-                boxShadow: "0 2px 6px -1px rgba(0,0,0,0.30)",
-              }}
-            >
-              {statusText}
-            </span>
-          )}
-
-          {/* Category color band on the bottom edge — the through-line
-              that makes a music tile visually distinct from a civic one. */}
+        {/* Date-led header strip — replaces the photo banner. */}
+        <div className="flex items-center gap-2.5 px-3.5 pb-2 pt-3.5">
           <div
             aria-hidden
-            className="absolute inset-x-0 bottom-0 h-[3px]"
-            style={{ background: accent }}
-          />
+            className="flex shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
+            style={{ minWidth: 46, background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)" }}
+          >
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{date.month}</span>
+            <span className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
+            <span className="text-[8.5px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
+          </div>
+          <span className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{categoryLabel}</span>
+          {statusText && (
+            <span className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
+          )}
         </div>
-
-        {/* Body — slimmer than v1. Title + meta + reasons row.
-            Status pill moved onto the photo so the body stays clean. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
+        {/* Body — title + meta + reasons row. */}
+        <div className="flex min-w-0 flex-1 flex-col gap-1 px-3.5 pb-3.5">
           <Link
             href={`/events/${event.slug}`}
             className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
@@ -505,6 +385,9 @@ export default function EventCard({
             })()}
           </div>
         </div>
+        {/* Category color band — the through-line that makes a music
+            tile read differently from a planning meeting at a glance. */}
+        <div aria-hidden className="h-[3px] w-full" style={{ background: accent }} />
       </article>
     );
   }
@@ -632,44 +515,21 @@ export default function EventCard({
                 )}
               </div>
             </div>
-            {/* Trailing visual anchor.
-                - WITH a real photo (the borrowed venue hero): a 64px
-                  cover thumbnail.
-                - WITHOUT one: a small CENTERED category icon on a tonal
-                  tile (category accent at 14% over the sunken paper),
-                  NOT the old full-bleed CategoryGraphic — which cropped
-                  its watermark icon at 64px and read as a broken image
-                  (the audit's flag). The icon + tint still carry the
-                  category signal; the left accent rail already anchors
-                  the row, so this stays quiet and clean. */}
-            {event.hero_image ? (
-              <div
-                className="relative h-16 w-16 shrink-0 self-center overflow-hidden rounded-[10px] bg-[var(--app-bg-sunken)]"
-                style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.08)" }}
-              >
-                <Image
-                  src={event.hero_image}
-                  alt=""
-                  fill
-                  sizes="64px"
-                  placeholder="blur"
-                  blurDataURL={PAPER_CREAM_BLUR}
-                  className="object-cover"
-                />
-              </div>
-            ) : (
-              <div
-                aria-hidden
-                className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[12px]"
-                style={{
-                  background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
-                  color: accent,
-                  boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.06)",
-                }}
-              >
-                <CategoryIcon category={event.category} className="h-5 w-5" />
-              </div>
-            )}
+            {/* Trailing visual anchor — a small CENTERED category icon on
+                a tonal tile (category accent at 14% over the sunken paper).
+                No imported photo: the icon + tint carry the category, the
+                left accent rail anchors the row, the date leads. */}
+            <div
+              aria-hidden
+              className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[12px]"
+              style={{
+                background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
+                color: accent,
+                boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.06)",
+              }}
+            >
+              <CategoryIcon category={event.category} className="h-5 w-5" />
+            </div>
           </div>
         </Link>
       </article>
@@ -679,39 +539,21 @@ export default function EventCard({
   return (
     <article className="tactile tactile-interactive group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-3">
       <div
-        className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-md)] border"
-        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+        className="relative flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] border"
+        style={{
+          borderColor: "var(--app-border)",
+          background: `color-mix(in srgb, ${accent} 10%, var(--app-bg-sunken))`,
+        }}
       >
-        {event.hero_image ? (
-          <>
-            <Image
-              src={event.hero_image}
-              alt=""
-              fill
-              sizes="64px"
-              placeholder="blur"
-              blurDataURL={PAPER_CREAM_BLUR}
-              className="object-cover"
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 flex items-baseline justify-center gap-1 px-1 pb-1 text-white">
-              <span className="text-[10px] font-bold uppercase tracking-wide">{date.month}</span>
-              <span className="font-serif text-[15px] font-semibold leading-none">{date.day}</span>
-            </div>
-          </>
-        ) : (
-          <div aria-hidden className="flex h-full w-full flex-col items-center justify-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: cat?.color ?? "var(--app-brand)" }}>
-              {date.month}
-            </span>
-            <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
-              {date.day}
-            </span>
-            <span className="mt-0.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-              {date.weekday}
-            </span>
-          </div>
-        )}
+        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accent }}>
+          {date.month}
+        </span>
+        <span className="font-serif text-xl font-semibold leading-none" style={{ color: "var(--app-ink)" }}>
+          {date.day}
+        </span>
+        <span className="mt-0.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+          {date.weekday}
+        </span>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
