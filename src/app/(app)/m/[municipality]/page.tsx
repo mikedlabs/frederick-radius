@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
+import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceList from "@/components/place/PlaceList";
 import EventCard from "@/components/event/EventCard";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
@@ -93,6 +94,27 @@ export default async function MunicipalityPage(
   const places = publicPlacesByMunicipality(m.slug)
     .map((p) => decoratePlace(p, m.centroid))
     .sort((a, b) => b.feature_score - a.feature_score);
+
+  // "Worth your time" is a destination-led reel, so it ranks differently
+  // from `places` (which still drives the hero/photo logic below by raw
+  // feature_score). Two fixes for audit T4 — the page promised breweries/
+  // arts but led with Crossfits, training studios, and a meeting house:
+  //   1. isRecommendable drops pure institutions (a no-op today since these
+  //      rows lack a Google primary_type, but it future-proofs the surface
+  //      and keeps it consistent with every other recommendation surface).
+  //   2. Destinations (food/arts/outdoors/shops) sort ABOVE personal-service
+  //      and civic/utility categories (wellness/services/worship…). Within
+  //      each group, feature_score still orders. A stable sort keeps it
+  //      deterministic. Down-rank, never delete — a thin town still fills.
+  const worthYourTime = places
+    .filter(isRecommendable)
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => {
+      const da = isDestinationCategory(a.p.category) ? 0 : 1;
+      const db = isDestinationCategory(b.p.category) ? 0 : 1;
+      return da - db || b.p.feature_score - a.p.feature_score || a.i - b.i;
+    })
+    .map((x) => x.p);
 
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
@@ -213,7 +235,7 @@ export default async function MunicipalityPage(
       <section className="space-y-2.5">
         <SectionHeading title="Worth your time" />
         <PlaceList
-          places={places.slice(0, 8)}
+          places={worthYourTime.slice(0, 8)}
           initialLayout="grid"
           emptyMessage={`We're still seeding places for ${m.name}. Check back soon, or submit a place you love.`}
         />
