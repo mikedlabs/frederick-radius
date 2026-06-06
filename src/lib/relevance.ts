@@ -172,3 +172,56 @@ export function isRecommendable(p: {
   if (p.source !== "dfp" && p.source !== "google") return true;
   return false;
 }
+
+/**
+ * Categories that are personal services, civic/utility, or pure amenities —
+ * places someone may *need*, but won't browse a town's "worth your time"
+ * highlight reel for. The town page's "Worth your time" reel was sorted on
+ * raw feature_score, which is saturated at 10.0 for hundreds of unenriched
+ * DFP imports, so the reel led with Crossfits, personal-training studios,
+ * psychological-services offices, and a Quaker meeting house instead of the
+ * breweries / galleries / shops the page promises (audit T4).
+ *
+ * The usual eligibility lever (isRecommendable) can't help here: these rows
+ * carry no Google primary_type to deny on. The signal that DOES separate a
+ * destination from a practitioner is the CATEGORY — practitioners land in
+ * `wellness`/`services`, civic rooms in `civic`/`worship`. So we down-rank
+ * (never delete) these in destination-led highlight surfaces. A real shop in
+ * `shopping` still leads; a massage studio in `wellness` sinks below it.
+ */
+export const NON_DESTINATION_CATEGORIES: ReadonlySet<string> = new Set([
+  "wellness",
+  "yoga",
+  "services",
+  "civic",
+  "government",
+  "public-safety",
+  "voting",
+  "worship",
+  "pharmacy",
+  "hardware",
+  "transit",
+  "parking",
+  "lodging",
+  // Pure amenities — useful on the map, never a "worth your time" pick.
+  "amenities",
+  "restroom",
+  "water",
+  "trash",
+  "recycling",
+  "dog-waste",
+  "wifi",
+  "bench",
+  "picnic",
+  "bike-parking",
+  "bike-repair",
+  "defibrillator",
+  "shelter",
+]);
+
+/** True for categories a visitor explores for their own sake (food, arts,
+ *  outdoors, shops, museums…). Used to favor destinations over services in
+ *  destination-led highlight reels like a town's "Worth your time". */
+export function isDestinationCategory(category: string | null | undefined): boolean {
+  return !NON_DESTINATION_CATEGORIES.has((category ?? "").trim().toLowerCase());
+}
