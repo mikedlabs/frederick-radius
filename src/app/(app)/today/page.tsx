@@ -84,6 +84,7 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
  *   • DecorativeDivider variants           — visual filler
  */
 export const metadata: Metadata = {
+  alternates: { canonical: "/today" },
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
 };
 

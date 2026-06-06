@@ -103,6 +103,7 @@ const ABOUT_INTENTS: AboutIntent[] = [
  */
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/about" },
   title: "About",
   description:
     "Frederick County, organized around your day. What's open, what's happening, where, and how to get there — every town and community, one app.",

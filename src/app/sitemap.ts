@@ -8,20 +8,21 @@ const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
+  // Only canonical, indexable, 200-status URLs (T2). The root "/" 307s to
+  // /guide, and /now + /radius 308-redirect — listing a redirect in the
+  // sitemap is the bug, so they're gone and /guide is the home entry.
   const top: MetadataRoute.Sitemap = [
-    { url: `${BASE}/`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${BASE}/now`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/guide`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    { url: `${BASE}/today`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
-    { url: `${BASE}/radius`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
+    { url: `${BASE}/collections`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/history`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
-    // /tonight, /discover, /markets, /historic, /art, /amenities all
-    // 301 to canonical homes (next.config.ts) and are intentionally
-    // dropped from the sitemap so crawlers index the canonical paths.
-    // /my-radius is user-state, not content; intentionally excluded.
-    // /submit, /welcome, /settings are forms/onboarding, disallowed
-    // in robots.ts so they don't need a sitemap entry either.
+    // Dropped: "/" (307→/guide), "/now" (308→/today), "/radius" (308→
+    // /map?mode=radius) — never list a redirect. /pulse, /parks, /trails
+    // are noindex; /my-radius is user-state; /submit, /welcome, /settings
+    // are forms/onboarding disallowed in robots.ts.
   ];
   const places = publicPlaces().map((p) => ({
     url: `${BASE}/places/${p.slug}`,
@@ -29,9 +30,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "weekly" as const,
     priority: 0.8,
   }));
-  const events = EVENTS.map((e) => ({
+  // Event window (T2): only current/upcoming within ~60 days, so the
+  // sitemap doesn't bloat with expired events. lastModified = the event's
+  // own start, not a single build timestamp.
+  const nowMs = +now;
+  const WINDOW_MS = 60 * 864e5;
+  const events = EVENTS.filter((e) => {
+    const t = Date.parse(e.starts_at);
+    return Number.isFinite(t) && t >= nowMs - 864e5 && t <= nowMs + WINDOW_MS;
+  }).map((e) => ({
     url: `${BASE}/events/${e.slug}`,
-    lastModified: now,
+    lastModified: new Date(e.starts_at),
     changeFrequency: "daily" as const,
     priority: 0.7,
   }));

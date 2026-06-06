@@ -18,6 +18,7 @@ import CostTransparency from "@/components/trust/CostTransparency";
  */
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/trust" },
   title: "Trust & data",
   description:
     "Where the data comes from, what the badges mean, and what we don't do.",
