@@ -20,6 +20,21 @@
  * it double-encodes its HTML, so the description arrived as literal
  * `&lt;strong&gt; ... &lt;br&gt;` prose.
  */
+/**
+ * Realistic named HTML entities that live feeds (CivicEngage RSS, iCal,
+ * Ticketmaster) actually emit beyond the basics handled inline below.
+ * `&mdash;`/`&ndash;`/`&hellip;`/quotes are decoded earlier with custom
+ * (non-glyph) replacements per the writing rule, so they're not here.
+ */
+const NAMED_ENTITIES: Record<string, string> = {
+  bull: "•", middot: "·", deg: "°", trade: "™", reg: "®", copy: "©",
+  times: "×", divide: "÷", frac12: "½", frac14: "¼", frac34: "¾",
+  // common accented letters from event/venue/place names
+  eacute: "é", egrave: "è", ecirc: "ê", agrave: "à", aacute: "á",
+  acirc: "â", auml: "ä", aring: "å", ouml: "ö", oacute: "ó", ocirc: "ô",
+  uuml: "ü", uacute: "ú", iacute: "í", ntilde: "ñ", ccedil: "ç",
+};
+
 export function cleanFeedText(raw: string): string {
   const decoded = raw
     .replace(/&amp;/gi, "&")
@@ -37,7 +52,16 @@ export function cleanFeedText(raw: string): string {
     .replace(/&[lr]squo;/gi, "'")
     .replace(/&[lr]dquo;/gi, '"')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n, 10)))
-    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)));
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    // Named entities feeds emit (bullets, fractions, accents) + a RESIDUAL
+    // GUARD: any remaining unknown `&word;` becomes a space so a raw entity
+    // (e.g. "&bull;") can never leak into body OR metadata. Runs after
+    // `&amp;`→`&` above, so double-encoded "&amp;bull;" decodes correctly;
+    // requires the trailing ";", so real ampersands like "C&O" are untouched.
+    .replace(
+      /&([a-z][a-z0-9]*);/gi,
+      (_m, name: string) => NAMED_ENTITIES[name.toLowerCase()] ?? " ",
+    );
   return decoded
     .replace(/<[^>]+>/g, " ")
     // Literal em or en dash glyphs that arrive already decoded from a
