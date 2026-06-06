@@ -2,6 +2,65 @@
 
 Tracked, not urgent. Reviewed during the structure pass (June 2026).
 
+## 🔴 Production audit (2026-06-06) — SEO + data integrity (HIGH PRIORITY)
+Live-prod audit of frederickradius.app. Work **P0 first** (indexing is broken;
+highest-leverage; independent). Constraints: **do NOT change robots.txt** (the
+AI-crawler block is deliberate). Items marked **DECISION** need Mike's call —
+do not guess; ask, or ship behind an off flag. Prod `curl` acceptance checks
+run after deploy (can't hit prod from the sandbox); I verify code-level + local.
+
+**P0 — indexing (confirmed in code):**
+- [ ] **T1 — every page emits the homepage canonical.** `layout.tsx:77`
+      `alternates: { canonical: "/" }`; child routes don't override → all of
+      `/events`, `/map`, `/m/<town>`, `/events/<slug>` claim the homepage as
+      canonical, collapsing indexing. Fix: drop the fixed root canonical; each
+      indexable route's `generateMetadata` returns `alternates.canonical` =
+      self URL (a `canonical(path)` helper so authors can't forget). Redirecting
+      / noindex pages need none.
+- [ ] **T2 — sitemap lists redirects + omits content.** `sitemap.ts:13,16`
+      lists `/now` + `/radius` (308s); towns partial, no `/events/<slug>` window
+      from data; single build `lastmod`. Fix: generate from the route table +
+      data (all town slugs, event slugs for open+next-60-days), canonical
+      destinations only, real `lastmod`.
+
+**P1 — data integrity / credibility:**
+- [ ] **T3a** cross-source event dedupe (normalized title + start + venue/coords;
+      keep both source links). "Fire & Rescue" vs "Fire and Rescue" twice.
+- [ ] **T3b** trim/sanitize event descriptions at ingestion → `summary` field
+      (first sentence, strip HTML); full body only on detail; redact meeting
+      IDs/passcodes/dial-ins (a Parks&Rec Teams passcode is exposed).
+- [ ] **T3c/T5** decode HTML entities at ingestion (`C&amp;O`, `&bull;`) — fixes
+      body AND meta (meta is built from stored value). Backfill existing rows.
+- [ ] **T3d — DECISION:** classify civic-ops/rec-programming (bulk trash, yard
+      waste, "Senior Exercise") — hide / civic-section-only / filterable? Don't
+      delete; classify.
+- [ ] **T3e — DECISION:** cancelled events (CANCELLED council meetings in the
+      upcoming flow) — exclude vs badge+de-emphasize.
+- [ ] **T3f** reconcile section counts with rendered list ("Today 12" / "Show
+      all 11") — derive count from the same deduped array.
+- [ ] **T4 — DECISION (weights):** `/m/frederick` "Worth your time" (Most loved)
+      is dominated by personal-service businesses (review-count signal), not
+      breweries/arts the copy promises. Add category weighting (favor
+      destinations; down-weight individual practitioners) + editorial pin for
+      flagship towns. NOTE: this is the same "belongs ≠ recommend" disease #436
+      fixed for institutions — extend the eligibility/ranking layer.
+- [ ] **T6** JSON-LD (none on site): `Event` on `/events/<slug>` (+ `eventStatus`
+      EventCancelled for T3e), `City`/`Place` + `BreadcrumbList` on `/m/<town>`,
+      `ItemList` on `/events` + `/collections`. Validate via Rich Results.
+
+**P2 — perf / security / polish:**
+- [ ] **T7** JS payload (~630KB /guide, ~655KB /map) — measure `next build`
+      first-load + Lighthouse, lazy-load Mapbox via dynamic import gated on map
+      view, find a heavy client dep to split. *(Mapbox is already dynamic
+      ssr:false — verify it's gated on the map mount.)*
+- [ ] **T8** `/api/og` cache-control is `max-age=0` → set long cache + version key.
+- [ ] **T9** add CSP (Report-Only first → enforce): self, Mapbox, Google Places,
+      Supabase, Vercel Blob, Plausible, Vercel insights; nonces for inline.
+- [ ] **T10** copy/minor: "panable"→"pannable" (/map meta); **DECISION** "Furmont
+      Days" (Thurmont source typo? don't feature a misspelled hero); /events meta
+      "Frederick Keys" vs feed "Flying Cows"; 404 emits conflicting noindex +
+      index,follow (keep noindex only); optional root `/`→/guide 307→308.
+
 ## /radius — audited, mostly complete ✅
 `/radius` already follows the structure-pass playbook: leads with the `WithinReach`
 "best moves" strip, events are capped at top-5 with an "All N →" see-all, and the
