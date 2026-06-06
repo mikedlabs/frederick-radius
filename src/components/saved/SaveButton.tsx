@@ -96,7 +96,14 @@ export default function SaveButton({
         }
       }}
       aria-pressed={isSaved}
-      aria-label={isSaved ? `Remove ${label} from Saved` : `Add ${label} to Saved`}
+      // `label` arrives as "Save {name}"; strip the verb so the aria reads
+      // cleanly ("Save {name}" / "Remove {name} from Saved") instead of the
+      // doubled "Add Save {name} to Saved".
+      aria-label={
+        isSaved
+          ? `Remove ${label.replace(/^Save\s+/, "")} from Saved`
+          : `Save ${label.replace(/^Save\s+/, "")}`
+      }
       title={isSaved ? "Saved" : "Save"}
       className="relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"
       style={{
