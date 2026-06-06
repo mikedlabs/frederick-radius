@@ -4,7 +4,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
-import { isNonDiscoverable } from "@/lib/relevance";
+import { isNonDiscoverable, isRecommendable } from "@/lib/relevance";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
@@ -295,6 +295,9 @@ export type PlaceEnriched = {
   google_photos?: string[];
   google_rating?: number;
   google_rating_count?: number;
+  /** Google Places primaryType — drives recommendation eligibility
+   *  (isRecommendable) so institutions don't lead "things to do". */
+  primary_type?: string;
   /** "A friend would send you here." Hand-picked in local-favorites.json
    *  or derived from a strong, well-reviewed, verified Google profile.
    *  Blended into the visitor curated-picks ranking and surfaced as a
@@ -437,6 +440,7 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     google_photos: photos.map((n) => photoProxy(n, 800, p.slug)),
     google_rating: e.rating,
     google_rating_count: e.user_rating_count,
+    primary_type: e.primary_type,
     local_favorite: resolveLocalFavorite(
       p.slug,
       e.rating,
@@ -843,12 +847,16 @@ export function getCuratedPicks(
   ctx: Omit<RankingContext, "profile" | "preferOpen"> & { limit?: number } = {},
 ): PlaceCardData[] {
   const { limit = 12, ...rest } = ctx;
+  // Recommendation surface → editorial eligibility applies: a school /
+  // daycare / admissions office is findable elsewhere but never a curated
+  // "go here now" pick. Filter BEFORE the limit so we don't waste slots.
   return rankPlaces({
     ...rest,
     profile: "visitor",
     preferOpen: true, // a stranger deciding now can't use a closed door
-    limit,
-  });
+  })
+    .filter(isRecommendable)
+    .slice(0, limit);
 }
 
 export function placesWithinRadius(origin: LngLat, meters: number, now: Date = new Date()): PlaceCardData[] {

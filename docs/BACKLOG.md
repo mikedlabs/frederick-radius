@@ -188,23 +188,45 @@ demonstrate the fix:
 - Sev: **High** · Surfaces: category (all), feeds map/today/radius origin ·
   When: **during coffee** · Type: [G] (the fallback is in code) + [P].
 
-### Pass 4 — events (the current biggest firehose)
-Firehose **confirmed** by the simulation (user 11) — and *empty* when feeds
-fail, which is the bigger live risk. Needs:
-- stricter grouping + more human sections: **Tonight / Weekend / Free / With
-  kids / Live music**.
-- **cap descriptions** (capped length, no walls of text).
-- **collapse civic/municipal harder** — separate **public/fun** from
-  **civic/private/recurring** (meetings, recurring civic items shouldn't dilute
-  the "what's on" answer).
-- **feed reliability + empty states**: Hood = HTTP 410 (dead), Celebrate +
-  County failing in the worker (issues #383–#423); warm, honest empty states
-  instead of a blank wall.
-- promote the event-detail **"dinner + parking + walk"** flow (a confirmed gem,
-  user 14) into discovery.
-- Audit before building; reuse existing event loaders/components, don't rebuild.
-- Sev: **High** · Surfaces: events, town pages (event sections), today ·
-  When: **during events** · Type: [G] (feed status) + [P].
+### Pass 4 — events — AUDITED, MOSTLY COMPLETE ✅ (do NOT rebuild)
+Audit (June 2026) verdict: the "firehose" label is **stale**. `/events` is
+already tiered and trustworthy — the `/radius` outcome. Confirmed against the
+code/data:
+- ✅ Tiered + answer-first: Today (hero + "why it matters" + rail) → This
+  weekend (grouped by vibe) → Later (collapsed) → Browse/Explorer (collapsed)
+  → Civic (collapsed). First screen answers "tonight/this weekend?".
+- ✅ Civic fully separated: `isCivicEvent` strips civic from the feed (0 civic
+  in the upcoming set); municipal calendar is its own collapsed section.
+- ✅ Descriptions capped: `line-clamp-2` everywhere + first-sentence "why it
+  matters" ≤150 chars. No walls of text in browse.
+- ✅ Recurring/low-relevance handled: `collapseRecurringEvents` folds weekly
+  RRULE shows; non-event venue open-status entries dropped.
+- ✅ Cancelled/stale: `deriveEventStatus` → red/amber badges + line-through;
+  past events filtered out.
+- ✅ Free / Family / Live music are data-backed (`is_free` + `category`), with
+  one-tap chips already in the Explorer.
+- ✅ Event detail intact + excellent: "Eat & drink before", "Parking nearby"
+  (1.5km cap), same-venue future events, weather at start.
+
+**Do NOT do an events structure pass.** Narrow real gaps only:
+- [ ] **Feed reliability = the #1 "feels useful" lever, but it's DATA/OPS, not
+      a UI pass.** `eventsLive` returns ~2; page leans on ~28 seed events
+      because Hood is dead (HTTP 410) and Celebrate/County fail in the worker
+      (issues #383–#423). Fix in the data cluster: repair Hood URL, Celebrate/
+      County parser, owner-set Ticketmaster/Eventbrite keys. Sev: **High** ·
+      Type: [G].
+- [ ] **(Optional small polish) Lift the human lenses higher.** The Live music
+      / Free / Family / Tonight / Weekend chips exist but sit inside the
+      *collapsed* "Browse & search" Explorer. A compact intent row above the
+      tiers, deep-linking the EXISTING lenses (reuse, ~1 component), would make
+      the page answer by intent without expanding Browse. Sev: Med · Type: [P].
+      Only if the owner wants it — not required.
+- [ ] **Live-feed facet reliability (minor data note):** for live (not curated)
+      events, `category`/`is_free` are keyword/default guesses; tighten as feeds
+      recover so Free/Family/Live-music stay trustworthy. Sev: Low · Type: [G].
+- [ ] **Downtown-defaulted** (24/28 upcoming are Frederick) — same county-wide
+      posture as coffee; events are genuinely sparser in towns. Covered by the
+      Cluster A posture work, not an events-specific fix.
 
 ---
 
@@ -220,6 +242,54 @@ breaks the county-wide brand promise for Brunswick / Thurmont / Middletown /
 Walkersville / Woodsboro. This cluster is tracked **alongside** coffee/events;
 do NOT start implementing it yet unless it directly supports coffee (the
 context-ranking rule above does).
+
+### Cluster A0 — Recommendation quality / eligibility 🔴🔴 (TOP — June-5 live audit)
+**The spine of the next phase. Principle (owner): Radius should not show
+everything first — it should show the RIGHT thing first, then let people dig.
+The app currently treats "belongs to category" as "should be recommended."
+They are not the same.** This is editorial strictness, NOT new features.
+
+Evidence (live, June 5): `/category/family` "Worth your time" leads with
+**Maurice Arenas Guitar Academy, Hood College Admission Office, Lincoln
+Elementary, Phoenix Recovery Academy, The Banner School** — 16 of 38 records
+are schools/offices/institutions, not family outings. Root cause: these carry
+`feature_score: 10.0` and ranking is feature-score-dominated; real attractions
+(escape rooms, pinball, zoo, bowling) get buried.
+
+- [ ] **Eligibility / `isBrowseWorthy` layer (do FIRST).** Deterministically
+      exclude non-public-facing institution types from discovery/recommendation
+      surfaces via Google `primary_type`: `primary_school`, `secondary_school`,
+      `preschool`, `university`, `child_care_agency`, generic `school`, +
+      admin/office types. CAUTION: `educational_institution` is mixed (Earth &
+      Space Science Lab, Frederick Clay Studio are real attractions) → don't
+      blanket-exclude; use a curated allow/deny for the ambiguous bucket.
+      Extends `relevance.ts` (`isNonDiscoverable`). Type: data + code-light.
+- [ ] **Stop trusting raw `feature_score`** as the dominant signal (schools at
+      10.0). Roll the coffee `categoryScore` (normalized, context-aware) to the
+      other category surfaces once eligibility is in. Type: code (reuse).
+- [ ] **Category vs Intent vs Moment vs Confidence model** (owner's cleaner
+      taxonomy): Category = what it is; Intent = why (with kids / date night /
+      rainy day / free / walkable / live music / dog-friendly); Moment = when
+      (now/tonight/weekend); Confidence = should Radius recommend it (curated /
+      verified / owner / imported / low). Underpins search, map, cards, events,
+      home. Big; design before building.
+- [ ] **"Why this result"** on important cards (why am I seeing this · open? ·
+      who says so · how far · next action). Primitives exist (SourceBadge /
+      FreshnessChip / PlaceStatus) — make systematic, esp. dense cards.
+
+## June 5 2026 — live-site strategic review (owner) → priority order
+The product crossed from prototype to real shape; thesis is on screen. Next
+phase = **trust, ranking, restraint, polish — not features.** "Do not expand
+the interface until ranking + trust are tighter." Priorities:
+
+**Do now:** 1) category/ranking quality, esp. Family (→ Cluster A0) · 2) reduce
+Today density above the fold (answer-first → best moves → deep briefing) · 3)
+audit duplicate nav for a11y/SEO · 4) upgrade Search into real "Ask Radius"
+natural-language prompt cards · 5) "why this result" on cards (→ Cluster A0).
+**Do next:** recommendation scoring · category/intent/moment/confidence split ·
+better empty/low-confidence states · more visible town/municipality context ·
+make event pages the model for place pages.
+**Do NOT yet:** add random features / expand UI before ranking + trust tighten.
 
 ### Cluster A — Downtown posture / county-wide default 🔴
 The biggest hidden risk: claims county-wide, behaves downtown-first without
@@ -239,25 +309,63 @@ context. (Users 6,7,8,9,10,19 — 8 of 20.)
       When: later (GIS pilot) · Type: [P].
 
 ### Cluster B — Data trust / provenance 🔴
-Trust leaks from data, not design. (Users 5,20 + cross-cutting.)
-- [ ] **Fix photo-twins** (the ~37 unresolved clusters — multi-tenant + wrong-
-      photo; see the photo-twins audit). Sev: **High** · Surfaces: map, radius,
-      category, town, place detail · When: **anytime / alongside coffee** ·
-      Type: [G].
-- [ ] **Consistent provenance badge**: official · owner · curated · feed ·
-      OSM/external. Sev: High · Surfaces: place detail, cards everywhere · When:
-      later · Type: [P].
-- [ ] **Visible last-verified dates** where possible. Sev: Med · Surfaces:
-      place detail · When: later · Type: [G].
-- [ ] **Open-now confidence** shown consistently (verified vs likely). Sev: Med
-      · Surfaces: all place cards · When: later · Type: [G].
+Trust leaks from data, not design. (Users 5,20 + cross-cutting.) **Audited June
+2026 with live evidence — severities corrected below.**
+- [ ] **Fix photo-twins — CONFIRMED High, do FIRST.** Authoritative `photo_names`
+      check: **74 ChIJ clusters / 158 records (~10% of 1,540 photo'd places)**
+      share a Google photo. Three causes: multi-tenant building photos
+      (Brewer's Alley|Fountain Rock|Alley Wagon), wrong-photo on unrelated places
+      (3 different Thurmont restaurants share one), and dup records (Rockwell ×2,
+      Court St deck ×2). Surfaces: ALL place cards (today/map/radius/category/
+      town/detail). Smallest safe fix: (a) fold true dupes in `places-dedup.json`;
+      (b) deterministic shared-photo SUPPRESSION — keep the photo on one
+      canonical record per ChIJ cluster, drop to category placeholder on the rest
+      ("no photo" > "wrong photo"); (c) suppress junk records ("Best of Business
+      Listings"). Type: **data + small pipeline rule** (no UI change). When: now.
+- [ ] **Event feed cleanup — Medium (NOT the High outage previously assumed).**
+      Live evidence: runtime `getLiveEvents(60)` = **77 events** (County 62,
+      Celebrate 15); Celebrate + County HTTP 200 / valid. The page is well-fed.
+      The daily-worker "not JSON" failures (#383+) are **false alarms** — those
+      sources are iCal/RSS consumed at runtime, not JSON. Genuinely dead: **Hood
+      (410)** + **DFP scrape URL (404)**, both contribute 0. Smallest safe fix:
+      mark Celebrate/County runtime-only in `sources.yaml`/worker so they stop
+      opening daily-failure issues; remove dead Hood + stale DFP scrape; (owner)
+      set Ticketmaster/Eventbrite keys for additive coverage. Type: pipeline/
+      config. When: after photo-twins.
+- [ ] **Provenance on dense cards — Medium-low.** `SourceBadge`/`TrustChip`/
+      `FreshnessChip`/`PlaceStatus`/`/trust` all exist; detail + lead cards carry
+      trust, but `PlaceCard showSource` defaults OFF for row/tile/grid → map
+      drawer, category sections, town lists show none. Optional: a compact source
+      dot on dense cards. Lower value than fixing the wrong photos. Type: small
+      code. When: after feeds / later polish.
+- [x] **Municipality stamping — DONE (audited).** 1,649 places, **0 unstamped,
+      0 off-bbox/needs-review**; every place valid + in-county. Downtown's 53.2%
+      is real density (877), not a stamping error. No fix needed; GIS boundaries
+      could refine edge cases later, but there's no leak. (Posture/downtown bias
+      is Cluster A, a ranking matter — not a stamping one.)
 - [ ] **De-emphasize weak/odd records** (feature-score-only ranking surfaces
       niche records — guitar studios/schools — over anchors). Sev: Med ·
       Surfaces: category, map, radius, today · When: during coffee (ranking) ·
       Type: [G]+[P].
-- [ ] **Stamp every place with its real municipality** (fixes "is this even in
-      my town?"; pairs with GIS boundaries). Sev: High · Surfaces: all · When:
-      later (GIS-assisted) · Type: [G].
+- [ ] **Event feed reliability — the real "events" work (Sev: HIGH).** `/events`
+      is audited & architecturally complete (see Pass 4); the actual problem is
+      DATA/OPS: `eventsLive` returns ~2, so the page leans on ~28 seed events.
+      Hood feed dead (HTTP 410), Celebrate + County failing in the worker
+      (issues #383–#423). Repair Hood URL / Celebrate+County parser; track
+      owner-set Ticketmaster/Eventbrite keys. This belongs to the data/pipeline
+      cluster, NOT an events structure pass. Surfaces: events, town pages, today
+      · Type: [G].
+- [ ] **Live-feed facet confidence (Sev: Low):** for live (not curated) events,
+      `category`/`is_free` are keyword/default guesses — keep documented, don't
+      overstate in UI; improve as feeds recover. Type: [G].
+
+### Optional — events intent-chip polish (DEFERRED, not trivial)
+Audited verdict: NOT trivial, so skipped per owner's "skip if not trivial" bar.
+Lifting Free/Family/Live-music chips above the fold would require force-opening
+a localStorage-persisted collapsed Explorer + reconciling two param systems
+(`lens` vs `cats`/`when`) — real dead-control risk. The lead tiers already
+answer Tonight/Weekend. Revisit only if events gets a larger pass later. Sev:
+Low · Type: [P].
 
 ### Cluster C — GIS pilot gating ⏸️ (do NOT implement yet)
 Justified by the simulation; use GIS to solve **posture / orientation / trust**,
