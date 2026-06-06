@@ -147,6 +147,9 @@ export default function PlaceCard({
   const kf = knownFor(place);
 
   if (variant === "feature" && photoUrl) {
+    // The most prominent promoted card should also explain itself — wire
+    // the same shared reason chips every other variant uses (no new system).
+    const reasons = placeReasons(place);
     return (
       <article
         className="tactile tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
@@ -183,6 +186,7 @@ export default function PlaceCard({
                 {cat?.name ?? place.category} · {place.known_for?.[0] ?? place.short_blurb}
                 <BeenHereIndicator slug={place.slug} />
               </p>
+              {reasons.length > 0 && <StatusChipRow reasons={reasons} className="mt-1.5" />}
             </div>
             <div className="absolute right-2 top-2 rounded-full bg-white/85 px-1.5 py-0.5 backdrop-blur">
               <OpenClosedDot status={place.open_status} />
