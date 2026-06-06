@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "style:lint": "tsx --tsconfig tsconfig.json scripts/style-lint.ts",
     "lint:zindex": "node scripts/check-zindex.mjs",
+    "build:photo-suppress": "tsx --tsconfig tsconfig.json scripts/build-photo-suppress.ts",
     "perf": "tsx --tsconfig tsconfig.json scripts/lighthouse-audit.ts",
     "shots": "node scripts/screenshots.mjs",
     "test": "vitest run",

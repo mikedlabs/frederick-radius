@@ -4,7 +4,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
-import { isNonDiscoverable, isRecommendable } from "@/lib/relevance";
+import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib/relevance";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
@@ -12,6 +12,7 @@ import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" }
 import DEDUP_RAW from "@/data/places-dedup.json" with { type: "json" };
 import OVERRIDES_RAW from "@/data/places-overrides.json" with { type: "json" };
 import KNOWN_FOR_RAW from "@/data/known-for.json" with { type: "json" };
+import PHOTO_SUPPRESS_RAW from "@/data/photo-suppress.json" with { type: "json" };
 import LOCAL_FAVORITES_RAW from "@/data/local-favorites.json" with { type: "json" };
 import SEASONAL_RAW from "@/data/seasonal-places.json" with { type: "json" };
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
@@ -21,6 +22,11 @@ import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
+
+// Shared-photo suppression set (de-twin): slugs whose hero photo is nulled
+// so two cards never show the same Google photo. Generated, reviewable —
+// see scripts/build-photo-suppress.ts + src/data/photo-suppress.json.
+const PHOTO_SUPPRESS = new Set((PHOTO_SUPPRESS_RAW as { slugs: string[] }).slugs);
 
 // Seasonal-place gate. Keyed by slug; values are { months: number[],
 // label: string }. The _doc key in the JSON is metadata; skip it.
@@ -470,6 +476,14 @@ export type PlaceDetail = PlaceCardData & {
 
 export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
   const enriched = applyEnrichment(p);
+  // Shared-photo de-twin: a suppressed record shares its Google photo with
+  // a stronger canonical record in the same ChIJ cluster, so null its hero
+  // (and gallery) — the card falls back to the category placeholder. "No
+  // photo > wrong photo." See scripts/build-photo-suppress.ts.
+  if (PHOTO_SUPPRESS.has(p.slug)) {
+    enriched.google_photo_url = undefined;
+    enriched.google_photos = [];
+  }
   // Hours provenance, Phase 1 precedence: Google enrichment, then a
   // curated manual schedule. OSM hours apply to the map's OSM layer,
   // not the static place records, so they are not stamped here.
@@ -744,6 +758,7 @@ export function isSubstantive(p: Place): boolean {
  */
 export function publicPlaces(): Place[] {
   return BASE_PLACES
+    .filter((p) => !SUPPRESSED_JUNK_SLUGS.has(p.slug))
     .filter(isOperational)
     .filter(isDiscoverable)
     .filter(isSubstantive)

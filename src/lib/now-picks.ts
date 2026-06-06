@@ -29,6 +29,7 @@
  */
 import { unstable_cache, revalidateTag } from "next/cache";
 import { rankPlaces, type PlaceCardData } from "@/lib/loaders/places";
+import { isRecommendable } from "@/lib/relevance";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 
 export type Daypart = "morning" | "midday" | "evening";
@@ -154,6 +155,7 @@ export const getOpenNowCandidates = unstable_cache(
     return ranked
       .filter(
         (p) =>
+          isRecommendable(p) &&
           p.open_status.state === "open" &&
           cats.has(p.category) &&
           (p.google_rating ?? 0) >= 4.0,
@@ -192,6 +194,7 @@ export const getWeekendBetCandidates = unstable_cache(
     return ranked
       .filter(
         (p) =>
+          isRecommendable(p) &&
           Boolean(p.google_photo_url) &&
           WEEKEND_BET_CATS.has(p.category) &&
           (p.google_rating ?? 0) >= 4.4 &&

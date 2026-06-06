@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { rankPlaces, likelyOpenPlaces, type PlaceCardData } from "@/lib/loaders/places";
+import { isRecommendable } from "@/lib/relevance";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import RightNowGrid from "./RightNowGrid";
 import DismissibleSection from "./DismissibleSection";
@@ -48,9 +49,12 @@ export default function RightNow({
     (p) => inSlot(p) && !openVerified.some((o) => o.slug === p.slug),
   );
   const seen = new Set<string>();
-  const uniq = [...openVerified, ...likely].filter((p) =>
-    seen.has(p.slug) ? false : (seen.add(p.slug), true),
-  );
+  const uniq = [...openVerified, ...likely].filter((p) => {
+    // Recommendation surface → editorial eligibility (no schools/daycares
+    // leading "right now"), then de-dupe across the two sources.
+    if (!isRecommendable(p)) return false;
+    return seen.has(p.slug) ? false : (seen.add(p.slug), true);
+  });
 
   const dayIdx = Math.floor(now.getTime() / 86_400_000);
   const byMuni = new Map<string, PlaceCardData[]>();
