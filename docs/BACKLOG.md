@@ -291,6 +291,28 @@ better empty/low-confidence states · more visible town/municipality context ·
 make event pages the model for place pages.
 **Do NOT yet:** add random features / expand UI before ranking + trust tighten.
 
+### Live re-audit follow-ups (June, owner)
+- [x] **Eligibility coverage hole — FOUND + FIXED (#437).** #436 gated only
+      getCuratedPicks + category; Phoenix Recovery Academy still led Today's
+      "Worth a look". Added `isRecommendable` to worth-a-look, now-picks
+      (open-now + weekend bets), RightNow. Browse/admin/health stay unfiltered.
+- [x] **Photo-twins — SHIPPED (#437).**
+- [ ] **News feed relevance leak — High (brand).** "What's new in Frederick"
+      surfaced MoCo Show, Maryland Matters statewide items (Montgomery County
+      emissions, PG County council, statewide abortion fund). Either tighten the
+      Frederick-County filter hard or pull the section until clean — bad local
+      relevance hurts the brand fast. Source: `news.ts`/`local-news` +
+      `LocalNewsStrip`. Type: data/filter. Likely quick.
+- [ ] **Tighten Today choreography — Med.** Right ingredients, still reads
+      dashboard-y. Target order: Ask Radius → Best move now → Tonight/Weekend →
+      Practical → Full briefing. Less buffet, more "here's your move." (Extends
+      the #432 ladder; sequencing, not new modules.)
+- [ ] **"Why this result" systematic — Med.** Every promoted card should quietly
+      justify itself (open now · 5-min walk · kid-friendly · free · official ·
+      verified · rain plan · near Carroll Creek). Primitives exist
+      (SourceBadge/FreshnessChip/place-reasons) — make consistent on promoted
+      cards. The phrase "Worth your time" is a promise; this is what backs it.
+
 ### Cluster A — Downtown posture / county-wide default 🔴
 The biggest hidden risk: claims county-wide, behaves downtown-first without
 context. (Users 6,7,8,9,10,19 — 8 of 20.)
