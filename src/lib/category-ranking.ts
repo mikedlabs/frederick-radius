@@ -133,6 +133,51 @@ export function nearestFrom(places: PlaceCardData[]): PlaceCardData[] {
   return [...places].sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
 }
 
+export type CuratedStack = {
+  best: PlaceCardData[];
+  openNow: PlaceCardData[];
+  favs: PlaceCardData[];
+  nearby: PlaceCardData[];
+};
+
+/**
+ * The curated stack with PROGRESSIVE dedupe. "Best matches", "Open now",
+ * "Local favorites", and "Nearby" overlap heavily — a strong local café is
+ * open AND loved AND close — so a place used to appear three or four times
+ * on one long page, which read like padding.
+ *
+ * Each section now shows a place only if no EARLIER section already did, so
+ * a place lands once, in the highest-value section it qualifies for (Best →
+ * Open now → Local favorites → Nearby). This only de-duplicates the curated
+ * stack; the place is never removed from the PAGE — "Across the county" and
+ * "Full browse" remain the complete browsing tail. Sections degrade
+ * gracefully: if dedupe empties a later one, it simply renders fewer (or its
+ * caller hides it), it never back-fills with a place already shown above.
+ *
+ * Pure given its inputs (the section selectors are pure); unit-tested.
+ */
+export function selectCuratedStack(
+  rec: PlaceCardData[],
+  ctx: CategoryRankContext = {},
+  opts: { bestN?: number; sectionN?: number } = {},
+): CuratedStack {
+  const bestN = opts.bestN ?? 3;
+  const sectionN = opts.sectionN ?? 6;
+  const best = bestMatches(rec, ctx, bestN);
+  const shown = new Set(best.map((p) => p.slug));
+  const take = (list: PlaceCardData[]): PlaceCardData[] => {
+    const picked = list.filter((p) => !shown.has(p.slug)).slice(0, sectionN);
+    for (const p of picked) shown.add(p.slug);
+    return picked;
+  };
+  // Order is the priority order — each take() consumes from the same
+  // `shown` set the earlier ones grew.
+  const openNow = take(openNowOf(rec));
+  const favs = take(localFavoritesOf(rec, ctx));
+  const nearby = take(nearestFrom(rec));
+  return { best, openNow, favs, nearby };
+}
+
 export type MunicipalityGroup = { municipality: string; places: PlaceCardData[] };
 
 /**

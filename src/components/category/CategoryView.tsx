@@ -4,10 +4,7 @@ import { rankPlaces } from "@/lib/loaders/places";
 import { isOpenNow } from "@/lib/hours";
 import { isRecommendable } from "@/lib/relevance";
 import {
-  bestMatches,
-  openNowOf,
-  localFavoritesOf,
-  nearestFrom,
+  selectCuratedStack,
   groupByMunicipality,
 } from "@/lib/category-ranking";
 import PlaceCard from "@/components/place/PlaceCard";
@@ -54,13 +51,12 @@ export default function CategoryView({
   // Best matches is the LEAD: a tight 3-up tile row (mixed density — one
   // strong lead over the scannable rows below), not a 6-tile block that
   // reads at parity with the dense sections and doubles the mobile scroll.
-  const best = bestMatches(rec, ctx, 3);
-  const bestSlugs = new Set(best.map((p) => p.slug));
-  const notBest = (list: typeof all) => list.filter((p) => !bestSlugs.has(p.slug));
-
-  const openNow = notBest(openNowOf(rec)).slice(0, 6);
-  const favs = notBest(localFavoritesOf(rec, ctx)).slice(0, 6);
-  const nearby = notBest(nearestFrom(rec)).slice(0, 6);
+  //
+  // The curated stack uses PROGRESSIVE dedupe: a place that's open AND loved
+  // AND nearby shows once, in the earliest section it earns, instead of
+  // three times down the page. "Across the county" + "Full browse" below
+  // stay the complete tail. See lib/category-ranking selectCuratedStack.
+  const { best, openNow, favs, nearby } = selectCuratedStack(rec, ctx);
 
   // Across the county: every town EXCEPT the user's (or downtown when no
   // town is set), one top pick each — the anti-downtown-bias section.
