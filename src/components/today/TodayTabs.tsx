@@ -75,35 +75,27 @@ export default function TodayTabs({
   const renderPlaces = (places: PlaceCardData[]) => {
     if (places.length === 0) return null;
     const pool = places.slice(0, 6);
-    const heroIdx = pool.findIndex((p) => Boolean(p.google_photo_url));
-    if (heroIdx === -1) {
-      return (
-        <ul className="space-y-2">
-          {pool.map((p) => (
-            <li key={p.slug}>
-              {confTag(p)}
-              <PlaceCard place={p} />
-            </li>
-          ))}
-        </ul>
-      );
-    }
-    const hero = pool[heroIdx];
-    const rest = pool.filter((_, i) => i !== heroIdx);
+    // Lead with the top-ranked place as the feature; the rest are rows.
+    // (Selection is by rank, never by photo availability — cards are
+    // typographic now, so a "has a photo" pick would be both meaningless
+    // and a hierarchy based on media, not value. Photo Policy, Phase 1.)
+    const [hero, ...rest] = pool;
     return (
       <div className="space-y-2">
         <div>
           {confTag(hero)}
           <PlaceCard place={hero} variant="feature" />
         </div>
-        <ul className="space-y-2">
-          {rest.map((p) => (
-            <li key={p.slug}>
-              {confTag(p)}
-              <PlaceCard place={p} />
-            </li>
-          ))}
-        </ul>
+        {rest.length > 0 && (
+          <ul className="space-y-2">
+            {rest.map((p) => (
+              <li key={p.slug}>
+                {confTag(p)}
+                <PlaceCard place={p} />
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     );
   };

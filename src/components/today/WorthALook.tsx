@@ -1,35 +1,30 @@
 import Link from "next/link";
-import Image from "next/image";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { getWorthALookToday, easternDayKey } from "@/lib/worth-a-look";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
- * WorthALook — compact photo-led discovery rail on /now.
+ * WorthALook — the daily discovery rail on /today.
  *
- * Six tiles, edge-to-edge horizontal scroll, each a real Frederick
- * place chosen for the day. The lineup rotates daily so a returning
- * visitor sees something new.
+ * Six typographic tiles, edge-to-edge horizontal scroll, each a real
+ * Frederick place chosen for the day; the lineup rotates daily so a
+ * returning visitor sees something new.
  *
- * v2 sized: cards shrank from 260×220 to 152×190 to match the
- * MoodTiles register — the page was reading top-heavy with the old
- * size dominating the scroll vs the tight 6-up tile row above. The
- * smaller card still reads as photo-led but stops competing with the
- * action surfaces.
- *
- * Header gets the same eyebrow treatment as MoodTiles ("What do you
- * need right now") instead of the bigger serif headline — keeps the
- * two surfaces visually paired.
+ * Photo Policy (Phase 1): this rail no longer renders imported place
+ * photos. Each tile is a typographic card — a category mark + name +
+ * type — so the rail reads as a curated set of picks, not a strip of
+ * scraped storefront shots. (The old photo→hero view-transition morph
+ * was dropped with the photos; navigation still works, just without the
+ * image cross-fade.) See docs/PHOTO_POLICY.md.
  */
 export default async function WorthALook() {
   const picks = await getWorthALookToday(easternDayKey());
   if (picks.length === 0) return null;
 
   return (
-    // Open by default — the daily photo picks are a draw worth showing;
-    // the collapse control stays so a reader can tuck it away, but it
-    // greets visitors expanded.
+    // Open by default — the daily picks are a draw worth showing; the
+    // collapse control stays so a reader can tuck it away.
     <CollapsibleSection
       title="Worth a look today"
       count={picks.length}
@@ -37,9 +32,6 @@ export default async function WorthALook() {
       storageKey="fr:worth-a-look-open:v1"
       defaultOpen
     >
-      {/* Horizontal scroll rail. -mx-4 + px-4 lets the first/last
-          tiles edge-fade off the screen. Snap-stop on each tile so
-          a flick lands cleanly. */}
       <div
         className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="list"
@@ -49,59 +41,33 @@ export default async function WorthALook() {
             const cat = CATEGORY_BY_SLUG[p.category];
             const catColor = cat?.color ?? "var(--app-brand)";
             return (
-              <li
-                key={p.slug}
-                role="listitem"
-                className="snap-start"
-              >
+              <li key={p.slug} role="listitem" className="snap-start">
                 <Link
                   href={`/places/${p.slug}`}
-                  className="tactile tactile-interactive group relative block h-[190px] w-[152px] overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
+                  className="tactile tactile-interactive group relative flex h-full w-[152px] flex-col gap-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3"
+                  style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
                   aria-label={`${p.name} — ${cat?.name ?? p.category}`}
                 >
-                  {p.google_photo_url && (
-                    <Image
-                      src={p.google_photo_url}
-                      alt={p.name}
-                      fill
-                      sizes="152px"
-                      placeholder="blur"
-                      blurDataURL={PAPER_CREAM_BLUR}
-                      className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                      // View Transitions pair-up: same name on the
-                      // hero of /places/[slug] morphs this tile photo
-                      // into the detail hero on route change.
-                      style={{ viewTransitionName: `place-photo-${p.slug}` }}
-                    />
-                  )}
-                  {/* Bottom gradient so the name reads on any photo. */}
+                  {/* Category color band — thin top edge so the eye can
+                      sort the rail by type without reading. */}
+                  <div aria-hidden className="absolute inset-x-0 top-0 h-1" style={{ background: catColor }} />
+                  {/* Category mark — the typographic stand-in for a photo. */}
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-[55%]"
+                    className="mt-1 flex h-11 w-11 items-center justify-center rounded-[var(--app-radius-md)]"
                     style={{
-                      background:
-                        "linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.82) 100%)",
+                      background: `linear-gradient(145deg, color-mix(in srgb, ${catColor} 22%, var(--app-bg-elevated)), color-mix(in srgb, ${catColor} 7%, var(--app-bg-elevated)))`,
+                      color: catColor,
+                      boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)",
                     }}
-                  />
-                  {/* Category color band — thin top edge so the eye
-                      can sort the rail by type without reading. */}
-                  <div
-                    aria-hidden
-                    className="absolute inset-x-0 top-0 h-1"
-                    style={{ background: catColor }}
-                  />
-                  {/* Name + category chip — compressed text sizes
-                      to match the smaller card. */}
-                  <div className="absolute inset-x-0 bottom-0 p-2.5 text-white">
-                    <p
-                      className="font-serif text-[13px] font-semibold leading-tight"
-                      style={{ textWrap: "balance" } as React.CSSProperties}
-                    >
+                  >
+                    <CategoryIcon slug={p.category} strokeWidth={1.75} className="h-5 w-5 opacity-90" style={{ color: catColor }} />
+                  </div>
+                  <div className="mt-auto">
+                    <p className="font-serif text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)", textWrap: "balance" } as React.CSSProperties}>
                       {p.name}
                     </p>
-                    <p
-                      className="mt-0.5 truncate text-[10.5px] font-medium uppercase tracking-[0.08em] opacity-80"
-                    >
+                    <p className="mt-0.5 truncate text-[10.5px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
                       {cat?.name ?? p.category}
                     </p>
                   </div>

@@ -306,6 +306,9 @@ export default async function HomePage({
       ? { title: weekendBest.title, venue: weekendBest.venue_name ?? null, slug: weekendBest.slug }
       : null,
     parking: parkingDefault ? { name: parkingDefault.name, slug: parkingDefault.slug } : null,
+    // The featured event already heroes TodayMoves + the "What's on"
+    // section, so its answer card drops the duplicate name (count + door).
+    featuredSlug: featuredEvent?.slug ?? null,
   });
 
   // When the active slice is empty, nudge to a DIFFERENT slice that
