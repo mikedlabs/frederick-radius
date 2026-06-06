@@ -68,11 +68,17 @@ const run = async () => {
     }
   } catch (e) { bad(`/events fetch failed: ${e.message}`); }
 
-  // 3. Map false precision (#444) — no "N ft" distance strings on /map.
+  // 3. Map false precision (#444) — the bug is a distance attached to a
+  // VAGUE location (a bare municipality name), e.g. "Frederick · 113 ft".
+  // A distance on a real venue ("Weinberg Center · 343 ft") or amenity
+  // ("nearest 376 ft") is EARNED and fine — so match only municipality-
+  // name · distance, after stripping tags/RSC comment markers.
   try {
     const { html } = await get("/map");
-    const ft = (html.match(/\b\d{1,4}\s?ft\b/g) || []).length;
-    check(ft === 0, "/map shows no 'ft' distances", `/map shows ${ft} 'ft' distance(s)`);
+    const text = html.replace(/<!--.*?-->/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+    const MUNI = "Frederick|Brunswick|Thurmont|Middletown|Walkersville|Urbana|Emmitsburg|Mount Airy|New Market|Myersville|Woodsboro|Burkittsville|Rosemont";
+    const vague = (text.match(new RegExp(`\\b(?:${MUNI})\\s*·\\s*\\d{1,4}\\s?ft\\b`, "g")) || []).length;
+    check(vague === 0, "/map has no vague 'municipality · N ft' claims", `/map shows ${vague} vague-location distance claim(s)`);
   } catch (e) { bad(`/map fetch failed: ${e.message}`); }
 
   // 4. No imported photos in browse surfaces (Phase 1-3).
