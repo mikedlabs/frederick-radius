@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Sparkles, Moon } from "lucide-react";
-import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, dedupeCuratedClusters, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
+import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, dedupeCuratedClusters, type EventWithMeta } from "@/lib/loaders/events";
+import { classifyEvent, isPublicEvent } from "@/lib/events/classify";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
@@ -114,42 +115,43 @@ export default async function EventsIndexPage({
     fetchBandsintownForArtists([]).catch(() => []),
   ]);
 
-  // Live/county events + real live-music + sports feeds, with curated
-  // duplicates dropped (P0-4). Civic-meeting rows stripped so they
-  // don't bury everything else.
+  // Live/county + music + sports feeds, curated duplicates dropped. NOT
+  // civic-filtered here — classification happens ONCE on the unified set
+  // below, so meetings/reminders/rentals are laned (or suppressed), never
+  // silently dropped from a place they belong.
   const liveCards = dedupeLiveAgainstCurated(
     collapseRecurringEvents(
-      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents]
-        .map(liveToCardEvent)
-        .filter((e) => !isCivicEvent(e)),
+      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents].map(liveToCardEvent),
     ),
     curatedUpcoming,
   );
 
   // Extracted venue lineups (The Banyan, Sky Stage, …) folded into the
   // same feed so a venue with a band tonight reads as an event, not just
-  // a place — the "places + events fused" wedge. Empty until the venue
-  // agent runs; civic-stripped for parity with the live set.
-  const venueCards = venueEventsAsCards(now).filter((e) => !isCivicEvent(e));
+  // a place — the "places + events fused" wedge.
+  const venueCards = venueEventsAsCards(now);
 
-  // One unified, deduplicated, time-sorted set the explorer drives.
+  // One unified, deduplicated, time-sorted set.
   const bySlug = new Map<string, EventWithMeta>();
   for (const e of [...curatedUpcoming, ...liveCards, ...venueCards]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
-  // Second-pass dedup catches CURATED-vs-CURATED duplicates that
-  // slip through dedupeLiveAgainstCurated — the case where the same
-  // event lands once as hand-curated data and again from a municipal
-  // calendar ingestion (e.g. "Alive @ Five · The Learned Doctors"
-  // vs "Downtown Frederick Partnership-Alive @ Five"). Picks the
-  // richer record (photo + description) from each cluster.
-  const allEvents = withVenueThumbs(
+  // Second-pass dedup catches CURATED-vs-CURATED duplicates that slip
+  // through dedupeLiveAgainstCurated. Picks the richer record per cluster.
+  const unified = withVenueThumbs(
     dedupeCuratedClusters(
       [...bySlug.values()].sort(
         (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
       ),
     ),
   );
+  // EVENT ELIGIBILITY (P0): only PUBLIC events lead "What's on" + the
+  // explorer. Civic meetings and town reminders get their own collapsed
+  // lanes below; private rentals + cancelled items are suppressed entirely.
+  // "Belongs-to-feed ≠ should-be-promoted." See lib/events/classify.
+  const allEvents = unified.filter(isPublicEvent);
+  const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting");
+  const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder");
   const liveSlugs = seedLive.map((e) => e.slug);
 
   // Facet lists, only for values actually present.
@@ -437,9 +439,50 @@ export default async function EventsIndexPage({
         />
       </CollapsibleSection>
 
-      {/* ── 7. CIVIC & MUNICIPAL CALENDAR — the long tail of meetings,
-          recurring pickups, and municipal notices, COLLAPSED by default
-          so municipal gravity never competes with the events above.
+      {/* ── 6b. CIVIC MEETINGS — boards, commissions, hearings, council
+          sessions classified out of the live feed. Present + findable in
+          their own lane, never in "What's on". COLLAPSED, self-hides. */}
+      {civicEvents.length > 0 && (
+        <CollapsibleSection
+          title="Civic meetings"
+          count={civicEvents.length}
+          countLabel={civicEvents.length === 1 ? "meeting" : "meetings"}
+          storageKey="fr.events.civic-meetings"
+          defaultOpen={false}
+        >
+          <ol className="space-y-2.5">
+            {civicEvents.slice(0, 24).map((e) => (
+              <li key={e.slug}>
+                <EventCard event={e} variant="glance" live={liveSlugs.includes(e.slug)} />
+              </li>
+            ))}
+          </ol>
+        </CollapsibleSection>
+      )}
+
+      {/* ── 6c. TOWN REMINDERS — municipal service notices (trash, yard
+          waste, curbside, closures). Useful, but not "something to do". */}
+      {reminderEvents.length > 0 && (
+        <CollapsibleSection
+          title="Town reminders"
+          count={reminderEvents.length}
+          countLabel={reminderEvents.length === 1 ? "notice" : "notices"}
+          storageKey="fr.events.town-reminders"
+          defaultOpen={false}
+        >
+          <ol className="space-y-2.5">
+            {reminderEvents.slice(0, 24).map((e) => (
+              <li key={e.slug}>
+                <EventCard event={e} variant="glance" live={false} />
+              </li>
+            ))}
+          </ol>
+        </CollapsibleSection>
+      )}
+
+      {/* ── 7. CIVIC & MUNICIPAL CALENDAR — the long tail of recurring
+          municipal series + notices (the ingested calendar), COLLAPSED by
+          default so municipal gravity never competes with the events above.
           Present but tucked, never dumped. */}
       {ingestedSeries.length > 0 && (
         <CollapsibleSection

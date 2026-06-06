@@ -2,6 +2,29 @@
 
 Tracked, not urgent. Reviewed during the structure pass (June 2026).
 
+## ✅ Trust polish shipped (2026-06)
+Frederick Radius now has an **editorial standard. That is the brand.** The site
+doesn't show everything first — it shows the *right* thing first, and it never
+acts certain when the data is only approximate. Shipped:
+
+- **Recommendation eligibility (#436/#437).** Institutions, schools, and junk
+  listings stop leading "things to do." `belongs-to-feed ≠ should-be-promoted`
+  — the disease the whole standard is named after.
+- **Event eligibility / lanes (#443).** `/events` "What's on" is public events
+  only. Civic meetings + town reminders get their own collapsed lanes; private
+  rentals + cancelled items are suppressed. Title-only, conservative, validated
+  against the live feed (zero real events mislaned).
+- **News relevance gate (#438).** Today's rail is Frederick-relevant only — no
+  statewide/Montgomery leakage.
+- **Why-this-result reasons (#439).** Promoted cards say *why* (kid-friendly,
+  free, near a landmark, matches intent), capped at 3 — confidence you can read.
+- **Entity decode (#441).** `cleanFeedText` named-entity map + residual guard —
+  `&bull;`/`C&amp;O` never reach the reader (and `C&O`/`AT&T` stay intact).
+- **Photo de-twin (#442).** PhotoMosaic walks the pool sequentially — no more
+  "Looks like Family → Spinners ×6"; every tile is a distinct place.
+- **SEO indexing (#440).** Per-route self-canonicals (no more homepage-canonical
+  collapse) + a redirect-free, data-driven sitemap.
+
 ## 🔴 Production audit (2026-06-06) — SEO + data integrity (HIGH PRIORITY)
 Live-prod audit of frederickradius.app. Work **P0 first** (indexing is broken;
 highest-leverage; independent). Constraints: **do NOT change robots.txt** (the
@@ -9,15 +32,15 @@ AI-crawler block is deliberate). Items marked **DECISION** need Mike's call —
 do not guess; ask, or ship behind an off flag. Prod `curl` acceptance checks
 run after deploy (can't hit prod from the sandbox); I verify code-level + local.
 
-**P0 — indexing (confirmed in code):**
-- [ ] **T1 — every page emits the homepage canonical.** `layout.tsx:77`
+**P0 — indexing (confirmed in code):** ✅ shipped #440 (see "Trust polish shipped").
+- [x] **T1 — every page emits the homepage canonical.** `layout.tsx:77`
       `alternates: { canonical: "/" }`; child routes don't override → all of
       `/events`, `/map`, `/m/<town>`, `/events/<slug>` claim the homepage as
       canonical, collapsing indexing. Fix: drop the fixed root canonical; each
       indexable route's `generateMetadata` returns `alternates.canonical` =
       self URL (a `canonical(path)` helper so authors can't forget). Redirecting
       / noindex pages need none.
-- [ ] **T2 — sitemap lists redirects + omits content.** `sitemap.ts:13,16`
+- [x] **T2 — sitemap lists redirects + omits content.** `sitemap.ts:13,16`
       lists `/now` + `/radius` (308s); towns partial, no `/events/<slug>` window
       from data; single build `lastmod`. Fix: generate from the route table +
       data (all town slugs, event slugs for open+next-60-days), canonical
@@ -29,13 +52,13 @@ run after deploy (can't hit prod from the sandbox); I verify code-level + local.
 - [ ] **T3b** trim/sanitize event descriptions at ingestion → `summary` field
       (first sentence, strip HTML); full body only on detail; redact meeting
       IDs/passcodes/dial-ins (a Parks&Rec Teams passcode is exposed).
-- [ ] **T3c/T5** decode HTML entities at ingestion (`C&amp;O`, `&bull;`) — fixes
-      body AND meta (meta is built from stored value). Backfill existing rows.
-- [ ] **T3d — DECISION:** classify civic-ops/rec-programming (bulk trash, yard
-      waste, "Senior Exercise") — hide / civic-section-only / filterable? Don't
-      delete; classify.
-- [ ] **T3e — DECISION:** cancelled events (CANCELLED council meetings in the
-      upcoming flow) — exclude vs badge+de-emphasize.
+- [x] **T3c/T5** decode HTML entities (`C&amp;O`, `&bull;`) — DONE #441 via
+      `cleanFeedText` (named-entity map + residual guard; `C&O`/`AT&T` untouched).
+- [x] **T3d — DECISION resolved → DONE #443.** civic-ops/service notices (bulk
+      trash, yard waste, closures) now lane into "Town reminders"; boards/
+      commissions/hearings into "Civic meetings". Classified, not deleted.
+- [x] **T3e — DECISION resolved → DONE #443.** Owner: suppress. Cancelled/
+      postponed events (status or title) are excluded from the upcoming flow.
 - [ ] **T3f** reconcile section counts with rendered list ("Today 12" / "Show
       all 11") — derive count from the same deduped array.
 - [ ] **T4 — DECISION (weights):** `/m/frederick` "Worth your time" (Most loved)
@@ -66,16 +89,14 @@ Second live audit. **Principle: Radius should never act certain when the data
 is only approximate** — applies to events, map distance, news, recommendations.
 Same disease as #436 (belongs-to-feed ≠ should-be-promoted), now for events/geo.
 
-- [ ] **P0 — Event eligibility/trust pass (HIGHEST).** `/events` "This weekend"
-      still bleeds raw feed: private corporate events, weddings, graduations,
-      pavilion reservations, bulk-trash/yard-waste/mowing reminders, cancelled
-      meetings. Add an event classification layer — public event · civic meeting
-      · municipal service/reminder · private/internal · school/graduation ·
-      cancelled · recurring program · utility · reservation/rental — then lane
-      them: **What's on = public only**; **Civic & meetings**; **Town reminders**
-      (trash/yard waste); **suppress** private/internal/duplicate junk. Extends
-      the #436 eligibility pattern to events. (Note: `isCivicEvent` already
-      strips civic; this widens to the other non-public classes.)
+- [x] **P0 — Event eligibility/trust pass (DONE #443).** `lib/events/classify.ts`
+      lanes the unified feed once: **What's on = public only**, **Civic meetings**
+      (boards/commissions/hearings/council sessions), **Town reminders** (trash/
+      yard waste/curbside/closures), with **private rentals + cancelled
+      suppressed**. Title-only, word-boundary, conservative `public` default;
+      validated against the live feed (zero real events mislaned) + 6 unit tests.
+      Replaced the old `isCivicEvent` filter (which couldn't catch county-feed
+      rows — their category is blank). The #436 eligibility pattern, for events.
 - [ ] **P1 — Geo confidence.** Map "Happening within reach" shows events "113 ft
       away" when the geocode is just "Frederick" (vague). Add a confidence tier:
       exact_address · venue_match · municipality_only · county_only · unknown.
