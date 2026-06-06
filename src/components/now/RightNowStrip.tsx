@@ -358,7 +358,6 @@ function OpenNowCard({ place }: { place: PlaceCardData }) {
       eyebrow="Open now"
       title={place.name}
       meta={meta}
-      photoUrl={place.google_photo_url}
     />
   );
 }
@@ -399,7 +398,6 @@ function WeekendBetCard({ place }: { place: PlaceCardData }) {
       eyebrow="Weekend bet"
       title={place.name}
       meta={meta}
-      photoUrl={place.google_photo_url}
     />
   );
 }
