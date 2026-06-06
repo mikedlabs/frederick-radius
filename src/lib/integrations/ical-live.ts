@@ -17,6 +17,7 @@ import {
   resetFeedMetrics,
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
+import { normalizeTitle } from "@/lib/events/normalize";
 import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 
@@ -229,6 +230,18 @@ function dedupeKey(title: string, starts: Date, venue: string): string {
   const normTitle = cutAtWordBoundary(title.toLowerCase().replace(/[^a-z0-9]+/g, "-"), 60);
   const normVenue = cutAtWordBoundary(venue.toLowerCase().replace(/[^a-z0-9]+/g, "-"), 40);
   return `${normTitle}-${normVenue}-${day}-${time}`;
+}
+
+/**
+ * Cross-feed dedupe key for a LIVE event, computed on the NORMALIZED title.
+ * A feed often lists the same event both bare and org-prefixed (county RSS:
+ * "Asia On The Creek" + "Asian American Center of Frederick-Asia on the
+ * Creek"). normalizeTitle strips the "Org-Event" prefix and decodes/cleans —
+ * the exact transform the card displays — so the two variants resolve to one
+ * key and collapse. Exported so the behavior is unit-tested directly.
+ */
+export function liveEventDedupeKey(rawTitle: string, starts: Date, venue: string): string {
+  return dedupeKey(normalizeTitle(rawTitle).title, starts, venue);
 }
 
 /**
@@ -734,11 +747,20 @@ export async function getLiveEvents(windowDays = 60): Promise<{
   // Deduplicate by composite key — same title + day + time + venue across feeds
   // means the same event cross-promoted (e.g. DFP and Celebrate Frederick both
   // list First Saturday).
+  //
+  // Key on the NORMALIZED title, not the raw feed title. A feed often lists
+  // the same event both bare and org-prefixed — the county RSS carries both
+  // "Asia On The Creek" and "Asian American Center of Frederick-Asia on the
+  // Creek". Display strips the "Org-Event" prefix via normalizeTitle, so both
+  // render identically; keying on the raw title left them with different keys
+  // and both survived. Normalizing here (same strip + case-fold the display
+  // uses) collapses them at the source, so every downstream surface — /events
+  // AND /map — sees one row.
   const seen = new Map<string, LiveEvent>();
   for (const { evts } of results) {
     for (const e of evts) {
       const start = new Date(e.starts_at);
-      const key = dedupeKey(e.title, start, e.venue_name);
+      const key = liveEventDedupeKey(e.title, start, e.venue_name);
       if (!seen.has(key)) {
         seen.set(key, e);
       }
