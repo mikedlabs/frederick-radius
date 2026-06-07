@@ -44,7 +44,7 @@ export default function CravingStrip() {
           return (
             <Link
               key={c.key}
-              href={`/now?c=${c.key}`}
+              href={`/nearby?c=${c.key}`}
               className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold"
               style={{ color: "var(--app-ink-2)" }}
             >
