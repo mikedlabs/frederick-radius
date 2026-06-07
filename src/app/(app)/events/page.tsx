@@ -341,32 +341,24 @@ export default async function EventsIndexPage({
           defaultOpen
         >
           <div className="space-y-3">
-            <p
-              className="eyebrow inline-flex items-center gap-1.5"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {todayEvents.length > 0 ? (
-                <>
-                  <Sparkles
-                    className="h-3 w-3"
-                    strokeWidth={2.25}
-                    style={{ color: "var(--app-brand)" }}
-                    aria-hidden
-                  />
-                  Today&rsquo;s lead
-                </>
-              ) : (
-                <>
-                  <Moon
-                    className="h-3 w-3"
-                    strokeWidth={2.25}
-                    style={{ color: "var(--app-cool)" }}
-                    aria-hidden
-                  />
-                  Quiet today &middot; next up
-                </>
-              )}
-            </p>
+            {/* The "Today" section header already labels this tier, so the
+                redundant "Today's lead" eyebrow is dropped. The eyebrow
+                stays only for the QUIET case, where "next up" adds honest
+                context the title alone doesn't ("nothing left today"). */}
+            {todayEvents.length === 0 && (
+              <p
+                className="eyebrow inline-flex items-center gap-1.5"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                <Moon
+                  className="h-3 w-3"
+                  strokeWidth={2.25}
+                  style={{ color: "var(--app-cool)" }}
+                  aria-hidden
+                />
+                Quiet today &middot; next up
+              </p>
+            )}
             <EventCard
               event={heroEvent}
               variant="feature"

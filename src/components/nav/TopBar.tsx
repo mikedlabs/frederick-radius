@@ -195,14 +195,18 @@ export default function TopBar() {
               competes with the rest of the header chrome. */}
           <PulseIndicator />
 
+          {/* Trailing actions are calm GLYPHS, not bordered pills — the
+              search pill is the one bordered "find" affordance, so the
+              header reads as one primary + two quiet icons (the Tiimo /
+              calm-chrome move) instead of three chips competing. */}
           <Link
             href="/settings"
             aria-label="Settings"
             title="Settings"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
+            style={{ color: "var(--app-ink-3)" }}
           >
-            <SettingsIcon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            <SettingsIcon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
           </Link>
 
           {/* "More" trigger — opens the Field Guide drawer (books,
@@ -219,10 +223,10 @@ export default function TopBar() {
             aria-expanded={moreOpen}
             aria-label="More"
             title="More"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
+            style={{ color: "var(--app-ink-3)" }}
           >
-            <MoreHorizontal className="h-4 w-4" strokeWidth={2} aria-hidden />
+            <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
           </button>
 
           {/* LocationChip is hidden on the narrowest phones where the
