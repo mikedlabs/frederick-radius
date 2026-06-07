@@ -28,6 +28,12 @@ export default function AnswerCard({ answer, featured = false }: { answer: Answe
   const statusLabel = answer.statusLabel ?? meta?.label;
   const metaRight = answer.distanceLabel ?? answer.timeLabel;
   const source = [answer.sourceLabel, answer.freshnessLabel].filter(Boolean).join(" · ");
+  // One supporting line, not two. `answer` and `whyShown` almost always
+  // restate each other ("Confirmed open right now" / "Open this hour,
+  // within reach") — show the richer `answer`, fall back to `whyShown`
+  // only when there's no answer. The source line stays as the quiet
+  // trust footer. (Calm pass: one fact, one line.)
+  const supporting = answer.answer ?? answer.whyShown;
 
   return (
     <Surface
@@ -74,25 +80,18 @@ export default function AnswerCard({ answer, featured = false }: { answer: Answe
         >
           {answer.title}
         </h3>
-        {answer.answer && (
+        {supporting && (
           <p className="text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            {answer.answer}
+            {supporting}
           </p>
         )}
       </div>
 
-      {(answer.whyShown || source) && (
-        <div className="mt-auto space-y-0.5 pt-1">
-          {answer.whyShown && (
-            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              {answer.whyShown}
-            </p>
-          )}
-          {source && (
-            <p className="text-[10.5px] font-medium uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
-              {source}
-            </p>
-          )}
+      {source && (
+        <div className="mt-auto pt-1">
+          <p className="text-[10.5px] font-medium uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
+            {source}
+          </p>
         </div>
       )}
 

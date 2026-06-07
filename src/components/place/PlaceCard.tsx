@@ -174,6 +174,15 @@ export default function PlaceCard({
   // "Known for" — the real descriptive blurb, or null for DFP filler.
   const kf = knownFor(place);
   const reasons = placeReasons(place);
+  // Where the card ALSO renders an explicit open indicator (the tile's
+  // status dot, the feature/answer PlaceStatus line), the leading "Open"
+  // reason chip just echoes it. Drop it there so the two visible chips
+  // carry NEW signal (a walk time, Local favorite) instead of repeating
+  // the dot. Row/grid keep the full set — there the chip is the ONLY
+  // open signal, so removing it would lose information.
+  const nonOpenReasons = reasons.filter(
+    (r) => r.kind !== "open_now" && r.kind !== "verified_open",
+  );
 
   // ── FEATURE — the prominent promoted lead (Today "Worth a look", a
   // category page lead). Text-led: a larger category mark, a serif title,
@@ -214,8 +223,8 @@ export default function PlaceCard({
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
-                {reasons.length > 0 ? (
-                  <StatusChipRow reasons={reasons} />
+                {nonOpenReasons.length > 0 ? (
+                  <StatusChipRow reasons={nonOpenReasons} />
                 ) : (
                   <Rave rating={place.google_rating} count={place.google_rating_count} />
                 )}
@@ -286,7 +295,7 @@ export default function PlaceCard({
                 </span>
               )}
             </div>
-            {reasons.length > 0 && <StatusChipRow reasons={reasons} />}
+            {nonOpenReasons.length > 0 && <StatusChipRow reasons={nonOpenReasons} />}
             {place.review_snippet && (
               <blockquote
                 className="mt-0.5 border-l-2 pl-2.5 text-[12.5px] italic leading-snug"
@@ -347,17 +356,20 @@ export default function PlaceCard({
             <h3 className="text-[15px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
               {place.name}
             </h3>
+            {/* Subtitle no longer echoes the category — the uppercase
+                header already states it. Lead with what's NEW (known-for),
+                then distance; nothing repeated. */}
             <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              {place.known_for?.[0] ? (
+              {place.known_for?.[0] && (
                 <span style={{ color: "var(--app-ink-2)" }}>{place.known_for[0]}</span>
-              ) : (
-                (cat?.name ?? place.category)
               )}
-              {place.distance_m !== undefined && <> · {formatDistance(place.distance_m)}</>}
+              {place.distance_m !== undefined && (
+                <>{place.known_for?.[0] ? " · " : ""}{formatDistance(place.distance_m)}</>
+              )}
               <BeenHereIndicator slug={place.slug} />
             </p>
-            {reasons.length > 0 ? (
-              <ReasonChipRow reasons={reasons.slice(0, 2)} className="pt-0.5" />
+            {nonOpenReasons.length > 0 ? (
+              <ReasonChipRow reasons={nonOpenReasons.slice(0, 2)} className="pt-0.5" />
             ) : (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
