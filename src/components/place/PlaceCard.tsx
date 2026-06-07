@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
@@ -147,6 +149,46 @@ function CategoryMark({
   );
 }
 
+/**
+ * Thumb — the leading visual on a browse card. Shows the place's real
+ * Google photo (the same curated, de-twinned source as the detail page;
+ * PHOTO_SUPPRESS has already nulled shared/duplicate photos so we never
+ * show a wrong one) and falls back to the calm category mark when a place
+ * has no photo. "Real photo when we have a good one, type mark when we
+ * don't" — visual, but never a fabricated or mismatched image.
+ */
+function Thumb({
+  place,
+  category,
+  color,
+  size,
+}: {
+  place: PlaceCardData;
+  category: string;
+  color: string;
+  size: number;
+}) {
+  if (place.google_photo_url) {
+    return (
+      <div
+        className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
+        style={{ height: size, width: size, boxShadow: "inset 0 0 0 1px var(--app-ink-tint-8)" }}
+      >
+        <Image
+          src={place.google_photo_url}
+          alt=""
+          fill
+          sizes="72px"
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="object-cover"
+        />
+      </div>
+    );
+  }
+  return <CategoryMark category={category} color={color} size={size} />;
+}
+
 export default function PlaceCard({
   place,
   compact = false,
@@ -202,7 +244,7 @@ export default function PlaceCard({
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-3 p-4 pl-5">
-            <CategoryMark category={place.category} color={color} size={52} />
+            <Thumb place={place} category={place.category} color={color} size={52} />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -262,7 +304,7 @@ export default function PlaceCard({
         >
           <div className="space-y-2.5 p-4">
             <div className="flex items-start gap-3">
-              <CategoryMark category={place.category} color={color} size={48} />
+              <Thumb place={place} category={place.category} color={color} size={48} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
@@ -345,7 +387,7 @@ export default function PlaceCard({
         >
           <div className="space-y-2 p-3.5 pb-4">
             <div className="flex items-center gap-2.5">
-              <CategoryMark category={place.category} color={color} size={40} />
+              <Thumb place={place} category={place.category} color={color} size={40} />
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
                 {cat?.name ?? place.category}
               </span>
@@ -403,7 +445,7 @@ export default function PlaceCard({
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-2.5 p-2.5">
-            <CategoryMark category={place.category} color={color} size={40} />
+            <Thumb place={place} category={place.category} color={color} size={40} />
             <div className="min-w-0 flex-1 space-y-0.5">
               <h3 className="truncate text-[13.5px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
@@ -441,7 +483,7 @@ export default function PlaceCard({
       style={{ background: "var(--app-bg-elevated-solid)" }}
     >
       <div className="self-center">
-        <CategoryMark category={place.category} color={color} size={42} />
+        <Thumb place={place} category={place.category} color={color} size={52} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-start gap-2">
