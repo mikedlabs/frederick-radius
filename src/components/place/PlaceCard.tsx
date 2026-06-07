@@ -162,13 +162,15 @@ function Thumb({
   category,
   color,
   size,
+  noPhoto = false,
 }: {
   place: PlaceCardData;
   category: string;
   color: string;
   size: number;
+  noPhoto?: boolean;
 }) {
-  if (place.google_photo_url) {
+  if (place.google_photo_url && !noPhoto) {
     return (
       <div
         className="relative shrink-0 overflow-hidden rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
@@ -197,6 +199,7 @@ export default function PlaceCard({
   // badge becomes "chip soup" down the margin; ON for the prominent
   // answer/feature lead. Override explicitly anywhere it's wanted.
   showSource = variant === "answer" || variant === "feature",
+  noPhoto = false,
 }: {
   place: PlaceCardData;
   compact?: boolean;
@@ -204,6 +207,10 @@ export default function PlaceCard({
   /** Show the source/trust badge. Defaults by variant (off in dense lists,
    *  on for the lead); the full trust tier still lives on the detail sheet. */
   showSource?: boolean;
+  /** Force the typographic category mark instead of the photo thumbnail.
+   *  The Map bottom-sheet uses this — map results are compact decision
+   *  cards, not photo cards (the Map redesign brief). */
+  noPhoto?: boolean;
   /** Legacy: extra photos for the old answer photo strip. Browse cards are
    *  typographic now (Photo Policy), so this is no longer rendered — kept in
    *  the type so existing callers compile without churn. */
@@ -244,7 +251,7 @@ export default function PlaceCard({
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-3 p-4 pl-5">
-            <Thumb place={place} category={place.category} color={color} size={52} />
+            <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={52} />
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline gap-2">
                 <h3 className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -304,7 +311,7 @@ export default function PlaceCard({
         >
           <div className="space-y-2.5 p-4">
             <div className="flex items-start gap-3">
-              <Thumb place={place} category={place.category} color={color} size={48} />
+              <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={48} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
@@ -387,7 +394,7 @@ export default function PlaceCard({
         >
           <div className="space-y-2 p-3.5 pb-4">
             <div className="flex items-center gap-2.5">
-              <Thumb place={place} category={place.category} color={color} size={40} />
+              <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={40} />
               <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color }}>
                 {cat?.name ?? place.category}
               </span>
@@ -445,7 +452,7 @@ export default function PlaceCard({
           className="block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-brand)]"
         >
           <div className="flex items-start gap-2.5 p-2.5">
-            <Thumb place={place} category={place.category} color={color} size={40} />
+            <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={40} />
             <div className="min-w-0 flex-1 space-y-0.5">
               <h3 className="truncate text-[13.5px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
@@ -483,7 +490,7 @@ export default function PlaceCard({
       style={{ background: "var(--app-bg-elevated-solid)" }}
     >
       <div className="self-center">
-        <Thumb place={place} category={place.category} color={color} size={52} />
+        <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={52} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-start gap-2">
