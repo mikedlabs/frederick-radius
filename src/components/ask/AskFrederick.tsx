@@ -14,7 +14,7 @@ import type { AskResult } from "@/lib/ask/answer";
  * quiet "warming up" state instead of an error.
  */
 
-export default function AskFrederick() {
+export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolean } = {}) {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [res, setRes] = useState<AskResult | null>(null);
@@ -63,9 +63,14 @@ export default function AskFrederick() {
       }}
       aria-label="Ask Radius"
     >
-      <div className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-brand)" }}>
-        <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Ask Radius
-      </div>
+      {/* Eyebrow is the box's label on /guide; on /today the page's
+          "Ask Radius anything." headline already labels it, so it's hidden
+          to avoid saying "Ask Radius" twice in a row. */}
+      {!hideLabel && (
+        <div className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-brand)" }}>
+          <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Ask Radius
+        </div>
+      )}
 
       <form
         onSubmit={(e) => {

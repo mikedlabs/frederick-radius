@@ -1,34 +1,18 @@
 "use client";
 
-import { Clock, Calendar, Train, MapPin } from "lucide-react";
-import Pill from "@/components/ui/Pill";
 import AskFrederick from "@/components/ask/AskFrederick";
-import { QUICK_INTENTS } from "@/lib/answers/intents";
-import type { IntentIcon } from "@/lib/answers/types";
 
 /**
  * TodayAsk — the answer-first front door (UX_REDO Build 1).
  *
- * "Ask Radius anything" mounted at the top of /today, now backed by the
- * real grounded concierge (AskFrederick → /api/ask): a natural-language
- * question returns an AI answer with clickable, verifiable source cards.
- * It degrades gracefully — with no AI key the API still keyword-matches
- * real places, so the box returns place cards rather than a dead end, and
- * plain typeahead stays one tap away via the header search pill. The
- * suggested intent chips route to their intent answers.
+ * "Ask Radius anything" mounted at the top of /today, backed by the real
+ * grounded concierge (AskFrederick → /api/ask). The box's own "Ask Radius"
+ * eyebrow is hidden here because this headline already labels it (no double
+ * "Ask Radius"). The quick-intent chips were removed: they duplicated the
+ * anticipatory answer cards rendered directly below on /today, so the page
+ * said the same thing twice and pushed the first real answer below the fold.
  */
-
-const ICON: Record<IntentIcon, typeof Clock> = {
-  clock: Clock,
-  calendar: Calendar,
-  train: Train,
-  pin: MapPin,
-};
-
 export default function TodayAsk() {
-  // The five strongest needs as hero chips (skip the generic "events").
-  const chips = QUICK_INTENTS.filter((i) => i.key !== "events").slice(0, 5);
-
   return (
     <div className="space-y-3">
       <h1
@@ -37,20 +21,7 @@ export default function TodayAsk() {
       >
         Ask Radius anything.
       </h1>
-
-      {/* The grounded concierge box — real answers from real records. */}
-      <AskFrederick />
-
-      <div className="flex flex-wrap gap-2">
-        {chips.map((c) => {
-          const I = ICON[c.icon];
-          return (
-            <Pill key={c.key} href={c.href} tone="prominent" size="sm" icon={<I className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}>
-              {c.chip}
-            </Pill>
-          );
-        })}
-      </div>
+      <AskFrederick hideLabel />
     </div>
   );
 }

@@ -330,31 +330,20 @@ export default async function HomePage({
     <div className="relative">
       <PageBloom />
 
-      {/* First-visit beta intro — explains what Frederick Radius is,
-          the current beta state, what's coming, and how to send
-          feedback. Renders only when the dismiss cookie hasn't been
-          set; once dismissed, never shows again until we ship a v2
-          message and bump the key. Client component so the SSR HTML
-          is empty and there's no hydration flash. Full-width above
-          the desktop split so it spans both columns. */}
-      <div className="space-y-4">
-        <BetaIntroCard />
-        {/* DateLine + BriefingLine lifted to full width above the
-            desktop split so the orientation + "what should I do?"
-            answer always leads — on mobile the weather column now
-            drops BELOW the action stack (see the order- classes on
-            the split children), so the page opens with the answer
-            instead of a stack of weather modules. */}
-        <div className="space-y-2">
-          <DateLine />
-        </div>
+      {/* Slim orientation line — date + time. Kept tiny so the answer
+          leads; the "new here?" intro moved BELOW the first answers (a
+          new user gets a taste of value before the explainer). */}
+      <div className="space-y-2">
+        <DateLine />
       </div>
 
       {/* ── ANSWER-FIRST LEAD (UX_REDO Build 1) ─────────────────────────
           The ask + 3 to 5 anticipatory answer cards are the front door.
-          Weather drops into the supporting split below. North Star:
-          "Answer my question in one move. Don't make me dig." */}
-      <section className="mt-4 space-y-3" aria-label="Ask Radius">
+          North Star: "Answer my question in one move. Don't make me dig."
+          The quick-intent chips were removed from TodayAsk — they
+          duplicated these answer cards — and the box's "Ask Radius" eyebrow
+          is hidden under the headline, so the first answer clears the fold. */}
+      <section className="mt-3 space-y-3" aria-label="Ask Radius">
         <TodayAsk />
         {todayAnswers.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -364,6 +353,13 @@ export default async function HomePage({
           </div>
         )}
       </section>
+
+      {/* First-visit beta intro — moved out of the lead to here (after the
+          first answers) so it never delays the answer. Dismissible; renders
+          only until the cookie is set. */}
+      <div className="mt-4">
+        <BetaIntroCard />
+      </div>
 
       {/* ── HEADS UP — high-signal interruption layer, only if needed ────
           "Before you make a plan, is there anything you need to know?"
