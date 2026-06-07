@@ -129,16 +129,19 @@ function CategoryMark({
       style={{
         height: size,
         width: size,
-        background: `linear-gradient(145deg, color-mix(in srgb, ${color} 22%, var(--app-bg-elevated-solid)), color-mix(in srgb, ${color} 7%, var(--app-bg-elevated-solid)))`,
+        // Quiet, low-tint chip — it signals type without competing with the
+        // title. Down a long list the eye reads the names, not a column of
+        // saturated blocks (the "supports, not dominates" rule).
+        background: `color-mix(in srgb, ${color} 11%, var(--app-bg-elevated-solid))`,
         color,
-        boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)",
+        boxShadow: "inset 0 0 0 1px color-mix(in srgb, " + color + " 16%, transparent)",
       }}
     >
       <CategoryIcon
         slug={category}
         strokeWidth={1.75}
-        className="opacity-90"
-        style={{ color, height: Math.round(size * 0.46), width: Math.round(size * 0.46) }}
+        className="opacity-80"
+        style={{ color, height: Math.round(size * 0.44), width: Math.round(size * 0.44) }}
       />
     </div>
   );
@@ -354,7 +357,7 @@ export default function PlaceCard({
               <BeenHereIndicator slug={place.slug} />
             </p>
             {reasons.length > 0 ? (
-              <ReasonChipRow reasons={reasons} className="pt-0.5" />
+              <ReasonChipRow reasons={reasons.slice(0, 2)} className="pt-0.5" />
             ) : (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
@@ -399,7 +402,7 @@ export default function PlaceCard({
                 <BeenHereIndicator slug={place.slug} />
               </p>
               {reasons.length > 0 ? (
-                <ReasonChipRow reasons={reasons} className="pt-0.5" />
+                <ReasonChipRow reasons={reasons.slice(0, 2)} className="pt-0.5" />
               ) : (
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                   <PlaceStatus status={place.open_status} className="!text-[11px]" />
@@ -416,13 +419,17 @@ export default function PlaceCard({
 
   // ── ROW (default) — the dense list card. Leading category mark, name,
   // type/known-for, distance, and chips. The workhorse of every list.
+  // The title leads; a quiet 42px mark anchors the left; chips capped at 2
+  // so a long list scans as names, not a wall of pills. Tighter vertical
+  // rhythm shortens the page without crowding.
+  const rowReasons = reasons.slice(0, 2);
   return (
     <article
-      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-3.5 rounded-[var(--app-radius-lg)] p-3"
+      className="tactile tactile-interactive tactile-e2 group relative flex items-stretch gap-3 rounded-[var(--app-radius-lg)] px-3 py-2.5"
       style={{ background: "var(--app-bg-elevated-solid)" }}
     >
       <div className="self-center">
-        <CategoryMark category={place.category} color={color} size={56} />
+        <CategoryMark category={place.category} color={color} size={42} />
       </div>
       <div className="flex min-w-0 flex-1 flex-col justify-center">
         <div className="flex items-start gap-2">
@@ -430,7 +437,7 @@ export default function PlaceCard({
             type="button"
             onClick={openDetail}
             aria-label={`View ${place.name} details`}
-            className="line-clamp-2 min-w-0 flex-1 text-left text-[15.5px] font-semibold leading-[1.2] tracking-tight outline-none focus-visible:underline"
+            className="line-clamp-2 min-w-0 flex-1 text-left text-[15.5px] font-semibold leading-[1.18] tracking-tight outline-none focus-visible:underline"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
@@ -443,16 +450,16 @@ export default function PlaceCard({
             </span>
           )}
         </div>
-        <p className="mt-1 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {cat?.name ?? place.category}
           {kf && <> · {kf}</>}
           <BeenHereIndicator slug={place.slug} />
         </p>
         {!compact && (
-          reasons.length > 0 ? (
-            <StatusChipRow reasons={reasons} className="mt-2" />
+          rowReasons.length > 0 ? (
+            <StatusChipRow reasons={rowReasons} className="mt-1.5" />
           ) : (
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
               <PlaceStatus status={place.open_status} />
               <Rave rating={place.google_rating} count={place.google_rating_count} />
               {place.price_band && (
