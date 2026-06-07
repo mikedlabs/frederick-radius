@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
 import { ChevronLeft, ChevronRight, Search, MapPin, ArrowUpDown, Wine, Baby, Dog, Music, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
@@ -20,9 +19,6 @@ import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
 import { track } from "@vercel/analytics";
 import { INTENT_ICON } from "./intentIcons";
-import AskFrederick from "@/components/ask/AskFrederick";
-import { bestPhoto } from "@/lib/photogenic";
-import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 /**
  * FunnelFlow — the "what are you after?" front door.
@@ -42,11 +38,6 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 // ordered list is the single thing to tune as the product owner decides
 // the real top level (add Shop? split Drinks? add Tonight/events?).
 const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "shop", "arts", "family", "wellness", "stay", "faith", "civic"];
-
-// Topics that stay calm + photo-less even when a matching photo exists.
-// These are utility/quiet lanes (worship, civic) where a big photograph
-// would over-promise — the draw/utility split the design audit calls for.
-const QUIET_TOPICS: ReadonlySet<IntentKey> = new Set(["faith", "civic"]);
 
 const RESULT_CAP = 24;
 
@@ -145,21 +136,6 @@ export default function FunnelFlow({
     if (!ready) return c;
     for (const k of TOP) c[k] = places.filter(INTENT_BY_KEY[k].match).length;
     return c;
-  }, [ready, places]);
-
-  // Each topic's signature photo — the best photogenic, well-loved place
-  // that matches the lane. Real content, deterministic (highest quality
-  // wins), and only for the "draw" lanes: quiet lanes (faith/civic) and
-  // any lane without a photogenic match keep the calm paper tile.
-  const topicPhoto = useMemo(() => {
-    const m: Partial<Record<IntentKey, { url: string; name: string }>> = {};
-    if (!ready) return m;
-    for (const k of TOP) {
-      if (QUIET_TOPICS.has(k)) continue;
-      const hit = bestPhoto(places.filter(INTENT_BY_KEY[k].match));
-      if (hit) m[k] = hit;
-    }
-    return m;
   }, [ready, places]);
 
   const results = useMemo(() => {
@@ -330,16 +306,15 @@ export default function FunnelFlow({
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
             <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Pick one. It narrows from there." />
-            {/* Ask Frederick — the concierge: one box that answers from
-                real data. Sits above the grid as the fastest path. */}
-            <div className="mb-5">
-              <AskFrederick />
-            </div>
+            {/* The funnel leads: the lane grid is the front door. The
+                concierge ("Ask Radius anything.") lives on /today; the
+                quiet "Search instead" link in the header covers a typed
+                query here, so the Guide stays one clear outcome path
+                instead of two competing "ask me" boxes. */}
             <Grid>
               {TOP.map((k) => {
                 const it = INTENT_BY_KEY[k];
                 const Icon = INTENT_ICON[it.icon];
-                const photo = topicPhoto[k];
                 return (
                   <Tile
                     key={k}
@@ -347,8 +322,6 @@ export default function FunnelFlow({
                     icon={<Icon className="h-5 w-5" strokeWidth={2} aria-hidden />}
                     label={it.label}
                     count={counts[k]}
-                    photo={photo?.url}
-                    photoAlt={photo?.name}
                     onClick={() => {
                       haptic("light");
                       track("find_intent", { intent: k });
@@ -589,91 +562,21 @@ function Tile({
   icon,
   label,
   count,
-  photo,
-  photoAlt,
   onClick,
 }: {
   color: string;
   icon?: ReactNode;
   label: string;
   count?: number;
-  /** Signature photo for this lane. Present → photographic tile; absent
-   *  → the calm paper tile (quiet lanes + lanes with no photogenic match). */
-  photo?: string;
-  photoAlt?: string;
   onClick: () => void;
 }) {
   const reduce = useReducedMotion();
 
-  // ── Photographic tile — a real place photo carries the lane, the
-  //    lane color washes the top and darkens the bottom for legible
-  //    white text, and the icon rides as a small glossy badge. This is
-  //    the "draw" treatment: topics you'd want to go see.
-  if (photo) {
-    return (
-      <motion.button
-        type="button"
-        onClick={onClick}
-        variants={tileItem}
-        whileTap={reduce ? undefined : { scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 400, damping: 28 }}
-        className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-[var(--app-radius-lg)] p-3.5 text-left"
-        style={{ boxShadow: "var(--app-edge), var(--app-elev-2)" }}
-      >
-        <Image
-          src={photo}
-          alt={photoAlt ?? ""}
-          fill
-          sizes="(max-width: 720px) 50vw, 220px"
-          placeholder="blur"
-          blurDataURL={PAPER_CREAM_BLUR}
-          className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-        />
-        {/* Lane-color wash at top → dark at the bottom so white text stays
-            AA-legible over any photo. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: `linear-gradient(180deg, color-mix(in srgb, ${color} 32%, transparent) 0%, color-mix(in srgb, ${color} 6%, transparent) 26%, rgba(0,0,0,0.10) 50%, rgba(0,0,0,0.72) 100%)`,
-          }}
-        />
-        {icon && (
-          <span
-            className="relative grid h-9 w-9 place-items-center self-start rounded-[12px] text-white"
-            style={{
-              background: color,
-              backgroundImage: "var(--app-gloss)",
-              boxShadow: `0 4px 12px -5px ${color}, inset 0 1px 0 rgba(255,255,255,0.4)`,
-            }}
-          >
-            {icon}
-          </span>
-        )}
-        <span className="relative">
-          <span
-            className="block text-[15.5px] font-bold leading-snug tracking-tight text-white"
-            style={{ textShadow: "0 1px 3px rgba(0,0,0,0.55)" }}
-          >
-            {label}
-          </span>
-          {typeof count === "number" && (
-            <span
-              className="mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-semibold tabular-nums"
-              style={{ color: "rgba(255,255,255,0.92)", textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-white/90" aria-hidden />
-              {count} place{count === 1 ? "" : "s"}
-            </span>
-          )}
-        </span>
-      </motion.button>
-    );
-  }
-
-  // ── Calm paper tile — the quiet/utility treatment. The lane's color
-  //    breathes from the top-left and fades into paper; layered edge +
-  //    inner highlight + ambient elevation give it the "made" depth.
+  // Typographic paper tile — the single, consistent lane treatment. The
+  // lane's color breathes from the top-left and fades into paper; layered
+  // edge + inner highlight + ambient elevation give it the "made" depth.
+  // No place photos: the grid reads as one calm, typographic system
+  // (matching the rest of the app), not a mix of photo and paper cards.
   return (
     <motion.button
       type="button"
