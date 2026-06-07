@@ -577,9 +577,12 @@ function InViewList({
               Best in this view
             </p>
           </li>
+          {/* Map results are compact, typographic DECISION cards — no photo
+              thumbnails (the Map redesign brief: the sheet is a decision
+              tool, not a gallery). noPhoto forces the category mark. */}
           {visiblePlaces.map((p) => (
             <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
-              <PlaceCard place={p} />
+              <PlaceCard place={p} noPhoto />
             </li>
           ))}
           {(hiddenCount > 0 || showAll) && results.length > CAP && (
