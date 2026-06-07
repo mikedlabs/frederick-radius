@@ -26,11 +26,15 @@ async function get(path) {
   const res = await fetch(`${BASE}${path}`, { headers: { "User-Agent": "fr-prod-audit" } });
   return { status: res.status, html: await res.text() };
 }
-// Count only RENDERED <img> tags whose src is an imported photo source —
-// not data-payload strings (google_photo_url rides in the RSC JSON even on
-// typographic pages, so a bare string match would false-positive).
-const importedImgs = (html) =>
-  (html.match(/<img\b[^>]*\bsrc="[^"]*(place-photo|googleusercontent|wikimedia|ggpht)[^"]*"/gi) || []).length;
+// Photo policy (revised): browse cards now LEAD with the curated Google
+// place photo (placePhotoBlob / Google proxy), de-twinned via PHOTO_SUPPRESS
+// with a category-mark fallback — the visual, decision-card direction the
+// reference apps (Maps / DoorDash / Uber Eats) use. So curated Google
+// sources are allowed. What stays banned is UNCONTROLLED imagery we never
+// curated (Wikimedia / arbitrary hero_image), which had the provenance and
+// wrong-photo problems (#437). Count only those.
+const uncontrolledImgs = (html) =>
+  (html.match(/<img\b[^>]*\bsrc="[^"]*(wikimedia|upload\.wikimedia)[^"]*"/gi) || []).length;
 
 const run = async () => {
   console.log(`\nProduction audit → ${BASE}\n`);
@@ -81,12 +85,14 @@ const run = async () => {
     check(vague === 0, "/map has no vague 'municipality · N ft' claims", `/map shows ${vague} vague-location distance claim(s)`);
   } catch (e) { bad(`/map fetch failed: ${e.message}`); }
 
-  // 4. No imported photos in browse surfaces (Phase 1-3).
+  // 4. No UNCONTROLLED photos in browse surfaces. Curated Google place
+  //    photos now lead the cards (the visual direction); only uncontrolled
+  //    Wikimedia/arbitrary imagery stays banned.
   for (const path of ["/category/coffee", "/category/family", "/m/frederick", "/m/brunswick", "/events", "/today"]) {
     try {
       const { html } = await get(path);
-      const n = importedImgs(html);
-      check(n === 0, `${path} renders 0 imported <img>`, `${path} renders ${n} imported <img>`);
+      const n = uncontrolledImgs(html);
+      check(n === 0, `${path} renders 0 uncontrolled <img>`, `${path} renders ${n} uncontrolled <img>`);
     } catch (e) { bad(`${path} fetch failed: ${e.message}`); }
   }
 
