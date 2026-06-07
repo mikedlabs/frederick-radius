@@ -10,7 +10,7 @@ import {
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import PageBloom from "@/components/ui/PageBloom";
-import SectionHeading from "@/components/ui/SectionHeading";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryBriefing from "./CategoryBriefing";
 import CategorySection from "./CategorySection";
 
@@ -118,9 +118,18 @@ export default function CategoryView({
           briefing's set-town prompt is the honest substitute. */}
       {town && <CategorySection title={`Nearby ${town.name}`} color={category.color} places={nearby} />}
 
+      {/* ── The browsing tail — COLLAPSED by default so the page lands at
+          ~3-4 screens (the curated stack above) instead of 8-10. "Across
+          the county" and "Full browse" are preserved, one tap away, but a
+          user is never forced to scroll the whole directory to leave. */}
       {county.length > 0 && (
-        <section className="space-y-2.5">
-          <SectionHeading title="Across the county" accent={category.color} />
+        <CollapsibleSection
+          title="Show across the county"
+          count={county.length}
+          countLabel="towns"
+          storageKey={`fr.category.${category.slug}.county`}
+          defaultOpen={false}
+        >
           <ul className="space-y-2.5">
             {county.map((g) => {
               const m = MUNICIPALITY_BY_SLUG[g.municipality];
@@ -137,17 +146,22 @@ export default function CategoryView({
               );
             })}
           </ul>
-        </section>
+        </CollapsibleSection>
       )}
 
-      <section className="space-y-3">
-        <SectionHeading title="Full browse" accent={category.color} />
+      <CollapsibleSection
+        title="Browse everything"
+        count={all.length}
+        countLabel="places"
+        storageKey={`fr.category.${category.slug}.full`}
+        defaultOpen={false}
+      >
         <PlaceList
           places={all}
           initialLayout="list"
           emptyMessage="We are still seeding this category. Submit a place you love."
         />
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

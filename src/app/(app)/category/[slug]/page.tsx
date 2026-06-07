@@ -11,6 +11,7 @@ import PlaceList from "@/components/place/PlaceList";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 
@@ -200,15 +201,25 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           photo grid (visual) and a dense list (scannable). Category
           pages default to list because users land here intent-driven
           ("show me all the breweries") and want to compare. Their
-          layout preference persists across surfaces via localStorage. */}
-      <section className="space-y-3">
-        <SectionHeading title="Browse" accent={c.color} />
+          layout preference persists across surfaces via localStorage.
+
+          COLLAPSED by default so the page lands at ~3-4 screens (top
+          picks + refine + photo wall) instead of running on like a
+          directory. The full list is preserved, one tap away — a user
+          is never forced to scroll the whole category to leave. */}
+      <CollapsibleSection
+        title="Show all places"
+        count={places.length}
+        countLabel="places"
+        storageKey={`fr.category.${slug}.browse`}
+        defaultOpen={false}
+      >
         <PlaceList
           places={places}
           initialLayout="list"
           emptyMessage="We are still seeding this category. Submit a place you love."
         />
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }
