@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Settings, ChevronRight, Mail } from "lucide-react";
+import { Settings, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
 import RecentlyViewedRail from "@/components/saved/RecentlyViewedRail";
 import NotificationsNudge from "@/components/pwa/NotificationsNudge";
 import PageBloom from "@/components/ui/PageBloom";
-import IconStamp from "@/components/ui/IconStamp";
 import { getServerUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -30,72 +29,66 @@ export const metadata: Metadata = {
 export default async function MyRadiusPage() {
   const user = await getServerUser();
   return (
-    <div className="relative space-y-5">
+    <div className="relative space-y-4">
       <PageBloom variant="warm-cool" />
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            {user ? `Signed in as ${user.email ?? "you"}` : "On this device"}
-          </p>
-          <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+      {/* Compact header with a field-guide "plate" mark — a faint concentric
+          contour/radius locator bleeding off the corner + a coordinate line
+          in mono caps, like a naturalist guide's specimen plate. Character,
+          no bulk: the SVG is decorative and the screen still opens on content. */}
+      <header className="relative flex items-center justify-between gap-3 pt-0.5">
+        <svg
+          aria-hidden
+          viewBox="0 0 120 120"
+          className="pointer-events-none absolute -top-6 right-7 h-[88px] w-[88px]"
+          style={{ color: "var(--app-ink)", opacity: 0.1 }}
+          fill="none"
+          stroke="currentColor"
+        >
+          <circle cx="60" cy="60" r="13" strokeWidth="1.25" />
+          <circle cx="60" cy="60" r="25" strokeWidth="1.25" />
+          <circle cx="60" cy="60" r="37" strokeWidth="1.25" />
+          <circle cx="60" cy="60" r="49" strokeWidth="1.25" />
+          <path d="M60 2 v116 M2 60 h116" strokeWidth="0.6" />
+        </svg>
+        <div className="relative min-w-0">
+          <h1 className="font-serif text-[23px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Your field guide
           </h1>
-          <p
-            className="mt-1.5 text-[14px] leading-relaxed text-pretty"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            Your saved Frederick starts here. Save places, events, and ideas —
-            we&apos;ll group them by town, distance, and what&apos;s coming up next.
+          <p className="truncate font-mono text-[10.5px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            39.41°N 77.41°W · {user ? (user.email ?? "you") : "on this device"}
           </p>
         </div>
         <Link
           href="/settings"
           aria-label="Settings"
-          className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+          className="tactile tactile-interactive grid h-9 w-9 shrink-0 place-items-center rounded-full border"
           style={{
             borderColor: "var(--app-border)",
             background: "var(--app-bg-elevated)",
             color: "var(--app-ink-2)",
           }}
         >
-          <Settings className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Settings
-          <ChevronRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+          <Settings className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         </Link>
       </header>
 
-      {/* Anonymous-only sign-in CTA. Quiet, NOT a popup — the user
-          can keep using /my-radius without an account; this is an
-          invitation, not a wall. Disappears once signed in. */}
+      {/* Anonymous-only sign-in CTA — one slim frosted line, not a card.
+          A quiet invitation (the page works fully without an account). */}
       {!user && (
         <Link
           href="/auth/login?next=/my-radius"
-          className="tactile tactile-interactive group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
-          style={{ borderColor: "var(--app-border)" }}
+          className="tactile tactile-interactive group flex items-center gap-2 rounded-full px-3 py-1.5 backdrop-blur-md"
+          style={{
+            background: "color-mix(in srgb, var(--app-bg-elevated) 66%, transparent)",
+            boxShadow: "var(--app-edge), var(--app-hi)",
+          }}
         >
-          <IconStamp accent="var(--app-brand)" size="md">
-            <Mail aria-hidden />
-          </IconStamp>
-          <span className="min-w-0 flex-1">
-            <span
-              className="block text-[13px] font-semibold leading-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Sign in to sync My Radius across devices
-            </span>
-            <span
-              className="block text-[11.5px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Magic link, no password. Your current list comes with you.
-            </span>
+          <Mail className="h-[15px] w-[15px] shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+            Sign in to sync across devices
           </span>
-          <span
-            aria-hidden
-            className="text-[11px] font-bold transition-transform group-hover:translate-x-0.5"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            →
+          <span className="shrink-0 text-[12px] font-semibold transition-transform group-hover:translate-x-0.5" style={{ color: "var(--app-brand)" }}>
+            Magic link →
           </span>
         </Link>
       )}
