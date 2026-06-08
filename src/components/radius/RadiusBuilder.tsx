@@ -7,6 +7,7 @@ import IconStamp from "@/components/ui/IconStamp";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
+import MapControlSheet, { SNAP_COLLAPSED, SNAP_HALF } from "./MapControlSheet";
 import { resolveMunicipality } from "@/lib/location";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
@@ -256,6 +257,9 @@ export default function RadiusBuilder({
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
+  // Map Control Sheet snap state. Opens collapsed (radar state + count
+  // peek); "Adjust" / drag lifts it to the working / browse states.
+  const [snap, setSnap] = useState<number | string | null>(SNAP_COLLAPSED);
   // Onboarding handoff: if the user picked a home municipality on
   // /welcome, jump to that preset on first paint instead of MUNI_PRESETS[0].
   // SSR-safe: server renders index 0, client overrides after mount.
@@ -816,7 +820,7 @@ export default function RadiusBuilder({
   );
 
   return (
-    <div className="space-y-3">
+    <div className="relative">
       {/* First-visit invite card — the soul of the Radius redesign.
           Showing "what's around you" is the most useful thing this
           page can do, so we lead with it. Brand-orange CTA, soft
@@ -939,8 +943,9 @@ export default function RadiusBuilder({
           stats can overlay the map bottom (Apple Maps pattern). The
           previous standalone ribbon section ate ~50px and pushed the
           slider further from the map. */}
-      <div className="relative">
+      <div className="relative" style={{ height: "calc(100dvh - 9.5rem)" }}>
         <RadiusMap
+          height="100%"
           mode={mode}
           meters={meters}
           center={{ lng: center.lng, lat: center.lat }}
@@ -968,10 +973,40 @@ export default function RadiusBuilder({
             now lives in the calm sheet header below the map. */}
       </div>
 
-      {/* Map nav (Radius / Browse) — small, directly under the map. */}
-      {modeToggle && (
-        <div className="-mt-1 flex justify-center">{modeToggle}</div>
-      )}
+      {/* ── MAP CONTROL SHEET — the radar's controls + results, collapsed
+          over the live map. The summary (radar state + count) stays in the
+          collapsed peek; the controls and results reveal as the sheet is
+          dragged up (or via "Adjust"). The map is the canvas; the sheet
+          explains what matters. */}
+      <MapControlSheet
+        activeSnap={snap}
+        onSnapChange={setSnap}
+        summary={
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                {minutes}-min {MODE_VERB[mode]} · {center.label}
+              </p>
+              <p className="mt-0.5 text-[12.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {placesReady
+                  ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"} nearby`
+                  : "Finding places…"}
+                {openNowCount > 0 ? ` · ${openNowCount} open now` : ""}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
+              className="tactile tactile-interactive inline-flex shrink-0 items-center rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold"
+              style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)", color: "var(--app-ink-2)" }}
+            >
+              {snap === SNAP_COLLAPSED ? "Adjust" : "Done"}
+            </button>
+          </div>
+        }
+      >
+        {modeToggle && <div className="flex justify-center pb-1">{modeToggle}</div>}
+        {controlCard}
 
       {/* ── BEST NEAR — the calm sheet lead. Replaces the dumped count
           ribbon: a clear "Best near {center}" heading + a one-line reach
@@ -1030,10 +1065,9 @@ export default function RadiusBuilder({
       </section>
 
 
-      {/* CONTROLS lead: center + travel mode + radius slider sit
-          directly under the map, so you tune the instrument BEFORE the
-          results — not after them. */}
-      {controlCard}
+      {/* (The control card now renders at the TOP of the Map Control Sheet,
+          right under the summary, so the working state leads with the
+          instrument.) */}
 
       {/* (The old "Within reach" nearest-of-kind row was folded into the
           Best-near sheet lead + the compact utility row above, so the
@@ -1461,6 +1495,7 @@ export default function RadiusBuilder({
           Nothing inside this radius. Move the slider, change the mode, or pick a different center.
         </p>
       )}
+      </MapControlSheet>
     </div>
   );
 }
