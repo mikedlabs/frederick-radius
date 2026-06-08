@@ -42,7 +42,7 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/guide",     label: "Guide",  icon: Compass,  fillOnActive: false },
+  { href: "/guide",     label: "Ask",    icon: Compass,  fillOnActive: false },
   { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
   { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
   { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
