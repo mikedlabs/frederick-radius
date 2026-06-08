@@ -85,7 +85,7 @@ export default async function MyRadiusPage() {
         >
           <Mail className="h-[15px] w-[15px] shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
           <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
-            Sign in to sync across devices
+            Sync across devices
           </span>
           <span className="shrink-0 text-[12px] font-semibold transition-transform group-hover:translate-x-0.5" style={{ color: "var(--app-brand)" }}>
             Magic link →
