@@ -9,16 +9,19 @@ import {
   Baby,
   Toilet,
   ParkingCircle,
-  Navigation,
   BookOpen,
   Phone,
+  Search,
+  Clock,
+  Trees,
+  Building2,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
 import IconStamp from "@/components/ui/IconStamp";
 import CategoryIcon from "@/components/place/CategoryIcon";
-import { publicPlaces } from "@/lib/loaders/places";
+import PlaceCard from "@/components/place/PlaceCard";
+import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
-import { MUNICIPALITIES } from "@/data/municipalities";
 import MunicipalityStrip from "@/components/today/MunicipalityStrip";
 import { INTENT_BY_KEY } from "@/data/intents";
 
@@ -65,34 +68,58 @@ export default function PlacesIndexPage() {
     .filter((c) => c.n > 0)
     .sort((a, b) => b.n - a.n);
 
-  // Per-town counts. Same honest-empty rule — towns with zero seeded
-  // places don't show up as a dangling tile.
-  const townCounts = MUNICIPALITIES.map((m) => ({
-    ...m,
-    n: all.filter((p) => p.municipality === m.slug).length,
-  }))
-    .filter((m) => m.n > 0)
-    .sort((a, b) => b.n - a.n);
+  // Local favorites preview — real, curated place cards so the page leads
+  // with ANSWERS, not just a wall of category tiles. Decorate to PlaceCardData
+  // (ratings, photo, local_favorite), keep curation-flagged or strongly-rated
+  // photo-backed picks, most-reviewed first. Honest: if fewer than three
+  // qualify the section self-hides.
+  const favorites = all
+    .map((p) => decoratePlace(p))
+    .filter(
+      (p) =>
+        p.local_favorite ||
+        ((p.google_rating ?? 0) >= 4.6 && (p.google_rating_count ?? 0) >= 120),
+    )
+    .filter((p) => Boolean(p.google_photo_url))
+    .sort((a, b) => (b.google_rating_count ?? 0) - (a.google_rating_count ?? 0))
+    .slice(0, 4);
 
   return (
     <div className="relative space-y-7">
       <PageBloom variant="warm-cool" />
 
-      <header className="space-y-2">
-        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Places
-        </p>
+      {/* HERO — a calm question, not a directory count. The old lead put
+          "1,600 places across 13 towns" as the emotional message; that's
+          demoted to a quiet placeholder in the search affordance below. */}
+      <header className="space-y-4">
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Find the right place faster.
+          What kind of place<br />do you need?
         </h1>
-        <p
-          className="text-[15px] leading-relaxed text-pretty"
-          style={{ color: "var(--app-ink-2)" }}
+        {/* Search affordance — the obvious first action. Opens the typed
+            search; the count rides along as a quiet supporting detail. */}
+        <Link
+          href="/search"
+          aria-label="Search places"
+          className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3.5 pl-4 pr-2.5"
+          style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}
         >
-          Start with what you need below. Or browse the full directory by
-          category, by town, or on the map. {total.toLocaleString()} places
-          across {townCounts.length} towns.
-        </p>
+          <span
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+            style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+          >
+            <Search className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[15px]" style={{ color: "var(--app-ink-3)" }}>
+            Search {total.toLocaleString()} places…
+          </span>
+          <span
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform group-active:scale-95"
+            style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
+            aria-hidden
+          >
+            <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.5} />
+          </span>
+        </Link>
       </header>
 
       {/* Start with what you need — the human-intent rail. Pre-launch
@@ -105,96 +132,44 @@ export default function PlacesIndexPage() {
           Visual language matches MoodTiles on /now: paper-cream tile,
           tinted icon stamp, two-line label. 2-col on mobile, 3-col from
           sm: so the row never dominates the page. */}
-      <section className="space-y-2.5">
-        <h2
-          className="font-serif text-[20px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Start with what you need
+      {/* PRIMARY LANES — eight large, thumb-friendly starting points for
+          everyday needs. Replaces the small equal-weight rows with no
+          truncated sub-labels. The full category + town directory is kept,
+          lower on the page. */}
+      <section className="space-y-3">
+        <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          Start with a need
         </h2>
-        <ul className="reveal-up grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <ul className="grid grid-cols-2 gap-2.5">
           {[
-            {
-              label: "Near me",
-              nudge: "What's within reach",
-              href: "/map?mode=radius",
-              icon: Navigation,
-              color: "var(--app-brand)",
-            },
-            {
-              label: "Food and drink",
-              nudge: "Restaurants and breweries",
-              href: "/map?intent=eat",
-              icon: UtensilsCrossed,
-              color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)",
-            },
-            {
-              label: "Coffee",
-              nudge: "Roasters and cafes",
-              href: "/map?intent=coffee",
-              icon: Coffee,
-              color: INTENT_BY_KEY.coffee?.color ?? "var(--app-brand)",
-            },
-            {
-              label: "With kids",
-              nudge: "Family-friendly",
-              href: "/map?intent=family",
-              icon: Baby,
-              color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)",
-            },
-            {
-              label: "Restrooms",
-              nudge: "Public restrooms nearby",
-              href: "/amenities",
-              icon: Toilet,
-              color: "var(--app-cool)",
-            },
-            {
-              label: "Parking",
-              nudge: "Garages, lots, on-street",
-              href: "/category/parking",
-              icon: ParkingCircle,
-              color: "var(--app-ink-2)",
-            },
+            { label: "Open now", href: "/map?mode=browse&open=now", icon: Clock, color: "var(--app-positive)" },
+            { label: "Food & drink", href: "/map?intent=eat", icon: UtensilsCrossed, color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)" },
+            { label: "Coffee", href: "/map?intent=coffee", icon: Coffee, color: INTENT_BY_KEY.coffee?.color ?? "var(--app-brand)" },
+            { label: "With kids", href: "/map?intent=family", icon: Baby, color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)" },
+            { label: "Outdoors", href: "/map?intent=outdoor", icon: Trees, color: INTENT_BY_KEY.outdoor?.color ?? "var(--app-brand-2)" },
+            { label: "Parking", href: "/category/parking", icon: ParkingCircle, color: "var(--app-ink-2)" },
+            { label: "Restrooms", href: "/amenities", icon: Toilet, color: "var(--app-cool)" },
+            { label: "Explore by town", href: "/towns", icon: Building2, color: "var(--app-brand)" },
           ].map((m) => {
             const Icon = m.icon;
             return (
               <li key={m.label}>
                 <Link
                   href={m.href}
-                  className="hover-lift flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 transition"
+                  className="tactile tactile-interactive flex min-h-[104px] flex-col items-start justify-between gap-3 rounded-[var(--app-radius-lg)] p-4"
                   style={{
-                    borderColor: "var(--app-border)",
-                    boxShadow:
-                      "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                    background: `linear-gradient(155deg, color-mix(in srgb, ${m.color} 10%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 60%)`,
+                    boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
                   }}
                 >
                   <span
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-                    style={{
-                      background: `color-mix(in srgb, ${m.color} 14%, transparent)`,
-                    }}
-                    aria-hidden
+                    className="grid h-11 w-11 place-items-center rounded-[14px] text-white"
+                    style={{ background: m.color, backgroundImage: "var(--app-gloss)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.38)" }}
                   >
-                    <Icon
-                      className="h-[18px] w-[18px]"
-                      strokeWidth={2}
-                      style={{ color: m.color }}
-                    />
+                    <Icon className="h-[20px] w-[20px]" strokeWidth={2} aria-hidden />
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="block truncate text-[13px] font-semibold"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      {m.label}
-                    </span>
-                    <span
-                      className="block truncate text-[11px]"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      {m.nudge}
-                    </span>
+                  <span className="text-[15px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                    {m.label}
                   </span>
                 </Link>
               </li>
@@ -202,6 +177,41 @@ export default function PlacesIndexPage() {
           })}
         </ul>
       </section>
+
+      {/* LOCAL FAVORITES — a few real, curated place cards so the page
+          leads with ANSWERS, not only navigation tiles. The lead card gets
+          a soft brand glow (selected). Self-hides if fewer than three. */}
+      {favorites.length >= 3 && (
+        <section aria-label="Local favorites" className="space-y-3">
+          <header className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-brand)" }} />
+              <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                Local favorites
+              </h2>
+            </div>
+            <Link href="/collections" className="inline-flex items-center gap-1 text-[12px] font-semibold" style={{ color: "var(--app-brand)" }}>
+              See more <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+            </Link>
+          </header>
+          <ul className="space-y-2.5">
+            {favorites.map((p, i) => (
+              <li key={p.slug}>
+                {i === 0 ? (
+                  <div
+                    className="rounded-[var(--app-radius-lg)]"
+                    style={{ boxShadow: "0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)" }}
+                  >
+                    <PlaceCard place={p} variant="row" />
+                  </div>
+                ) : (
+                  <PlaceCard place={p} variant="row" />
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* Quick-access strip — the two top-level alternates to a
           browse-the-list view. Map for the spatial answer, Radius
