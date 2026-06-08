@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, Sparkles, Moon } from "lucide-react";
+import { CalendarDays, Moon, Music, Baby, Ticket, Palette, Trees, Building2 } from "lucide-react";
 import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, dedupeCuratedClusters, type EventWithMeta } from "@/lib/loaders/events";
 import { classifyEvent, isPublicEvent } from "@/lib/events/classify";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
@@ -10,7 +10,6 @@ import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
 import WeekendVibes from "@/components/event/WeekendVibes";
 import TonightRail from "@/components/event/TonightRail";
-import NowDayStrip from "@/components/today/NowDayStrip";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
@@ -267,112 +266,97 @@ export default async function EventsIndexPage({
     return t >= nowMs && t < weekEndMs && !shownSlugs.has(e.slug);
   });
 
+  // ── Browse by mood — category slugs derived from the categories
+  // actually present, so a mood tile never deep-links to an empty
+  // filtered view (a mood with no match is simply omitted). Music /
+  // family / arts / outdoors map to real event categories; Free and
+  // Civic are handled separately (a free-only filter and the civic lane).
+  const moodCats = (re: RegExp) =>
+    categories.filter((c) => re.test(`${c.slug} ${c.name}`.toLowerCase())).map((c) => c.slug);
+  const musicCats = moodCats(/music|concert|band|\bdj\b|orchestra|symphony/);
+  const familyCats = moodCats(/family|kid|child|youth|story/);
+  const artsCats = moodCats(/\bart|theat|museum|galler|craft|cultur|film|comedy|dance|exhibit/);
+  const outdoorCats = moodCats(/outdoor|park|trail|hike|farm|market|festiv|nature|garden|run/);
+  const moodTiles: { label: string; Icon: typeof Music; accent: string; href: string }[] = [
+    ...(musicCats.length ? [{ label: "Live music", Icon: Music, accent: "#7E2C6F", href: `/events?cats=${musicCats.join(",")}` }] : []),
+    ...(familyCats.length ? [{ label: "Family", Icon: Baby, accent: "#C99632", href: `/events?cats=${familyCats.join(",")}` }] : []),
+    { label: "Free", Icon: Ticket, accent: "#1E6B3A", href: "/events?free=1" },
+    ...(artsCats.length ? [{ label: "Arts", Icon: Palette, accent: "#7E2C6F", href: `/events?cats=${artsCats.join(",")}` }] : []),
+    ...(outdoorCats.length ? [{ label: "Outdoors", Icon: Trees, accent: "#1E6B3A", href: `/events?cats=${outdoorCats.join(",")}` }] : []),
+    { label: "Civic", Icon: Building2, accent: "#2F5470", href: "#civic-meetings" },
+  ];
+
+  // The Browse explorer opens automatically when arriving on a filtered
+  // deep-link (a mood tile, free-only, or a day), so the filter is visible
+  // instead of hidden inside a collapsed section.
+  const browseOpen =
+    (initialView.cats?.length ?? 0) > 0 || sp.get("free") === "1" || !!initialDay;
+
   return (
     <div className="relative space-y-6">
       <PageBloom variant="warm-cool" />
 
-      {/* ── 1. Masthead — eyebrow + serif H1 + the two pivots (Plan,
-          Month view). The page now leads with the curated tiers below,
-          so the masthead stays a quiet title bar, not a hero. */}
+      {/* ── 1. HERO — a calm, editorial opener. One question, one short
+          line. The old "Live across the county / Events" masthead +
+          the 7-day week-strip calendar led with a feed/calendar feel;
+          this leads with the curated answer instead. Month view is a
+          single quiet link; the full calendar lives below. */}
       <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            Live across the county
-          </p>
+        <div className="min-w-0">
           <h1
-            className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
+            className="font-serif text-[31px] font-semibold leading-[1.04] tracking-tight text-balance"
             style={{ color: "var(--app-ink)" }}
           >
-            Events
+            What&rsquo;s worth going to?
           </h1>
+          <p className="mt-2 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            Hand-picked from what&rsquo;s on across Frederick County.
+          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <Link
-            href="/plan"
-            className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-white shadow-[var(--app-shadow-1)]"
-            style={{ background: "var(--app-brand)" }}
-          >
-            <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            Plan an evening
-          </Link>
-          <Link
-            href="/events/calendar"
-            className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-            style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
-          >
-            <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            Month view
-          </Link>
-        </div>
+        <Link
+          href="/events/calendar"
+          className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
+          style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+        >
+          <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          Month view
+        </Link>
       </header>
 
-      {/* ── 2. Week strip — clickable 7-day rail; a tap deep-links the
-          explorer to that Eastern day (?d=YYYY-MM-DD). */}
-      {(() => {
-        const eventCountByDate = new Map<string, number>();
-        for (const e of allEvents) {
-          const d = new Date(e.starts_at);
-          const key = new Intl.DateTimeFormat("en-CA", {
-            timeZone: "America/New_York",
-            year: "numeric", month: "2-digit", day: "2-digit",
-          }).format(d);
-          eventCountByDate.set(key, (eventCountByDate.get(key) ?? 0) + 1);
-        }
-        return (
-          <NowDayStrip
-            hrefForDate={(dk) => `/events?d=${dk}`}
-            activeDateKey={initialDay}
-            eventCountByDate={eventCountByDate}
-          />
-        );
-      })()}
-
-      {/* ── 3. TODAY — the lead tier (expanded). ONE hero event
-          (soonest upcoming) carrying a real "why it matters" line,
-          then a highlights rail of what's starting soon. Bounded to
-          today (tonight included); when nothing is left today the hero
-          honestly reads as "Next up." */}
+      {/* ── 2. BEST NEXT — the lead. One large editorial card for the
+          soonest worthwhile event, carrying a real "why it matters" line.
+          Always visible (not behind a collapsible), so the page opens on
+          the answer, never on a calendar. */}
       {heroEvent && (
-        <CollapsibleSection
-          title="Today"
-          count={todayEvents.length}
-          countLabel={todayEvents.length === 1 ? "event" : "events"}
-          storageKey="fr.events.today"
-          defaultOpen
-        >
-          <div className="space-y-3">
-            {/* The "Today" section header already labels this tier, so the
-                redundant "Today's lead" eyebrow is dropped. The eyebrow
-                stays only for the QUIET case, where "next up" adds honest
-                context the title alone doesn't ("nothing left today"). */}
-            {todayEvents.length === 0 && (
-              <p
-                className="eyebrow inline-flex items-center gap-1.5"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                <Moon
-                  className="h-3 w-3"
-                  strokeWidth={2.25}
-                  style={{ color: "var(--app-cool)" }}
-                  aria-hidden
-                />
-                Quiet today &middot; next up
-              </p>
-            )}
-            <EventCard
-              event={heroEvent}
-              variant="feature"
-              live={liveSlugs.includes(heroEvent.slug)}
-              whyItMatters={whyItMatters(heroEvent)}
-            />
-            {/* Highlights rail — the few other things starting soon,
-                photo-led, so "Tonight" leads with the answer + a short
-                marquee, not the whole calendar. */}
-            {highlightPool.length > 0 && (
-              <TonightRail events={highlightPool} />
-            )}
-          </div>
-        </CollapsibleSection>
+        <section aria-label="Best next" className="space-y-3">
+          <header className="flex items-center gap-2">
+            <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-brand)" }} />
+            <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              {todayEvents.length === 0 ? "Best next" : "Best tonight"}
+            </h2>
+          </header>
+          <EventCard
+            event={heroEvent}
+            variant="feature"
+            live={liveSlugs.includes(heroEvent.slug)}
+            whyItMatters={whyItMatters(heroEvent)}
+          />
+        </section>
+      )}
+
+      {/* ── 3. TONIGHT — only when there's actually something left today.
+          A short photo-led marquee of what's starting soon, not the whole
+          day's list. Self-hides on a quiet night. */}
+      {todayEvents.length > 0 && highlightPool.length > 0 && (
+        <section aria-label="Tonight" className="space-y-2.5">
+          <header className="flex items-center gap-2">
+            <Moon className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-cool)" }} aria-hidden />
+            <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              More tonight
+            </h2>
+          </header>
+          <TonightRail events={highlightPool} />
+        </section>
       )}
 
       {/* ── 4. THIS WEEKEND — expanded, grouped by VIBE so the weekend
@@ -389,6 +373,43 @@ export default async function EventsIndexPage({
           <WeekendVibes events={weekendEvents} liveSlugs={liveSlugs} />
         </CollapsibleSection>
       )}
+
+      {/* ── 4b. BROWSE BY MOOD — a calm entry into the rest of the
+          calendar by feel, not by date. Each tile deep-links a filtered
+          view (and opens the explorer below); Civic jumps to the
+          separated civic lane. Tiles with no matching events are omitted
+          upstream, so a tap never lands on an empty list. */}
+      <section aria-label="Browse by mood" className="space-y-3">
+        <header className="flex items-center gap-2">
+          <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-ink-3)" }} />
+          <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Browse by mood
+          </h2>
+        </header>
+        <div className="grid grid-cols-3 gap-2.5">
+          {moodTiles.map(({ label, Icon, accent, href }) => (
+            <Link
+              key={label}
+              href={href}
+              className="tactile tactile-interactive flex flex-col items-start gap-2 rounded-[var(--app-radius-lg)] p-3"
+              style={{
+                background: `linear-gradient(155deg, color-mix(in srgb, ${accent} 12%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 62%)`,
+                boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
+              }}
+            >
+              <span
+                className="grid h-9 w-9 place-items-center rounded-[12px] text-white"
+                style={{ background: accent, backgroundImage: "var(--app-gloss)", boxShadow: `inset 0 1px 0 rgba(255,255,255,0.38)` }}
+              >
+                <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+              </span>
+              <span className="text-[13px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                {label}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* ── 5. LATER THIS WEEK — the rest of the next 7 days, COLLAPSED
           ("Show N more"). Dense glance list; the long body of the week
@@ -431,7 +452,7 @@ export default async function EventsIndexPage({
         count={allEvents.length}
         countLabel="upcoming"
         storageKey="fr.events.browse"
-        defaultOpen={false}
+        defaultOpen={browseOpen}
       >
         <EventsExplorer
           events={allEvents}
@@ -450,9 +471,27 @@ export default async function EventsIndexPage({
         />
       </CollapsibleSection>
 
-      {/* ── 6b. CIVIC MEETINGS — boards, commissions, hearings, council
-          sessions classified out of the live feed. Present + findable in
-          their own lane, never in "What's on". COLLAPSED, self-hides. */}
+      {/* ── 6b. GOVERNMENT & NOTICES — civic meetings + town reminders,
+          fenced off from social discovery by a clear divider + label so
+          municipal listings never read as "something to do". The #civic-
+          meetings anchor is the target of the Civic mood tile above. */}
+      {(civicEvents.length > 0 || reminderEvents.length > 0) && (
+        <div
+          id="civic-meetings"
+          className="flex items-center gap-3 scroll-mt-20 pt-2"
+        >
+          <span className="h-px flex-1" style={{ background: "var(--app-border)" }} aria-hidden />
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+            <Building2 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            Government &amp; notices
+          </span>
+          <span className="h-px flex-1" style={{ background: "var(--app-border)" }} aria-hidden />
+        </div>
+      )}
+
+      {/* CIVIC MEETINGS — boards, commissions, hearings, council sessions
+          classified out of the live feed. Present + findable in their own
+          lane, never in "What's on". COLLAPSED, self-hides. */}
       {civicEvents.length > 0 && (
         <CollapsibleSection
           title="Civic meetings"
