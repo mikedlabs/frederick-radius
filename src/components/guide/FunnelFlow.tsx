@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, ArrowRight, MapPin, ArrowUpDown, Wine, Baby, Dog, Music, Building2, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, ArrowRight, MapPin, ArrowUpDown, Wine, Beer, Baby, Dog, Music, Building2, type LucideIcon } from "lucide-react";
+import { placesWithHappyHour } from "@/lib/loaders/businessInfo";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
@@ -71,9 +72,16 @@ function daypartGreeting(hour: number): string {
 // those long-tail moments far better than a near-empty chip.
 type Lens = { key: string; label: string; Icon: LucideIcon; match: (p: PlaceCardData) => boolean };
 const hasTag = (p: PlaceCardData, t: string) => (p.tags ?? []).includes(t);
+// Happy-hour venues come from the business-info ingest (a real `happy_hour`
+// string scraped from each venue's own site). Surfaced as a lens only when
+// the set is non-trivial, so the front door never offers an empty/thin chip.
+const HAPPY_HOUR_SLUGS = new Set(placesWithHappyHour().map((p) => p.slug));
 const LENSES: Lens[] = [
   { key: "date-night", label: "Date night", Icon: Wine, match: (p) => hasTag(p, "date-night") },
   { key: "with-kids", label: "With kids", Icon: Baby, match: (p) => hasTag(p, "kids-0-5") || hasTag(p, "kids-6-12") || hasTag(p, "family") },
+  ...(HAPPY_HOUR_SLUGS.size >= 3
+    ? [{ key: "happy-hour", label: "Happy hour", Icon: Beer, match: (p: PlaceCardData) => HAPPY_HOUR_SLUGS.has(p.slug) }]
+    : []),
   { key: "dog", label: "Dog-friendly", Icon: Dog, match: (p) => hasTag(p, "dog-friendly") },
   { key: "live-music", label: "Live music", Icon: Music, match: (p) => LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
 ];

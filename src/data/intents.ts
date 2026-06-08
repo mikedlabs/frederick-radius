@@ -142,6 +142,13 @@ const WINERY_NAME_RE = /winer|vineyard|cellar|meader|ciderworks?/i;
 const isWinery = (p: PlaceCardData): boolean =>
   (p.subcategories ?? []).some((s) => WINERY_SUBS.has(s)) ||
   WINERY_NAME_RE.test(p.name);
+
+// Cinemas sit in the `theater` category alongside live-stage venues. Split
+// them by name so "Movies" answers "where can I see a film" (Warehouse
+// Cinemas ×2, Regal Westview) while "Theaters" stays live-performance.
+const CINEMA_NAME_RE = /cinema|movie|regal|\bamc\b|marcus|megaplex|multiplex/i;
+const isCinema = (p: PlaceCardData): boolean =>
+  p.category === "theater" && CINEMA_NAME_RE.test(p.name);
 // Coffee sub-types — there's no structured "coffee kind" field, so read
 // the name. Roasters (the local-roastery distinction coffee people seek)
 // and tea / boba houses get pulled out of the general coffee set so the
@@ -464,7 +471,8 @@ export const INTENTS: Intent[] = [
     subIntents: [
       { key: "museums",    type: "category", label: "Museums",    icon: "Palette",   match: (p) => p.category === "museum" },
       { key: "galleries",  type: "category", label: "Galleries",  icon: "ImageIcon", match: (p) => p.category === "gallery" },
-      { key: "theaters",   type: "category", label: "Theaters",   icon: "Theater",   match: (p) => p.category === "theater" },
+      { key: "movies",     type: "category", label: "Movies",     match: (p) => isCinema(p) },
+      { key: "theaters",   type: "category", label: "Theaters",   icon: "Theater",   match: (p) => p.category === "theater" && !isCinema(p) },
       // Live music isn't a place category — it's a thing venues HOST.
       // The `music` category catches only formal halls (~5 rows); the
       // curated venue set adds the breweries, wineries, distilleries &
