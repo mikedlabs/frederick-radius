@@ -580,10 +580,18 @@ export default function RadiusMap({
                 15, ["case", ["==", ["get", "inReach"], 1], 0.82, 0.46],
                 17, ["case", ["==", ["get", "inReach"], 1], 0.95, 0.6],
               ],
-              "icon-allow-overlap": true,
-              "icon-ignore-placement": true,
+              // Radar declutter: collision-thin overlapping pins instead
+              // of forcing every one on screen (the old true/true made
+              // downtown an unreadable blob of hundreds of markers).
+              // symbol-sort-key = pri keeps the strongest, in-reach,
+              // highest-score pins; the rest yield. Same collision the
+              // labels layer already uses, so density reads as a calm
+              // radar of the best nearby spots, not a wall of icons.
+              "icon-allow-overlap": false,
+              "icon-ignore-placement": false,
               "symbol-sort-key": ["get", "pri"],
               "icon-anchor": "center",
+              "icon-padding": 4,
             }}
             paint={{
               // Beyond-reach pins fade back so the in-reach set leads the
