@@ -31,16 +31,31 @@ export default async function MyRadiusPage() {
   return (
     <div className="relative space-y-4">
       <PageBloom variant="warm-cool" />
-      {/* Compact header — a tight title + one meta line + an icon button,
-          not a display-1 hero with a two-line paragraph. The mobile screen
-          opens on content, not on chrome. */}
-      <header className="flex items-center justify-between gap-3 pt-0.5">
-        <div className="min-w-0">
+      {/* Compact header with a field-guide "plate" mark — a faint concentric
+          contour/radius locator bleeding off the corner + a coordinate line
+          in mono caps, like a naturalist guide's specimen plate. Character,
+          no bulk: the SVG is decorative and the screen still opens on content. */}
+      <header className="relative flex items-center justify-between gap-3 pt-0.5">
+        <svg
+          aria-hidden
+          viewBox="0 0 120 120"
+          className="pointer-events-none absolute -top-6 right-7 h-[88px] w-[88px]"
+          style={{ color: "var(--app-ink)", opacity: 0.1 }}
+          fill="none"
+          stroke="currentColor"
+        >
+          <circle cx="60" cy="60" r="13" strokeWidth="1.25" />
+          <circle cx="60" cy="60" r="25" strokeWidth="1.25" />
+          <circle cx="60" cy="60" r="37" strokeWidth="1.25" />
+          <circle cx="60" cy="60" r="49" strokeWidth="1.25" />
+          <path d="M60 2 v116 M2 60 h116" strokeWidth="0.6" />
+        </svg>
+        <div className="relative min-w-0">
           <h1 className="font-serif text-[23px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Your field guide
           </h1>
-          <p className="truncate text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-            {user ? `Signed in as ${user.email ?? "you"}` : "Saved on this device"}
+          <p className="truncate font-mono text-[10.5px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            39.41°N 77.41°W · {user ? (user.email ?? "you") : "on this device"}
           </p>
         </div>
         <Link
