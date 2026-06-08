@@ -19,7 +19,15 @@ import {
  * is unaffected until the agent (scripts/ingest-municipal-civic.ts)
  * populates that town. Nothing is ever fabricated here.
  */
-export default function CivicCard({ rec }: { rec: MunicipalCivic | null }) {
+export default function CivicCard({
+  rec,
+  hideHeading = false,
+}: {
+  rec: MunicipalCivic | null;
+  /** When mounted inside the merged "Living here" block, the parent owns
+   *  the heading — drop CivicCard's own so there's a single heading style. */
+  hideHeading?: boolean;
+}) {
   if (!rec) return null;
   const contacts = civicContacts(rec);
   if (contacts.length === 0) return null;
@@ -33,24 +41,26 @@ export default function CivicCard({ rec }: { rec: MunicipalCivic | null }) {
 
   return (
     <section className="space-y-2.5">
-      <div className="flex items-baseline gap-2.5">
-        <span
-          className="font-mono text-[9.5px] uppercase tracking-[0.18em]"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Living here
-        </span>
-        <h2
-          className="whitespace-nowrap font-serif text-[19px] font-semibold"
-          style={{ color: "var(--app-ink)" }}
-        >
-          Town hall &amp; services
-        </h2>
-        <span
-          className="relative top-[-2px] h-px flex-1"
-          style={{ background: "var(--app-ink-3)", opacity: 0.35 }}
-        />
-      </div>
+      {!hideHeading && (
+        <div className="flex items-baseline gap-2.5">
+          <span
+            className="font-mono text-[9.5px] uppercase tracking-[0.18em]"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Living here
+          </span>
+          <h2
+            className="whitespace-nowrap font-serif text-[19px] font-semibold"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Town hall &amp; services
+          </h2>
+          <span
+            className="relative top-[-2px] h-px flex-1"
+            style={{ background: "var(--app-ink-3)", opacity: 0.35 }}
+          />
+        </div>
+      )}
 
       <div
         className="overflow-hidden rounded-[var(--app-radius-lg)] border"
