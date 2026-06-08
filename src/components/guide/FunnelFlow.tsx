@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, MapPin, ArrowUpDown, Wine, Baby, Dog, Music, CalendarDays, Activity, Layers, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, MapPin, ArrowUpDown, Wine, Baby, Dog, Music, CalendarDays, Activity, Layers, Building2, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
@@ -85,6 +85,7 @@ const LENSES: Lens[] = [
 // to where each non-place job already lives — and stops being a directory.
 type Elsewhere = { href: string; label: string; icon: LucideIcon };
 const ELSEWHERE: Elsewhere[] = [
+  { href: "/towns",       label: "Explore a town",           icon: Building2 },
   { href: "/events",      label: "What's on",                icon: CalendarDays },
   { href: "/pulse",       label: "County pulse",  icon: Activity },
   { href: "/map",         label: "Browse the map",           icon: MapPin },
