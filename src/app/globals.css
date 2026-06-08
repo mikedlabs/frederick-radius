@@ -1184,9 +1184,11 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .display-1 {
   font-family: var(--font-display), ui-serif, Georgia, serif;
   font-weight: 600;
-  font-size: clamp(2rem, 1.2rem + 4vw, 3.5rem);
-  line-height: 1.04;
-  letter-spacing: -0.02em;
+  /* Refresh pass 2: a touch larger + tighter for a more confident,
+     editorial page header (bigger floor matters most on phones). */
+  font-size: clamp(2.2rem, 1.3rem + 4.4vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.022em;
   text-wrap: balance;
 }
 .display-2 {
@@ -1200,9 +1202,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 .eyebrow {
   font-size: 11px;
   font-weight: 600;
-  /* Brand Book No. 01 spec: 0.14em. Wider tracking reads more like
-     a field-notebook label and less like a UI eyebrow. */
-  letter-spacing: 0.14em;
+  /* Refresh pass 2: eased from 0.14em → 0.1em. The very wide tracking read
+     as shouty "tiny uppercase"; calmer tracking keeps the editorial label
+     feel without the UI-eyebrow noise the facelift is reducing. */
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--app-ink-3);
 }
