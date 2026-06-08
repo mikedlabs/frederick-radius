@@ -57,10 +57,10 @@ const run = async () => {
     }
   } catch (e) { bad(`/sw.js fetch failed: ${e.message}`); }
 
-  // 1. Nav label — should be "Guide" (#446).
+  // 1. Nav label — the front door is labelled "Ask" (UI facelift; route stays /guide).
   try {
     const { html } = await get("/today");
-    check(/<[^>]*>\s*Guide\s*</.test(html), "nav shows 'Guide'", "nav 'Guide' label not found");
+    check(/<[^>]*>\s*Ask\s*</.test(html), "nav shows 'Ask'", "nav 'Ask' label not found");
   } catch (e) { bad(`/today fetch failed: ${e.message}`); }
 
   // 2. Events laning (#443) — no private/cancelled anywhere in the HTML.

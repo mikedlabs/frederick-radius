@@ -327,7 +327,7 @@ export default function FunnelFlow({
       <AnimatePresence mode="wait" initial={false}>
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
-            <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you after?" sub="Pick one. It narrows from there." />
+            <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you looking for?" sub="Pick a starting point. Radius narrows the county down from there." />
             {/* The funnel leads: the lane grid is the front door. The
                 concierge ("Ask Radius anything.") lives on /today; the
                 quiet "Search instead" link in the header covers a typed
@@ -343,6 +343,7 @@ export default function FunnelFlow({
                     color={it.color}
                     icon={<Icon className="h-5 w-5" strokeWidth={2} aria-hidden />}
                     label={it.label}
+                    promise={it.blurb}
                     count={counts[k]}
                     onClick={() => {
                       haptic("light");
@@ -603,12 +604,14 @@ function Tile({
   color,
   icon,
   label,
+  promise,
   count,
   onClick,
 }: {
   color: string;
   icon?: ReactNode;
   label: string;
+  promise?: string;
   count?: number;
   onClick: () => void;
 }) {
@@ -626,7 +629,7 @@ function Tile({
       variants={tileItem}
       whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      className="group relative flex min-h-[120px] flex-col items-start gap-3 rounded-[var(--app-radius-lg)] p-4 text-left"
+      className="group relative flex min-h-[140px] flex-col items-start gap-3 rounded-[var(--app-radius-lg)] p-4 text-left"
       style={{
         background: `linear-gradient(155deg, color-mix(in srgb, ${color} 11%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 58%)`,
         boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
@@ -644,8 +647,15 @@ function Tile({
           {icon}
         </span>
       )}
-      <span className="text-[15.5px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
-        {label}
+      <span className="flex flex-col gap-1">
+        <span className="text-[15.5px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+          {label}
+        </span>
+        {promise && (
+          <span className="line-clamp-2 pr-4 text-[12.5px] leading-snug text-pretty" style={{ color: "var(--app-ink-3)" }}>
+            {promise}
+          </span>
+        )}
       </span>
       {typeof count === "number" && (
         <span className="text-meta mt-auto inline-flex items-center gap-1.5 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
