@@ -203,7 +203,7 @@ export default function PlaceList({
       </div>
 
       {layout === "grid" ? (
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
           {sortedPlaces.map((p) => (
             <PlaceCard key={p.slug} place={p} variant="grid" />
           ))}
