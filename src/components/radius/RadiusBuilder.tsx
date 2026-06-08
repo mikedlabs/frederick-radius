@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, ChevronDown, Locate, X, Compass } from "lucide-react";
+import { Footprints, Bike, Car, MapPin, ChevronDown, Locate, X, Compass, SquareParking, Toilet, Coffee, CalendarDays, Bus } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
-import WithinReach from "./WithinReach";
 import { resolveMunicipality } from "@/lib/location";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
@@ -855,13 +854,13 @@ export default function RadiusBuilder({
                 className="font-serif text-[16px] font-semibold leading-snug tracking-tight"
                 style={{ color: "var(--app-ink)" }}
               >
-                What&rsquo;s around you, right now.
+                See what&rsquo;s nearby
               </p>
               <p
                 className="mt-0.5 text-[12px] leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
-                Center the radius on your spot. Stays in your browser. We don&rsquo;t store it.
+                Center the radar on your spot. Stays on your device.
               </p>
               <button
                 type="button"
@@ -980,91 +979,65 @@ export default function RadiusBuilder({
             if (p) openSheet(p);
           }}
         />
-        {/* Floating ribbon — overlays the map's bottom edge. Same
-            information as the old standalone strip in 1/3 the page
-            height because it borrows the map's space. */}
-        <div
-          className="pointer-events-none absolute inset-x-3 bottom-3 z-[var(--z-map-control)]"
-          aria-hidden
-        >
-          <div
-            className="pointer-events-auto flex items-center gap-2.5 rounded-full px-3.5 py-2 text-[12px] shadow-[var(--app-shadow-2)] backdrop-blur"
-            style={{
-              background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
-              border: "1px solid var(--app-border)",
-            }}
-          >
-            <span
-              className="inline-flex items-center gap-1 font-semibold tabular-nums"
-              style={{ color: "var(--app-ink)" }}
-            >
-              <span className="font-serif text-[15px]">{minutes}</span>
-              {/* "min walk" / "min bike" / "min drive" — the verb is
-                  what makes the time interval mean something. Without
-                  it, "10 min" reads as ambient and the user has to
-                  infer the mode from elsewhere. */}
-              <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                min {mode} · {formatDistance(meters)}
-              </span>
-            </span>
-            <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
-            {/* The place count is a trust signal, not the answer — the
-                "Within reach" outcomes below carry that. Kept quiet +
-                small so the walk-time/mode (the slider's live feedback)
-                stays the loud thing in the ribbon. */}
-            <span
-              className="inline-flex items-center gap-1 tabular-nums"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              <span className="text-[12px] font-semibold">
-                {placesReady ? displayedInside.length.toLocaleString() : "…"}
-              </span>
-              {/* "places in radius" rather than just "places" — answers
-                  the stranger's "of what?" without forcing them to
-                  trace back to the page name. While the place set is
-                  still streaming in we read "finding places" so the
-                  momentary zero never looks like an empty county. */}
-              <span className="text-[10px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                {!placesReady
-                  ? "finding places"
-                  : `${displayedInside.length === 1 ? "place" : "places"} in radius`}
-              </span>
-            </span>
-            {/* "Open now" — the headline pillar, glanceable on the map.
-                When the filter is on, all shown places ARE open, so we
-                flip the stat to an "open only" state badge instead of a
-                redundant count. Positive tint reads as "you can go now".
-                The accessible toggle lives in the results header below. */}
-            {openOnly ? (
-              <>
-                <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
-                <span
-                  className="inline-flex items-center gap-1 font-semibold uppercase tracking-[0.08em]"
-                  style={{ color: "var(--app-positive)", fontSize: "10px" }}
-                >
-                  open only
-                </span>
-              </>
-            ) : openNowCount > 0 ? (
-              <>
-                <span className="h-3 w-px" style={{ background: "var(--app-border)" }} aria-hidden />
-                <span
-                  className="inline-flex items-center gap-1 font-semibold tabular-nums"
-                  style={{ color: "var(--app-positive)" }}
-                >
-                  <span className="font-serif text-[15px]">{openNowCount}</span>
-                  <span className="text-[10px] uppercase tracking-[0.08em]">open now</span>
-                </span>
-              </>
-            ) : null}
-            {/* "farthest: Hill House Bed and Breakfast" was here.
-                Removed pre-launch (review §12): the user needs the
-                best nearby thing at the top of /radius, not the
-                farthest. Keep the count + mode + distance; cut the
-                trivia. */}
-          </div>
-        </div>
+        {/* Floating stats ribbon removed in the radar redesign — it
+            overlaid the map's bottom edge and competed with the camera
+            controls. The reach summary (places · open now · walk time)
+            now lives in the calm sheet header below the map. */}
       </div>
+
+      {/* ── BEST NEAR — the calm sheet lead. Replaces the dumped count
+          ribbon: a clear "Best near {center}" heading + a one-line reach
+          summary, the single strongest nearby place rendered SELECTED (a
+          soft brand glow), and a compact five-item utility row. Results
+          read as chosen, not piled. */}
+      <section aria-label={`Best near ${center.label}`} className="space-y-3">
+        <div>
+          <h2
+            className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
+            style={{ color: "var(--app-ink)" }}
+          >
+            Best near {center.label}
+          </h2>
+          <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            {placesReady ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}` : "Finding places"}
+            {openNowCount > 0 ? ` · ${openNowCount} open now` : ""} · {minutes}-min {MODE_VERB[mode]}
+          </p>
+        </div>
+
+        {placesReady && displayedInside[0] && (
+          <button
+            type="button"
+            onClick={() => openSheet(displayedInside[0])}
+            className="block w-full rounded-[var(--app-radius-lg)] text-left"
+            style={{ boxShadow: `0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)` }}
+          >
+            <PlaceCard place={displayedInside[0]} variant="feature" />
+          </button>
+        )}
+
+        {/* Compact utility row — the five things people most need nearby. */}
+        <div className="grid grid-cols-5 gap-2">
+          {[
+            { href: "/amenities", label: "Parking", Icon: SquareParking },
+            { href: "/amenities", label: "Restrooms", Icon: Toilet },
+            { href: "/category/coffee", label: "Coffee", Icon: Coffee },
+            { href: "/events", label: "Events", Icon: CalendarDays },
+            { href: "/transit", label: "Transit", Icon: Bus },
+          ].map(({ href, label, Icon }) => (
+            <Link
+              key={label}
+              href={href}
+              className="tactile tactile-interactive flex flex-col items-center gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2.5"
+              style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)" }}
+            >
+              <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
+              <span className="text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                {label}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {/* Mode toggle (Radius / Browse) — right under the map. */}
       {modeToggle && (
@@ -1076,22 +1049,10 @@ export default function RadiusBuilder({
           results — not after them. */}
       {controlCard}
 
-      {/* Best nearby moves — three curated "you should do this right
-          now" tiles (coffee within reach, public restroom, park
-          within reach) derived from the same inside list as the
-          grid below. Pre-launch review §4: /radius needs to feel
-          assistive, not directory-style. Self-hides each tile when
-          there's no match in the current radius — so dialing all
-          the way down doesn't render a row of empty placeholders. */}
-      {/* "You can reach X in N min" — the nearest of each useful kind
-          (coffee, eat, drinks, park, art, shops, restroom, parking),
-          nearest first, tappable. The outcomes answer that replaces the
-          old "N places in radius" count. */}
-      <WithinReach
-        places={displayedInside}
-        amenities={insideAmenities}
-        mode={mode}
-      />
+      {/* (The old "Within reach" nearest-of-kind row was folded into the
+          Best-near sheet lead + the compact utility row above, so the
+          page leads with one clear answer instead of two stacked
+          outcome rows.) */}
 
       {/* Happening within reach — upcoming events whose venue falls
           inside the SAME reach as the places above. Soonest-first;
