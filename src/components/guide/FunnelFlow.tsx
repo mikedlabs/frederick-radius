@@ -15,6 +15,7 @@ import Skeleton from "@/components/ui/Skeleton";
 import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
 import { placeQuality } from "@/lib/quality/placeQuality";
+import { gateRecommendable, tierRank } from "@/lib/guided/rank";
 import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
 import { track } from "@vercel/analytics";
@@ -144,9 +145,16 @@ export default function FunnelFlow({
     let r = lens ? places.filter(lens.match) : places.filter(intent!.match);
     if (!lens && chosenSub && chosenSub !== "all") r = r.filter(chosenSub.match);
     if (openOnly) r = r.filter((p) => isOpenNow(p.open_status));
+    // Apply the audit's readiness gate: Tier-4 (closed/junk/non-discoverable)
+    // never surfaces in a guided result, in any sort mode.
+    r = gateRecommendable(r);
     // Distance only when we truly have the user's location — never imply
     // a distance we can't source.
     const ranked = origin ? r.map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })) : r.slice();
+    // Tier-3 ("needs review" — B2B leaks, temp-closed, thin records) sinks
+    // below Tier 1/2 in "best" so a real pick always leads; quality+proximity
+    // already settles 1-vs-2, so we only demote the soft rows here.
+    const demote = (p: PlaceCardData) => (tierRank(p) >= 3 ? 1 : 0);
     // Best order = a blend of nearby AND well-loved, not pure distance — so
     // the lead is genuinely the best pick (a great roaster four minutes
     // farther beats a mediocre one next door), never just the closest.
@@ -194,6 +202,9 @@ export default function FunnelFlow({
         const bo = isOpenNow(b.open_status) ? 0 : 1;
         if (ao !== bo) return ao - bo;
       }
+      const ad = demote(a);
+      const bd = demote(b);
+      if (ad !== bd) return ad - bd;
       const byRel = relevance(b) - relevance(a);
       if (Math.abs(byRel) > 1e-6) return byRel;
       if (origin) {
