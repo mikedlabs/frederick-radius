@@ -12,6 +12,8 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import PlaceCard from "@/components/place/PlaceCard";
 import IconStamp from "@/components/ui/IconStamp";
+import LiveDowntown from "@/components/guide/LiveDowntown";
+import type { LiveShow } from "@/lib/guide/live-downtown";
 import Pill from "@/components/ui/Pill";
 import Skeleton from "@/components/ui/Skeleton";
 import { isOpenNow } from "@/lib/hours";
@@ -90,7 +92,7 @@ const LENSES: Lens[] = [
 // (Events, Map, Collections all live in the nav). The front door keeps a
 // single place-led signpost — the town door — instead of a directory grid.
 
-export default function FunnelFlow() {
+export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] }) {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
   const [intentKey, setIntentKey] = useState<IntentKey | null>(null);
@@ -391,6 +393,12 @@ export default function FunnelFlow() {
               </span>
               <ChevronRight className="h-5 w-5 shrink-0 transition-transform group-active:translate-x-0.5" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
             </Link>
+
+            {/* ── LIVE DOWNTOWN — the one warm, saturated beat: the three
+                flagship stage programs (Alive @ Five, the Weinberg,
+                SilverVox) in the Alive @ Five sunset palette, so the
+                live-music plan reads as an occasion, not a list row. */}
+            <LiveDowntown shows={liveShows} />
           </motion.div>
         )}
 

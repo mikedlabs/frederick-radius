@@ -454,7 +454,7 @@ export default function PlaceCard({
           <div className="flex items-start gap-2.5 p-2.5">
             <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={40} />
             <div className="min-w-0 flex-1 space-y-0.5">
-              <h3 className="truncate text-[13.5px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <h3 className="line-clamp-2 text-[13.5px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
               </h3>
               <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>

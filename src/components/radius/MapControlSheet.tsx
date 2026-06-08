@@ -1,7 +1,7 @@
 "use client";
 
 import { Drawer } from "vaul";
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 /**
  * MapControlSheet — the radius "radar" controls + results, in a persistent,
@@ -29,8 +29,21 @@ import { type ReactNode } from "react";
  * never fights the map or the list.
  */
 
-/** Snap points: collapsed peek (px), working (~half), browse (~full). */
-export const SNAP_COLLAPSED = "104px";
+/**
+ * Snap points: collapsed peek (px), working (~half), browse (~full).
+ *
+ * The collapsed peek must be TALL ENOUGH that its summary row — which
+ * holds the "Adjust" button — sits fully above the floating BottomNav.
+ * The nav (`--z-nav: 40`) renders above this sheet (`--z-map-control: 20`),
+ * so any interactive summary content that overlaps the nav's footprint is
+ * both clipped and un-tappable: a real finger lands on a nav tab instead
+ * (confirmed by hit-test on every phone). At 104px the summary's lower
+ * edge fell ~13px into the nav; 148px lifts the whole row clear with a
+ * comfortable gap on flat and notched devices alike. The empty space the
+ * taller peek adds is just sheet background behind the nav — nothing
+ * interactive lives there — so the nav stays visible and usable.
+ */
+export const SNAP_COLLAPSED = "148px";
 export const SNAP_HALF = 0.5;
 export const SNAP_FULL = 0.94;
 const SNAP_POINTS = [SNAP_COLLAPSED, SNAP_HALF, SNAP_FULL];
@@ -48,6 +61,30 @@ export default function MapControlSheet({
   activeSnap: number | string | null;
   onSnapChange: (s: number | string | null) => void;
 }) {
+  // Keep the map (and the rest of the app shell) in the screen-reader tree
+  // while this sheet is open. vaul marks every body sibling of its portal
+  // `aria-hidden="true"` when the drawer is open — including `#main`, which
+  // wraps the live map — even though we run it `modal={false}` precisely so
+  // the map STAYS interactive and reachable. That left the whole /map
+  // canvas and its controls invisible to assistive tech. This sheet is
+  // permanently open and non-modal, so hiding the siblings is never
+  // correct here: strip `aria-hidden` off `#main` and re-strip it whenever
+  // vaul re-applies it (snap changes, re-renders). On unmount the observer
+  // disconnects and vaul's own cleanup clears the attribute.
+  useEffect(() => {
+    const main = document.getElementById("main");
+    if (!main) return;
+    const strip = () => {
+      if (main.getAttribute("aria-hidden") === "true") {
+        main.removeAttribute("aria-hidden");
+      }
+    };
+    strip();
+    const obs = new MutationObserver(strip);
+    obs.observe(main, { attributes: true, attributeFilter: ["aria-hidden"] });
+    return () => obs.disconnect();
+  }, []);
+
   return (
     <Drawer.Root
       open

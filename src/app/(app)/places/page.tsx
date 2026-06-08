@@ -139,7 +139,7 @@ export default function PlacesIndexPage() {
         <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
           Start with a need
         </h2>
-        <ul className="grid grid-cols-2 gap-2.5">
+        <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           {[
             { label: "Open now", href: "/map?mode=browse&open=now", icon: Clock, color: "var(--app-positive)" },
             { label: "Food & drink", href: "/map?intent=eat", icon: UtensilsCrossed, color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)" },

@@ -49,7 +49,14 @@ export default function PlaceHero({
 
   return (
     <div
-      className="relative w-full overflow-hidden"
+      // The detail-page hero is clamped to ~half the viewport height so a
+      // 16/10 ratio at full width can't swallow a short LANDSCAPE-phone
+      // screen — at 844×390 the un-capped hero rendered 455px tall (taller
+      // than the viewport), pushing the place name and everything below it
+      // off-screen. The cap never binds in portrait (16/10 of phone width
+      // is well under 52vh), so it only kicks in where the bug lived. The
+      // card variant keeps its exact aspect for list layouts.
+      className={`relative w-full overflow-hidden${size === "hero" ? " max-h-[46vh]" : ""}`}
       style={{ aspectRatio }}
     >
       {/* Gradient fallback — always rendered behind the photo so 404s look intentional */}
