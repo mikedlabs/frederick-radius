@@ -10,6 +10,7 @@ import { useClientPlaces } from "@/hooks/useClientPlaces";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import PlaceCard from "@/components/place/PlaceCard";
+import IconStamp from "@/components/ui/IconStamp";
 import Pill from "@/components/ui/Pill";
 import Skeleton from "@/components/ui/Skeleton";
 import { isOpenNow } from "@/lib/hours";
@@ -677,16 +678,9 @@ function Tile({
       }}
     >
       {icon && (
-        <span
-          className="grid h-12 w-12 place-items-center rounded-[15px] text-white"
-          style={{
-            background: color,
-            backgroundImage: "var(--app-gloss)",
-            boxShadow: `0 7px 18px -6px ${color}, inset 0 1px 0 rgba(255,255,255,0.38)`,
-          }}
-        >
+        <IconStamp accent={color} size="lg">
           {icon}
-        </span>
+        </IconStamp>
       )}
       <span className="flex flex-col gap-1">
         <span className="text-[17px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>

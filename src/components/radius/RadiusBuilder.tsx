@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Footprints, Bike, Car, MapPin, ChevronDown, Locate, X, Compass, SquareParking, Toilet, Coffee, CalendarDays, Bus } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
+import IconStamp from "@/components/ui/IconStamp";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
@@ -1018,19 +1019,21 @@ export default function RadiusBuilder({
         {/* Compact utility row — the five things people most need nearby. */}
         <div className="grid grid-cols-5 gap-2">
           {[
-            { href: "/amenities", label: "Parking", Icon: SquareParking },
-            { href: "/amenities", label: "Restrooms", Icon: Toilet },
-            { href: "/category/coffee", label: "Coffee", Icon: Coffee },
-            { href: "/events", label: "Events", Icon: CalendarDays },
-            { href: "/transit", label: "Transit", Icon: Bus },
-          ].map(({ href, label, Icon }) => (
+            { href: "/amenities", label: "Parking", Icon: SquareParking, accent: "var(--app-ink-3)" },
+            { href: "/amenities", label: "Restrooms", Icon: Toilet, accent: "var(--app-cool)" },
+            { href: "/category/coffee", label: "Coffee", Icon: Coffee, accent: "#8B5A2B" },
+            { href: "/events", label: "Events", Icon: CalendarDays, accent: "var(--app-brand)" },
+            { href: "/transit", label: "Transit", Icon: Bus, accent: "#2F5470" },
+          ].map(({ href, label, Icon, accent }) => (
             <Link
               key={label}
               href={href}
               className="tactile tactile-interactive flex flex-col items-center gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2.5"
               style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)" }}
             >
-              <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
+              <IconStamp accent={accent} size="sm">
+                <Icon aria-hidden />
+              </IconStamp>
               <span className="text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
                 {label}
               </span>
