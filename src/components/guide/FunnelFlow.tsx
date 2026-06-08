@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, MapPin, ArrowUpDown, Wine, Baby, Dog, Music, CalendarDays, Activity, Layers, Building2, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, ArrowRight, MapPin, ArrowUpDown, Wine, Baby, Dog, Music, Building2, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
@@ -34,11 +34,11 @@ import { INTENT_ICON } from "./intentIcons";
  * is the next layer (the quality_score pass), deliberately not here.
  */
 
-// The out-of-the-gate choices. Curated from INTENTS to avoid the
-// winery/brewery overlap (those live under Eat's sub-intents). This
-// ordered list is the single thing to tune as the product owner decides
-// the real top level (add Shop? split Drinks? add Tonight/events?).
-const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "shop", "arts", "family", "wellness", "stay", "faith", "civic"];
+// The out-of-the-gate choices. Six core "what do I do in town" needs —
+// the calm front door. Edge cases (wellness, stay, faith, civic) are
+// reachable via the Ask input and the town door, so the grid stays a
+// confident six instead of a ten-card directory wall.
+const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "shop", "arts", "family"];
 
 const RESULT_CAP = 24;
 
@@ -77,28 +77,11 @@ const LENSES: Lens[] = [
   { key: "live-music", label: "Live music", Icon: Music, match: (p) => LIVE_MUSIC_VENUE_SLUGS.has(p.slug) },
 ];
 
-// The other doors. Radius's job is finding a PLACE; the rest of the app
-// has its own homes — "what's on" is the Events tab, the live county is
-// the Today tab's pulse, the spatial browse is the Map tab. So instead of
-// re-listing 16 utility links here (they all live one tap away in the
-// header "Field guide" drawer), the front door keeps just four signposts
-// to where each non-place job already lives — and stops being a directory.
-type Elsewhere = { href: string; label: string; icon: LucideIcon };
-const ELSEWHERE: Elsewhere[] = [
-  { href: "/towns",       label: "Explore a town",           icon: Building2 },
-  { href: "/events",      label: "What's on",                icon: CalendarDays },
-  { href: "/pulse",       label: "County pulse",  icon: Activity },
-  { href: "/map",         label: "Browse the map",           icon: MapPin },
-  { href: "/collections", label: "Collections",    icon: Layers },
-];
+// Radius's job is finding a PLACE; the rest of the app has its own homes
+// (Events, Map, Collections all live in the nav). The front door keeps a
+// single place-led signpost — the town door — instead of a directory grid.
 
-export default function FunnelFlow({
-  weather,
-}: {
-  /** Current conditions for the header, fetched server-side in the
-   *  /guide page (NWS, ISR-cached). Absent → the header omits weather. */
-  weather?: { tempF: number; condition: string };
-}) {
+export default function FunnelFlow() {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
   const [intentKey, setIntentKey] = useState<IntentKey | null>(null);
@@ -118,16 +101,6 @@ export default function FunnelFlow({
   // so SSR and the first client paint match.
   const nowHour = mounted ? frederickHour() : null;
   const greeting = nowHour !== null ? daypartGreeting(nowHour) : null;
-  // Concrete "right now" line for the header — weekday + Eastern time.
-  // Post-mount only (SSR has no stable clock), so it matches hydration.
-  const nowLine = mounted
-    ? new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/New_York",
-        weekday: "short",
-        hour: "numeric",
-        minute: "2-digit",
-      }).format(new Date())
-    : null;
 
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
   const hasSubs = !!(intent?.subIntents && intent.subIntents.length);
@@ -270,9 +243,11 @@ export default function FunnelFlow({
 
   return (
     <div className="mx-auto w-full max-w-screen-sm px-4 pb-28 pt-3">
-      {/* header row: back / search-instead + breadcrumb */}
-      <div className="flex items-center gap-2 pb-2" style={{ minHeight: 34 }}>
-        {step !== "intent" ? (
+      {/* Results step only: a quiet back affordance + the selected
+          intent/lens breadcrumb. The intent step opens clean — no top
+          strip competing with the hero. */}
+      {step !== "intent" && (
+        <div className="flex items-center gap-2 pb-3" style={{ minHeight: 34 }}>
           <button
             type="button"
             onClick={back}
@@ -281,58 +256,66 @@ export default function FunnelFlow({
           >
             <ChevronLeft className="h-4 w-4" strokeWidth={2.5} aria-hidden /> Back
           </button>
-        ) : (
-          <>
-            {/* "Right now" line — weekday · time · temp · conditions.
-                Live date/time (client, Eastern) + server-fetched NWS
-                weather. Self-hides each part when unavailable; never a
-                fabricated temp. */}
-            {nowLine && (
-              <span
-                className="inline-flex min-w-0 items-center gap-1.5 text-[12.5px] font-medium"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                <span className="tabular-nums">{nowLine}</span>
-                {weather && (
-                  <>
-                    <span aria-hidden style={{ color: "var(--app-border)" }}>·</span>
-                    <span className="font-semibold tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-                      {weather.tempF}°
-                    </span>
-                    <span className="truncate">{weather.condition}</span>
-                  </>
-                )}
-              </span>
-            )}
-            <Link
-              href="/search"
-              className="ml-auto inline-flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold"
-              style={{ color: "var(--app-ink-3)" }}
+          {(intent || lens) && (
+            <span
+              className="ml-auto truncate text-[12px] font-semibold uppercase tracking-[0.08em]"
+              style={{ color: resultColor }}
             >
-              <Search className="h-3.5 w-3.5" strokeWidth={2} aria-hidden /> Search instead
-            </Link>
-          </>
-        )}
-        {step !== "intent" && (intent || lens) && (
-          <span
-            className="ml-auto truncate text-[12px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: resultColor }}
-          >
-            {lens ? lens.label : intent!.label}
-            {!lens && chosenSub && chosenSub !== "all" ? ` › ${chosenSub.label}` : ""}
-          </span>
-        )}
-      </div>
+              {lens ? lens.label : intent!.label}
+              {!lens && chosenSub && chosenSub !== "all" ? ` › ${chosenSub.label}` : ""}
+            </span>
+          )}
+        </div>
+      )}
 
       <AnimatePresence mode="wait" initial={false}>
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
-            <Header eyebrow={greeting ? `${greeting.toUpperCase()} · FREDERICK COUNTY` : "FREDERICK COUNTY"} title="What are you looking for?" sub="Pick a starting point. Radius narrows the county down from there." />
-            {/* The funnel leads: the lane grid is the front door. The
-                concierge ("Ask Radius anything.") lives on /today; the
-                quiet "Search instead" link in the header covers a typed
-                query here, so the Guide stays one clear outcome path
-                instead of two competing "ask me" boxes. */}
+            {/* ── HERO — one calm eyebrow, one confident question, one line.
+                Generous air below so the question owns the first screen. */}
+            <header className="pt-2 pb-6">
+              <p className="text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+                {greeting ? `${greeting} · Frederick County` : "Frederick County"}
+              </p>
+              <h1 className="display-1 mt-3" style={{ color: "var(--app-ink)" }}>
+                What are you<br />looking for?
+              </h1>
+            </header>
+
+            {/* ── ASK INPUT — the obvious first action. A large, premium
+                search field that opens the typed-query screen. Sits above
+                the lanes so "just tell me" always leads; the cards are the
+                browse path for when you'd rather tap than type. */}
+            <Link
+              href="/search"
+              onClick={() => haptic("light")}
+              aria-label="Ask or search Frederick Radius"
+              className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3.5 pl-4 pr-2.5"
+              style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}
+            >
+              <span
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+                style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+              >
+                <Search className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[15px]" style={{ color: "var(--app-ink-3)" }}>
+                Coffee open now, date night, trails…
+              </span>
+              <span
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform group-active:scale-95"
+                style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
+                aria-hidden
+              >
+                <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.5} />
+              </span>
+            </Link>
+
+            {/* ── BROWSE BY NEED — six large lanes. No descriptions, no
+                chevrons: icon, name, count. Calm and scannable. */}
+            <p className="mb-3 mt-7 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+              Or browse by need
+            </p>
             <Grid>
               {TOP.map((k) => {
                 const it = INTENT_BY_KEY[k];
@@ -341,9 +324,8 @@ export default function FunnelFlow({
                   <Tile
                     key={k}
                     color={it.color}
-                    icon={<Icon className="h-5 w-5" strokeWidth={2} aria-hidden />}
+                    icon={<Icon className="h-[22px] w-[22px]" strokeWidth={2} aria-hidden />}
                     label={it.label}
-                    promise={it.blurb}
                     count={counts[k]}
                     onClick={() => {
                       haptic("light");
@@ -355,42 +337,42 @@ export default function FunnelFlow({
                 );
               })}
             </Grid>
-            <div className="mt-5">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                Or by the moment
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {LENSES.map((l) => (
-                  <Pill key={l.key} tone="ink" size="sm" icon={<l.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />} onClick={() => { haptic("light"); track("find_lens", { lens: l.key }); setLens(l); }}>
-                    {l.label}
-                  </Pill>
-                ))}
-              </div>
+
+            {/* ── NARROW IT DOWN — one compact row of by-the-moment lenses. */}
+            <p className="mb-3 mt-7 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+              Narrow it down
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {LENSES.map((l) => (
+                <Pill key={l.key} tone="ink" size="sm" icon={<l.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />} onClick={() => { haptic("light"); track("find_lens", { lens: l.key }); setLens(l); }}>
+                  {l.label}
+                </Pill>
+              ))}
             </div>
-            {/* The other doors — four signposts to where each non-place
-                job already lives (Events / Today's pulse / Map /
-                Collections), instead of the old 16-link directory wall. */}
-            <div className="mt-7">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.09em]" style={{ color: "var(--app-ink-3)" }}>
-                Looking for something else?
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {ELSEWHERE.map(({ href, label, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => { haptic("light"); track("find_elsewhere", { to: href }); }}
-                    className="tactile tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5"
-                    style={{ background: "var(--app-bg-elevated)" }}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-                      {label}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
+
+            {/* ── TOWN DOOR — one clear place-led entry, full width. */}
+            <Link
+              href="/towns"
+              onClick={() => { haptic("light"); track("find_elsewhere", { to: "/towns" }); }}
+              className="tactile tactile-interactive group mt-7 flex items-center gap-3 rounded-[var(--app-radius-lg)] px-4 py-3.5"
+              style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)" }}
+            >
+              <span
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px]"
+                style={{ background: "color-mix(in srgb, var(--app-ink) 7%, transparent)", color: "var(--app-ink-2)" }}
+              >
+                <Building2 className="h-5 w-5" strokeWidth={2} aria-hidden />
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  Explore by town
+                </span>
+                <span className="truncate text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+                  Frederick, Brunswick, Thurmont &amp; more
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 transition-transform group-active:translate-x-0.5" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+            </Link>
           </motion.div>
         )}
 
@@ -522,10 +504,17 @@ export default function FunnelFlow({
                 initial={reduce ? false : "hidden"}
                 animate="show"
               >
-                {/* Best match — one strong lead. */}
+                {/* Best match — one strong lead. The accent tick + a soft
+                    colored glow beneath the card make it read as CHOSEN, not
+                    just the first row of a list. */}
                 <motion.section variants={reduce ? undefined : tileItem}>
-                  <SectionLabel>Best match</SectionLabel>
-                  <AnswerLead place={results[0]} />
+                  <SectionLabel accent={resultColor}>Best match</SectionLabel>
+                  <div
+                    className="rounded-[var(--app-radius-lg)]"
+                    style={{ boxShadow: `0 16px 36px -20px color-mix(in srgb, ${resultColor} 60%, transparent)` }}
+                  >
+                    <AnswerLead place={results[0]} />
+                  </div>
                 </motion.section>
 
                 {/* Also good — a few supporting picks. */}
@@ -633,10 +622,15 @@ function Grid({ children }: { children: ReactNode }) {
 
 // A calm result-section heading — Best match / Also good / Keep looking.
 // Deliberately NOT a tiny uppercase eyebrow; a confident sans label with an
-// optional count, so results read as curated blocks, not one long list.
-function SectionLabel({ children, count }: { children: ReactNode; count?: number }) {
+// optional count, so results read as curated blocks, not one long list. An
+// `accent` renders a colored tick (used on Best match) so the lead reads as
+// chosen, not just first.
+function SectionLabel({ children, count, accent }: { children: ReactNode; count?: number; accent?: string }) {
   return (
-    <div className="mb-2.5 flex items-baseline gap-2">
+    <div className="mb-2.5 flex items-center gap-2">
+      {accent && (
+        <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: accent }} />
+      )}
       <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
         {children}
       </h2>
@@ -653,24 +647,22 @@ function Tile({
   color,
   icon,
   label,
-  promise,
   count,
   onClick,
 }: {
   color: string;
   icon?: ReactNode;
   label: string;
-  promise?: string;
   count?: number;
   onClick: () => void;
 }) {
   const reduce = useReducedMotion();
 
-  // Typographic paper tile — the single, consistent lane treatment. The
-  // lane's color breathes from the top-left and fades into paper; layered
-  // edge + inner highlight + ambient elevation give it the "made" depth.
-  // No place photos: the grid reads as one calm, typographic system
-  // (matching the rest of the app), not a mix of photo and paper cards.
+  // Typographic paper lane — one calm, consistent treatment. Just the
+  // colored mark, the name, and a quiet count: no description to truncate,
+  // no chevron. The lane color breathes from the top into paper; layered
+  // edge + inner highlight + ambient elevation give it "made" depth. The
+  // grid reads as a confident set of doors, not a directory of blurbs.
   return (
     <motion.button
       type="button"
@@ -678,46 +670,34 @@ function Tile({
       variants={tileItem}
       whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      className="group relative flex min-h-[140px] flex-col items-start gap-3 rounded-[var(--app-radius-lg)] p-4 text-left"
+      className="group relative flex min-h-[128px] flex-col items-start justify-between gap-4 rounded-[var(--app-radius-lg)] p-4 text-left"
       style={{
-        background: `linear-gradient(155deg, color-mix(in srgb, ${color} 11%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 58%)`,
+        background: `linear-gradient(155deg, color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 62%)`,
         boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
       }}
     >
       {icon && (
         <span
-          className="grid h-11 w-11 place-items-center rounded-[14px] text-white"
+          className="grid h-12 w-12 place-items-center rounded-[15px] text-white"
           style={{
             background: color,
             backgroundImage: "var(--app-gloss)",
-            boxShadow: `0 6px 16px -5px ${color}, inset 0 1px 0 rgba(255,255,255,0.38)`,
+            boxShadow: `0 7px 18px -6px ${color}, inset 0 1px 0 rgba(255,255,255,0.38)`,
           }}
         >
           {icon}
         </span>
       )}
       <span className="flex flex-col gap-1">
-        <span className="text-[15.5px] font-semibold leading-snug tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <span className="text-[17px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           {label}
         </span>
-        {promise && (
-          <span className="line-clamp-2 pr-4 text-[12.5px] leading-snug text-pretty" style={{ color: "var(--app-ink-3)" }}>
-            {promise}
+        {typeof count === "number" && (
+          <span className="text-[12.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            {count} place{count === 1 ? "" : "s"}
           </span>
         )}
       </span>
-      {typeof count === "number" && (
-        <span className="text-meta mt-auto inline-flex items-center gap-1.5 tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: color, opacity: 0.85 }} aria-hidden />
-          {count} place{count === 1 ? "" : "s"}
-        </span>
-      )}
-      <ChevronRight
-        className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2"
-        strokeWidth={2.25}
-        style={{ color: "var(--app-ink-3)", opacity: 0.4 }}
-        aria-hidden
-      />
     </motion.button>
   );
 }
