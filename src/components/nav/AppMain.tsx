@@ -25,8 +25,8 @@ export default function AppMain({ children }: { children: React.ReactNode }) {
     <main
       className={
         fullBleed
-          ? "px-4 pt-4 lg:pl-24"
-          : "mx-auto max-w-screen-md px-4 pt-4 lg:max-w-screen-lg lg:pl-24"
+          ? "px-4 pt-5 sm:px-5 lg:pl-24"
+          : "mx-auto max-w-screen-md px-4 pt-6 sm:px-5 lg:max-w-screen-lg lg:pl-24"
       }
       style={{
         paddingBottom: "calc(6rem + env(safe-area-inset-bottom, 0px))",
