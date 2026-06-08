@@ -542,14 +542,18 @@ export default function FunnelFlow({
                   </motion.section>
                 )}
 
-                {/* Keep looking — the rest, only if there's more. */}
+                {/* Keep looking — the rest, only if there's more. Rendered
+                    COMPACT (no status/rating chip row) and at a tighter
+                    rhythm, so the tail reads as a lighter "more options"
+                    list — the third tier below Best match (hero) and Also
+                    good (standard row). */}
                 {results.length > 4 && (
                   <motion.section variants={reduce ? undefined : tileItem}>
                     <SectionLabel count={results.length - 4}>Keep looking</SectionLabel>
-                    <ul className="space-y-3">
+                    <ul className="space-y-2">
                       {results.slice(4).map((p) => (
                         <li key={p.slug}>
-                          <PlaceCard place={p} variant="row" showSource={false} />
+                          <PlaceCard place={p} variant="row" compact showSource={false} />
                         </li>
                       ))}
                     </ul>
