@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { getNwsForecast } from "@/lib/integrations/nws";
+import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
+import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 
 /**
  * TodayCard — the daily hook at the very top of /now.
@@ -114,29 +115,60 @@ export default async function TodayCard({
 
   const mood = moodLine(condition, tempNow);
 
-  // Data readout pieces, joined with middots so empty ones drop out.
-  const readout = [
-    tempNow != null ? `${tempNow}° now` : null,
+  // Daytime by real sun times (the glyph's sun/moon depends on it).
+  const isDay = st.sunrise && st.sunset ? now >= st.sunrise && now < st.sunset : true;
+  const variant: SkyVariant | null = condition
+    ? iconForShortForecast(condition, isDay)
+    : null;
+
+  // Secondary stats — high + next sun event. The big temperature carries
+  // "now," so it's dropped from this line to avoid saying it twice.
+  const stats = [
     high != null ? `High ${high}°` : null,
     sun ? `${sun.label} ${sun.time}` : null,
   ].filter(Boolean);
 
   return (
     <section aria-label="Today in Frederick" style={{ color: "currentColor" }}>
-      <p className="text-meta font-semibold uppercase tracking-[0.14em] opacity-70">
-        Frederick today
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-meta font-semibold uppercase tracking-[0.14em] opacity-70">
+            Frederick today
+          </p>
+          {/* The hook — greeting + a confident weather mood, in the display
+              face. This is the 3-second "I get it" line. */}
+          <h2 className="mt-1 font-serif text-[24px] font-semibold leading-tight tracking-tight sm:text-[28px]">
+            {GREETING[band]} {mood}
+          </h2>
+        </div>
+        {/* The animated weather glyph — the atmospheric visual the hero used
+            to carry. CSS-only (no JS), sized as the hero icon, riding on the
+            sky gradient. */}
+        {variant && (
+          <AnimatedSkyGlyph variant={variant} size={60} className="-mt-1 shrink-0 opacity-95" />
+        )}
+      </div>
 
-      {/* The hook — greeting + a confident weather mood, in the display
-          face. This is the 3-second "I get it" line. */}
-      <h2 className="mt-1 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]">
-        {GREETING[band]} {mood}
-      </h2>
-
-      {readout.length > 0 && (
-        <p className="mt-1.5 text-body font-medium tabular-nums opacity-90">
-          {readout.join("  ·  ")}
-        </p>
+      {/* The dramatic temperature — thin display serif, the iOS-weather
+          register the old hero had. Pairs the big "now" with the small
+          high/sunset stats so the number reads first. */}
+      {tempNow != null ? (
+        <div className="mt-1.5 flex items-end gap-3">
+          <span className="font-serif text-[56px] font-light leading-[0.85] tracking-tight tabular-nums sm:text-[64px]">
+            {tempNow}&deg;
+          </span>
+          {stats.length > 0 && (
+            <span className="pb-1.5 text-body font-medium tabular-nums opacity-90">
+              {stats.join("  ·  ")}
+            </span>
+          )}
+        </div>
+      ) : (
+        stats.length > 0 && (
+          <p className="mt-1.5 text-body font-medium tabular-nums opacity-90">
+            {stats.join("  ·  ")}
+          </p>
+        )
       )}
 
       {tonightEvent && (
