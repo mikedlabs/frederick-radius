@@ -22,18 +22,26 @@ export type EventLane =
   | "private_rental"
   | "cancelled";
 
-// Private/internal — a wedding or corporate booking is not "something to do".
+// Private/internal — a wedding, reunion, or corporate booking is not
+// "something to do". Includes pavilion/park bookings for personal events
+// (birthdays, reunions, picnics) which some county feeds publish as events.
 const RE_RENTAL =
-  /\b(wedding|reception|banquet)\b|\bprivate\b[^|]*\b(event|party|booking|rental|reservation|corp)\b|\bcorporate (event|party|booking)\b|facility rental|pavilion (reservation|rental)/i;
+  /\b(wedding|reception|banquet|reunion)\b|\bprivate\b[^|]*\b(event|party|booking|rental|reservation|corp)\b|\bcorporate (event|party|booking)\b|\bemployee\s+picnic\b|facility rental|pavilion (reservation|rental)|\bpavilion\b[^|]*\b(birthday|reunion|party|graduation|wedding|shower|anniversary|picnic)\b|\b(birthday|graduation)\s+party\b/i;
 
 // Municipal service / public-works reminders — keep, but in their own lane.
 const RE_REMINDER =
   /\bbulk\s*trash\b|\byard\s*waste\b|\bcurbside\b|\bleaf\s*(collection|pickup|removal)\b|\brecycling\b|\b(trash|refuse)\s*(pickup|collection|day)\b|street\s*sweep|\b(road|lane|street)\s*closure\b|snow\s*(emergency|operations|removal)|\bmowing\b/i;
 
-// Boards / commissions / hearings / council sessions. Deliberately NOT a
-// bare "board"/"council" (would catch "Arts Council", "skateboard").
+// Boards / commissions / hearings / council sessions / internal meetings.
+// Broadened from a name allowlist to ANY commission/committee/subcommittee
+// (which are overwhelmingly government bodies) + town/virtual meetings, after
+// the review found Sustainability/Parks/Rustic-Roads Commissions and a
+// "Planning Committee Leadership Luncheon" leaking into public discovery and
+// even LEADING it. Still NOT a bare "board"/"council" (would catch
+// "Arts Council", "skateboard"); a stray civic item is preferable to a
+// festival hidden, but a meeting must never lead "What's on".
 const RE_MEETING =
-  /\badvisory\s+board\b|\bboard\s+of\s+(education|county\s+commissioners|appeals|zoning|elections|health|trustees)\b|\b(planning|zoning|ethics|election|historic\s+preservation)\s+commission\b|\bpublic\s+hearing\b|\bcouncil\s+(meeting|workshop|work\s*session|legislative|session)\b|\b(city|town)\s+council\b|\b(committee|subcommittee)\s+meeting\b|\bwork\s*session\b|town\s+hall\s+meeting/i;
+  /\badvisory\s+board\b|\bboard\s+of\s+(education|county\s+commissioners|appeals|zoning|elections|health|trustees)\b|\b(commission|committee|subcommittee)\b|\bpublic\s+hearing\b|\bcouncil\s+(meeting|workshop|work\s*session|legislative|session)\b|\b(city|town)\s+council\b|\bwork\s*session\b|\btown\s+hall\s+meeting\b|\btown\s+meeting\b|\bvirtual\s+meeting\b/i;
 
 const RE_CANCELLED = /\bcancell?ed\b|\bpostponed\b/i;
 
