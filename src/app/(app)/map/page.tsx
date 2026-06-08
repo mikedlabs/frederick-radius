@@ -23,7 +23,6 @@ import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/App
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
 import MapModeToggle from "@/components/map/MapModeToggle";
-import MapModes from "@/components/map/MapModes";
 import RadiusBuilder from "@/components/radius/RadiusBuilder";
 import PageBloom from "@/components/ui/PageBloom";
 import CLIENT_PLACES_RAW from "@/data/places-client.json" with { type: "json" };
@@ -320,9 +319,6 @@ export default async function MapPage({
   // the slowest upstream AND the Mapbox JS downloads during that fetch.
   return (
     <div className="-mx-4 -mt-4 lg:ml-0">
-      <div className="px-3 py-2 sm:px-4">
-        <MapModes params={{ mode: "browse", open: earlyParams.open, intent: earlyParams.intent }} />
-      </div>
       <Suspense
         fallback={
           <div

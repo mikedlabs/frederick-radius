@@ -152,27 +152,6 @@ type Props = {
   pinpointDefault?: boolean;
 };
 
-/**
- * Map Modes — smart presets for "controlled discovery." Instead of
- * toggling many layers, a mode drops a curated bundle of categories
- * (+ amenities, + civic overlay) in one tap; the user can still
- * customize afterward. "Modes instead of endless filters."
- */
-const MAP_MODES: {
-  key: string;
-  label: string;
-  cats: string[];
-  amenities?: string[];
-  civic?: boolean;
-}[] = [
-  { key: "food", label: "Food & drink", cats: ["food"] },
-  { key: "kids", label: "With kids", cats: ["family", "outdoors"], amenities: ["restroom"] },
-  { key: "outdoors", label: "Outdoors", cats: ["outdoors"], amenities: ["restroom"] },
-  { key: "arts", label: "Arts & culture", cats: ["arts"] },
-  { key: "errands", label: "Errands", cats: ["services", "shopping", "parking"] },
-  { key: "civic", label: "Civic & alerts", cats: ["civic"], civic: true },
-];
-
 export default function AppMap({
   places,
   osmPlaces: osmFromProps,
@@ -889,47 +868,12 @@ export default function AppMap({
             added, the map is calm and this invites the user to compose
             what they want to see. Tapping a category drops its pins
             instantly (toggles activeCats); the prompt then disappears. */}
-        {pinpointDefault && activeCats.size === 0 && !mapError && (
-          <div className="pointer-events-none absolute inset-x-0 top-[15%] z-[var(--z-map-control)] flex justify-center px-4">
-            <div
-              className="deck-card pop-in pointer-events-auto w-full max-w-sm rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] p-4 text-center"
-              style={{ borderColor: "var(--app-border)" }}
-            >
-              <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-                Your Frederick, your way
-              </p>
-              <h2 className="mt-0.5 font-serif text-[19px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-                What do you want to see?
-              </h2>
-              <p className="mt-1 text-meta-lg" style={{ color: "var(--app-ink-2)" }}>
-                Pick a mode — we drop the right places on the map. Tweak it
-                anytime in Layers.
-              </p>
-              <div className="mt-3 flex flex-wrap justify-center gap-2">
-                {MAP_MODES.map((m) => {
-                  const accent = CATEGORY_BY_SLUG[m.cats[0]]?.color ?? "var(--app-brand)";
-                  return (
-                    <button
-                      key={m.key}
-                      type="button"
-                      onClick={() => {
-                        haptic("light");
-                        setActiveCats(new Set(m.cats));
-                        setAmenityGroups(new Set(m.amenities ?? []));
-                        if (m.civic !== undefined) setShowCivic(m.civic);
-                      }}
-                      className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-meta-lg font-semibold transition active:scale-[0.95]"
-                      style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-                    >
-                      <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: accent }} />
-                      {m.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* The empty-state "What do you want to see?" card was removed in
+            the browse-map declutter: the intent chip row at the top is now
+            the single "pick what to see" control (chips-led), so the map
+            opens clean with one slim chip row instead of a big card layered
+            over a preset bar. The chips populate the map on tap; Layers
+            still toggles individual categories. */}
 
         {mapError && (
           <div
