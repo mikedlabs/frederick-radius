@@ -149,10 +149,10 @@
   --z-lightbox:    80;  /* media lightbox — above toast */
   --z-skip:        100; /* skip-to-content link — reachable above everything */
 
-  --app-radius-sm: 8px;
-  --app-radius-md: 14px;
-  --app-radius-lg: 22px;
-  --app-radius-xl: 30px;
+  --app-radius-sm: 9px;
+  --app-radius-md: 16px;
+  --app-radius-lg: 24px;
+  --app-radius-xl: 32px;
 
   --app-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --app-dur-fast: 160ms;
@@ -176,25 +176,37 @@
    * Additive: --app-shadow-1/2/3 are untouched for existing
    * consumers; primitives use the --app-elev-* scale.
    * ───────────────────────────────────────────────────── */
+  /* ─────────────────────────────────────────────────────
+   * VISUAL SYSTEM v3 — refined depth (full-refresh, pass 1).
+   * Softer, more diffuse, multi-layer shadows — the Linear/Apple
+   * grade of premium depth: a tight contact shadow + a wide ambient
+   * one so surfaces float on a soft cushion instead of a hard drop.
+   * Pure shadow tokens (no layout reflow) so the whole app levels up
+   * at once, every card on every screen.
+   * ───────────────────────────────────────────────────── */
   --app-elev-1:
-    0 1px 2px rgba(40, 30, 20, 0.07),
-    0 3px 8px -2px rgba(40, 30, 20, 0.10);
+    0 1px 2px rgba(40, 30, 20, 0.05),
+    0 4px 10px -2px rgba(40, 30, 20, 0.08);
   --app-elev-2:
-    0 1px 3px rgba(40, 30, 20, 0.08),
-    0 10px 22px -5px rgba(40, 30, 20, 0.16);
+    0 1px 2px rgba(40, 30, 20, 0.05),
+    0 6px 14px -3px rgba(40, 30, 20, 0.09),
+    0 16px 32px -10px rgba(40, 30, 20, 0.12);
   --app-elev-3:
-    0 2px 7px rgba(40, 30, 20, 0.10),
-    0 22px 44px -10px rgba(40, 30, 20, 0.23);
+    0 1px 3px rgba(40, 30, 20, 0.06),
+    0 12px 28px -6px rgba(40, 30, 20, 0.12),
+    0 30px 56px -16px rgba(40, 30, 20, 0.18);
   --app-elev-4:
-    0 5px 12px rgba(40, 30, 20, 0.11),
-    0 32px 64px -14px rgba(160, 58, 34, 0.26); /* brand-tinted ambient */
+    0 2px 6px rgba(40, 30, 20, 0.08),
+    0 18px 40px -10px rgba(40, 30, 20, 0.16),
+    0 40px 80px -20px rgba(160, 58, 34, 0.20); /* brand-tinted ambient */
   /* The "made" look: a 1px top inner highlight + crisp inner edge
-   * (reads sharper than a 1px border on a tinted surface). */
-  --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+   * (reads sharper than a 1px border on a tinted surface). Highlight
+   * eased back so the refined shadows carry the depth, not a hard rim. */
+  --app-hi: inset 0 1px 0 rgba(255, 255, 255, 0.72);
   /* Deck stack — a faint card peeking behind the bottom edge, so a
    * surface reads as the top of a physical stack (the Wallet feel). */
   --app-deck-edge: 0 1px 2px rgba(26, 26, 26, 0.05), 0 2px 5px -1px rgba(26, 26, 26, 0.08);
-  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.09);
+  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.07);
   /* A 1px darker bottom inner shadow — the "lip" on filled controls. */
   --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.14);
   /* Gloss overlay — applied as background-image on filled controls
