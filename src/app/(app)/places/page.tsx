@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowRight,
-  Compass,
-  MapPin,
   Coffee,
   UtensilsCrossed,
   Baby,
@@ -205,80 +203,6 @@ export default function PlacesIndexPage() {
           </ul>
         </section>
       )}
-
-      {/* Quick-access strip — the two top-level alternates to a
-          browse-the-list view. Map for the spatial answer, Radius
-          for the "what's near me right now" answer. Sits below the
-          intent rail so the page reads "start with what you need →
-          or browse the whole map → or browse by category / town." */}
-      <div className="grid grid-cols-2 gap-2">
-        <Link
-          href="/map"
-          className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-4 py-3 transition"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-            }}
-            aria-hidden
-          >
-            <Compass
-              className="h-4 w-4"
-              strokeWidth={2}
-              style={{ color: "var(--app-cool)" }}
-            />
-          </span>
-          <span className="min-w-0">
-            <span
-              className="block text-[13px] font-semibold"
-              style={{ color: "var(--app-ink)" }}
-            >
-              View on map
-            </span>
-            <span
-              className="block text-[11px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Spatial answer
-            </span>
-          </span>
-        </Link>
-        <Link
-          href="/map?mode=radius"
-          className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-4 py-3 transition"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-            }}
-            aria-hidden
-          >
-            <MapPin
-              className="h-4 w-4"
-              strokeWidth={2}
-              style={{ color: "var(--app-brand)" }}
-            />
-          </span>
-          <span className="min-w-0">
-            <span
-              className="block text-[13px] font-semibold"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Within reach
-            </span>
-            <span
-              className="block text-[11px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Walk, bike, drive radius
-            </span>
-          </span>
-        </Link>
-      </div>
 
 
       {/* Government contacts entry — the "who do I call about a
