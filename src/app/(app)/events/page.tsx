@@ -324,13 +324,6 @@ export default async function EventsIndexPage({
         </Link>
       </header>
 
-      {/* ── 1b. WEEK RIBBON — the density trick. A slim whole-week-at-a-
-          glance row: seven equal frosted cells on one screen-width, each
-          carrying the weekday, numeral, and a live event count. Tapping a
-          day deep-links the explorer to ?d=YYYY-MM-DD. Counts come from
-          the same public set the explorer renders. */}
-      <EventWeekRibbon events={allEvents} activeDay={initialDay} />
-
       {/* ── 2. BEST NEXT — the lead. One large editorial card for the
           soonest worthwhile event, carrying a real "why it matters" line.
           Always visible (not behind a collapsible), so the page opens on
@@ -351,6 +344,13 @@ export default async function EventsIndexPage({
           />
         </section>
       )}
+
+      {/* ── WEEK RIBBON — the density trick, BELOW the lead so "Best next"
+          opens the page (never calendar-first). A slim whole-week row: seven
+          frosted cells with weekday + numeral + live event count; tapping a
+          day deep-links the explorer to ?d=YYYY-MM-DD. A jump-to-a-day
+          navigator, not the lead. */}
+      <EventWeekRibbon events={allEvents} activeDay={initialDay} />
 
       {/* ── 3. TONIGHT — only when there's actually something left today.
           A short photo-led marquee of what's starting soon, not the whole
