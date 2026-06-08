@@ -107,7 +107,17 @@ export default function TopBar() {
           willChange: "transform",
         }}
       >
-        <div className="mx-auto flex h-14 max-w-screen-md items-center gap-2 px-4">
+        <div
+          className="mx-auto flex h-14 max-w-screen-md items-center gap-2"
+          // Horizontal padding is max(1rem base, side-inset): a notched
+          // phone in landscape puts the notch on a side edge, which could
+          // clip the search field / back button. max() keeps the 1rem base
+          // on every non-notched device and in portrait (side insets 0).
+          style={{
+            paddingLeft: "max(1rem, env(safe-area-inset-left, 0px))",
+            paddingRight: "max(1rem, env(safe-area-inset-right, 0px))",
+          }}
+        >
           {isDeepPage ? (
             // Deep page: a clear way back, so no screen is a dead-end.
             <button

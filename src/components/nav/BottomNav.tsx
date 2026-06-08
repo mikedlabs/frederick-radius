@@ -67,13 +67,20 @@ export default function BottomNav() {
       // aria-hidden here would hide the mobile primary nav from screen
       // readers while leaving its links keyboard-focusable (a WCAG
       // focusable-inside-aria-hidden failure the audit flagged).
-      className="pointer-events-none fixed inset-x-0 bottom-0 px-3 lg:hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-0 lg:hidden"
       // Tokenized z-index (--z-nav) — see globals.css :root --z-*
       // scale. Lift the pill above the iOS safe-area inset so the
-      // nav doesn't sit on top of the home indicator.
+      // nav doesn't sit on top of the home indicator. Horizontal padding
+      // is max(base, side-inset): on a notched phone in LANDSCAPE the
+      // notch sits on a side edge, so without this the pill's end could be
+      // clipped by the notch. max() keeps the 0.75rem base on every
+      // non-notched device (and in portrait, where the side insets are 0),
+      // so it only ever adds room where the notch would otherwise clip.
       style={{
         zIndex: "var(--z-nav)",
         paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
+        paddingLeft: "max(0.75rem, env(safe-area-inset-left, 0px))",
+        paddingRight: "max(0.75rem, env(safe-area-inset-right, 0px))",
       }}
     >
       <nav
