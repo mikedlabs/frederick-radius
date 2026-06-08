@@ -30,8 +30,8 @@ import { type ReactNode } from "react";
  */
 
 /** Snap points: collapsed peek (px), working (~half), browse (~full). */
-export const SNAP_COLLAPSED = "132px";
-export const SNAP_HALF = 0.52;
+export const SNAP_COLLAPSED = "104px";
+export const SNAP_HALF = 0.5;
 export const SNAP_FULL = 0.94;
 const SNAP_POINTS = [SNAP_COLLAPSED, SNAP_HALF, SNAP_FULL];
 
@@ -68,11 +68,11 @@ export default function MapControlSheet({
           }}
         >
           {/* Drag handle. */}
-          <div className="flex shrink-0 justify-center pb-1 pt-2.5">
+          <div className="flex shrink-0 justify-center pb-1 pt-2">
             <span aria-hidden className="h-1 w-9 rounded-full" style={{ background: "var(--app-border)" }} />
           </div>
           {/* Summary header — always visible in the collapsed peek. */}
-          <div className="shrink-0 px-4 pb-3">{summary}</div>
+          <div className="shrink-0 px-4 pb-2.5">{summary}</div>
           {/* Scrollable controls + results. Bottom padding clears the
               floating BottomNav so nothing important hides under it. */}
           <div
