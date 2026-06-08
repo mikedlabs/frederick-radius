@@ -5,7 +5,6 @@ import SavedList from "@/components/saved/SavedList";
 import RecentlyViewedRail from "@/components/saved/RecentlyViewedRail";
 import NotificationsNudge from "@/components/pwa/NotificationsNudge";
 import PageBloom from "@/components/ui/PageBloom";
-import IconStamp from "@/components/ui/IconStamp";
 import { getServerUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -58,38 +57,23 @@ export default async function MyRadiusPage() {
         </Link>
       </header>
 
-      {/* Anonymous-only sign-in CTA. Quiet, NOT a popup — the user
-          can keep using /my-radius without an account; this is an
-          invitation, not a wall. Disappears once signed in. */}
+      {/* Anonymous-only sign-in CTA — one slim frosted line, not a card.
+          A quiet invitation (the page works fully without an account). */}
       {!user && (
         <Link
           href="/auth/login?next=/my-radius"
-          className="tactile tactile-interactive group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
-          style={{ borderColor: "var(--app-border)" }}
+          className="tactile tactile-interactive group flex items-center gap-2 rounded-full px-3 py-1.5 backdrop-blur-md"
+          style={{
+            background: "color-mix(in srgb, var(--app-bg-elevated) 66%, transparent)",
+            boxShadow: "var(--app-edge), var(--app-hi)",
+          }}
         >
-          <IconStamp accent="var(--app-brand)" size="md">
-            <Mail aria-hidden />
-          </IconStamp>
-          <span className="min-w-0 flex-1">
-            <span
-              className="block text-[13px] font-semibold leading-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              Sign in to sync My Radius across devices
-            </span>
-            <span
-              className="block text-[11.5px]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Magic link, no password. Your current list comes with you.
-            </span>
+          <Mail className="h-[15px] w-[15px] shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+            Sign in to sync across devices
           </span>
-          <span
-            aria-hidden
-            className="text-[11px] font-bold transition-transform group-hover:translate-x-0.5"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            →
+          <span className="shrink-0 text-[12px] font-semibold transition-transform group-hover:translate-x-0.5" style={{ color: "var(--app-brand)" }}>
+            Magic link →
           </span>
         </Link>
       )}

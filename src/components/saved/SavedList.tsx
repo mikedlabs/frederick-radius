@@ -13,7 +13,7 @@ import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
-import { Bookmark, MapPin, Sparkles, Calendar, Layers } from "lucide-react";
+import { Bookmark, MapPin, Sparkles, Calendar, Building2 } from "lucide-react";
 import IconStamp from "@/components/ui/IconStamp";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
@@ -641,10 +641,10 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   // Four confident doorways — the same lane language as /places, pointing
   // at the surfaces that fill this page. A guided launchpad, not a paragraph.
   const LANES: { href: string; label: string; Icon: typeof Bookmark; color: string }[] = [
-    { href: "/guide", label: "Ask the guide", Icon: Sparkles, color: "var(--app-brand)" },
-    { href: "/map", label: "Explore nearby", Icon: MapPin, color: "var(--app-cool)" },
-    { href: "/events", label: "What’s on", Icon: Calendar, color: "#C99632" },
-    { href: "/collections", label: "Collections", Icon: Layers, color: "#7E2C6F" },
+    { href: "/guide", label: "Ask", Icon: Sparkles, color: "var(--app-brand)" },
+    { href: "/map", label: "Map", Icon: MapPin, color: "var(--app-cool)" },
+    { href: "/events", label: "Events", Icon: Calendar, color: "#C99632" },
+    { href: "/towns", label: "Towns", Icon: Building2, color: "#7E2C6F" },
   ];
 
   return (
@@ -665,23 +665,24 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
         </div>
       </div>
 
-      {/* Guided doorways — a dense 2×2 of frosted, fluid cards (translucent
-          over the page bloom, hairline edge, soft depth). */}
-      <ul className="grid grid-cols-2 gap-2">
+      {/* Guided doorways — four across in a row, Apple-Wallet style: compact
+          frosted, translucent quick-action cards (icon over a one-word label)
+          over the page bloom. */}
+      <ul className="grid grid-cols-4 gap-2">
         {LANES.map(({ href, label, Icon, color }) => (
           <li key={href}>
             <Link
               href={href}
-              className="tactile tactile-interactive flex min-h-[68px] items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5 backdrop-blur-md"
+              className="tactile tactile-interactive flex flex-col items-center gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2.5 backdrop-blur-md"
               style={{
-                background: "color-mix(in srgb, var(--app-bg-elevated) 68%, transparent)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 66%, transparent)",
                 boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
               }}
             >
               <IconStamp accent={color} size="sm">
                 <Icon aria-hidden />
               </IconStamp>
-              <span className="min-w-0 text-[13.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <span className="text-[11px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {label}
               </span>
             </Link>
