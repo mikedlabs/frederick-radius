@@ -516,33 +516,60 @@ export default function FunnelFlow({
                 )}
               </p>
             ) : (
-              <motion.ul
-                className="space-y-3"
+              <motion.div
+                className="space-y-6"
                 variants={reduce ? undefined : tilesContainer}
                 initial={reduce ? false : "hidden"}
                 animate="show"
               >
-                {results.map((p, i) => (
-                  <motion.li key={p.slug} variants={reduce ? undefined : tileItem}>
-                    {i === 0 ? <AnswerLead place={p} /> : <PlaceCard place={p} variant="row" showSource={false} />}
-                  </motion.li>
-                ))}
+                {/* Best match — one strong lead. */}
+                <motion.section variants={reduce ? undefined : tileItem}>
+                  <SectionLabel>Best match</SectionLabel>
+                  <AnswerLead place={results[0]} />
+                </motion.section>
+
+                {/* Also good — a few supporting picks. */}
                 {results.length > 1 && (
-                  <motion.li
-                    variants={reduce ? undefined : tileItem}
-                    className="pt-1 text-center text-[11px] italic leading-relaxed"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {sort === "nearest"
-                      ? "Closest first. Tap any for hours, photos & reviews."
-                      : sort === "rated"
-                        ? "Highest-rated first (enough reviews to be real). Tap any for hours, photos & reviews."
-                        : geo.status === "granted"
-                          ? "Ranked by the best balance of nearby & well-loved. Tap any for hours, photos & reviews."
-                          : "Ranked by our most useful, best-reviewed picks. Turn on location for the best nearby."}
-                  </motion.li>
+                  <motion.section variants={reduce ? undefined : tileItem}>
+                    <SectionLabel>Also good</SectionLabel>
+                    <ul className="space-y-3">
+                      {results.slice(1, 4).map((p) => (
+                        <li key={p.slug}>
+                          <PlaceCard place={p} variant="row" showSource={false} />
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.section>
                 )}
-              </motion.ul>
+
+                {/* Keep looking — the rest, only if there's more. */}
+                {results.length > 4 && (
+                  <motion.section variants={reduce ? undefined : tileItem}>
+                    <SectionLabel count={results.length - 4}>Keep looking</SectionLabel>
+                    <ul className="space-y-3">
+                      {results.slice(4).map((p) => (
+                        <li key={p.slug}>
+                          <PlaceCard place={p} variant="row" showSource={false} />
+                        </li>
+                      ))}
+                    </ul>
+                  </motion.section>
+                )}
+
+                <motion.p
+                  variants={reduce ? undefined : tileItem}
+                  className="pt-1 text-center text-[11px] italic leading-relaxed"
+                  style={{ color: "var(--app-ink-3)" }}
+                >
+                  {sort === "nearest"
+                    ? "Closest first. Tap any for hours, photos & reviews."
+                    : sort === "rated"
+                      ? "Highest-rated first (enough reviews to be real). Tap any for hours, photos & reviews."
+                      : geo.status === "granted"
+                        ? "Ranked by the best balance of nearby & well-loved. Tap any for hours, photos & reviews."
+                        : "Ranked by our most useful, best-reviewed picks. Turn on location for the best nearby."}
+                </motion.p>
+              </motion.div>
             )}
           </motion.div>
         )}
@@ -597,6 +624,24 @@ function Grid({ children }: { children: ReactNode }) {
     <motion.div className="grid grid-cols-2 gap-3" variants={tilesContainer} initial="hidden" animate="show">
       {children}
     </motion.div>
+  );
+}
+
+// A calm result-section heading — Best match / Also good / Keep looking.
+// Deliberately NOT a tiny uppercase eyebrow; a confident sans label with an
+// optional count, so results read as curated blocks, not one long list.
+function SectionLabel({ children, count }: { children: ReactNode; count?: number }) {
+  return (
+    <div className="mb-2.5 flex items-baseline gap-2">
+      <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+        {children}
+      </h2>
+      {typeof count === "number" && count > 0 && (
+        <span className="text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          {count} more
+        </span>
+      )}
+    </div>
   );
 }
 
