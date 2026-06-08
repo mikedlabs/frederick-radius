@@ -243,7 +243,7 @@ export default function FunnelFlow() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-sm px-4 pb-28 pt-3">
+    <div className="mx-auto w-full max-w-screen-sm px-4 pb-28 pt-2">
       {/* Results step only: a quiet back affordance + the selected
           intent/lens breadcrumb. The intent step opens clean — no top
           strip competing with the hero. */}
@@ -273,26 +273,29 @@ export default function FunnelFlow() {
         {step === "intent" && (
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
             {/* ── HERO — one calm eyebrow, one confident question, one line.
-                Generous air below so the question owns the first screen. */}
-            <header className="pt-1 pb-4">
+                Compact: minimal top/bottom air so the lanes climb above the
+                fold (density pass — dense & utility-modern). */}
+            <header className="pb-2.5">
               <p className="text-[11.5px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
                 {greeting ? `${greeting} · Frederick County` : "Frederick County"}
               </p>
-              <h1 className="display-2 mt-1.5" style={{ color: "var(--app-ink)" }}>
+              <h1 className="display-2 mt-1" style={{ color: "var(--app-ink)" }}>
                 What are you looking for?
               </h1>
             </header>
 
-            {/* ── ASK INPUT — the obvious first action. A large, premium
-                search field that opens the typed-query screen. Sits above
-                the lanes so "just tell me" always leads; the cards are the
-                browse path for when you'd rather tap than type. */}
+            {/* ── ASK INPUT — the obvious first action. A frosted, translucent
+                search field that opens the typed-query screen. The backdrop
+                blur lets the PageBloom glow through (fluid, native), so it
+                reads as floating glass, not flat paper. Sits above the lanes
+                so "just tell me" always leads; the cards are the browse path
+                for when you'd rather tap than type. */}
             <Link
               href="/search"
               onClick={() => haptic("light")}
               aria-label="Ask or search Frederick Radius"
-              className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3.5 pl-4 pr-2.5"
-              style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}
+              className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3 pl-4 pr-2.5 backdrop-blur-xl"
+              style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}
             >
               <span
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
@@ -312,20 +315,25 @@ export default function FunnelFlow() {
               </span>
             </Link>
 
-            {/* ── BROWSE BY NEED — six large lanes. No descriptions, no
-                chevrons: icon, name, count. Calm and scannable. */}
-            <p className="mb-2.5 mt-5 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+            {/* ── BROWSE BY NEED — a BENTO of frosted lanes. The first lane
+                (Eat & drink — the most-tapped need) leads as a wide, taller
+                cell spanning both columns; the rest fall in as 2-up cells.
+                The asymmetry gives the grid hierarchy + rhythm instead of
+                six identical squares, and lifts more above the fold. */}
+            <p className="mb-2 mt-3.5 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
               Or browse by need
             </p>
             <Grid>
-              {TOP.map((k) => {
+              {TOP.map((k, i) => {
                 const it = INTENT_BY_KEY[k];
                 const Icon = INTENT_ICON[it.icon];
+                const lead = i === 0; // the lead lane — wide + tall
                 return (
                   <Tile
                     key={k}
+                    lead={lead}
                     color={it.color}
-                    icon={<Icon className="h-[22px] w-[22px]" strokeWidth={2} aria-hidden />}
+                    icon={<Icon className={lead ? "h-[24px] w-[24px]" : "h-[22px] w-[22px]"} strokeWidth={2} aria-hidden />}
                     label={it.label}
                     count={counts[k]}
                     onClick={() => {
@@ -340,10 +348,10 @@ export default function FunnelFlow() {
             </Grid>
 
             {/* ── NARROW IT DOWN — one compact row of by-the-moment lenses. */}
-            <p className="mb-2.5 mt-5 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="mb-2 mt-3.5 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
               Narrow it down
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {LENSES.map((l) => (
                 <Pill key={l.key} tone="ink" size="sm" icon={<l.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />} onClick={() => { haptic("light"); track("find_lens", { lens: l.key }); setLens(l); }}>
                   {l.label}
@@ -351,24 +359,25 @@ export default function FunnelFlow() {
               ))}
             </div>
 
-            {/* ── TOWN DOOR — one clear place-led entry, full width. */}
+            {/* ── TOWN DOOR — one clear place-led entry, full width. Slim +
+                frosted to match the lanes (translucent glass over the bloom). */}
             <Link
               href="/towns"
               onClick={() => { haptic("light"); track("find_elsewhere", { to: "/towns" }); }}
-              className="tactile tactile-interactive group mt-5 flex items-center gap-3 rounded-[var(--app-radius-lg)] px-4 py-3.5"
-              style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)" }}
+              className="tactile tactile-interactive group mt-3.5 flex items-center gap-3 rounded-[var(--app-radius-lg)] px-3.5 py-2.5 backdrop-blur-xl"
+              style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 58%, transparent)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)" }}
             >
               <span
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px]"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px]"
                 style={{ background: "color-mix(in srgb, var(--app-ink) 7%, transparent)", color: "var(--app-ink-2)" }}
               >
-                <Building2 className="h-5 w-5" strokeWidth={2} aria-hidden />
+                <Building2 className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                <span className="text-[14.5px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                   Explore by town
                 </span>
-                <span className="truncate text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+                <span className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                   Frederick, Brunswick, Thurmont &amp; more
                 </span>
               </span>
@@ -611,11 +620,15 @@ function Header({ eyebrow, title, sub, color }: { eyebrow: string; title: string
   );
 }
 
+// Bento grid — a two-column flow where the first child (the lead lane)
+// is asked to span both columns via `col-span-2` on the Tile itself, so
+// the grid reads as one wide hero lane over a field of smaller cells.
+// Tightened gap (gap-2.5) for the density pass.
 function Grid({ children }: { children: ReactNode }) {
   const reduce = useReducedMotion();
-  if (reduce) return <div className="grid grid-cols-2 gap-3">{children}</div>;
+  if (reduce) return <div className="grid grid-cols-2 gap-2.5">{children}</div>;
   return (
-    <motion.div className="grid grid-cols-2 gap-3" variants={tilesContainer} initial="hidden" animate="show">
+    <motion.div className="grid grid-cols-2 gap-2.5" variants={tilesContainer} initial="hidden" animate="show">
       {children}
     </motion.div>
   );
@@ -650,20 +663,64 @@ function Tile({
   label,
   count,
   onClick,
+  lead = false,
 }: {
   color: string;
   icon?: ReactNode;
   label: string;
   count?: number;
   onClick: () => void;
+  /** The bento lead lane — spans both columns and runs as a wide, taller
+   *  cell (icon + name side-by-side) so it reads as the hero of the grid. */
+  lead?: boolean;
 }) {
   const reduce = useReducedMotion();
 
-  // Typographic paper lane — one calm, consistent treatment. Just the
-  // colored mark, the name, and a quiet count: no description to truncate,
-  // no chevron. The lane color breathes from the top into paper; layered
-  // edge + inner highlight + ambient elevation give it "made" depth. The
-  // grid reads as a confident set of doors, not a directory of blurbs.
+  // Frosted/translucent fluid lane — a tint of the lane color washing into
+  // a TRANSLUCENT elevated paper, with a backdrop blur so the PageBloom
+  // glows through (fluid glass over the aurora, like the Saved doorways).
+  // Layered edge + inner highlight + ambient elevation keep the "made"
+  // depth; a hairline keeps the glass crisp on a busy backdrop.
+  const surface = {
+    background: `linear-gradient(155deg, color-mix(in srgb, ${color} 14%, color-mix(in srgb, var(--app-bg-elevated-solid) 60%, transparent)) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 60%, transparent) 64%)`,
+    boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
+  } as const;
+
+  if (lead) {
+    // Wide hero lane: icon stamp + name/count in a row, with a soft accent
+    // glow beneath so it reads as the lead choice, not just a big square.
+    return (
+      <motion.button
+        type="button"
+        onClick={onClick}
+        variants={tileItem}
+        whileTap={reduce ? undefined : { scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 400, damping: 28 }}
+        className="group relative col-span-2 flex min-h-[88px] items-center gap-3.5 overflow-hidden rounded-[var(--app-radius-lg)] p-4 text-left backdrop-blur-xl"
+        style={surface}
+      >
+        {icon && (
+          <IconStamp accent={color} size="lg">
+            {icon}
+          </IconStamp>
+        )}
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+            {label}
+          </span>
+          {typeof count === "number" && (
+            <span className="text-[12.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {count} place{count === 1 ? "" : "s"}
+            </span>
+          )}
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 transition-transform group-active:translate-x-0.5" strokeWidth={2.25} style={{ color }} aria-hidden />
+      </motion.button>
+    );
+  }
+
+  // Standard frosted lane — colored mark, name, quiet count. No description,
+  // no chevron: the grid reads as a confident set of glass doors.
   return (
     <motion.button
       type="button"
@@ -671,11 +728,8 @@ function Tile({
       variants={tileItem}
       whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      className="group relative flex min-h-[88px] flex-col items-start justify-between gap-2.5 rounded-[var(--app-radius-lg)] p-3.5 text-left"
-      style={{
-        background: `linear-gradient(155deg, color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 62%)`,
-        boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
-      }}
+      className="group relative flex min-h-[88px] flex-col items-start justify-between gap-2.5 rounded-[var(--app-radius-lg)] p-3.5 text-left backdrop-blur-xl"
+      style={surface}
     >
       {icon && (
         <IconStamp accent={color} size="md">
