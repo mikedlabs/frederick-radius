@@ -46,6 +46,7 @@ import { isUtilityEvent } from "@/lib/event-kind";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
 import TodayAsk from "@/components/today/TodayAsk";
+import CravingStrip from "@/components/now/CravingStrip";
 import { AnswerCard } from "@/components/answer";
 import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
 import { PARKING_GARAGES } from "@/data/parking-garages";
@@ -335,6 +336,14 @@ export default async function HomePage({
           new user gets a taste of value before the explainer). */}
       <div className="space-y-2">
         <DateLine />
+      </div>
+
+      {/* ── RIGHT NOW — the fast lane. "I want ___ right now" as one-tap
+          craving chips that deep-link into /now (nearest open one). The
+          simplest path in the app: say the noun, get the closest open
+          answer. Sits first so a craving never has to dig. */}
+      <div className="mt-3">
+        <CravingStrip />
       </div>
 
       {/* ── ANSWER-FIRST LEAD (UX_REDO Build 1) ─────────────────────────
