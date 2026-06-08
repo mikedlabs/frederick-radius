@@ -141,7 +141,7 @@ export default function RadiusMap({
   // slider) fit in one mobile viewport. The previous 60vh buried the
   // slider below the fold, which broke the "see what you're doing
   // while adjusting" loop.
-  height = "min(42vh, 360px)",
+  height = "min(54vh, 470px)",
 }: {
   mode: TravelMode;
   meters: number;
@@ -575,10 +575,10 @@ export default function RadiusMap({
                 "interpolate",
                 ["linear"],
                 ["zoom"],
-                10, ["case", ["==", ["get", "inReach"], 1], 0.42, 0.26],
-                13, ["case", ["==", ["get", "inReach"], 1], 0.62, 0.34],
-                15, ["case", ["==", ["get", "inReach"], 1], 0.82, 0.46],
-                17, ["case", ["==", ["get", "inReach"], 1], 0.95, 0.6],
+                10, ["case", ["==", ["get", "inReach"], 1], 0.46, 0.26],
+                13, ["case", ["==", ["get", "inReach"], 1], 0.68, 0.34],
+                15, ["case", ["==", ["get", "inReach"], 1], 0.86, 0.46],
+                17, ["case", ["==", ["get", "inReach"], 1], 1.0, 0.6],
               ],
               // Radar declutter: collision-thin overlapping pins instead
               // of forcing every one on screen (the old true/true made
@@ -591,12 +591,13 @@ export default function RadiusMap({
               "icon-ignore-placement": false,
               "symbol-sort-key": ["get", "pri"],
               "icon-anchor": "center",
-              "icon-padding": 4,
+              // More breathing room between pins → a calmer radar.
+              "icon-padding": 7,
             }}
             paint={{
-              // Beyond-reach pins fade back so the in-reach set leads the
-              // eye — present, not shouting.
-              "icon-opacity": ["case", ["==", ["get", "inReach"], 1], 1, 0.5],
+              // Beyond-reach pins fade further back so the in-reach set
+              // clearly leads the eye — present, not shouting.
+              "icon-opacity": ["case", ["==", ["get", "inReach"], 1], 1, 0.42],
             }}
           />
           {/* Invisible Fitts-friendly tap pad — keeps a ~36px touch target
@@ -656,7 +657,7 @@ export default function RadiusMap({
             type="fill"
             paint={{
               "fill-color": accentHex,
-              "fill-opacity": usingIsochrone ? 0.18 : 0.10,
+              "fill-opacity": usingIsochrone ? 0.18 : 0.13,
             }}
           />
           <Layer
@@ -664,8 +665,8 @@ export default function RadiusMap({
             type="line"
             paint={{
               "line-color": accentHex,
-              "line-width": usingIsochrone ? 2.5 : 2,
-              "line-opacity": usingIsochrone ? 0.92 : 0.55,
+              "line-width": usingIsochrone ? 2.5 : 2.5,
+              "line-opacity": usingIsochrone ? 0.92 : 0.8,
             }}
           />
         </Source>
@@ -704,8 +705,8 @@ export default function RadiusMap({
               position: "relative",
               display: "grid",
               placeItems: "center",
-              width: 22,
-              height: 22,
+              width: 28,
+              height: 28,
               cursor: onCenterChange ? "grab" : "default",
             }}
           >
@@ -717,34 +718,35 @@ export default function RadiusMap({
               className="radius-ripple"
               style={{
                 position: "absolute",
-                width: 22,
-                height: 22,
+                width: 28,
+                height: 28,
                 borderRadius: 9999,
-                border: `2px solid ${accentHex}`,
+                border: `2.5px solid ${accentHex}`,
               }}
             />
             <span
               className="radius-ripple"
               style={{
                 position: "absolute",
-                width: 22,
-                height: 22,
+                width: 28,
+                height: 28,
                 borderRadius: 9999,
-                border: `2px solid ${accentHex}`,
+                border: `2.5px solid ${accentHex}`,
                 animationDelay: "1400ms",
               }}
             />
-            {/* Breathing core dot. */}
+            {/* Breathing core dot — bigger, with a thicker white ring and a
+                deeper drop so "you are here" reads instantly over any tile. */}
             <span
               className="radius-breathe"
               style={{
                 position: "relative",
-                width: 22,
-                height: 22,
+                width: 26,
+                height: 26,
                 borderRadius: 9999,
                 background: accentHex,
-                border: "3px solid #fff",
-                boxShadow: "0 6px 18px rgba(0,0,0,0.35)",
+                border: "4px solid #fff",
+                boxShadow: "0 7px 20px rgba(0,0,0,0.4)",
               }}
             />
           </span>

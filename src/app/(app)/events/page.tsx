@@ -21,6 +21,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 import PageBloom from "@/components/ui/PageBloom";
+import IconStamp from "@/components/ui/IconStamp";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
@@ -397,12 +398,9 @@ export default async function EventsIndexPage({
                 boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
               }}
             >
-              <span
-                className="grid h-9 w-9 place-items-center rounded-[12px] text-white"
-                style={{ background: accent, backgroundImage: "var(--app-gloss)", boxShadow: `inset 0 1px 0 rgba(255,255,255,0.38)` }}
-              >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
-              </span>
+              <IconStamp accent={accent} size="md">
+                <Icon aria-hidden />
+              </IconStamp>
               <span className="text-[13px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {label}
               </span>

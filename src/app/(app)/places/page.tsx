@@ -162,12 +162,9 @@ export default function PlacesIndexPage() {
                     boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
                   }}
                 >
-                  <span
-                    className="grid h-11 w-11 place-items-center rounded-[14px] text-white"
-                    style={{ background: m.color, backgroundImage: "var(--app-gloss)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.38)" }}
-                  >
-                    <Icon className="h-[20px] w-[20px]" strokeWidth={2} aria-hidden />
-                  </span>
+                  <IconStamp accent={m.color} size="lg">
+                    <Icon aria-hidden />
+                  </IconStamp>
                   <span className="text-[15px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                     {m.label}
                   </span>

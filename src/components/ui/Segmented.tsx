@@ -27,8 +27,12 @@ export type SegmentItem<K extends string> = {
   href?: string;
 };
 
-const SEG =
-  "inline-flex min-h-[40px] items-center justify-center gap-1.5 px-3.5 py-2 text-[12px] font-semibold transition active:scale-[0.96]";
+const SEG_BASE =
+  "inline-flex items-center justify-center gap-1.5 font-semibold transition active:scale-[0.96]";
+const SEG_SIZE: Record<"sm" | "md", string> = {
+  md: "min-h-[40px] px-3.5 py-2 text-[12px]",
+  sm: "min-h-[30px] px-2.5 py-1 text-[11px]",
+};
 
 function segStyle(active: boolean): CSSProperties {
   return {
@@ -43,10 +47,12 @@ function LinkSegment<K extends string>({
   item,
   active,
   labelCls,
+  size,
 }: {
   item: SegmentItem<K>;
   active: boolean;
   labelCls: string;
+  size: "sm" | "md";
 }) {
   const { pending } = useLinkStatus();
   const Icon = item.icon;
@@ -55,7 +61,7 @@ function LinkSegment<K extends string>({
       role="tab"
       aria-selected={active}
       href={item.href!}
-      className={SEG}
+      className={`${SEG_BASE} ${SEG_SIZE[size]}`}
       style={segStyle(active)}
     >
       {pending ? (
@@ -75,6 +81,7 @@ export default function Segmented<K extends string>({
   labelsOn = "always",
   ariaLabel = "View",
   className = "",
+  size = "md",
 }: {
   items: ReadonlyArray<SegmentItem<K>>;
   value?: K;
@@ -83,6 +90,8 @@ export default function Segmented<K extends string>({
   labelsOn?: "always" | "sm";
   ariaLabel?: string;
   className?: string;
+  /** Control density. "md" (default) | "sm" (compact, e.g. the map nav). */
+  size?: "sm" | "md";
 }) {
   const labelCls = labelsOn === "sm" ? "hidden sm:inline" : "inline";
   return (
@@ -96,7 +105,7 @@ export default function Segmented<K extends string>({
         if (item.href) {
           // Each link segment is its own component so its useLinkStatus
           // hook is scoped to that <Link>.
-          return <LinkSegment key={item.key} item={item} active={active} labelCls={labelCls} />;
+          return <LinkSegment key={item.key} item={item} active={active} labelCls={labelCls} size={size} />;
         }
         const Icon = item.icon;
         return (
@@ -109,7 +118,7 @@ export default function Segmented<K extends string>({
               haptic("light");
               onChange?.(item.key);
             }}
-            className={SEG}
+            className={`${SEG_BASE} ${SEG_SIZE[size]}`}
             style={segStyle(active)}
           >
             {Icon && <Icon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />}

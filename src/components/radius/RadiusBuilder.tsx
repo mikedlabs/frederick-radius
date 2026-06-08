@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Footprints, Bike, Car, MapPin, ChevronDown, Locate, X, Compass, SquareParking, Toilet, Coffee, CalendarDays, Bus } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
+import IconStamp from "@/components/ui/IconStamp";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
@@ -823,56 +824,38 @@ export default function RadiusBuilder({
           via localStorage; the Locate button in the control card
           remains the quiet always-on opt-in path for users who
           dismissed the card but later change their mind. */}
+      {/* Compact location invite — a single slim row, not a hero card. The
+          icon + label sit quiet on the left; the action + dismiss on the
+          right. "Stays on your device" is the only privacy word needed. */}
       {showGeoPrompt && (
         <div
-          className="tactile relative overflow-hidden rounded-[var(--app-radius-lg)] border p-3.5 shadow-[var(--app-shadow-1)]"
+          className="flex items-center gap-2.5 rounded-full border py-1.5 pl-3 pr-1.5"
           style={{
-            borderColor: "color-mix(in srgb, var(--app-brand) 36%, var(--app-border))",
-            background:
-              "linear-gradient(135deg, color-mix(in srgb, var(--app-brand) 12%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 70%)",
+            borderColor: "color-mix(in srgb, var(--app-brand) 28%, var(--app-border))",
+            background: "color-mix(in srgb, var(--app-brand) 6%, var(--app-bg-elevated))",
           }}
         >
+          <Locate className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+            See what&rsquo;s nearby
+          </span>
+          <button
+            type="button"
+            onClick={requestMyLocation}
+            className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white transition active:scale-[0.96]"
+            style={{ background: "var(--app-brand)" }}
+          >
+            Use my location
+          </button>
           <button
             type="button"
             onClick={dismissPrompt}
             aria-label="Dismiss"
-            className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full transition active:scale-[0.94]"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full transition active:scale-[0.94]"
             style={{ color: "var(--app-ink-3)" }}
           >
             <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
           </button>
-          <div className="flex items-start gap-3 pr-7">
-            <span
-              aria-hidden
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full shadow-[var(--app-shadow-1)]"
-              style={{ background: "var(--app-brand)", color: "white" }}
-            >
-              <Locate className="h-[18px] w-[18px]" strokeWidth={2.5} aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p
-                className="font-serif text-[16px] font-semibold leading-snug tracking-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                See what&rsquo;s nearby
-              </p>
-              <p
-                className="mt-0.5 text-[12px] leading-snug"
-                style={{ color: "var(--app-ink-2)" }}
-              >
-                Center the radar on your spot. Stays on your device.
-              </p>
-              <button
-                type="button"
-                onClick={requestMyLocation}
-                className="tactile tactile-interactive mt-2 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-white shadow-[var(--app-shadow-1)] transition active:scale-[0.96]"
-                style={{ background: "var(--app-brand)" }}
-              >
-                <Locate className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
-                Use my location
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -985,6 +968,11 @@ export default function RadiusBuilder({
             now lives in the calm sheet header below the map. */}
       </div>
 
+      {/* Map nav (Radius / Browse) — small, directly under the map. */}
+      {modeToggle && (
+        <div className="-mt-1 flex justify-center">{modeToggle}</div>
+      )}
+
       {/* ── BEST NEAR — the calm sheet lead. Replaces the dumped count
           ribbon: a clear "Best near {center}" heading + a one-line reach
           summary, the single strongest nearby place rendered SELECTED (a
@@ -1018,19 +1006,21 @@ export default function RadiusBuilder({
         {/* Compact utility row — the five things people most need nearby. */}
         <div className="grid grid-cols-5 gap-2">
           {[
-            { href: "/amenities", label: "Parking", Icon: SquareParking },
-            { href: "/amenities", label: "Restrooms", Icon: Toilet },
-            { href: "/category/coffee", label: "Coffee", Icon: Coffee },
-            { href: "/events", label: "Events", Icon: CalendarDays },
-            { href: "/transit", label: "Transit", Icon: Bus },
-          ].map(({ href, label, Icon }) => (
+            { href: "/amenities", label: "Parking", Icon: SquareParking, accent: "var(--app-ink-3)" },
+            { href: "/amenities", label: "Restrooms", Icon: Toilet, accent: "var(--app-cool)" },
+            { href: "/category/coffee", label: "Coffee", Icon: Coffee, accent: "#8B5A2B" },
+            { href: "/events", label: "Events", Icon: CalendarDays, accent: "var(--app-brand)" },
+            { href: "/transit", label: "Transit", Icon: Bus, accent: "#2F5470" },
+          ].map(({ href, label, Icon, accent }) => (
             <Link
               key={label}
               href={href}
               className="tactile tactile-interactive flex flex-col items-center gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2.5"
               style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)" }}
             >
-              <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-ink-2)" }} aria-hidden />
+              <IconStamp accent={accent} size="sm">
+                <Icon aria-hidden />
+              </IconStamp>
               <span className="text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
                 {label}
               </span>
@@ -1039,10 +1029,6 @@ export default function RadiusBuilder({
         </div>
       </section>
 
-      {/* Mode toggle (Radius / Browse) — right under the map. */}
-      {modeToggle && (
-        <div className="flex justify-end">{modeToggle}</div>
-      )}
 
       {/* CONTROLS lead: center + travel mode + radius slider sit
           directly under the map, so you tune the instrument BEFORE the

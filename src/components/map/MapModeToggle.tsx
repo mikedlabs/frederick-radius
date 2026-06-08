@@ -37,7 +37,7 @@ export default function MapModeToggle({
         WebkitBackdropFilter: "blur(12px) saturate(1.15)",
       }}
     >
-      <Segmented ariaLabel="Map mode" value={mode} items={ITEMS} />
+      <Segmented ariaLabel="Map mode" value={mode} items={ITEMS} size="sm" />
     </div>
   );
 }
