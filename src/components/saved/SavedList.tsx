@@ -648,38 +648,40 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   ];
 
   return (
-    <div className="space-y-6">
-      {/* One calm hero — a stamp, one line, one short subline. */}
-      <section aria-label="Nothing saved yet" className="space-y-3">
-        <IconStamp accent="var(--app-brand)" size="lg">
+    <div className="space-y-4">
+      {/* Tight inline hero — stamp + title + line on one row, not a stacked
+          block. Dense, content opens immediately. */}
+      <div className="flex items-center gap-3">
+        <IconStamp accent="var(--app-brand)" size="md">
           <Bookmark aria-hidden />
         </IconStamp>
-        <div className="space-y-1">
-          <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Nothing saved yet.
+        <div className="min-w-0">
+          <h2 className="text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Nothing saved yet
           </h2>
-          <p className="text-[13.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Tap the bookmark on any place or event and it lands here.
+          <p className="text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            Tap the bookmark on any place or event.
           </p>
         </div>
-      </section>
+      </div>
 
-      {/* Guided doorways. */}
-      <ul className="grid grid-cols-2 gap-2.5">
+      {/* Guided doorways — a dense 2×2 of frosted, fluid cards (translucent
+          over the page bloom, hairline edge, soft depth). */}
+      <ul className="grid grid-cols-2 gap-2">
         {LANES.map(({ href, label, Icon, color }) => (
           <li key={href}>
             <Link
               href={href}
-              className="tactile tactile-interactive flex min-h-[92px] flex-col items-start justify-between gap-2.5 rounded-[var(--app-radius-lg)] p-3.5"
+              className="tactile tactile-interactive flex min-h-[68px] items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5 backdrop-blur-md"
               style={{
-                background: `linear-gradient(155deg, color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 62%)`,
-                boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
+                background: "color-mix(in srgb, var(--app-bg-elevated) 68%, transparent)",
+                boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
               }}
             >
-              <IconStamp accent={color} size="md">
+              <IconStamp accent={color} size="sm">
                 <Icon aria-hidden />
               </IconStamp>
-              <span className="text-[14.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <span className="min-w-0 text-[13.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {label}
               </span>
             </Link>
@@ -688,26 +690,14 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
       </ul>
 
       {seeds.length > 0 && (
-        <section className="space-y-2.5">
-          <header className="flex items-center gap-2">
-            <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-cool)" }} />
-            <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              Worth starting with
-            </h2>
-          </header>
-          <ul className="space-y-2.5">
-            {seeds.map((s, i) => (
+        <section className="space-y-2">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+            Worth starting with
+          </h2>
+          <ul className="space-y-2">
+            {seeds.map((s) => (
               <li key={s.slug}>
-                {i === 0 ? (
-                  <div
-                    className="rounded-[var(--app-radius-lg)]"
-                    style={{ boxShadow: "0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)" }}
-                  >
-                    <PlaceCard place={s.place} variant="row" />
-                  </div>
-                ) : (
-                  <PlaceCard place={s.place} variant="row" />
-                )}
+                <PlaceCard place={s.place} variant="row" compact />
               </li>
             ))}
           </ul>

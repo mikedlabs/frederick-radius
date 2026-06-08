@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Settings, ChevronRight, Mail } from "lucide-react";
+import { Settings, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
 import RecentlyViewedRail from "@/components/saved/RecentlyViewedRail";
 import NotificationsNudge from "@/components/pwa/NotificationsNudge";
@@ -30,37 +30,31 @@ export const metadata: Metadata = {
 export default async function MyRadiusPage() {
   const user = await getServerUser();
   return (
-    <div className="relative space-y-5">
+    <div className="relative space-y-4">
       <PageBloom variant="warm-cool" />
-      <header className="flex items-end justify-between gap-3">
-        <div>
-          <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-            {user ? `Signed in as ${user.email ?? "you"}` : "On this device"}
-          </p>
-          <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
+      {/* Compact header — a tight title + one meta line + an icon button,
+          not a display-1 hero with a two-line paragraph. The mobile screen
+          opens on content, not on chrome. */}
+      <header className="flex items-center justify-between gap-3 pt-0.5">
+        <div className="min-w-0">
+          <h1 className="font-serif text-[23px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Your field guide
           </h1>
-          <p
-            className="mt-1.5 text-[14px] leading-relaxed text-pretty"
-            style={{ color: "var(--app-ink-2)" }}
-          >
-            Your saved Frederick starts here. Save places, events, and ideas —
-            we&apos;ll group them by town, distance, and what&apos;s coming up next.
+          <p className="truncate text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+            {user ? `Signed in as ${user.email ?? "you"}` : "Saved on this device"}
           </p>
         </div>
         <Link
           href="/settings"
           aria-label="Settings"
-          className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+          className="tactile tactile-interactive grid h-9 w-9 shrink-0 place-items-center rounded-full border"
           style={{
             borderColor: "var(--app-border)",
             background: "var(--app-bg-elevated)",
             color: "var(--app-ink-2)",
           }}
         >
-          <Settings className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Settings
-          <ChevronRight className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+          <Settings className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         </Link>
       </header>
 
