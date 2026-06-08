@@ -200,6 +200,7 @@ export default function PlaceCard({
   // answer/feature lead. Override explicitly anywhere it's wanted.
   showSource = variant === "answer" || variant === "feature",
   noPhoto = false,
+  reasons: reasonsOverride,
 }: {
   place: PlaceCardData;
   compact?: boolean;
@@ -211,6 +212,11 @@ export default function PlaceCard({
    *  The Map bottom-sheet uses this — map results are compact decision
    *  cards, not photo cards (the Map redesign brief). */
   noPhoto?: boolean;
+  /** Override the auto-derived reason chips. Pass a curated subset (e.g. the
+   *  single most-relevant "why this is shown" reason) so a grouped result
+   *  list explains each pick without repeating the same chip down the column.
+   *  Still produced by placeReasons() upstream — never fabricated. */
+  reasons?: PlaceReasonChip[];
   /** Legacy: extra photos for the old answer photo strip. Browse cards are
    *  typographic now (Photo Policy), so this is no longer rendered — kept in
    *  the type so existing callers compile without churn. */
@@ -222,7 +228,7 @@ export default function PlaceCard({
   const openDetail = () => { haptic("light"); openSheet(place); };
   // "Known for" — the real descriptive blurb, or null for DFP filler.
   const kf = knownFor(place);
-  const reasons = placeReasons(place);
+  const reasons = reasonsOverride ?? placeReasons(place);
   // Where the card ALSO renders an explicit open indicator (the tile's
   // status dot, the feature/answer PlaceStatus line), the leading "Open"
   // reason chip just echoes it. Drop it there so the two visible chips

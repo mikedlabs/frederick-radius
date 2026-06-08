@@ -11,6 +11,7 @@ import { useClientPlaces } from "@/hooks/useClientPlaces";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import PlaceCard from "@/components/place/PlaceCard";
+import ResultBlock, { MoreList, leadReason } from "./ResultBlock";
 import IconStamp from "@/components/ui/IconStamp";
 import Pill from "@/components/ui/Pill";
 import Skeleton from "@/components/ui/Skeleton";
@@ -43,6 +44,22 @@ import { INTENT_ICON } from "./intentIcons";
 const TOP: IntentKey[] = ["eat", "coffee", "outdoor", "shop", "arts", "family"];
 
 const RESULT_CAP = 24;
+
+// Tier caps for the SELECTED result layout — keep the screen scannable so the
+// best answer reads in seconds, not a directory wall. (Grouping/presentation
+// only; the ranked result set itself is unchanged.)
+const ALSO_GOOD_CAP = 3; // a few supporting picks
+const USEFUL_NEARBY_CAP = 3; // the practical/amenity convenience layer
+const KEEP_LOOKING_INITIAL = 6; // the tail, the rest revealed via "+N more"
+
+// The practical/amenity layer — "while you're there" categories (parking,
+// restrooms, water, coffee, pharmacy, transit). Surfaced as a small,
+// distance-sorted convenience set near the lead, never mixed into the intent
+// ranking. Self-hides when nothing real is close.
+const PRACTICAL_CATEGORIES: ReadonlySet<string> = new Set([
+  "parking", "restroom", "water", "amenities", "coffee", "pharmacy", "transit",
+]);
+const USEFUL_NEARBY_RADIUS_M = 1600; // ~20 min walk / a short hop
 
 // Result ordering the user can switch between (the smart default plus two
 // literal, honest sorts). "nearest" only offered when we have location.
@@ -206,6 +223,39 @@ export default function FunnelFlow() {
     });
     return ranked.slice(0, RESULT_CAP);
   }, [places, intent, lens, chosenSub, openOnly, favOnly, walkOnly, geo, sort]);
+
+  // ── USEFUL NEARBY — the practical/amenity convenience layer ("while you're
+  // there": parking, restrooms, coffee, a pharmacy). NOT part of the intent
+  // ranking — it's a small, distance-sorted set anchored to the lead pick (or
+  // the user's location), drawn from the same recommendable place set via the
+  // same gate. Self-hides when nothing practical is genuinely close. This is
+  // presentation/grouping only; it never changes the intent result set above.
+  const usefulNearby = useMemo(() => {
+    if (!results.length) return [];
+    const origin =
+      geo.status === "granted"
+        ? { lng: geo.position.lng, lat: geo.position.lat }
+        : results[0].geom;
+    if (!origin) return [];
+    // Don't echo the lane's own category (for "Coffee", coffee isn't "nearby
+    // amenity" — it's the answer) and never repeat a place already shown.
+    const shown = new Set(results.map((p) => p.slug));
+    const cats = new Set(PRACTICAL_CATEGORIES);
+    if (intent) for (const p of results) cats.delete(p.category);
+    const pool = gateRecommendable(
+      places.filter((p) => cats.has(p.category) && !shown.has(p.slug)),
+    );
+    return pool
+      .map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) }))
+      .filter((p) => p.distance_m <= USEFUL_NEARBY_RADIUS_M)
+      .sort((a, b) => a.distance_m - b.distance_m)
+      .slice(0, USEFUL_NEARBY_CAP);
+  }, [results, places, intent, geo]);
+
+  // The four tiers are just slices of the SAME ranked `results` — the order
+  // and membership are untouched; this only groups them for presentation.
+  const alsoGood = results.slice(1, 1 + ALSO_GOOD_CAP);
+  const keepLooking = results.slice(1 + ALSO_GOOD_CAP);
 
   const sortLabel =
     sort === "nearest" ? "nearest first" : sort === "rated" ? "top rated" : geo.status === "granted" ? "best nearby" : "top picks";
@@ -508,54 +558,65 @@ export default function FunnelFlow() {
               </p>
             ) : (
               <motion.div
-                className="space-y-6"
+                className="space-y-7"
                 variants={reduce ? undefined : tilesContainer}
                 initial={reduce ? false : "hidden"}
                 animate="show"
               >
-                {/* Best match — one strong lead. The accent tick + a soft
-                    colored glow beneath the card make it read as CHOSEN, not
-                    just the first row of a list. */}
-                <motion.section variants={reduce ? undefined : tileItem}>
-                  <SectionLabel accent={resultColor}>Best match</SectionLabel>
-                  <div
-                    className="rounded-[var(--app-radius-lg)]"
-                    style={{ boxShadow: `0 16px 36px -20px color-mix(in srgb, ${resultColor} 60%, transparent)` }}
-                  >
-                    <AnswerLead place={results[0]} />
-                  </div>
-                </motion.section>
+                {/* ── BEST MATCH — one strong lead. A calm accent rail + a
+                    hairline top tick mark it as CHOSEN; no pillowy colored
+                    glow. The rich answer card carries the full why. */}
+                <ResultBlock
+                  label="Best match"
+                  accent={resultColor}
+                  variants={reduce ? undefined : tileItem}
+                >
+                  <AnswerLead place={results[0]} />
+                </ResultBlock>
 
-                {/* Also good — a few supporting picks. */}
-                {results.length > 1 && (
-                  <motion.section variants={reduce ? undefined : tileItem}>
-                    <SectionLabel>Also good</SectionLabel>
-                    <ul className="space-y-3">
-                      {results.slice(1, 4).map((p) => (
+                {/* ── ALSO GOOD — a few supporting picks (cap ~3). One curated
+                    reason per card so the column reads as "why these", not a
+                    repeating chip wall. */}
+                {alsoGood.length > 0 && (
+                  <ResultBlock label="Also good" variants={reduce ? undefined : tileItem}>
+                    <ul className="space-y-2">
+                      {alsoGood.map((p) => (
                         <li key={p.slug}>
-                          <PlaceCard place={p} variant="row" showSource={false} />
+                          <PlaceCard place={p} variant="row" showSource={false} reasons={leadReason(p)} />
                         </li>
                       ))}
                     </ul>
-                  </motion.section>
+                  </ResultBlock>
                 )}
 
-                {/* Keep looking — the rest, only if there's more. Rendered
-                    COMPACT (no status/rating chip row) and at a tighter
-                    rhythm, so the tail reads as a lighter "more options"
-                    list — the third tier below Best match (hero) and Also
-                    good (standard row). */}
-                {results.length > 4 && (
-                  <motion.section variants={reduce ? undefined : tileItem}>
-                    <SectionLabel count={results.length - 4}>Keep looking</SectionLabel>
+                {/* ── USEFUL NEARBY — the practical/amenity layer. Self-hides
+                    when nothing practical is genuinely close. */}
+                {usefulNearby.length > 0 && (
+                  <ResultBlock label="Useful nearby" variants={reduce ? undefined : tileItem}>
                     <ul className="space-y-2">
-                      {results.slice(4).map((p) => (
+                      {usefulNearby.map((p) => (
                         <li key={p.slug}>
-                          <PlaceCard place={p} variant="row" compact showSource={false} />
+                          <PlaceCard place={p} variant="row" compact showSource={false} reasons={leadReason(p, "practical")} />
                         </li>
                       ))}
                     </ul>
-                  </motion.section>
+                  </ResultBlock>
+                )}
+
+                {/* ── KEEP LOOKING — the rest, compact, capped with a "+N more"
+                    affordance so the tail never becomes a directory wall. */}
+                {keepLooking.length > 0 && (
+                  <ResultBlock
+                    label="Keep looking"
+                    count={keepLooking.length}
+                    variants={reduce ? undefined : tileItem}
+                  >
+                    <MoreList
+                      places={keepLooking}
+                      initial={KEEP_LOOKING_INITIAL}
+                      reasonFor={(p) => leadReason(p)}
+                    />
+                  </ResultBlock>
                 )}
 
                 <motion.p
@@ -626,29 +687,6 @@ function Grid({ children }: { children: ReactNode }) {
     <motion.div className="grid grid-cols-2 gap-3" variants={tilesContainer} initial="hidden" animate="show">
       {children}
     </motion.div>
-  );
-}
-
-// A calm result-section heading — Best match / Also good / Keep looking.
-// Deliberately NOT a tiny uppercase eyebrow; a confident sans label with an
-// optional count, so results read as curated blocks, not one long list. An
-// `accent` renders a colored tick (used on Best match) so the lead reads as
-// chosen, not just first.
-function SectionLabel({ children, count, accent }: { children: ReactNode; count?: number; accent?: string }) {
-  return (
-    <div className="mb-2.5 flex items-center gap-2">
-      {accent && (
-        <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: accent }} />
-      )}
-      <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-        {children}
-      </h2>
-      {typeof count === "number" && count > 0 && (
-        <span className="text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          {count} more
-        </span>
-      )}
-    </div>
   );
 }
 
