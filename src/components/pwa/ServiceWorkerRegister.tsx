@@ -24,8 +24,19 @@ import { toast } from "sonner";
  */
 export default function ServiceWorkerRegister() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== "production") return;
     if (!("serviceWorker" in navigator)) return;
+    // Skip ONLY true local dev (registering on localhost fights HMR).
+    // Gate on the runtime hostname, NOT `process.env.NODE_ENV`: the deploy
+    // build inlined NODE_ENV as non-"production", so the old
+    // `if (NODE_ENV !== "production") return` let the minifier dead-code-
+    // eliminate this entire effect body — the SW never registered for real
+    // users (no offline, no update toast, no install; verified on prod:
+    // getRegistrations() was empty and no chunk referenced /sw.js).
+    // `location.hostname` is read at runtime and can't be optimized away.
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) {
+      return;
+    }
 
     let toastId: string | number | undefined;
     let reloaded = false;
@@ -88,7 +99,16 @@ export default function ServiceWorkerRegister() {
           // without the SW; we just lose offline + the update toast.
         });
     };
-    window.addEventListener("load", onLoad);
+    // Register after first paint without racing the `load` event: if the
+    // page already finished loading (the effect can run after `load` has
+    // fired, especially on a fast cache hit), register immediately;
+    // otherwise wait for `load`. The old code only ever added the listener,
+    // so a load that had already fired meant onLoad never ran.
+    if (document.readyState === "complete") {
+      onLoad();
+    } else {
+      window.addEventListener("load", onLoad);
+    }
 
     // Re-check for a new service worker whenever the user returns to the
     // app. The browser only looks for an updated /sw.js on a fresh
