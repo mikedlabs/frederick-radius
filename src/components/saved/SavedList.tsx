@@ -695,10 +695,12 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
           <h2 className="text-[12px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
             Worth starting with
           </h2>
-          <ul className="space-y-2">
+          {/* Two-up compact cells so more fit on screen — visual photo
+              tiles rather than stacked full-width rows. */}
+          <ul className="grid grid-cols-2 gap-2">
             {seeds.map((s) => (
               <li key={s.slug}>
-                <PlaceCard place={s.place} variant="row" compact />
+                <PlaceCard place={s.place} variant="grid" />
               </li>
             ))}
           </ul>
