@@ -29,8 +29,21 @@ import { type ReactNode } from "react";
  * never fights the map or the list.
  */
 
-/** Snap points: collapsed peek (px), working (~half), browse (~full). */
-export const SNAP_COLLAPSED = "104px";
+/**
+ * Snap points: collapsed peek (px), working (~half), browse (~full).
+ *
+ * The collapsed peek must be TALL ENOUGH that its summary row — which
+ * holds the "Adjust" button — sits fully above the floating BottomNav.
+ * The nav (`--z-nav: 40`) renders above this sheet (`--z-map-control: 20`),
+ * so any interactive summary content that overlaps the nav's footprint is
+ * both clipped and un-tappable: a real finger lands on a nav tab instead
+ * (confirmed by hit-test on every phone). At 104px the summary's lower
+ * edge fell ~13px into the nav; 148px lifts the whole row clear with a
+ * comfortable gap on flat and notched devices alike. The empty space the
+ * taller peek adds is just sheet background behind the nav — nothing
+ * interactive lives there — so the nav stays visible and usable.
+ */
+export const SNAP_COLLAPSED = "148px";
 export const SNAP_HALF = 0.5;
 export const SNAP_FULL = 0.94;
 const SNAP_POINTS = [SNAP_COLLAPSED, SNAP_HALF, SNAP_FULL];
