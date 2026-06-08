@@ -4,6 +4,8 @@ import { Settings, ChevronRight, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
 import RecentlyViewedRail from "@/components/saved/RecentlyViewedRail";
 import NotificationsNudge from "@/components/pwa/NotificationsNudge";
+import PageBloom from "@/components/ui/PageBloom";
+import IconStamp from "@/components/ui/IconStamp";
 import { getServerUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
@@ -28,7 +30,8 @@ export const metadata: Metadata = {
 export default async function MyRadiusPage() {
   const user = await getServerUser();
   return (
-    <div className="space-y-5">
+    <div className="relative space-y-5">
+      <PageBloom variant="warm-cool" />
       <header className="flex items-end justify-between gap-3">
         <div>
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
@@ -70,16 +73,9 @@ export default async function MyRadiusPage() {
           className="tactile tactile-interactive group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
           style={{ borderColor: "var(--app-border)" }}
         >
-          <span
-            aria-hidden
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-              color: "var(--app-brand)",
-            }}
-          >
-            <Mail className="h-4 w-4" strokeWidth={2} aria-hidden />
-          </span>
+          <IconStamp accent="var(--app-brand)" size="md">
+            <Mail aria-hidden />
+          </IconStamp>
           <span className="min-w-0 flex-1">
             <span
               className="block text-[13px] font-semibold leading-tight"

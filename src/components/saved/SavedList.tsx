@@ -13,7 +13,8 @@ import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
-import { Bookmark, MapPin, Sparkles, Calendar, UtensilsCrossed } from "lucide-react";
+import { Bookmark, MapPin, Sparkles, Calendar, Layers } from "lucide-react";
+import IconStamp from "@/components/ui/IconStamp";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { haversineMeters } from "@/lib/geo";
@@ -637,110 +638,76 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
     .map((s) => ({ ...s, place: placesBySlug.get(s.slug) }))
     .filter((s): s is typeof s & { place: PlaceCardData } => Boolean(s.place));
 
+  // Four confident doorways — the same lane language as /places, pointing
+  // at the surfaces that fill this page. A guided launchpad, not a paragraph.
+  const LANES: { href: string; label: string; Icon: typeof Bookmark; color: string }[] = [
+    { href: "/guide", label: "Ask the guide", Icon: Sparkles, color: "var(--app-brand)" },
+    { href: "/map", label: "Explore nearby", Icon: MapPin, color: "var(--app-cool)" },
+    { href: "/events", label: "What’s on", Icon: Calendar, color: "#C99632" },
+    { href: "/collections", label: "Collections", Icon: Layers, color: "#7E2C6F" },
+  ];
+
   return (
-    <div className="space-y-5">
-      <section
-        aria-label="About your saved list"
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 shadow-[var(--app-shadow-1)]"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(80% 110% at 0% 0%, color-mix(in srgb, var(--app-brand) 16%, transparent), transparent 60%)",
-          }}
-        />
-        <div className="relative space-y-2">
-          <span
-            aria-hidden
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 16%, transparent)",
-              color: "var(--app-brand)",
-            }}
-          >
-            <Bookmark className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          </span>
-          <p
-            className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Start building your Radius.
+    <div className="space-y-6">
+      {/* One calm hero — a stamp, one line, one short subline. */}
+      <section aria-label="Nothing saved yet" className="space-y-3">
+        <IconStamp accent="var(--app-brand)" size="lg">
+          <Bookmark aria-hidden />
+        </IconStamp>
+        <div className="space-y-1">
+          <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Nothing saved yet.
+          </h2>
+          <p className="text-[13.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            Tap the bookmark on any place or event and it lands here.
           </p>
-          <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
-            Follow the places you care about, and this page becomes your
-            personal view of Frederick County. Tap the bookmark on anything in
-            the field guide and it lands here: things you&apos;ve been meaning
-            to try, dates worth a return visit, or a short list to send a
-            friend who&apos;s coming through town.
-          </p>
-          {/* Three primary entry points so the empty page suggests three
-              different starting paths (explore the map, see what's on,
-              or follow a craving). The first is the brand-filled primary;
-              the other two are hairline pills so the visual hierarchy
-              still reads "one main move, two alternatives." */}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Link
-              href="/map"
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ background: "var(--app-brand)", color: "white" }}
-            >
-              <MapPin className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Explore nearby
-            </Link>
-            <Link
-              href="/events"
-              className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              <Calendar className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Browse events
-            </Link>
-            <Link
-              href="/map?intent=eat"
-              className="inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold transition active:scale-[0.96]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              <UtensilsCrossed className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Food and drink
-            </Link>
-          </div>
         </div>
       </section>
 
-      {seeds.length > 0 && (
-        <section className="space-y-2">
-          <header className="flex items-baseline gap-2.5">
-            <span
-              aria-hidden
-              className="block h-[3px] w-7 rounded-full"
-              style={{ background: "var(--app-cool)" }}
-            />
-            <h2
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-cool)" }}
+      {/* Guided doorways. */}
+      <ul className="grid grid-cols-2 gap-2.5">
+        {LANES.map(({ href, label, Icon, color }) => (
+          <li key={href}>
+            <Link
+              href={href}
+              className="tactile tactile-interactive flex min-h-[92px] flex-col items-start justify-between gap-2.5 rounded-[var(--app-radius-lg)] p-3.5"
+              style={{
+                background: `linear-gradient(155deg, color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 62%)`,
+                boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
+              }}
             >
+              <IconStamp accent={color} size="md">
+                <Icon aria-hidden />
+              </IconStamp>
+              <span className="text-[14.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                {label}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      {seeds.length > 0 && (
+        <section className="space-y-2.5">
+          <header className="flex items-center gap-2">
+            <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-cool)" }} />
+            <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
               Worth starting with
             </h2>
-            <span
-              className="ml-auto text-[10px] italic"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              Hand-picked · not yours yet
-            </span>
           </header>
-          <ul className="space-y-2">
-            {seeds.map((s) => (
-              <li key={s.slug} className="space-y-1.5">
-                <p
-                  className="px-1 text-[11.5px] italic"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {s.reason}
-                </p>
-                <PlaceCard place={s.place} />
+          <ul className="space-y-2.5">
+            {seeds.map((s, i) => (
+              <li key={s.slug}>
+                {i === 0 ? (
+                  <div
+                    className="rounded-[var(--app-radius-lg)]"
+                    style={{ boxShadow: "0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)" }}
+                  >
+                    <PlaceCard place={s.place} variant="row" />
+                  </div>
+                ) : (
+                  <PlaceCard place={s.place} variant="row" />
+                )}
               </li>
             ))}
           </ul>
