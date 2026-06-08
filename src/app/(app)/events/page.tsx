@@ -10,6 +10,7 @@ import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
 import WeekendVibes from "@/components/event/WeekendVibes";
 import TonightRail from "@/components/event/TonightRail";
+import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
@@ -294,24 +295,23 @@ export default async function EventsIndexPage({
     (initialView.cats?.length ?? 0) > 0 || sp.get("free") === "1" || !!initialDay;
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative space-y-4">
       <PageBloom variant="warm-cool" />
 
-      {/* ── 1. HERO — a calm, editorial opener. One question, one short
-          line. The old "Live across the county / Events" masthead +
-          the 7-day week-strip calendar led with a feed/calendar feel;
-          this leads with the curated answer instead. Month view is a
-          single quiet link; the full calendar lives below. */}
-      <header className="flex items-end justify-between gap-3">
+      {/* ── 1. HERO — compacted to a single tight line. The question +
+          its hand-picked subline now sit on one row beside the Month-view
+          pivot, trading the old two-line stack of air for a denser
+          masthead so the week ribbon + lead card pull up the page. */}
+      <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1
-            className="font-serif text-[31px] font-semibold leading-[1.04] tracking-tight text-balance"
+            className="font-serif text-[24px] font-semibold leading-[1.08] tracking-tight text-balance"
             style={{ color: "var(--app-ink)" }}
           >
             What&rsquo;s worth going to?
           </h1>
-          <p className="mt-2 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Hand-picked from what&rsquo;s on across Frederick County.
+          <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            Hand-picked from across Frederick County.
           </p>
         </div>
         <Link
@@ -320,7 +320,7 @@ export default async function EventsIndexPage({
           style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
         >
           <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Month view
+          Month
         </Link>
       </header>
 
@@ -329,7 +329,7 @@ export default async function EventsIndexPage({
           Always visible (not behind a collapsible), so the page opens on
           the answer, never on a calendar. */}
       {heroEvent && (
-        <section aria-label="Best next" className="space-y-3">
+        <section aria-label="Best next" className="space-y-2">
           <header className="flex items-center gap-2">
             <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-brand)" }} />
             <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -344,6 +344,13 @@ export default async function EventsIndexPage({
           />
         </section>
       )}
+
+      {/* ── WEEK RIBBON — the density trick, BELOW the lead so "Best next"
+          opens the page (never calendar-first). A slim whole-week row: seven
+          frosted cells with weekday + numeral + live event count; tapping a
+          day deep-links the explorer to ?d=YYYY-MM-DD. A jump-to-a-day
+          navigator, not the lead. */}
+      <EventWeekRibbon events={allEvents} activeDay={initialDay} />
 
       {/* ── 3. TONIGHT — only when there's actually something left today.
           A short photo-led marquee of what's starting soon, not the whole
@@ -380,28 +387,34 @@ export default async function EventsIndexPage({
           view (and opens the explorer below); Civic jumps to the
           separated civic lane. Tiles with no matching events are omitted
           upstream, so a tap never lands on an empty list. */}
-      <section aria-label="Browse by mood" className="space-y-3">
+      <section aria-label="Browse by mood" className="space-y-2.5">
         <header className="flex items-center gap-2">
           <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-ink-3)" }} />
           <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
             Browse by mood
           </h2>
         </header>
-        <div className="grid grid-cols-3 gap-2.5">
+        {/* Frosted/translucent fluid doorways — denser than the old solid
+            tiles: a translucent accent-washed fill over backdrop-blur, a
+            hairline edge + soft top highlight + a quiet lift, matching the
+            Saved page's fluid-card grammar. 3-across with a tighter gap so
+            more moods sit above the fold. The smaller IconStamp + inline
+            label keep each tile shallow. */}
+        <div className="grid grid-cols-3 gap-2">
           {moodTiles.map(({ label, Icon, accent, href }) => (
             <Link
               key={label}
               href={href}
-              className="tactile tactile-interactive flex flex-col items-start gap-2 rounded-[var(--app-radius-lg)] p-3"
+              className="tactile tactile-interactive flex flex-col items-start gap-1.5 rounded-[var(--app-radius-lg)] p-2.5 backdrop-blur-md"
               style={{
-                background: `linear-gradient(155deg, color-mix(in srgb, ${accent} 12%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 62%)`,
+                background: `linear-gradient(155deg, color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 70%)`,
                 boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
               }}
             >
-              <IconStamp accent={accent} size="md">
+              <IconStamp accent={accent} size="sm">
                 <Icon aria-hidden />
               </IconStamp>
-              <span className="text-[13px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <span className="text-[12.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {label}
               </span>
             </Link>
@@ -420,7 +433,7 @@ export default async function EventsIndexPage({
           storageKey="fr.events.later"
           defaultOpen={false}
         >
-          <ol className="space-y-2.5">
+          <ol className="space-y-2">
             {laterThisWeek.slice(0, 24).map((e) => (
               <li key={e.slug}>
                 <EventCard event={e} variant="glance" live={liveSlugs.includes(e.slug)} />
@@ -498,7 +511,7 @@ export default async function EventsIndexPage({
           storageKey="fr.events.civic-meetings"
           defaultOpen={false}
         >
-          <ol className="space-y-2.5">
+          <ol className="space-y-2">
             {civicEvents.slice(0, 24).map((e) => (
               <li key={e.slug}>
                 <EventCard event={e} variant="glance" live={liveSlugs.includes(e.slug)} />
@@ -518,7 +531,7 @@ export default async function EventsIndexPage({
           storageKey="fr.events.town-reminders"
           defaultOpen={false}
         >
-          <ol className="space-y-2.5">
+          <ol className="space-y-2">
             {reminderEvents.slice(0, 24).map((e) => (
               <li key={e.slug}>
                 <EventCard event={e} variant="glance" live={false} />
