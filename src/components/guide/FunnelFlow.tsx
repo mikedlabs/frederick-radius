@@ -103,6 +103,10 @@ export default function FunnelFlow({
   const [intentKey, setIntentKey] = useState<IntentKey | null>(null);
   const [chosenSub, setChosenSub] = useState<SubIntent | "all" | null>(null);
   const [openOnly, setOpenOnly] = useState(false);
+  // Must-have narrowing (the brief's filter axis). Both map to real fields:
+  // walkable needs a location (distance), local-favorite is a curation flag.
+  const [walkOnly, setWalkOnly] = useState(false);
+  const [favOnly, setFavOnly] = useState(false);
   const [lens, setLens] = useState<Lens | null>(null);
   const [sort, setSort] = useState<SortKey>("best");
   const { state: geo, request: requestGeo } = useGeolocation();
@@ -145,12 +149,16 @@ export default function FunnelFlow({
     let r = lens ? places.filter(lens.match) : places.filter(intent!.match);
     if (!lens && chosenSub && chosenSub !== "all") r = r.filter(chosenSub.match);
     if (openOnly) r = r.filter((p) => isOpenNow(p.open_status));
+    if (favOnly) r = r.filter((p) => p.local_favorite);
     // Apply the audit's readiness gate: Tier-4 (closed/junk/non-discoverable)
     // never surfaces in a guided result, in any sort mode.
     r = gateRecommendable(r);
     // Distance only when we truly have the user's location — never imply
     // a distance we can't source.
-    const ranked = origin ? r.map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })) : r.slice();
+    let ranked = origin ? r.map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) })) : r.slice();
+    // Walkable = within ~15 min on foot. Only meaningful with a location, so
+    // the chip itself is gated on geo too.
+    if (walkOnly && origin) ranked = ranked.filter((p) => (p.distance_m ?? Infinity) <= 1200);
     // Tier-3 ("needs review" — B2B leaks, temp-closed, thin records) sinks
     // below Tier 1/2 in "best" so a real pick always leads; quality+proximity
     // already settles 1-vs-2, so we only demote the soft rows here.
@@ -214,7 +222,7 @@ export default function FunnelFlow({
       return a.name.localeCompare(b.name);
     });
     return ranked.slice(0, RESULT_CAP);
-  }, [places, intent, lens, chosenSub, openOnly, geo, sort]);
+  }, [places, intent, lens, chosenSub, openOnly, favOnly, walkOnly, geo, sort]);
 
   const sortLabel =
     sort === "nearest" ? "nearest first" : sort === "rated" ? "top rated" : geo.status === "granted" ? "best nearby" : "top picks";
@@ -241,7 +249,9 @@ export default function FunnelFlow({
 
   const back = () => {
     haptic("light");
-    setOpenOnly(false); // returning toward the front door clears the open-now filter so the next lane starts fresh
+    setOpenOnly(false); // returning toward the front door clears the filters so the next lane starts fresh
+    setWalkOnly(false);
+    setFavOnly(false);
     if (lens) {
       setLens(null);
       return;
@@ -442,6 +452,14 @@ export default function FunnelFlow({
                     {geo.status === "loading" ? "Locating…" : "Near me"}
                   </Pill>
                 )}
+                {geo.status === "granted" && (
+                  <Pill tone="brand" size="sm" className="shrink-0" active={walkOnly} onClick={() => { haptic("light"); track("find_musthave", { kind: "walkable" }); setWalkOnly((v) => !v); }}>
+                    Walkable
+                  </Pill>
+                )}
+                <Pill tone="brand" size="sm" className="shrink-0" active={favOnly} onClick={() => { haptic("light"); track("find_musthave", { kind: "local_favorite" }); setFavOnly((v) => !v); }}>
+                  Local favorite
+                </Pill>
                 {/* Sort, divided from the filters. The whole row scrolls
                     horizontally on narrow screens instead of wrapping to a
                     second line — one control row, not two. */}
@@ -477,11 +495,23 @@ export default function FunnelFlow({
                 className="rounded-[var(--app-radius-lg)] border border-dashed px-4 py-8 text-center text-[14px]"
                 style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
               >
-                Nothing matched yet.{" "}
-                <button type="button" onClick={back} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
-                  Try another kind
-                </button>
-                .
+                {openOnly || walkOnly || favOnly ? (
+                  <>
+                    Nothing matches all of that.{" "}
+                    <button type="button" onClick={() => { haptic("light"); setOpenOnly(false); setWalkOnly(false); setFavOnly(false); }} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                      Clear filters
+                    </button>{" "}
+                    to see more.
+                  </>
+                ) : (
+                  <>
+                    Nothing matched yet.{" "}
+                    <button type="button" onClick={back} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                      Try another kind
+                    </button>
+                    .
+                  </>
+                )}
               </p>
             ) : (
               <motion.ul
