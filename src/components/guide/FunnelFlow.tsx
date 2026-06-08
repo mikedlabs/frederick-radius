@@ -274,12 +274,12 @@ export default function FunnelFlow() {
           <motion.div key="intent" initial={variants.initial} animate={variants.animate} exit={variants.exit} transition={transition}>
             {/* ── HERO — one calm eyebrow, one confident question, one line.
                 Generous air below so the question owns the first screen. */}
-            <header className="pt-2 pb-6">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+            <header className="pt-1 pb-4">
+              <p className="text-[11.5px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
                 {greeting ? `${greeting} · Frederick County` : "Frederick County"}
               </p>
-              <h1 className="display-1 mt-3" style={{ color: "var(--app-ink)" }}>
-                What are you<br />looking for?
+              <h1 className="display-2 mt-1.5" style={{ color: "var(--app-ink)" }}>
+                What are you looking for?
               </h1>
             </header>
 
@@ -314,7 +314,7 @@ export default function FunnelFlow() {
 
             {/* ── BROWSE BY NEED — six large lanes. No descriptions, no
                 chevrons: icon, name, count. Calm and scannable. */}
-            <p className="mb-3 mt-7 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="mb-2.5 mt-5 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
               Or browse by need
             </p>
             <Grid>
@@ -340,7 +340,7 @@ export default function FunnelFlow() {
             </Grid>
 
             {/* ── NARROW IT DOWN — one compact row of by-the-moment lenses. */}
-            <p className="mb-3 mt-7 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="mb-2.5 mt-5 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
               Narrow it down
             </p>
             <div className="flex flex-wrap gap-2">
@@ -355,7 +355,7 @@ export default function FunnelFlow() {
             <Link
               href="/towns"
               onClick={() => { haptic("light"); track("find_elsewhere", { to: "/towns" }); }}
-              className="tactile tactile-interactive group mt-7 flex items-center gap-3 rounded-[var(--app-radius-lg)] px-4 py-3.5"
+              className="tactile tactile-interactive group mt-5 flex items-center gap-3 rounded-[var(--app-radius-lg)] px-4 py-3.5"
               style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)" }}
             >
               <span
@@ -671,23 +671,23 @@ function Tile({
       variants={tileItem}
       whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
-      className="group relative flex min-h-[128px] flex-col items-start justify-between gap-4 rounded-[var(--app-radius-lg)] p-4 text-left"
+      className="group relative flex min-h-[88px] flex-col items-start justify-between gap-2.5 rounded-[var(--app-radius-lg)] p-3.5 text-left"
       style={{
         background: `linear-gradient(155deg, color-mix(in srgb, ${color} 10%, var(--app-bg-elevated-solid)) 0%, var(--app-bg-elevated-solid) 62%)`,
         boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
       }}
     >
       {icon && (
-        <IconStamp accent={color} size="lg">
+        <IconStamp accent={color} size="md">
           {icon}
         </IconStamp>
       )}
-      <span className="flex flex-col gap-1">
-        <span className="text-[17px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+      <span className="flex flex-col">
+        <span className="text-[15.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           {label}
         </span>
         {typeof count === "number" && (
-          <span className="text-[12.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          <span className="text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {count} place{count === 1 ? "" : "s"}
           </span>
         )}
