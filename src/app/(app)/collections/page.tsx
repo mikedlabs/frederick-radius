@@ -29,19 +29,14 @@ export default function CollectionsIndex() {
       <PageBloom variant="warm-cool" />
 
       <header className="space-y-2">
-        <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-          Collections
-        </p>
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          Where a local would send you.
+          Collections
         </h1>
         <p
-          className="text-[15px] leading-relaxed text-pretty"
-          style={{ color: "var(--app-ink-2)" }}
+          className="text-[14px] leading-snug"
+          style={{ color: "var(--app-ink-3)" }}
         >
-          Picks from a downtown resident, grouped by the question you came in
-          with. None of these is a list of every option in town. Each one is
-          the short answer.
+          Hand-picked shortlists for the moment you&rsquo;re in.
         </p>
       </header>
 

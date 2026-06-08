@@ -331,7 +331,7 @@ export default function PlacesIndexPage() {
             className="block text-[11.5px]"
             style={{ color: "var(--app-ink-3)" }}
           >
-            Where a local would send you. Rainy day, date night, kids.
+            Hand-picked shortlists — rainy day, date night, with kids.
           </span>
         </span>
         <ArrowRight
