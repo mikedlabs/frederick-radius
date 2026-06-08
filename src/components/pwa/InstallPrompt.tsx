@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { Download, X, Share, Plus } from "lucide-react";
 
@@ -10,10 +11,16 @@ import { Download, X, Share, Plus } from "lucide-react";
  * glass card that slides in gently (pop-in), with a generous, obvious
  * dismiss so it never feels like a trap. The useInstallPrompt hook
  * gates WHEN it appears; this is purely how it looks when it does.
+ *
+ * Suppressed on the full-bleed map (`/map`): there the prompt floats at
+ * `bottom-20` directly over the live map and its on-canvas controls,
+ * piling onto an already-dense surface (the audit's "install prompt
+ * blocking the Map CTA"). The nudge still appears on every other route.
  */
 export default function InstallPrompt() {
+  const pathname = usePathname();
   const { show, ios, promptInstall, dismiss } = useInstallPrompt();
-  if (!show) return null;
+  if (!show || pathname === "/map") return null;
 
   return (
     <div
