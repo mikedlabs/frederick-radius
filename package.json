@@ -60,7 +60,8 @@
     "optimize:seasons": "tsx --tsconfig tsconfig.json scripts/optimize-seasonal-photos.ts",
     "download:photos": "tsx --tsconfig tsconfig.json scripts/download-photos.ts",
     "maps:download": "tsx --tsconfig tsconfig.json scripts/download-city-maps.ts",
-    "audit:readiness": "tsx --tsconfig tsconfig.json scripts/audit/readiness.ts"
+    "audit:readiness": "tsx --tsconfig tsconfig.json scripts/audit/readiness.ts",
+    "audit": "tsx --tsconfig tsconfig.json scripts/audit/run.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",
