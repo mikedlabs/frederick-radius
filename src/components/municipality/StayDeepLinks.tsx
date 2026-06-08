@@ -1,4 +1,5 @@
 import { BedDouble, ExternalLink } from "lucide-react";
+import IconStamp from "@/components/ui/IconStamp";
 
 /**
  * StayDeepLinks — a small "Where to stay" card with pre-filtered
@@ -77,16 +78,9 @@ export default function StayDeepLinks({
       style={{ borderColor: "var(--app-border)" }}
     >
       <header className="flex items-start gap-3">
-        <span
-          aria-hidden
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full"
-          style={{
-            background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-            color: "var(--app-cool)",
-          }}
-        >
-          <BedDouble className="h-4 w-4" strokeWidth={2} aria-hidden />
-        </span>
+        <IconStamp accent="var(--app-cool)" size="md">
+          <BedDouble aria-hidden />
+        </IconStamp>
         <div className="min-w-0 flex-1">
           <p
             className="text-[10.5px] font-bold uppercase tracking-[0.12em]"

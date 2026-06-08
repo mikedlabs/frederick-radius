@@ -1,46 +1,42 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Search, ArrowRight, ArrowUpRight } from "lucide-react";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
 import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
-import PlaceList from "@/components/place/PlaceList";
+import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
-import SectionHeading from "@/components/ui/SectionHeading";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import TownStrip from "@/components/municipality/TownStrip";
+import TownLocatorLine from "@/components/municipality/TownLocatorLine";
 import AerialBeat from "@/components/place/AerialBeat";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
-import CivicCard from "@/components/municipality/CivicCard";
-import TownLinks from "@/components/municipality/TownLinks";
+import LivingHere from "@/components/municipality/LivingHere";
 import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
 
 export const revalidate = 600;
 
 /**
- * Town page — rebuilt to three answers instead of seven sections.
+ * Town page — answer-first, dense, field-guide (redesign).
  *
- * Per the architecture review: a town page should answer "what's
- * here / what's happening / how to get there" — not be a four-cell
- * stat dashboard with parallel browse rails.
+ * The page answers "what's this town like, and what's worth going for?" —
+ * NOT "list every place." Spine, top → bottom:
+ *   1. Curated SeasonalPhoto hero — a quiet {type} · Frederick County tag,
+ *      the town name, and ONE short blurb. No pop./est. metadata lead.
+ *   2. A town-scoped ask/search pill — the first action.
+ *   3. A field-guide locator line (mono caps centroid coordinates).
+ *   4. Worth your time — the LEAD answer: a glow-lead selected card + a
+ *      2-up grid of compact cells, then a demoted "All places →" link.
+ *   5. Sibling-town nav (TownStrip) as a slim row.
+ *   6. Upcoming events (honest empty-state preserved).
+ *   7. Living here — civic + town links merged into ONE demoted block.
+ *   8. StayDeepLinks footer.
  *
- * New spine:
- *   1. Curated hero — seasonal county photography + name/blurb overlay
- *   2. One-line description
- *   3. Worth your time — top 8 places (grid by default)
- *   4. Upcoming in {town} — max 4 events (empty state shows the
- *      submit-an-event door + a nearby fallback)
- *
- * What got cut
- *   - StatStrip (Places / Verified / Categories / Events counts) —
- *     generic numbers without signal
- *   - "Around {town}" category-tile row — duplicate browse axis;
- *     the place list and the global /category/[slug] surfaces already
- *     do this work
- *
- * The page is about the town, not about the directory's shape.
+ * Sections still self-hide when empty (honest empty states). Layout/visual
+ * only — the data loaders below are unchanged.
  */
 
 export async function generateStaticParams() {
@@ -97,28 +93,24 @@ export default async function MunicipalityPage(
     })
     .map((x) => x.p);
 
+  // The lead pick gets the glow; the next handful fill a compact 2-up grid.
+  const lead = worthYourTime[0];
+  const grid = worthYourTime.slice(1, 7);
+
   const upcomingEvents = eventsInMunicipality(m.slug).slice(0, 4);
   const nearbyEvents = BY_TOWN_ENABLED ? nearTown(m.slug, new Date()) : [];
   // Buried-civic answers for this town (trash/recycling, hall, permits…),
-  // null until the extraction agent populates it. The card self-hides.
+  // null until the extraction agent populates it. The block self-hides.
   const civic = municipalCivicFor(m.slug);
 
   return (
-    <div className="relative space-y-6">
+    <div className="relative space-y-5">
       <PageBloom variant="single" />
 
-      {/* Sibling-town nav — horizontal pill strip with the active
-          town pinned first. Pre-launch the only way to switch towns
-          was via /browse + search; this lets a user jump directly
-          between municipalities while staying in the town-page
-          mental model. */}
-      <TownStrip activeSlug={m.slug} />
-
-      {/* Town hero — CURATED imagery only (Photo Policy, Phase 3). The
-          identity image is our own seasonal county photography, never a
-          random top place's imported Google photo (which used to define a
-          town by whatever storefront ranked highest). AerialBeat below
-          adds the controlled drone shot where the archive covers it. */}
+      {/* 1 — Town hero. CURATED imagery only (Photo Policy, Phase 3): our
+          own seasonal county photography, never a random place's Google
+          photo. The overlay leads with a quiet {type} tag, the name, and
+          ONE blurb — the pop./est. metadata lead is gone. */}
       <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-72">
           <SeasonalPhoto
@@ -130,8 +122,8 @@ export default async function MunicipalityPage(
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
           <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75">
-              {m.type} · est. {m.est} · pop. {m.population.toLocaleString()}
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
+              {m.type === "city" ? "City" : m.type === "town" ? "Town" : "Community"} · Frederick County
             </p>
             <h1 className="font-serif text-[34px] font-semibold leading-tight tracking-tight text-white sm:text-[40px]">
               {m.name}, Maryland
@@ -143,51 +135,113 @@ export default async function MunicipalityPage(
         </div>
       </header>
 
-      {/* The one-line context. The full description is in metadata for
-          SEO; this is the human read. */}
-      <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        {m.description}
-      </p>
+      {/* 2 — Town-scoped ask/search pill: the first action. Ported from the
+          Places pill, scoped to this town. Opens the typed search. */}
+      <Link
+        href="/search"
+        aria-label={`Search ${m.name}`}
+        className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3 pl-4 pr-2.5"
+        style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}
+      >
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+        >
+          <Search className="h-[17px] w-[17px]" strokeWidth={2.25} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1 truncate text-[14.5px]" style={{ color: "var(--app-ink-3)" }}>
+          Search {m.name}…
+        </span>
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full transition-transform group-active:scale-95"
+          style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
+          aria-hidden
+        >
+          <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.5} />
+        </span>
+      </Link>
 
-      {/* "{Town} from above" — the nearest geotagged drone shot. Only the
-          towns the aerial archive actually covers (Frederick) render this;
-          everywhere else it self-hides rather than fake an aerial. */}
+      {/* 3 — Field-guide locator line: mono caps centroid coordinates,
+          echoing the Saved header's plate mark. */}
+      <TownLocatorLine centroid={m.centroid} type={m.type} />
+
+      {/* 4 — Worth your time: the LEAD answer. A glow-lead selected card,
+          then a compact 2-up grid of cells, then a demoted "all places"
+          link. This curates rather than listing every place. */}
+      {lead ? (
+        <section className="space-y-3">
+          <div className="flex items-baseline gap-2.5">
+            <h2 className="font-serif text-[20px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              Worth your time
+            </h2>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+              in {m.name}
+            </span>
+          </div>
+
+          {/* The selected pick — glow-lead. */}
+          <div
+            className="rounded-[var(--app-radius-lg)]"
+            style={{ boxShadow: "0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)" }}
+          >
+            <PlaceCard place={lead} variant="answer" />
+          </div>
+
+          {/* Compact 2-up grid of the next handful. */}
+          {grid.length > 0 && (
+            <ul className="grid grid-cols-2 gap-2">
+              {grid.map((p) => (
+                <li key={p.slug}>
+                  <PlaceCard place={p} variant="grid" />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {/* Demoted directory door — NOT the inline browse chrome. Search
+              is the canonical "see everything" surface; pre-fill the town. */}
+          <Link
+            href={`/search?q=${encodeURIComponent(m.name)}`}
+            className="inline-flex items-center gap-1 text-[12.5px] font-semibold"
+            style={{ color: "var(--app-brand)" }}
+          >
+            All places in {m.name}
+            <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </Link>
+        </section>
+      ) : (
+        <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          We&apos;re still seeding places for {m.name}. Check back soon, or{" "}
+          <Link href="/submit/place" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-brand)" }}>
+            submit a place you love
+          </Link>
+          .
+        </p>
+      )}
+
+      {/* "{Town} from above" — the nearest geotagged drone shot. Only towns
+          the aerial archive covers render this; everywhere else self-hides. */}
       <AerialBeat lat={m.centroid.lat} lng={m.centroid.lng} label={m.name} maxMeters={1500} />
 
-      {/* Buried-civic answers — the moat. Town hall, trash/recycling,
-          permits, utilities, with source + freshness. Self-hides until
-          the extraction agent has populated this town. */}
-      <CivicCard rec={civic} />
+      {/* 5 — Sibling-town nav as a slim row. */}
+      <TownStrip activeSlug={m.slug} />
 
-      {/* Official town website + civic deep links (town-websites.ts). */}
-      <TownLinks slug={m.slug} />
-
-      {/* Worth your time — the answer to "what's here." Top 8 by
-          feature score; grid-by-default so a scroll feels like a
-          gallery, not a list. */}
-      <section className="space-y-2.5">
-        <SectionHeading title="Worth your time" />
-        <PlaceList
-          places={worthYourTime.slice(0, 8)}
-          initialLayout="grid"
-          emptyMessage={`We're still seeding places for ${m.name}. Check back soon, or submit a place you love.`}
-        />
-      </section>
-
-      {/* (The "Looks like {town}" photo mosaic was removed — Photo Policy,
-          Phase 3. Its pool was imported place photos with no quality gate;
-          a guessy collage of scraped storefronts hurt more than it helped.
-          The curated SeasonalPhoto hero + AerialBeat carry town identity.) */}
-
-      {/* Upcoming — answer to "what's happening." Kept tight (max 4);
-          empty state surfaces the submit door + a nearby fallback. */}
+      {/* 6 — Upcoming — "what's happening." Kept tight (max 4); empty state
+          surfaces the submit door + a nearby fallback. */}
       {(upcomingEvents.length > 0 || BY_TOWN_ENABLED) && (
         <section className="space-y-2.5">
-          <SectionHeading
-            title={`Upcoming in ${m.name}`}
-            href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
-            cta="All events"
-          />
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+              Upcoming in {m.name}
+            </h2>
+            <Link
+              href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
+              className="text-[12.5px] font-semibold"
+              style={{ color: "var(--app-brand)" }}
+            >
+              All events →
+            </Link>
+          </div>
           {upcomingEvents.length > 0 ? (
             <ul className="space-y-2">
               {upcomingEvents.map((e) => (
@@ -226,10 +280,12 @@ export default async function MunicipalityPage(
         </section>
       )}
 
-      {/* Footer card — visitor's "where do I sleep?" answer in one
-          tap. Three platform search deep links, pre-filtered to the
-          town. Not an affiliate program; the URLs are clean. A
-          curated local-rental list will land here later. */}
+      {/* 7 — Living here. CivicCard + TownLinks merged into ONE demoted
+          block low on the page, with an IconStamp squircle and one heading.
+          Self-hides when the town has neither civic data nor a verified site. */}
+      <LivingHere slug={m.slug} townName={m.name} civic={civic} />
+
+      {/* 8 — Footer card — the visitor's "where do I sleep?" answer. */}
       <StayDeepLinks townName={m.name} townSlug={m.slug} />
     </div>
   );
