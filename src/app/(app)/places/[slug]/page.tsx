@@ -186,15 +186,18 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           so /my-radius can show "Recently viewed". Client island so
           the rest of the page stays a server component. */}
       <PlaceVisitTracker slug={place.slug} />
+      {/* Breadcrumbs stay visually small, but each link carries an
+          expanded (invisible) hit area to the 44px WCAG 2.5.5 target —
+          py-3.5/-my-3.5 grows the TAP zone without moving the layout. */}
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/places" className="hover:underline">Places</Link></li>
+          <li><Link href="/places" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Places</Link></li>
           <li aria-hidden>·</li>
-          <li><Link href={`/m/${place.municipality}`} className="hover:underline">{place.municipality_name}</Link></li>
+          <li><Link href={`/m/${place.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{place.municipality_name}</Link></li>
           {cat && (
             <>
               <li aria-hidden>·</li>
-              <li><Link href={`/category/${place.category}`} className="hover:underline">{cat.name}</Link></li>
+              <li><Link href={`/category/${place.category}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{cat.name}</Link></li>
             </>
           )}
         </ol>

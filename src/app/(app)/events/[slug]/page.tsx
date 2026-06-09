@@ -180,11 +180,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   return (
     <div className="space-y-6">
+      {/* Visually small breadcrumbs with invisible 44px hit areas
+          (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
-          <li><Link href="/events" className="hover:underline">Events</Link></li>
+          <li><Link href="/events" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Events</Link></li>
           <li aria-hidden>·</li>
-          <li><Link href={`/m/${event.municipality}`} className="hover:underline">{event.municipality_name}</Link></li>
+          <li><Link href={`/m/${event.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{event.municipality_name}</Link></li>
         </ol>
       </nav>
 
