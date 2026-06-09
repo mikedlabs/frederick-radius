@@ -104,6 +104,11 @@ export default function MapControlSheet({
             boxShadow: "0 -10px 40px -16px rgba(0,0,0,0.28)",
           }}
         >
+          {/* Radix Dialog requires an accessible title — without it the
+              map page logged "DialogContent requires a DialogTitle", a
+              real screen-reader failure (WCAG 4.1.2, June-9 deep audit).
+              sr-only: BottomDrawer uses the same pattern. */}
+          <Drawer.Title className="sr-only">Radius controls</Drawer.Title>
           {/* Drag handle. */}
           <div className="flex shrink-0 justify-center pb-1 pt-2">
             <span aria-hidden className="h-1 w-9 rounded-full" style={{ background: "var(--app-border)" }} />

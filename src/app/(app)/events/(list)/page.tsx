@@ -45,6 +45,8 @@ export const metadata: Metadata = {
   title: "Events",
   description:
     "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, Hood College, and the Frederick Keys.",
+  openGraph: { title: "Events", description:
+    "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, Hood College, and the Frederick Keys." },
 };
 
 // 10 min, not an hour: the "Tonight" hero + weekend buckets are computed

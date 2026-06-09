@@ -46,6 +46,8 @@ export const metadata: Metadata = {
   title: "All places",
   description:
     "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services — the directory.",
+  openGraph: { title: "All places", description:
+    "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services — the directory." },
 };
 
 export default function PlacesIndexPage() {
@@ -91,7 +93,7 @@ export default function PlacesIndexPage() {
           demoted to a quiet placeholder in the search affordance below. */}
       <header className="space-y-4">
         <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
-          What kind of place<br />do you need?
+          What kind of place <br />do you need?
         </h1>
         {/* Search affordance — the obvious first action. Opens the typed
             search; the count rides along as a quiet supporting detail. */}
