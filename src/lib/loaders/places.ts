@@ -20,6 +20,7 @@ import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-win
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
+import { normalizePlaceName } from "@/lib/format/placeName";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
@@ -271,6 +272,10 @@ const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
       !OV_REMOVE.has(p.slug) &&
       (!DEDUPE_ON || (!AUTO_FOLD.has(p.slug) && !OV_FOLD[p.slug])),
   )
+  // Display-name cleanup (Google artifacts: "Pnc Bank 8", "Mcclintock").
+  // BEFORE patchRecord so a curated name override in places-overrides.json
+  // always wins over the automatic transform.
+  .map((p) => (p.name ? { ...p, name: normalizePlaceName(p.name) } : p))
   .map((p) => patchRecord(p, OV_PATCH))
   // Urbana geo-claim runs LAST so it composes with dedupe + overrides.
   .map(claimUrbana);
