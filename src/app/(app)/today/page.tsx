@@ -40,10 +40,10 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // decorative divider between weather/discovery and action; the
 // reorder makes the divider unnecessary.
 
-import { allUpcoming, eventsLive } from "@/lib/loaders/events";
+import { eventsLive, type EventWithMeta } from "@/lib/loaders/events";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { getOpenNowCount, findBucket } from "@/lib/find-picks";
 import { isUtilityEvent } from "@/lib/event-kind";
-import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
 import TodayAsk from "@/components/today/TodayAsk";
 import CravingStrip from "@/components/now/CravingStrip";
@@ -113,14 +113,12 @@ const NON_PUBLIC_EVENT = /\b(board|council|commission|hearing|workshop|rehearsal
  *  photo-backed AND non-administrative is happening in the next 3
  *  days, we'd rather show no hero than lie about freshness. */
 const FEATURED_EVENT_WINDOW_HOURS = 72;
-function pickFeaturedEvent(now: Date) {
+function pickFeaturedEvent(now: Date, pool: EventWithMeta[]) {
   const windowEnd = now.getTime() + FEATURED_EVENT_WINDOW_HOURS * 3_600_000;
-  // withVenueThumbs borrows each event's venue photo onto hero_image
-  // when the event has no image of its own. Without this, Alive @ Five
-  // (and any other DFP event without a hardcoded photo) lost out to
-  // the "must have hero_image" check below and missed the photo path
-  // /events shows. Cheap on a small list — just a slug lookup per event.
-  const upcoming = withVenueThumbs(allUpcoming(now)).filter(
+  // `pool` is the unified public set (curated + live feeds), already
+  // venue-thumb-decorated and isPublicEvent-filtered by the shared
+  // loader. The NON_PUBLIC_EVENT regex stays as belt-and-braces.
+  const upcoming = pool.filter(
     (e) =>
       !NON_PUBLIC_EVENT.test(e.title ?? "") &&
       Date.parse(e.starts_at) <= windowEnd,
@@ -175,21 +173,32 @@ function easternDayAt(base: { year: number; month: number; day: number }, offset
 // specific question, not as a generic feed. All boundaries are
 // computed in America/New_York so a UTC production server agrees with
 // a Frederick user about what "tonight" means.
-function eventsForMode(mode: TodayTimeMode, now: Date) {
+function eventsForMode(mode: TodayTimeMode, now: Date, pool: EventWithMeta[]) {
   const nowMs = now.getTime();
   const et = easternParts(now);
 
   if (mode === "now") {
-    // Live right now OR starting in the next 90 minutes.
-    const inNext90 = allUpcoming(now).filter((e) => {
+    // Live right now OR starting in the next 90 minutes — from the SAME
+    // unified pool /events renders (curated + live feeds). eventsLive(now)
+    // stays in the union for its curated all-day handling; slug-dedupe
+    // collapses the overlap.
+    const inProgress = pool.filter((e) => {
+      const s = Date.parse(e.starts_at);
+      const en = e.ends_at ? Date.parse(e.ends_at) : NaN;
+      return s <= nowMs && Number.isFinite(en) && nowMs <= en;
+    });
+    const inNext90 = pool.filter((e) => {
       const ms = new Date(e.starts_at).getTime() - nowMs;
       return ms >= 0 && ms <= 90 * 60_000;
     });
+    const seen = new Set<string>();
     // Same draw/utility rule as /events (lib/event-kind): a council
     // hearing is never a "what's happening now" headline answer here.
     return {
       title: "Happening now",
-      items: [...eventsLive(now), ...inNext90].filter((e) => !isUtilityEvent(e)),
+      items: [...eventsLive(now), ...inProgress, ...inNext90].filter(
+        (e) => !isUtilityEvent(e) && (seen.has(e.slug) ? false : (seen.add(e.slug), true)),
+      ),
     };
   }
 
@@ -222,10 +231,8 @@ function eventsForMode(mode: TodayTimeMode, now: Date) {
   }
   return {
     title,
-    // withVenueThumbs again here — the Upcoming shelf cards need the
-    // venue photo too, otherwise an Alive @ Five tile sits as a
-    // text-only card next to events that DO carry a hero image.
-    items: withVenueThumbs(allUpcoming(now)).filter((e) => {
+    // The pool is already venue-thumb-decorated by the shared loader.
+    items: pool.filter((e) => {
       const ms = Date.parse(e.starts_at);
       // Time window AND draw-only: utility/civic business is reachable on
       // /events, not surfaced as a Today answer (shared event-kind rule).
@@ -251,13 +258,18 @@ export default async function HomePage({
   const { t } = await searchParams;
   const now = new Date();
 
-  const featuredEvent = pickFeaturedEvent(now);
+  // ONE unified public event set — the same shared loader /events
+  // renders from, so "This weekend · N" can never disagree between the
+  // two pages again (June-9 deep audit P0-5: /today said 1, /events said
+  // 13, because /today counted curated seeds only).
+  const { publicEvents } = await assembleUnifiedEvents(now);
+  const featuredEvent = pickFeaturedEvent(now, publicEvents);
   // Pre-compute per-mode counts so the chip strip shows "Tonight · 3"
   // without forcing a click into an empty surface — AND so the default
   // mode picker below can land on a window that actually has events.
   const counts: Partial<Record<TodayTimeMode, number>> = {};
   for (const m of ["now", "tonight", "tomorrow", "weekend"] as const) {
-    counts[m] = eventsForMode(m, now).items.length;
+    counts[m] = eventsForMode(m, now, publicEvents).items.length;
   }
   // Default mode: previously hard-wired to "now" which is empty most
   // of the day. Now we pick the first populated window in priority
@@ -273,7 +285,7 @@ export default async function HomePage({
   const mode: TodayTimeMode = isTodayTimeMode(t) ? t : pickDefaultMode();
   // Per-mode event window — title + items both come from one helper
   // so chip and rendered section never disagree.
-  const slice = eventsForMode(mode, now);
+  const slice = eventsForMode(mode, now, publicEvents);
   // Filter out the featured event so it doesn't appear twice in the
   // shelf below the hero. Only show the featured hero when the active
   // slice actually contains it.
@@ -291,8 +303,8 @@ export default async function HomePage({
   // ── Answer-first lead (UX_REDO Build 1): build 3 to 5 anticipatory
   //    answers from the real data this page already computed. Honest by
   //    construction — empty windows drop out, nothing is fabricated.
-  const tonightBest = eventsForMode("tonight", now).items[0] ?? null;
-  const weekendBest = eventsForMode("weekend", now).items[0] ?? null;
+  const tonightBest = eventsForMode("tonight", now, publicEvents).items[0] ?? null;
+  const weekendBest = eventsForMode("weekend", now, publicEvents).items[0] ?? null;
   const parkingDefault =
     PARKING_GARAGES.find((g) => g.slug === "carroll-creek-parking-garage-frederick") ??
     PARKING_GARAGES[0] ??

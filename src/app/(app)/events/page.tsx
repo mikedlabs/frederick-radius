@@ -1,22 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, Moon, Music, Baby, Ticket, Palette, Trees, Building2 } from "lucide-react";
-import { allUpcoming, eventsLive, dedupeLiveAgainstCurated, dedupeCuratedClusters, type EventWithMeta } from "@/lib/loaders/events";
-import { classifyEvent, isPublicEvent } from "@/lib/events/classify";
+import { eventsLive, type EventWithMeta } from "@/lib/loaders/events";
+import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { classifyEvent } from "@/lib/events/classify";
 import { easternParts, easternWallToUtcISO } from "@/lib/tz";
-import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
 import WeekendVibes from "@/components/event/WeekendVibes";
 import TonightRail from "@/components/event/TonightRail";
 import EventWeekRibbon from "@/components/event/EventWeekRibbon";
-import { getLiveEvents } from "@/lib/integrations/ical-live";
-import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
-import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
-import { liveToCardEvent } from "@/lib/loaders/liveEvents";
-import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
-import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
@@ -97,71 +91,19 @@ export default async function EventsIndexPage({
 }) {
   const now = new Date();
   const seedLive = eventsLive(now);
-  const curatedUpcoming = allUpcoming(now);
 
-  // Every async source here is fail-soft: a hung or throwing provider
-  // degrades to its empty fallback and the page still renders from seed +
-  // curated data (both synchronous, above). The live feeds already cap
-  // each fetch at FEED_FETCH_TIMEOUT_MS internally; these .catch guards
-  // ensure an *unexpected* throw (DB blip, parse error) can't take the
-  // page down either. "Feed failures must never block or break /events."
-  const [
-    { events: liveEventsRaw },
-    ingestedSeries,
-    ingestedSummary,
-    tmMusic,
-    tmSports,
-    bitEvents,
-  ] = await Promise.all([
-    getLiveEvents(60).catch(() => ({
-      events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
-    })),
-    getIngestedSeries().catch(() => []),
-    getIngestedSummary().catch(() => ({ total: 0, series: 0, recurring: 0 })),
-    fetchTicketmasterMusic().catch(() => []),
-    // Sports adds the Frederick Keys home schedule (Nymeo Field, MiLB)
-    // and any other Ticketmaster Sports entries inside the 25-mi geo
-    // window. Same fail-soft pattern as the other feeds — a
-    // Ticketmaster outage degrades the row, never the page.
-    fetchTicketmasterSports().catch(() => []),
-    fetchBandsintownForArtists([]).catch(() => []),
-  ]);
-
-  // Live/county + music + sports feeds, curated duplicates dropped. NOT
-  // civic-filtered here — classification happens ONCE on the unified set
-  // below, so meetings/reminders/rentals are laned (or suppressed), never
-  // silently dropped from a place they belong.
-  const liveCards = dedupeLiveAgainstCurated(
-    collapseRecurringEvents(
-      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents].map(liveToCardEvent),
-    ),
-    curatedUpcoming,
-  );
-
-  // Extracted venue lineups (The Banyan, Sky Stage, …) folded into the
-  // same feed so a venue with a band tonight reads as an event, not just
-  // a place — the "places + events fused" wedge.
-  const venueCards = venueEventsAsCards(now);
-
-  // One unified, deduplicated, time-sorted set.
-  const bySlug = new Map<string, EventWithMeta>();
-  for (const e of [...curatedUpcoming, ...liveCards, ...venueCards]) {
-    if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
-  }
-  // Second-pass dedup catches CURATED-vs-CURATED duplicates that slip
-  // through dedupeLiveAgainstCurated. Picks the richer record per cluster.
-  const unified = withVenueThumbs(
-    dedupeCuratedClusters(
-      [...bySlug.values()].sort(
-        (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
-      ),
-    ),
-  );
-  // EVENT ELIGIBILITY (P0): only PUBLIC events lead "What's on" + the
-  // explorer. Civic meetings and town reminders get their own collapsed
-  // lanes below; private rentals + cancelled items are suppressed entirely.
-  // "Belongs-to-feed ≠ should-be-promoted." See lib/events/classify.
-  const allEvents = unified.filter(isPublicEvent);
+  // The unified set is assembled in lib/loaders/unifiedEvents — the SAME
+  // function /today counts from, so the two surfaces can never disagree
+  // about "this weekend" again (June-9 deep audit P0-5: /today said 1,
+  // this page said 13). All sources inside it are fail-soft; the civic
+  // ingest below keeps the same .catch guards. "Feed failures must never
+  // block or break /events."
+  const [{ unified, publicEvents: allEvents }, ingestedSeries, ingestedSummary] =
+    await Promise.all([
+      assembleUnifiedEvents(now),
+      getIngestedSeries().catch(() => []),
+      getIngestedSummary().catch(() => ({ total: 0, series: 0, recurring: 0 })),
+    ]);
   const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting");
   const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder");
   const liveSlugs = seedLive.map((e) => e.slug);
