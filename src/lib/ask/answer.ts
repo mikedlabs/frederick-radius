@@ -47,7 +47,13 @@ Rules you must follow:
 
 function hasKey(): boolean {
   return Boolean(
+    // VERCEL_OIDC_TOKEN: the Vercel AI Gateway's KEYLESS auth, injected
+    // automatically into deployments when the Gateway is enabled. Enabling
+    // the Gateway (the recommended setup) is enough — no raw key needed —
+    // so the marquee Ask feature stops reading "not configured" when the
+    // owner turned the Gateway on rather than pasting an explicit key.
     process.env.AI_GATEWAY_API_KEY ||
+      process.env.VERCEL_OIDC_TOKEN ||
       process.env.ANTHROPIC_API_KEY ||
       process.env.OPENAI_API_KEY,
   );
@@ -55,10 +61,11 @@ function hasKey(): boolean {
 
 async function callModel(userContent: string): Promise<string | null> {
   // 1) Vercel AI Gateway — the preferred path. A plain "provider/model"
-  // string routes through the gateway on AI_GATEWAY_API_KEY, so the owner
-  // sets ONE key and can swap models without a code change. If the model
-  // slug ever drifts, this throws and we fall through to the direct paths.
-  if (process.env.AI_GATEWAY_API_KEY) {
+  // string routes through the gateway, authenticated by AI_GATEWAY_API_KEY
+  // if set, else the keyless VERCEL_OIDC_TOKEN that Vercel injects when the
+  // Gateway is enabled. One toggle, swap models without a code change. If
+  // the model slug ever drifts, this throws and we fall through.
+  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) {
     try {
       const { generateText } = await import("ai");
       const { text } = await generateText({
