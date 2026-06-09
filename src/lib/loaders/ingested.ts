@@ -159,7 +159,9 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
-  ["ingested-series-v1"],
+  // v2: bumped so #508's venue/description read-boundary cleaning takes
+  // effect on the next request, not after the old cached value's 1h TTL.
+  ["ingested-series-v2"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 
