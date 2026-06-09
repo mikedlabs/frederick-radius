@@ -125,7 +125,7 @@ export default function EventCard({
         </span>
         <Link
           href={`/events/${event.slug}`}
-          className={`min-w-0 flex-1 truncate text-[12.5px] outline-none focus-visible:underline ${
+          className={`min-w-0 flex-1 truncate text-[13px] outline-none focus-visible:underline ${
             isCancelled ? "line-through opacity-70" : ""
           }`}
           style={{ color: "var(--app-ink-2)" }}
@@ -137,7 +137,7 @@ export default function EventCard({
           )}
         </Link>
         <span
-          className="shrink-0 text-[10.5px] tabular-nums"
+          className="shrink-0 text-[11px] tabular-nums"
           style={{ color: "var(--app-ink-3)" }}
         >
           {date.weekday} {date.month} {date.day} · {date.time}
@@ -174,7 +174,7 @@ export default function EventCard({
             {date.day}
           </span>
           <span
-            className="text-[8.5px] font-medium uppercase"
+            className="text-[9px] font-medium uppercase"
             style={{ color: "var(--app-ink-3)" }}
           >
             {date.weekday}
@@ -199,7 +199,7 @@ export default function EventCard({
         <div className="min-w-0 flex-1">
           <Link
             href={`/events/${event.slug}`}
-            className={`block truncate text-[13.5px] font-semibold tracking-tight outline-none focus-visible:underline ${
+            className={`block truncate text-[14px] font-semibold tracking-tight outline-none focus-visible:underline ${
               isCancelled ? "line-through opacity-70" : ""
             }`}
             style={{ color: "var(--app-ink)" }}
@@ -292,7 +292,7 @@ export default function EventCard({
               <span className="absolute inset-0" aria-hidden />
               {event.title}
             </Link>
-            <p className="mt-1 truncate text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
+            <p className="mt-1 truncate text-[13px]" style={{ color: "var(--app-ink-2)" }}>
               {date.time}
               {event.venue_name ? ` · ${event.venue_name}` : ""}
             </p>
@@ -339,13 +339,13 @@ export default function EventCard({
             className="flex shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
             style={{ minWidth: 46, background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)" }}
           >
-            <span className="text-[9.5px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{date.month}</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{date.month}</span>
             <span className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
-            <span className="text-[8.5px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
+            <span className="text-[9px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
           </div>
           <span className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{categoryLabel}</span>
           {statusText && (
-            <span className="shrink-0 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
+            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
           )}
         </div>
         {/* Body — title + meta + reasons row. */}
@@ -358,7 +358,7 @@ export default function EventCard({
             <span className="absolute inset-0" aria-hidden />
             {event.title}
           </Link>
-          <p className="truncate text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
             <span style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
             {event.venue_name ? <> · {event.venue_name}</> : null}
           </p>
@@ -371,7 +371,7 @@ export default function EventCard({
                 return <ReasonChipRow reasons={reasons} />;
               }
               return (
-                <div className="flex items-center gap-1.5 text-[10.5px]">
+                <div className="flex items-center gap-1.5 text-[11px]">
                   {event.price_text && !event.is_free && (
                     <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
                   )}
@@ -452,7 +452,7 @@ export default function EventCard({
                   {date.time || date.weekday}
                 </span>
                 <span
-                  className="min-w-0 flex-1 truncate text-[10.5px] font-bold uppercase tracking-[0.1em]"
+                  className="min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-[0.1em]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {date.time

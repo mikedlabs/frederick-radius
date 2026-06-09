@@ -255,7 +255,7 @@ export default function HistoryDeck({
               style={{ borderColor: "var(--app-border)" }}
             >
               <p
-                className="text-[13.5px] leading-relaxed text-pretty"
+                className="text-[14px] leading-relaxed text-pretty"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 {fact.body}

@@ -67,7 +67,7 @@ function Card({ show, lead, now }: { show: LiveShow; lead: boolean; now: Date })
           <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/85">
             {show.series}
           </span>
-          <span className="ml-auto rounded-full bg-black/20 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-white">
+          <span className="ml-auto rounded-full bg-black/20 px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-white">
             {when}
           </span>
         </div>
@@ -80,7 +80,7 @@ function Card({ show, lead, now }: { show: LiveShow; lead: boolean; now: Date })
         <p className="mt-0.5 truncate text-[12px] text-white/75">{show.venue}</p>
         <div className="mt-auto flex items-center gap-1 pt-2.5">
           {show.note && (
-            <span className="truncate text-[11.5px] text-white/80">{show.note}</span>
+            <span className="truncate text-[12px] text-white/80">{show.note}</span>
           )}
           <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-white/90 transition-transform group-active:translate-x-0.5" strokeWidth={2.5} aria-hidden />
         </div>
@@ -134,7 +134,7 @@ export default function LiveDowntown({ shows }: { shows: LiveShow[] }) {
         <p className="text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
           Live downtown
         </p>
-        <span className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+        <span className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
           on stage this week
         </span>
       </div>

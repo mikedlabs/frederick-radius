@@ -170,7 +170,7 @@ export default async function HourlyForecast() {
                   role="listitem"
                 >
                   <span
-                    className="text-[10.5px] font-semibold uppercase tracking-wide tabular-nums"
+                    className="text-[11px] font-semibold uppercase tracking-wide tabular-nums"
                     style={{ color: "var(--app-ink-2)" }}
                   >
                     {sunClock(c.time)}
@@ -182,7 +182,7 @@ export default async function HourlyForecast() {
                     aria-hidden
                   />
                   <span
-                    className="text-[11.5px] font-semibold"
+                    className="text-[12px] font-semibold"
                     style={{ color: "var(--app-ink-2)" }}
                   >
                     {label}
@@ -200,7 +200,7 @@ export default async function HourlyForecast() {
                 role="listitem"
               >
                 <span
-                  className="text-[10.5px] font-semibold uppercase tracking-wide"
+                  className="text-[11px] font-semibold uppercase tracking-wide"
                   style={{ color: c.isNow ? "var(--app-brand)" : "var(--app-ink-3)" }}
                 >
                   {c.isNow ? "Now" : hourLabel(time)}

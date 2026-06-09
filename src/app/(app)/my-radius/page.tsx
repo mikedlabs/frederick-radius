@@ -55,7 +55,7 @@ export default async function MyRadiusPage() {
           <h1 className="font-serif text-[23px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Your field guide
           </h1>
-          <p className="truncate font-mono text-[10.5px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="truncate font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
             39.41°N 77.41°W · {user ? (user.email ?? "you") : "on this device"}
           </p>
         </div>
@@ -95,7 +95,7 @@ export default async function MyRadiusPage() {
           }}
         >
           <Mail className="h-[15px] w-[15px] shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium" style={{ color: "var(--app-ink-2)" }}>
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium" style={{ color: "var(--app-ink-2)" }}>
             Sync across devices
           </span>
           <span className="shrink-0 text-[12px] font-semibold transition-transform group-hover:translate-x-0.5" style={{ color: "var(--app-brand)" }}>

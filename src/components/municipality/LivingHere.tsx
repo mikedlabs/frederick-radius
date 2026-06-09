@@ -38,7 +38,7 @@ export default function LivingHere({
         </IconStamp>
         <div className="min-w-0">
           <p
-            className="font-mono text-[9.5px] uppercase tracking-[0.18em]"
+            className="font-mono text-[10px] uppercase tracking-[0.18em]"
             style={{ color: "var(--app-ink-3)" }}
           >
             Living here

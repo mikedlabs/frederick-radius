@@ -297,7 +297,7 @@ export default async function EventsIndexPage({
           >
             What&rsquo;s worth going to?
           </h1>
-          <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          <p className="mt-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
             Hand-picked from across Frederick County.
           </p>
         </div>
@@ -401,7 +401,7 @@ export default async function EventsIndexPage({
               <IconStamp accent={accent} size="sm">
                 <Icon aria-hidden />
               </IconStamp>
-              <span className="text-[12.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <span className="text-[13px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {label}
               </span>
             </Link>

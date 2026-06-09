@@ -103,7 +103,7 @@ export default function PartnerAppsRow() {
                     {h.label}
                   </span>
                   <span
-                    className="mt-0.5 block truncate text-[10.5px] leading-tight"
+                    className="mt-0.5 block truncate text-[11px] leading-tight"
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {h.nudge}

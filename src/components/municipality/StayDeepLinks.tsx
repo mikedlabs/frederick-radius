@@ -83,7 +83,7 @@ export default function StayDeepLinks({
         </IconStamp>
         <div className="min-w-0 flex-1">
           <p
-            className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+            className="text-[11px] font-bold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-ink-3)" }}
           >
             Where to stay
@@ -96,7 +96,7 @@ export default function StayDeepLinks({
             Find a place in {townName}.
           </h2>
           <p
-            className="mt-1 text-[12.5px] leading-relaxed"
+            className="mt-1 text-[13px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
             Tap a platform — search opens pre-filtered to {townName}, Maryland.
@@ -144,7 +144,7 @@ export default function StayDeepLinks({
       </ul>
 
       <p
-        className="mt-3 text-[10.5px]"
+        className="mt-3 text-[11px]"
         style={{ color: "var(--app-ink-3)" }}
       >
         A hand-picked &ldquo;Where to stay in {townName}&rdquo; list is in

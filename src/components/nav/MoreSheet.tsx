@@ -177,7 +177,7 @@ function IconTile({
         />
       </span>
       <span
-        className="block text-center text-[11.5px] font-semibold leading-tight"
+        className="block text-center text-[12px] font-semibold leading-tight"
         style={{ color: "var(--app-ink)" }}
       >
         {label}

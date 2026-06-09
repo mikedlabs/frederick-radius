@@ -362,7 +362,7 @@ function HistoryMomentCard({ entry, idx }: { entry: HistoryEntry; idx: number })
           {entry.title}
         </h3>
         <p
-          className="text-[12.5px] leading-relaxed text-pretty"
+          className="text-[13px] leading-relaxed text-pretty"
           style={{
             color: "var(--app-ink-2)",
             display: "-webkit-box",
@@ -483,7 +483,7 @@ function HistoryArticle({
             {entry.title}
           </h3>
           <p
-            className="mt-1.5 text-[13.5px] leading-relaxed text-pretty"
+            className="mt-1.5 text-[14px] leading-relaxed text-pretty"
             style={{ color: "var(--app-ink-2)" }}
           >
             {entry.body}

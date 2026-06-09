@@ -607,7 +607,7 @@ export default async function PulsePage() {
           >
             Rivers &amp; streams
           </span>
-          <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+          <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
             Live USGS gauges · Monocacy · Potomac · Catoctin · 24-hour trend
           </span>
         </span>
@@ -682,7 +682,7 @@ export default async function PulsePage() {
                       {h.title}
                     </span>
                     <span
-                      className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10.5px]"
+                      className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]"
                       style={{ color: "var(--app-ink-3)" }}
                     >
                       <span className="font-semibold">{h.source}</span>
@@ -824,7 +824,7 @@ export default async function PulsePage() {
             By the numbers
           </h2>
           <span
-            className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+            className="text-[11px] font-bold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-ink-3)" }}
           >
             Census + canon
@@ -1025,7 +1025,7 @@ function StatusTile({
         )}
       </div>
       <p
-        className="text-[10.5px] font-bold uppercase tracking-[0.08em]"
+        className="text-[11px] font-bold uppercase tracking-[0.08em]"
         style={{ color: "var(--app-ink-3)" }}
       >
         {label}
@@ -1281,7 +1281,7 @@ function CanonTile({
       </p>
       {note && (
         <p
-          className="mt-0.5 text-[10.5px] leading-snug"
+          className="mt-0.5 text-[11px] leading-snug"
           style={{ color: "var(--app-ink-3)" }}
         >
           {note}

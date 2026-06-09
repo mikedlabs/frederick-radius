@@ -81,7 +81,7 @@ export default function WeeklyCard({
         className="flex w-full items-center gap-3 px-4 py-3 text-left transition active:scale-[0.998]"
       >
         <span
-          className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
+          className="text-[11px] font-bold uppercase tracking-[0.14em]"
           style={{ color: "var(--app-ink-2)" }}
         >
           7-day forecast

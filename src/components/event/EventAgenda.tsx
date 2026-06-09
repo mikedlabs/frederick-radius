@@ -111,7 +111,7 @@ export default function EventAgenda({
                       {nyTime(e.starts_at)}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                      <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                         {e.title}
                       </span>
                       <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>

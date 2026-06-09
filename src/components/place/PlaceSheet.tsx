@@ -272,7 +272,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             />
             <div className="absolute inset-x-0 bottom-0 p-5 pb-4">
               <p
-                className="text-[10.5px] font-bold uppercase tracking-[0.14em]"
+                className="text-[11px] font-bold uppercase tracking-[0.14em]"
                 style={{
                   color: `color-mix(in srgb, ${color} 35%, white)`,
                   textShadow: "0 1px 2px rgba(0,0,0,0.55)",
@@ -337,7 +337,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
            *  (cuisine, specialty), instead of leaving the eye to skim
            *  the short_blurb cold. */}
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
               {place.address}{muni ? ` · ${muni.name}` : ""}
             </p>
             <SourceBadge place={place} size="sm" />
@@ -534,7 +534,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>{ev.title}</p>
-                      <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>{ev.weekday} · {ev.time}</p>
+                      <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>{ev.weekday} · {ev.time}</p>
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
                   </Link>

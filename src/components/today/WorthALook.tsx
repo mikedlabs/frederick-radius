@@ -67,7 +67,7 @@ export default async function WorthALook() {
                     <p className="font-serif text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)", textWrap: "balance" } as React.CSSProperties}>
                       {p.name}
                     </p>
-                    <p className="mt-0.5 truncate text-[10.5px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+                    <p className="mt-0.5 truncate text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
                       {cat?.name ?? p.category}
                     </p>
                   </div>

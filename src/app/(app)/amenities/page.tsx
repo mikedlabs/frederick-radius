@@ -257,7 +257,7 @@ export default function AmenitiesPage() {
                   {label}
                 </p>
                 <p
-                  className="text-[12.5px] leading-snug"
+                  className="text-[13px] leading-snug"
                   style={{ color: "var(--app-ink-2)" }}
                 >
                   {why}
@@ -283,7 +283,7 @@ export default function AmenitiesPage() {
         >
           Know one we&apos;re missing?
         </h2>
-        <p className="text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+        <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           A reliable restroom downtown, a Wi-Fi-friendly cafe, a tucked-away
           picnic spot — tell us. The map only knows what people tell it.
         </p>

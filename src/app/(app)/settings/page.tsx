@@ -68,7 +68,7 @@ export default async function SettingsPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p
-                className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                className="text-[11px] font-bold uppercase tracking-[0.12em]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 Account
@@ -80,7 +80,7 @@ export default async function SettingsPage() {
                 {user.email ?? "Signed in"}
               </p>
               <p
-                className="mt-1 text-[11.5px]"
+                className="mt-1 text-[12px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 Your saved places sync across your devices.
@@ -124,7 +124,7 @@ export default async function SettingsPage() {
                 Sign in to sync across devices
               </span>
               <span
-                className="block text-[11.5px]"
+                className="block text-[12px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 Magic link, no password. Your saves come with you.

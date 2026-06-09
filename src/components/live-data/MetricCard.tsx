@@ -91,7 +91,7 @@ export default function MetricCard({
             {title}
           </h3>
           {subtitle && (
-            <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               {subtitle}
             </p>
           )}

@@ -60,7 +60,7 @@ export default async function MoveStack() {
               </span>
               <div className="min-w-0 flex-1">
                 <p
-                  className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                  className="text-[11px] font-bold uppercase tracking-[0.12em]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {s.verb}

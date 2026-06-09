@@ -210,7 +210,7 @@ export default function ContactsPage() {
                     </span>
                     {dept.phone && (
                       <span
-                        className="mt-1.5 inline-flex items-center gap-1 text-[10.5px] font-semibold tabular-nums"
+                        className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold tabular-nums"
                         style={{ color: intent.accent }}
                       >
                         <Phone className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
@@ -274,7 +274,7 @@ export default function ContactsPage() {
                       href={a.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[12.5px] font-medium"
+                      className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[13px] font-medium"
                       style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
                     >
                       {a.label}
@@ -386,7 +386,7 @@ function Row({
             {contact.name}
           </p>
           <p
-            className="text-[12.5px] leading-snug text-pretty"
+            className="text-[13px] leading-snug text-pretty"
             style={{ color: "var(--app-ink-2)" }}
           >
             {contact.about}

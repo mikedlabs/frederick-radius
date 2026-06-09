@@ -124,7 +124,7 @@ export default function EmptyState({
         <div className="mt-3">
           <Link
             href={secondary.href}
-            className="text-[11.5px] underline-offset-2 hover:underline"
+            className="text-[12px] underline-offset-2 hover:underline"
             style={{ color: "var(--app-ink-3)" }}
           >
             {secondary.label}

@@ -138,7 +138,7 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
                         style={{ background: "var(--app-bg-elevated)" }}
                       >
                         <MapPin className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                        <span className="min-w-0 flex-1 truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
                           {s.name}
                         </span>
                         <span className="shrink-0 text-[11px]" style={{ color: "var(--app-ink-3)" }}>

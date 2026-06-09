@@ -326,7 +326,7 @@ export default function ParkingPage() {
                 ParkMobile
               </span>
               <span
-                className="mt-0.5 block text-[11.5px] leading-snug"
+                className="mt-0.5 block text-[12px] leading-snug"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 Every garage + every metered street is in the app. Enter
@@ -354,7 +354,7 @@ export default function ParkingPage() {
                 Pay-at-exit
               </span>
               <span
-                className="mt-0.5 block text-[11.5px] leading-snug"
+                className="mt-0.5 block text-[12px] leading-snug"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 Garages have a kiosk at the exit lane. Card or contactless
@@ -382,7 +382,7 @@ export default function ParkingPage() {
                 Monthly permit
               </span>
               <span
-                className="mt-0.5 block text-[11.5px] leading-snug"
+                className="mt-0.5 block text-[12px] leading-snug"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 If you park downtown daily, the City Parking Department
@@ -555,7 +555,7 @@ export default function ParkingPage() {
                 Snow emergency routes
               </span>
               <span
-                className="mt-1 block text-[12.5px] leading-snug"
+                className="mt-1 block text-[13px] leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 When the city declares a snow emergency, parking is
@@ -568,7 +568,7 @@ export default function ParkingPage() {
                 href="https://www.cityoffrederickmd.gov/179/Snow-Removal"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold"
+                className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 See snow-emergency route map
@@ -605,7 +605,7 @@ export default function ParkingPage() {
                 Street cleaning days
               </span>
               <span
-                className="mt-1 block text-[12.5px] leading-snug"
+                className="mt-1 block text-[13px] leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 Downtown blocks have weekly cleaning windows posted
@@ -618,7 +618,7 @@ export default function ParkingPage() {
                 href="https://www.cityoffrederickmd.gov/172/Street-Sweeping"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold"
+                className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 See street-sweeping schedule
@@ -655,7 +655,7 @@ export default function ParkingPage() {
                 Residential permit zones
               </span>
               <span
-                className="mt-1 block text-[12.5px] leading-snug"
+                className="mt-1 block text-[13px] leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 Several blocks bordering downtown (parts of
@@ -668,7 +668,7 @@ export default function ParkingPage() {
                 href="https://www.cityoffrederickmd.gov/142/Parking"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold"
+                className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold"
                 style={{ color: "var(--app-cool)" }}
               >
                 Residential parking info
@@ -705,7 +705,7 @@ export default function ParkingPage() {
                 Event-day closures
               </span>
               <span
-                className="mt-1 block text-[12.5px] leading-snug"
+                className="mt-1 block text-[13px] leading-snug"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 First Saturday, Alive @ Five, the In the Streets
@@ -770,7 +770,7 @@ export default function ParkingPage() {
           ))}
         </ul>
         <div
-          className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-[12.5px]"
+          className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-[13px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
           <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>
@@ -804,7 +804,7 @@ export default function ParkingPage() {
                 href={m.blobUrl ?? m.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium"
+                className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium"
                 style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)", color: "var(--app-ink-2)" }}
               >
                 {m.title} (PDF)
