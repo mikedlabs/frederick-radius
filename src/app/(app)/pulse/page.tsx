@@ -855,7 +855,10 @@ export default async function PulsePage() {
           />
           <CanonTile
             icon={Building2}
-            value={MUNICIPALITIES.length}
+            // Incorporated municipalities only (2 cities + 10 towns = 12).
+            // MUNICIPALITIES also includes Urbana, which is an unincorporated
+            // community, not a municipality — counting it gave a wrong "13."
+            value={MUNICIPALITIES.filter((m) => m.type !== "unincorporated").length}
             label="Municipalities"
             note="From Brunswick to Burkittsville"
             accent="var(--app-brand-2)"
