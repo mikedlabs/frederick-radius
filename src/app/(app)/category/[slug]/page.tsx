@@ -97,10 +97,24 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
 
   // C3: top 3 photo-backed picks lead the page. Falls back to the
   // top 3 by feature score if fewer than 3 places have photos.
-  const topPicks = (placesWithPhotos.length >= 3
-    ? placesWithPhotos
-    : recommendable
-  ).slice(0, 3);
+  //
+  // Curation/ranking fix (audit §1): the three hero picks are the page's ONE
+  // answer to "where should I go," so they must lead with what's actually
+  // usable now. rankPlaces blends quality + proximity + open, but a famous
+  // spot's feature_score could still float it to the top while CLOSED and 10+
+  // miles out — exactly what the audit caught on an "open-now aware" page.
+  // Hoist OPEN places ahead of closed ones for the hero (a stable sort keeps
+  // the existing quality+proximity order within each group, so the remaining
+  // open picks are already the nearest/best). The full browse list below is
+  // untouched — closed/far spots stay findable, just not the hero.
+  const heroPool = placesWithPhotos.length >= 3 ? placesWithPhotos : recommendable;
+  const topPicks = [...heroPool]
+    .sort((a, b) => {
+      const ac = a.open_status.state === "closed" ? 1 : 0;
+      const bc = b.open_status.state === "closed" ? 1 : 0;
+      return ac - bc;
+    })
+    .slice(0, 3);
 
   // A quiet "you are here" line so a user in Thurmont understands
   // why the picks are not downtown-Frederick-first. Only renders
