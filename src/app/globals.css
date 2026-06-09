@@ -456,9 +456,14 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    corners clear of the nav; at ≥lg the BottomNav is display:none and the
    default offset returns. */
 @media (max-width: 1023.98px) {
-  .mapboxgl-ctrl-bottom-left,
-  .mapboxgl-ctrl-bottom-right {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+  /* !important + the .mapboxgl-map ancestor: mapbox-gl.css ships inside
+     the lazily-loaded map chunk, so it lands AFTER globals.css in the
+     cascade and its `bottom: 0` (equal specificity) was winning —
+     verified on prod (computed bottom stayed 0px). Same pattern as the
+     maplibre rules above. */
+  .mapboxgl-map .mapboxgl-ctrl-bottom-left,
+  .mapboxgl-map .mapboxgl-ctrl-bottom-right {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 74px) !important;
   }
 }
 
