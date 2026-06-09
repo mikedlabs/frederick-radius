@@ -10,6 +10,7 @@ import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import PhotoMosaic from "@/components/today/PhotoMosaic";
 import PageBloom from "@/components/ui/PageBloom";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
@@ -127,36 +128,44 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   return (
     <div className="relative space-y-6">
       <PageBloom variant="single" />
-      <header className="space-y-2">
-        <p
-          className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]"
-          style={{ color: c.color }}
-        >
-          <span
-            style={{ background: c.color }}
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            aria-hidden
+
+      {/* Curated aerial/seasonal county hero — our own photography (Photo
+          Policy), never a category's Google place photo. Mirrors the town
+          (/m) hero so the page leads with the county itself, with the
+          eyebrow + serif title + blurb overlaid on a dark gradient. */}
+      <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
+        <div className="relative h-44 w-full sm:h-56">
+          <SeasonalPhoto
+            season="auto"
+            alt={`${c.name} across Frederick County`}
+            priority
+            sizes="(max-width: 720px) 100vw, 720px"
+            className="absolute inset-0"
           />
-          Category
-        </p>
-        <h1
-          className="font-serif text-[28px] font-semibold leading-tight tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          {c.name} in Frederick County
-        </h1>
-        <p
-          className="text-[15px] leading-relaxed"
-          style={{ color: "var(--app-ink-2)" }}
-        >
-          {c.blurb}
-        </p>
-        {fromLabel && (
-          <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            {fromLabel}
-          </p>
-        )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
+          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
+              <span
+                style={{ background: c.color }}
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                aria-hidden
+              />
+              Category · Frederick County
+            </p>
+            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight text-white sm:text-[36px]">
+              {c.name}
+            </h1>
+            <p className="font-serif text-[14px] italic leading-snug text-white/90 sm:text-[15px]">
+              {c.blurb}
+            </p>
+          </div>
+        </div>
       </header>
+      {fromLabel && (
+        <p className="-mt-3 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          {fromLabel}
+        </p>
+      )}
 
       {/* C3: editorial top picks lead the page instead of a stat block.
           Each card is a PlaceCard at default density. On mobile this
