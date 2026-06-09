@@ -14,6 +14,7 @@ import {
   logPlacementWarnings,
   type Placement,
 } from "@/lib/validation/placement";
+import { cleanDescription } from "@/lib/events/normalize";
 
 /**
  * Systemic guard: never surface an event whose venue is a known-closed
@@ -138,6 +139,11 @@ function decorate(e: Event, origin?: LngLat): EventWithMeta {
   const precise = geo_confidence === "venue_match" || geo_confidence === "exact_address";
   return {
     ...e,
+    // Description cleaned at the loader boundary so a feed's raw metadata
+    // dump ("Event date: … Event Time: … Location: …") never reaches a card
+    // reason, the detail body, or an OG/meta blurb — one strip, every
+    // surface, instead of a render-time patch per component.
+    description: cleanDescription(e.description),
     // A distance is a promise: only stamp it when the coordinate is
     // addressable. An area-centroid event still lists, but never claims
     // "113 ft away" (audit #2 P1). See lib/events/geo-confidence.

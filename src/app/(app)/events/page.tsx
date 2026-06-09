@@ -35,11 +35,9 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
 function whyItMatters(e: EventWithMeta): string | undefined {
   const desc = (e.description ?? "").trim();
   if (!desc) return undefined;
-  // Some feeds dump raw scraped metadata into the description field
-  // ("Event date: … Event Time: … Location: …"). That reads as raw data,
-  // not a reason to go — never surface it on a card. (Review P0: the hero
-  // luncheon leaked exactly this string into its body.)
-  if (/\bevent\s+(date|time)\s*:/i.test(desc)) return undefined;
+  // The raw "Event date: … Event Time: … Location:" feed dump is stripped at
+  // the loader boundary now (cleanDescription in lib/events/normalize), so by
+  // here `desc` is already clean — the old render-time regex guard is gone.
   // First sentence (up to the first ., ! or ?), else the whole thing.
   const m = desc.match(/^.*?[.!?](?=\s|$)/);
   let line = (m ? m[0] : desc).trim();
