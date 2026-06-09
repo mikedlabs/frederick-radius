@@ -121,6 +121,22 @@ export default async function EventsIndexPage({
     const lane = classifyEvent({ title: s.title, category: s.category ?? undefined });
     return lane !== "private_rental" && lane !== "cancelled";
   });
+  // PAYLOAD WINDOW (perf audit: /events shipped 1.28MB HTML, 913KB of it
+  // inline RSC — and the driver wasn't the explorer, it was THIS
+  // collapsed-by-default civic module receiving every ingested series
+  // with full descriptions + occurrence arrays). Serialize only what the
+  // tucked view can show: series starting in the next 30 days, capped at
+  // 80, 4 occurrences each. The header's "270 series" count comes from
+  // `summary`, which stays complete — the number stays honest.
+  const civicWindowMs = +now + 30 * 864e5;
+  const civicSeries = publicSeries
+    .filter((s) => +new Date(s.nextStart) <= civicWindowMs)
+    .slice(0, 80)
+    .map((s) => ({
+      ...s,
+      description: s.description ? s.description.slice(0, 160) : null,
+      occurrences: s.occurrences.slice(0, 4),
+    }));
 
   // Facet lists, only for values actually present.
   const catSlugs = [...new Set(allEvents.map((e) => e.category).filter(Boolean))];
@@ -524,7 +540,7 @@ export default async function EventsIndexPage({
           storageKey="fr.events.official"
           defaultOpen={false}
         >
-          <MunicipalEvents series={publicSeries} summary={ingestedSummary} />
+          <MunicipalEvents series={civicSeries} summary={ingestedSummary} />
         </CollapsibleSection>
       )}
 
