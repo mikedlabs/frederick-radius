@@ -12,7 +12,13 @@ import { unstable_cache } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { isVenueStatusNonEvent, isRoutineRecurringClass } from "@/lib/event-noise";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
-import { normalizeTitle, etYear, cleanDescription, cleanVenueName } from "@/lib/events/normalize";
+import {
+  normalizeTitle,
+  etYear,
+  cleanDescription,
+  cleanVenueName,
+  clampDescription,
+} from "@/lib/events/normalize";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
 // sessions. Default ON by owner directive (2026-05-16: "ship
@@ -132,7 +138,13 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       category: null,
       lat: head.lat != null ? Number(head.lat) : null,
       lng: head.lng != null ? Number(head.lng) : null,
-      description: head.description ? cleanDescription(head.description) || null : null,
+      // cleanDescription also dedupes repeated sentences (municipal CMS
+      // feeds repeat whole paragraphs); the clamp keeps a 2,000-char
+      // pricing/sponsorship dump from becoming a wall of text on any
+      // surface (June-9 review §5, the techfrederick example).
+      description: head.description
+        ? clampDescription(cleanDescription(head.description), 320) || null
+        : null,
       occurrences: rs.map((r) => ({
         sourceUid: r.source_uid,
         startsAtUtc: r.starts_at_utc,
@@ -159,9 +171,9 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
-  // v2: bumped so #508's venue/description read-boundary cleaning takes
-  // effect on the next request, not after the old cached value's 1h TTL.
-  ["ingested-series-v2"],
+  // v3: bumped for the dedupe+clamp pass — cleaning changes must
+  // invalidate the persisted cache (the #509 lesson).
+  ["ingested-series-v3"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 

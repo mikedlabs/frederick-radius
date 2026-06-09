@@ -147,7 +147,55 @@ export function cleanDescription(raw: string | null | undefined): string {
   // Drop a leading "Description:/Details:/…" label, keeping the prose behind
   // it (the format real feeds use: "Event Time: 7 PM Description: <prose>").
   d = d.replace(CONTENT_PREFIX, "");
-  return d.replace(/\s+/g, " ").trim();
+  return dedupeSentences(d.replace(/\s+/g, " ").trim());
+}
+
+/**
+ * Drop exact repeated sentences, keeping first occurrences in order. Some
+ * municipal CMS feeds emit the same paragraph two or three times in one
+ * description (the June-9 review's techfrederick example), which reads as
+ * a scraped wall of text. Exact-match only (after case/whitespace
+ * normalization) so legitimate near-repeats in real prose are never
+ * touched. Sentences under 20 chars are exempt — short interjections
+ * ("Join us!") can legitimately repeat.
+ */
+export function dedupeSentences(text: string): string {
+  if (!text) return text;
+  const parts = text.split(/(?<=[.!?])\s+/);
+  if (parts.length < 2) return text;
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const s of parts) {
+    const key = s.toLowerCase().replace(/\s+/g, " ").trim();
+    if (key.length >= 20 && seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out.join(" ");
+}
+
+/**
+ * Sentence-aware length cap for feed descriptions. Under `max` returns the
+ * text untouched. Over it, cuts at the last sentence end within the cap
+ * (so cards never end mid-clause); when no sentence boundary lands in the
+ * back half of the window, falls back to a word-boundary cut + ellipsis.
+ * Replaces the raw `.slice(0, 300)` that could chop mid-word — the
+ * "municipal CMS firehose" feel the June-9 review flagged.
+ */
+export function clampDescription(text: string, max = 320): string {
+  if (text.length <= max) return text;
+  const window = text.slice(0, max);
+  const lastEnd = Math.max(
+    window.lastIndexOf(". "),
+    window.lastIndexOf("! "),
+    window.lastIndexOf("? "),
+    window.endsWith(".") || window.endsWith("!") || window.endsWith("?") ? max - 1 : -1,
+  );
+  // Accept the sentence cut whenever it leaves a real line (~40 chars);
+  // only a degenerate "Hi." opener falls through to the word-boundary cut.
+  if (lastEnd >= Math.min(40, max * 0.5)) return text.slice(0, lastEnd + 1).trim();
+  const cut = window.lastIndexOf(" ");
+  return `${text.slice(0, cut > 0 ? cut : max).trimEnd()}…`;
 }
 
 /**
