@@ -12,7 +12,7 @@ import { unstable_cache } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { isVenueStatusNonEvent, isRoutineRecurringClass } from "@/lib/event-noise";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
-import { normalizeTitle, etYear } from "@/lib/events/normalize";
+import { normalizeTitle, etYear, cleanDescription, cleanVenueName } from "@/lib/events/normalize";
 
 // Phase 1.6: drop venue open-status and routine recurring class/work
 // sessions. Default ON by owner directive (2026-05-16: "ship
@@ -90,6 +90,15 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
     return [];
   }
 
+  // Sanitize the venue at the SOURCE row so BOTH the series key and the
+  // displayed venue use clean values — a feed that dumped its description
+  // into the LOCATION field (the Bee City subcommittee) must leak into
+  // neither. cleanVenueName nulls a junk venue; the key then falls back to
+  // address/empty.
+  for (const r of rows) {
+    r.venue_name = cleanVenueName(r.venue_name);
+  }
+
   const groups = new Map<string, Row[]>();
   for (const r of rows) {
     const k = seriesKeyOf(r);
@@ -113,7 +122,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       key,
       title,
       presenter,
-      venueName: head.venue_name ? cleanFeedText(head.venue_name) : null,
+      venueName: head.venue_name, // already cleaned + junk-nulled above
       address: head.address ? formatAddress(cleanFeedText(head.address)) : null,
       municipality: head.municipality,
       // Phase 1.5: the county catid mapping is unreliable (birthday
@@ -123,7 +132,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       category: null,
       lat: head.lat != null ? Number(head.lat) : null,
       lng: head.lng != null ? Number(head.lng) : null,
-      description: head.description ? cleanFeedText(head.description) : null,
+      description: head.description ? cleanDescription(head.description) || null : null,
       occurrences: rs.map((r) => ({
         sourceUid: r.source_uid,
         startsAtUtc: r.starts_at_utc,
