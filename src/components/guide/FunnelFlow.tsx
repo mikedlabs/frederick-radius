@@ -5,6 +5,7 @@ import { motion, AnimatePresence, useReducedMotion, type Transition, type Varian
 import { ChevronLeft, ChevronRight, Search, ArrowRight, MapPin, ArrowUpDown, Wine, Beer, Baby, Dog, Music, Building2, type LucideIcon } from "lucide-react";
 import { placesWithHappyHour } from "@/lib/loaders/businessInfo";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { INTENT_BY_KEY, type IntentKey, type SubIntent } from "@/data/intents";
 import { LIVE_MUSIC_VENUE_SLUGS } from "@/data/live-music-venues";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
@@ -95,8 +96,33 @@ const LENSES: Lens[] = [
 export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] }) {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
-  const [intentKey, setIntentKey] = useState<IntentKey | null>(null);
-  const [chosenSub, setChosenSub] = useState<SubIntent | "all" | null>(null);
+  // GUIDED-FLOW STATE LIVES IN THE URL (June-9 deep audit P1-12). The
+  // step used to be useState: refresh dropped the user back to step one,
+  // browser Back exited the flow instead of stepping back, and a
+  // narrowed view couldn't be shared. `?need=eat&sub=brunch` is now the
+  // source of truth — Next syncs useSearchParams with the native
+  // history.pushState/replaceState calls in setStep below, so Back
+  // steps back through intents while sub-chip toggles replace in place
+  // (no history spam). Invalid params degrade to step one.
+  const sp = useSearchParams();
+  const needParam = sp.get("need");
+  const intentKey: IntentKey | null =
+    needParam && needParam in INTENT_BY_KEY ? (needParam as IntentKey) : null;
+  const subParam = sp.get("sub");
+  const setStep = (
+    need: IntentKey | null,
+    sub: SubIntent | "all" | null,
+    mode: "push" | "replace" = "push",
+  ) => {
+    const q = new URLSearchParams(window.location.search);
+    if (need) q.set("need", need);
+    else q.delete("need");
+    if (sub) q.set("sub", sub === "all" ? "all" : sub.key);
+    else q.delete("sub");
+    const url = q.size ? `?${q.toString()}` : window.location.pathname;
+    if (mode === "push") window.history.pushState(null, "", url);
+    else window.history.replaceState(null, "", url);
+  };
   const [openOnly, setOpenOnly] = useState(false);
   // Must-have narrowing (the brief's filter axis). Both map to real fields:
   // walkable needs a location (distance), local-favorite is a curation flag.
@@ -114,6 +140,14 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
   const greeting = nowHour !== null ? daypartGreeting(nowHour) : null;
 
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
+  // Rehydrate the sub-intent OBJECT from its URL key against the active
+  // intent's own list — an alien key simply degrades to "no sub filter."
+  const chosenSub: SubIntent | "all" | null =
+    subParam === "all"
+      ? "all"
+      : subParam
+        ? (intent?.subIntents?.find((s) => s.key === subParam) ?? null)
+        : null;
   const hasSubs = !!(intent?.subIntents && intent.subIntents.length);
   // Two steps only: the lane grid, then results. Sub-types narrow IN
   // PLACE via a chip rail in the results header (no full-screen "what
@@ -241,8 +275,7 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
       setLens(null);
       return;
     }
-    setIntentKey(null);
-    setChosenSub(null);
+    setStep(null, null);
   };
 
   const transition: Transition = reduce ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36, mass: 0.9 };
@@ -349,8 +382,7 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
                     onClick={() => {
                       haptic("light");
                       track("find_intent", { intent: k });
-                      setChosenSub(null);
-                      setIntentKey(k);
+                      setStep(k, null);
                     }}
                   />
                 );
@@ -422,7 +454,7 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
                     size="sm"
                     active={!chosenSub || chosenSub === "all"}
                     style={!chosenSub || chosenSub === "all" ? { background: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
-                    onClick={() => { haptic("light"); setChosenSub(null); }}
+                    onClick={() => { haptic("light"); setStep(intentKey, null, "replace"); }}
                   >
                     All
                   </Pill>
@@ -438,7 +470,7 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
                         onClick={() => {
                           haptic("light");
                           track("find_sub", { intent: intent.key, sub: s.key });
-                          setChosenSub(isActive ? null : s);
+                          setStep(intentKey, isActive ? null : s, "replace");
                         }}
                       >
                         {s.label}
