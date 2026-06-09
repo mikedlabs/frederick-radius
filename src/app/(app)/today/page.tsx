@@ -47,6 +47,7 @@ import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { easternWallToUtcISO } from "@/lib/tz";
 import TodayAsk from "@/components/today/TodayAsk";
 import CravingStrip from "@/components/now/CravingStrip";
+import FreshnessGuard from "@/components/today/FreshnessGuard";
 import { AnswerCard } from "@/components/answer";
 import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
 import { PARKING_GARAGES } from "@/data/parking-garages";
@@ -330,6 +331,13 @@ export default async function HomePage({
   return (
     <div className="relative">
       <PageBloom />
+
+      {/* Stale-shell guard (June-9 review P0): a cached SW/CDN shell can
+          present a days-old render as "Right now." The client compares the
+          render day with the device day — silently reloads once, then
+          shows an honest "this page is from {day}" banner. Fresh pages
+          render nothing. */}
+      <FreshnessGuard renderedAtIso={now.toISOString()} />
 
       {/* Slim orientation line — date + time. Kept tiny so the answer
           leads; the "new here?" intro moved BELOW the first answers (a
