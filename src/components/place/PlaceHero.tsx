@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { photoForCategory, unsplashUrl } from "@/lib/photos";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
@@ -24,13 +23,20 @@ const GLYPH: Record<string, string> = {
   "public-safety": "🚒", government: "🏛", playground: "🛝",
 };
 
-function resolvePhotoSrc(slug: string, category: string, width: number) {
+/**
+ * Real imagery only: a curated Wikimedia landmark photo, or nothing. The
+ * old third tier — generic Unsplash category stock — is gone (June-9 deep
+ * audit P0-3): every URL it built was malformed (Unsplash page slugs
+ * where the CDN expects hashed filenames), so each hero paid a guaranteed
+ * 404, and even "fixed" it put a stock mountain overlook on a downtown
+ * creek park with alt text to match. No photo now means the designed
+ * gradient + contour plate renders alone — honest, on-brand, zero dead
+ * requests, no misleading alt.
+ */
+function resolvePhotoSrc(slug: string, width: number) {
   const wm = getLandmarkPhoto(slug);
-  if (wm) {
-    return { src: wikimediaUrl(wm.file, width), alt: wm.alt, kind: "wikimedia" as const };
-  }
-  const u = photoForCategory(category, slug);
-  return { src: unsplashUrl(u, width), alt: u.alt, kind: "unsplash" as const };
+  if (wm) return { src: wikimediaUrl(wm.file, width), alt: wm.alt };
+  return null;
 }
 
 export default function PlaceHero({
@@ -42,10 +48,10 @@ export default function PlaceHero({
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
   const glyph = GLYPH[category] ?? "📍";
-  const resolved = resolvePhotoSrc(slug, category, width);
-  // Real Google photo of the actual business beats generic category stock.
-  const src = photoSrc ?? resolved.src;
-  const alt = photoSrc ? name : resolved.alt;
+  const resolved = resolvePhotoSrc(slug, width);
+  // Real Google photo of the actual business beats a landmark photo.
+  const src = photoSrc ?? resolved?.src ?? null;
+  const alt = photoSrc ? name : resolved?.alt ?? "";
 
   return (
     <div
@@ -95,34 +101,39 @@ export default function PlaceHero({
        *
        *  `placeholder="blur"` with a paper-cream data URL keeps the
        *  hero from popping in cold; the load reads as a calm fade. */}
-      <Image
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        priority={priority}
-        sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
-        placeholder="blur"
-        blurDataURL={PAPER_CREAM_BLUR}
-        className="absolute inset-0 h-full w-full object-cover"
-        // View Transitions pair-up: a tile on /now's WorthALook rail
-        // carries the same name, so the browser morphs that thumbnail
-        // into this full hero on navigation (Apple-Photos style). The
-        // detail page only paints one hero per slug, so the name is
-        // guaranteed unique on this surface. Only applied on the hero
-        // variant — the card-size variant lives inside lists where a
-        // shared name would collide.
-        style={size === "hero" ? { viewTransitionName: `place-photo-${slug}` } : undefined}
-      />
+      {src && (
+        <Image
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          priority={priority}
+          sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
+          placeholder="blur"
+          blurDataURL={PAPER_CREAM_BLUR}
+          className="absolute inset-0 h-full w-full object-cover"
+          // View Transitions pair-up: a tile on /now's WorthALook rail
+          // carries the same name, so the browser morphs that thumbnail
+          // into this full hero on navigation (Apple-Photos style). The
+          // detail page only paints one hero per slug, so the name is
+          // guaranteed unique on this surface. Only applied on the hero
+          // variant — the card-size variant lives inside lists where a
+          // shared name would collide.
+          style={size === "hero" ? { viewTransitionName: `place-photo-${slug}` } : undefined}
+        />
+      )}
 
-      {/* Soft gradient darkening at bottom for text legibility */}
-      <div
-        aria-hidden
-        style={{
-          position: "absolute", inset: 0,
-          background: "linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.55) 100%)",
-        }}
-      />
+      {/* Soft gradient darkening at bottom for text legibility — only
+          over a real photo; the designed gradient needs no scrim. */}
+      {src && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.55) 100%)",
+          }}
+        />
+      )}
 
       {/* Category pill + glyph */}
       <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
@@ -140,8 +151,8 @@ export default function PlaceHero({
 }
 
 export function PhotoCredit({
-  category, slug, hasGooglePhoto,
-}: { category: string; slug: string; hasGooglePhoto?: boolean }) {
+  slug, hasGooglePhoto,
+}: { slug: string; hasGooglePhoto?: boolean }) {
   if (hasGooglePhoto) {
     return (
       <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
@@ -174,27 +185,8 @@ export function PhotoCredit({
       </p>
     );
   }
-  const photo = photoForCategory(category, slug);
-  return (
-    <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-      Hero photo:{" "}
-      <a
-        href={photo.photographer_url + "?utm_source=frederick_radius&utm_medium=referral"}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: "var(--app-ink-2)" }}
-      >
-        {photo.photographer}
-      </a>{" "}
-      on{" "}
-      <a
-        href="https://unsplash.com?utm_source=frederick_radius&utm_medium=referral"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: "var(--app-ink-2)" }}
-      >
-        Unsplash
-      </a>
-    </p>
-  );
+  // No photo → the designed gradient plate renders, which is our own
+  // artwork and needs no credit line. (The Unsplash credit branch left
+  // with the stock tier — June-9 audit P0-3.)
+  return null;
 }
