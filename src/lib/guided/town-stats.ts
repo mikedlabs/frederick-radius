@@ -1,7 +1,6 @@
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { publicPlacesByMunicipality, decoratePlace } from "@/lib/loaders/places";
 import { recommendationTier } from "@/lib/quality/readiness";
-import { allUpcoming } from "@/lib/loaders/events";
 
 /**
  * Per-town summary for the town picker — "choose a starting point". Counts are
@@ -39,16 +38,18 @@ function bestForTags(places: { category?: string }[], n = 2): string[] {
   return [...tally.entries()].sort((a, b) => b[1] - a[1]).slice(0, n).map(([g]) => g);
 }
 
-export function townStats(now: Date = new Date()): TownStat[] {
-  const weekEnd = new Date(now.getTime() + 7 * 86_400_000);
-  const events = allUpcoming(now);
+/**
+ * Pure + sync: the place counts/curation are local data, but the this-week
+ * PUBLIC event count per municipality is passed IN (the caller fetches it
+ * from the cached unified-event loader) so this stays testable and free of a
+ * request-scoped cache. Default `{}` → all zero (a quiet town reads 0).
+ */
+export function townStats(eventCounts: Record<string, number> = {}): TownStat[] {
   return MUNICIPALITIES.map((m) => {
     const places = publicPlacesByMunicipality(m.slug)
       .map((p) => decoratePlace(p))
       .filter((p) => recommendationTier(p).tier <= 2);
-    const eventCount = events.filter(
-      (e) => e.municipality === m.slug && new Date(e.starts_at) <= weekEnd,
-    ).length;
+    const eventCount = eventCounts[m.slug] ?? 0;
     return {
       slug: m.slug,
       name: m.name,

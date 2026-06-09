@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import PageBloom from "@/components/ui/PageBloom";
 import TownPicker from "@/components/town/TownPicker";
 import { townStats } from "@/lib/guided/town-stats";
+import { getWeeklyPublicEventCountsByMunicipality } from "@/lib/guided/town-event-counts";
 
 export const metadata: Metadata = {
   title: "Explore towns",
@@ -9,8 +10,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/towns" },
 };
 
-export default function TownsPage() {
-  const stats = townStats();
+export default async function TownsPage() {
+  // Real this-week PUBLIC event counts per town (curated + live county/
+  // municipal feeds + venue lineups), cached. Passed into the pure townStats
+  // so a feed-fed town no longer reads "No events this week."
+  const eventCounts = await getWeeklyPublicEventCountsByMunicipality();
+  const stats = townStats(eventCounts);
   return (
     <div className="relative space-y-6">
       <PageBloom variant="warm-cool" />
