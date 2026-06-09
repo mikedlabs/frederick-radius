@@ -38,8 +38,11 @@ adoption, and most surface complaints resolve at once.**
 - **Weight monotony.** 624 `font-semibold` vs 168 medium / 149 bold /
   32 light. Hierarchy is carried by *size alone*; nothing reads as
   "quiet caption" vs "strong label," so dense screens feel noisy.
-- **Display face underused.** Fraunces (`--font-display`) is loaded but
-  mostly only the weather temp uses it; section ledes default to sans.
+- **Display face underused.** ~~Fraunces~~ *(STALE — the shipped display
+  face is **Newsreader**; see CLAUDE.md for the current brand deck. Two
+  external audits imported this line as "the locked spec," so it's
+  corrected in place.)* The original point stands historically: the
+  display face was underused; section ledes defaulted to sans.
 
 **Fix:** adopt the existing semantic classes everywhere; map the ~20
 ad-hoc sizes onto 6 steps. Define a 3-weight rule (e.g. `400` body /

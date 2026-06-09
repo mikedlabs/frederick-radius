@@ -3,6 +3,14 @@
 **Last walked:** 2026-05-26 by the dev team during the Phase 1 doc refresh.
 **Source of truth status:** living document. Update when state changes. Older audits live in `docs/archive/`.
 
+> **Currency note (2026-06-09):** ~40 PRs landed June 9 (#492–#533): both
+> June-9 external review remediations (events pipeline + text normalization,
+> hard 404s, hero/photo repair, count unification, /open-now, freshness
+> guard, SEO/JSON-LD, tap targets, payload windowing, cron feed repair).
+> CLAUDE.md is now the source of truth for the shipped design system and
+> pipeline rules; read it before this document.
+
+
 This is an honest read of the live app — not the brief, not the strategy — what an actual user touches today. Three columns:
 
 - ✅ **Works** — ships value, no known issue
