@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import PageBloom from "@/components/ui/PageBloom";
 import FunnelFlow from "@/components/guide/FunnelFlow";
 import HiddenGemsRail from "@/components/guide/HiddenGemsRail";
@@ -27,7 +28,11 @@ export default function GuidePage() {
   return (
     <div className="relative">
       <PageBloom />
-      <FunnelFlow liveShows={liveShows} />
+      {/* Suspense: FunnelFlow reads useSearchParams (the guided-flow
+          step lives in the URL now), which suspends during streaming. */}
+      <Suspense fallback={null}>
+        <FunnelFlow liveShows={liveShows} />
+      </Suspense>
       {/* Editorial discovery beat — a small, deliberate home for the curated
           hidden gems, below the funnel so it adds local taste without
           competing with the intent paths. */}
