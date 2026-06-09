@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isUpcomingEvent, getVisibleEvents } from "./visible";
+import { isUpcomingEvent, getVisibleEvents, hasImplausibleStartTime } from "./visible";
 
 const now = new Date("2026-06-04T18:00:00-04:00"); // Thu Jun 4, 6pm ET
 
@@ -64,5 +64,26 @@ describe("getVisibleEvents", () => {
     const copy = [...input];
     getVisibleEvents(input, now);
     expect(input).toEqual(copy);
+  });
+});
+
+describe("hasImplausibleStartTime", () => {
+  const at = (h: string) => `2026-06-13T${h}:00-04:00`;
+  it("flags a pre-9-AM theater curtain (the 7 AM TED case)", () => {
+    expect(hasImplausibleStartTime({ starts_at: at("07:00"), category: "theater" })).toBe(true);
+    expect(hasImplausibleStartTime({ starts_at: at("00:30"), category: "music" })).toBe(true);
+  });
+  it("allows 9:00 AM exactly and evening curtains", () => {
+    expect(hasImplausibleStartTime({ starts_at: at("09:00"), category: "theater" })).toBe(false);
+    expect(hasImplausibleStartTime({ starts_at: at("20:00"), category: "music" })).toBe(false);
+  });
+  it("never touches early starts in plausible categories or all-day events", () => {
+    expect(hasImplausibleStartTime({ starts_at: at("08:00"), category: "outdoors" })).toBe(false);
+    expect(hasImplausibleStartTime({ starts_at: at("07:00"), category: "market" })).toBe(false);
+    expect(hasImplausibleStartTime({ starts_at: at("07:00"), category: "theater", is_all_day: true })).toBe(false);
+  });
+  it("judges the EASTERN hour, not UTC", () => {
+    // 11:00Z is 7 AM Eastern in June — implausible for theater.
+    expect(hasImplausibleStartTime({ starts_at: "2026-06-13T11:00:00.000Z", category: "theater" })).toBe(true);
   });
 });

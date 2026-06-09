@@ -33,6 +33,7 @@ import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { isPublicEvent } from "@/lib/events/classify";
+import { hasImplausibleStartTime } from "@/lib/events/visible";
 
 export type UnifiedEvents = {
   /** Full deduplicated set, BEFORE public/civic laning (the /events page
@@ -66,10 +67,15 @@ export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
   // same feed so a venue with a band tonight reads as an event.
   const venueCards = venueEventsAsCards(now);
 
+  // Time-sanity guard on FEED/EXTRACTED rows only (curated seeds are
+  // hand-authored): a theater curtain at 7 AM is a parsing artifact —
+  // withhold it rather than publish a wrong time (June-9 audit P1-11).
+  const sane = (e: EventWithMeta) => !hasImplausibleStartTime(e);
+
   // One unified, deduplicated, time-sorted set; second-pass dedup catches
   // curated-vs-curated duplicates, keeping the richer record per cluster.
   const bySlug = new Map<string, EventWithMeta>();
-  for (const e of [...curatedUpcoming, ...liveCards, ...venueCards]) {
+  for (const e of [...curatedUpcoming, ...liveCards.filter(sane), ...venueCards.filter(sane)]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
   const unified = withVenueThumbs(
