@@ -50,3 +50,41 @@ export function getVisibleEvents<E extends TimedEvent>(
     .filter((e) => isUpcomingEvent(e, now))
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
 }
+
+/**
+ * Per-source time-sanity guard (June-9 deep audit P1-11).
+ *
+ * Some extracted/feed rows carry impossible curtain times — the Weinberg
+ * slate listed "TED Democracy Live" at 7:00 AM and the audit caught it
+ * published as-is. A stage/screen/nightlife event starting between
+ * midnight and 9 AM Eastern is a parsing artifact, not a curtain; rather
+ * than publish a wrong time, the unified pipeline withholds the row until
+ * the source is fixed ("flag, don't publish").
+ *
+ * Deliberately narrow: only categories where pre-9-AM starts are
+ * implausible. An 8 AM road race (sports/outdoors), a 7 AM farmers
+ * market, or an all-day festival is untouched. Curated seed events are
+ * hand-authored and never run through this. 9:00 AM exactly is allowed
+ * (the audit's boundary).
+ */
+const PRE9_IMPLAUSIBLE_CATEGORIES = new Set(["theater", "arts", "music", "nightlife", "film"]);
+
+export function hasImplausibleStartTime(e: {
+  starts_at: string;
+  category?: string | null;
+  is_all_day?: boolean;
+}): boolean {
+  if (e.is_all_day) return false;
+  if (!PRE9_IMPLAUSIBLE_CATEGORIES.has(e.category ?? "")) return false;
+  const t = Date.parse(e.starts_at);
+  if (!Number.isFinite(t)) return false;
+  const h =
+    Number(
+      new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        hour: "numeric",
+        hour12: false,
+      }).format(new Date(t)),
+    ) % 24;
+  return h < 9;
+}
