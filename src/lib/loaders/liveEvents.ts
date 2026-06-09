@@ -14,6 +14,7 @@ import {
   fetchTicketmasterSports,
 } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -127,5 +128,12 @@ export async function getLiveCardEventBySlug(
   if (!hit && slug.startsWith("live-")) {
     hit = events.find((e) => liveEventSlug(e) === slug);
   }
-  return hit ? liveToCardEvent(hit) : null;
+  if (hit) return liveToCardEvent(hit);
+  // FIFTH source: extracted venue lineups (the Weinberg's cinema/talk
+  // slate — TED Democracy Live, The Age of Innocence). The listing folds
+  // venueEventsAsCards into the same unified set, so its slugs are
+  // first-class listing links and must resolve here too. These are
+  // already EventWithMeta cards with their slug stamped — match directly.
+  const venueHit = venueEventsAsCards(new Date()).find((c) => c.slug === slug);
+  return venueHit ?? null;
 }
