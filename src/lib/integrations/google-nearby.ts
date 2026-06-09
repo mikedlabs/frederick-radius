@@ -70,9 +70,9 @@ const STATE_PATTERN = /\b(md|maryland)\b/i;
 const UI_LABEL: Record<string, string> = {
   coffee: "Coffee",
   bakery: "Bakery",
-  restaurant: "Food & Drink",
-  pizza: "Food & Drink",
-  bar: "Food & Drink",
+  restaurant: "Eat & drink",
+  pizza: "Eat & drink",
+  bar: "Eat & drink",
   brewery: "Sip & Taste",
   market: "Markets",
   park: "Outdoors",
@@ -139,7 +139,7 @@ export type DiscoveredPlace = {
   name: string;
   formatted_address: string;
   location: { lat: number; lng: number };
-  /** Frederick Radius UI tag, e.g. "Food & Drink", "Outdoors". */
+  /** Frederick Radius UI tag, e.g. "Eat & drink", "Outdoors". */
   ui_tag: string;
   /** Google's raw primaryType for downstream tools. */
   primary_type?: string;

@@ -53,7 +53,7 @@ export default function PlacesIndexPage() {
   const total = all.length;
 
   // Per-category counts roll children up into their top-level parent.
-  // (A "restaurant" record counts under "Food & Drink"; a "trail" under
+  // (A "restaurant" record counts under "Eat & drink"; a "trail" under
   // "Parks & Trails".) Filter out empty tiles so the page never advertises
   // a category we don't actually have content for.
   const catCounts = TOP_CATEGORIES.map((c) => ({
@@ -141,7 +141,7 @@ export default function PlacesIndexPage() {
         <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           {[
             { label: "Open now", href: "/map?mode=browse&open=now", icon: Clock, color: "var(--app-positive)" },
-            { label: "Food & drink", href: "/map?intent=eat", icon: UtensilsCrossed, color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)" },
+            { label: "Eat & drink", href: "/map?intent=eat", icon: UtensilsCrossed, color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)" },
             { label: "Coffee", href: "/map?intent=coffee", icon: Coffee, color: INTENT_BY_KEY.coffee?.color ?? "var(--app-brand)" },
             { label: "With kids", href: "/map?intent=family", icon: Baby, color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)" },
             { label: "Outdoors", href: "/map?intent=outdoor", icon: Trees, color: INTENT_BY_KEY.outdoor?.color ?? "var(--app-brand-2)" },
