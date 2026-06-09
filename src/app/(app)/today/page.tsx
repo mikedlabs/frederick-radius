@@ -88,6 +88,10 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
 export const metadata: Metadata = {
   alternates: { canonical: "/today" },
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
+  openGraph: {
+    title: "Today in Frederick County",
+    description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
+  },
 };
 
 

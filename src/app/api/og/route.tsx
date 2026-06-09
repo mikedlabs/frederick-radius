@@ -246,6 +246,17 @@ export async function GET(request: Request) {
         </div>
       </div>
     ),
-    { width: story ? 1080 : 1200, height: story ? 1920 : 630 },
+    {
+      width: story ? 1080 : 1200,
+      height: story ? 1920 : 630,
+      // June-9 deep audit P2: this route returned max-age=0 and paid a
+      // full render on EVERY share/crawler hit. OG content only changes
+      // when the underlying record changes (deploys), so cache at the
+      // edge for a day and serve stale while revalidating for a week.
+      headers: {
+        "Cache-Control":
+          "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+      },
+    },
   );
 }

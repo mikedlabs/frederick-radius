@@ -79,6 +79,15 @@ const HOURS_SOURCE_LABEL: Record<string, string> = {
   manual_override: "the Frederick Radius team",
 };
 
+// Pipeline source ids -> reader-facing provenance labels.
+const SOURCE_LABEL: Record<string, string> = {
+  seed: "Radius editorial",
+  manual: "Radius editorial",
+  dfp: "Downtown Frederick Partnership",
+  google: "Google Places",
+  osm: "OpenStreetMap",
+};
+
 export const revalidate = 300;
 
 export async function generateStaticParams() {
@@ -435,7 +444,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <footer className="space-y-2 pt-4">
         <PhotoCredit slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          Updated {place.updated_at} · Source: {place.source}
+          {/* User-facing provenance, not pipeline jargon — "Source: seed"
+              means nothing to a reader (June-9 deep audit P2). */}
+          Updated {place.updated_at} · Source:{" "}
+          {SOURCE_LABEL[place.source] ?? place.source}
         </p>
         <div className="flex flex-wrap gap-3 text-xs">
           <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand)" }}>
