@@ -145,8 +145,14 @@ export default function Pill({
   ...rest
 }: PillProps) {
   const pad = size === "sm" ? "px-3 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]";
+  // Invisible expanded hit area (WCAG 2.5.5 / Apple HIG 44pt): the small
+  // pill renders ~30px tall, which the June-9 deep audit measured on the
+  // /today time chips + town chips. The before: overlay extends the TAP
+  // zone to ~44px without changing the visual or the layout flow.
+  const hit =
+    "relative before:absolute before:-inset-y-[7px] before:inset-x-0 before:content-['']";
   const base =
-    `inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition active:scale-[0.95] ${pad}`;
+    `inline-flex shrink-0 items-center gap-1.5 rounded-full font-semibold tracking-tight transition active:scale-[0.95] ${pad} ${hit}`;
   // Inactive elevation: a free-standing pill gets the tactile chip
   // treatment; a `bare` pill (inside a shared container) stays flat.
   const inactiveCls = active || bare ? "" : "tactile tactile-interactive";
