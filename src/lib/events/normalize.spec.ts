@@ -1,5 +1,53 @@
 import { describe, it, expect } from "vitest";
-import { cleanDescription, cleanVenueName } from "./normalize";
+import {
+  cleanDescription,
+  cleanVenueName,
+  dedupeSentences,
+  clampDescription,
+} from "./normalize";
+
+describe("dedupeSentences", () => {
+  it("drops an exactly repeated paragraph (the techfrederick case)", () => {
+    const para =
+      "Join area leaders for a candid conversation about growing a tech business in Frederick.";
+    expect(dedupeSentences(`${para} ${para} ${para}`)).toBe(para);
+  });
+
+  it("keeps distinct sentences in order", () => {
+    const s = "First point here. Second point follows. Third closes it out.";
+    expect(dedupeSentences(s)).toBe(s);
+  });
+
+  it("lets short interjections repeat", () => {
+    const s = "Join us! Live music all night. Join us!";
+    expect(dedupeSentences(s)).toBe(s);
+  });
+});
+
+describe("clampDescription", () => {
+  it("returns short text untouched", () => {
+    expect(clampDescription("A night market on Carroll Creek.", 320)).toBe(
+      "A night market on Carroll Creek.",
+    );
+  });
+
+  it("cuts at a sentence boundary, never mid-clause", () => {
+    const first = "Sentence one runs about here and ends cleanly.";
+    const out = clampDescription(`${first} ${"x".repeat(400)}`, 320);
+    expect(out).toBe(first);
+  });
+
+  it("falls back to a word-boundary cut + ellipsis when no sentence fits", () => {
+    const out = clampDescription(`${"word ".repeat(100)}end`, 100);
+    expect(out.endsWith("…")).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(101);
+  });
+
+  it("is idempotent", () => {
+    const once = clampDescription("alpha beta. ".repeat(60), 300);
+    expect(clampDescription(once, 300)).toBe(once);
+  });
+});
 
 describe("cleanVenueName", () => {
   it("nulls a description/metadata dump leaked into the venue", () => {
