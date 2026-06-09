@@ -1,5 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { cleanDescription } from "./normalize";
+import { cleanDescription, cleanVenueName } from "./normalize";
+
+describe("cleanVenueName", () => {
+  it("nulls a description/metadata dump leaked into the venue", () => {
+    expect(
+      cleanVenueName("Description: Did you know Frederick City & County are Bee Cities?"),
+    ).toBeNull();
+    expect(cleanVenueName("Event Time: 7 PM")).toBeNull();
+  });
+
+  it("keeps real venue names", () => {
+    expect(cleanVenueName("Carroll Creek Amphitheater")).toBe("Carroll Creek Amphitheater");
+    expect(cleanVenueName("Brewer's Alley")).toBe("Brewer's Alley");
+  });
+
+  it("nulls empty / missing", () => {
+    expect(cleanVenueName("")).toBeNull();
+    expect(cleanVenueName(null)).toBeNull();
+    expect(cleanVenueName(undefined)).toBeNull();
+  });
+});
 
 describe("cleanDescription", () => {
   it("strips a full metadata-dump block to empty", () => {

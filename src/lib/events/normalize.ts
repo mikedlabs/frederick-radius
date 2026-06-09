@@ -151,6 +151,22 @@ export function cleanDescription(raw: string | null | undefined): string {
 }
 
 /**
+ * A venue name must be an actual place — not a description/metadata dump a
+ * feed leaked into its LOCATION field ("Description: Did you know…?"). Returns
+ * the cleaned name, or null when the value carries a metadata/content label or
+ * a question mark, so the caller drops it (or falls back to a default venue).
+ * Shares the label vocabulary with cleanDescription.
+ */
+export function cleanVenueName(raw: string | null | undefined): string | null {
+  const v = cleanFeedText(raw ?? "").trim();
+  if (!v) return null;
+  if (new RegExp(`\\b(?:${ANY_LABEL})\\s*:`, "i").test(v) || v.includes("?")) {
+    return null;
+  }
+  return v;
+}
+
+/**
  * Collapse key for recurring events. Title plus venue plus municipality,
  * with no date component, so a daily or weekly series collapses to ONE
  * entry rather than one per weekday. Mirrors the municipal loader's
