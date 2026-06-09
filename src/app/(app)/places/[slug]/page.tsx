@@ -90,7 +90,10 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const place = getPlaceBySlug(slug);
-  if (!place) return { title: "Place not found" };
+  // notFound() HERE, not just in the page body: metadata resolves before
+  // the response streams, so the 404 status reaches the wire instead of a
+  // soft 404 (200 + not-found UI) Google indexes (June-9 audit P0-2).
+  if (!place) notFound();
   const blurb = safeBlurb(place);
   return {
     title: place.name,
