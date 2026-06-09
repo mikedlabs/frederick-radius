@@ -50,7 +50,12 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const event = getEventBySlug(slug) ?? (await getLiveCardEventBySlug(slug));
-  if (!event) return { title: "Event not found" };
+  // notFound() HERE, not just in the page body: metadata resolves before
+  // the response streams, so the 404 status actually reaches the wire. A
+  // body-only notFound() ships the not-found UI under a 200 — a soft 404
+  // Google indexes (June-9 deep audit P0-2). Resolution mirrors the page
+  // exactly (seed, then the live-source union), so nothing real 404s.
+  if (!event) notFound();
   const blurb = eventBlurb(event).slice(0, 160);
   return {
     title: event.title,
