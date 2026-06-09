@@ -9,6 +9,11 @@
  * /events/<slug> link resolves instead of hitting notFound().
  */
 import { getLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
+import {
+  fetchTicketmasterMusic,
+  fetchTicketmasterSports,
+} from "@/lib/integrations/ticketmaster";
+import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -98,7 +103,22 @@ export async function getLiveCardEventBySlug(
   slug: string,
   windowDays = 90,
 ): Promise<EventWithMeta | null> {
-  const { events } = await getLiveEvents(windowDays);
+  // The SAME source union the /events index renders (iCal feeds +
+  // Ticketmaster music/sports + Bandsintown). The resolver used to consult
+  // only the iCal feeds, so every Ticketmaster/Bandsintown card on the
+  // listing — the Weinberg cinema series, ABBAFAB, TED Democracy Live —
+  // linked to a slug this function could never resolve: a guaranteed
+  // "Event not found" on a primary surface (June-9 deep audit P0-1,
+  // 6 of 45 listing links dead). Same fail-soft pattern as the index:
+  // a hung provider degrades to [], never throws. All four fetches are
+  // HTTP-cached upstream, so this shares the index's cache entries.
+  const [ical, tmMusic, tmSports, bit] = await Promise.all([
+    getLiveEvents(windowDays).then((r) => r.events).catch(() => [] as LiveEvent[]),
+    fetchTicketmasterMusic().catch(() => [] as LiveEvent[]),
+    fetchTicketmasterSports().catch(() => [] as LiveEvent[]),
+    fetchBandsintownForArtists([]).catch(() => [] as LiveEvent[]),
+  ]);
+  const events = [...ical, ...tmMusic, ...tmSports, ...bit];
   // Clean stored slug first (the canonical form a card links to).
   let hit = events.find((e) => liveCleanSlug(e) === slug);
   // Legacy fallback: an old "live-..." shared link still resolves so it
