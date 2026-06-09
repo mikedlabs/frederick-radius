@@ -40,6 +40,13 @@ import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
 
 export const revalidate = 300;
+// NOTE: this segment deliberately has NO loading.tsx. Event slugs are an
+// OPEN set (live-feed events resolve at request time), so the route can't
+// use dynamicParams=false like places does — and with a loading boundary,
+// Next 16 prerenders a fallback shell that ships HTTP 200 for ANY slug
+// before notFound() can run, which indexed dead event URLs as soft 404s
+// (June-9 deep audit P0-2). Blocking render = honest status codes; the
+// page is ISR-cached so only the first hit per slug pays the resolution.
 
 export async function generateStaticParams() {
   return EVENTS.map((e) => ({ slug: e.slug }));

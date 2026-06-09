@@ -84,6 +84,14 @@ export const revalidate = 300;
 export async function generateStaticParams() {
   return PLACES.map((p) => ({ slug: p.slug }));
 }
+// Places are a CLOSED set: every reachable slug — canonical or folded
+// alias (verified: all 2,384 raw PLACES slugs incl. every fold key) — is
+// prerendered above. With dynamicParams left on, Next 16 served unknown
+// slugs a prerendered fallback shell with HTTP 200, so notFound() could
+// never reach the wire and dead URLs indexed as soft 404s (June-9 deep
+// audit P0-2). Closing the set makes the router 404 unknown slugs
+// outright — real status, no render.
+export const dynamicParams = false;
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
