@@ -91,7 +91,7 @@ export default function SortDropdown<K extends string = string>({
         aria-expanded={open}
         aria-label={`${label}: ${current?.label ?? ""}`}
         title={label}
-        className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1 text-[12px] font-semibold transition active:scale-[0.97]"
+        className="tap-44 inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-3 py-1 text-[12px] font-semibold transition active:scale-[0.97]"
         style={{
           borderColor: "var(--app-border)",
           color: "var(--app-ink-2)",

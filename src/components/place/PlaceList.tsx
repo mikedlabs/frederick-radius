@@ -163,7 +163,7 @@ export default function PlaceList({
             aria-checked={layout === "grid"}
             aria-label="Grid"
             title="Grid"
-            className="grid h-7 w-7 place-items-center rounded-full transition-colors"
+            className="tap-44 grid h-7 w-7 place-items-center rounded-full transition-colors"
             style={{
               background:
                 layout === "grid"
@@ -184,7 +184,7 @@ export default function PlaceList({
             aria-checked={layout === "list"}
             aria-label="List"
             title="List"
-            className="grid h-7 w-7 place-items-center rounded-full transition-colors"
+            className="tap-44 grid h-7 w-7 place-items-center rounded-full transition-colors"
             style={{
               background:
                 layout === "list"

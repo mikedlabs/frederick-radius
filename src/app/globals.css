@@ -1923,3 +1923,21 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   opacity: 0.05;
   mix-blend-mode: multiply;
 }
+
+/* Invisible 44px tap-zone extender (WCAG 2.5.5 / Apple HIG). Visual size
+   is a design choice; the TOUCH target doesn't have to match it. Apply to
+   any control that renders under ~44px — the ::after overlay catches the
+   tap without moving a pixel of layout. (::after, not ::before — the
+   tactile-feature treatment already owns ::before on some hosts.) */
+.tap-44 {
+  position: relative;
+}
+.tap-44::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}

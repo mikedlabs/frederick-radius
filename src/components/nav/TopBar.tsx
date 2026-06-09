@@ -134,7 +134,7 @@ export default function TopBar() {
             <Link
               href="/"
               aria-label="Frederick Radius — home"
-              className="flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
+              className="tap-44 flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               <span
@@ -166,7 +166,7 @@ export default function TopBar() {
             type="button"
             onClick={() => setSearchOpen(true)}
             aria-label="Search places, events, towns"
-            className="ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
+            className="tap-44 ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
@@ -213,7 +213,7 @@ export default function TopBar() {
             href="/settings"
             aria-label="Settings"
             title="Settings"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
+            className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
             style={{ color: "var(--app-ink-3)" }}
           >
             <SettingsIcon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />

@@ -9,6 +9,7 @@ import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import PlaceList from "@/components/place/PlaceList";
 import PageBloom from "@/components/ui/PageBloom";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
  * /open-now — the fast list answer to the app's most urgent question.
@@ -99,7 +100,23 @@ export default async function OpenNowPage() {
       </header>
 
       {verified.length > 0 ? (
-        <PlaceList places={verified.slice(0, 60)} initialLayout="grid" />
+        <>
+          {/* Refinement pass F3: the full 60-card dump made this page
+              ~4,900px tall at 390px. The first 24 ARE the answer (already
+              quality+proximity ranked, destinations first); the long tail
+              is progressive disclosure, not a wall. */}
+          <PlaceList places={verified.slice(0, 24)} initialLayout="grid" />
+          {verified.length > 24 && (
+            <CollapsibleSection
+              title="More open now"
+              count={verified.length - 24}
+              storageKey="open-now-more"
+              defaultOpen={false}
+            >
+              <PlaceList places={verified.slice(24, 80)} initialLayout="list" />
+            </CollapsibleSection>
+          )}
+        </>
       ) : (
         <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
           Nothing is verified open at this hour. The likely-open list below is

@@ -45,7 +45,7 @@ export default function CravingStrip() {
             <Link
               key={c.key}
               href={`/nearby?c=${c.key}`}
-              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold"
+              className="tap-44 tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold"
               style={{ color: "var(--app-ink-2)" }}
             >
               <Icon className="h-4 w-4" strokeWidth={2} style={{ color: c.color }} aria-hidden />
