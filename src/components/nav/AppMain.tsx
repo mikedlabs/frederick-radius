@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import AppFooter from "@/components/nav/AppFooter";
 
 /**
  * The app's content column.
@@ -33,6 +34,10 @@ export default function AppMain({ children }: { children: React.ReactNode }) {
       }}
     >
       <ErrorBoundary>{children}</ErrorBoundary>
+      {/* Sitewide quiet footer — except on the full-bleed map, where any
+          below-the-fold footer would force a scroll on a viewport-locked
+          surface. */}
+      {!fullBleed && <AppFooter />}
     </main>
   );
 }
