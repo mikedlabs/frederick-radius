@@ -15,6 +15,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
+import { itemListJsonLd } from "@/lib/seo/jsonld";
 import PageBloom from "@/components/ui/PageBloom";
 import IconStamp from "@/components/ui/IconStamp";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -253,8 +254,19 @@ export default async function EventsIndexPage({
   const browseOpen =
     (initialView.cats?.length ?? 0) > 0 || sp.get("free") === "1" || !!initialDay;
 
+  // Structured data (June-9 audit P2): the listing as an ItemList of the
+  // next public events, mirroring what the page renders.
+  const eventsJsonLd = itemListJsonLd(
+    "Events in Frederick County",
+    allEvents.slice(0, 25).map((e) => ({ name: e.title, path: `/events/${e.slug}` })),
+  );
+
   return (
     <div className="relative space-y-4">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsJsonLd) }}
+      />
       <PageBloom variant="warm-cool" />
 
       {/* ── 1. HERO — compacted to a single tight line. The question +
