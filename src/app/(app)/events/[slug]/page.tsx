@@ -38,6 +38,7 @@ import EventSmartPairings from "@/components/event/EventSmartPairings";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
+import { easternOffsetIso } from "@/lib/seo/jsonld";
 
 export const revalidate = 300;
 // NOTE: this segment deliberately has NO loading.tsx. Event slugs are an
@@ -126,8 +127,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     "@type": "Event",
     name: event.title,
     description: eventBlurb(event),
-    startDate: event.starts_at,
-    endDate: event.ends_at,
+    // Local-offset form (2026-06-11T17:00:00-04:00) — Google accepts UTC
+    // "Z" but prefers this, and it self-documents tz correctness.
+    startDate: easternOffsetIso(event.starts_at),
+    endDate: easternOffsetIso(event.ends_at),
     eventStatus: "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     location: {

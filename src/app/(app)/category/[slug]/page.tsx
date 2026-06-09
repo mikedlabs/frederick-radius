@@ -14,6 +14,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
+import { itemListJsonLd } from "@/lib/seo/jsonld";
 
 export const revalidate = 600;
 
@@ -124,8 +125,26 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
       ? `Ranked from ${MUNICIPALITY_BY_SLUG[homeMuni].name}`
       : null;
 
+  // Structured data (June-9 audit P2): the category as a CollectionPage
+  // with an ItemList of its top places, so category pages stop being
+  // schema-invisible next to the place details they link.
+  const collectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: `${c.name} in Frederick County`,
+    description: c.blurb,
+    mainEntity: itemListJsonLd(
+      `${c.name} in Frederick County`,
+      recommendable.slice(0, 20).map((p) => ({ name: p.name, path: `/places/${p.slug}` })),
+    ),
+  };
+
   return (
     <div className="relative space-y-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+      />
       <PageBloom variant="single" />
       <header className="space-y-2">
         <p

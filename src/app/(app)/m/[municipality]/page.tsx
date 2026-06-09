@@ -16,6 +16,7 @@ import AerialBeat from "@/components/place/AerialBeat";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
 import LivingHere from "@/components/municipality/LivingHere";
 import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
+import { breadcrumbJsonLd } from "@/lib/seo/jsonld";
 
 export const revalidate = 600;
 
@@ -114,8 +115,35 @@ export default async function MunicipalityPage(
   // null until the extraction agent populates it. The block self-hides.
   const civic = municipalCivicFor(m.slug);
 
+  // Structured data (June-9 audit P2): the town as a schema.org Place +
+  // a BreadcrumbList, so town pages join the knowledge graph like the
+  // place/event details already do.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Place",
+    name: `${m.name}, Maryland`,
+    description: m.description,
+    geo: { "@type": "GeoCoordinates", latitude: m.centroid.lat, longitude: m.centroid.lng },
+    containedInPlace: { "@type": "AdministrativeArea", name: "Frederick County, Maryland" },
+  };
+
   return (
     <div className="relative space-y-5">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            breadcrumbJsonLd([
+              { name: "Towns", path: "/towns" },
+              { name: m.name, path: `/m/${m.slug}` },
+            ]),
+          ),
+        }}
+      />
       <PageBloom variant="single" />
 
       {/* 1 — Town hero. CURATED imagery only (Photo Policy, Phase 3): our
