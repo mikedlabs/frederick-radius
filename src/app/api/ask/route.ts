@@ -20,6 +20,31 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
+/**
+ * GET /api/ask  → a TEMPORARY config diagnostic (names only, never
+ * values). The marquee Ask kept reading configured:false after the key
+ * was set in Vercel; this reports which signals the running deployment
+ * actually sees + the NAMES of any AI-ish env vars present, so a naming
+ * or environment-scope mismatch is visible at a glance. Remove once Ask
+ * is confirmed live. Secret VALUES are never returned.
+ */
+export async function GET() {
+  const AI_NAME = /AI|ANTHROPIC|OPENAI|GATEWAY|OIDC|LLM|MODEL|CLAUDE|GPT/i;
+  const aiEnvNames = Object.keys(process.env)
+    .filter((k) => AI_NAME.test(k))
+    .sort();
+  return NextResponse.json({
+    signals: {
+      AI_GATEWAY_API_KEY: Boolean(process.env.AI_GATEWAY_API_KEY),
+      VERCEL_OIDC_TOKEN: Boolean(process.env.VERCEL_OIDC_TOKEN),
+      ANTHROPIC_API_KEY: Boolean(process.env.ANTHROPIC_API_KEY),
+      OPENAI_API_KEY: Boolean(process.env.OPENAI_API_KEY),
+    },
+    aiEnvNames,
+    vercelEnv: process.env.VERCEL_ENV ?? null,
+  });
+}
+
 export async function POST(req: Request) {
   if (!isSameOriginRequest(req)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
