@@ -35,6 +35,11 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
 function whyItMatters(e: EventWithMeta): string | undefined {
   const desc = (e.description ?? "").trim();
   if (!desc) return undefined;
+  // Some feeds dump raw scraped metadata into the description field
+  // ("Event date: … Event Time: … Location: …"). That reads as raw data,
+  // not a reason to go — never surface it on a card. (Review P0: the hero
+  // luncheon leaked exactly this string into its body.)
+  if (/\bevent\s+(date|time)\s*:/i.test(desc)) return undefined;
   // First sentence (up to the first ., ! or ?), else the whole thing.
   const m = desc.match(/^.*?[.!?](?=\s|$)/);
   let line = (m ? m[0] : desc).trim();
@@ -231,8 +236,20 @@ export default async function EventsIndexPage({
   // featured card never leads with a past start date (e.g. a multi-day
   // event that began last week). Falls back to the soonest in-progress
   // event only when nothing upcoming is left.
+  // Belt-and-suspenders hero guard: even within the public lane, the ONE
+  // lead card for "What's worth going to?" should never be an internal /
+  // members-only item that the classifier can't reasonably lane as civic
+  // (luncheons, annual/board meetings, orientations, fundraiser breakfasts).
+  // Skip those for the lead; fall back gracefully so the hero never goes
+  // empty. (Review P0: the page led with a committee planning luncheon.)
+  const HERO_INELIGIBLE =
+    /\b(luncheon|annual\s+meeting|board\s+meeting|orientation|info(rmation)?\s+session|members?\s+only|fundraiser\s+(breakfast|luncheon)|staff\s+meeting|ribbon\s+cutting)\b/i;
+  const upcoming = (e: EventWithMeta) => +new Date(e.starts_at) >= nowMs;
   const heroEvent: EventWithMeta | null =
-    allEvents.find((e) => +new Date(e.starts_at) >= nowMs) ?? allEvents[0] ?? null;
+    allEvents.find((e) => upcoming(e) && !HERO_INELIGIBLE.test(e.title ?? "")) ??
+    allEvents.find(upcoming) ??
+    allEvents[0] ??
+    null;
 
   // "Today" — events still to come TODAY (now → next Eastern midnight),
   // tonight included. Bounded to today, not a rolling +24h, so the
