@@ -3,6 +3,14 @@
 **Last updated:** 2026-06-04 — added the differentiation roadmap (the moat + the love).
 **Cadence:** updated when a phase ships or scope shifts. Companion to [`AUDIT.md`](./AUDIT.md).
 
+> **Currency note (2026-06-09):** ~40 PRs landed June 9 (#492–#533): both
+> June-9 external review remediations (events pipeline + text normalization,
+> hard 404s, hero/photo repair, count unification, /open-now, freshness
+> guard, SEO/JSON-LD, tap targets, payload windowing, cron feed repair).
+> CLAUDE.md is now the source of truth for the shipped design system and
+> pipeline rules; read it before this document.
+
+
 This is the honest list. No vague "soon." Three columns:
 
 - 🟢 **Shipping** — live in production, working as intended
