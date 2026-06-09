@@ -56,7 +56,7 @@ export default function SaveButton({
         type="button"
         aria-hidden
         tabIndex={-1}
-        className="grid h-9 w-9 place-items-center rounded-full"
+        className="tap-44 grid h-9 w-9 place-items-center rounded-full"
         style={{ color: "var(--app-ink-3)" }}
       >
         <Bookmark className="h-4 w-4" strokeWidth={1.75} />
@@ -105,7 +105,7 @@ export default function SaveButton({
           : `Save ${label.replace(/^Save\s+/, "")}`
       }
       title={isSaved ? "Saved" : "Save"}
-      className="relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"
+      className="tap-44 relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"
       style={{
         color: isSaved ? "var(--app-cool)" : "var(--app-ink-3)",
         transitionTimingFunction: "var(--app-ease-spring)",

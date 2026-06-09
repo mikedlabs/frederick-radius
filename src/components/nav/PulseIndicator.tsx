@@ -66,7 +66,7 @@ export default function PulseIndicator() {
           : "County alerts: all clear"
       }
       title={active ? `County alerts: ${count} active` : "County alerts: all clear"}
-      className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
+      className="tap-44 relative grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
       style={{
         borderColor: "var(--app-border)",
         color: active ? TONE_COLOR[tone] : "var(--app-ink-3)",
