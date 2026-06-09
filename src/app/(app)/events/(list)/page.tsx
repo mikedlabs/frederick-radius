@@ -45,9 +45,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/events" },
   title: "Events",
   description:
-    "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, Hood College, and the Frederick Keys.",
+    "Live event feeds from Celebrate Frederick, the County calendar, Ticketmaster (including the Frederick Keys), Bandsintown, and the Weinberg Center lineup.",
   openGraph: { title: "Events", description:
-    "Live event feeds from Downtown Frederick Partnership, Celebrate Frederick, the County, Hood College, and the Frederick Keys." },
+    "Live event feeds from Celebrate Frederick, the County calendar, Ticketmaster (including the Frederick Keys), Bandsintown, and the Weinberg Center lineup." },
 };
 
 // 10 min, not an hour: the "Tonight" hero + weekend buckets are computed
@@ -533,11 +533,14 @@ export default async function EventsIndexPage({
         className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
       >
+        {/* Honesty footer = TRUE sources only (June-9 automation audit):
+            DFP killed their public iCal and the Hood Trumba feed is gone;
+            naming dead feeds in the trust block was the opposite of trust. */}
         <p>
-          Live event data pulled from Downtown Frederick Partnership,
-          Celebrate Frederick, the Frederick County calendar, the Hood
-          College Trumba feed, and Ticketmaster (music + Frederick Keys
-          home games). Cached for one hour.
+          Live event data pulled from Celebrate Frederick, the Frederick
+          County calendar, Ticketmaster (music + Frederick Keys home
+          games), Bandsintown, the Weinberg Center lineup, and the county
+          municipal calendars. Cached for one hour.
         </p>
         <p>
           Missing an event?{" "}
