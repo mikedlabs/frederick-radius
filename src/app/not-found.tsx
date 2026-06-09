@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ContourPlate from "@/components/ui/ContourPlate";
 import { Button } from "@/components/ui/Button";
 import { ArrowLeft, Compass } from "lucide-react";
 
@@ -27,6 +28,9 @@ export default function NotFound() {
         }}
       />
       <div className="relative mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-6 px-6 py-16 text-center">
+        {/* Specimen-plate mark — the field-guide motif anchoring system
+            surfaces in the same visual language as the Saved header. */}
+        <ContourPlate size={170} className="absolute right-2 top-10" />
         <span
           className="inline-flex h-16 w-16 items-center justify-center rounded-full tactile"
           style={{
