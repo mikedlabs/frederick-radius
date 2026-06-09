@@ -19,10 +19,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/collections`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/history`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     { url: `${BASE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    // Public content surfaces with self-canonicals: the directory index and
+    // the two county-reference pages (amenities, government contacts).
+    { url: `${BASE}/places`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/amenities`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
+    { url: `${BASE}/contacts`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
     // Dropped: "/" (307→/guide), "/now" (308→/today), "/radius" (308→
     // /map?mode=radius) — never list a redirect. /pulse, /parks, /trails
-    // are noindex; /my-radius is user-state; /submit, /welcome, /settings
-    // are forms/onboarding disallowed in robots.ts.
+    // are noindex; /my-radius is user-state; /submit, /welcome, /settings,
+    // /business, /pitch, /from-above now carry robots:{index:false}.
   ];
   const places = publicPlaces().map((p) => ({
     url: `${BASE}/places/${p.slug}`,

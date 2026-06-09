@@ -5,6 +5,7 @@ import NotificationsCard from "@/components/settings/NotificationsCard";
 import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
+  robots: { index: false },
   title: "Notifications",
   description:
     "Choose what you hear from Frederick Radius. Civic alerts, saved event reminders, daily briefing.",

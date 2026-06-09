@@ -3,6 +3,7 @@ import Link from "next/link";
 import SubmitPlaceForm from "@/components/submit/SubmitPlaceForm";
 
 export const metadata: Metadata = {
+  robots: { index: false },
   // The root layout already wraps page titles with " · Frederick Radius"
   // via metadata.title.template — including it here would double-suffix
   // ("Submit a place · Frederick Radius · Frederick Radius").

@@ -19,6 +19,7 @@ import { getServerUser } from "@/lib/auth";
  */
 
 export const metadata: Metadata = {
+  robots: { index: false },
   title: "Settings",
   description:
     "How Frederick Radius is tuned for you. Persona, where you're anchored, what you're into, and what you hear from us.",

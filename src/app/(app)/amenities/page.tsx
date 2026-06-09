@@ -42,6 +42,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
  */
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/amenities" },
   title: "Amenities",
   description:
     "Public restrooms, Wi-Fi, EV charging, bike racks, picnic spots and playgrounds across Frederick County — plus what's coming next.",

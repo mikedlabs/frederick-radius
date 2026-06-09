@@ -42,6 +42,7 @@ import { INTENT_BY_KEY } from "@/data/intents";
 export const revalidate = 600;
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/places" },
   title: "All places",
   description:
     "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services — the directory.",
