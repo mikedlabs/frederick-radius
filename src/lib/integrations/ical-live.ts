@@ -432,6 +432,17 @@ export function splitLocation(
     .slice(0, 120)
     .trim() || fallback;
 
+  // A location field that's actually a description dump must never become a
+  // venue ("Description: Did you know…?" — the Bee City subcommittee leaked
+  // exactly this). A real venue carries neither a metadata/content label nor
+  // a question mark, so reject those and fall back to the feed's default.
+  if (
+    /\b(?:description|details|event\s+date|event\s+time)\s*:/i.test(venue) ||
+    venue.includes("?")
+  ) {
+    return { venue: fallback, address: "" };
+  }
+
   // Address keeps the comma-joined sequence so map/geocode hints still
   // work; trim trailing duplicate of the venue if the city tail is bare.
   const address = segments.join(", ");
