@@ -10,6 +10,7 @@ import {
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
 import PageBloom from "@/components/ui/PageBloom";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryBriefing from "./CategoryBriefing";
 import CategorySection from "./CategorySection";
@@ -71,27 +72,35 @@ export default function CategoryView({
     <div className="relative space-y-6">
       <PageBloom variant="single" />
 
-      <header className="space-y-2">
-        <p
-          className="inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.1em]"
-          style={{ color: category.color }}
-        >
-          <span
-            style={{ background: category.color }}
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            aria-hidden
+      {/* Curated aerial/seasonal county hero — matches the legacy category
+          page and the /m town hero (Photo Policy: our photography). */}
+      <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
+        <div className="relative h-44 w-full sm:h-56">
+          <SeasonalPhoto
+            season="auto"
+            alt={`${category.name} across Frederick County`}
+            priority
+            sizes="(max-width: 720px) 100vw, 720px"
+            className="absolute inset-0"
           />
-          Category
-        </p>
-        <h1
-          className="font-serif text-[28px] font-semibold leading-tight tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          {category.name} in Frederick County
-        </h1>
-        <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          {category.blurb}
-        </p>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
+          <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
+            <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">
+              <span
+                style={{ background: category.color }}
+                className="inline-block h-1.5 w-1.5 rounded-full"
+                aria-hidden
+              />
+              Category · Frederick County
+            </p>
+            <h1 className="font-serif text-[30px] font-semibold leading-tight tracking-tight text-white sm:text-[36px]">
+              {category.name}
+            </h1>
+            <p className="font-serif text-[14px] italic leading-snug text-white/90 sm:text-[15px]">
+              {category.blurb}
+            </p>
+          </div>
+        </div>
       </header>
 
       <CategoryBriefing
