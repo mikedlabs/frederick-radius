@@ -29,7 +29,7 @@ export default function TodayActions() {
       ? { label: "Find coffee", href: "/map?mode=browse&intent=coffee" }
       : h >= 17 || h < 5
         ? { label: "What's tonight", href: "/today?t=tonight" }
-        : { label: "Open now nearby", href: "/map?mode=browse&open=now" };
+        : { label: "Open now nearby", href: "/open-now" };
 
   return (
     <div className="flex flex-wrap gap-2">

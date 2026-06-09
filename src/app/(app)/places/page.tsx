@@ -140,7 +140,7 @@ export default function PlacesIndexPage() {
         </h2>
         <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           {[
-            { label: "Open now", href: "/map?mode=browse&open=now", icon: Clock, color: "var(--app-positive)" },
+            { label: "Open now", href: "/open-now", icon: Clock, color: "var(--app-positive)" },
             { label: "Eat & drink", href: "/map?intent=eat", icon: UtensilsCrossed, color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)" },
             { label: "Coffee", href: "/map?intent=coffee", icon: Coffee, color: INTENT_BY_KEY.coffee?.color ?? "var(--app-brand)" },
             { label: "With kids", href: "/map?intent=family", icon: Baby, color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)" },
