@@ -1,5 +1,5 @@
 import { PLACES, type Place } from "@/data/places";
-import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { CATEGORY_BY_SLUG, CATEGORIES } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
@@ -23,6 +23,16 @@ import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
+
+// Parent category slug → its direct child slugs, computed once. Lets a
+// category page for a parent (food, outdoors, arts…) aggregate its children
+// in rankPlaces. Leaf categories simply aren't keys here.
+const CATEGORY_CHILDREN = new Map<string, string[]>();
+for (const c of CATEGORIES) {
+  if (c.parent) {
+    CATEGORY_CHILDREN.set(c.parent, [...(CATEGORY_CHILDREN.get(c.parent) ?? []), c.slug]);
+  }
+}
 
 // Shared-photo suppression set (de-twin): slugs whose hero photo is nulled
 // so two cards never show the same Google photo. Generated, reviewable —
@@ -826,8 +836,17 @@ export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {
     .map((p) => decoratePlace(p, ctx.origin, now));
 
   if (ctx.category) {
+    // A category page for a PARENT (food, outdoors, arts, shopping…) must
+    // aggregate its children: /category/food is the whole Food & Drink scene
+    // (restaurants, cafes, bars, breweries, bakeries…), not only the ~13
+    // places literally tagged "food" (which were wineries — so the food hero
+    // led with rural meaderies while 340+ restaurants never surfaced). Leaf
+    // categories (coffee, restaurant) have no children, so this is a no-op
+    // for them. See CATEGORY_CHILDREN.
+    const children = CATEGORY_CHILDREN.get(ctx.category) ?? [];
+    const match = new Set<string>([ctx.category, ...children]);
     results = results.filter(
-      (p) => p.category === ctx.category || (p.subcategories ?? []).includes(ctx.category!)
+      (p) => match.has(p.category) || (p.subcategories ?? []).some((s) => match.has(s)),
     );
   }
   if (ctx.municipality) {
