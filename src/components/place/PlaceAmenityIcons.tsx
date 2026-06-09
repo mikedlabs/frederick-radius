@@ -118,7 +118,7 @@ export default function PlaceAmenityIcons({
                 <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
               </span>
               <span
-                className="text-center text-[10.5px] font-semibold leading-tight tracking-tight"
+                className="text-center text-[11px] font-semibold leading-tight tracking-tight"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 {m.label}

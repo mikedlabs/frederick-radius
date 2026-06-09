@@ -189,7 +189,7 @@ export default function RightNow({
             >
               {craving.label} near {hasFix ? "you" : "Downtown"}
             </h1>
-            <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+            <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
               {openCount > 0
                 ? `${openCount} open now · nearest first`
                 : "Nearest first"}

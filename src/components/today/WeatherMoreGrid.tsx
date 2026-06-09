@@ -107,7 +107,7 @@ export default async function WeatherMoreGrid() {
           <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
             {clockLabel(sun.sunset)}
           </p>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+          <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             Sunset
           </p>
           {/* Tiny sun-arc visual: dotted top-half semicircle, a brand
@@ -153,7 +153,7 @@ export default async function WeatherMoreGrid() {
           <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
             {windSpeedText || (metar?.windSpeedKts != null ? `${metar.windSpeedKts} kt` : "—")}
           </p>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+          <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             {dirDeg !== null
               ? `From ${compassPoint(dirDeg)}`
               : windDirText
@@ -178,10 +178,10 @@ export default async function WeatherMoreGrid() {
           <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
             {metar.relativeHumidity}%
           </p>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+          <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             Right now
           </p>
-          <p className="mt-2 text-[11.5px] leading-snug opacity-80">
+          <p className="mt-2 text-[12px] leading-snug opacity-80">
             The dew point is{" "}
             <span className="font-semibold tabular-nums">{metar.dewpointF}°</span>
             {comfort && comfort.label !== "Comfortable" && comfort.label !== "Dry" && (
@@ -206,11 +206,11 @@ export default async function WeatherMoreGrid() {
           <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
             {metar.tempF}&deg;
           </p>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+          <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             At KFDK
           </p>
           {comfort && (
-            <p className="mt-2 text-[11.5px] leading-snug opacity-80">
+            <p className="mt-2 text-[12px] leading-snug opacity-80">
               {comfort.label === "Comfortable" || comfort.label === "Dry" ? (
                 "Comfortable humidity."
               ) : (
@@ -234,10 +234,10 @@ export default async function WeatherMoreGrid() {
           <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
             {metar.pressureHpa.toFixed(0)}
           </p>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+          <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             hPa
           </p>
-          <p className="mt-2 text-[11.5px] leading-snug opacity-80">
+          <p className="mt-2 text-[12px] leading-snug opacity-80">
             {metar.pressureHpa < 1009
               ? "Below average."
               : metar.pressureHpa > 1019
@@ -257,10 +257,10 @@ export default async function WeatherMoreGrid() {
             {metar.visibilityMi}
             <span className="ml-1 text-[14px] font-normal opacity-70">mi</span>
           </p>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+          <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             At KFDK
           </p>
-          <p className="mt-2 text-[11.5px] leading-snug opacity-80">
+          <p className="mt-2 text-[12px] leading-snug opacity-80">
             {metar.visibilityMi >= 10
               ? "Perfectly clear view."
               : metar.visibilityMi >= 5
@@ -278,10 +278,10 @@ export default async function WeatherMoreGrid() {
         <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
           {Math.round(moon.illumination * 100)}%
         </p>
-        <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+        <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
           Illuminated
         </p>
-        <p className="mt-2 text-[11.5px] tabular-nums opacity-80">
+        <p className="mt-2 text-[12px] tabular-nums opacity-80">
           {moon.name === "Full Moon"
             ? "Full tonight."
             : moon.daysToFull < moon.daysToNew
@@ -302,10 +302,10 @@ export default async function WeatherMoreGrid() {
             {delta.todayMinutes % 60}
             <span className="ml-0.5 text-[14px] font-normal opacity-70">m</span>
           </p>
-          <p className="mt-1 text-[10.5px] uppercase tracking-wide opacity-70">
+          <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">
             Today
           </p>
-          <p className="mt-2 text-[11.5px] tabular-nums opacity-80">
+          <p className="mt-2 text-[12px] tabular-nums opacity-80">
             {delta.deltaMinutes === 0
               ? "Same as yesterday"
               : delta.deltaMinutes > 0

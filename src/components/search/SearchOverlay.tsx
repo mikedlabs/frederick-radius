@@ -580,7 +580,7 @@ function EmptyHint({
                   <span className="block truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
                     {q.title}
                   </span>
-                  <span className="block truncate text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+                  <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                     {q.subtitle}
                   </span>
                 </span>

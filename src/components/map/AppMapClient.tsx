@@ -481,7 +481,7 @@ function InViewList({
           {eventsHere.length > 0 && (
             <li>
               <p
-                className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
                 style={{ color: "var(--app-brand)" }}
               >
                 <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -527,7 +527,7 @@ function InViewList({
           {usefulHere.length > 0 && (
             <li>
               <p
-                className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
                 style={{ color: "var(--app-cool)" }}
               >
                 <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -570,7 +570,7 @@ function InViewList({
               a raw count. */}
           <li>
             <p
-              className="mb-0.5 mt-0.5 inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              className="mb-0.5 mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />

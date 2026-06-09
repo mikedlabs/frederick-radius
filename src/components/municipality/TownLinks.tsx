@@ -45,7 +45,7 @@ export default function TownLinks({ slug }: { slug: string }) {
           href={town.homepage}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-[12.5px] font-semibold"
+          className="inline-flex items-center gap-1 text-[13px] font-semibold"
           style={{ color: "var(--app-brand)" }}
         >
           {town.homepage.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
@@ -74,7 +74,7 @@ export default function TownLinks({ slug }: { slug: string }) {
 
       {town.contact && (town.contact.address || town.contact.phone) && (
         <div
-          className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-[12.5px]"
+          className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t pt-3 text-[13px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
           {town.contact.address && <span>{town.contact.address}</span>}

@@ -319,7 +319,7 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
                 Compact: minimal top/bottom air so the lanes climb above the
                 fold (density pass — dense & utility-modern). */}
             <header className="pb-2.5">
-              <p className="text-[11.5px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
                 {greeting ? `${greeting} · Frederick County` : "Frederick County"}
               </p>
               <h1 className="display-2 mt-1" style={{ color: "var(--app-ink)" }}>
@@ -416,7 +416,7 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
                 <Building2 className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
               </span>
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="text-[14.5px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                   Explore by town
                 </span>
                 <span className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
@@ -757,7 +757,7 @@ function Tile({
             {label}
           </span>
           {typeof count === "number" && (
-            <span className="text-[12.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <span className="text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
               {count} place{count === 1 ? "" : "s"}
             </span>
           )}
@@ -785,7 +785,7 @@ function Tile({
         </IconStamp>
       )}
       <span className="flex flex-col">
-        <span className="text-[15.5px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+        <span className="text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           {label}
         </span>
         {typeof count === "number" && (

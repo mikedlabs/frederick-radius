@@ -136,7 +136,7 @@ export default function SortDropdown<K extends string = string>({
                   onChange(opt.key);
                   setOpen(false);
                 }}
-                className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-[12.5px] transition-colors hover:bg-[var(--app-bg-sunken)]"
+                className="flex w-full items-start gap-2 px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{
                   color: active ? "var(--app-brand)" : "var(--app-ink)",
                   background: active
@@ -158,7 +158,7 @@ export default function SortDropdown<K extends string = string>({
                   <span className="block leading-tight">{opt.label}</span>
                   {opt.hint && (
                     <span
-                      className="block text-[10.5px] leading-tight"
+                      className="block text-[11px] leading-tight"
                       style={{ color: "var(--app-ink-3)" }}
                     >
                       {opt.hint}

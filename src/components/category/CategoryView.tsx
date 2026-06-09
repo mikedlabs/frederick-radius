@@ -145,7 +145,7 @@ export default function CategoryView({
               return (
                 <li key={g.municipality}>
                   <p
-                    className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.1em]"
+                    className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em]"
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {m?.name ?? g.municipality}

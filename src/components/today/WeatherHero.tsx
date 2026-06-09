@@ -123,7 +123,7 @@ export default async function WeatherHero({
           <span className="font-serif text-[30px] font-light leading-none tabular-nums tracking-tight">
             {cur.temperature}&deg;
           </span>
-          <span className="text-[13.5px] font-medium leading-tight">
+          <span className="text-[14px] font-medium leading-tight">
             {condition}
           </span>
           {(high !== undefined || low !== undefined) && (
@@ -136,7 +136,7 @@ export default async function WeatherHero({
             </span>
           )}
           {nextChange && (
-            <span className="basis-full text-[11.5px] leading-tight opacity-75">
+            <span className="basis-full text-[12px] leading-tight opacity-75">
               {nextChange}
             </span>
           )}
@@ -165,7 +165,7 @@ export default async function WeatherHero({
         </p>
         {updatedAt && (
           <p
-            className="text-[10.5px] font-medium tracking-wide opacity-70"
+            className="text-[11px] font-medium tracking-wide opacity-70"
           >
             Updated · {updatedAt}
           </p>

@@ -15,7 +15,7 @@ import { getMarcBoard, getMarcAlerts, type MarcDeparture } from "@/lib/integrati
 function statusChip(d: MarcDeparture) {
   if (!d.live || d.delayMin == null) {
     return (
-      <span className="text-[10.5px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+      <span className="text-[11px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
         scheduled
       </span>
     );
@@ -150,7 +150,7 @@ export default async function NextTrainBoard() {
         </ul>
       )}
 
-      <p className="text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+      <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
         Scheduled times from MTA Maryland GTFS, live delays from the MARC realtime feed.
         Always confirm on the platform.
       </p>

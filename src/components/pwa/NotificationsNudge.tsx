@@ -77,7 +77,7 @@ export default function NotificationsNudge() {
           Heads up when something changes
         </p>
         <p
-          className="mt-0.5 text-[11.5px] leading-snug"
+          className="mt-0.5 text-[12px] leading-snug"
           style={{ color: "var(--app-ink-3)" }}
         >
           Civic alerts, road closures, and events at places you follow.

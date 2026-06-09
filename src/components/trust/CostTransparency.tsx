@@ -57,7 +57,7 @@ export default function CostTransparency() {
         </span>
         <div className="min-w-0 flex-1">
           <p
-            className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+            className="text-[11px] font-bold uppercase tracking-[0.12em]"
             style={{ color: "var(--app-ink-3)" }}
           >
             What it costs to run
@@ -70,7 +70,7 @@ export default function CostTransparency() {
             About ${monthly}/month, mostly the Google Places API.
           </h2>
           <p
-            className="mt-1 text-[12.5px] leading-relaxed"
+            className="mt-1 text-[13px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
             Frederick Radius runs on a handful of services — most of
@@ -110,7 +110,7 @@ export default function CostTransparency() {
                   {line.description}
                 </p>
                 <p
-                  className="mt-1 text-[10.5px]"
+                  className="mt-1 text-[11px]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {line.source}
@@ -133,7 +133,7 @@ export default function CostTransparency() {
       </ul>
 
       <p
-        className="mt-4 text-[10.5px]"
+        className="mt-4 text-[11px]"
         style={{ color: "var(--app-ink-3)" }}
       >
         Reconciled {COST_LAST_UPDATED}. Owner-maintained, not scraped
@@ -170,7 +170,7 @@ export default function CostTransparency() {
           </span>
           <div className="min-w-0 flex-1">
             <p
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               What it cost to build
@@ -182,7 +182,7 @@ export default function CostTransparency() {
               About {formatThousands(build.hours)} hours since {BUILD_STARTED}.
             </h3>
             <p
-              className="mt-1 text-[12.5px] leading-relaxed"
+              className="mt-1 text-[13px] leading-relaxed"
               style={{ color: "var(--app-ink-2)" }}
             >
               At typical 2026 mid-Atlantic agency rates for this kind
@@ -220,7 +220,7 @@ export default function CostTransparency() {
                     {line.description}
                   </p>
                   <p
-                    className="mt-1 text-[10.5px]"
+                    className="mt-1 text-[11px]"
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {line.who} · {formatThousands(line.hours)} hours @ ${line.rate_low_usd}–${line.rate_high_usd}/hr
@@ -241,7 +241,7 @@ export default function CostTransparency() {
         </ul>
 
         <p
-          className="mt-4 text-[10.5px]"
+          className="mt-4 text-[11px]"
           style={{ color: "var(--app-ink-3)" }}
         >
           Hours are owner-estimated, not pulled from a time tracker.

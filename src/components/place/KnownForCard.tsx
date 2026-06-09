@@ -55,7 +55,7 @@ export default function KnownForCard({
         />
         <h3
           id="known-for-heading"
-          className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+          className="text-[11px] font-bold uppercase tracking-[0.12em]"
           style={{ color: "var(--app-ink-3)" }}
         >
           What people say

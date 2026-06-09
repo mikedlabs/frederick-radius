@@ -347,7 +347,7 @@ export default function PlaceCard({
             {nonOpenReasons.length > 0 && <StatusChipRow reasons={nonOpenReasons} />}
             {place.review_snippet && (
               <blockquote
-                className="mt-0.5 border-l-2 pl-2.5 text-[12.5px] italic leading-snug"
+                className="mt-0.5 border-l-2 pl-2.5 text-[13px] italic leading-snug"
                 style={{ borderColor: `color-mix(in srgb, ${color} 60%, transparent)`, color: "var(--app-ink-2)" }}
               >
                 &ldquo;{place.review_snippet}&rdquo;
@@ -454,7 +454,7 @@ export default function PlaceCard({
           <div className="flex items-start gap-2.5 p-2.5">
             <Thumb noPhoto={noPhoto} place={place} category={place.category} color={color} size={40} />
             <div className="min-w-0 flex-1 space-y-0.5">
-              <h3 className="line-clamp-2 text-[13.5px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
+              <h3 className="line-clamp-2 text-[14px] font-semibold leading-[1.2] tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {place.name}
               </h3>
               <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -498,7 +498,7 @@ export default function PlaceCard({
             type="button"
             onClick={openDetail}
             aria-label={`View ${place.name} details`}
-            className="line-clamp-2 min-w-0 flex-1 text-left text-[15.5px] font-semibold leading-[1.18] tracking-tight outline-none focus-visible:underline"
+            className="line-clamp-2 min-w-0 flex-1 text-left text-[16px] font-semibold leading-[1.18] tracking-tight outline-none focus-visible:underline"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
@@ -511,7 +511,7 @@ export default function PlaceCard({
             </span>
           )}
         </div>
-        <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+        <p className="mt-0.5 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {cat?.name ?? place.category}
           {kf && <> · {kf}</>}
           <BeenHereIndicator slug={place.slug} />

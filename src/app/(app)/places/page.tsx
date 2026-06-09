@@ -246,13 +246,13 @@ export default function PlacesIndexPage() {
         </span>
         <span className="relative min-w-0 flex-1">
           <span
-            className="block text-[13.5px] font-semibold"
+            className="block text-[14px] font-semibold"
             style={{ color: "var(--app-ink)" }}
           >
             Who to call
           </span>
           <span
-            className="block text-[11.5px]"
+            className="block text-[12px]"
             style={{ color: "var(--app-ink-3)" }}
           >
             City and county departments plus emergency lines.

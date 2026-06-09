@@ -68,7 +68,7 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
           </h2>
         </div>
         <span
-          className="text-[10.5px] font-bold uppercase tracking-[0.12em] tabular-nums"
+          className="text-[11px] font-bold uppercase tracking-[0.12em] tabular-nums"
           style={{ color: "var(--app-ink-3)" }}
         >
           {visible.length} starting soon
@@ -142,7 +142,7 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                   {/* Category chip */}
                   {cat && (
                     <span
-                      className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.1em] backdrop-blur"
+                      className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em] backdrop-blur"
                       style={{
                         background: photo
                           ? `color-mix(in srgb, ${accent} 90%, transparent)`
@@ -171,7 +171,7 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
                     {e.title}
                   </p>
                   <p
-                    className="line-clamp-1 text-[11.5px]"
+                    className="line-clamp-1 text-[12px]"
                     style={{ color: "var(--app-ink-3)" }}
                   >
                     {formatStartTime(e.starts_at)}

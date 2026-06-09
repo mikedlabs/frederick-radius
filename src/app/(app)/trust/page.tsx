@@ -194,7 +194,7 @@ export default function TrustPage() {
           What we don&apos;t do
         </p>
         <ul
-          className="space-y-1.5 text-[13.5px] leading-relaxed pt-1"
+          className="space-y-1.5 text-[14px] leading-relaxed pt-1"
           style={{ color: "var(--app-ink-2)" }}
         >
           <li>We don&apos;t invent hours when we don&apos;t know them.</li>

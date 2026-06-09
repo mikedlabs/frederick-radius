@@ -949,7 +949,7 @@ export default function RadiusBuilder({
           <button
             type="button"
             onClick={requestMyLocation}
-            className="tactile tactile-interactive fixed right-4 inline-flex items-center gap-1.5 rounded-full py-2 pl-3 pr-3.5 text-[12.5px] font-semibold text-white shadow-[var(--app-shadow-2)] transition active:scale-[0.96]"
+            className="tactile tactile-interactive fixed right-4 inline-flex items-center gap-1.5 rounded-full py-2 pl-3 pr-3.5 text-[13px] font-semibold text-white shadow-[var(--app-shadow-2)] transition active:scale-[0.96]"
             style={{ background: "var(--app-brand)", bottom: "120px", zIndex: "var(--z-map-control)" }}
           >
             <Locate className="h-4 w-4" strokeWidth={2.5} aria-hidden />
@@ -1021,7 +1021,7 @@ export default function RadiusBuilder({
           >
             Best near {center.label}
           </h2>
-          <p className="mt-1 text-[12.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {placesReady ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}` : "Finding places"}
             {openNowCount > 0 ? ` · ${openNowCount} open now` : ""} · {minutes}-min {MODE_VERB[mode]}
           </p>
@@ -1119,7 +1119,7 @@ export default function RadiusBuilder({
                         {e.title}
                       </p>
                       <p
-                        className="mt-0.5 truncate text-[11.5px]"
+                        className="mt-0.5 truncate text-[12px]"
                         style={{ color: "var(--app-ink-3)" }}
                       >
                         {formatEventTime(e.startsAt)}

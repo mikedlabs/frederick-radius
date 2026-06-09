@@ -171,7 +171,7 @@ export default function WelcomeFlow() {
                       {m.label}
                     </span>
                     <span
-                      className="block text-[12.5px]"
+                      className="block text-[13px]"
                       style={{ color: "var(--app-ink-3)" }}
                     >
                       {m.caption}
@@ -214,7 +214,7 @@ export default function WelcomeFlow() {
               >
                 Yes, I live here
               </span>
-              <span className="block text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              <span className="block text-[13px]" style={{ color: "var(--app-ink-3)" }}>
                 Resident view — familiar names, no orientation copy
               </span>
             </span>
@@ -244,7 +244,7 @@ export default function WelcomeFlow() {
               >
                 Just visiting
               </span>
-              <span className="block text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              <span className="block text-[13px]" style={{ color: "var(--app-ink-3)" }}>
                 Visitor view — context-rich, a little more orientation
               </span>
             </span>
@@ -283,7 +283,7 @@ export default function WelcomeFlow() {
 
       {step === 1 && (
         <div
-          className="mt-12 border-t pt-6 text-[12.5px]"
+          className="mt-12 border-t pt-6 text-[13px]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
           <p className="inline-flex items-center gap-1.5">

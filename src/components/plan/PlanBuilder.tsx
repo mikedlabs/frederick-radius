@@ -292,7 +292,7 @@ export default function PlanBuilder({
             <button
               type="button"
               onClick={cycleAudience}
-              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[11.5px] font-semibold transition active:scale-[0.96]"
+              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               aria-label={`Audience: ${currentAudience.label}. Tap to change.`}
             >
@@ -302,7 +302,7 @@ export default function PlanBuilder({
             <button
               type="button"
               onClick={cycleHours}
-              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[11.5px] font-semibold transition active:scale-[0.96]"
+              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               aria-label={`Duration: ${hours} hours. Tap to change.`}
             >
@@ -312,7 +312,7 @@ export default function PlanBuilder({
             <button
               type="button"
               onClick={cycleStart}
-              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[11.5px] font-semibold transition active:scale-[0.96]"
+              className="tactile-interactive inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
               aria-label={`Start: ${currentStart.label}. Tap to change.`}
             >
@@ -461,7 +461,7 @@ export default function PlanBuilder({
                 </span>
                 <span className="flex flex-col">
                   <span
-                    className="text-[13.5px] font-semibold leading-tight"
+                    className="text-[14px] font-semibold leading-tight"
                     style={{ color: "var(--app-ink)" }}
                   >
                     Customize the details
@@ -512,7 +512,7 @@ export default function PlanBuilder({
           {/* Subtle honesty footer — sets expectations before any plan
               renders. */}
           <p
-            className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11.5px] leading-relaxed"
+            className="flex items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[12px] leading-relaxed"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
             <Sparkles
@@ -571,7 +571,7 @@ export default function PlanBuilder({
             )}
             {plan.narrative && (
               <blockquote
-                className="mt-3 border-l-2 pl-3 font-serif text-[14.5px] italic leading-relaxed"
+                className="mt-3 border-l-2 pl-3 font-serif text-[15px] italic leading-relaxed"
                 style={{
                   borderColor: "color-mix(in srgb, var(--app-brand) 50%, transparent)",
                   color: "var(--app-ink-2)",
@@ -924,7 +924,7 @@ function Stop({
                 {name}
               </h3>
               {where && (
-                <p className="mt-0.5 truncate text-[11.5px] text-white/85">
+                <p className="mt-0.5 truncate text-[12px] text-white/85">
                   <MapPin className="-mt-0.5 mr-1 inline h-3 w-3" aria-hidden />
                   {where}
                 </p>
@@ -975,7 +975,7 @@ function Stop({
             </>
           )}
           <p
-            className="mt-2 text-[13.5px] leading-relaxed text-pretty"
+            className="mt-2 text-[14px] leading-relaxed text-pretty"
             style={{ color: "var(--app-ink-2)" }}
           >
             {stop.why}
@@ -1102,7 +1102,7 @@ function BarAction({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[12.5px] font-semibold transition active:scale-[0.96] disabled:opacity-50"
+      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-semibold transition active:scale-[0.96] disabled:opacity-50"
       style={
         primary
           ? {

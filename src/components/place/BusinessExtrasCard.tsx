@@ -40,7 +40,7 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
     >
       <h3
         id="extras-heading"
-        className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+        className="text-[11px] font-bold uppercase tracking-[0.12em]"
         style={{ color: "var(--app-ink-3)" }}
       >
         Good to know

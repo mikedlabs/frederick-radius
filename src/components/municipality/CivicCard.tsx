@@ -44,7 +44,7 @@ export default function CivicCard({
       {!hideHeading && (
         <div className="flex items-baseline gap-2.5">
           <span
-            className="font-mono text-[9.5px] uppercase tracking-[0.18em]"
+            className="font-mono text-[10px] uppercase tracking-[0.18em]"
             style={{ color: "var(--app-ink-3)" }}
           >
             Living here
@@ -112,7 +112,7 @@ function ContactRow({ c, last }: { c: CivicContact; last: boolean }) {
         </span>
         {c.hours && (
           <span
-            className="inline-flex items-center gap-1 text-[11.5px]"
+            className="inline-flex items-center gap-1 text-[12px]"
             style={{ color: "var(--app-ink-2)" }}
           >
             <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
@@ -123,7 +123,7 @@ function ContactRow({ c, last }: { c: CivicContact; last: boolean }) {
 
       {c.schedule && (
         <p
-          className="mt-1.5 flex items-start gap-1.5 text-[13.5px] font-medium"
+          className="mt-1.5 flex items-start gap-1.5 text-[14px] font-medium"
           style={{ color: "var(--app-ink)" }}
         >
           {isTrash && (

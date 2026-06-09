@@ -81,7 +81,7 @@ export default function AnswerCard({ answer, featured = false }: { answer: Answe
           {answer.title}
         </h3>
         {supporting && (
-          <p className="text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          <p className="text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
             {supporting}
           </p>
         )}
@@ -89,7 +89,7 @@ export default function AnswerCard({ answer, featured = false }: { answer: Answe
 
       {source && (
         <div className="mt-auto pt-1">
-          <p className="text-[10.5px] font-medium uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
             {source}
           </p>
         </div>

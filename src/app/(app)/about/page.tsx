@@ -374,7 +374,7 @@ export default async function AboutPage() {
                   From Above
                 </span>
                 <span
-                  className="mt-0.5 block text-[10.5px] leading-snug text-white/85"
+                  className="mt-0.5 block text-[11px] leading-snug text-white/85"
                   style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
                 >
                   Drone photography over Frederick · miked.store
@@ -446,7 +446,7 @@ export default async function AboutPage() {
                   Color Frederick
                 </span>
                 <span
-                  className="mt-0.5 block text-[10.5px] leading-snug text-white/85"
+                  className="mt-0.5 block text-[11px] leading-snug text-white/85"
                   style={{ textShadow: "0 1px 2px rgba(0,0,0,0.55)" }}
                 >
                   The Frederick coloring book · colorfrederick.com

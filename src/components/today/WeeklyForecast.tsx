@@ -229,7 +229,7 @@ export default async function WeeklyForecast() {
               <span className="flex justify-end">
                 {d.precip >= 30 ? (
                   <span
-                    className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[10.5px] font-semibold tabular-nums"
+                    className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[2px] text-[11px] font-semibold tabular-nums"
                     style={{
                       background:
                         "color-mix(in srgb, var(--app-cool) 16%, transparent)",
@@ -250,7 +250,7 @@ export default async function WeeklyForecast() {
         })}
       </ul>
       <p
-        className="mt-2 px-1 pt-1 text-[10.5px] uppercase tracking-[0.12em]"
+        className="mt-2 px-1 pt-1 text-[11px] uppercase tracking-[0.12em]"
         style={{ color: "var(--app-ink-3)" }}
       >
         National Weather Service · Frederick

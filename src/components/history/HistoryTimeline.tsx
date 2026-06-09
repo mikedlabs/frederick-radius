@@ -55,7 +55,7 @@ export default function HistoryTimeline() {
             The county in {span} years
           </h2>
         </div>
-        <p className="text-[10.5px] uppercase tracking-[0.12em] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+        <p className="text-[11px] uppercase tracking-[0.12em] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
           {TIMELINE_FROM}–today · {datedEntries.length} markers
         </p>
       </header>
@@ -95,7 +95,7 @@ export default function HistoryTimeline() {
               <span
                 key={`${era.key}-label`}
                 aria-hidden
-                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-[8.5px] font-bold uppercase tracking-[0.1em] whitespace-nowrap"
+                className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 text-[9px] font-bold uppercase tracking-[0.1em] whitespace-nowrap"
                 style={{
                   left: `${mid}%`,
                   color: `color-mix(in srgb, ${era.color} 60%, var(--app-ink))`,

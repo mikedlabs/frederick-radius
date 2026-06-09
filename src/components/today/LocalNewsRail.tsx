@@ -85,20 +85,20 @@ export default async function LocalNewsRail() {
                   className="inline-block h-1.5 w-1.5 rounded-full"
                   style={{ background: item.source.accent }}
                 />
-                <span className="text-[10.5px] font-bold uppercase tracking-[0.1em]">
+                <span className="text-[11px] font-bold uppercase tracking-[0.1em]">
                   {item.source.label}
                 </span>
               </span>
 
               <span className="min-w-0 flex-1">
                 <span
-                  className="block text-[13.5px] font-medium leading-snug"
+                  className="block text-[14px] font-medium leading-snug"
                   style={{ color: "var(--app-ink)" }}
                 >
                   {item.title}
                 </span>
                 <span
-                  className="mt-1 block text-[10.5px]"
+                  className="mt-1 block text-[11px]"
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {relativeTime(item.publishedAt)}

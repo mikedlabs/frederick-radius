@@ -883,7 +883,7 @@ export default function RadiusMap({
           the user look at the dropdown below. */}
       <div className="pointer-events-none absolute inset-x-0 top-3 z-[var(--z-map-control)] flex justify-center px-4">
         <span
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em]"
+          className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em]"
           style={{
             background: "color-mix(in srgb, var(--app-bg-elevated) 92%, transparent)",
             color: "var(--app-ink-2)",

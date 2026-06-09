@@ -325,7 +325,7 @@ export default function SavedList() {
               <Bookmark className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
             </span>
             <p
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               At a glance
@@ -365,7 +365,7 @@ export default function SavedList() {
               </span>
             )}
           </div>
-          <p className="text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+          <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
             On this device · sign-in to sync across devices coming soon
           </p>
         </div>
@@ -395,7 +395,7 @@ export default function SavedList() {
             >
               {dominantTown![1]} of your Radius is in {dominantMuni.name}
             </span>
-            <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
+            <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
               Build a route from these → Planner
             </span>
           </span>
@@ -423,7 +423,7 @@ export default function SavedList() {
                 style={{ background: "var(--app-cool)" }}
               />
               <h2
-                className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+                className="text-[11px] font-bold uppercase tracking-[0.12em]"
                 style={{ color: "var(--app-cool)" }}
               >
                 Places
@@ -546,7 +546,7 @@ export default function SavedList() {
               style={{ background: "var(--app-ink-3)" }}
             />
             <h2
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-ink-3)" }}
             >
               Recently viewed
@@ -588,7 +588,7 @@ export default function SavedList() {
               style={{ background: "var(--app-brand)" }}
             />
             <h2
-              className="text-[10.5px] font-bold uppercase tracking-[0.12em]"
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
               style={{ color: "var(--app-brand)" }}
             >
               Events
@@ -659,7 +659,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
           <h2 className="text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Nothing saved yet
           </h2>
-          <p className="text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
             Tap the bookmark on any place or event.
           </p>
         </div>

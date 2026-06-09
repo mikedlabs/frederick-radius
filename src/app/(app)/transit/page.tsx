@@ -421,7 +421,7 @@ export default async function TransitPage() {
                           </p>
                         )}
                         <p
-                          className="text-[10.5px] uppercase tracking-[0.08em]"
+                          className="text-[11px] uppercase tracking-[0.08em]"
                           style={{ color: "var(--app-ink-3)" }}
                         >
                           {variations.length}{" "}
