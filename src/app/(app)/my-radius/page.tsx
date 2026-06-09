@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import ContourPlate from "@/components/ui/ContourPlate";
 import Link from "next/link";
 import { Settings, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
@@ -37,20 +38,7 @@ export default async function MyRadiusPage() {
           in mono caps, like a naturalist guide's specimen plate. Character,
           no bulk: the SVG is decorative and the screen still opens on content. */}
       <header className="relative flex items-center justify-between gap-3 pt-0.5">
-        <svg
-          aria-hidden
-          viewBox="0 0 120 120"
-          className="pointer-events-none absolute -top-6 right-7 h-[88px] w-[88px]"
-          style={{ color: "var(--app-ink)", opacity: 0.1 }}
-          fill="none"
-          stroke="currentColor"
-        >
-          <circle cx="60" cy="60" r="13" strokeWidth="1.25" />
-          <circle cx="60" cy="60" r="25" strokeWidth="1.25" />
-          <circle cx="60" cy="60" r="37" strokeWidth="1.25" />
-          <circle cx="60" cy="60" r="49" strokeWidth="1.25" />
-          <path d="M60 2 v116 M2 60 h116" strokeWidth="0.6" />
-        </svg>
+        <ContourPlate size={88} className="absolute -top-6 right-7" />
         <div className="relative min-w-0">
           <h1 className="font-serif text-[23px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Your field guide

@@ -62,7 +62,7 @@ export default function PlaceHero({
       // off-screen. The cap never binds in portrait (16/10 of phone width
       // is well under 52vh), so it only kicks in where the bug lived. The
       // card variant keeps its exact aspect for list layouts.
-      className={`relative w-full overflow-hidden${size === "hero" ? " max-h-[46vh]" : ""}`}
+      className={`relative w-full overflow-hidden${size === "hero" ? " max-h-[38vh]" : ""}`}
       style={{ aspectRatio }}
     >
       {/* Gradient fallback — always rendered behind the photo so 404s look intentional */}
