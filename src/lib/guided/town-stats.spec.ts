@@ -2,10 +2,13 @@ import { describe, it, expect } from "vitest";
 import { townStats } from "@/lib/guided/town-stats";
 import { MUNICIPALITIES } from "@/data/municipalities";
 
-// Integration-style: runs against the real loaders so the picker can't ship
-// claiming counts the data doesn't support.
+// Integration-style: runs against the real place loaders so the picker can't
+// ship claiming counts the data doesn't support. Event counts are injected
+// (the page fetches them from the cached unified-event loader, which isn't
+// request-scoped in a unit test) — here we stub a couple so the wiring is
+// exercised while the place-side guarantees stay real.
 describe("townStats", () => {
-  const stats = townStats(new Date("2026-06-08T12:00:00Z"));
+  const stats = townStats({ frederick: 4, brunswick: 1 });
 
   it("covers every municipality exactly once", () => {
     expect(stats.length).toBe(MUNICIPALITIES.length);
