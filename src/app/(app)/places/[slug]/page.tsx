@@ -425,7 +425,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       </section>
 
       <footer className="space-y-2 pt-4">
-        <PhotoCredit category={place.category} slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />
+        <PhotoCredit slug={place.slug} hasGooglePhoto={Boolean(place.google_photo_url)} />
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           Updated {place.updated_at} · Source: {place.source}
         </p>
