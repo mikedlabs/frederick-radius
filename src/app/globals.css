@@ -448,6 +448,20 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   margin: 0 0 12px 12px !important;
 }
 
+/* /map (mapbox-gl — the maplibre rules above are the other map surface):
+   below lg the floating BottomNav pill owns the bottom ~74px of the
+   viewport, which buried the Mapbox wordmark + attribution behind it — a
+   Mapbox-terms problem, not just polish (June-9 deep audit P1-8; verified
+   with elementFromPoint: the logo lost the tap). Lift the bottom control
+   corners clear of the nav; at ≥lg the BottomNav is display:none and the
+   default offset returns. */
+@media (max-width: 1023.98px) {
+  .mapboxgl-ctrl-bottom-left,
+  .mapboxgl-ctrl-bottom-right {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
+  }
+}
+
 /* Marketing route group keeps its night-sky aesthetic. */
 .marketing-shell {
   background: var(--background);
