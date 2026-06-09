@@ -3,6 +3,7 @@ import Link from "next/link";
 import ClaimForm from "@/components/business/ClaimForm";
 
 export const metadata: Metadata = {
+  robots: { index: false },
   title: "Claim your business",
   description:
     "Own or help run a Frederick County business? Claim your listing to keep it accurate.",

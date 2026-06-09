@@ -8,6 +8,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
+  robots: { index: false },
   // Titled "Saved" to match the bottom-nav tab that opens this page —
   // the tab label and the page title now agree (no "My Radius" eyebrow
   // pointing at a tab called "Saved"). Route stays /my-radius.

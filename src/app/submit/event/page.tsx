@@ -3,6 +3,7 @@ import Link from "next/link";
 import SubmitEventForm from "@/components/submit/SubmitEventForm";
 
 export const metadata: Metadata = {
+  robots: { index: false },
   // Root layout's metadata.title.template adds " · Frederick Radius";
   // including it here would double-suffix.
   title: "Submit an event",

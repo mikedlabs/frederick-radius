@@ -20,6 +20,7 @@ import { CIVIC_ACTIONS_BY_VERB, CIVIC_VERB_LABEL, type CivicVerb } from "@/data/
 import PageBloom from "@/components/ui/PageBloom";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/contacts" },
   title: "Contacts",
   description:
     "Phone numbers and direct links for City of Frederick and Frederick County government departments, plus emergency lines.",
