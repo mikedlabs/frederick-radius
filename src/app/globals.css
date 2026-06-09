@@ -456,14 +456,24 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
    corners clear of the nav; at ≥lg the BottomNav is display:none and the
    default offset returns. */
 @media (max-width: 1023.98px) {
-  /* !important + the .mapboxgl-map ancestor: mapbox-gl.css ships inside
-     the lazily-loaded map chunk, so it lands AFTER globals.css in the
-     cascade and its `bottom: 0` (equal specificity) was winning —
-     verified on prod (computed bottom stayed 0px). Same pattern as the
-     maplibre rules above. */
-  .mapboxgl-map .mapboxgl-ctrl-bottom-left,
+  /* Below lg, the bottom band of /map is owned by the floating BottomNav
+     AND the always-present control sheet (collapsed peek top ≈ 150px from
+     the bottom, full width) — measured on prod: any bottom-corner Mapbox
+     control is buried behind one or the other (the wordmark lost the
+     elementFromPoint tap even lifted 74px; a terms problem). Send both
+     bottom ctrl corners to the TOP of the canvas instead: the wordmark +
+     attribution become visible, and the zoom/geolocate cluster becomes
+     usable again. Top corners verified free (in-flow header sits above
+     the canvas, not over it). !important + the .mapboxgl-map ancestor
+     because mapbox-gl.css ships in the lazy map chunk and lands after
+     globals.css in the cascade. ≥lg keeps the conventional corners. */
+  .mapboxgl-map .mapboxgl-ctrl-bottom-left {
+    bottom: auto !important;
+    top: 10px !important;
+  }
   .mapboxgl-map .mapboxgl-ctrl-bottom-right {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 74px) !important;
+    bottom: auto !important;
+    top: 10px !important;
   }
 }
 
