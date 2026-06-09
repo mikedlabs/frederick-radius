@@ -73,8 +73,18 @@ export default async function MyRadiusPage() {
         </Link>
       </header>
 
-      {/* Anonymous-only sign-in CTA — one slim frosted line, not a card.
-          A quiet invitation (the page works fully without an account). */}
+      <SavedList />
+
+      {/* Recently viewed — device-local trail of the last 6 places
+          the user opened (via PlaceSheet OR direct /places/[slug]).
+          Self-hides when empty. Sits below the saved list because
+          the saved list is the user's intentional shortlist;
+          recents are passive context underneath. */}
+      <RecentlyViewedRail />
+
+      {/* Anonymous-only sign-in CTA, demoted BELOW the saved content
+          (June-9 review §15: a Saved page must open on saved value, not
+          account plumbing — sync is a means, not the point). */}
       {!user && (
         <Link
           href="/auth/login?next=/my-radius"
@@ -93,15 +103,6 @@ export default async function MyRadiusPage() {
           </span>
         </Link>
       )}
-
-      <SavedList />
-
-      {/* Recently viewed — device-local trail of the last 6 places
-          the user opened (via PlaceSheet OR direct /places/[slug]).
-          Self-hides when empty. Sits below the saved list because
-          the saved list is the user's intentional shortlist;
-          recents are passive context underneath. */}
-      <RecentlyViewedRail />
 
       {/* Discreet doorway to /settings/notifications. The component
           self-hides on browsers without PushManager, on already-
