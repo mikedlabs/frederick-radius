@@ -87,9 +87,20 @@ export default async function MunicipalityPage(
     .filter(isRecommendable)
     .map((p, i) => ({ p, i }))
     .sort((a, b) => {
+      // 1) Destinations (food/arts/outdoors/shops) over personal-service +
+      //    civic/utility — so a CrossFit box or therapy office never leads a
+      //    town's "worth your time" (audit §1).
       const da = isDestinationCategory(a.p.category) ? 0 : 1;
       const db = isDestinationCategory(b.p.category) ? 0 : 1;
-      return da - db || b.p.feature_score - a.p.feature_score || a.i - b.i;
+      if (da !== db) return da - db;
+      // 2) Among destinations, lead with what's OPEN — a closed lead can't be
+      //    the glow "go here" answer.
+      const ca = a.p.open_status.state === "closed" ? 1 : 0;
+      const cb = b.p.open_status.state === "closed" ? 1 : 0;
+      if (ca !== cb) return ca - cb;
+      // 3) Then feature_score, with the original (proximity-aware) order as a
+      //    deterministic tiebreak.
+      return b.p.feature_score - a.p.feature_score || a.i - b.i;
     })
     .map((x) => x.p);
 
