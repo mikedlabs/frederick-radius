@@ -19,6 +19,21 @@ describe("cleanDescription", () => {
     ).toBe("Event Time: 6 PM Come enjoy live music at the park!");
   });
 
+  it("strips a 'Event Time: … Description: <prose>' dump to just the prose", () => {
+    // The exact shape the live County feed leaked onto prod.
+    expect(
+      cleanDescription(
+        "Event Time: 07:00 PM - 11:59 PM Description: The Agriculture Business Council was formed to invest in local farms.",
+      ),
+    ).toBe("The Agriculture Business Council was formed to invest in local farms.");
+  });
+
+  it("drops a bare 'Description:' prefix, keeping the prose", () => {
+    expect(cleanDescription("Description: A night market on Carroll Creek.")).toBe(
+      "A night market on Carroll Creek.",
+    );
+  });
+
   it("leaves ordinary prose untouched", () => {
     const prose = "Join us for a wine tasting at the vineyard with live jazz.";
     expect(cleanDescription(prose)).toBe(prose);
