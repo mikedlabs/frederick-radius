@@ -17,7 +17,7 @@ import {
   resetFeedMetrics,
 } from "@/lib/integrations/event-schema";
 import { recordSnapshot } from "@/lib/integrations/feed-snapshot";
-import { normalizeTitle } from "@/lib/events/normalize";
+import { normalizeTitle, cleanDescription } from "@/lib/events/normalize";
 import { fetchTicketmasterMusic } from "@/lib/integrations/ticketmaster";
 import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/event-status";
 
@@ -557,7 +557,9 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       const title = status === "scheduled" ? rawTitle : stripStatusMarker(rawTitle);
       const description = (item.description ?? "").trim();
       const { venue, address } = splitLocation(item.location, feed.default_venue);
-      const cleanedDesc = cleanFeedText(description).slice(0, 300);
+      // cleanDescription runs cleanFeedText AND strips dumped "Event date:
+      // … Time: … Location:" metadata at the live source (see normalize.ts).
+      const cleanedDesc = cleanDescription(description).slice(0, 300);
       const inferredCategory = feedCategory(feed, title, description);
 
       const candidate = {
@@ -671,7 +673,9 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
         id: `${feed.source}:${dedupeKey(title, start, venue)}`,
         title,
         status,
-        description: description.slice(0, 300),
+        // This path previously stored the RAW description (no clean at all);
+        // route it through the same boundary strip as path 1.
+        description: cleanDescription(description).slice(0, 300),
         starts_at: start.toISOString(),
         ends_at: end.toISOString(),
         venue_name: venue,

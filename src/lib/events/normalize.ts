@@ -93,6 +93,49 @@ export function normalizeTitle(
 }
 
 /**
+ * Labels that some calendar feeds dump as raw metadata into the event
+ * DESCRIPTION body — e.g. "Event date: Jun 9  Event Time: 6 PM  Location:
+ * City Hall". That is data, not a reason to go, and it leaked onto cards,
+ * the detail body, and OG blurbs (the audit's luncheon hero). The strip
+ * lives HERE, at the data boundary, so every surface reads the same clean
+ * text — never a render-time patch on one component.
+ */
+const META_LABELS =
+  "event\\s+date|event\\s+time|date|time|location|venue|cost|admission|price|tickets?|when|where";
+// A leading "Label: value" whose value runs up to the NEXT label — i.e. a
+// member of a metadata CHAIN. Only chain members are stripped, so ordinary
+// prose (which never chains "Label: … Label: …") is never eaten.
+const META_CHAIN_SEGMENT = new RegExp(
+  `^\\s*(?:${META_LABELS})\\s*:\\s*.*?(?=\\s(?:${META_LABELS})\\s*:)`,
+  "i",
+);
+// A bare "Label: shortvalue" with no sentence prose — the tail of a chain.
+const META_LONE = new RegExp(`^\\s*(?:${META_LABELS})\\s*:\\s*[^.!?]{0,60}$`, "i");
+
+/**
+ * Clean an event description for display: decode + strip HTML/entities
+ * (cleanFeedText), then remove a LEADING run of dumped "Label: value"
+ * metadata. Deliberately conservative — it removes only chained metadata
+ * segments, and drops a final bare label only when it's the tail of a
+ * chain it already stripped. A standalone one-line "Time: …" that might be
+ * a real description is left untouched. Whitespace is collapsed. Pure; the
+ * caller decides any length cap.
+ */
+export function cleanDescription(raw: string | null | undefined): string {
+  let d = cleanFeedText(raw ?? "");
+  const original = d;
+  let prev = "";
+  while (d !== prev) {
+    prev = d;
+    d = d.replace(META_CHAIN_SEGMENT, "").trim();
+  }
+  // Only drop a trailing bare label when we actually stripped a chain, so a
+  // standalone "Time: A Musical Journey" is never mistaken for metadata.
+  if (d !== original && META_LONE.test(d)) d = "";
+  return d.replace(/\s+/g, " ").trim();
+}
+
+/**
  * Collapse key for recurring events. Title plus venue plus municipality,
  * with no date component, so a daily or weekly series collapses to ONE
  * entry rather than one per weekday. Mirrors the municipal loader's
