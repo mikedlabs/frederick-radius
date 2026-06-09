@@ -157,7 +157,8 @@
       "category": "services"
     },
     "skips-auto-repair": {
-      "category": "services"
+      "category": "services",
+      "name": "Skip's Auto Repair"
     },
     "soft-images-salon-frederick-maryland": {
       "category": "services"
@@ -184,7 +185,44 @@
       "category": "wellness"
     },
     "wastlers-barber-shop": {
-      "category": "services"
+      "category": "services",
+      "name": "Wastler's Barber Shop"
+    },
+    "bill-and-earls-auto-services-center": {
+      "name": "Bill and Earl's Auto Services Center"
+    },
+    "oscars-alehouse": {
+      "name": "Oscar's Alehouse"
+    },
+    "charleys-restaurant": {
+      "name": "Charley's Restaurant"
+    },
+    "bellisarios-pizza": {
+      "name": "Bellisario's Pizza"
+    },
+    "uncle-ralphs-bakery": {
+      "name": "Uncle Ralph's Bakery"
+    },
+    "hinzis-kitchen": {
+      "name": "Hinzi's Kitchen"
+    },
+    "rosatis-pizza-5": {
+      "name": "Rosati's Pizza"
+    },
+    "zoes-chocolate-company": {
+      "name": "Zoe's Chocolate Company"
+    },
+    "wags-restaurant": {
+      "name": "Wag's Restaurant"
+    },
+    "roros-mexican-grill-and-cantina": {
+      "name": "Roro's Mexican Grill and Cantina"
+    },
+    "mcclintocks-back-bar": {
+      "name": "McClintock's Back Bar"
+    },
+    "jojos-restaurant-tap-house": {
+      "name": "JoJo's Restaurant Tap House"
     }
   }
 }
