@@ -18,7 +18,7 @@ export type Category = {
 };
 
 export const CATEGORIES: Category[] = [
-  { slug: "food", name: "Food & Drink", icon: "Utensils", color: "#A03A22", display_order: 10, blurb: "Restaurants, cafes, bars, breweries — all open-now aware." },
+  { slug: "food", name: "Eat & drink", icon: "Utensils", color: "#A03A22", display_order: 10, blurb: "Restaurants, cafes, bars, breweries — all open-now aware." },
   { slug: "restaurant", name: "Restaurants", parent: "food", icon: "UtensilsCrossed", color: "#A03A22", display_order: 11, blurb: "Sit-down restaurants from quick to refined." },
   { slug: "coffee", name: "Coffee", parent: "food", icon: "Coffee", color: "#8B5A2B", display_order: 12, blurb: "Cafes, roasters, third-wave spots, and quick-stop shops." },
   { slug: "bar", name: "Bars", parent: "food", icon: "Wine", color: "#7E1F1F", display_order: 13, blurb: "Cocktail bars, pubs, dives, and tap rooms." },

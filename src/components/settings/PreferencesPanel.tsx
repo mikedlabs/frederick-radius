@@ -56,7 +56,7 @@ const INTEREST_OPTIONS: Array<{
   Icon: typeof Utensils;
   color: string;
 }> = [
-  { slug: "food", label: "Food & Drink", Icon: Utensils, color: "#A03A22" },
+  { slug: "food", label: "Eat & drink", Icon: Utensils, color: "#A03A22" },
   { slug: "outdoors", label: "Parks & Trails", Icon: Trees, color: "#1E6B3A" },
   { slug: "arts", label: "Arts & Culture", Icon: Palette, color: "#7E2C6F" },
   { slug: "family", label: "Family", Icon: Baby, color: "#C99632" },

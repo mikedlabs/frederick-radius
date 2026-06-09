@@ -31,7 +31,7 @@ const VIBE_META: Record<Vibe, { label: string; icon: LucideIcon; accent: string 
   // Accents reuse the category palette from src/data/categories.ts so a
   // vibe header reads in the same color as its cards' left rail.
   music:    { label: "Music",    icon: Music,     accent: "#7E2C6F" },
-  food:     { label: "Food & drink", icon: Utensils, accent: "#A03A22" },
+  food:     { label: "Eat & drink", icon: Utensils, accent: "#A03A22" },
   family:   { label: "Family",   icon: Baby,      accent: "#C99632" },
   arts:     { label: "Arts",     icon: Palette,   accent: "#7E2C6F" },
   outdoors: { label: "Outdoors", icon: Trees,     accent: "#1E6B3A" },
