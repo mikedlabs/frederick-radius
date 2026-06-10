@@ -1,31 +1,65 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/ingest/all", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/notify-civic-alerts", "schedule": "*/30 * * * *" },
-    { "path": "/api/cron/business-status", "schedule": "0 7 * * *" },
-    { "path": "/api/cron/data-health", "schedule": "30 9 * * *" },
-    { "path": "/api/cron/daily-briefing", "schedule": "0 12,13 * * *" }
+    {
+      "path": "/api/ingest/all",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/notify-civic-alerts",
+      "schedule": "*/30 * * * *"
+    },
+    {
+      "path": "/api/cron/business-status",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/data-health",
+      "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/cron/daily-briefing",
+      "schedule": "0 12,13 * * *"
+    },
+    {
+      "path": "/api/cron/hours-refresh",
+      "schedule": "0 8 * * *"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), interest-cohort=()" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), interest-cohort=()"
+        }
       ]
     },
     {
       "source": "/manifest.webmanifest",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
+        }
       ]
     },
     {
       "source": "/icons/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=2592000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, immutable"
+        }
       ]
     }
   ]

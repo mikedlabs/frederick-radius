@@ -148,6 +148,21 @@ export const events = pgTable(
   }),
 );
 
+/**
+ * Rolling hours refresh (data brief 4.3). The hours-refresh cron upserts
+ * one row per place per cycle; npm run refresh:hours pulls the table into
+ * src/data/places-hours-refresh.json, which the place loader merges over
+ * the static enrichment. refreshed_at is the verification date the
+ * freshness policy reads.
+ */
+export const placeHoursRefresh = pgTable("place_hours_refresh", {
+  slug: text("slug").primaryKey(),
+  placeId: text("place_id").notNull(),
+  weekdayHours: jsonb("weekday_hours").$type<string[] | null>(),
+  businessStatus: text("business_status"),
+  refreshedAt: timestamp("refreshed_at", { withTimezone: true }).notNull(),
+});
+
 export const dataSources = pgTable("data_sources", {
   id: uuid("id").primaryKey().defaultRandom(),
   slug: text("slug").notNull().unique(),
