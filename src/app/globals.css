@@ -696,11 +696,28 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   animation: radius-breathe 2600ms ease-in-out infinite;
 }
 
+/* Ken Burns — a very slow, gentle scale + drift on a hero photograph so
+ * the lead image feels alive without ever pulling focus. Long and subtle
+ * by design (28s, ~6% scale): it should be felt, not watched. The hero
+ * wrapper clips overflow, so the scaled image never disturbs layout.
+ * Opt-in via SeasonalPhoto's `kenBurns` prop — reserved for the large
+ * county heroes, never list thumbnails. */
+@keyframes ken-burns {
+  0%   { transform: scale(1) translate3d(0, 0, 0); }
+  100% { transform: scale(1.06) translate3d(0, -1.5%, 0); }
+}
+.ken-burns {
+  animation: ken-burns 28s ease-out both;
+  transform-origin: 50% 40%;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .breathe-in,
   .stagger-children > *,
   .radius-ripple,
-  .radius-breathe { animation: none; opacity: 1; transform: none; }
+  .radius-breathe,
+  .ken-burns { animation: none; opacity: 1; transform: none; }
 }
 
 

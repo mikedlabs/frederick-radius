@@ -158,6 +158,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
             season="auto"
             alt={`${c.name} across Frederick County`}
             priority
+            kenBurns
             sizes="(max-width: 720px) 100vw, 720px"
             className="absolute inset-0"
           />
