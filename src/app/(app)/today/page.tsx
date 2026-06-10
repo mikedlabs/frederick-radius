@@ -48,6 +48,7 @@ import { easternWallToUtcISO } from "@/lib/tz";
 import TodayAsk from "@/components/today/TodayAsk";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { AnswerCard } from "@/components/answer";
 import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
 import { PARKING_GARAGES } from "@/data/parking-garages";
@@ -381,7 +382,25 @@ export default async function HomePage({
         {todayAnswers.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {todayAnswers.map((a, i) => (
-              <AnswerCard key={a.id} answer={a} featured={i === 0} />
+              <AnswerCard
+                key={a.id}
+                answer={a}
+                featured={i === 0}
+                // Redo pass: the LEAD answer is a photo plate — the county
+                // aerial behind white serif — so the first thing a visitor
+                // sees is Frederick, not a cream box. Same curated
+                // SeasonalPhoto system as the guide/town/category heroes.
+                plate={
+                  i === 0 ? (
+                    <SeasonalPhoto
+                      season="auto"
+                      alt=""
+                      sizes="(max-width: 720px) 100vw, 720px"
+                      className="absolute inset-0"
+                    />
+                  ) : undefined
+                }
+              />
             ))}
           </div>
         )}

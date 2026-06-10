@@ -23,7 +23,19 @@ const STATUS_META: Record<AnswerStatus, { label: string; fg: string; bg: string 
   free: { label: "Free", fg: "var(--app-positive)", bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)" },
 };
 
-export default function AnswerCard({ answer, featured = false }: { answer: Answer; featured?: boolean }) {
+export default function AnswerCard({
+  answer,
+  featured = false,
+  plate,
+}: {
+  answer: Answer;
+  featured?: boolean;
+  /** Optional full-bleed imagery behind a FEATURED card (the redo pass:
+   *  the lead answer becomes a photo plate — county aerial behind white
+   *  serif — instead of one more cream box). Pass a fill-positioned
+   *  element, e.g. <SeasonalPhoto className="absolute inset-0" />. */
+  plate?: React.ReactNode;
+}) {
   const meta = answer.status ? STATUS_META[answer.status] : null;
   const statusLabel = answer.statusLabel ?? meta?.label;
   const metaRight = answer.distanceLabel ?? answer.timeLabel;
@@ -34,28 +46,42 @@ export default function AnswerCard({ answer, featured = false }: { answer: Answe
   // only when there's no answer. The source line stays as the quiet
   // trust footer. (Calm pass: one fact, one line.)
   const supporting = answer.answer ?? answer.whyShown;
+  const plated = Boolean(plate && featured);
+  const inkMain = plated ? "#FFFFFF" : "var(--app-ink)";
+  const inkSub = plated ? "rgba(255,255,255,0.88)" : "var(--app-ink-2)";
+  const inkQuiet = plated ? "rgba(255,255,255,0.7)" : "var(--app-ink-3)";
 
   return (
     <Surface
       as="article"
       elevation={featured ? 3 : 2}
-      className={`relative flex h-full flex-col gap-2 overflow-hidden p-4 pl-[19px] ${featured ? "sm:col-span-2" : ""}`}
+      className={`relative flex h-full flex-col gap-2 overflow-hidden p-4 pl-[19px] ${featured ? "sm:col-span-2" : ""} ${plate && featured ? "min-h-[200px] justify-end" : ""}`}
     >
+      {plated && (
+        <>
+          <div aria-hidden className="absolute inset-0">{plate}</div>
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.62) 100%)" }}
+          />
+        </>
+      )}
       {/* Color-coded spine keyed to the answer's status — turns a wall of
           identical cream cards into an at-a-glance, differentiated stack.
           The featured lead gets a thicker spine + deeper elevation. */}
       <span
         aria-hidden
-        className={`absolute inset-y-0 left-0 ${featured ? "w-2" : "w-1.5"}`}
+        className={`absolute inset-y-0 left-0 z-10 ${featured ? "w-2" : "w-1.5"}`}
         style={{ background: meta?.fg ?? "var(--app-cool)" }}
       />
       {(statusLabel || metaRight) && (
-        <div className="flex items-center justify-between gap-2">
+        <div className="relative z-10 flex items-center justify-between gap-2">
           {statusLabel ? (
             <span
               className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]"
               style={{
-                background: meta?.bg,
+                background: plated ? "var(--app-bg-elevated-solid)" : meta?.bg,
                 color: meta?.fg ?? "var(--app-ink-2)",
                 boxShadow: meta ? `inset 0 0 0 1px color-mix(in srgb, ${meta.fg} 30%, transparent)` : undefined,
               }}
@@ -66,37 +92,37 @@ export default function AnswerCard({ answer, featured = false }: { answer: Answe
             <span />
           )}
           {metaRight && (
-            <span className="text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <span className="text-[12px] font-medium tabular-nums" style={{ color: inkQuiet }}>
               {metaRight}
             </span>
           )}
         </div>
       )}
 
-      <div className="space-y-1">
+      <div className="relative z-10 space-y-1">
         <h3
-          className={`${featured ? "text-[18px]" : "text-[16px]"} font-semibold leading-snug`}
-          style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
+          className={`${featured ? (plated ? "text-[22px]" : "text-[18px]") : "text-[16px]"} font-semibold leading-snug`}
+          style={{ color: inkMain, fontFamily: "var(--font-display, Georgia, serif)" }}
         >
           {answer.title}
         </h3>
         {supporting && (
-          <p className="text-[14px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          <p className="text-[14px] leading-snug" style={{ color: inkSub }}>
             {supporting}
           </p>
         )}
       </div>
 
       {source && (
-        <div className="mt-auto pt-1">
-          <p className="text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
+        <div className="relative z-10 mt-auto pt-1">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em]" style={{ color: inkQuiet }}>
             {source}
           </p>
         </div>
       )}
 
       {(answer.primaryAction || answer.secondaryAction) && (
-        <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div className="relative z-10 flex flex-wrap items-center gap-2 pt-1">
           {answer.primaryAction && (
             <Button
               variant="primary"
