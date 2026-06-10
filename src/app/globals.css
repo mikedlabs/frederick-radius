@@ -72,11 +72,22 @@
 
   --app-positive: #1E6B3A;
   --app-warning: #B26B00;
-  /* Was #A02929 — too close to --app-brand (#A8462C, the brick) at
+  /* Was #A02929, too close to --app-brand (#A8462C, the brick) at
      a glance, so a "danger" alert visually read as a brand-colored
      content card. The new red is unambiguously stop-sign / alarm. */
   --app-danger: #B4231E;
   --app-info: #2F5470;
+
+  /* OPEN-STATE SEMANTIC SET (Premium Overhaul, identity pillar). Open is
+     a state, not an alert, so closed is a muted neutral, never red. The
+     only tokens an open-status dot or badge may use. WCAG AA on paper. */
+  --state-open: #1E6B3A;
+  --state-open-bg: color-mix(in srgb, #1E6B3A 14%, transparent);
+  --state-closing: #B26B00;
+  --state-closing-bg: color-mix(in srgb, #B26B00 16%, transparent);
+  --state-closed: #8A8479;
+  --state-closed-bg: color-mix(in srgb, #8A8479 16%, transparent);
+  --state-unknown: #B3AC9D;
 
   /* ─────────────────────────────────────────────────────
    * BRIEF-NAMED ALIASES (Experience / Visual brief).

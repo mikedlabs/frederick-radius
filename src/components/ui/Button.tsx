@@ -6,13 +6,13 @@ import type { CSSProperties, ReactNode } from "react";
  *
  * Kills the hand-repeated CTA classNames. Tactile by construction:
  * filled variants get layered elevation + the inner top highlight
- * (which over the brick reads as a soft gloss) + spring press; ghost
+ * (which over the brick reads as a soft gloss) + spring press; quiet
  * stays flat. Polymorphic: pass `href` to render a Next link, else a
  * real <button>. Server-component safe — no onClick (interactive
  * callers use a client wrapper); links + form buttons cover the app.
  */
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "quiet";
 type Size = "sm" | "md" | "lg";
 
 const SIZE: Record<Size, string> = {
@@ -28,17 +28,12 @@ function variantOf(v: Variant): { cls: string; style: CSSProperties } {
         cls: "tactile tactile-interactive tactile-lift tactile-glow-brand text-white",
         style: { backgroundColor: "var(--app-brand)" },
       };
-    case "danger":
-      return {
-        cls: "tactile tactile-interactive tactile-lift text-white",
-        style: { backgroundColor: "var(--app-danger)" },
-      };
     case "secondary":
       return {
         cls: "tactile tactile-interactive",
         style: { backgroundColor: "var(--app-bg-elevated)", color: "var(--app-ink)" },
       };
-    case "ghost":
+    case "quiet":
       return {
         cls: "transition-[transform,background-color,color] duration-150 hover:bg-[var(--app-bg-sunken)] hover:text-[var(--app-ink)] active:scale-[0.97]",
         style: { color: "var(--app-ink-2)" },

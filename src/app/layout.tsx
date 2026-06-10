@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import {
-  Newsreader,
-  Public_Sans,
+  Fraunces,
+  Inter,
   JetBrains_Mono,
 } from "next/font/google";
 import "./globals.css";
@@ -15,30 +15,29 @@ import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 
 /**
- * Typography — Frederick Radius brand deck.
- * Newsreader is the display face (dates, headlines, section titles, place
- * names) and carries the editorial, local warmth through its italic.
- * Public Sans is the working sans for labels, buttons, and dense UI.
+ * Typography (Premium Overhaul Phase 1, the documented system).
+ * Fraunces is the display face: page titles, town and place headers,
+ * section heads, the field-guide editorial voice. It replaces Newsreader,
+ * which resolves the documentation versus production contradiction.
+ * Inter is the functional UI face: navigation, labels, buttons, body,
+ * dense lists. It reads as an instrument at small sizes.
  * JetBrains Mono carries every number and code-like value (times,
- * temperatures, distances, counts, tracked labels), which is what gives
- * the product its instrument quality.
+ * distances, counts, coordinates), the instrument tics.
  *
- * The variable names stay generic (sans-base / display / mono-base) so
- * the downstream tokens (--font-sans / --font-serif / --font-mono in
- * globals.css) hold steady if the typefaces change again.
+ * Variable names stay generic so the downstream tokens (--font-sans /
+ * --font-serif / --font-mono in globals.css) hold steady.
  */
-const sans = Public_Sans({
+const sans = Inter({
   variable: "--font-sans-base",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const display = Newsreader({
+const display = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   display: "swap",
 });
