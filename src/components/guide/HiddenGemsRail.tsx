@@ -41,7 +41,7 @@ export default function HiddenGemsRail() {
         <Link
           href="/collections/hidden-gems"
           className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold"
-          style={{ color: "var(--app-brand)" }}
+          style={{ color: "var(--app-brand-press)" }}
         >
           See all
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
