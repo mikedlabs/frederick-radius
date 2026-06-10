@@ -41,6 +41,26 @@ function whyItMatters(e: EventWithMeta): string | undefined {
   return line || undefined;
 }
 
+/**
+ * Slim an event before it crosses into a client component.
+ *
+ * The events page serializes every event twice: once as rendered HTML and
+ * once as React Flight data in the script payload. A live audit measured
+ * /events at 787 KB with 52 percent of that inside script tags. The cards
+ * never render a description, and the only client consumer of the field is
+ * the explorer search, which matches the opening text of the title, venue,
+ * and description. Capping the description to its first 160 characters here
+ * removes the largest per row field from the duplicated payload without
+ * changing a single rendered card and without breaking search on the
+ * opening sentence. The full description still lives on the event detail
+ * page, which loads its own record.
+ */
+function slimEventForClient<T extends { description?: string }>(e: T): T {
+  const d = e.description;
+  if (!d || d.length <= 160) return e;
+  return { ...e, description: d.slice(0, 160) };
+}
+
 export const metadata: Metadata = {
   alternates: { canonical: "/events" },
   title: "Events",
@@ -95,20 +115,23 @@ export default async function EventsIndexPage({
   const now = new Date();
   const seedLive = eventsLive(now);
 
-  // The unified set is assembled in lib/loaders/unifiedEvents — the SAME
+  // The unified set is assembled in lib/loaders/unifiedEvents, the SAME
   // function /today counts from, so the two surfaces can never disagree
-  // about "this weekend" again (June-9 deep audit P0-5: /today said 1,
-  // this page said 13). All sources inside it are fail-soft; the civic
-  // ingest below keeps the same .catch guards. "Feed failures must never
-  // block or break /events."
-  const [{ unified, publicEvents: allEvents }, ingestedSeries, ingestedSummary] =
+  // about "this weekend" again. All sources inside it are fail-soft; the
+  // civic ingest below keeps the same .catch guards. Feed failures must
+  // never block or break /events.
+  const [{ unified, publicEvents }, ingestedSeries, ingestedSummary] =
     await Promise.all([
       assembleUnifiedEvents(now),
       getIngestedSeries().catch(() => []),
       getIngestedSummary().catch(() => ({ total: 0, series: 0, recurring: 0 })),
     ]);
-  const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting");
-  const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder");
+  // Slim every event before it crosses into a client component. Cards never
+  // render a description, and only the explorer search reads it, so capping
+  // it removes the largest per row field from the duplicated RSC payload.
+  const allEvents = publicEvents.map(slimEventForClient);
+  const civicEvents = unified.filter((e) => classifyEvent(e) === "civic_meeting").map(slimEventForClient);
+  const reminderEvents = unified.filter((e) => classifyEvent(e) === "town_reminder").map(slimEventForClient);
   const liveSlugs = seedLive.map((e) => e.slug);
 
   // The ingested "Civic & municipal calendar" series is a SEPARATE data
