@@ -46,7 +46,12 @@ export type Place = {
   /** Operational status. "needs_verification" until cross-checked against Google Places / Yelp / etc. */
   is_operational?: OperationalStatus;
   feature_score: number;
-  source: "seed" | "dfp" | "arcgis" | "yelp" | "google" | "manual";
+  source:
+    | "seed" | "dfp" | "arcgis" | "yelp" | "google" | "manual"
+    // Values present in the data files that the old union denied: the
+    // county GIS rows and the discovery tail (rows with no source field
+    // are normalized to "discovered" by the provenance stamper).
+    | "fc-gis" | "discovered" | "osm";
   updated_at: string;
 
   // ── Reservation / ordering / parking integrations ──
@@ -1351,7 +1356,7 @@ const PLACES_DISCOVERED: Place[] = (PLACES_DISCOVERED_RAW as Array<{
   tags?: string[];
   address: string; city: string; postal_code: string; municipality: string;
   geom: LngLat; website?: string; phone?: string; google_place_id?: string;
-  feature_score: number; updated_at: string;
+  feature_score: number; updated_at: string; source?: string;
 }>)
   .filter((p) => !TAKEN_SLUGS.has(p.slug))
   .map((p) => ({
@@ -1373,7 +1378,14 @@ const PLACES_DISCOVERED: Place[] = (PLACES_DISCOVERED_RAW as Array<{
     hours_verified: false,
     is_operational: "operational" as const,
     feature_score: p.feature_score,
-    source: "google" as const,
+    // "discovered", not "google": these rows arrived through programmatic
+    // discovery and no person has reviewed them. Labeling them "google"
+    // let a thousand unreviewed rows claim the same trust tier as the
+    // enriched set; the provenance stamper maps "discovered" to the
+    // scraped confidence so badging and visibility stay honest. Rows
+    // that carry their own source keep it: the file holds nine county
+    // GIS rows ("fc-gis") that the old hardcode was silently relabeling.
+    source: (p.source ?? "discovered") as Place["source"],
     updated_at: p.updated_at,
   }));
 PLACES.push(...PLACES_DISCOVERED);
