@@ -45,7 +45,6 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { getOpenNowCount, findBucket } from "@/lib/find-picks";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { easternWallToUtcISO } from "@/lib/tz";
-import TodayAsk from "@/components/today/TodayAsk";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import { AnswerCard } from "@/components/answer";
@@ -377,7 +376,6 @@ export default async function HomePage({
           duplicated these answer cards — and the box's "Ask Radius" eyebrow
           is hidden under the headline, so the first answer clears the fold. */}
       <section className="mt-3 space-y-3" aria-label="Ask Radius">
-        <TodayAsk />
         {todayAnswers.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {todayAnswers.map((a, i) => (

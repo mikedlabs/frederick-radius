@@ -26,7 +26,7 @@ export default function TodayActions() {
   const h = easternHour(new Date());
   const primary =
     h >= 5 && h < 11
-      ? { label: "Find coffee", href: "/map?mode=browse&intent=coffee" }
+      ? { label: "Find coffee", href: "/explore?mode=browse&intent=coffee" }
       : h >= 17 || h < 5
         ? { label: "What's tonight", href: "/today?t=tonight" }
         : { label: "Open now nearby", href: "/open-now" };
@@ -45,7 +45,7 @@ export default function TodayActions() {
         <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
       </Link>
       <Link
-        href="/map"
+        href="/explore"
         className="tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-meta-lg font-semibold transition active:scale-[0.96]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
       >

@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Search, Settings as SettingsIcon, MoreHorizontal, ChevronLeft } from "lucide-react";
-import SearchOverlay from "@/components/search/SearchOverlay";
+import { Bookmark, Settings as SettingsIcon, MoreHorizontal, ChevronLeft } from "lucide-react";
 import LocationChip from "./LocationChip";
 import MoreSheet from "./MoreSheet";
 import PulseIndicator from "./PulseIndicator";
+import TopBarOmnibox from "./TopBarOmnibox";
 import { usePathname, useRouter } from "next/navigation";
 import { tabIndexForPath } from "./tabs";
 
@@ -46,11 +46,10 @@ function useHideOnScroll(disabled: boolean) {
 }
 
 export default function TopBar() {
-  const [searchOpen, setSearchOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const hidden = useHideOnScroll(searchOpen);
+  const hidden = useHideOnScroll(false);
 
   // Deep page = anything that isn't one of the 4 bottom-nav tabs (or its
   // sub-route) and isn't the root. On these the bottom nav lights NO
@@ -77,23 +76,31 @@ export default function TopBar() {
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
+    // ⌘K / Ctrl-K and "/" focus THE omnibox — the app's single search
+    // input — preserving the muscle memory the old modal trained.
+    const focusOmnibox = () => {
+      const el = document.querySelector<HTMLInputElement>(
+        'header input[type="search"]',
+      );
+      el?.focus();
+      el?.select();
+    };
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
-        setSearchOpen(true);
+        focusOmnibox();
+        return;
       }
-      // Forward slash as a quick-open (don't trigger when typing into another input)
-      if (e.key === "/" && !searchOpen) {
-        const tag = (e.target as HTMLElement)?.tagName;
-        if (tag !== "INPUT" && tag !== "TEXTAREA" && (e.target as HTMLElement)?.contentEditable !== "true") {
-          e.preventDefault();
-          setSearchOpen(true);
-        }
+      const t = e.target as HTMLElement | null;
+      const typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (e.key === "/" && !typing) {
+        e.preventDefault();
+        focusOmnibox();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [searchOpen]);
+  }, []);
 
   return (
     <>
@@ -157,38 +164,30 @@ export default function TopBar() {
             </Link>
           )}
 
-          {/* Search trigger — full-width input-styled pill so the
-              header reads as "find anything" instead of three tiny
-              icons competing for attention. Fills the space between
-              the logo and the right-side chips, Apple-Maps style.
-              Tap anywhere on it opens the typeahead modal. */}
-          <button
-            type="button"
-            onClick={() => setSearchOpen(true)}
-            aria-label="Search places, events, towns"
-            className="tap-44 ml-1 flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border bg-[var(--app-bg-elevated)] px-3 text-sm transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-          >
-            <Search className="h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-            {/* Calm, static placeholder. ONE text node (truncates on
-                narrow phones) — the previous two responsive spans both
-                lived in the DOM, so non-CSS readers and audit tools saw
-                them concatenated ("What's open?What's open right now?").
-                The button's aria-label is the accessible name; this text
-                is decorative. */}
-            <span className="truncate text-left">What&apos;s open right now?</span>
-            <kbd
-              className="ml-auto hidden shrink-0 rounded border bg-[var(--app-bg-sunken)] px-1 text-[10px] font-medium leading-tight sm:inline-block"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-            >
-              ⌘K
-            </kbd>
-          </button>
+          {/* THE omnibox — the one search input in the entire application
+              (redesign shell). A real input, not a modal trigger: type
+              "coffee open now", the intent becomes a removable chip and
+              the URL carries the state. */}
+          <div className="ml-1 min-w-0 flex-1">
+            <TopBarOmnibox />
+          </div>
 
           {/* (Removed the header "My Radius" bookmark — it duplicated the
               My Radius primary nav tab/SideRail item, putting two bookmark
               icons on screen for one destination. My Radius stays one tap
               away via the bottom nav (<lg) and the SideRail (≥lg).) */}
+
+          {/* Saved — promoted to the TopBar now that the primary nav is
+              three surfaces (redesign shell): one tap from anywhere,
+              beside Settings. */}
+          <Link
+            href="/my-radius"
+            aria-label="Saved"
+            className="tap-44 grid h-9 w-9 shrink-0 place-items-center rounded-full border bg-[var(--app-bg-elevated)] transition hover:bg-[var(--app-bg-sunken)]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+          >
+            <Bookmark className="h-4 w-4" strokeWidth={2} aria-hidden />
+          </Link>
 
           {/* Settings — visible at all viewports. The original
               design hid this on mobile and routed mobile users via
@@ -248,7 +247,6 @@ export default function TopBar() {
         </div>
       </header>
 
-      <SearchOverlay open={searchOpen} onClose={() => setSearchOpen(false)} />
       <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} />
     </>
   );

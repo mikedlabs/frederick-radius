@@ -201,6 +201,17 @@ const nextConfig: NextConfig = {
       // remains permanently redirected so bookmarks + iOS Share Sheet
       // saves don't 404.
       { source: "/saved", destination: "/my-radius", permanent: true },
+      // REDESIGN SHELL (Phase 2): the route sprawl collapses to three
+      // surfaces. Retired hubs 301 to their new homes so SEO equity
+      // transfers. Detail routes (/places/[slug], /m/[slug], …) stay.
+      { source: "/map", destination: "/explore", permanent: true },
+      { source: "/places", destination: "/explore", permanent: true },
+      // DEFERRED to Phase 4 (same rule as /events): /pulse → /today and
+      // /towns → /guide redirect only once Today hosts the pulse content
+      // and Guide hosts the town library — until then those pages stay
+      // reachable so nothing dead-ends (and the funnel's town door
+      // doesn't loop through a redirect back to /guide).
+
       // Submit/business hub paths 404'd (only the leaf routes existed),
       // which reads as broken to community submitters + business owners
       // (external audit ship-blocker #2). Point the bare paths at the

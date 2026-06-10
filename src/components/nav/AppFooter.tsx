@@ -17,8 +17,8 @@ import Link from "next/link";
 const LINKS: Array<{ href: string; label: string }> = [
   { href: "/about", label: "About" },
   { href: "/trust", label: "Trust & sources" },
-  { href: "/towns", label: "Towns" },
-  { href: "/places", label: "All places" },
+  { href: "/guide", label: "Guide" },
+  { href: "/explore", label: "Explore" },
   { href: "/events", label: "Events" },
 ];
 

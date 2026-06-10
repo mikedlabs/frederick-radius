@@ -16,7 +16,7 @@ import AppFooter from "@/components/nav/AppFooter";
  * This is a thin client wrapper purely so we can branch on the route;
  * the page itself is still a server component passed through `children`.
  */
-const FULL_BLEED_ROUTES = new Set<string>(["/map"]);
+const FULL_BLEED_ROUTES = new Set<string>(["/explore"]);
 
 export default function AppMain({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

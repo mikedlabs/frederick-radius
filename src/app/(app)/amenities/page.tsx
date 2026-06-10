@@ -109,7 +109,7 @@ export default function AmenitiesPage() {
 
       <nav aria-label="Breadcrumb" className="text-xs">
         <Link
-          href="/map"
+          href="/explore"
           className="inline-flex items-center gap-1 hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
@@ -146,7 +146,7 @@ export default function AmenitiesPage() {
         <SectionHeading
           title="On the map today"
           count={totalLive}
-          href="/map"
+          href="/explore"
           cta="Open map"
         />
         <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
@@ -162,7 +162,7 @@ export default function AmenitiesPage() {
             return (
               <li key={g.kind}>
                 <Link
-                  href="/map"
+                  href="/explore"
                   className="group flex h-full flex-col gap-1.5 rounded-[var(--app-radius-md)] border p-3 transition active:scale-[0.985]"
                   style={{
                     background: "var(--app-paper)",

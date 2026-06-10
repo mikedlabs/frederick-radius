@@ -61,7 +61,7 @@ export default function MapTimeChips({
     if (sub) qs.set("sub", sub);
     qs.set("t", mode);
     if (openNow) qs.set("open", "now");
-    return `/map?${qs.toString()}`;
+    return `/explore?${qs.toString()}`;
   };
   const openHref = (): string => {
     const qs = new URLSearchParams();
@@ -70,7 +70,7 @@ export default function MapTimeChips({
     qs.set("t", active);
     // Toggle: present → remove; absent → set
     if (!openNow) qs.set("open", "now");
-    return `/map?${qs.toString()}`;
+    return `/explore?${qs.toString()}`;
   };
 
   // No outer absolute wrapper anymore — MapIntentChips renders this

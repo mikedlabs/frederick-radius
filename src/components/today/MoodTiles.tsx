@@ -39,7 +39,7 @@ const intentColor = (k: IntentKey) =>
 
 // Category tiles route to the BROWSE map (mode=browse) so ?intent
 // actually filters — the default radius map ignores it.
-const intentHref = (k: IntentKey) => `/map?mode=browse&intent=${k}`;
+const intentHref = (k: IntentKey) => `/explore?mode=browse&intent=${k}`;
 
 const MOODS: Mood[] = [
   { label: "Coffee",    nudge: "Roasters and cafes",        href: intentHref("coffee"),  icon: Coffee,          color: intentColor("coffee")  },

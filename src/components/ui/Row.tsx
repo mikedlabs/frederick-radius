@@ -18,7 +18,7 @@ import type { CSSProperties, ReactNode } from "react";
  *
  *   <RowList>
  *     {parks.map((p) => (
- *       <Row key={p.id} href={`/map?focus=${p.lat},${p.lng}`}
+ *       <Row key={p.id} href={`/explore?focus=${p.lat},${p.lng}`}
  *            leading={<IconTile icon={Trees} />}
  *            title={p.name} subtitle={p.address} meta={`${p.acres} ac`} />
  *     ))}

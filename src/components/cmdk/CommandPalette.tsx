@@ -63,8 +63,8 @@ const TOWNS: { slug: string; name: string }[] = [
 
 const ROUTES: { href: string; label: string; description: string; icon: typeof Home }[] = [
   { href: "/today", label: "Today", description: "Weather + what's open + what's happening", icon: Home },
-  { href: "/map", label: "Browse", description: "The map — pan, layers, filters", icon: Compass },
-  { href: "/map?mode=radius", label: "Within reach", description: "What's reachable from a point", icon: MapPin },
+  { href: "/explore", label: "Browse", description: "The map — pan, layers, filters", icon: Compass },
+  { href: "/explore?mode=radius", label: "Within reach", description: "What's reachable from a point", icon: MapPin },
   { href: "/events", label: "Events", description: "Tonight, weekend, this week", icon: Calendar },
   { href: "/my-radius", label: "My Radius", description: "Places you follow", icon: Bookmark },
   { href: "/about", label: "About", description: "What this app is", icon: Info },

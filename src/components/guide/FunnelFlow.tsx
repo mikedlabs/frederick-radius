@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion, type Transition, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Search, ArrowRight, MapPin, ArrowUpDown, Wine, Beer, Baby, Dog, Music, Building2, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, ArrowUpDown, Wine, Beer, Baby, Dog, Music, Building2, type LucideIcon } from "lucide-react";
 import { placesWithHappyHour } from "@/lib/loaders/businessInfo";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -326,37 +326,8 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
                 What are you looking for?
               </h1>
             </header>
-
-            {/* ── ASK INPUT — the obvious first action. A frosted, translucent
-                search field that opens the typed-query screen. The backdrop
-                blur lets the PageBloom glow through (fluid, native), so it
-                reads as floating glass, not flat paper. Sits above the lanes
-                so "just tell me" always leads; the cards are the browse path
-                for when you'd rather tap than type. */}
-            <Link
-              href="/search"
-              onClick={() => haptic("light")}
-              aria-label="Ask or search Frederick Radius"
-              className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3 pl-4 pr-2.5 backdrop-blur-xl"
-              style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}
-            >
-              <span
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-                style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
-              >
-                <Search className="h-[18px] w-[18px]" strokeWidth={2.25} aria-hidden />
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[15px]" style={{ color: "var(--app-ink-3)" }}>
-                Coffee open now, date night, trails…
-              </span>
-              <span
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform group-active:scale-95"
-                style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
-                aria-hidden
-              >
-                <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.5} />
-              </span>
-            </Link>
+            {/* The hero search pill is retired — THE omnibox lives in the
+                TopBar on every surface (redesign shell: one search input). */}
 
             {/* ── BROWSE BY NEED — a BENTO of frosted lanes. The first lane
                 (Eat & drink — the most-tapped need) leads as a wide, taller

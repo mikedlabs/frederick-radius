@@ -24,7 +24,7 @@ export default function manifest(): MetadataRoute.Manifest {
       // URLs match start_url ("/guide") and the four primary BottomNav
       // tabs. Mismatches here would PWA-install with broken jump targets.
       { name: "Find", url: "/guide", short_name: "Find" },
-      { name: "Map", url: "/map", short_name: "Map" },
+      { name: "Map", url: "/explore", short_name: "Map" },
       { name: "Events", url: "/events", short_name: "Events" },
       { name: "My Radius", url: "/my-radius", short_name: "My Radius" },
     ],

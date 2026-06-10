@@ -92,7 +92,7 @@ function bestMove(
       eyebrow: "Best move now",
       title: "Chase the shade",
       sub: "Hot one — a creekside walk, a patio, somewhere cool.",
-      href: "/map?mode=radius",
+      href: "/explore?mode=radius",
       icon: Sun,
     };
   }
@@ -110,7 +110,7 @@ function bestMove(
     eyebrow: "Best move now",
     title: "Get outside while it's nice",
     sub: "Patio weather — a walk, a park, lunch out.",
-    href: "/map?mode=radius",
+    href: "/explore?mode=radius",
     icon: Footprints,
   };
 }
@@ -188,7 +188,7 @@ export default async function TodayMoves({
         </Link>
 
         <Link
-          href="/map?mode=radius"
+          href="/explore?mode=radius"
           className="tactile tactile-interactive block rounded-[var(--app-radius-md)] p-3"
           style={{ background: "var(--app-bg-elevated)" }}
         >

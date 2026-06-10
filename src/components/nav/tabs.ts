@@ -42,11 +42,15 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/guide",     label: "Ask",    icon: Compass,  fillOnActive: false },
-  { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
-  { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
-  { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
-  { href: "/my-radius", label: "Saved",  icon: Bookmark, fillOnActive: true  },
+  // REDESIGN SHELL (Phase 2): three surfaces, three jobs, no overlap.
+  //   Explore — the instrument: full-bleed map + sheet, viewport = filter.
+  //   Today   — the time axis: open now / closes soon / tonight / weekend.
+  //   Guide   — the editorial library: towns, collections, civic, essays.
+  // Saved moved to the TopBar (beside Settings); Events lives inside
+  // Today's time axis (route migrates in Phase 4).
+  { href: "/explore", label: "Explore", icon: MapIcon,  fillOnActive: false },
+  { href: "/today",   label: "Today",   icon: Sun,      fillOnActive: false },
+  { href: "/guide",   label: "Guide",   icon: Compass,  fillOnActive: false },
 ] as const;
 
 /**
@@ -57,10 +61,19 @@ export const TABS: readonly Tab[] = [
  * (correct for /settings, /about, /parks, a place detail, etc.).
  */
 const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
-  ["/places", 2],
-  ["/category", 2],
-  ["/collections", 2],
+  // Explore context (index 0): place browse, categories, the map's old home.
+  ["/places", 0],
+  ["/category", 0],
+  ["/explore", 0],
+  ["/open-now", 0],
+  // Today context (index 1): the time axis absorbs events + pulse.
+  ["/events", 1],
+  ["/pulse", 1],
+  // Guide context (index 2): towns, collections, editorial.
   ["/m/", 2],
+  ["/towns", 2],
+  ["/collections", 2],
+  ["/history", 2],
 ];
 
 /** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */

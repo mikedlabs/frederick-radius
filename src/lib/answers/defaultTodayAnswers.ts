@@ -47,7 +47,7 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
       whyShown: "Open this hour, within reach",
       sourceLabel: "Google Places",
       freshnessLabel: "checked today",
-      primaryAction: { label: "See what's open", href: "/map?mode=browse&open=now" },
+      primaryAction: { label: "See what's open", href: "/explore?mode=browse&open=now" },
       secondaryAction: { label: "All places", href: "/places" },
     });
   }
@@ -96,7 +96,7 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
       answer: `${input.parking.name} is an easy starting point for downtown.`,
       whyShown: "Downtown parking",
       sourceLabel: "City of Frederick parking",
-      primaryAction: { label: "On the map", href: "/map?mode=browse&intent=parking" },
+      primaryAction: { label: "On the map", href: "/explore?mode=browse&intent=parking" },
       secondaryAction: { label: "All garages", href: "/parking" },
     });
   }

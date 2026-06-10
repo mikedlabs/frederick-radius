@@ -22,8 +22,8 @@ const LINKS = {
     title: "Your county, right now",
     tiles: [
       { href: "/pulse", label: "Live pulse", sub: "Traffic, power, schools, 311", Icon: Activity, c: "var(--app-cool)" },
-      { href: "/map?mode=radius", label: "Open near me", sub: "What's open around you", Icon: Navigation, c: "var(--app-brand)" },
-      { href: "/map", label: "On the map", sub: "Parking, amenities, trash", Icon: MapIcon, c: "var(--app-positive, #1E6B3A)" },
+      { href: "/explore?mode=radius", label: "Open near me", sub: "What's open around you", Icon: Navigation, c: "var(--app-brand)" },
+      { href: "/explore", label: "On the map", sub: "Parking, amenities, trash", Icon: MapIcon, c: "var(--app-positive, #1E6B3A)" },
       { href: "/events", label: "What's on", sub: "Meetings & local events", Icon: CalendarDays, c: "var(--app-accent, #B07A1E)" },
     ],
   },

@@ -39,7 +39,7 @@ function ParkRow({ p }: { p: Park }) {
   const subtitle = [kind, p.address].filter(Boolean).join(" · ") || undefined;
   return (
     <Row
-      href={`/map?focus=${p.lat},${p.lng}`}
+      href={`/explore?focus=${p.lat},${p.lng}`}
       leading={<IconTile icon={Trees} tone="#2E3B2C" />}
       title={titleCase(p.name)}
       subtitle={subtitle}

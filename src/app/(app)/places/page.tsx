@@ -143,10 +143,10 @@ export default function PlacesIndexPage() {
         <ul className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
           {[
             { label: "Open now", href: "/open-now", icon: Clock, color: "var(--app-positive)" },
-            { label: "Eat & drink", href: "/map?intent=eat", icon: UtensilsCrossed, color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)" },
-            { label: "Coffee", href: "/map?intent=coffee", icon: Coffee, color: INTENT_BY_KEY.coffee?.color ?? "var(--app-brand)" },
-            { label: "With kids", href: "/map?intent=family", icon: Baby, color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)" },
-            { label: "Outdoors", href: "/map?intent=outdoor", icon: Trees, color: INTENT_BY_KEY.outdoor?.color ?? "var(--app-brand-2)" },
+            { label: "Eat & drink", href: "/explore?intent=eat", icon: UtensilsCrossed, color: INTENT_BY_KEY.eat?.color ?? "var(--app-brand)" },
+            { label: "Coffee", href: "/explore?intent=coffee", icon: Coffee, color: INTENT_BY_KEY.coffee?.color ?? "var(--app-brand)" },
+            { label: "With kids", href: "/explore?intent=family", icon: Baby, color: INTENT_BY_KEY.family?.color ?? "var(--app-brand)" },
+            { label: "Outdoors", href: "/explore?intent=outdoor", icon: Trees, color: INTENT_BY_KEY.outdoor?.color ?? "var(--app-brand-2)" },
             { label: "Parking", href: "/category/parking", icon: ParkingCircle, color: "var(--app-ink-2)" },
             { label: "Restrooms", href: "/amenities", icon: Toilet, color: "var(--app-cool)" },
             { label: "Explore by town", href: "/towns", icon: Building2, color: "var(--app-brand)" },

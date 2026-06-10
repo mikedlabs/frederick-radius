@@ -130,11 +130,11 @@ export default function AppMapDeck({
   const router = useRouter();
   const openNow = searchParams?.get("open") === "now";
   const clearOpenHref = (() => {
-    if (!searchParams) return pathname ?? "/map";
+    if (!searchParams) return pathname ?? "/explore";
     const next = new URLSearchParams(searchParams.toString());
     next.delete("open");
     const qs = next.toString();
-    return qs ? `${pathname}?${qs}` : (pathname ?? "/map");
+    return qs ? `${pathname}?${qs}` : (pathname ?? "/explore");
   })();
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-[var(--z-sticky)] px-2.5 pt-2.5 sm:px-3 sm:pt-3">

@@ -9,7 +9,6 @@ import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
 import ModeParamSync from "@/components/mode/ModeParamSync";
 import { Suspense } from "react";
-import CommandPaletteLazy from "@/components/cmdk/CommandPaletteLazy";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -57,11 +56,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BottomNav />
           <SideRail />
           <InstallPrompt />
-          {/* Global ⌘K / Ctrl+K palette. Loaded lazily — the heavy cmdk
-              bundle is fetched only when the user actually opens the
-              palette (or hovers/focuses the search affordance), so it's
-              out of every route's first-load JS. */}
-          <CommandPaletteLazy />
+          {/* ⌘K now focuses the TopBar omnibox — the single search input
+              (redesign shell). The cmdk palette is retired. */}
         </div>
       </RouteAccent>
     </PlaceSheetProvider>

@@ -20,8 +20,8 @@ import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
  */
 
 const ITEMS: ReadonlyArray<SegmentItem<"radius" | "browse">> = [
-  { key: "radius", label: "Radius", icon: Crosshair, href: "/map?mode=radius" },
-  { key: "browse", label: "Browse", icon: Layers, href: "/map?mode=browse" },
+  { key: "radius", label: "Radius", icon: Crosshair, href: "/explore?mode=radius" },
+  { key: "browse", label: "Browse", icon: Layers, href: "/explore?mode=browse" },
 ];
 
 export default function MapModeToggle({

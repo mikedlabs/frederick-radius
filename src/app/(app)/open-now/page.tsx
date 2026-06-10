@@ -143,7 +143,7 @@ export default async function OpenNowPage() {
       {/* Optional map fallback — the review's rule: list answer first,
           map second. This is the ONE door into the heavy surface. */}
       <Link
-        href="/map?mode=browse&open=now"
+        href="/explore?mode=browse&open=now"
         className="tactile tactile-interactive group flex items-center gap-3 rounded-full px-4 py-3"
         style={{
           background: "var(--app-bg-elevated-solid)",

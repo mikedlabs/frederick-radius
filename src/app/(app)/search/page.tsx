@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { MapPin, Calendar, Building2, Tag } from "lucide-react";
 import { search, type SearchHit } from "@/lib/search";
-import SearchInput from "@/components/search/SearchInput";
+import FilterChip from "@/components/system/FilterChip";
+import { TOKEN_LABEL, type IntentToken } from "@/lib/search/parseIntent";
 
 export const metadata: Metadata = {
   title: "Search",
@@ -81,9 +82,13 @@ function displayFor(hit: SearchHit): Display {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; t?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, t } = await searchParams;
+  // Applied intent tokens arrive in the URL (?t=open-now,tonight) from the
+  // TopBar omnibox — shareable, refresh-proof, rendered as chips here.
+  // (Deep token→filter application lands with Explore in Phase 3.)
+  const tokens = (t?.split(",").filter((x): x is IntentToken => x in TOKEN_LABEL) ?? []);
   const query = (q ?? "").trim();
   // `search()` already sorts by score descending — keep that order.
   // Cap at 50 results to keep the page scannable; if more rows match
@@ -99,7 +104,15 @@ export default async function SearchPage({
         >
           Search
         </h1>
-        <SearchInput defaultValue={query} />
+        {/* The page has no input of its own — THE omnibox in the TopBar
+            is the one search input (redesign shell). */}
+        {tokens.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {tokens.map((tok) => (
+              <FilterChip key={tok} label={TOKEN_LABEL[tok]} />
+            ))}
+          </div>
+        )}
       </header>
 
       {!query && (

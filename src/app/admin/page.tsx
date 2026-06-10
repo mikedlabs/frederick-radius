@@ -82,7 +82,7 @@ export default function AdminHome() {
           <ActionTile href="/admin/claims" title="Review submissions" desc="Approve place, event, and business claim submissions" />
           <ActionTile href="/submit/place" title="Submit a place" desc="Public submission form" />
           <ActionTile href="/submit/event" title="Submit an event" desc="Public submission form" />
-          <ActionTile href="/map" title="Open the map" desc="Curated + OSM businesses" />
+          <ActionTile href="/explore" title="Open the map" desc="Curated + OSM businesses" />
           <ActionTile href="/plan" title="Plan my evening" desc="Itinerary builder" />
         </div>
       </section>

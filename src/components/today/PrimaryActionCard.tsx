@@ -58,7 +58,7 @@ export default async function PrimaryActionCard({ now = new Date() }: { now?: Da
           ? "Coffee, food, parks, and trails open within your radius right now."
           : "Coffee, food, parks, trails. Open-now filtered.",
         cta: visitor ? "Open near me" : "Show me",
-        href: "/map?mode=radius",
+        href: "/explore?mode=radius",
         Icon: Navigation,
       };
 

@@ -5,5 +5,5 @@ import { redirect } from "next/navigation";
 // reachable from the funnel and under the Find tab. Old "/" bookmarks and
 // the PWA entry land on the funnel.
 export default function Home() {
-  redirect("/guide");
+  redirect("/explore");
 }
