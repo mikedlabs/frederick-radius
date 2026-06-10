@@ -6,6 +6,7 @@ import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG, type Municipality } from "@/data/
 // (which static-imports the ~12MB enrichment into the bundle).
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { haversineMeters, type LngLat } from "@/lib/geo";
+import { stampEventProvenance, type Provenance } from "@/lib/provenance";
 import { eventGeoConfidence, type GeoConfidence } from "@/lib/events/geo-confidence";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { easternParts, easternDayKey, easternWallToUtcISO } from "@/lib/tz";
@@ -117,7 +118,8 @@ export const BY_TOWN_ENABLED = process.env.RADIUS_EVENTS_BY_TOWN !== "0";
  */
 const NEAR_TOWN_RADIUS_M = 16_000;
 
-export type EventWithMeta = Event & {
+export type EventWithMeta = Event &
+  Omit<Provenance, "source" | "source_url"> & {
   distance_m?: number;
   /** How well we know the position. A distance is only ever stamped for
    *  "venue_match"/"exact_address"; "area"/"unknown" list without one. */
@@ -151,7 +153,10 @@ function decorate(e: Event, origin?: LngLat): EventWithMeta {
     geo_confidence,
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
-    last_verified_at: e.last_verified_at ?? SEED_VERIFIED_AT,
+    // Provenance (4.1, event side): stamped at the same boundary that
+    // cleans the description, so every event row carries the seven
+    // fields with the curated seed verification date.
+    ...stampEventProvenance(e, e.last_verified_at ?? SEED_VERIFIED_AT),
   };
 }
 

@@ -1,3 +1,4 @@
+import { stampEventProvenance } from "@/lib/provenance";
 import RAW from "@/data/venue-events.json" with { type: "json" };
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
@@ -132,10 +133,15 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
     is_free: isFree,
     price_text: e.price,
     ticket_url: e.ticket_url,
-    source: "manual",
-    source_url: e.source.url,
+    // "venue-extract", not "manual": these lineups are extracted from
+    // venue sites programmatically, so they carry the scraped tier until
+    // a person or a ticketing API confirms them.
+    source: "venue-extract",
     is_verified: false,
-    last_verified_at: e.source.fetchedAt,
+    // source_url and last_verified_at come from the stamp below.
+    ...stampEventProvenance(
+      { slug: "", source: "venue-extract", source_url: e.source.url, last_verified_at: e.source.fetchedAt },
+    ),
     category_name: CATEGORY_BY_SLUG[category]?.name ?? category,
     municipality_name: MUNICIPALITY_BY_SLUG[municipality]?.name ?? municipality,
     distance_m: undefined,

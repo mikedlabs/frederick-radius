@@ -137,3 +137,48 @@ export const PROVENANCE_FIELDS = [
   "first_seen_at",
   "last_verified_at",
 ] as const;
+
+/**
+ * Event source registry (4.1, event side). The trust mapping follows the
+ * decision record and the Phase 4 source table: first party editorial is
+ * curated; organization and venue feeds are partner; the county
+ * government calendar and ticketed listings (Ticketmaster, Bandsintown)
+ * are verified; anything unrecognized is scraped, never a guess.
+ */
+const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
+  seed:             { license: "First party editorial",                          confidence: "curated" },
+  manual:           { license: "First party editorial",                          confidence: "curated" },
+  dfp:              { license: "Partner feed, Downtown Frederick Partnership",   confidence: "partner" },
+  celebrate:        { license: "Partner feed, Celebrate Frederick",              confidence: "partner" },
+  hood:             { license: "Partner feed, Hood College",                     confidence: "partner" },
+  "visit-frederick": { license: "Partner feed, Visit Frederick",                 confidence: "partner" },
+  weinberg:         { license: "Venue feed, Weinberg Center",                    confidence: "partner" },
+  delaplaine:       { license: "Venue feed, Delaplaine Arts Center",             confidence: "partner" },
+  county:           { license: "Frederick County government calendar",           confidence: "verified" },
+  ticketmaster:     { license: "Ticketmaster Discovery API terms",               confidence: "verified" },
+  bandsintown:      { license: "Bandsintown API terms",                          confidence: "verified" },
+};
+
+export type EventProvenanceInput = {
+  slug: string;
+  source?: string;
+  source_url?: string | null;
+  last_verified_at?: string;
+};
+
+/** Event side of the stamp. Events have no external id retained beyond
+ *  their source URL, so source_id is the namespaced slug. */
+export function stampEventProvenance(
+  e: EventProvenanceInput,
+  verifiedAt?: string,
+): Omit<Provenance, "source" | "source_url"> & { source_url: string | null } {
+  const meta = EVENT_SOURCE_REGISTRY[e.source ?? ""] ?? FALLBACK_META;
+  return {
+    source_id: `slug:${e.slug}`,
+    source_url: e.source_url ?? null,
+    license: meta.license,
+    confidence: meta.confidence,
+    first_seen_at: e.last_verified_at ?? PROVENANCE_BACKFILL_EPOCH,
+    last_verified_at: verifiedAt ?? e.last_verified_at ?? PROVENANCE_BACKFILL_EPOCH,
+  };
+}

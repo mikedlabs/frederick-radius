@@ -1,3 +1,4 @@
+import { stampEventProvenance } from "@/lib/provenance";
 import { describe, it, expect } from "vitest";
 import { cleanFeedText, formatAddress } from "@/lib/format/text";
 import {
@@ -163,6 +164,7 @@ describe("cleanEventSlug", () => {
 describe("collapseRecurringEvents", () => {
   function ev(title: string, venue: string, startsAt: string): EventWithMeta {
     return {
+      ...stampEventProvenance({ slug: "fixture", source: "seed" }),
       slug: `${title}-${startsAt}`.toLowerCase().replace(/\W+/g, "-"),
       title,
       description: "",
