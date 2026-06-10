@@ -58,6 +58,17 @@ const nextConfig: NextConfig = {
   // Vercel; undefined locally, so this is a no-op in dev.
   deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
   images: {
+    // Serve AVIF first, then WebP, then the original. AVIF runs about 20
+    // to 30 percent smaller than WebP at the same quality for photographs,
+    // and the hero image is the LCP element on every photo led route
+    // (guide, today, place, town, category). Next defaults to WebP only,
+    // so this is a global byte cut with no visual change and no page edits.
+    // The optimizer encodes once and caches, so the extra encode cost is
+    // paid a single time per source and size.
+    formats: ["image/avif", "image/webp"],
+    // Optimized images carry an immutable content hash, so a long cache
+    // floor is safe and keeps repeat visits from re-fetching the same hero.
+    minimumCacheTTL: 2678400,
     // Next 16 footgun: once `localPatterns` is defined at all, EVERY
     // local image path served through `next/image` must match one of
     // the patterns here — the default-allow behavior for /public/* is
