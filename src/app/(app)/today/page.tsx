@@ -517,7 +517,7 @@ export default async function HomePage({
                   See what&rsquo;s {SLICE_LABEL[fallbackSlice]}
                 </Link>
               ) : (
-                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
                   Browse all events
                 </Link>
               )}

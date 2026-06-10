@@ -36,7 +36,7 @@ const VIBE_META: Record<Vibe, { label: string; icon: LucideIcon; accent: string 
   arts:     { label: "Arts",     icon: Palette,   accent: "#7E2C6F" },
   outdoors: { label: "Outdoors", icon: Trees,     accent: "#1E6B3A" },
   civic:    { label: "Civic",    icon: Building2, accent: "#2F5470" },
-  more:     { label: "More this weekend", icon: Sparkles, accent: "#8B6F4E" },
+  more:     { label: "More this weekend", icon: Sparkles, accent: "#6B5334" },
 };
 
 /** Map a category slug to a weekend vibe. Lossy by design — the point is
