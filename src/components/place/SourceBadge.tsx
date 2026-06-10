@@ -26,7 +26,9 @@ function tierFor(place: PlaceCardData): Tier | null {
   // reserves for owner/official-maintained records). (Audit #4.)
   if (place.is_verified && place.google_verified) return "verified";
   // "Community" — DFP / scraped / discovered. Real but not curated.
-  if (place.source === "dfp" || place.source === "google") return "community";
+  // "discovered" keeps the community badge it always rendered with; the
+  // trust change lives in the provenance confidence, not the badge.
+  if (place.source === "dfp" || place.source === "google" || place.source === "discovered") return "community";
   return null;
 }
 

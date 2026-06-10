@@ -6,6 +6,7 @@ import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib/relevance";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
+import { stampPlaceProvenance, type Provenance } from "@/lib/provenance";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
@@ -310,7 +311,7 @@ const BASE_BY_SLUG: Record<string, Place> = (() => {
 })();
 
 /** Google-verified data merged onto a place, when available. */
-export type PlaceEnriched = {
+export type PlaceEnriched = Omit<Provenance, "source"> & {
   /** Proxied photo URL (server route, key-safe) — first photo, for heroes */
   google_photo_url?: string;
   /** All proxied photo URLs (key-safe), for galleries */
@@ -380,12 +381,25 @@ export type PlaceCardData = Place & PlaceEnriched & {
   open_confidence?: "verified" | "likely";
 };
 
+/**
+ * Provenance stamp adapted to the Place type: the stamper normalizes a
+ * missing source to "discovered", and the cast is sound because the
+ * Place source union includes every value the stamper can produce.
+ */
+function stampForPlace(p: Place, verifiedAt: string): Omit<Provenance, "source"> & { source: Place["source"] } {
+  const { source, ...rest } = stampPlaceProvenance(p, verifiedAt);
+  return { ...rest, source: source as Place["source"] };
+}
+
 function applyEnrichment(p: Place): Place & PlaceEnriched {
   const e = ENRICHMENT[p.slug];
   if (!e)
     return {
       ...p,
-      last_verified_at: SEED_PLACE_VERIFIED_AT,
+      // Provenance (data brief 4.1): stamped at this chokepoint so every
+      // row that reaches a surface carries all seven fields. The un
+      // enriched branch verifies against the editorial pass date.
+      ...stampForPlace(p, SEED_PLACE_VERIFIED_AT),
       // No Google profile to derive from, but an editorial hand-pick
       // still counts (and that is the whole reason hand-picks exist).
       local_favorite: resolveLocalFavorite(p.slug, undefined, undefined, p.is_verified),
@@ -483,7 +497,20 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     customers_loved: KNOWN_FOR[p.slug]?.customers_loved?.length
       ? KNOWN_FOR[p.slug]?.customers_loved
       : undefined,
-    last_verified_at: ENRICHMENT_VERIFIED_AT,
+    // Provenance (data brief 4.1): the enriched branch verifies against
+    // the Google sync date. Spread last so the seven fields are the
+    // single source of truth for trust metadata on the row. One upgrade
+    // rule: a scraped row whose listing Google enrichment confirms (a
+    // known business_status) earns "verified". Curated and partner rows
+    // keep their tier; Google confirming existence does not change who
+    // vouches for the content.
+    ...(() => {
+      const prov = stampForPlace(p, ENRICHMENT_VERIFIED_AT);
+      const googleConfirmed = Boolean(e.business_status && e.business_status !== "UNKNOWN");
+      return prov.confidence === "scraped" && googleConfirmed
+        ? { ...prov, confidence: "verified" as const }
+        : prov;
+    })(),
   };
 }
 
