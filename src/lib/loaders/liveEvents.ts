@@ -8,6 +8,7 @@
  * here, so a live event renders the same way in-app and a shared
  * /events/<slug> link resolves instead of hitting notFound().
  */
+import { stampEventProvenance } from "@/lib/provenance";
 import { getLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
 import {
   fetchTicketmasterMusic,
@@ -71,10 +72,19 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     is_free: e.is_free,
     organizer: e.organizer,
     status: e.status,
-    source: "manual",
-    source_url: e.url,
+    // The feed's real source, not "manual": the hardcode let every live
+    // row (Ticketmaster, county, venue feeds) claim first party curated
+    // trust. eventTrust still labels county rows Official and the rest
+    // Live; readiness only leaned on the curated label for rows with no
+    // source URL, which live rows carry.
+    source: e.source,
     is_verified: false,
-    last_verified_at: e.last_verified_at,
+    // source_url and last_verified_at come from the stamp below, which
+    // normalizes a missing URL to null and a missing date to the
+    // documented backfill epoch.
+    ...stampEventProvenance(
+      { slug: liveCleanSlug(e), source: e.source, source_url: e.url, last_verified_at: e.last_verified_at },
+    ),
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
     distance_m: undefined,

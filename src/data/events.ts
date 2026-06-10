@@ -67,8 +67,14 @@ export type Event = {
    * instead; the detail route surfaces it as an "Official page" link so
    * a feed event still has provenance and a path back to its organizer.
    */
-  source_url?: string;
-  source: "dfp" | "celebrate" | "county" | "manual" | "seed";
+  source_url?: string | null;
+  source:
+    | "dfp" | "celebrate" | "county" | "manual" | "seed"
+    // Live feed sources flow through liveToCardEvent with their real
+    // names now. They were all hardcoded "manual" at that boundary,
+    // which let a Ticketmaster row claim first party curated trust.
+    | "hood" | "visit-frederick" | "weinberg" | "delaplaine"
+    | "ticketmaster" | "bandsintown" | "venue-extract";
   is_verified: boolean;
   /**
    * ISO date for when this event was last editorially verified. Live

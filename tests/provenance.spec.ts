@@ -3,9 +3,12 @@ import { PLACES } from "@/data/places";
 import { decoratePlace } from "@/lib/loaders/places";
 import {
   stampPlaceProvenance,
+  stampEventProvenance,
   PROVENANCE_FIELDS,
   PROVENANCE_BACKFILL_EPOCH,
 } from "@/lib/provenance";
+import { upcomingEvents } from "@/data/events";
+import { getEventBySlug } from "@/lib/loaders/events";
 
 /**
  * Phase 1 acceptance gate (data brief 4.1): 100 percent of place rows
@@ -85,5 +88,40 @@ describe("place provenance (data brief 4.1)", () => {
       const row = decoratePlace(raw);
       expect(Number.isNaN(Date.parse(row.last_verified_at))).toBe(false);
     }
+  });
+});
+
+describe("event provenance (data brief 4.1, event side)", () => {
+  it("every upcoming curated event carries all seven fields after decoration", () => {
+    const missing: Record<string, string[]> = {};
+    for (const raw of upcomingEvents(new Date("2026-06-10T12:00:00Z"))) {
+      const row = getEventBySlug(raw.slug) as unknown as Record<string, unknown> | null;
+      if (!row) continue;
+      for (const f of PROVENANCE_FIELDS) {
+        if (!(f in row) || row[f] === undefined) {
+          (missing[raw.slug] ??= []).push(f);
+        }
+      }
+    }
+    expect(
+      Object.keys(missing).length,
+      `events missing provenance: ${JSON.stringify(Object.entries(missing).slice(0, 5))}`,
+    ).toBe(0);
+  });
+
+  it("maps event sources to their trust tiers", () => {
+    expect(stampEventProvenance({ slug: "x", source: "seed" }).confidence).toBe("curated");
+    expect(stampEventProvenance({ slug: "x", source: "dfp" }).confidence).toBe("partner");
+    expect(stampEventProvenance({ slug: "x", source: "celebrate" }).confidence).toBe("partner");
+    expect(stampEventProvenance({ slug: "x", source: "county" }).confidence).toBe("verified");
+    expect(stampEventProvenance({ slug: "x", source: "ticketmaster" }).confidence).toBe("verified");
+    expect(stampEventProvenance({ slug: "x", source: "bandsintown" }).confidence).toBe("verified");
+    expect(stampEventProvenance({ slug: "x", source: "venue-extract" }).confidence).toBe("scraped");
+    expect(stampEventProvenance({ slug: "x", source: "mystery" }).confidence).toBe("scraped");
+  });
+
+  it("normalizes a missing source url to null, never undefined", () => {
+    expect(stampEventProvenance({ slug: "x", source: "seed" }).source_url).toBeNull();
+    expect(stampEventProvenance({ slug: "x", source: "dfp", source_url: "https://a.b" }).source_url).toBe("https://a.b");
   });
 });

@@ -1,3 +1,4 @@
+import { stampEventProvenance } from "@/lib/provenance";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -150,6 +151,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   // rule every "upcoming" surface uses, so they all agree on what's past.
   const eventsAtThisVenue = getVisibleEvents(place.upcoming_events).map((e) => ({
     ...e,
+    ...stampEventProvenance(e, e.last_verified_at),
     distance_m: undefined,
     // These are this venue's own upcoming events, so the position is the
     // venue's — addressable by definition (audit #2 P1 geo confidence).

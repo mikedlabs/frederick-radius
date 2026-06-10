@@ -1,5 +1,6 @@
 "use client";
 
+import { stampEventProvenance } from "@/lib/provenance";
 import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted } from "@/hooks/useSaved";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
@@ -46,6 +47,7 @@ type DecoratedEvent = ReturnType<typeof decorateEvent>;
 function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
   return {
     ...e,
+    ...stampEventProvenance(e, e.last_verified_at),
     distance_m: undefined,
     geo_confidence: eventGeoConfidence(e),
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,

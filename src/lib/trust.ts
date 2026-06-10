@@ -29,11 +29,14 @@ export type TrustSignal = {
 
 /** Structural subset of an event — EventWithMeta satisfies it. */
 export type EventTrustInput = {
-  source: "dfp" | "celebrate" | "county" | "manual" | "seed";
+  /** Any adapter source. The label branches below name the sources they
+   *  know; everything else reads as a live feed row. */
+  source: string;
   is_verified: boolean;
 };
 
-const SOURCE_BASIS: Record<EventTrustInput["source"], string> = {
+type KnownEventSource = "dfp" | "celebrate" | "county" | "manual" | "seed";
+const SOURCE_BASIS: Record<KnownEventSource, string> = {
   dfp: "From the Downtown Frederick Partnership calendar",
   celebrate: "From Celebrate Frederick",
   county: "From the Frederick County calendar",

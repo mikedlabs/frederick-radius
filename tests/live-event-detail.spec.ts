@@ -73,7 +73,10 @@ describe("liveToCardEvent", () => {
     expect(card.slug.startsWith("live-")).toBe(false);
     expect(card.slug).not.toBe(e.id);
     expect(card.source_url).toBe(e.url);
-    expect(card.source).toBe("manual");
+    // The feed's real source flows through since the provenance work;
+    // the old hardcoded "manual" let live rows claim curated trust.
+    expect(card.source).toBe("celebrate");
+    expect(card.confidence).toBe("partner");
     expect(card.is_recurring).toBe(false);
     expect(card.category_name).toBe("Galleries"); // resolved via CATEGORY_BY_SLUG, fallback-safe
   });
