@@ -27,6 +27,8 @@ export const maxDuration = 30;
  * actually sees + the NAMES of any AI-ish env vars present, so a naming
  * or environment-scope mismatch is visible at a glance. Remove once Ask
  * is confirmed live. Secret VALUES are never returned.
+ * (Redeploy marker 2026-06-10: picking up ANTHROPIC_API_KEY after the
+ * owner confirmed Production scope — env vars only land in new builds.)
  */
 export async function GET() {
   const AI_NAME = /AI|ANTHROPIC|OPENAI|GATEWAY|OIDC|LLM|MODEL|CLAUDE|GPT/i;
