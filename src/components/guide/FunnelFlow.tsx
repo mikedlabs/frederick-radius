@@ -12,7 +12,6 @@ import { useClientPlaces } from "@/hooks/useClientPlaces";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import PlaceCard from "@/components/place/PlaceCard";
-import IconStamp from "@/components/ui/IconStamp";
 import LiveDowntown from "@/components/guide/LiveDowntown";
 import type { LiveShow } from "@/lib/guide/live-downtown";
 import Pill from "@/components/ui/Pill";
@@ -286,7 +285,7 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
   };
 
   return (
-    <div className="mx-auto w-full max-w-screen-sm px-4 pb-28 pt-2">
+    <div className="mx-auto w-full max-w-screen-sm px-4 pb-28 pt-2 lg:max-w-4xl">
       {/* Results step only: a quiet back affordance + the selected
           intent/lens breadcrumb. The intent step opens clean — no top
           strip competing with the hero. */}
@@ -674,9 +673,9 @@ function Header({ eyebrow, title, sub, color }: { eyebrow: string; title: string
 // Tightened gap (gap-2.5) for the density pass.
 function Grid({ children }: { children: ReactNode }) {
   const reduce = useReducedMotion();
-  if (reduce) return <div className="grid grid-cols-2 gap-2.5">{children}</div>;
+  if (reduce) return <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3 lg:gap-3">{children}</div>;
   return (
-    <motion.div className="grid grid-cols-2 gap-2.5" variants={tilesContainer} initial="hidden" animate="show">
+    <motion.div className="grid grid-cols-2 gap-2.5 lg:grid-cols-3 lg:gap-3" variants={tilesContainer} initial="hidden" animate="show">
       {children}
     </motion.div>
   );
@@ -730,7 +729,7 @@ function Tile({
   // Layered edge + inner highlight + ambient elevation keep the "made"
   // depth; a hairline keeps the glass crisp on a busy backdrop.
   const surface = {
-    background: `linear-gradient(155deg, color-mix(in srgb, ${color} 14%, color-mix(in srgb, var(--app-bg-elevated-solid) 60%, transparent)) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 60%, transparent) 64%)`,
+    background: `linear-gradient(155deg, color-mix(in srgb, ${color} 26%, color-mix(in srgb, var(--app-bg-elevated-solid) 60%, transparent)) 0%, color-mix(in srgb, var(--app-bg-elevated-solid) 60%, transparent) 64%)`,
     boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
   } as const;
 
@@ -748,9 +747,13 @@ function Tile({
         style={surface}
       >
         {icon && (
-          <IconStamp accent={color} size="lg">
+          <span
+            aria-hidden
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white shadow-[var(--app-shadow-1)]"
+            style={{ background: color, backgroundImage: "var(--app-gloss)" }}
+          >
             {icon}
-          </IconStamp>
+          </span>
         )}
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
@@ -780,9 +783,13 @@ function Tile({
       style={surface}
     >
       {icon && (
-        <IconStamp accent={color} size="md">
+        <span
+          aria-hidden
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white shadow-[var(--app-shadow-1)]"
+          style={{ background: color, backgroundImage: "var(--app-gloss)" }}
+        >
           {icon}
-        </IconStamp>
+        </span>
       )}
       <span className="flex flex-col">
         <span className="text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
