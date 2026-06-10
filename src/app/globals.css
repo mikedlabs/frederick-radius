@@ -1861,7 +1861,9 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   font-weight: 600;
   letter-spacing: 0.12em;
   font-variant-numeric: tabular-nums;
-  color: color-mix(in srgb, var(--app-ink-3) 70%, transparent);
+  /* Solid AA-held ink-3 (the 70%-transparent mix lightened it to 3.19:1
+     on cream — failed WCAG AA; the token is AA-held at full strength). */
+  color: var(--app-ink-3);
 }
 
 /* Hairline rule with an end tick — the drawn divider under a plate

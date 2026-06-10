@@ -184,7 +184,7 @@ export default async function MunicipalityPage(
       >
         <span
           className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
-          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand)" }}
+          style={{ background: "color-mix(in srgb, var(--app-brand) 14%, transparent)", color: "var(--app-brand-press)" }}
         >
           <Search className="h-[17px] w-[17px]" strokeWidth={2.25} aria-hidden />
         </span>
@@ -242,7 +242,7 @@ export default async function MunicipalityPage(
           <Link
             href={`/search?q=${encodeURIComponent(m.name)}`}
             className="inline-flex items-center gap-1 text-[13px] font-semibold"
-            style={{ color: "var(--app-brand)" }}
+            style={{ color: "var(--app-brand-press)" }}
           >
             All places in {m.name}
             <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
@@ -251,7 +251,7 @@ export default async function MunicipalityPage(
       ) : (
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
           We&apos;re still seeding places for {m.name}. Check back soon, or{" "}
-          <Link href="/submit/place" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-brand)" }}>
+          <Link href="/submit/place" className="font-semibold underline-offset-2 hover:underline" style={{ color: "var(--app-brand-press)" }}>
             submit a place you love
           </Link>
           .
@@ -276,7 +276,7 @@ export default async function MunicipalityPage(
             <Link
               href={BY_TOWN_ENABLED ? `/events?view=town&m=${m.slug}` : "/events"}
               className="text-[13px] font-semibold"
-              style={{ color: "var(--app-brand)" }}
+              style={{ color: "var(--app-brand-press)" }}
             >
               All events →
             </Link>

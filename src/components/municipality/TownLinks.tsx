@@ -46,7 +46,7 @@ export default function TownLinks({ slug }: { slug: string }) {
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[13px] font-semibold"
-          style={{ color: "var(--app-brand)" }}
+          style={{ color: "var(--app-brand-press)" }}
         >
           {town.homepage.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
           <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />

@@ -149,7 +149,7 @@ function ContactRow({ c, last }: { c: CivicContact; last: boolean }) {
           <a
             href={`tel:${c.phone.replace(/[^0-9+]/g, "")}`}
             className="inline-flex items-center gap-1 text-[12px] font-semibold"
-            style={{ color: "var(--app-brand)" }}
+            style={{ color: "var(--app-brand-press)" }}
           >
             <Phone className="h-3 w-3" strokeWidth={2.25} aria-hidden />
             {c.phone}
