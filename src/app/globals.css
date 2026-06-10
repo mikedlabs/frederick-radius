@@ -79,6 +79,24 @@
   --app-info: #2F5470;
 
   /* ─────────────────────────────────────────────────────
+   * OPEN-STATE SEMANTIC SET (redesign — one of the three identity
+   * pillars). A place's open status is a STATE, not an alert, so closed
+   * is a muted neutral, never red. These are the only tokens StateDot /
+   * Pin / Row may use to color open-state. WCAG AA on paper at body size.
+   *   open         → green   (go)
+   *   closing-soon → amber   (hurry)
+   *   closed       → neutral (just a state)
+   *   unknown      → faint   (we don't know the hours)
+   * ─────────────────────────────────────────────────────── */
+  --state-open: #1E6B3A;          /* = positive green */
+  --state-open-bg: color-mix(in srgb, #1E6B3A 14%, transparent);
+  --state-closing: #B26B00;       /* amber */
+  --state-closing-bg: color-mix(in srgb, #B26B00 16%, transparent);
+  --state-closed: #8A8479;        /* muted warm neutral — NOT red */
+  --state-closed-bg: color-mix(in srgb, #8A8479 16%, transparent);
+  --state-unknown: #B3AC9D;       /* faintest — hours unverified */
+
+  /* ─────────────────────────────────────────────────────
    * BRIEF-NAMED ALIASES (Experience / Visual brief).
    * The existing --app-* palette already realizes the brief's warm
    * paper / ink / clay / moss system, so these are aliases over the
@@ -1207,6 +1225,29 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 
 /* ─────────────────────────────────────────────────────
  * VISUAL SYSTEM v2 — Layer 2: editorial type + entrance.
+ * REDESIGN 6-STEP TYPE SCALE (12/14/16/20/28/40, two weights).
+ * Inter carries 12–20 (functional UI: rows, chips, labels, body).
+ * Fraunces carries 28/40 (display: Guide heads, hero, town headers).
+ * These replace the ~1,000 arbitrary text-[Npx] over the redesign phases.
+ * ───────────────────────────────────────────────────── */
+.t-meta    { font-size: 12px; line-height: 1.4; }
+.t-body    { font-size: 14px; line-height: 1.5; }
+.t-lead    { font-size: 16px; line-height: 1.5; }
+.t-section { font-size: 20px; line-height: 1.3; font-weight: 600; letter-spacing: -0.005em; }
+.t-title {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: 28px; line-height: 1.15; font-weight: 600; letter-spacing: -0.012em;
+}
+.t-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: 40px; line-height: 1.04; font-weight: 600; letter-spacing: -0.022em;
+  text-wrap: balance;
+}
+.t-semibold { font-weight: 600; }
+/* Reading-surface measure cap for Guide essays (brief: ≤68ch desktop). */
+.measure { max-width: 68ch; }
+
+/* ─────────────────────────────────────────────────────
  * Display tier (serif, fluid clamp, tight optical tracking,
  * balanced wrapping) so headlines read "set", not defaulted.
  * ───────────────────────────────────────────────────── */

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import {
-  Newsreader,
-  Public_Sans,
+  Fraunces,
+  Inter,
   JetBrains_Mono,
 } from "next/font/google";
 import "./globals.css";
@@ -15,30 +15,36 @@ import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 
 /**
- * Typography — Frederick Radius brand deck.
- * Newsreader is the display face (dates, headlines, section titles, place
- * names) and carries the editorial, local warmth through its italic.
- * Public Sans is the working sans for labels, buttons, and dense UI.
- * JetBrains Mono carries every number and code-like value (times,
- * temperatures, distances, counts, tracked labels), which is what gives
- * the product its instrument quality.
+ * Typography — Redesign system (the documented direction, shipped).
  *
- * The variable names stay generic (sans-base / display / mono-base) so
- * the downstream tokens (--font-sans / --font-serif / --font-mono in
- * globals.css) hold steady if the typefaces change again.
+ * INTER is the functional UI face: navigation, rows, chips, labels, body.
+ * It is an instrument typeface — neutral, legible at small sizes, dense —
+ * which is exactly what Explore/Today need (the brief: "Explore and Today
+ * are instruments"). Two weights in practice (regular + semibold).
+ *
+ * FRAUNCES is the display face — editorial warmth with real character —
+ * used ONLY where the field guide goes large: Guide headings, detail-page
+ * heroes, municipality headers. (It replaces Newsreader, resolving the
+ * doc/production contradiction in favor of the documented system.)
+ *
+ * JETBRAINS MONO carries every number/coordinate/time — the instrument tics.
+ *
+ * Variable names stay stable so downstream tokens hold:
+ *   --font-sans-base → Inter   (mapped to --font-sans / body default)
+ *   --font-display   → Fraunces (mapped to --font-serif / .display-*)
+ *   --font-mono-base → JetBrains Mono
  */
-const sans = Public_Sans({
+const sans = Inter({
   variable: "--font-sans-base",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  style: ["normal", "italic"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const display = Newsreader({
+const display = Fraunces({
   variable: "--font-display",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
   style: ["normal", "italic"],
   display: "swap",
 });
