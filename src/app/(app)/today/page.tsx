@@ -16,7 +16,6 @@ import NowDayStrip from "@/components/today/NowDayStrip";
 // lives at src/components/today/AdaptiveGreeting.tsx if we want to
 // surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
-import MoodTiles from "@/components/today/MoodTiles";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -45,9 +44,9 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { getOpenNowCount, findBucket } from "@/lib/find-picks";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { easternWallToUtcISO } from "@/lib/tz";
-import TodayAsk from "@/components/today/TodayAsk";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
+import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { AnswerCard } from "@/components/answer";
 import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
 import { PARKING_GARAGES } from "@/data/parking-garages";
@@ -329,6 +328,12 @@ export default async function HomePage({
     featuredSlug: featuredEvent?.slug ?? null,
   });
 
+  // The day's ANSWERS lead (open now, tonight, weekend); parking and
+  // transit are utilities and render as two quiet links instead of two
+  // more full plates. This is the heaviness fix: fewer identical boxes.
+  const leadAnswers = todayAnswers.filter((a) => a.status !== "parking" && a.status !== "transit").slice(0, 3);
+  const utilityAnswers = todayAnswers.filter((a) => a.status === "parking" || a.status === "transit");
+
   // When the active slice is empty, nudge to a DIFFERENT slice that
   // actually has events — never back to the same (empty) one, which is
   // what the old hardcoded "see the weekend" link did when Weekend
@@ -377,11 +382,46 @@ export default async function HomePage({
           duplicated these answer cards — and the box's "Ask Radius" eyebrow
           is hidden under the headline, so the first answer clears the fold. */}
       <section className="mt-3 space-y-3" aria-label="Ask Radius">
-        <TodayAsk />
-        {todayAnswers.length > 0 && (
+        {/* Ask Radius removed (Phase 4 verdict: the feature was dark on
+            production, and a visible feature that does not work is the
+            worst element on a site). The omnibox in the header carries
+            search; this section now leads with the answers themselves. */}
+        {leadAnswers.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {todayAnswers.map((a, i) => (
-              <AnswerCard key={a.id} answer={a} featured={i === 0} />
+            {leadAnswers.map((a, i) => (
+              <AnswerCard
+                key={a.id}
+                answer={a}
+                featured={i === 0}
+                plate={
+                  i === 0 ? (
+                    <SeasonalPhoto
+                      season="auto"
+                      alt=""
+                      sizes="(max-width: 720px) 100vw, 720px"
+                      className="absolute inset-0"
+                    />
+                  ) : undefined
+                }
+              />
+            ))}
+          </div>
+        )}
+        {/* Getting around: parking and transit are utilities, not the
+            day's answer. They were two more full text plates in the
+            stack (the page read as heavy); now one compact pair of
+            links with the same data behind them. */}
+        {utilityAnswers.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {utilityAnswers.map((a) => (
+              <Link
+                key={a.id}
+                href={a.primaryAction?.href ?? "/explore"}
+                className="tactile tactile-interactive inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-semibold"
+                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "var(--app-edge), var(--app-hi)" }}
+              >
+                {a.title}
+              </Link>
             ))}
           </div>
         )}
@@ -663,7 +703,6 @@ export default async function HomePage({
        *  dashboard with the answer buried in a column. */}
 
       {/* MoodTiles — "what do you need right now" quick-needs row. */}
-      <MoodTiles />
 
       {/* Visitor "Stay" door — self-hides for Residents. Kept inline
           (only shows for visitors, so it's not clutter for locals). */}
