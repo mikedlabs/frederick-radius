@@ -454,7 +454,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           {SOURCE_LABEL[place.source] ?? place.source}
         </p>
         <div className="flex flex-wrap gap-3 text-xs">
-          <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand)" }}>
+          <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand-press)" }}>
             More {cat?.name?.toLowerCase() ?? "places"} →
           </Link>
           <a
@@ -505,7 +505,7 @@ function ActionButton({
       className="tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] py-3 text-xs font-medium"
       style={{ color: "var(--app-ink)" }}
     >
-      <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-brand)" }} />
+      <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-brand-press)" }} />
       {label}
     </Comp>
   );
