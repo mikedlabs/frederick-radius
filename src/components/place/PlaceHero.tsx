@@ -111,32 +111,26 @@ export default function PlaceHero({
       )}
 
       {/* Designed field-guide plate — the deliberate hero for a place with
-          no real photograph (the common case). A large category glyph and
-          the place name in the display face, centered over the contour
-          gradient, so an unphotographed place reads as a specimen plate
-          rather than an empty box. */}
+          no real photograph (the common case). A single category emblem
+          centered over the contour gradient: a specimen mark, not an empty
+          box. The place name is NOT repeated here — the <h1> sits directly
+          below the hero and carries it, so a name on the plate too would be
+          a duplicate title (the same reason the photo hero has no overlay). */}
       {!src && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+        <div className="absolute inset-0 grid place-items-center">
           <span
             aria-hidden
             className="grid place-items-center rounded-full"
             style={{
-              width: size === "hero" ? 64 : 44,
-              height: size === "hero" ? 64 : 44,
-              background: `color-mix(in srgb, ${color} 16%, white)`,
-              fontSize: size === "hero" ? 30 : 22,
+              width: size === "hero" ? 92 : 48,
+              height: size === "hero" ? 92 : 48,
+              background: `color-mix(in srgb, ${color} 18%, white)`,
+              boxShadow: `0 1px 0 rgba(255,255,255,0.6) inset, 0 0 0 1px color-mix(in srgb, ${color} 22%, transparent)`,
+              fontSize: size === "hero" ? 42 : 24,
             }}
           >
             {glyph}
           </span>
-          {size === "hero" && (
-            <span
-              className="max-w-[80%] font-serif font-semibold leading-tight tracking-tight"
-              style={{ color: `color-mix(in srgb, ${color} 72%, var(--app-ink))`, fontSize: 22 }}
-            >
-              {name}
-            </span>
-          )}
         </div>
       )}
 
