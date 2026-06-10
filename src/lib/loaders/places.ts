@@ -7,6 +7,7 @@ import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib/relevance";
 import { getOpenStatus, type OpenStatus } from "@/lib/hours";
 import { stampPlaceProvenance, type Provenance } from "@/lib/provenance";
+import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { parseGoogleHours } from "@/lib/googleHours";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import ENRICHMENT_RAW from "@/data/places-enrichment.json" with { type: "json" };
@@ -16,6 +17,7 @@ import KNOWN_FOR_RAW from "@/data/known-for.json" with { type: "json" };
 import PHOTO_SUPPRESS_RAW from "@/data/photo-suppress.json" with { type: "json" };
 import LOCAL_FAVORITES_RAW from "@/data/local-favorites.json" with { type: "json" };
 import SEASONAL_RAW from "@/data/seasonal-places.json" with { type: "json" };
+import HOURS_REFRESH_RAW from "@/data/places-hours-refresh.json" with { type: "json" };
 import { HIDDEN_GEM_SLUGS } from "@/data/hidden-gems";
 import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-windows";
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
@@ -52,6 +54,24 @@ const SEASONAL = Object.fromEntries(
     ([k]) => !k.startsWith("_"),
   ),
 ) as Record<string, SeasonalEntry>;
+
+/**
+ * Rolling hours refresh (data brief 4.3): the committed materialization
+ * of the place_hours_refresh table (npm run refresh:hours). An entry
+ * here overrides the static enrichment hours and business status for
+ * its slug, and its refreshed_at is the verification date the
+ * freshness policy reads. The _doc key is metadata.
+ */
+type HoursRefreshEntry = {
+  weekday_hours?: string[];
+  business_status?: string;
+  refreshed_at: string;
+};
+const HOURS_REFRESH = Object.fromEntries(
+  Object.entries(HOURS_REFRESH_RAW as Record<string, unknown>).filter(
+    ([k]) => !k.startsWith("_"),
+  ),
+) as Record<string, HoursRefreshEntry>;
 
 /**
  * Whether a place is currently in season. Non-seasonal places (the
@@ -546,11 +566,29 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
       : hours_source === "manual_override"
         ? p.updated_at
         : undefined;
+  // Rolling refresh override (4.3): a refreshed row carries newer Google
+  // hours and status than the static enrichment, so it wins both the
+  // schedule and the verification date.
+  const refresh = HOURS_REFRESH[p.slug];
+  const refreshedHours = refresh?.weekday_hours
+    ? parseGoogleHours(refresh.weekday_hours)
+    : undefined;
+  const hours = refreshedHours ?? enriched.hours;
+  const hoursVerified = refreshedHours ? true : (enriched.hours_verified ?? false);
+  const hoursVerifiedAt = refresh?.refreshed_at ?? hours_updated_at;
+  if (refresh?.business_status === "CLOSED_PERMANENTLY") {
+    enriched.is_operational = "closed_permanently";
+  }
   return {
     ...enriched,
-    hours_source,
-    hours_updated_at,
-    open_status: getOpenStatus(enriched.hours, { verified: enriched.hours_verified ?? false }, now),
+    hours,
+    hours_verified: hoursVerified,
+    hours_source: refreshedHours ? ("google_places" as const) : hours_source,
+    hours_updated_at: hoursVerifiedAt,
+    // The one decision point of the hours policy: open and closed
+    // states render only from verified hours, and once enforcement is
+    // on, only from hours verified inside the freshness window.
+    open_status: getOpenStatus(hours, { verified: mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) }, now),
     distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
   };
 }

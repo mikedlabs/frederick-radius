@@ -97,7 +97,7 @@ export function googlePlacesConfigured(): boolean {
  *   - "status" → id + businessStatus only ⇒ cheapest tier. For the
  *                business-status cron, which reads nothing else.
  */
-export type GoogleFieldSet = "status" | "lean" | "full";
+export type GoogleFieldSet = "status" | "hours" | "lean" | "full";
 
 const FIELDS_FULL = [
   "id", "displayName", "formattedAddress", "businessStatus", "primaryType",
@@ -107,9 +107,15 @@ const FIELDS_FULL = [
 ];
 const FIELDS_LEAN = FIELDS_FULL.filter((f) => f !== "reviews");
 const FIELDS_STATUS = ["id", "businessStatus"];
+// The rolling hours refresh (data brief 4.3): hours plus status, nothing
+// else, so the per call cost stays on the cheapest applicable SKU.
+const FIELDS_HOURS = [
+  "id", "businessStatus",
+  "currentOpeningHours.weekdayDescriptions", "regularOpeningHours.weekdayDescriptions",
+];
 
 function fieldsFor(set: GoogleFieldSet): string[] {
-  return set === "status" ? FIELDS_STATUS : set === "full" ? FIELDS_FULL : FIELDS_LEAN;
+  return set === "status" ? FIELDS_STATUS : set === "hours" ? FIELDS_HOURS : set === "full" ? FIELDS_FULL : FIELDS_LEAN;
 }
 
 type GApiPlace = {
