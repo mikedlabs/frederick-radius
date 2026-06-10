@@ -108,7 +108,7 @@ export default function AnswerCard({ answer, featured = false }: { answer: Answe
             </Button>
           )}
           {answer.secondaryAction && (
-            <Button variant="ghost" size="sm" href={answer.secondaryAction.href}>
+            <Button variant="quiet" size="sm" href={answer.secondaryAction.href}>
               {answer.secondaryAction.label}
             </Button>
           )}

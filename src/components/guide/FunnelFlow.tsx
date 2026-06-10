@@ -16,6 +16,7 @@ import IconStamp from "@/components/ui/IconStamp";
 import LiveDowntown from "@/components/guide/LiveDowntown";
 import type { LiveShow } from "@/lib/guide/live-downtown";
 import Pill from "@/components/ui/Pill";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
 import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
@@ -93,7 +94,7 @@ const LENSES: Lens[] = [
 // (Events, Map, Collections all live in the nav). The front door keeps a
 // single place-led signpost — the town door — instead of a directory grid.
 
-export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] }) {
+export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liveShows?: LiveShow[]; hideHeader?: boolean }) {
   const { places, ready } = useClientPlaces();
   const reduce = useReducedMotion();
   // GUIDED-FLOW STATE LIVES IN THE URL (June-9 deep audit P1-12). The
@@ -318,14 +319,16 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
             {/* ── HERO — one calm eyebrow, one confident question, one line.
                 Compact: minimal top/bottom air so the lanes climb above the
                 fold (density pass — dense & utility-modern). */}
-            <header className="pb-2.5">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
-                {greeting ? `${greeting} · Frederick County` : "Frederick County"}
-              </p>
-              <h1 className="display-2 mt-1" style={{ color: "var(--app-ink)" }}>
-                What are you looking for?
-              </h1>
-            </header>
+            {!hideHeader && (
+              <header className="pb-2.5">
+                <p className="text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
+                  {greeting ? `${greeting} · Frederick County` : "Frederick County"}
+                </p>
+                <h1 className="display-2 mt-1" style={{ color: "var(--app-ink)" }}>
+                  What are you looking for?
+                </h1>
+              </header>
+            )}
 
             {/* ── ASK INPUT — the obvious first action. A frosted, translucent
                 search field that opens the typed-query screen. The backdrop
@@ -389,17 +392,26 @@ export default function FunnelFlow({ liveShows = [] }: { liveShows?: LiveShow[] 
               })}
             </Grid>
 
-            {/* ── NARROW IT DOWN — one compact row of by-the-moment lenses. */}
-            <p className="mb-2 mt-3.5 text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
-              Narrow it down
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {LENSES.map((l) => (
-                <Pill key={l.key} tone="ink" size="sm" icon={<l.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />} onClick={() => { haptic("light"); track("find_lens", { lens: l.key }); setLens(l); }}>
-                  {l.label}
-                </Pill>
-              ))}
-            </div>
+            {/* ── BY THE MOMENT — progressive disclosure (Premium Overhaul
+                Phase 2). The five moment lenses moved behind ONE quiet
+                trigger so the screen above the fold holds the input and
+                the six needs, nothing else. The declutter math: the page
+                presented 13 in-page targets; it now presents 8. */}
+            <CollapsibleSection
+              title="By the moment"
+              count={LENSES.length}
+              storageKey="fr.guide.lenses"
+              defaultOpen={false}
+              className="mt-3.5"
+            >
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {LENSES.map((l) => (
+                  <Pill key={l.key} tone="ink" size="sm" icon={<l.Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />} onClick={() => { haptic("light"); track("find_lens", { lens: l.key }); setLens(l); }}>
+                    {l.label}
+                  </Pill>
+                ))}
+              </div>
+            </CollapsibleSection>
 
             {/* ── TOWN DOOR — one clear place-led entry, full width. Slim +
                 frosted to match the lanes (translucent glass over the bloom). */}

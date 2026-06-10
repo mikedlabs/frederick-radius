@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Search, Settings as SettingsIcon, MoreHorizontal, ChevronLeft } from "lucide-react";
+import { Search, MoreHorizontal, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
 import MoreSheet from "./MoreSheet";
@@ -205,19 +205,9 @@ export default function TopBar() {
               competes with the rest of the header chrome. */}
           <PulseIndicator />
 
-          {/* Trailing actions are calm GLYPHS, not bordered pills — the
-              search pill is the one bordered "find" affordance, so the
-              header reads as one primary + two quiet icons (the Tiimo /
-              calm-chrome move) instead of three chips competing. */}
-          <Link
-            href="/settings"
-            aria-label="Settings"
-            title="Settings"
-            className="tap-44 grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            <SettingsIcon className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
-          </Link>
+          {/* Settings lives in the More menu now (Premium Overhaul Phase 2:
+              the header carries the wordmark, the search, and one utility
+              control). The MoreSheet already lists Settings. */}
 
           {/* "More" trigger — opens the Field Guide drawer (books,
               History, Collections, Tools, Useful, App items). The
