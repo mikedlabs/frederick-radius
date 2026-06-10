@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PLACES } from "@/data/places";
 import { rankPlaces, hoursCoverage, getNeedsReviewPlaces } from "@/lib/loaders/places";
+import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 import { getNeedsReviewEvents } from "@/lib/loaders/events";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import SCORES_RAW from "@/data/copy-scores.json" with { type: "json" };
@@ -55,7 +56,15 @@ export default async function DataHealth() {
   const feeds = feedStatuses();
   const dark = darkFeedCount();
 
+  // Trust layer (Phase 1): provenance coverage, the confidence ladder, and
+  // the stale open-assertion count that the freshness flip would blank.
+  const trust = computePlaceTrustReport();
+  const conf = trust.confidence;
+
   const rows: Array<[string, string, string]> = [
+    ["Provenance coverage", `${trust.provenance.coverage_pct}%`, "target 100%, every row carries the seven fields"],
+    ["Confidence ladder", `${conf.curated} / ${conf.partner} / ${conf.verified} / ${conf.scraped}`, "curated / partner / verified / scraped"],
+    ["Open assertions", String(trust.open_assertions.asserting), `${trust.open_assertions.stale_or_missing} stale, the freshness flip's blast radius`],
     ["Places (raw)", String(PLACES.length), ""],
     ["Duplicate clusters", String(clusters), `${folded} records fold`],
     ["Hours coverage", `${(coverage * 100).toFixed(1)}%`, "target 60%, gate hides Open-now below it"],
