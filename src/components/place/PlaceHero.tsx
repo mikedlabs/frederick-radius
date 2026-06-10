@@ -26,12 +26,10 @@ const GLYPH: Record<string, string> = {
 /**
  * Real imagery only: a curated Wikimedia landmark photo, or nothing. The
  * old third tier — generic Unsplash category stock — is gone (June-9 deep
- * audit P0-3): every URL it built was malformed (Unsplash page slugs
- * where the CDN expects hashed filenames), so each hero paid a guaranteed
- * 404, and even "fixed" it put a stock mountain overlook on a downtown
- * creek park with alt text to match. No photo now means the designed
- * gradient + contour plate renders alone — honest, on-brand, zero dead
- * requests, no misleading alt.
+ * audit P0-3): every URL it built was malformed (Unsplash page slugs where
+ * the CDN expects hashed filenames), so each hero paid a guaranteed 404 and
+ * rendered an empty box. No photo now means the designed field-guide plate
+ * below renders alone — honest, on-brand, zero dead requests.
  */
 function resolvePhotoSrc(slug: string, width: number) {
   const wm = getLandmarkPhoto(slug);
@@ -92,15 +90,11 @@ export default function PlaceHero({
         <rect width="600" height="400" fill={`url(#r-${slug})`} />
       </svg>
 
-      {/* The hero photo runs through Vercel's image optimizer so
-       *  every device gets a WebP at its true pixel size instead of
-       *  a 800x downloaded 12MB JPEG. `unoptimized` was set to skip
-       *  the optimizer, which was the cause of the 14s LCP on
-       *  /places/[slug]. The source is the same-origin /api/place-
-       *  photo proxy, which already strips the API key.
-       *
-       *  `placeholder="blur"` with a paper-cream data URL keeps the
-       *  hero from popping in cold; the load reads as a calm fade. */}
+      {/* The hero photo runs through Vercel's image optimizer so every
+       *  device gets a WebP at its true pixel size. The source is the
+       *  same-origin /api/place-photo proxy, which strips the API key.
+       *  Only rendered when we actually HAVE a real photo — otherwise the
+       *  designed plate below carries the hero. */}
       {src && (
         <Image
           src={src}
@@ -112,19 +106,42 @@ export default function PlaceHero({
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
           className="absolute inset-0 h-full w-full object-cover"
-          // View Transitions pair-up: a tile on /now's WorthALook rail
-          // carries the same name, so the browser morphs that thumbnail
-          // into this full hero on navigation (Apple-Photos style). The
-          // detail page only paints one hero per slug, so the name is
-          // guaranteed unique on this surface. Only applied on the hero
-          // variant — the card-size variant lives inside lists where a
-          // shared name would collide.
           style={size === "hero" ? { viewTransitionName: `place-photo-${slug}` } : undefined}
         />
       )}
 
-      {/* Soft gradient darkening at bottom for text legibility — only
-          over a real photo; the designed gradient needs no scrim. */}
+      {/* Designed field-guide plate — the deliberate hero for a place with
+          no real photograph (the common case). A large category glyph and
+          the place name in the display face, centered over the contour
+          gradient, so an unphotographed place reads as a specimen plate
+          rather than an empty box. */}
+      {!src && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
+          <span
+            aria-hidden
+            className="grid place-items-center rounded-full"
+            style={{
+              width: size === "hero" ? 64 : 44,
+              height: size === "hero" ? 64 : 44,
+              background: `color-mix(in srgb, ${color} 16%, white)`,
+              fontSize: size === "hero" ? 30 : 22,
+            }}
+          >
+            {glyph}
+          </span>
+          {size === "hero" && (
+            <span
+              className="max-w-[80%] font-serif font-semibold leading-tight tracking-tight"
+              style={{ color: `color-mix(in srgb, ${color} 72%, var(--app-ink))`, fontSize: 22 }}
+            >
+              {name}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Soft gradient darkening at bottom for text legibility — only over
+          a real photo (the plate manages its own contrast). */}
       {src && (
         <div
           aria-hidden
@@ -141,11 +158,10 @@ export default function PlaceHero({
         <span aria-hidden>{glyph}</span> {cat?.name ?? category}
       </div>
 
-      {/* No name overlay on the detail hero: the place's <h1> + address
-          sit on the card directly below, so painting the name on the
-          photo too was a duplicate title. The photo stays clean with
-          just the category chip; cards (non-"hero" sizes) never had an
-          overlay. */}
+      {/* No name overlay on a PHOTO hero: the place's <h1> + address sit on
+          the card directly below, so painting the name on the photo too
+          was a duplicate title. (The no-photo plate above shows the name
+          because there is no photo competing with it.) */}
     </div>
   );
 }
@@ -185,8 +201,7 @@ export function PhotoCredit({
       </p>
     );
   }
-  // No photo → the designed gradient plate renders, which is our own
-  // artwork and needs no credit line. (The Unsplash credit branch left
-  // with the stock tier — June-9 audit P0-3.)
+  // No Google photo and no Wikimedia landmark → the hero is our own designed
+  // field-guide plate, not a third-party photo, so there is nothing to credit.
   return null;
 }

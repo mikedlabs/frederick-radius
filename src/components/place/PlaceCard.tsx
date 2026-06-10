@@ -350,7 +350,9 @@ export default function PlaceCard({
                 className="mt-0.5 border-l-2 pl-2.5 text-[13px] italic leading-snug"
                 style={{ borderColor: `color-mix(in srgb, ${color} 60%, transparent)`, color: "var(--app-ink-2)" }}
               >
-                &ldquo;{place.review_snippet}&rdquo;
+                {/* Clamp to two lines: a supporting quote, not a wall. The
+                    full review lives on the place detail page. */}
+                <span className="line-clamp-2">&ldquo;{place.review_snippet}&rdquo;</span>
                 {place.review_author && (
                   <cite className="mt-0.5 block text-[11px] not-italic" style={{ color: "var(--app-ink-3)" }}>
                     — {place.review_author}, Google
