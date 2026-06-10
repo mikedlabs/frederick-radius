@@ -32,6 +32,7 @@ import {
 import { prunePushLog } from "@/lib/push-fanout";
 import { consumeFeedMetrics } from "@/lib/integrations/event-schema";
 import { sendAnomalyAlert } from "@/lib/integrations/alerts";
+import { computePlaceTrustReport } from "@/lib/quality/trust-report";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -50,6 +51,11 @@ export async function GET(request: Request) {
 
   const ranked = rankPlaces({});
   const coverage = Number((hoursCoverage(ranked) * 100).toFixed(1));
+
+  // Trust report (Section 8 gates, made measurable): provenance coverage,
+  // the confidence distribution, and the count of open/closed assertions
+  // whose hours verification is stale (the freshness flip's blast radius).
+  const trust = computePlaceTrustReport();
 
   // Coordinate-divergence regression gate: a curated place whose
   // coordinates disagree with the geocoded DFP record for the same
@@ -113,6 +119,15 @@ export async function GET(request: Request) {
     places: PLACES.length,
     dedup: { clusters, folded },
     hours: { coverage_pct: coverage, target_pct: 60, below_gate: coverage < 60 },
+    trust: {
+      provenance_coverage_pct: trust.provenance.coverage_pct,
+      provenance_below_gate: trust.provenance.below_gate,
+      provenance_missing_sample: trust.provenance.missing_sample,
+      confidence: trust.confidence,
+      open_assertions: trust.open_assertions.asserting,
+      stale_open_assertions: trust.open_assertions.stale_or_missing,
+      stale_open_sample: trust.open_assertions.stale_sample,
+    },
     copy,
     coord_divergence: {
       threshold_m: 200,
