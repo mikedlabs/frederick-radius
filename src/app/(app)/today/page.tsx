@@ -398,6 +398,7 @@ export default async function HomePage({
                     <SeasonalPhoto
                       season="auto"
                       alt=""
+                      kenBurns
                       sizes="(max-width: 720px) 100vw, 720px"
                       className="absolute inset-0"
                     />

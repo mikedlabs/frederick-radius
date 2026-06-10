@@ -41,6 +41,7 @@ export default function GuidePage() {
             season="auto"
             alt="Frederick County, Maryland"
             priority
+            kenBurns
             sizes="(max-width: 1024px) 100vw, 1024px"
             className="absolute inset-0"
           />

@@ -120,6 +120,11 @@ export type SeasonalPhotoProps = {
   /** sizes attribute for responsive serving. Defaults to a full-
    *  viewport assumption; pass narrower for cards / chips. */
   sizes?: string;
+  /** Opt-in slow Ken Burns drift — a very gentle, long scale used ONLY
+   *  on the large county heroes (guide / today / category) to give the
+   *  lead photograph life without distraction. Self-disables under
+   *  prefers-reduced-motion (see .ken-burns in globals.css). */
+  kenBurns?: boolean;
 };
 
 export default async function SeasonalPhoto({
@@ -128,6 +133,7 @@ export default async function SeasonalPhoto({
   alt = "Frederick County",
   priority = false,
   sizes = "100vw",
+  kenBurns = false,
 }: SeasonalPhotoProps) {
   const manifest = await loadManifest();
   if (!manifest) return null;
@@ -151,7 +157,7 @@ export default async function SeasonalPhoto({
         sizes={sizes}
         placeholder="blur"
         blurDataURL={blurDataUrlFor(pick.blur)}
-        className="h-full w-full object-cover"
+        className={`h-full w-full object-cover${kenBurns ? " ken-burns" : ""}`}
       />
     </div>
   );
