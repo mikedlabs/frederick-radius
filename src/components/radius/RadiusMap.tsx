@@ -3,7 +3,9 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Crosshair, Map as MapIcon, ArrowUpRight, X } from "lucide-react";
+import { Crosshair, Map as MapIcon, ArrowUpRight, X, Layers as LayersIcon } from "lucide-react";
+import MapOverlays from "@/components/map/MapOverlays";
+import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -172,6 +174,14 @@ export default function RadiusMap({
 }) {
   const accentHex = MODE_HEX[mode] ?? "#2F5470";
   const mapRef = useRef<MapRef | null>(null);
+  // Map layers in the DEFAULT (Nearby) map — the GIS overlays were only
+  // reachable in Whole-county mode before, so the field-guide layers
+  // (parks, markets, public art, historic, covered bridges) never met
+  // the user who never switched modes. Local state + a compact control;
+  // MapOverlays handles its own lazy fetch, render, and popups.
+  const [activeOverlays, setActiveOverlays] = useState<OverlayKey[]>([]);
+  const [layersOpen, setLayersOpen] = useState(false);
+  const readyOverlays = OVERLAYS.filter((o) => o.ready);
   // Live position while dragging the center pin — gives the radius
   // circle a smooth follow without thrashing parent state on every
   // pointermove. Committed back via onCenterChange on dragend.
@@ -898,6 +908,9 @@ export default function RadiusMap({
             </div>
           </Popup>
         )}
+        {/* GIS overlays — same self-contained renderer the browse map
+            uses, now in the default Nearby map too. */}
+        <MapOverlays active={activeOverlays} />
       </Map>
 
       {/* Center label pill — names the current center without making
@@ -956,6 +969,53 @@ export default function RadiusMap({
         >
           <MapIcon className="h-4 w-4" strokeWidth={2} aria-hidden />
         </button>
+        {/* Layers — opens a compact list of the ready field-guide
+            overlays. Dark by default; the reader pulls one in. */}
+        <button
+          type="button"
+          onClick={() => setLayersOpen((v) => !v)}
+          aria-label="Map layers"
+          aria-expanded={layersOpen}
+          title="Map layers"
+          className="tap-44 grid h-9 w-9 place-items-center rounded-full border shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
+          style={{
+            background: activeOverlays.length > 0 ? "var(--app-brand)" : "var(--app-bg-elevated)",
+            borderColor: activeOverlays.length > 0 ? "var(--app-brand)" : "var(--app-border)",
+            color: activeOverlays.length > 0 ? "#fff" : "var(--app-ink-2)",
+          }}
+        >
+          <LayersIcon className="h-4 w-4" strokeWidth={2} aria-hidden />
+        </button>
+        {layersOpen && (
+          <div
+            className="flex flex-col gap-1 rounded-[var(--app-radius-md)] border p-1.5 shadow-[var(--app-shadow-2)]"
+            style={{ background: "color-mix(in srgb, var(--app-bg-elevated) 94%, transparent)", borderColor: "var(--app-border)", backdropFilter: "blur(8px)" }}
+          >
+            {readyOverlays.map((o) => {
+              const on = activeOverlays.includes(o.key);
+              return (
+                <button
+                  key={o.key}
+                  type="button"
+                  onClick={() =>
+                    setActiveOverlays((cur) =>
+                      cur.includes(o.key) ? cur.filter((k) => k !== o.key) : [...cur, o.key],
+                    )
+                  }
+                  aria-pressed={on}
+                  className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
+                  style={{
+                    background: on ? "var(--app-brand)" : "transparent",
+                    color: on ? "#fff" : "var(--app-ink-2)",
+                  }}
+                >
+                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "#fff" : "var(--app-brand)" }} />
+                  {o.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </section>
   );
