@@ -157,6 +157,7 @@ const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
   county:           { license: "Frederick County government calendar",           confidence: "verified" },
   ticketmaster:     { license: "Ticketmaster Discovery API terms",               confidence: "verified" },
   bandsintown:      { license: "Bandsintown API terms",                          confidence: "verified" },
+  seatgeek:         { license: "SeatGeek Platform API terms",                     confidence: "verified" },
 };
 
 export type EventProvenanceInput = {

@@ -28,6 +28,7 @@ import {
   fetchTicketmasterSports,
 } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { fetchSeatGeek } from "@/lib/integrations/seatgeek";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
@@ -46,19 +47,22 @@ export type UnifiedEvents = {
 export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents] = await Promise.all([
+  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents] = await Promise.all([
     getLiveEvents(60).catch(() => ({
       events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
     })),
     fetchTicketmasterMusic().catch(() => []),
     fetchTicketmasterSports().catch(() => []),
     fetchBandsintownForArtists([]).catch(() => []),
+    // SeatGeek area discovery (Phase 4 item 3): inert without
+    // SEATGEEK_CLIENT_ID, fail-soft like the others.
+    fetchSeatGeek().catch(() => []),
   ]);
 
   // Live/county + music + sports feeds, curated duplicates dropped.
   const liveCards = dedupeLiveAgainstCurated(
     collapseRecurringEvents(
-      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents].map(liveToCardEvent),
+      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents, ...sgEvents].map(liveToCardEvent),
     ),
     curatedUpcoming,
   );
