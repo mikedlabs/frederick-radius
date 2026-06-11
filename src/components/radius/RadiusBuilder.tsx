@@ -7,6 +7,7 @@ import IconStamp from "@/components/ui/IconStamp";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
+import RadiusPresets from "./RadiusPresets";
 import MapControlSheet, { SNAP_COLLAPSED, SNAP_HALF } from "./MapControlSheet";
 import { resolveMunicipality } from "@/lib/location";
 import { useClientPlaces } from "@/hooks/useClientPlaces";
@@ -257,6 +258,11 @@ export default function RadiusBuilder({
   const [presetIdx, setPresetIdx] = useState(0);
   const [mode, setMode] = useState<TravelMode>("walk");
   const [minutes, setMinutes] = useState(10);
+  // Fine-tune disclosure: the exact mode + minutes controls are folded
+  // away by default so the one-tap presets lead and the card stays calm.
+  // The minority who want an exact reach open it; everyone else never
+  // sees a slider they don't need.
+  const [fineTuneOpen, setFineTuneOpen] = useState(false);
   // Map Control Sheet snap state. Opens collapsed (radar state + count
   // peek); "Adjust" / drag lifts it to the working / browse states.
   const [snap, setSnap] = useState<number | string | null>(SNAP_COLLAPSED);
@@ -769,53 +775,87 @@ export default function RadiusBuilder({
         </button>
       </div>
 
-      {/* Mode + distance read as one instrument. */}
-      <div
-        role="group"
-        aria-label="Travel mode"
-        className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
-        style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-      >
-        {MODES.map(({ mode: m, label, icon: Icon }) => {
-          const active = m === mode;
-          return (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMode(m)}
-              aria-pressed={active}
-              className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
-              style={{
-                background: active ? "var(--app-brand)" : "transparent",
-                color: active ? "#fff" : "var(--app-ink-2)",
-              }}
-            >
-              <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Quick picks — the PRIMARY radius control. One tap sets both the
+          travel mode and the minutes for the common cases, so most users
+          never touch a mode toggle or a slider. */}
+      <RadiusPresets
+        mode={mode}
+        minutes={minutes}
+        onPick={(m, min) => {
+          setMode(m);
+          setMinutes(min);
+        }}
+      />
 
-      {/* Slider — single row, inline minute display. */}
-      <div>
-        <input
-          id="minutes-slider"
-          aria-label={`${minutes} minutes`}
-          type="range"
-          min={3}
-          max={mode === "walk" ? 30 : mode === "bike" ? 20 : 15}
-          step={1}
-          value={minutes}
-          onChange={(e) => setMinutes(Number(e.target.value))}
-          className="w-full"
-          style={{ accentColor: "var(--app-brand)" }}
+      {/* Fine-tune — the exact mode + minutes, folded away by default.
+          The instrument is still here for the user who wants a precise
+          reach; it just stops competing with the presets that cover the
+          common cases. */}
+      <button
+        type="button"
+        onClick={() => setFineTuneOpen((v) => !v)}
+        aria-expanded={fineTuneOpen}
+        className="flex w-full items-center justify-between rounded-[var(--app-radius-md)] px-1 py-1 text-[12px] font-semibold"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        <span>Fine-tune the reach</span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${fineTuneOpen ? "rotate-180" : ""}`}
+          strokeWidth={2.25}
+          aria-hidden
         />
-        <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-          <span>3 min</span>
-          <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
+      </button>
+      {fineTuneOpen && (
+        <div className="space-y-2">
+          {/* Mode + distance read as one instrument. */}
+          <div
+            role="group"
+            aria-label="Travel mode"
+            className="grid grid-cols-3 rounded-[var(--app-radius-md)] border p-0.5"
+            style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+          >
+            {MODES.map(({ mode: m, label, icon: Icon }) => {
+              const active = m === mode;
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  aria-pressed={active}
+                  className="flex items-center justify-center gap-1.5 rounded-[calc(var(--app-radius-md)-3px)] py-1.5 text-[13px] font-semibold transition-colors"
+                  style={{
+                    background: active ? "var(--app-brand)" : "transparent",
+                    color: active ? "#fff" : "var(--app-ink-2)",
+                  }}
+                >
+                  <Icon className="h-4 w-4" strokeWidth={2} aria-hidden />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Slider — single row, inline minute display. */}
+          <div>
+            <input
+              id="minutes-slider"
+              aria-label={`${minutes} minutes`}
+              type="range"
+              min={3}
+              max={mode === "walk" ? 30 : mode === "bike" ? 20 : 15}
+              step={1}
+              value={minutes}
+              onChange={(e) => setMinutes(Number(e.target.value))}
+              className="w-full"
+              style={{ accentColor: "var(--app-brand)" }}
+            />
+            <div className="-mt-0.5 flex justify-between text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+              <span>3 min</span>
+              <span>{mode === "walk" ? 30 : mode === "bike" ? 20 : 15} min</span>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 
