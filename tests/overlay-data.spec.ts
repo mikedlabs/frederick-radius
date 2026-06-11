@@ -18,14 +18,14 @@ function load(layer: string) {
 describe.each(["parks", "markets", "bridges", "historic"])("overlay %s", (layer) => {
   const { raw, gj } = load(layer);
 
-  it("is a FeatureCollection with point features", () => {
+  it("is a FeatureCollection with features", () => {
     expect(gj.type).toBe("FeatureCollection");
     expect(gj.features.length).toBeGreaterThan(0);
-    expect(gj.features[0].geometry.type).toBe("Point");
   });
 
-  it("every point sits inside the county", () => {
+  it("every point feature sits inside the county", () => {
     for (const f of gj.features) {
+      if (f.geometry.type !== "Point") continue;
       const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates;
       expect(isInFrederickCounty(lng, lat)).toBe(true);
     }
@@ -33,6 +33,17 @@ describe.each(["parks", "markets", "bridges", "historic"])("overlay %s", (layer)
 
   it("ships well under the 1 MB static ceiling", () => {
     expect(raw.length).toBeLessThan(1_000_000);
+  });
+});
+
+describe("parks overlay carries the park polygons", () => {
+  const { gj } = load("parks");
+  it("mixes area fills (the grounds) with named points (the markers)", () => {
+    const types = new Set(gj.features.map((f) => f.geometry.type));
+    expect(types.has("Point")).toBe(true);
+    expect(types.has("Polygon") || types.has("MultiPolygon")).toBe(true);
+    // Polygons lead in the file so fills draw under the markers.
+    expect(["Polygon", "MultiPolygon"]).toContain(gj.features[0].geometry.type);
   });
 });
 
