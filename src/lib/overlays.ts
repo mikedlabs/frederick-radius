@@ -74,9 +74,9 @@ export const OVERLAYS: OverlayDef[] = [
   {
     key: "bridges",
     label: "Covered bridges",
-    sources: "Utica Mills, Loy's Station, and Roddy Road covered bridges",
+    sources: "Utica Mills, Loy's Station, and Roddy Road covered bridges, from county GIS",
     endpoint: "/api/overlays/bridges",
-    ready: false,
+    ready: true,
   },
 ];
 

@@ -15,7 +15,7 @@ function load(layer: string) {
   return { raw, gj: JSON.parse(raw) as GeoJSON.FeatureCollection };
 }
 
-describe.each(["parks", "markets"])("overlay %s", (layer) => {
+describe.each(["parks", "markets", "bridges"])("overlay %s", (layer) => {
   const { raw, gj } = load(layer);
 
   it("is a FeatureCollection with point features", () => {
@@ -33,6 +33,18 @@ describe.each(["parks", "markets"])("overlay %s", (layer) => {
 
   it("ships well under the 1 MB static ceiling", () => {
     expect(raw.length).toBeLessThan(1_000_000);
+  });
+});
+
+describe("covered bridges overlay", () => {
+  const { gj } = load("bridges");
+  it("is exactly the three named covered bridges", () => {
+    const names = gj.features.map((f) => f.properties?.name).sort();
+    expect(names).toEqual([
+      "Loy's Station Covered Bridge",
+      "Roddy Road Covered Bridge",
+      "Utica Mills Covered Bridge",
+    ]);
   });
 });
 

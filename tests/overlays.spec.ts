@@ -15,9 +15,9 @@ describe("overlay registry", () => {
     );
   });
 
-  it("the seeded layers are public art and the GIS pulls (parks, markets)", () => {
+  it("the seeded layers are public art and the GIS pulls (parks, markets, bridges)", () => {
     const ready = OVERLAYS.filter((o) => o.ready).map((o) => o.key).sort();
-    expect(ready).toEqual(["art", "markets", "parks"]);
+    expect(ready).toEqual(["art", "bridges", "markets", "parks"]);
   });
 });
 
