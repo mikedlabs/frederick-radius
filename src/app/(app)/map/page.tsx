@@ -8,7 +8,7 @@ import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { fetchMapillaryTrash } from "@/lib/integrations/mapillary";
 import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
-import { getMunicipalBoundaries } from "@/lib/integrations/fcGis";
+import { getMunicipalBoundaries, getCountyBoundary } from "@/lib/integrations/fcGis";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
 import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
@@ -363,6 +363,7 @@ async function BrowseMapArea({
     trailLines,
     transitLines,
     municipalBoundaries,
+    countyBoundary,
     waterSites,
     allWeek,
   ] = await Promise.all([
@@ -376,6 +377,9 @@ async function BrowseMapArea({
     // County GIS municipal boundary polygons — quiet always-on map
     // outline. Fail-soft to empty so the county server never blocks.
     withTimeout(getMunicipalBoundaries(), 6000, EMPTY_FC),
+    // County boundary outline — committed static GeoJSON, the quiet
+    // always-on county edge (6.1). Fail-soft to empty.
+    withTimeout(getCountyBoundary(), 6000, EMPTY_FC),
     // USGS river gauges — surfaced as a map layer (kind="river_gauge")
     // so the Rivers & creeks dataset isn't trapped on /rivers alone.
     withTimeout(getFrederickWaterSites(), 6000, []),
@@ -524,6 +528,7 @@ async function BrowseMapArea({
           trailLines={trailLines}
           transitLines={transitLines}
           municipalBoundaries={municipalBoundaries}
+          countyBoundary={countyBoundary}
           events={events}
           fullBleed
           // Arriving via a category tile (?intent=…): center on the

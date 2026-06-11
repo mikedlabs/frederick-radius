@@ -145,6 +145,9 @@ type Props = {
    *  always-on outline. Server-fetched (fcGis.getMunicipalBoundaries),
    *  empty FC when the county server is unreachable. */
   municipalBoundaries?: MapLineFC;
+  /** County boundary polygon — the quiet always-on county edge (6.1),
+   *  drawn under the place pins. Empty FC when unavailable. */
+  countyBoundary?: MapLineFC;
   /** Upcoming events as map pins — phase 1 differentiator vs Google /
    *  Apple Maps (they don't have local event ↔ venue joins). Already
    *  geo-deduped and scoped to "happening soon" server-side. */
@@ -178,6 +181,7 @@ export default function AppMap({
   trailLines = EMPTY_LINE_FC,
   transitLines = EMPTY_LINE_FC,
   municipalBoundaries = EMPTY_LINE_FC,
+  countyBoundary = EMPTY_LINE_FC,
   events = [],
 }: Props) {
   const mapRef = useRef<MapRef>(null);
@@ -1203,6 +1207,26 @@ export default function AppMap({
               Self-contained (lazy fetch, own Sources/Layers, own click
               popups) so this block stays out of the main render path. */}
           <MapOverlays active={activeOverlays} />
+          {/* County boundary — the quiet always-on county edge (6.1).
+              Committed static GIS polygon, drawn as an outline UNDER the
+              municipal lines and pins so the map reads as a county field
+              guide. A touch heavier than the muni dashes, still calm. */}
+          <Source
+            id="county-boundary"
+            type="geojson"
+            data={countyBoundary as unknown as GeoJSON.FeatureCollection}
+          >
+            <Layer
+              id="county-boundary-line"
+              type="line"
+              layout={{ "line-join": "round", "line-cap": "round" }}
+              paint={{
+                "line-color": "var(--app-ink-2, #4A4636)",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1.2, 13, 2 ],
+                "line-opacity": 0.4,
+              }}
+            />
+          </Source>
           {/* Municipal boundaries — authoritative county GIS polygons,
               rendered as a quiet always-on outline so a user can see
               which town they are panning through (replacing the old
