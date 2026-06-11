@@ -52,10 +52,10 @@ export const OVERLAYS: OverlayDef[] = [
   },
   {
     key: "historic",
-    label: "Historic sites",
-    sources: "County historic sites, cemeteries, railroads, and the National Register",
+    label: "Historic cemeteries",
+    sources: "Frederick County historic cemeteries, from county open data",
     endpoint: "/api/overlays/historic",
-    ready: false,
+    ready: true,
   },
   {
     key: "art",
