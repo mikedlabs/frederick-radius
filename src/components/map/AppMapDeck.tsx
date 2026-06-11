@@ -8,6 +8,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import type { LngLat } from "@/lib/geo";
 import { AMENITY_GROUPS, CHIP_GLYPH } from "./constants";
 import type { CivicPin, MapLineFC } from "./types";
+import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 
 // Preview-only demo layers (Food Trucks / Radius Points / Live Transit)
 // render sample data, not real coverage. OFF in production; set
@@ -76,6 +77,10 @@ export type AppMapDeckProps = {
   setShowAerial: SetState<boolean>;
   aerialCount: number;
 
+  // GIS overlays (6.3/6.4): the active toggleable layer set + a toggle.
+  activeOverlays: OverlayKey[];
+  toggleOverlay: (k: OverlayKey) => void;
+
   // Preview-only demo layers (gated by SHOW_DEMO_LAYERS).
   setDemo: SetState<null | "food-truck" | "transit" | "rewards">;
 };
@@ -118,6 +123,8 @@ export default function AppMapDeck({
   showAerial,
   setShowAerial,
   aerialCount,
+  activeOverlays,
+  toggleOverlay,
   setDemo,
 }: AppMapDeckProps) {
   // Open-now state lives in the URL (?open=now), not in client state —
@@ -576,10 +583,12 @@ export default function AppMapDeck({
           </ul>
         </section>
 
-        {/* OVERLAYS section — infrastructure / situation layers. Each
-            renders only if the underlying data exists, so the section
-            only appears when there's something to toggle. */}
-        {(amenityCount > 0 || civic.length > 0 || transitLines.features.length > 0 || trailLines.features.length > 0) && (
+        {/* OVERLAYS section: infrastructure / situation layers. The
+            data-dependent chips (amenities, roads, transit, trails)
+            still render only when their data exists; the GIS overlay
+            chips (parks, markets, art, ...) are always available, so the
+            section now always appears. */}
+        {(amenityCount > 0 || civic.length > 0 || transitLines.features.length > 0 || trailLines.features.length > 0 || OVERLAYS.length > 0) && (
           <section className="space-y-2">
             <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
               Overlays
@@ -692,6 +701,36 @@ export default function AppMapDeck({
               </button>
             </li>
           )}
+          {/* GIS overlays (6.3/6.4): one chip per registered overlay.
+              Ready layers toggle the active set (persisted to the URL);
+              coming-soon layers render disabled so the reader can see
+              what is on the way without toggling an empty source. */}
+          {OVERLAYS.map((o) => {
+            const on = activeOverlays.includes(o.key);
+            return (
+              <li key={o.key}>
+                <button
+                  type="button"
+                  onClick={() => o.ready && toggleOverlay(o.key)}
+                  aria-pressed={on}
+                  disabled={!o.ready}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96] disabled:cursor-default"
+                  style={{
+                    background: on ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                    color: on ? "white" : "var(--app-ink-2)",
+                    border: `1px solid ${on ? "var(--app-brand)" : "var(--app-border)"}`,
+                    boxShadow: on ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                    opacity: o.ready ? 1 : 0.5,
+                  }}
+                  title={o.ready ? o.sources : `${o.sources} (coming soon)`}
+                >
+                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "white" : "var(--app-brand)" }} />
+                  {o.label}
+                  {!o.ready && <span style={{ fontSize: 9, opacity: 0.8 }}>soon</span>}
+                </button>
+              </li>
+            );
+          })}
             </ul>
           </section>
         )}
