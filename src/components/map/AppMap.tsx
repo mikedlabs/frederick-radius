@@ -83,6 +83,9 @@ import {
   EMPTY_FC,
   FREDERICK,
   FREDERICK_MAX_BOUNDS,
+  FREDERICK_MIN_ZOOM,
+  FREDERICK_MAX_ZOOM,
+  isInFrederickCounty,
   RADIUS_M,
   STYLE_URL,
   circlePolygon,
@@ -788,13 +791,30 @@ export default function AppMap({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocating(false);
-        setGeoMsg(null);
         const loc = { lng: pos.coords.longitude, lat: pos.coords.latitude };
-        setUserLoc(loc);
         haptic("light");
-        // A deliberate cross-county recenter, so a flight is right here
-        // — but eased with the same curve as every other move so it
-        // still feels calm, not a snap.
+        // County lock (6.2): a user physically outside Frederick County
+        // gets the county itself, centered on downtown, not a flight to
+        // an out-of-area "you are here" the leash would then fight. We
+        // also skip the user-location pin and radius in that case, since
+        // there is nothing in range to anchor.
+        if (!isInFrederickCounty(loc.lng, loc.lat)) {
+          setUserLoc(null);
+          setGeoMsg("You are outside Frederick County. Showing downtown Frederick.");
+          mapRef.current?.getMap().flyTo({
+            center: FREDERICK,
+            zoom: 12,
+            duration: 1100,
+            curve: 1.25,
+            easing: CAM_EASE,
+            essential: true,
+          });
+          return;
+        }
+        setGeoMsg(null);
+        setUserLoc(loc);
+        // A deliberate in-county recenter, eased with the same curve as
+        // every other move so it still feels calm, not a snap.
         mapRef.current?.getMap().flyTo({
           center: [loc.lng, loc.lat],
           zoom: 14,
@@ -1056,6 +1076,8 @@ export default function AppMap({
           // sail off into empty tiles the user then has to scroll back
           // from — and so the place set always has context on screen.
           maxBounds={FREDERICK_MAX_BOUNDS}
+          minZoom={FREDERICK_MIN_ZOOM}
+          maxZoom={FREDERICK_MAX_ZOOM}
           // Don't tear down + re-create the GL context when the map
           // unmounts (mode toggle, route change) — reusing it makes the
           // map snap back instantly instead of cold-booting Mapbox.
