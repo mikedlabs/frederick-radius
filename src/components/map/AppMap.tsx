@@ -22,6 +22,8 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import { useFollowedSlugs } from "@/hooks/useFollows";
+import { useRouter } from "next/navigation";
+import type { SearchResult } from "@/lib/search/index";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle (a 13MB chunk) and
 // the map never loads. Places arrive already decorated from the
@@ -724,25 +726,64 @@ export default function AppMap({
   const activeAmenityGroupCount = amenityGroups.size;
 
   // On-map search — match places already on the map by name/address/city.
-  const searchMatches = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (term.length < 2) return [];
-    return places
-      .filter((p) =>
-        p.name.toLowerCase().includes(term) ||
-        (p.address ?? "").toLowerCase().includes(term) ||
-        (p.city ?? "").toLowerCase().includes(term)
-      )
-      .slice(0, 6);
-  }, [q, places]);
+  // Unified search (one-search): the map bar asks the same /api/search
+  // the TopBar overlay does, so the two bars can never give different
+  // answers. Places focus the map; events, towns, and categories
+  // navigate; a layer result toggles the overlay right here. Debounced
+  // 150ms to match SearchOverlay; stale responses are dropped.
+  const router = useRouter();
+  const [searchMatches, setSearchMatches] = useState<SearchResult[]>([]);
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setSearchMatches([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      fetch(`/api/search?q=${encodeURIComponent(term)}&limit=6`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((d: SearchResult[]) => setSearchMatches(Array.isArray(d) ? d : []))
+        .catch(() => {
+          /* aborted or offline — keep the previous list */
+        });
+    }, 150);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [q]);
 
-  const pickSearch = (p: PlaceCardData) => {
-    const map = mapRef.current?.getMap();
-    setSelectedSlug(p.slug);
-    setQ("");
+  const placesBySlug = useMemo(() => {
+    // globalThis.Map: the bare `Map` is react-map-gl's component here.
+    const m = new globalThis.Map<string, PlaceCardData>();
+    for (const p of places) m.set(p.slug, p);
+    return m;
+  }, [places]);
+
+  const pickSearch = (r: SearchResult) => {
     haptic("light");
-    if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
-    openSheet(userLoc ? { ...p, distance_m: haversineMeters(userLoc, p.geom) } : p);
+    // A layer result toggles the overlay in place — no navigation.
+    const layer = r.id.startsWith("layer:") ? (r.id.slice(6) as OverlayKey) : null;
+    if (layer) {
+      setActiveOverlays((cur) => (cur.includes(layer) ? cur : [...cur, layer]));
+      setQ("");
+      return;
+    }
+    // A place that's on this map focuses it; anything else (events,
+    // towns, categories, places outside the loaded set) navigates.
+    if (r.type === "place") {
+      const p = placesBySlug.get(r.id.replace(/^place:/, ""));
+      if (p) {
+        const map = mapRef.current?.getMap();
+        setSelectedSlug(p.slug);
+        setQ("");
+        if (map) smoothFocus(map, [p.geom.lng, p.geom.lat], { minZoom: 15 });
+        openSheet(userLoc ? { ...p, distance_m: haversineMeters(userLoc, p.geom) } : p);
+        return;
+      }
+    }
+    router.push(r.href);
   };
 
   // Near-me radius ring

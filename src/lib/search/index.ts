@@ -11,6 +11,7 @@
  */
 
 import { search, type SearchHit } from "@/lib/search";
+import { OVERLAYS } from "@/lib/overlays";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { placeHoursTrust, eventTrust, type TrustSignal } from "@/lib/trust";
@@ -127,6 +128,33 @@ function matchQuickActions(query: string): SearchResult[] {
   }));
 }
 
+// Map-layer keywords: typing what a layer SHOWS offers the layer itself.
+// Only ready layers are offered — a coming-soon overlay is not an answer.
+const LAYER_KEYWORDS: Record<string, string[]> = {
+  parks: ["park", "parks", "playground"],
+  trails: ["trail", "trails", "hike", "hiking", "appalachian", "towpath"],
+  historic: ["historic", "history", "cemetery", "cemeteries"],
+  art: ["art", "mural", "murals", "sculpture", "public art"],
+  markets: ["market", "markets", "farmers", "farmers market"],
+  bridges: ["bridge", "bridges", "covered bridge", "covered bridges"],
+};
+
+function matchLayers(query: string): SearchResult[] {
+  const q = query.toLowerCase().trim();
+  if (q.length < 3) return [];
+  return OVERLAYS.filter(
+    (o) =>
+      o.ready &&
+      (LAYER_KEYWORDS[o.key] ?? []).some((k) => k.startsWith(q) || q.includes(k)),
+  ).map((o) => ({
+    type: "action" as const,
+    id: `layer:${o.key}`,
+    title: `Show ${o.label.toLowerCase()} on the map`,
+    subtitle: o.sources,
+    href: `/map?mode=browse&layers=${o.key}`,
+  }));
+}
+
 function hitToResult(h: SearchHit): SearchResult {
   if (h.type === "place") {
     // SearchHit.place is typed as Place but populated from clientPlaces()
@@ -188,6 +216,10 @@ export function searchIndex(query: string, limit = 12): SearchResult[] {
   // Tonight Foo. They're cheap to compute (a few keyword checks) and
   // capped at the head; the rest of the limit goes to real ranked hits.
   const actions = matchQuickActions(query).slice(0, 2);
-  const hits = search(query, Math.max(1, limit - actions.length)).map(hitToResult);
-  return [...actions, ...hits];
+  // Map layers ride after quick actions: "farmers market" should offer
+  // the overlay alongside the market places themselves.
+  const layers = matchLayers(query).slice(0, 1);
+  const head = [...actions, ...layers];
+  const hits = search(query, Math.max(1, limit - head.length)).map(hitToResult);
+  return [...head, ...hits];
 }
