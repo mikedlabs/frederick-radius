@@ -15,7 +15,7 @@ function load(layer: string) {
   return { raw, gj: JSON.parse(raw) as GeoJSON.FeatureCollection };
 }
 
-describe.each(["parks", "markets", "bridges"])("overlay %s", (layer) => {
+describe.each(["parks", "markets", "bridges", "historic"])("overlay %s", (layer) => {
   const { raw, gj } = load(layer);
 
   it("is a FeatureCollection with point features", () => {
