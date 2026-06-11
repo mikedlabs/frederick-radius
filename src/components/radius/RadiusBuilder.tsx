@@ -778,6 +778,13 @@ export default function RadiusBuilder({
           onClick={requestMyLocation}
           aria-pressed={Boolean(myLoc)}
           aria-busy={geoStatus === "loading" || undefined}
+          aria-label={
+            geoStatus === "denied"
+              ? "Location blocked — enable in browser settings"
+              : myLoc
+                ? "Using your location"
+                : "Center on your location"
+          }
           title={
             geoStatus === "denied"
               ? "Location blocked — enable in browser settings"
@@ -786,7 +793,7 @@ export default function RadiusBuilder({
                 : "Center on your location"
           }
           disabled={geoStatus === "unavailable"}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94] disabled:opacity-40"
+          className="tap-44 grid h-9 w-9 shrink-0 place-items-center rounded-full border transition active:scale-[0.94] disabled:opacity-40"
           style={{
             borderColor: myLoc ? "var(--app-brand)" : "var(--app-border)",
             background: myLoc

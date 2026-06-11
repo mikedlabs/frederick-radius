@@ -941,7 +941,7 @@ export default function RadiusMap({
           onClick={fitToRadius}
           aria-label="Fit radius"
           title="Fit radius"
-          className="grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
+          className="tap-44 grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           <Crosshair className="h-4 w-4" strokeWidth={2} aria-hidden />
@@ -951,7 +951,7 @@ export default function RadiusMap({
           onClick={fitToCounty}
           aria-label="Show whole county"
           title="Show whole county"
-          className="grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
+          className="tap-44 grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           <MapIcon className="h-4 w-4" strokeWidth={2} aria-hidden />
