@@ -450,6 +450,35 @@ export default function RadiusBuilder({
     );
   };
 
+  // Answer-first start: if browser geolocation permission is ALREADY
+  // granted (zero prompt risk) and no cached position seeded the center,
+  // locate automatically — /map opens on the user's actual surroundings
+  // with no taps to value. A user who never granted is never prompted;
+  // denied and unavailable states are untouched. The cache-hydration
+  // effect above runs first (same mount pass), so a fresh cache wins and
+  // this effect sees its sessionStorage entry and stands down.
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("permissions" in navigator)) return;
+    try {
+      // Any cache entry means a position this session already handled.
+      if (sessionStorage.getItem(GEO_CACHE_KEY)) return;
+    } catch {
+      // sessionStorage unavailable — the permissions query still works.
+    }
+    let cancelled = false;
+    navigator.permissions
+      .query({ name: "geolocation" })
+      .then((status) => {
+        if (!cancelled && status.state === "granted") requestMyLocation();
+      })
+      .catch(() => {
+        // Permissions API unsupported — keep the tap-to-locate path.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Permanent dismiss for the first-visit prompt. The Locate button in
   // the control card stays the always-on opt-in path; we just stop
   // pushing the big card at the top of the page.
