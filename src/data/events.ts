@@ -74,7 +74,7 @@ export type Event = {
     // names now. They were all hardcoded "manual" at that boundary,
     // which let a Ticketmaster row claim first party curated trust.
     | "hood" | "visit-frederick" | "weinberg" | "delaplaine"
-    | "ticketmaster" | "bandsintown" | "seatgeek" | "venue-extract";
+    | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "venue-extract";
   is_verified: boolean;
   /**
    * ISO date for when this event was last editorially verified. Live
