@@ -18,13 +18,15 @@ import { Bookmark, MapPin, Sparkles, Calendar, Building2 } from "lucide-react";
 import IconStamp from "@/components/ui/IconStamp";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
+import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
 
-type SavedSortKey = "town" | "category" | "recent" | "az" | "distance";
+type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
 
 const SORT_OPTIONS: ReadonlyArray<SortOption<SavedSortKey>> = [
   { key: "town", label: "By town", hint: "Your field guide, grouped by place" },
+  { key: "open", label: "Open now", hint: "What you can go to right now" },
   { key: "category", label: "By category", hint: "Group by what kind of place" },
   { key: "recent", label: "Recent", hint: "Most recently saved first" },
   { key: "az", label: "A→Z", hint: "Alphabetical by name" },
@@ -194,6 +196,22 @@ export default function SavedList() {
         sorted = [...placeRefs].sort((a, b) =>
           a.place.name.localeCompare(b.place.name, undefined, { sensitivity: "base" }),
         );
+        break;
+      case "open":
+        // Open places first, the one closing soonest leading — the
+        // saved list as a "right now" tool, not a museum. Closed and
+        // unverified places keep their recency order below the fold.
+        sorted = [...placeRefs].sort((a, b) => {
+          const oa = isOpenNow(a.place.open_status);
+          const ob = isOpenNow(b.place.open_status);
+          if (oa !== ob) return oa ? -1 : 1;
+          if (oa && ob) {
+            const ca = a.place.open_status.state === "open" || a.place.open_status.state === "closing-soon" ? a.place.open_status.closesAt : "99:99";
+            const cb = b.place.open_status.state === "open" || b.place.open_status.state === "closing-soon" ? b.place.open_status.closesAt : "99:99";
+            return ca.localeCompare(cb);
+          }
+          return +new Date(b.ref.saved_at) - +new Date(a.ref.saved_at);
+        });
         break;
       case "distance":
         sorted = [...placeRefs].sort((a, b) => {
