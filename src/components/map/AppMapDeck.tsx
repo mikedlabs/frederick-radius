@@ -4,7 +4,7 @@ import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal, X, Cloc
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
-import type { PlaceCardData } from "@/lib/loaders/places";
+import type { SearchResult } from "@/lib/search/index";
 import type { LngLat } from "@/lib/geo";
 import { AMENITY_GROUPS, CHIP_GLYPH } from "./constants";
 import type { CivicPin, MapLineFC } from "./types";
@@ -32,8 +32,8 @@ export type AppMapDeckProps = {
   // Search.
   q: string;
   setQ: SetState<string>;
-  searchMatches: PlaceCardData[];
-  pickSearch: (p: PlaceCardData) => void;
+  searchMatches: SearchResult[];
+  pickSearch: (r: SearchResult) => void;
 
   // Locate-me.
   goNearMe: () => void;
@@ -229,22 +229,28 @@ export default function AppMapDeck({
                   boxShadow: "var(--app-shadow-3)",
                 }}
               >
-                {searchMatches.map((p) => {
-                  const cat = CATEGORY_BY_SLUG[p.category];
+                {searchMatches.map((r) => {
+                  // Type-tinted dot so a town, event, or layer reads as a
+                  // different thing from a place at a glance.
+                  const dot =
+                    r.type === "event" ? "var(--app-brand-2, #2F5D50)"
+                    : r.type === "municipality" ? "var(--app-cool, #5C8AA8)"
+                    : r.type === "action" ? "var(--app-brand, #E14328)"
+                    : "var(--app-ink-3, #7A828C)";
                   return (
-                    <li key={p.slug}>
+                    <li key={r.id}>
                       <button
                         type="button"
-                        onClick={() => pickSearch(p)}
+                        onClick={() => pickSearch(r)}
                         className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left transition hover:bg-[var(--app-bg-sunken)]"
                       >
-                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: cat?.color ?? "#A03A22" }} />
+                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: dot }} />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-sm font-medium" style={{ color: "var(--app-ink)" }}>
-                            {p.name}
+                            {r.title}
                           </span>
                           <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-                            {cat?.name ?? p.category}{p.address ? ` · ${p.address}` : ""}
+                            {r.subtitle}
                           </span>
                         </span>
                       </button>
