@@ -62,7 +62,8 @@
     "maps:download": "tsx --tsconfig tsconfig.json scripts/download-city-maps.ts",
     "audit:readiness": "tsx --tsconfig tsconfig.json scripts/audit/readiness.ts",
     "audit": "tsx --tsconfig tsconfig.json scripts/audit/run.ts",
-    "refresh:hours": "node scripts/pull-hours-refresh.mjs"
+    "refresh:hours": "node scripts/pull-hours-refresh.mjs",
+    "pull:overlays": "node scripts/pull-overlays.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.66",
