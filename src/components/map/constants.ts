@@ -197,10 +197,37 @@ export const FREDERICK: [number, number] = [-77.4105, 39.4143];
 // a "Near me" recenter from a town near the line — but can't drift off
 // into empty Pennsylvania / the Atlantic, which only burns tile
 // fetches and loses the place. Format: [[west, south], [east, north]].
+//
+// County lock (data brief 6.2): the map carries the county identity, so
+// panning can never wander out of Frederick County. The brief's nominal
+// box is [[-77.68, 39.20], [-77.10, 39.72]], but 11 real county-edge
+// pins (Myersville, Burkittsville, Rosemont) sit just west of -77.68, so
+// these bounds are derived from the actual pin extent plus a roughly 4
+// mile margin: tight enough to lock to the county, wide enough that no
+// real place is unreachable. The boundary OUTLINE drawn on the map still
+// comes from the county GIS dataset; this is only the pan clamp.
 export const FREDERICK_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-78.05, 38.95],
-  [-76.80, 39.98],
+  [-77.76, 39.21],
+  [-77.09, 39.78],
 ];
+
+// Zoom clamp (6.2): minZoom 9 keeps the whole county in view at the
+// widest, maxZoom 19 is street level. Below 9 the county would float in a
+// sea of out-of-area map; above 19 Mapbox has no more tiles.
+export const FREDERICK_MIN_ZOOM = 9;
+export const FREDERICK_MAX_ZOOM = 19;
+
+/**
+ * Is a coordinate inside the county pan bounds? (6.2) Used by the
+ * geolocation flow: a user outside the county is recentered on downtown
+ * Frederick rather than flown out of the locked area. Pure, so it is
+ * unit tested. Reads the same FREDERICK_MAX_BOUNDS the map clamps to, so
+ * the check and the leash can never disagree.
+ */
+export function isInFrederickCounty(lng: number, lat: number): boolean {
+  const [[w, s], [e, n]] = FREDERICK_MAX_BOUNDS;
+  return lng >= w && lng <= e && lat >= s && lat <= n;
+}
 
 // Base style chosen so applyFrederickPalette() can do its thing.
 // dark-v11 is a simple legacy style with predictable layer naming —
