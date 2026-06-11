@@ -33,6 +33,7 @@ import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
+import FromYourSaved from "@/components/today/FromYourSaved";
 import FromAboveCta from "@/components/today/FromAboveCta";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // CreekHairline removed in the pleasant-layout pass — it was a
@@ -472,6 +473,13 @@ export default async function HomePage({
           <MoveStack />
         </Suspense>
       </section>
+
+      {/* ── FROM YOUR SAVED ──────────────────────────────────────────────
+          The save → resurface loop closes HERE: saved places that are
+          open right now, offered back where the day starts. A client
+          section (saves are client state) that renders nothing unless it
+          has an answer — no saves or none open means no box. */}
+      <FromYourSaved />
 
       {/* ── WHAT'S ON (today / tonight / weekend) ────────────────────────
           Lifted OUT of the collapsed briefing's column to a TOP-LEVEL slot,
