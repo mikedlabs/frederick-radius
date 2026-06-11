@@ -23,6 +23,7 @@ export const KEYED_FEEDS: FeedDef[] = [
   { name: "Ticketmaster", env: "TICKETMASTER_API_KEY", powers: "Concerts + Frederick Keys home games" },
   { name: "Bandsintown", env: "BANDSINTOWN_APP_ID", powers: "Live music by tracked artists" },
   { name: "SeatGeek", env: "SEATGEEK_CLIENT_ID", powers: "Ticketed concerts + shows near Frederick" },
+  { name: "Eventbrite", env: "EVENTBRITE_TOKEN", powers: "Events from a curated organizer registry" },
   { name: "Google Places", env: "GOOGLE_PLACES_API_KEY", powers: "Place details, photos, hours, nearby search" },
   { name: "Mapillary", env: "MAPILLARY_TOKEN", powers: "Street-level imagery + litter points" },
   { name: "AirNow", env: "AIRNOW_API_KEY", powers: "Air-quality index" },

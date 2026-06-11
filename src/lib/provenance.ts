@@ -158,6 +158,7 @@ const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
   ticketmaster:     { license: "Ticketmaster Discovery API terms",               confidence: "verified" },
   bandsintown:      { license: "Bandsintown API terms",                          confidence: "verified" },
   seatgeek:         { license: "SeatGeek Platform API terms",                     confidence: "verified" },
+  eventbrite:       { license: "Eventbrite API terms, organizer-published",       confidence: "scraped" },
 };
 
 export type EventProvenanceInput = {
