@@ -12,6 +12,8 @@ describe("getCountyBoundary (6.1)", () => {
     const fc = await getCountyBoundary();
     expect(fc.type).toBe("FeatureCollection");
     expect(fc.features.length).toBeGreaterThan(0);
-    expect(["Polygon", "MultiPolygon"]).toContain(fc.features[0].geometry.type);
+    expect(["Polygon", "MultiPolygon"]).toContain(
+      (fc.features[0].geometry as GeoJSON.Geometry).type,
+    );
   });
 });
