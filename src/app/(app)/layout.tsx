@@ -9,7 +9,6 @@ import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
 import ModeParamSync from "@/components/mode/ModeParamSync";
 import { Suspense } from "react";
-import CommandPaletteLazy from "@/components/cmdk/CommandPaletteLazy";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -57,11 +56,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <BottomNav />
           <SideRail />
           <InstallPrompt />
-          {/* Global ⌘K / Ctrl+K palette. Loaded lazily — the heavy cmdk
-              bundle is fetched only when the user actually opens the
-              palette (or hovers/focuses the search affordance), so it's
-              out of every route's first-load JS. */}
-          <CommandPaletteLazy />
+          {/* The global Cmd/Ctrl+K search is the TopBar's SearchOverlay
+              (full /api/search). A second cmdk palette used to mount here
+              and also grab Cmd+K, so the chord opened two overlays at
+              once; it was the weaker, duplicate engine and is retired. */}
         </div>
       </RouteAccent>
     </PlaceSheetProvider>
