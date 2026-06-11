@@ -21,6 +21,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
+import { useFollowedSlugs } from "@/hooks/useFollows";
 // TYPE ONLY: importing the loader at runtime drags the ~12MB
 // places-enrichment.json into the client bundle (a 13MB chunk) and
 // the map never loads. Places arrive already decorated from the
@@ -270,6 +271,13 @@ export default function AppMap({
   const toggleOverlay = (k: OverlayKey) =>
     setActiveOverlays((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]));
 
+  // Saved-only lens (continuity P2): filter the pins to the user's own
+  // saved places, so the map can be read as a personal field guide.
+  // useFollowedSlugs covers both the anonymous localStorage path and the
+  // signed-in follows DB; the chip renders only when something is saved.
+  const { slugs: followedSlugs } = useFollowedSlugs();
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
+
   // On mode flip (user tapped the toggle, or geo suggestion landed):
   // reset every layer-toggle to the new mode's defaults. We deliberately
   // do NOT preserve the prior session's manual toggles — the brief calls
@@ -351,16 +359,24 @@ export default function AppMap({
   }, [demo]);
 
   const filteredPlaces = useMemo(() => {
-    const base = places;
-    // Pinpoint-first: a clean map until the user adds a category. When a
-    // server-side intent already pre-filtered `places` (pinpointDefault
-    // false), empty activeCats still means "show the whole filtered set."
-    if (activeCats.size === 0) return pinpointDefault ? [] : base;
+    let base = places;
+    // Saved-only lens: a deliberate selection, so it shows the whole
+    // saved set even with no category active (it overrides the
+    // pinpoint-first empty state); category chips still intersect.
+    if (showSavedOnly) {
+      base = base.filter((p) => followedSlugs.has(p.slug));
+      if (activeCats.size === 0) return base;
+    } else if (activeCats.size === 0) {
+      // Pinpoint-first: a clean map until the user adds a category. When a
+      // server-side intent already pre-filtered `places` (pinpointDefault
+      // false), empty activeCats still means "show the whole filtered set."
+      return pinpointDefault ? [] : base;
+    }
     return base.filter((p) => {
       const cat = CATEGORY_BY_SLUG[p.category];
       return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
     });
-  }, [places, activeCats, pinpointDefault]);
+  }, [places, activeCats, pinpointDefault, showSavedOnly, followedSlugs]);
 
   // Emit the curated places inside the current viewport (nearest-center
   // first) whenever the map settles — drives the synced results list.
@@ -911,6 +927,9 @@ export default function AppMap({
         aerialCount={AERIAL_PHOTOS.length}
         activeOverlays={activeOverlays}
         toggleOverlay={toggleOverlay}
+        savedCount={followedSlugs.size}
+        showSavedOnly={showSavedOnly}
+        setShowSavedOnly={setShowSavedOnly}
         setDemo={setDemo}
       />
 

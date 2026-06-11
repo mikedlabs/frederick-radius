@@ -81,6 +81,12 @@ export type AppMapDeckProps = {
   activeOverlays: OverlayKey[];
   toggleOverlay: (k: OverlayKey) => void;
 
+  // Saved-only lens: filter pins to the user's saved places. The chip
+  // renders only when savedCount > 0 — an empty collection earns no UI.
+  savedCount: number;
+  showSavedOnly: boolean;
+  setShowSavedOnly: SetState<boolean>;
+
   // Preview-only demo layers (gated by SHOW_DEMO_LAYERS).
   setDemo: SetState<null | "food-truck" | "transit" | "rewards">;
 };
@@ -125,6 +131,9 @@ export default function AppMapDeck({
   aerialCount,
   activeOverlays,
   toggleOverlay,
+  savedCount,
+  showSavedOnly,
+  setShowSavedOnly,
   setDemo,
 }: AppMapDeckProps) {
   // Open-now state lives in the URL (?open=now), not in client state —
@@ -291,6 +300,7 @@ export default function AppMapDeck({
           showTransit ||
           showTrails ||
           showAerial ||
+          showSavedOnly ||
           openNow) && (
           <ul
             className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -435,7 +445,7 @@ export default function AppMapDeck({
             )}
             {/* Clear-all escape hatch — only worth the row when there
                 are multiple filters to clear. */}
-            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) + (openNow ? 1 : 0) > 1 && (
+            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) + (showSavedOnly ? 1 : 0) + (openNow ? 1 : 0) > 1 && (
               <li className="shrink-0">
                 <button
                   type="button"
@@ -446,6 +456,7 @@ export default function AppMapDeck({
                     setShowTransit(false);
                     setShowTrails(false);
                     setShowAerial(false);
+                    setShowSavedOnly(false);
                     if (openNow) router.push(clearOpenHref);
                   }}
                   className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
@@ -499,6 +510,25 @@ export default function AppMapDeck({
               All · {(places.length + trustedOsmCount).toLocaleString()}
             </button>
           </li>
+          {savedCount > 0 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowSavedOnly((v) => !v)}
+                aria-pressed={showSavedOnly}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: showSavedOnly ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                  color: showSavedOnly ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${showSavedOnly ? "var(--app-brand)" : "var(--app-border)"}`,
+                  boxShadow: showSavedOnly ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Show only the places you saved"
+              >
+                Saved · {savedCount}
+              </button>
+            </li>
+          )}
           <li>
             <button
               type="button"
