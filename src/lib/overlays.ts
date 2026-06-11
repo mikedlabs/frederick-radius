@@ -46,9 +46,9 @@ export const OVERLAYS: OverlayDef[] = [
   {
     key: "parks",
     label: "Parks",
-    sources: "County and community parks",
+    sources: "County parks, from Frederick County GIS",
     endpoint: "/api/overlays/parks",
-    ready: false,
+    ready: true,
   },
   {
     key: "historic",
@@ -67,9 +67,9 @@ export const OVERLAYS: OverlayDef[] = [
   {
     key: "markets",
     label: "Farmers markets",
-    sources: "Farmers markets across the Frederick region",
+    sources: "Farmers markets across the Frederick region, from county GIS",
     endpoint: "/api/overlays/markets",
-    ready: false,
+    ready: true,
   },
   {
     key: "bridges",
