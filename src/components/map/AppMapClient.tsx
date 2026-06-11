@@ -104,6 +104,7 @@ export default function AppMapClient({
   trailLines = EMPTY_FC,
   transitLines = EMPTY_FC,
   municipalBoundaries = EMPTY_FC,
+  countyBoundary = EMPTY_FC,
   events = [],
   fullBleed = false,
   autoOpenList = false,
@@ -128,6 +129,8 @@ export default function AppMapClient({
   transitLines?: MapLineFC;
   /** County GIS municipal boundary polygons — quiet always-on outline. */
   municipalBoundaries?: MapLineFC;
+  /** County boundary polygon — the quiet always-on county edge (6.1). */
+  countyBoundary?: MapLineFC;
   /** Upcoming events as photo pins — passed through to AppMap. The
    *  /map page filters to "happening soon" server-side so this stays a
    *  small (≤30 item) array. */
@@ -258,6 +261,7 @@ export default function AppMapClient({
             trailLines={trailLines}
             transitLines={transitLines}
             municipalBoundaries={municipalBoundaries}
+            countyBoundary={countyBoundary}
             events={events}
             fullBleed
             recenterToKnownLocation={recenterToKnownLocation}
@@ -279,7 +283,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} events={events} />
+      <AppMap places={places} onPlacesInView={setInView} focus={focus} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} events={events} />
 
       <section className="space-y-2">
         <div className="flex items-baseline justify-between">

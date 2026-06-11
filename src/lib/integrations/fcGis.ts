@@ -64,6 +64,31 @@ export async function getMunicipalBoundaries(): Promise<MapLineFC> {
   }
 }
 
+/**
+ * County boundary outline (data brief 6.1): the quiet constant edge of
+ * Frederick County, drawn always-on under the place pins so the map
+ * reads as a county field guide, not a generic basemap.
+ *
+ * Unlike the municipal boundaries (a runtime county-GIS fetch), the
+ * county outline is committed static GeoJSON (public/overlays), so this
+ * reads the file rather than calling ArcGIS — deterministic, no network,
+ * the pull is a build step (6.3). Returns the polygon FC; the map draws
+ * its edges with a line layer. Fails soft to empty.
+ */
+export async function getCountyBoundary(): Promise<MapLineFC> {
+  try {
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const raw = await readFile(
+      join(process.cwd(), "public", "overlays", "county-boundary.geojson"),
+      "utf-8",
+    );
+    return JSON.parse(raw) as MapLineFC;
+  } catch {
+    return EMPTY_LINE_FC;
+  }
+}
+
 export type CountyPark = {
   name: string;
   address?: string;
