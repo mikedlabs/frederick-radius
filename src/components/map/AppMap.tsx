@@ -96,6 +96,12 @@ import {
   saveCachedOsm,
   smoothFocus,
 } from "./constants";
+import MapOverlays from "./MapOverlays";
+import {
+  parseLayersParam,
+  serializeLayers,
+  type OverlayKey,
+} from "@/lib/overlays";
 import {
   EventPopup,
   FoodTruckPopup,
@@ -241,6 +247,23 @@ export default function AppMap({
   // one opens a Popup with the photo thumbnail + season + date.
   const [showAerial, setShowAerial] = useState(false);
   const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(null);
+
+  // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
+  // The active set lives in the URL (?layers=art,parks) so a view is
+  // shareable; MapOverlays lazy-loads and renders each active layer.
+  const [activeOverlays, setActiveOverlays] = useState<OverlayKey[]>([]);
+  useEffect(() => {
+    setActiveOverlays(parseLayersParam(new URLSearchParams(window.location.search).get("layers")));
+  }, []);
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const v = serializeLayers(activeOverlays);
+    if (v) url.searchParams.set("layers", v);
+    else url.searchParams.delete("layers");
+    window.history.replaceState(null, "", url.toString());
+  }, [activeOverlays]);
+  const toggleOverlay = (k: OverlayKey) =>
+    setActiveOverlays((cur) => (cur.includes(k) ? cur.filter((x) => x !== k) : [...cur, k]));
 
   // On mode flip (user tapped the toggle, or geo suggestion landed):
   // reset every layer-toggle to the new mode's defaults. We deliberately
@@ -881,6 +904,8 @@ export default function AppMap({
         showAerial={showAerial}
         setShowAerial={setShowAerial}
         aerialCount={AERIAL_PHOTOS.length}
+        activeOverlays={activeOverlays}
+        toggleOverlay={toggleOverlay}
         setDemo={setDemo}
       />
 
@@ -1174,6 +1199,10 @@ export default function AppMap({
               }}
             />
           </Source>
+          {/* GIS overlays (6.3/6.4): parks, farmers markets, public art.
+              Self-contained (lazy fetch, own Sources/Layers, own click
+              popups) so this block stays out of the main render path. */}
+          <MapOverlays active={activeOverlays} />
           {/* Municipal boundaries — authoritative county GIS polygons,
               rendered as a quiet always-on outline so a user can see
               which town they are panning through (replacing the old
