@@ -42,6 +42,7 @@ import { isSamePlace, type DedupeRecord } from "@/lib/dedupe";
 import { isKnownClosed } from "@/lib/integrations/closures";
 import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
+import { installCountySpotlight } from "./countySpotlight";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
 import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
 import { DEMO_POINTS_PARTNERS, type DemoPointsPartner } from "@/data/radius-points-demo";
@@ -1132,6 +1133,10 @@ export default function AppMap({
             // is the difference between "Mapbox dark style" and
             // "Frederick Radius map."
             applyFrederickPalette(e.target);
+            // Frame browse mode in the county too, the same veil + drawn
+            // border the radius map already wears, so the two modes feel
+            // like one place and not two different maps.
+            installCountySpotlight(e.target);
             emitInView();
           }}
           onMoveEnd={emitInView}

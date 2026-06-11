@@ -658,6 +658,25 @@ export default function RadiusMap({
             paint={{
               "fill-color": accentHex,
               "fill-opacity": usingIsochrone ? 0.18 : 0.13,
+              // Cross-fade the fill when the reach changes (mode flip,
+              // slider, isochrone arriving) instead of snapping — the
+              // reach reads as redrawn, not replaced.
+              "fill-opacity-transition": { duration: 420, delay: 0 },
+            }}
+          />
+          {/* Soft outer glow — a wide, blurred pass of the same accent
+              UNDER the crisp edge, so the boundary feels drawn with a
+              brush, not stamped. */}
+          <Layer
+            id="radius-reach-glow"
+            type="line"
+            paint={{
+              "line-color": accentHex,
+              "line-width": usingIsochrone ? 9 : 8,
+              "line-blur": 6,
+              "line-opacity": 0.32,
+              "line-opacity-transition": { duration: 420, delay: 0 },
+              "line-width-transition": { duration: 420, delay: 0 },
             }}
           />
           <Layer
@@ -665,8 +684,10 @@ export default function RadiusMap({
             type="line"
             paint={{
               "line-color": accentHex,
-              "line-width": usingIsochrone ? 2.5 : 2.5,
-              "line-opacity": usingIsochrone ? 0.92 : 0.8,
+              "line-width": usingIsochrone ? 2.25 : 2,
+              "line-opacity": usingIsochrone ? 0.95 : 0.82,
+              "line-opacity-transition": { duration: 420, delay: 0 },
+              "line-width-transition": { duration: 420, delay: 0 },
             }}
           />
         </Source>
