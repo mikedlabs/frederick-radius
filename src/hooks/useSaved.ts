@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { track } from "@/lib/posthog";
 
 const KEY = "fr:saved:v1";
 
@@ -75,6 +76,12 @@ export function useToggleSave(type: SavedRef["type"], id: string) {
       ? items.filter((s) => !(s.type === type && s.id === id))
       : [...items, { type, id, saved_at: new Date().toISOString() }];
     write(next);
+    // Session 0 measurement: events + radius only — place toggles are
+    // captured in useToggleFollow (which delegates here when
+    // anonymous), so capturing places in both would double-count.
+    if (type !== "place") {
+      track.saveTapped({ ref_type: type, ref_id: id, saved: !exists });
+    }
     if (!exists && typeof navigator !== "undefined" && "vibrate" in navigator) {
       try { (navigator as Navigator & { vibrate?: (p: number) => void }).vibrate?.(8); } catch {}
     }

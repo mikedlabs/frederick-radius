@@ -11,6 +11,7 @@ import { Toaster } from "sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { cn } from "@/lib/utils";
 import Plausible from "@/components/analytics/Plausible";
+import PostHogProvider from "@/components/analytics/PostHogProvider";
 import ServiceWorkerRegister from "@/components/pwa/ServiceWorkerRegister";
 import ExtensionNoiseFilter from "@/components/util/ExtensionNoiseFilter";
 
@@ -249,6 +250,10 @@ export default function RootLayout({
         />
         <Plausible />
         <Analytics />
+        {/* Session 0 measurement layer: exactly ten named events, no
+            autocapture, replay for mobile only. Inert until
+            NEXT_PUBLIC_POSTHOG_KEY is set (see lib/posthog.ts). */}
+        <PostHogProvider />
         <SpeedInsights />
         <ServiceWorkerRegister />
         {/* Swallows clipboard NotAllowedError rejections that browser

@@ -32,6 +32,8 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import PlaceCard from "@/components/place/PlaceCard";
 import SaveButton from "@/components/saved/SaveButton";
 import EventActions from "@/components/event/EventActions";
+import EventViewTracker from "@/components/event/EventViewTracker";
+import OutboundLink from "@/components/analytics/OutboundLink";
 import EventCalendarButton from "@/components/event/EventCalendarButton";
 import EventCard from "@/components/event/EventCard";
 import EventSmartPairings from "@/components/event/EventSmartPairings";
@@ -183,6 +185,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
   return (
     <div className="space-y-6">
+      {/* Session 0 measurement: records the view client-side. Every
+          entry path (cards, deep links, shares) converges here. */}
+      <EventViewTracker slug={event.slug} />
       {/* Visually small breadcrumbs with invisible 44px hit areas
           (WCAG 2.5.5) — py-3.5/-my-3.5 grows the tap zone only. */}
       <nav aria-label="Breadcrumb" className="text-xs">
@@ -372,38 +377,38 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             Add to calendar
           </a>
         )}
-        <a
+        <OutboundLink
           href={directionsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
+          surface="event_detail"
+          kind="directions"
+          slug={event.slug}
+          provider="google"
           className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
         >
           <Navigation className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
           Directions
-        </a>
+        </OutboundLink>
         {event.ticket_url ? (
-          <a
+          <OutboundLink
             href={event.ticket_url}
-            target="_blank"
-            rel="noopener noreferrer"
+            surface="event_detail"
             className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
           >
             <Ticket className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
             Tickets
-          </a>
+          </OutboundLink>
         ) : event.rsvp_url ? (
-          <a
+          <OutboundLink
             href={event.rsvp_url}
-            target="_blank"
-            rel="noopener noreferrer"
+            surface="event_detail"
             className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
           >
             <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
             RSVP
-          </a>
+          </OutboundLink>
         ) : event.venue_place_slug ? (
           <Link
             href={`/places/${event.venue_place_slug}`}
@@ -414,16 +419,15 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             Venue page
           </Link>
         ) : event.source_url ? (
-          <a
+          <OutboundLink
             href={event.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
+            surface="event_detail"
             className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
           >
             <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
             Official page
-          </a>
+          </OutboundLink>
         ) : (
           <div />
         )}

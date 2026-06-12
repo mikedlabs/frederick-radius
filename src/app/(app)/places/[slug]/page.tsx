@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Utensils, ShoppingBag, Car, Instagram, ExternalLink } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
+import OutboundLink from "@/components/analytics/OutboundLink";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
 import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
@@ -326,10 +327,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
-        <ActionButton href={googleUrl} icon={Navigation} label="Google Maps" external />
+        <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external slug={place.slug} directions="apple" />
+        <ActionButton href={googleUrl} icon={Navigation} label="Google Maps" external slug={place.slug} directions="google" />
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
-        {place.website && <ActionButton href={place.website} icon={Globe} label="Website" external />}
+        {place.website && <ActionButton href={place.website} icon={Globe} label="Website" external slug={place.slug} />}
       </div>
 
       {/* Waze-style amenity icon row. Lives right after the primary
@@ -497,19 +498,44 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 }
 
 function ActionButton({
-  href, icon: Icon, label, external,
-}: { href: string; icon: typeof Phone; label: string; external?: boolean }) {
-  const Comp = external ? "a" : Link;
-  return (
-    <Comp
-      href={href}
-      {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] py-3 text-xs font-medium"
-      style={{ color: "var(--app-ink)" }}
-    >
+  href, icon: Icon, label, external, slug, directions,
+}: {
+  href: string; icon: typeof Phone; label: string; external?: boolean;
+  /** Place slug, attached to the measurement events. */
+  slug?: string;
+  /** Set when this button opens a maps app — routes the capture to
+   *  directions_tapped instead of outbound_clicked (Session 0). */
+  directions?: "apple" | "google";
+}) {
+  const cls =
+    "tactile tactile-interactive flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] py-3 text-xs font-medium";
+  const body = (
+    <>
+      {/* --app-brand-press: main's newer pressed-state token, kept
+          through the Session 0 restructure. */}
       <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden style={{ color: "var(--app-brand-press)" }} />
       {label}
-    </Comp>
+    </>
+  );
+  if (external) {
+    return (
+      <OutboundLink
+        href={href}
+        surface="place_detail"
+        kind={directions ? "directions" : "outbound"}
+        provider={directions}
+        slug={slug}
+        className={cls}
+        style={{ color: "var(--app-ink)" }}
+      >
+        {body}
+      </OutboundLink>
+    );
+  }
+  return (
+    <Link href={href} className={cls} style={{ color: "var(--app-ink)" }}>
+      {body}
+    </Link>
   );
 }
 

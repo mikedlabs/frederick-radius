@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Sparkles, ArrowUp, MapPin } from "lucide-react";
 import { haptic } from "@/lib/haptics";
+import { track } from "@/lib/posthog";
 import type { AskResult } from "@/lib/ask/answer";
 
 /**
@@ -26,6 +27,9 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
     setLoading(true);
     setRes(null);
     haptic("light");
+    // Session 0 measurement: ask() is the single funnel for typed and
+    // future programmatic questions. Length only, never the raw query.
+    track.searchSubmitted({ query_length: text.length, source: "ask" });
     try {
       const r = await fetch("/api/ask", {
         method: "POST",

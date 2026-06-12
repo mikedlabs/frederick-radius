@@ -32,3 +32,22 @@ Failures are expected at baseline; they are the work the sessions exist to do.
 | payload budgets | FAIL | /today decoded HTML 346,642 bytes, budget 150,000 (/events untested past first failure; budget run above shows 788,892 vs 300,000) |
 
 Note on stability: across three runs the two page-contract tests flipped once (passed in one run minutes apart), so they are sensitive to time-of-day content on production. The other three failures were identical in every run. Fixes land in Sessions 1 (routes), 2 (/today), and 3 (/events).
+
+## Session 0 (instrumentation), June 12, 2026, local production build
+
+Session 0 changes no UI by design: the PostHog provider renders null and every capture rides an existing handler. Numbers below are from a local production build on port 3100, not the production deployment (Vercel previews are auth-protected; see docs/PARKING.md item 4), so they are not directly comparable to the morning production baseline. Visible-line deltas against that baseline reflect time of day (evening content) and environment, not added UI.
+
+```
+Clutter budget against http://localhost:3100 on Fri Jun 12 18:11:48 EDT 2026
+page | visible lines | decoded bytes
+-----|---------------|--------------
+/ | 42 | 88130
+/today | 349 | 354785
+/events | 951 | 1338135
+/map | 127 | 158200
+/alerts | 7 | 28223
+```
+
+Clutter suite against the same build: 2 failed, 5 passed. The two failures are the pre-existing baseline failures Sessions 1 to 3 exist to fix (twin routes do not redirect; /today and /events payloads over budget). The page contracts and count integrity passed on this run; those three are content-dependent and flip with time of day, as noted in the baseline section.
+
+Session 0 gate status: all ten events wired; nine demonstrated firing locally with correct names and payloads (digest_subscribed has no UI surface until Session 6; the name is wired and type-checked). The PostHog-debugger-from-a-real-phone gate is blocked on creating the PostHog project and setting NEXT_PUBLIC_POSTHOG_KEY in Vercel; the wiring is inert until then by design.

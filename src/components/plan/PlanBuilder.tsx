@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import type { Plan, PlanInputs } from "@/lib/integrations/planner";
+import { track } from "@/lib/posthog";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { generatePlan, removeStop, swapStop } from "./actions";
 import { formatDistance } from "@/lib/geo";
@@ -177,6 +178,16 @@ export default function PlanBuilder({
         seed: overrides?.seed,
       });
       setPlan(result);
+      // Session 0 measurement: onBuild is the single funnel for every
+      // generation path (vibe tap, preset, build button, drawer,
+      // shuffle). Only onShuffle passes a seed, so the seed
+      // discriminates shuffle from a fresh generation; capturing both
+      // here means a shuffle never double-counts as plan_generated.
+      if (overrides?.seed != null) {
+        track.planShuffled({ surface: "plan" });
+      } else if (result) {
+        track.planGenerated({ stops: result.stops.length, surface: "plan" });
+      }
       setEditing(true);
       setDrawerOpen(false);
     });
@@ -986,6 +997,7 @@ function Stop({
                 href={`https://www.google.com/maps/dir/?api=1&destination=${geom.lat},${geom.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => track.directionsTapped({ provider: "google" })}
                 className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
                 style={{ color: "var(--app-ink-2)" }}
               >

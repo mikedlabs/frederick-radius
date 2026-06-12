@@ -1,4 +1,5 @@
 import { ArrowUpRight } from "lucide-react";
+import OutboundLink from "@/components/analytics/OutboundLink";
 import { getLocalNews } from "@/lib/integrations/local-news";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
@@ -61,10 +62,9 @@ export default async function LocalNewsRail() {
             className="border-t first:border-t-0"
             style={{ borderColor: "var(--app-border)" }}
           >
-            <a
+            <OutboundLink
               href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
+              surface="local_news"
               className="group flex items-start gap-3 px-3.5 py-3 transition-colors hover:bg-[var(--app-bg-sunken)]"
             >
               {/* Source chip — small color-toned pill that anchors
@@ -111,7 +111,7 @@ export default async function LocalNewsRail() {
                 strokeWidth={2}
                 style={{ color: "var(--app-ink-3)" }}
               />
-            </a>
+            </OutboundLink>
             {/* Hidden index marker so screen-readers / search engines
                 see the ordinal — visually we let the divider line do
                 the same job at less visual noise. */}

@@ -1,6 +1,7 @@
 "use client";
 
 import { haptic } from "@/lib/haptics";
+import { track } from "@/lib/posthog";
 
 /**
  * FilterChip — a single-select pill for facet rows (cuisine, and
@@ -25,6 +26,13 @@ export default function FilterChip({
       type="button"
       onClick={() => {
         haptic("light");
+        // Session 0 measurement: facet chips share the chip_tapped
+        // stream with Pill; the label prop is guaranteed here.
+        track.chipTapped({
+          chip: label,
+          surface:
+            typeof window !== "undefined" ? window.location.pathname : "unknown",
+        });
         onClick();
       }}
       aria-pressed={active}

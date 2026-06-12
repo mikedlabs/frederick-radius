@@ -1,4 +1,5 @@
 import { ExternalLink, Car, Utensils } from "lucide-react";
+import OutboundLink from "@/components/analytics/OutboundLink";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
@@ -70,10 +71,9 @@ export default function PartnerAppsRow() {
           const Icon = h.icon;
           return (
             <li key={h.label}>
-              <a
+              <OutboundLink
                 href={h.href}
-                target="_blank"
-                rel="noopener noreferrer"
+                surface="partner_apps"
                 aria-label={`${h.label} — ${h.nudge}`}
                 className="tactile-interactive relative flex items-center gap-2.5 overflow-hidden rounded-[var(--app-radius-md)] border px-3 py-2 transition active:scale-[0.98]"
                 style={{
@@ -115,7 +115,7 @@ export default function PartnerAppsRow() {
                   style={{ color: "var(--app-ink-3)" }}
                   aria-hidden
                 />
-              </a>
+              </OutboundLink>
             </li>
           );
         })}

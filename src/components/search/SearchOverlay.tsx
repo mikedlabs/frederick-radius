@@ -30,6 +30,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import TrustChip from "@/components/ui/TrustChip";
 import { useRecentSearches, usePushRecentSearch, useClearRecentSearches } from "@/hooks/useRecentSearches";
 import { suggestionsForHour, frederickHour } from "@/lib/search-suggestions";
+import { track } from "@/lib/posthog";
 import { getHomeMuni } from "@/lib/personalize";
 
 const ICON_BY_TYPE: Record<SearchResultType, typeof MapPin> = {
@@ -214,6 +215,14 @@ export default function SearchOverlay({
           // Persist the query so the next time the user opens the
           // overlay they see their last queries first.
           if (query.trim()) pushRecent(query.trim());
+          // Capture BEFORE the hard navigation below: this is a full
+          // page unload, so the event must leave synchronously.
+          track.searchSubmitted({
+            query_length: query.trim().length,
+            source: "search_overlay",
+            method: "enter",
+            result_type: r.type,
+          });
           window.location.href = r.href;
         }
       }
@@ -424,7 +433,15 @@ export default function SearchOverlay({
                           <li key={r.id} role="option" aria-selected={active} data-idx={idx}>
                             <Link
                               href={r.href}
-                              onClick={onClose}
+                              onClick={() => {
+                                track.searchSubmitted({
+                                  query_length: query.trim().length,
+                                  source: "search_overlay",
+                                  method: "result_tap",
+                                  result_type: r.type,
+                                });
+                                onClose();
+                              }}
                               onMouseEnter={() => setActiveIdx(idx)}
                               className="flex items-start gap-3 px-4 py-2.5 outline-none"
                               style={{

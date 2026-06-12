@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { track } from "@/lib/posthog";
 import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
 
 /**
@@ -217,7 +218,12 @@ export function useToggleFollow(slug: string, source?: string) {
     if (auth === "anonymous" || auth === "unknown") {
       // localStorage path (legacy)
       localToggle();
-      return readIsSavedSync(slug);
+      const saved = readIsSavedSync(slug);
+      // Session 0 measurement: places capture HERE, not in
+      // useToggleSave, because anonymous place toggles flow through
+      // both (useToggleSave gates itself to type !== "place").
+      track.saveTapped({ ref_type: "place", ref_id: slug, saved });
+      return saved;
     }
     // Authed path: optimistic. Flip the shared store immediately so
     // every follow control re-renders to the new state with no spinner
@@ -247,6 +253,7 @@ export function useToggleFollow(slug: string, source?: string) {
         writeRemote(reverted);
       });
 
+    track.saveTapped({ ref_type: "place", ref_id: slug, saved: !wasFollowed });
     return !wasFollowed;
   }, [slug, source, localToggle]);
 }

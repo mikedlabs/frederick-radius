@@ -4,6 +4,7 @@ import Link, { useLinkStatus } from "next/link";
 import { Loader2 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { haptic } from "@/lib/haptics";
+import { track } from "@/lib/posthog";
 
 /**
  * Pill — the canonical standalone toggle/intent pill (Visual System v2).
@@ -171,6 +172,23 @@ export default function Pill({
       };
   const merged = { ...fillStyle, ...style };
 
+  // Session 0 measurement: every Pill press is a chip_tapped. The
+  // label comes from the string child (every current call site passes
+  // one) or the aria-label; the surface is the pathname at tap time,
+  // so call sites need no changes. Fires alongside haptic in both the
+  // link and button branches.
+  const pressed = () => {
+    haptic("light");
+    const label =
+      typeof children === "string" ? children : (rest["aria-label"] ?? "pill");
+    track.chipTapped({
+      chip: label,
+      surface:
+        typeof window !== "undefined" ? window.location.pathname : "unknown",
+    });
+    onClick?.();
+  };
+
   if (href) {
     return (
       <Link
@@ -178,10 +196,7 @@ export default function Pill({
         aria-current={active ? "page" : undefined}
         className={cls}
         style={merged}
-        onClick={() => {
-          haptic("light");
-          onClick?.();
-        }}
+        onClick={pressed}
         aria-label={rest["aria-label"]}
         title={rest.title}
       >
@@ -195,10 +210,7 @@ export default function Pill({
   return (
     <button
       type="button"
-      onClick={() => {
-        haptic("light");
-        onClick?.();
-      }}
+      onClick={pressed}
       aria-pressed={active}
       className={cls}
       style={merged}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Coffee, Trees, UtensilsCrossed, Baby, Toilet, ParkingCircle } from "lucide-react";
 import { INTENT_BY_KEY, type IntentKey } from "@/data/intents";
+import { track } from "@/lib/posthog";
 
 /**
  * MoodTiles v8 — direct-to-map.
@@ -80,6 +81,9 @@ export default function MoodTiles() {
                 aria-label={`${m.label} — ${m.nudge}`}
                 className={tileClass}
                 style={tileStyle}
+                onClick={() =>
+                  track.chipTapped({ chip: m.label, surface: "today_mood_tiles" })
+                }
               >
                 {/* Top accent hairline — the only always-on color cue. */}
                 <span

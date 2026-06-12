@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 import PlaceSheet from "./PlaceSheet";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { usePushRecentPlace } from "@/hooks/useRecentPlaces";
+import { track } from "@/lib/posthog";
 
 type Ctx = {
   openSheet: (p: PlaceCardData) => void;
@@ -23,6 +24,9 @@ export function PlaceSheetProvider({ children }: { children: ReactNode }) {
     (p: PlaceCardData) => {
       setPlace(p);
       pushRecent(p.slug);
+      // Session 0 measurement: the sheet is the canonical funnel for
+      // every card tap (PlaceCard variants, map pins, WithinReach).
+      track.placeViewed({ slug: p.slug, via: "sheet" });
     },
     [pushRecent],
   );

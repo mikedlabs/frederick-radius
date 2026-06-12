@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { track } from "@/lib/posthog";
 import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
 import { ExternalLink, Phone, Globe, Navigation, X, Expand, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import { placeActions, type PlaceAction } from "@/lib/place-actions";
@@ -558,7 +559,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
         {/* In-app actions — reserve / order / park / directions without leaving */}
         <div className="mt-5 flex flex-wrap gap-2">
           {placeActions(effectivePlace).map((a) => (
-            <ActionChip key={a.key} action={a} />
+            <ActionChip key={a.key} action={a} placeSlug={effectivePlace.slug} />
           ))}
         </div>
 
@@ -642,12 +643,23 @@ const ACTION_ICON = {
   menu: BookOpen,
 } as const;
 
-function ActionChip({ action }: { action: PlaceAction }) {
+function ActionChip({ action, placeSlug }: { action: PlaceAction; placeSlug: string }) {
   const Icon = ACTION_ICON[action.icon];
   return (
     <a
       href={action.href}
-      onClick={() => haptic("light")}
+      onClick={() => {
+        haptic("light");
+        // Session 0 measurement: the sheet's action row is the
+        // highest-traffic outbound surface. The directions chip is an
+        // Apple Maps URL (see lib/place-actions.ts); everything else
+        // (reserve, order, instagram, menu, parking) is outbound.
+        if (action.key === "directions") {
+          track.directionsTapped({ slug: placeSlug, provider: "apple" });
+        } else {
+          track.outboundClicked({ href: action.href, surface: "place_sheet" });
+        }
+      }}
       target="_blank"
       rel="noopener noreferrer"
       className="tactile-lift tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white"

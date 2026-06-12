@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useEffect } from "react";
+import { track } from "@/lib/posthog";
 import Map, {
   Popup,
   Marker,
@@ -1048,7 +1049,10 @@ export default function AppMap({
               href={routeInfo.href}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => haptic("light")}
+              onClick={() => {
+                haptic("light");
+                track.directionsTapped({ provider: "google" });
+              }}
               className="inline-flex max-w-full items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold shadow-[var(--app-shadow-2)] backdrop-blur"
               style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)", color: "var(--app-ink-2)" }}
             >
