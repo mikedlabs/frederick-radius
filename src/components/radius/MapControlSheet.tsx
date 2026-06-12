@@ -53,6 +53,7 @@ export default function MapControlSheet({
   children,
   activeSnap,
   onSnapChange,
+  onHandleTap,
 }: {
   /** Always-visible collapsed header: the radius state + result count. */
   summary: ReactNode;
@@ -60,6 +61,9 @@ export default function MapControlSheet({
   children: ReactNode;
   activeSnap: number | string | null;
   onSnapChange: (s: number | string | null) => void;
+  /** Tapping the drag handle toggles the sheet without a drag — the
+   *  grabber is a real affordance, not just decoration. */
+  onHandleTap?: () => void;
 }) {
   // Keep the map (and the rest of the app shell) in the screen-reader tree
   // while this sheet is open. vaul marks every body sibling of its portal
@@ -109,10 +113,19 @@ export default function MapControlSheet({
               real screen-reader failure (WCAG 4.1.2, June-9 deep audit).
               sr-only: BottomDrawer uses the same pattern. */}
           <Drawer.Title className="sr-only">Radius controls</Drawer.Title>
-          {/* Drag handle. */}
-          <div className="flex shrink-0 justify-center pb-1 pt-2">
-            <span aria-hidden className="h-1 w-9 rounded-full" style={{ background: "var(--app-border)" }} />
-          </div>
+          {/* Drag handle — also a tap target (44px tall via the padding)
+              so a tap toggles the sheet, not only a drag. The grabber is
+              a touch wider/taller than before so it reads as draggable. */}
+          <button
+            type="button"
+            onClick={onHandleTap}
+            aria-hidden={onHandleTap ? undefined : true}
+            tabIndex={onHandleTap ? 0 : -1}
+            aria-label="Toggle radius controls"
+            className="flex shrink-0 justify-center pb-2 pt-3"
+          >
+            <span className="h-1.5 w-11 rounded-full" style={{ background: "var(--app-border)" }} />
+          </button>
           {/* Summary header — always visible in the collapsed peek. */}
           <div className="shrink-0 px-4 pb-2.5">{summary}</div>
           {/* Scrollable controls + results. Bottom padding clears the

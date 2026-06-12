@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, ChevronDown, Locate, X, Compass, SquareParking, Toilet, Coffee, CalendarDays, Bus } from "lucide-react";
+import { Footprints, Bike, Car, MapPin, ChevronDown, ChevronUp, Locate, X, Compass, SquareParking, Toilet, Coffee, CalendarDays, Bus } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import IconStamp from "@/components/ui/IconStamp";
 import SectionHeading from "@/components/ui/SectionHeading";
@@ -1057,8 +1057,22 @@ export default function RadiusBuilder({
       <MapControlSheet
         activeSnap={snap}
         onSnapChange={setSnap}
+        onHandleTap={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
         summary={
-          <div className="flex items-center justify-between gap-3">
+          // The WHOLE header is the tap target: tapping anywhere on the
+          // peek lifts the sheet to the working controls (and taps it
+          // back down when open). The old design only responded to a tiny
+          // ~24px "Adjust" pill — under the 44px minimum and easy to miss
+          // — or to a drag that fought the map. One big honest target,
+          // with the pill kept as a visual affordance (a span, not a
+          // nested button).
+          <button
+            type="button"
+            onClick={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
+            aria-expanded={snap !== SNAP_COLLAPSED}
+            aria-label={snap === SNAP_COLLAPSED ? "Adjust the radius" : "Done adjusting"}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
             <div className="min-w-0 leading-tight">
               <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {minutes}-min {MODE_VERB[mode]} · {center.label}
@@ -1070,15 +1084,18 @@ export default function RadiusBuilder({
                 {openNowCount > 0 ? ` · ${openNowCount} open now` : ""}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setSnap(snap === SNAP_COLLAPSED ? SNAP_HALF : SNAP_COLLAPSED)}
-              className="tactile tactile-interactive inline-flex shrink-0 items-center rounded-full px-3 py-1 text-[12px] font-semibold"
+            <span
+              className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold"
               style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)", color: "var(--app-ink-2)" }}
             >
               {snap === SNAP_COLLAPSED ? "Adjust" : "Done"}
-            </button>
-          </div>
+              {snap === SNAP_COLLAPSED ? (
+                <ChevronUp className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
+              )}
+            </span>
+          </button>
         }
       >
         {modeToggle && <div className="flex justify-center pb-1">{modeToggle}</div>}
