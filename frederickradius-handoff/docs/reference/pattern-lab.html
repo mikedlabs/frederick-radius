@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrederickRadius · Pattern Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F1E7; --card:#FFFDF7; --ink:#1C2B26;
+  --ink-soft:rgba(28,43,38,.6); --hair:rgba(28,43,38,.15);
+  --creek:#2F6F8F; --creek-deep:#235871; --creek-soft:rgba(47,111,143,.1);
+  --go:#3E7C4F; --go-bg:rgba(62,124,79,.12);
+  --warn:#A8741F; --warn-bg:rgba(168,116,31,.14);
+  --mono:ui-monospace,'SF Mono',Menlo,monospace;
+  --shadow:0 8px 28px rgba(28,43,38,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+body{background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--creek);outline-offset:2px}
+
+/* ---------- chrome ---------- */
+header{position:sticky;top:0;z-index:90;background:var(--paper);border-bottom:1px solid var(--hair);padding:14px 16px 0}
+.masthead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.masthead h1{font-family:'Fraunces',Georgia,serif;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.masthead h1 em{font-style:italic;font-weight:400;color:var(--creek)}
+.masthead span{font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+.pattern-tabs{display:flex;gap:6px;overflow-x:auto;padding:12px 2px;scrollbar-width:none}
+.pattern-tabs::-webkit-scrollbar{display:none}
+.pattern-tabs button{flex:none;border:1px solid var(--hair);background:var(--card);border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap}
+.pattern-tabs button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.pattern-tabs button b{font-family:var(--mono);font-weight:600;margin-right:5px;color:var(--creek)}
+.pattern-tabs button[aria-pressed="true"] b{color:#9CC4D8}
+
+main{max-width:720px;margin:0 auto;padding:20px 16px 90px}
+.pattern{display:none}
+.pattern.active{display:block;animation:rise .3s ease}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--creek);text-transform:uppercase}
+.pat-title{font-family:'Fraunces',Georgia,serif;font-size:27px;font-weight:600;line-height:1.15;margin:6px 0 10px;letter-spacing:-.01em}
+.meta-grid{display:grid;gap:7px;margin-bottom:14px}
+.meta-row{display:flex;gap:10px;font-size:12.5px;line-height:1.5}
+.meta-row b{flex:none;width:86px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);padding-top:2px}
+.meta-row code{font-family:var(--mono);font-size:11.5px;background:var(--card);border:1px solid var(--hair);border-radius:5px;padding:1px 6px}
+.why{font-size:13.5px;color:var(--ink-soft);line-height:1.6;margin:16px 0 0;border-top:1px solid var(--hair);padding-top:12px}
+.try{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--warn);text-transform:uppercase;margin:14px 0 8px}
+
+/* ---------- phone ---------- */
+.phone{background:#101816;border-radius:32px;padding:9px;max-width:400px;margin:0 auto;box-shadow:var(--shadow)}
+.screen{background:var(--paper);border-radius:24px;overflow:hidden;position:relative;height:600px;display:flex;flex-direction:column}
+.notch{height:22px;display:flex;align-items:center;justify-content:center;flex:none}
+.notch i{width:74px;height:5px;border-radius:5px;background:rgba(28,43,38,.18)}
+
+/* shared demo bits */
+.d-head{padding:6px 16px 10px;flex:none}
+.d-kicker{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft)}
+.d-title{font-family:'Fraunces',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.01em;line-height:1.1}
+.d-sub{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.scrollarea{flex:1;overflow-y:auto;padding:0 14px 20px;overscroll-behavior:contain}
+.pcard{background:var(--card);border:1px solid var(--hair);border-radius:13px;padding:11px 13px;margin-bottom:8px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.pcard .nm{font-weight:600;font-size:14px;line-height:1.25}
+.pcard .meta{font-size:11.5px;color:var(--ink-soft);margin-top:2px}
+.open-pill{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--go);background:var(--go-bg);border-radius:5px;padding:2px 7px;white-space:nowrap}
+.shut-pill{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--warn);background:var(--warn-bg);border-radius:5px;padding:2px 7px;white-space:nowrap}
+.chiprow{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+.chiprow::-webkit-scrollbar{display:none}
+.chip{flex:none;border:1px solid var(--hair);background:var(--card);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;color:var(--ink-soft)}
+.chip[aria-pressed="true"]{background:var(--creek);border-color:var(--creek);color:#fff}
+.alertstrip{background:var(--warn-bg);border:1px solid rgba(168,116,31,.35);border-radius:10px;padding:9px 12px;font-size:12px;font-weight:600;color:var(--warn);margin-bottom:10px;display:flex;gap:8px;align-items:center}
+
+/* ---------- P1 time scrubber ---------- */
+.seg{display:flex;background:var(--card);border:1px solid var(--hair);border-radius:11px;padding:3px;margin:8px 0 12px}
+.seg button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px 4px;font-size:12.5px;font-weight:600;color:var(--ink-soft)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.seg button small{display:block;font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--creek);margin-top:1px}
+.seg button[aria-pressed="true"] small{color:#9CC4D8}
+.hero-event{background:var(--card);border:1px solid var(--hair);border-radius:15px;padding:15px;margin-bottom:10px}
+.hero-event .time{font-family:var(--mono);font-size:11px;color:var(--creek);font-weight:600}
+.hero-event h4{font-family:'Fraunces',Georgia,serif;font-size:20px;font-weight:600;margin:3px 0 2px;line-height:1.15}
+.hero-event .venue{font-size:12.5px;color:var(--ink-soft)}
+.act-row{display:flex;gap:7px;margin-top:11px}
+.act{flex:1;border:1px solid var(--hair);background:var(--paper);border-radius:9px;padding:8px 4px;font-size:12px;font-weight:600;text-align:center}
+.act.primary{background:var(--creek);border-color:var(--creek);color:#fff}
+.pair-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:12px 0 7px}
+.derive{font-family:var(--mono);font-size:10px;color:var(--go);background:var(--go-bg);border-radius:6px;padding:5px 9px;margin-bottom:9px;display:inline-block}
+
+/* ---------- P2 map sheet ---------- */
+.mapstage{flex:1;position:relative;overflow:hidden;background:#E9E4D6}
+.mapstage svg{position:absolute;inset:0;width:100%;height:100%}
+.pin{position:absolute;transform:translate(-50%,-100%);border:0;background:transparent;padding:4px}
+.pin i{display:block;width:15px;height:15px;border-radius:50% 50% 50% 0;background:var(--creek);transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 5px rgba(0,0,0,.3);transition:transform .15s,background .15s}
+.pin.on i{background:var(--ink);transform:rotate(-45deg) scale(1.45)}
+.pin span{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:9.5px;font-weight:700;white-space:nowrap;background:var(--card);border:1px solid var(--hair);border-radius:5px;padding:1px 5px;opacity:0;transition:opacity .15s}
+.pin.on span{opacity:1}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:88%;background:var(--card);border-radius:18px 18px 0 0;box-shadow:0 -8px 28px rgba(28,43,38,.2);transition:transform .28s cubic-bezier(.32,.72,.3,1);display:flex;flex-direction:column;touch-action:none}
+.sheet.dragging{transition:none}
+.grab{flex:none;padding:9px 0 5px;display:flex;justify-content:center;cursor:grab;border:0;background:transparent;width:100%}
+.grab i{width:42px;height:5px;border-radius:5px;background:var(--hair)}
+.sheet-head{flex:none;padding:0 16px 9px;display:flex;justify-content:space-between;align-items:baseline}
+.sheet-head .t{font-family:'Fraunces',Georgia,serif;font-size:17px;font-weight:600}
+.sheet-head .c{font-family:var(--mono);font-size:10.5px;color:var(--go);font-weight:600}
+.sheet-list{flex:1;overflow-y:auto;padding:0 13px 16px;overscroll-behavior:contain}
+.sheet-list .pcard{cursor:pointer}
+.sheet-list .pcard.on{border-color:var(--creek);box-shadow:0 0 0 2px var(--creek-soft)}
+.detail-acts{display:none;width:100%}
+.pcard.on .detail-acts{display:flex;gap:6px;margin-top:9px}
+.pcard.on{flex-wrap:wrap}
+.detent-note{position:absolute;top:10px;left:12px;font-family:var(--mono);font-size:9.5px;background:rgba(255,253,247,.92);border:1px solid var(--hair);border-radius:6px;padding:3px 8px;color:var(--ink-soft)}
+
+/* ---------- P3 agenda rail ---------- */
+.rail{flex:none;display:flex;gap:6px;overflow-x:auto;padding:4px 14px 10px;scrollbar-width:none;border-bottom:1px solid var(--hair)}
+.rail::-webkit-scrollbar{display:none}
+.day{flex:none;width:54px;border:1px solid var(--hair);background:var(--card);border-radius:11px;padding:7px 0;text-align:center}
+.day .dw{font-family:var(--mono);font-size:9.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.06em}
+.day .dn{font-family:'Fraunces',Georgia,serif;font-size:18px;font-weight:600;line-height:1.1}
+.day .dc{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--creek);min-height:13px}
+.day.on{background:var(--ink);border-color:var(--ink)}
+.day.on .dw,.day.on .dn{color:var(--paper)} .day.on .dc{color:#9CC4D8}
+.daygroup{padding-top:12px}
+.dayhead{font-family:'Fraunces',Georgia,serif;font-size:16px;font-weight:600;margin-bottom:7px;display:flex;justify-content:space-between;align-items:baseline}
+.dayhead small{font-family:var(--mono);font-size:10px;color:var(--ink-soft);font-weight:400}
+.ev{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:10px 12px;margin-bottom:7px;display:flex;gap:11px;align-items:baseline}
+.ev .tm{flex:none;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--creek);width:56px}
+.ev .nm{font-weight:600;font-size:13.5px;line-height:1.3}
+.ev .vn{font-size:11.5px;color:var(--ink-soft);margin-top:1px}
+.ev .tag{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--warn);background:var(--warn-bg);border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:1px}
+.refine-bar{flex:none;display:flex;gap:6px;align-items:center;padding:9px 14px;border-bottom:1px solid var(--hair)}
+.refine-btn{flex:none;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600}
+.rsheet{position:absolute;inset:0;background:rgba(28,43,38,.35);display:none;align-items:flex-end;z-index:5;border-radius:24px}
+.rsheet.open{display:flex}
+.rsheet-card{background:var(--card);border-radius:18px 18px 0 0;width:100%;padding:14px 16px 18px;animation:up .25s ease}
+@keyframes up{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.rsheet-card h5{font-family:'Fraunces',Georgia,serif;font-size:17px;margin-bottom:10px}
+.rsheet-card .grp{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:10px 0 6px}
+.tgl{display:flex;gap:6px;flex-wrap:wrap}
+.done{width:100%;margin-top:14px;background:var(--creek);border:0;color:#fff;border-radius:10px;padding:11px;font-size:14px;font-weight:600}
+.empty{padding:30px 10px;text-align:center;color:var(--ink-soft);font-size:13px}
+.empty b{font-family:'Fraunces',Georgia,serif;display:block;font-size:16px;color:var(--ink);margin-bottom:4px}
+
+/* ---------- P4 plan cards ---------- */
+.plan-strip{flex:1;display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 24px 10px;scrollbar-width:none;align-items:stretch}
+.plan-strip::-webkit-scrollbar{display:none}
+.stop{flex:none;width:82%;scroll-snap-align:center;background:var(--card);border:1px solid var(--hair);border-radius:18px;padding:18px;display:flex;flex-direction:column}
+.stop .step-no{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--creek);text-transform:uppercase}
+.stop h4{font-family:'Fraunces',Georgia,serif;font-size:23px;font-weight:600;margin:5px 0 2px;line-height:1.1}
+.stop .role{font-size:12.5px;color:var(--ink-soft)}
+.stop .walk{margin-top:auto;padding-top:14px;font-family:var(--mono);font-size:11px;color:var(--ink-soft);display:flex;align-items:center;gap:7px}
+.stop .walk b{color:var(--creek)}
+.stop.final{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.stop.final .step-no{color:#9CC4D8}
+.stop.final .role,.stop.final .walk{color:rgba(246,241,231,.7)}
+.plan-dots{flex:none;display:flex;justify-content:center;gap:5px;padding:6px 0 10px}
+.plan-dots i{width:7px;height:7px;border-radius:50%;background:var(--hair)}
+.plan-dots i.on{background:var(--creek)}
+.plan-foot{flex:none;padding:0 16px 16px;display:flex;gap:8px}
+.plan-foot .act{padding:10px 4px}
+
+/* ---------- P5 search sheet ---------- */
+.fake-field{margin:4px 14px 12px;background:var(--card);border:1px solid var(--hair);border-radius:13px;padding:12px 14px;font-size:14px;color:var(--ink-soft);display:flex;gap:9px;align-items:center;width:calc(100% - 28px);text-align:left}
+.ssheet{position:absolute;inset:0;background:var(--paper);z-index:6;display:none;flex-direction:column;border-radius:24px}
+.ssheet.open{display:flex;animation:up .22s ease}
+.ssheet-top{flex:none;display:flex;gap:8px;align-items:center;padding:14px 14px 10px}
+.ssheet-top input{flex:1;border:1.5px solid var(--creek);background:var(--card);border-radius:12px;padding:11px 13px;font:500 14px 'Inter',sans-serif;color:var(--ink)}
+.ssheet-top input:focus{outline:none}
+.cancel{border:0;background:transparent;font-size:13px;font-weight:600;color:var(--creek)}
+.intents{display:flex;flex-wrap:wrap;gap:6px;padding:2px 14px 10px}
+.res-group{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:10px 0 6px}
+.res{background:var(--card);border:1px solid var(--hair);border-radius:11px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.res .nm{font-weight:600;font-size:13.5px}
+.res .meta{font-size:11px;color:var(--ink-soft);margin-top:1px}
+.res .kind{font-family:var(--mono);font-size:9px;font-weight:600;color:var(--creek);background:var(--creek-soft);border-radius:4px;padding:2px 6px;white-space:nowrap}
+
+/* ---------- shelf ---------- */
+.shelf{margin-top:34px;border-top:1.5px solid var(--ink);padding-top:16px}
+.shelf h2{font-family:'Fraunces',Georgia,serif;font-size:21px;margin-bottom:4px}
+.shelf>p{font-size:13px;color:var(--ink-soft);margin-bottom:14px}
+.tool{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--hair);font-size:13px;line-height:1.5}
+.tool b{flex:none;width:120px;font-family:var(--mono);font-size:11.5px;color:var(--creek);padding-top:1px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="masthead">
+    <h1>FrederickRadius · <em>Pattern Lab</em></h1>
+    <span>5 working demos · your live content</span>
+  </div>
+  <div class="pattern-tabs" id="tabs"></div>
+</header>
+
+<main id="main"></main>
+
+<script>
+/* ================= SHARED DATA (captured from the live site) ================= */
+const PLACES = [
+  {id:"rosatis", name:"Rosati's Pizza", cat:"Pizza", open:true, until:"9 PM", x:62, y:44},
+  {id:"gravel", name:"Gravel and Grind", cat:"Coffee", open:true, until:"6 PM", x:38, y:38},
+  {id:"wags", name:"Wag's Restaurant", cat:"Food", open:true, until:"10 PM", x:50, y:55},
+  {id:"voila", name:"Voila in Frederick", cat:"Coffee", open:true, until:"5 PM", x:46, y:30},
+  {id:"ktown", name:"K Town Takeout", cat:"Food", open:true, until:"8 PM", x:57, y:26},
+  {id:"gaslight", name:"Gaslight Gallery", cat:"Galleries", open:true, until:"6 PM", x:43, y:47},
+  {id:"pottery", name:"The Little Pottery Shop", cat:"Galleries", open:true, until:"5 PM", x:33, y:58},
+  {id:"clueiq", name:"Clue IQ Escape Room", cat:"Family", open:true, until:"10 PM", x:68, y:62},
+  {id:"dublin", name:"Dublin Roasters Coffee", cat:"Coffee", open:false, until:"opens 7 AM", x:26, y:22},
+  {id:"lebherz", name:"Lebherz Oil & Vinegar", cat:"Markets", open:true, until:"6 PM", x:54, y:40}
+];
+const EVENTS = [
+  {d:"F12", dw:"Fri", dn:12, t:"6:00 PM", name:"Miscast Cabaret", venue:"Frederick", cats:["arts"], free:false, town:"Frederick"},
+  {d:"S13", dw:"Sat", dn:13, t:"10:00 AM", name:"Summer Days on the Farm", venue:"Sippin Shenanigan's", cats:["family"], free:true, town:"Frederick County"},
+  {d:"S13", dw:"Sat", dn:13, t:"6:30 PM", name:"Sky Stage FOTA Concert", venue:"Sky Stage", cats:["music"], free:true, town:"Frederick"},
+  {d:"S13", dw:"Sat", dn:13, t:"7:30 PM", name:"Classic Cinema at the Weinberg", venue:"Weinberg Center", cats:["arts"], free:false, price:"$5", town:"Frederick"},
+  {d:"S13", dw:"Sat", dn:13, t:"7:30 PM", name:"Summer Solstice 8K", venue:"Steeplechasers", cats:["family"], free:false, town:"Frederick"},
+  {d:"S13", dw:"Sat", dn:13, t:"8:00 PM", name:"ABBAFAB · ABBA Tribute", venue:"Frederick", cats:["music"], free:false, town:"Frederick"},
+  {d:"S14", dw:"Sun", dn:14, t:"7:00 PM", name:"The Soul Truth · Billy Mayfield", venue:"Baker Park Bandshell", cats:["music"], free:true, town:"Frederick"},
+  {d:"W17", dw:"Wed", dn:17, t:"8:30 AM", name:"Junior Firefighter Day", venue:"Public Safety Place", cats:["family"], free:true, town:"Frederick County"},
+  {d:"W17", dw:"Wed", dn:17, t:"9:30 AM", name:"Planning Commission", venue:"Winchester Hall", cats:["civic"], free:true, town:"Frederick County"},
+  {d:"W17", dw:"Wed", dn:17, t:"8:00 PM", name:"Jason Hannan", venue:"Bentz Street", cats:["music"], free:false, town:"Frederick"},
+  {d:"T18", dw:"Thu", dn:18, t:"5:00 PM", name:"Alive @ Five", venue:"Carroll Creek Amphitheater", cats:["music"], free:false, town:"Frederick"},
+  {d:"T18", dw:"Thu", dn:18, t:"8:00 PM", name:"Skatt Daddy", venue:"Bentz Street", cats:["music"], free:false, town:"Frederick"}
+];
+const DAYS = [
+  {d:"F12", dw:"Fri", dn:12},{d:"S13", dw:"Sat", dn:13},{d:"S14", dw:"Sun", dn:14},
+  {d:"M15", dw:"Mon", dn:15},{d:"T16", dw:"Tue", dn:16},{d:"W17", dw:"Wed", dn:17},{d:"T18", dw:"Thu", dn:18}
+];
+
+const PATTERNS = [
+  {id:"scrub", tab:"Time scrubber", title:"One canvas, time as the control",
+   replaces:"Nineteen stacked modules on /today, four separate Tonight surfaces, the same event rendered four times.",
+   seen:"Apple Weather, the App Store Today tab, Google Maps' time-scoped suggestions.",
+   stack:["Radix Tabs or plain state","framer-motion for the swap"],
+   why:"The directory feeling comes from stacking every time window on one scroll. This pattern keeps one canvas and lets the segmented control swap what fills it. Tonight can only render once because Tonight is a state, not a module. Notice the counts live inside the control, which is the only place counts belong."},
+  {id:"sheet", tab:"Map + sheet", title:"The map is the page, the list rides a sheet",
+   replaces:"Separate /map and list surfaces, the Near you module, two of the four open-now doors.",
+   seen:"Google Maps, Apple Maps, Zillow, Airbnb.",
+   stack:["vaul (drawer) over your existing react-map-gl","Mapbox GL you already ship"],
+   why:"Map versus list is a false choice on mobile, and every leading local app resolved it the same way a decade ago. The sheet has three resting heights: peek keeps the map primary, half splits attention, full becomes the list. Tap a pin and the matching card answers with actions in place. Nobody navigates away to learn an address."},
+  {id:"rail", tab:"Agenda rail", title:"One list, a date rail, and counts that cannot lie",
+   replaces:"Both stacked systems on /events, three search affordances, and every count contradiction.",
+   seen:"Dice, Resident Advisor, Google Calendar's schedule view.",
+   stack:["CSS scroll-snap + IntersectionObserver","embla-carousel if you want physics"],
+   why:"This is the entire Events page: one list grouped by day, a rail that tracks your scroll, chips for mood, one Refine sheet for everything else. Watch the rail numbers when you tap a chip. They recompute from the exact array that renders the cards, so 13 versus 12 becomes structurally impossible."},
+  {id:"plan", tab:"Plan cards", title:"The plan as a deck you swipe through",
+   replaces:"The afternoon plan as a buried text module under eighteen other modules.",
+   seen:"Apple Maps Guides, story-format onboarding, boarding passes in Wallet.",
+   stack:["CSS scroll-snap (zero dependencies)","embla-carousel for the dots"],
+   why:"The plan generator is the most defensible thing on the site and it currently reads like a numbered list. As a swipeable deck, each stop gets a full card, the walk time becomes the connective tissue between cards, and Shuffle makes the generator feel alive. This is the feature a user shows a friend."},
+  {id:"ask", tab:"Search sheet", title:"Ask becomes a sheet with intents, not a shortcut",
+   replaces:"The ⌘K bar phones cannot reach, both /events text inputs, and the Ask tab's empty promise.",
+   seen:"Spotlight on iOS, Airbnb search, Spotify search.",
+   stack:["cmdk rendered inside vaul on mobile","one shared index of places, events, actions"],
+   why:"⌘K is a desktop habit. On a phone the same engine lives behind one search field that opens a full sheet, seeded with intent pills so the user never faces an empty box. One index answers with places, events, and actions together, which is what Ask promised all along. Try typing pizza, or free, or plan."}
+];
+
+/* ================= SCAFFOLD ================= */
+const tabs = document.getElementById('tabs');
+const main = document.getElementById('main');
+tabs.innerHTML = PATTERNS.map((p,i)=>`<button aria-pressed="${i===0}" onclick="go(${i})"><b>0${i+1}</b>${p.tab}</button>`).join('');
+main.innerHTML = PATTERNS.map((p,i)=>`
+  <section class="pattern ${i===0?'active':''}" id="pat-${p.id}">
+    <div class="eyebrow">Pattern 0${i+1} of 05</div>
+    <h2 class="pat-title">${p.title}</h2>
+    <div class="meta-grid">
+      <div class="meta-row"><b>Replaces</b><span>${p.replaces}</span></div>
+      <div class="meta-row"><b>Proven in</b><span>${p.seen}</span></div>
+      <div class="meta-row"><b>Your stack</b><span>${p.stack.map(s=>`<code>${s}</code>`).join(' ')}</span></div>
+    </div>
+    <div class="try" id="try-${p.id}"></div>
+    <div class="phone"><div class="screen" id="demo-${p.id}"></div></div>
+    <p class="why">${p.why}</p>
+  </section>`).join('') + shelfHTML();
+
+function go(i){
+  document.querySelectorAll('.pattern').forEach((s,j)=>s.classList.toggle('active', j===i));
+  tabs.querySelectorAll('button').forEach((b,j)=>b.setAttribute('aria-pressed', j===i));
+  window.scrollTo({top:0});
+}
+
+function shelfHTML(){
+  return `<div class="shelf">
+    <h2>The shelf</h2>
+    <p>Everything above maps to a small, boring set of dependencies. Paste this list into CLAUDE.md as the approved kit so Claude Code reaches for these instead of inventing components.</p>
+    <div class="tool"><b>Mobbin</b><span>The reference tool, not a library. Real screen recordings of how Maps, Airbnb, and Dice execute these exact patterns. Study before building.</span></div>
+    <div class="tool"><b>vaul</b><span>The React bottom sheet with real detents and spring physics. Powers patterns 02 and 05.</span></div>
+    <div class="tool"><b>cmdk</b><span>The command engine behind your ⌘K. Keep it, render it inside a sheet on mobile, feed it one shared index.</span></div>
+    <div class="tool"><b>embla-carousel</b><span>Snap carousels with momentum for the plan deck and any horizontal pick rows.</span></div>
+    <div class="tool"><b>Radix primitives</b><span>Tabs, ToggleGroup, and Dialog for the scrubber, chips, and Refine sheet. Unstyled, so the field-guide identity stays yours.</span></div>
+    <div class="tool"><b>react-map-gl</b><span>Already in your stack. The only change is what sits on top of it.</span></div>
+    <div class="tool"><b>One honest note</b><span>No tool on this list makes the site better by itself. The improvement is the decision each demo encodes: one canvas per job, controls swap state, modules never stack. The libraries just make those decisions cheap to ship.</span></div>
+  </div>`;
+}
+
+/* ================= P1 · TIME SCRUBBER ================= */
+(function(){
+  document.getElementById('try-scrub').textContent = "Try it · tap the segments, then a chip";
+  const el = document.getElementById('demo-scrub');
+  let win = "now", cat = "All";
+  const counts = {now: PLACES.filter(p=>p.open).length, tonight:1, tomorrow:EVENTS.filter(e=>e.d==="S13").length, weekend:EVENTS.filter(e=>["S13","S14"].includes(e.d)).length + 1};
+  function render(){
+    let body = "";
+    if(win==="now"){
+      const cats = ["All","Coffee","Food","Pizza","Galleries","Family"];
+      const list = PLACES.filter(p=>p.open && (cat==="All"||p.cat===cat));
+      body = `
+        <div class="alertstrip">⚠ Heat Advisory until 8 PM · storms 3 to 8 PM, plan indoors</div>
+        <div class="chiprow">${cats.map(c=>`<button class="chip" aria-pressed="${c===cat}" data-cat="${c}">${c}</button>`).join('')}</div>
+        ${list.map(p=>`<div class="pcard"><div><div class="nm">${p.name}</div><div class="meta">${p.cat} · downtown</div></div><span class="open-pill">OPEN · ${p.until}</span></div>`).join('')}`;
+    } else if(win==="tonight"){
+      body = `
+        <div class="hero-event">
+          <div class="time">6:00 PM · TONIGHT</div>
+          <h4>Miscast Cabaret</h4>
+          <div class="venue">Frederick · the one event tonight, rendered once</div>
+          <div class="act-row"><button class="act primary">Save</button><button class="act">Directions</button><button class="act">Details</button></div>
+        </div>
+        <div class="pair-label">Make it dinner too</div>
+        ${["wags","rosatis"].map(id=>{const p=PLACES.find(x=>x.id===id);return `<div class="pcard"><div><div class="nm">${p.name}</div><div class="meta">${p.cat} · reserve from its page</div></div><span class="open-pill">OPEN · ${p.until}</span></div>`}).join('')}`;
+    } else if(win==="tomorrow"){
+      const list = EVENTS.filter(e=>e.d==="S13");
+      body = `<div class="derive">count = saturday.length → ${list.length}</div>` +
+        list.map(e=>`<div class="pcard"><div><div class="nm">${e.name}</div><div class="meta">${e.t} · ${e.venue}</div></div>${e.free?'<span class="open-pill">FREE</span>':''}</div>`).join('');
+    } else {
+      const list = EVENTS.filter(e=>["S13","S14"].includes(e.d));
+      body = `<div class="derive">count = weekend.length → ${list.length}, and the tab above agrees</div>` +
+        list.map(e=>`<div class="pcard"><div><div class="nm">${e.name}</div><div class="meta">${e.dw} ${e.t} · ${e.venue}</div></div>${e.free?'<span class="open-pill">FREE</span>':''}</div>`).join('');
+    }
+    el.innerHTML = `
+      <div class="notch"><i></i></div>
+      <div class="d-head">
+        <div class="d-kicker">Friday · June 12 · 4:11 PM</div>
+        <div class="d-title">Today in Frederick</div>
+        <div class="seg">
+          <button aria-pressed="${win==='now'}" data-w="now">Now<small>${counts.now} open</small></button>
+          <button aria-pressed="${win==='tonight'}" data-w="tonight">Tonight<small>${counts.tonight}</small></button>
+          <button aria-pressed="${win==='tomorrow'}" data-w="tomorrow">Sat<small>${counts.tomorrow}</small></button>
+          <button aria-pressed="${win==='weekend'}" data-w="weekend">Weekend<small>${counts.weekend}</small></button>
+        </div>
+      </div>
+      <div class="scrollarea">${body}</div>`;
+    el.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{win=b.dataset.w;render();});
+    el.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;render();});
+  }
+  render();
+})();
+
+/* ================= P2 · MAP + SHEET ================= */
+(function(){
+  document.getElementById('try-sheet').textContent = "Try it · drag the handle, tap a pin";
+  const el = document.getElementById('demo-sheet');
+  el.innerHTML = `
+    <div class="notch"><i></i></div>
+    <div class="mapstage" id="stage">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <rect width="100" height="100" fill="#E9E4D6"/>
+        <path d="M0,52 C20,49 35,55 52,52 C70,49 85,54 100,50" stroke="#7FB2C9" stroke-width="3.4" fill="none" opacity=".85"/>
+        <path d="M0,52 C20,49 35,55 52,52 C70,49 85,54 100,50" stroke="#2F6F8F" stroke-width="1" fill="none" opacity=".6"/>
+        <line x1="48" y1="0" x2="48" y2="100" stroke="#D8D1BE" stroke-width="4"/>
+        <line x1="0" y1="34" x2="100" y2="34" stroke="#D8D1BE" stroke-width="3"/>
+        <line x1="0" y1="68" x2="100" y2="68" stroke="#D8D1BE" stroke-width="2.4"/>
+        <line x1="22" y1="0" x2="22" y2="100" stroke="#DED7C5" stroke-width="2"/>
+        <line x1="74" y1="0" x2="74" y2="100" stroke="#DED7C5" stroke-width="2"/>
+        <text x="49.5" y="12" font-size="3.2" fill="#8A8470" font-family="monospace" transform="rotate(90 49.5 12)">MARKET ST</text>
+        <text x="64" y="32.6" font-size="3.2" fill="#8A8470" font-family="monospace">PATRICK ST</text>
+        <text x="6" y="48.5" font-size="3" fill="#5E8AA0" font-family="monospace" font-style="italic">Carroll Creek</text>
+      </svg>
+      <div id="pins"></div>
+      <div class="detent-note" id="dnote">peek</div>
+      <div class="sheet" id="sh">
+        <button class="grab" id="grab" aria-label="Drag or tap to resize the list"><i></i></button>
+        <div class="sheet-head"><span class="t">Open near you</span><span class="c" id="shc"></span></div>
+        <div class="sheet-list" id="shl"></div>
+      </div>
+    </div>`;
+  const sh = el.querySelector('#sh'), stage = el.querySelector('#stage'), dnote = el.querySelector('#dnote');
+  const open = PLACES.filter(p=>p.open);
+  el.querySelector('#shc').textContent = open.length + " open now";
+  el.querySelector('#pins').innerHTML = open.map(p=>`<button class="pin" data-pin="${p.id}" style="left:${p.x}%;top:${p.y}%" aria-label="${p.name}"><i></i><span>${p.name}</span></button>`).join('');
+  el.querySelector('#shl').innerHTML = open.map(p=>`
+    <div class="pcard" data-card="${p.id}">
+      <div><div class="nm">${p.name}</div><div class="meta">${p.cat} · closes ${p.until.replace('opens ','')}</div></div>
+      <span class="open-pill">OPEN</span>
+      <div class="detail-acts"><button class="act primary">Directions</button><button class="act">Hours</button><button class="act">Save</button></div>
+    </div>`).join('');
+
+  const DET = {peek:.86, half:.48, full:.06};
+  let cur = "peek", drag = null;
+  function setDet(d){ cur = d; sh.style.transform = `translateY(${DET[d]*100}%)`; dnote.textContent = d; 
+    el.querySelector('#shl').style.overflowY = d==="full" ? "auto" : "hidden"; }
+  setDet("peek");
+  const grab = el.querySelector('#grab');
+  grab.addEventListener('pointerdown', e=>{ drag = {y:e.clientY, start:DET[cur]*stage.clientHeight}; sh.classList.add('dragging'); grab.setPointerCapture(e.pointerId); });
+  grab.addEventListener('pointermove', e=>{ if(!drag) return;
+    let y = Math.min(stage.clientHeight*.9, Math.max(stage.clientHeight*.04, drag.start + (e.clientY - drag.y)));
+    sh.style.transform = `translateY(${y}px)`; drag.last = y; });
+  grab.addEventListener('pointerup', ()=>{ if(!drag) return; sh.classList.remove('dragging');
+    const frac = (drag.last ?? DET[cur]*stage.clientHeight)/stage.clientHeight; drag = null;
+    setDet(frac > .68 ? "peek" : frac > .27 ? "half" : "full"); });
+  grab.addEventListener('click', ()=>{ if(drag) return; setDet(cur==="peek"?"half":cur==="half"?"full":"peek"); });
+
+  function pick(id){
+    el.querySelectorAll('.pin').forEach(p=>p.classList.toggle('on', p.dataset.pin===id));
+    el.querySelectorAll('[data-card]').forEach(c=>c.classList.toggle('on', c.dataset.card===id));
+    if(cur==="peek") setDet("half");
+    const card = el.querySelector(`[data-card="${id}"]`);
+    if(card) el.querySelector('#shl').scrollTop = Math.max(0, card.offsetTop - 8);
+  }
+  el.querySelectorAll('.pin').forEach(p=>p.onclick=()=>pick(p.dataset.pin));
+  el.querySelectorAll('[data-card]').forEach(c=>c.onclick=()=>pick(c.dataset.card));
+})();
+
+/* ================= P3 · AGENDA RAIL ================= */
+(function(){
+  document.getElementById('try-rail').textContent = "Try it · scroll the list, tap a day, tap Free, open Refine";
+  const el = document.getElementById('demo-rail');
+  let chip = "All", town = "All", refOpen = false;
+  function filtered(){ return EVENTS.filter(e=>
+    (chip==="All" || (chip==="Free"? e.free : e.cats.includes(chip.toLowerCase()))) &&
+    (town==="All" || e.town===town)); }
+  function render(){
+    const list = filtered();
+    const byDay = DAYS.map(d=>({...d, evs:list.filter(e=>e.d===d.d)}));
+    el.innerHTML = `
+      <div class="notch"><i></i></div>
+      <div class="d-head" style="padding-bottom:4px">
+        <div class="d-kicker">Events · Frederick County</div>
+        <div class="d-title" style="font-size:21px">What's worth going to?</div>
+      </div>
+      <div class="rail" id="rail">${byDay.map(d=>`<button class="day" data-day="${d.d}"><span class="dw">${d.dw}</span><span class="dn">${d.dn}</span><span class="dc">${d.evs.length||""}</span></button>`).join('')}</div>
+      <div class="refine-bar">
+        <div class="chiprow" style="padding:0;flex:1">${["All","Music","Family","Civic","Free"].map(c=>`<button class="chip" aria-pressed="${c===chip}" data-chip="${c}">${c}</button>`).join('')}</div>
+        <button class="refine-btn" id="refbtn">Refine${town!=="All"?" · 1":""}</button>
+      </div>
+      <div class="scrollarea" id="evlist" style="padding-top:0">
+        ${byDay.map(d=>d.evs.length?`
+          <div class="daygroup" data-group="${d.d}">
+            <div class="dayhead">${d.dw==="Fri"&&d.dn===12?"Tonight":d.dw+" "+d.dn} <small>${d.evs.length} · derived from this list</small></div>
+            ${d.evs.map(e=>`<div class="ev"><span class="tm">${e.t}</span><div><div class="nm">${e.name}${e.free?'<span class="tag">FREE</span>':''}${e.price?`<span class="tag">${e.price}</span>`:''}</div><div class="vn">${e.venue} · ${e.town}</div></div></div>`).join('')}
+          </div>`:"").join('') || `<div class="empty"><b>Nothing matches yet</b>Loosen a filter, or check the next week.</div>`}
+      </div>
+      <div class="rsheet ${refOpen?'open':''}" id="rsheet">
+        <div class="rsheet-card">
+          <h5>Refine</h5>
+          <div class="grp">Town</div>
+          <div class="tgl">${["All","Frederick","Frederick County"].map(t=>`<button class="chip" aria-pressed="${t===town}" data-town="${t}">${t}</button>`).join('')}</div>
+          <div class="grp">Sort</div>
+          <div class="tgl"><button class="chip" aria-pressed="true">Soonest</button><button class="chip">Nearest</button></div>
+          <button class="done" id="refdone">Show ${list.length} events</button>
+        </div>
+      </div>`;
+    el.querySelectorAll('[data-chip]').forEach(b=>b.onclick=()=>{chip=b.dataset.chip;render();});
+    el.querySelectorAll('[data-town]').forEach(b=>b.onclick=()=>{town=b.dataset.town;render();refOpen=true;document.getElementById('demo-rail').querySelector('#rsheet').classList.add('open');});
+    el.querySelector('#refbtn').onclick=()=>{refOpen=true;el.querySelector('#rsheet').classList.add('open');};
+    el.querySelector('#refdone').onclick=()=>{refOpen=false;el.querySelector('#rsheet').classList.remove('open');};
+    el.querySelector('#rsheet').onclick=(e)=>{if(e.target.id==="rsheet"){refOpen=false;e.target.classList.remove('open');}};
+    const evlist = el.querySelector('#evlist');
+    el.querySelectorAll('[data-day]').forEach(b=>b.onclick=()=>{
+      const g = el.querySelector(`[data-group="${b.dataset.day}"]`);
+      if(g) evlist.scrollTo({top:g.offsetTop - evlist.offsetTop - 4, behavior:'smooth'});
+      setActiveDay(b.dataset.day);
+    });
+    function setActiveDay(d){ el.querySelectorAll('[data-day]').forEach(b=>b.classList.toggle('on', b.dataset.day===d)); }
+    evlist.addEventListener('scroll', ()=>{
+      let best = null;
+      el.querySelectorAll('[data-group]').forEach(g=>{ if(g.offsetTop - evlist.offsetTop <= evlist.scrollTop + 70) best = g.dataset.group; });
+      if(best) setActiveDay(best);
+    });
+    setActiveDay((byDay.find(d=>d.evs.length)||DAYS[0]).d);
+  }
+  render();
+})();
+
+/* ================= P4 · PLAN CARDS ================= */
+(function(){
+  document.getElementById('try-plan').textContent = "Try it · swipe the deck, then Shuffle";
+  const el = document.getElementById('demo-plan');
+  const PLANS = [
+    {name:"An afternoon plan", stops:[
+      {no:"Stop 1 · Lunch", nm:"K Town Takeout", role:"Korean takeout, eat by the creek", walk:"15 min there"},
+      {no:"Stop 2 · Duck into", nm:"Gaslight Gallery", role:"Local art, fifteen quiet minutes", walk:"3 min walk"},
+      {no:"Stop 3 · Coffee", nm:"Voila in Frederick", role:"Close the loop with a cortado", walk:"1 min walk"}]},
+    {name:"A rainy-hour plan", stops:[
+      {no:"Stop 1 · Eat", nm:"Wag's Restaurant", role:"Counter seats, no reservation needed", walk:"6 min there"},
+      {no:"Stop 2 · Browse", nm:"The Little Pottery Shop", role:"Pick up something made here", walk:"4 min walk"},
+      {no:"Stop 3 · Coffee", nm:"Gravel and Grind", role:"Bikes, beans, a slow finish", walk:"5 min walk"}]}
+  ];
+  let pi = 0;
+  function render(){
+    const plan = PLANS[pi];
+    const total = plan.stops.length;
+    el.innerHTML = `
+      <div class="notch"><i></i></div>
+      <div class="d-head">
+        <div class="d-kicker">Generated from what's open downtown · 4:11 PM</div>
+        <div class="d-title" style="font-size:21px">${plan.name}</div>
+        <div class="d-sub">Storms at 3, so every stop has a roof. Check hours before you go.</div>
+      </div>
+      <div class="plan-strip" id="pstrip">
+        ${plan.stops.map((s,i)=>`
+          <div class="stop">
+            <span class="step-no">${s.no}</span>
+            <h4>${s.nm}</h4>
+            <span class="role">${s.role}</span>
+            <span class="walk">→ <b>${s.walk}</b>${i<total-1?" · next stop":""}</span>
+          </div>`).join('')}
+        <div class="stop final">
+          <span class="step-no">That's the loop</span>
+          <h4>${total} stops · ~24 min walking</h4>
+          <span class="role">All inside the downtown radius. Save it or hand it to a friend.</span>
+          <span class="walk">One tap regenerates from live hours</span>
+        </div>
+      </div>
+      <div class="plan-dots" id="pdots">${Array(total+1).fill(0).map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}</div>
+      <div class="plan-foot">
+        <button class="act primary" id="shuffle">Shuffle the plan</button>
+        <button class="act">Save</button>
+        <button class="act">Share</button>
+      </div>`;
+    const strip = el.querySelector('#pstrip'), dots = el.querySelectorAll('#pdots i');
+    strip.addEventListener('scroll', ()=>{
+      const i = Math.round(strip.scrollLeft / (strip.scrollWidth/(dots.length)));
+      dots.forEach((d,j)=>d.classList.toggle('on', j===Math.min(i,dots.length-1)));
+    });
+    el.querySelector('#shuffle').onclick=()=>{pi=(pi+1)%PLANS.length;render();};
+  }
+  render();
+})();
+
+/* ================= P5 · SEARCH SHEET ================= */
+(function(){
+  document.getElementById('try-ask').textContent = "Try it · tap the field, tap an intent, or type pizza / free / plan";
+  const el = document.getElementById('demo-ask');
+  const INDEX = [
+    ...PLACES.map(p=>({kind:"PLACE", nm:p.name, meta:`${p.cat} · ${p.open?'open until '+p.until:'closed, '+p.until}`, k:(p.name+" "+p.cat+(p.open?" open now":"")).toLowerCase()})),
+    ...EVENTS.map(e=>({kind:"EVENT", nm:e.name, meta:`${e.dw} ${e.t} · ${e.venue}${e.free?' · free':''}`, k:(e.name+" "+e.venue+" "+e.cats.join(" ")+(e.free?" free":"")).toLowerCase()})),
+    {kind:"ACTION", nm:"Make me an afternoon plan", meta:"3 stops generated from live hours", k:"plan afternoon make me"},
+    {kind:"ACTION", nm:"What's open near me", meta:"Opens the map's open-now state", k:"open now near me what's"},
+    {kind:"ACTION", nm:"Next Planning Commission", meta:"Wed Jun 17 · 9:30 AM · Winchester Hall", k:"planning commission civic meeting council next"}
+  ];
+  const INTENTS = ["Open now","Free this weekend","Family today","Next council meeting","Make me a plan"];
+  const IMAP = {"Open now":"open now","Free this weekend":"free","Family today":"family","Next council meeting":"planning commission","Make me a plan":"plan"};
+  let openS = false, q = "";
+  function results(){
+    const t = q.trim().toLowerCase();
+    if(!t) return [];
+    return INDEX.filter(r=>t.split(/\s+/).every(w=>r.k.includes(w))).slice(0,8);
+  }
+  function render(){
+    const res = results();
+    const grouped = ["ACTION","PLACE","EVENT"].map(k=>({k, items:res.filter(r=>r.kind===k)})).filter(g=>g.items.length);
+    el.innerHTML = `
+      <div class="notch"><i></i></div>
+      <div class="d-head">
+        <div class="d-kicker">Frederick County · Field guide</div>
+        <div class="d-title">What are you looking for?</div>
+      </div>
+      <button class="fake-field" id="openSearch">⌕ &nbsp;Ask Radius · places, events, plans</button>
+      <div class="scrollarea">
+        <div class="pair-label">Hidden gems · see all</div>
+        ${["Gathland State Park","C&O Canal Towpath","Walkersville Southern RR"].map(n=>`<div class="pcard"><div><div class="nm">${n}</div><div class="meta">Hidden gem</div></div></div>`).join('')}
+      </div>
+      <div class="ssheet ${openS?'open':''}" id="ss">
+        <div class="ssheet-top">
+          <input id="q" type="text" placeholder="Try pizza, free, plan…" value="${q.replace(/"/g,'&quot;')}" autocomplete="off">
+          <button class="cancel" id="close">Cancel</button>
+        </div>
+        <div class="intents">${INTENTS.map(i=>`<button class="chip" data-intent="${i}">${i}</button>`).join('')}</div>
+        <div class="scrollarea" style="padding-top:2px">
+          ${q.trim() ? (grouped.length ? grouped.map(g=>`
+            <div class="res-group">${g.k==="ACTION"?"Do":g.k==="PLACE"?"Places":"Events"}</div>
+            ${g.items.map(r=>`<div class="res"><div><div class="nm">${r.nm}</div><div class="meta">${r.meta}</div></div><span class="kind">${r.kind}</span></div>`).join('')}`).join('')
+            : `<div class="empty"><b>No matches for "${q}"</b>One index covers places, events, and actions. Try an intent above.</div>`)
+          : `<div class="empty"><b>One box, three kinds of answers</b>Places, events, and actions share an index, so "ask" finally means something.</div>`}
+        </div>
+      </div>`;
+    el.querySelector('#openSearch').onclick=()=>{openS=true;render();el.querySelector('#q').focus();};
+    el.querySelector('#close').onclick=()=>{openS=false;q="";render();};
+    const inp = el.querySelector('#q');
+    inp.oninput=()=>{q=inp.value;renderResultsOnly();};
+    el.querySelectorAll('[data-intent]').forEach(b=>b.onclick=()=>{q=IMAP[b.dataset.intent];render();el.querySelector('#q').focus();});
+    function renderResultsOnly(){ const pos=inp.selectionStart; render(); const ni=el.querySelector('#q'); ni.focus(); ni.setSelectionRange(pos,pos); }
+  }
+  render();
+})();
+</script>
+</body>
+</html>

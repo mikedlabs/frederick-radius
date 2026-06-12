@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrederickRadius · Journey Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F1E7;
+  --card:#FFFDF7;
+  --ink:#1C2B26;
+  --ink-soft:rgba(28,43,38,.62);
+  --hair:rgba(28,43,38,.16);
+  --creek:#2F6F8F;
+  --creek-soft:rgba(47,111,143,.12);
+  --keep:#3E7C4F;
+  --keep-bg:rgba(62,124,79,.10);
+  --demote:#A8741F;
+  --demote-bg:rgba(168,116,31,.12);
+  --kill:#B23A2E;
+  --kill-bg:rgba(178,58,46,.10);
+  --mono:ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.serif{font-family:'Fraunces',Georgia,serif}
+.mono{font-family:var(--mono)}
+
+/* ---------- header ---------- */
+header{position:sticky;top:0;z-index:50;background:var(--paper);border-bottom:1px solid var(--hair);padding:14px 16px 0}
+.masthead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.masthead h1{font-family:'Fraunces',Georgia,serif;font-weight:700;font-size:22px;letter-spacing:-.01em}
+.masthead h1 em{font-style:italic;font-weight:400;color:var(--creek)}
+.audit-date{font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+.views{display:flex;gap:4px;margin:12px -4px 0;overflow-x:auto;padding:0 4px 12px}
+.views button{flex:1;min-width:96px;border:1px solid var(--hair);background:var(--card);color:var(--ink-soft);font:600 13px 'Inter',sans-serif;padding:9px 10px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.views button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.views button:focus-visible{outline:2px solid var(--creek);outline-offset:2px}
+
+main{max-width:760px;margin:0 auto;padding:18px 16px 80px}
+.view{display:none}
+.view.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.lede{font-family:'Fraunces',Georgia,serif;font-size:17px;line-height:1.55;margin-bottom:6px}
+.sub{color:var(--ink-soft);font-size:13.5px;margin-bottom:20px}
+
+/* ---------- legend ---------- */
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;font-weight:600;margin:14px 0 18px}
+.legend span{display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft)}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.dot.k{background:var(--keep)} .dot.d{background:var(--demote)} .dot.x{background:var(--kill)}
+
+/* ---------- FLOW VIEW ---------- */
+.flow-band{margin-bottom:26px}
+.band-label{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.band-label::after{content:"";flex:1;height:1px;background:var(--hair)}
+.node-row{display:flex;gap:8px;flex-wrap:wrap}
+.node{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:10px 12px;flex:1;min-width:140px}
+.node .route{font-family:var(--mono);font-size:11px;color:var(--creek);display:block;margin-bottom:3px}
+.node .name{font-weight:600;font-size:13.5px}
+.node .note{font-size:12px;color:var(--ink-soft);margin-top:3px;line-height:1.45}
+.node.problem{border-color:var(--kill);background:var(--kill-bg)}
+.node.problem .route{color:var(--kill)}
+.stamp{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.05em;color:var(--kill);border:1px solid var(--kill);border-radius:4px;padding:1px 6px;margin-top:6px;transform:rotate(-1.5deg)}
+.stamp.amber{color:var(--demote);border-color:var(--demote)}
+.connector{width:1px;height:18px;background:var(--hair);margin:0 0 0 24px}
+
+.doors{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:16px;margin-bottom:26px}
+.doors h3{font-family:'Fraunces',Georgia,serif;font-size:18px;margin-bottom:4px}
+.doors p{font-size:13px;color:var(--ink-soft);margin-bottom:14px}
+.door-grid{display:grid;grid-template-columns:1fr 28px 1fr;gap:6px;align-items:center}
+.door{border:1px solid var(--hair);border-radius:8px;padding:8px 10px;font-size:12.5px;background:var(--paper)}
+.door .where{font-family:var(--mono);font-size:10px;color:var(--ink-soft);display:block}
+.door-arrow{text-align:center;color:var(--kill);font-size:15px}
+.room{grid-row:1 / span 4;grid-column:3;border:1.5px solid var(--creek);border-radius:10px;background:var(--creek-soft);display:flex;align-items:center;justify-content:center;text-align:center;font-weight:600;font-size:13px;padding:12px;min-height:100%}
+
+.bn-card{background:var(--card);border:1px solid var(--hair);border-left:4px solid var(--kill);border-radius:10px;padding:12px 14px;margin-bottom:10px;display:block;width:100%;text-align:left;cursor:pointer;font-family:inherit;color:inherit}
+.bn-card:focus-visible{outline:2px solid var(--creek);outline-offset:2px}
+.bn-card .bn-num{font-family:var(--mono);font-size:10px;color:var(--kill);letter-spacing:.08em}
+.bn-card .bn-title{font-weight:600;font-size:14.5px;margin:2px 0}
+.bn-card .bn-body{font-size:13px;color:var(--ink-soft);line-height:1.5}
+.bn-card .bn-go{font-size:12px;font-weight:600;color:var(--creek);margin-top:6px;display:inline-block}
+
+/* ---------- SCREENS VIEW ---------- */
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;margin-bottom:6px}
+.chips button{border:1px solid var(--hair);background:var(--card);border-radius:999px;padding:7px 14px;font:600 13px 'Inter',sans-serif;color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+.chips button[aria-pressed="true"]{background:var(--creek);border-color:var(--creek);color:#fff}
+.chips button:focus-visible{outline:2px solid var(--creek);outline-offset:2px}
+.screen-meta{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 14px;font-size:12.5px;color:var(--ink-soft)}
+.screen-meta b{color:var(--ink);font-family:var(--mono);font-size:13px}
+
+.frame-wrap{display:flex;gap:10px;align-items:flex-start}
+.ruler{width:44px;flex:none;position:relative;font-family:var(--mono);font-size:9.5px;color:var(--ink-soft)}
+.tick{position:absolute;left:0;right:6px;border-top:1px dashed var(--hair);padding-top:2px;text-align:right}
+.tick b{color:var(--creek);font-weight:600}
+.frame{flex:1;background:var(--card);border:1.5px solid var(--ink);border-radius:18px;padding:8px;position:relative;box-shadow:4px 4px 0 rgba(28,43,38,.08)}
+.frame::before{content:"";display:block;width:54px;height:4px;border-radius:4px;background:var(--hair);margin:2px auto 8px}
+.mod{border:1px solid var(--hair);border-radius:8px;margin-bottom:5px;padding:8px 10px;cursor:pointer;position:relative;background:var(--paper);transition:box-shadow .15s ease}
+.mod:focus-visible{outline:2px solid var(--creek);outline-offset:1px}
+.mod.keep{border-left:4px solid var(--keep);background:linear-gradient(var(--keep-bg),var(--keep-bg)),var(--paper)}
+.mod.demote{border-left:4px solid var(--demote);background:linear-gradient(var(--demote-bg),var(--demote-bg)),var(--paper)}
+.mod.kill{border-left:4px solid var(--kill);background:linear-gradient(var(--kill-bg),var(--kill-bg)),var(--paper)}
+.mod.focused{box-shadow:0 0 0 3px var(--creek);z-index:2}
+.mod-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.mod-name{font-weight:600;font-size:12.5px;line-height:1.35}
+.pill{font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.06em;padding:2px 6px;border-radius:4px;white-space:nowrap}
+.pill.keep{color:var(--keep);background:var(--keep-bg)}
+.pill.demote{color:var(--demote);background:var(--demote-bg)}
+.pill.kill{color:var(--kill);background:var(--kill-bg)}
+.dup-badge{font-family:var(--mono);font-size:9.5px;font-weight:600;color:var(--kill);border:1px dashed var(--kill);border-radius:999px;padding:1px 7px;margin-left:6px}
+.mod-sample{font-size:11px;color:var(--ink-soft);margin-top:3px;line-height:1.4;font-style:italic}
+.mod-note{display:none;font-size:12px;color:var(--ink);margin-top:7px;padding-top:7px;border-top:1px dashed var(--hair);line-height:1.5}
+.mod.open .mod-note{display:block}
+.sys-divider{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--kill);text-align:center;padding:6px 0;border-top:1.5px dashed var(--kill);margin:8px 0 6px}
+
+/* ---------- JOURNEYS VIEW ---------- */
+.personas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-bottom:18px}
+.persona-btn{background:var(--card);border:1px solid var(--hair);border-radius:10px;padding:12px;text-align:left;cursor:pointer;font-family:inherit;color:inherit}
+.persona-btn[aria-pressed="true"]{border-color:var(--creek);box-shadow:0 0 0 2px var(--creek-soft);background:#fff}
+.persona-btn:focus-visible{outline:2px solid var(--creek);outline-offset:2px}
+.persona-btn .p-name{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15px}
+.persona-btn .p-goal{font-size:11.5px;color:var(--ink-soft);margin-top:2px;line-height:1.4}
+.player{background:var(--card);border:1px solid var(--hair);border-radius:14px;padding:16px}
+.player-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.player-head .target{font-size:12px;color:var(--ink-soft)}
+.counter{font-family:var(--mono);font-size:12px;font-weight:600}
+.counter .taps{color:var(--creek)} .counter .fric{color:var(--kill)}
+.dots{display:flex;gap:5px;margin:10px 0 14px}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--hair)}
+.dots i.on{background:var(--creek)}
+.dots i.bad{background:var(--kill)}
+.bubble{background:var(--paper);border:1px solid var(--hair);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.bubble .screen-tag{font-family:var(--mono);font-size:10px;color:var(--creek);letter-spacing:.05em}
+.bubble p{font-family:'Fraunces',Georgia,serif;font-size:16px;line-height:1.5;margin-top:4px}
+.frictions{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.frictions span{font-size:11px;font-weight:600;color:var(--kill);background:var(--kill-bg);border-radius:6px;padding:3px 9px}
+.mini-frame{max-height:300px;overflow-y:auto;border:1.5px solid var(--ink);border-radius:14px;background:var(--card);padding:6px;margin-bottom:14px}
+.mini-frame .mod{cursor:default}
+.player-nav{display:flex;gap:8px}
+.player-nav button{flex:1;padding:11px;border-radius:9px;border:1px solid var(--hair);background:var(--paper);font:600 14px 'Inter',sans-serif;cursor:pointer;color:var(--ink)}
+.player-nav button.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.player-nav button:disabled{opacity:.35;cursor:default}
+.player-nav button:focus-visible{outline:2px solid var(--creek);outline-offset:2px}
+.verdict{border-radius:12px;padding:14px 16px;margin-bottom:12px;border:1.5px solid}
+.verdict.fail{border-color:var(--kill);background:var(--kill-bg)}
+.verdict.pass{border-color:var(--demote);background:var(--demote-bg)}
+.verdict.partial{border-color:var(--demote);background:var(--demote-bg)}
+.verdict h4{font-family:'Fraunces',Georgia,serif;font-size:18px;margin-bottom:4px}
+.verdict p{font-size:13.5px;line-height:1.55}
+.footnote{font-size:11.5px;color:var(--ink-soft);margin-top:22px;line-height:1.5;border-top:1px solid var(--hair);padding-top:12px}
+@media(min-width:640px){.frame{max-width:420px}.mini-frame{max-height:340px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="masthead">
+    <h1>FrederickRadius · <em>Journey Atlas</em></h1>
+    <span class="audit-date">Live capture · Fri Jun 12, 2026 · 4:11 PM ET</span>
+  </div>
+  <div class="views" role="tablist">
+    <button id="vb-flow" aria-pressed="true" onclick="setView('flow')">Flow map</button>
+    <button id="vb-screens" aria-pressed="false" onclick="setView('screens')">Screen anatomy</button>
+    <button id="vb-journeys" aria-pressed="false" onclick="setView('journeys')">Walk a journey</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ FLOW VIEW ============ -->
+<section id="view-flow" class="view active">
+  <p class="lede">How a user enters, and every door the site opens after that.</p>
+  <p class="sub">Built from the live HTML of every route. Red marks structural problems. Tap any bottleneck card to jump to that screen.</p>
+
+  <div class="flow-band">
+    <div class="band-label">Step 1 · Arrival, three competing front doors</div>
+    <div class="node-row">
+      <div class="node problem">
+        <span class="route">/ &nbsp;=&nbsp; /guide</span>
+        <span class="name">Field guide home</span>
+        <p class="note">Byte-identical pages at two routes. The tab is labeled Ask, the page asks "What are you looking for?", and there is no input to answer in.</p>
+        <span class="stamp">TWIN ROUTE</span>
+      </div>
+      <div class="node problem">
+        <span class="route">/today</span>
+        <span class="name">Today briefing</span>
+        <p class="note">A second, fuller landing experience. Nineteen modules deep. New users cannot tell whether this or the field guide is the app.</p>
+      </div>
+      <div class="node problem">
+        <span class="route">⌘K · every page</span>
+        <span class="name">Command bar</span>
+        <p class="note">"What's open right now?" sits in the header of all pages. It is the real Ask, hiding behind a keyboard shortcut.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow-band">
+    <div class="band-label">Step 2 · The tab bar (rendered twice in the DOM)</div>
+    <div class="node-row">
+      <div class="node"><span class="route">/guide</span><span class="name">Ask</span><p class="note">Points at the field guide, not at an ask surface.</p></div>
+      <div class="node"><span class="route">/today</span><span class="name">Today</span></div>
+      <div class="node"><span class="route">/map</span><span class="name">Map</span><p class="note">/radius serves the identical view.</p><span class="stamp">TWIN ROUTE</span></div>
+      <div class="node"><span class="route">/events</span><span class="name">Events</span></div>
+      <div class="node"><span class="route">/my-radius</span><span class="name">Saved</span></div>
+    </div>
+  </div>
+
+  <div class="flow-band">
+    <div class="band-label">Step 3 · Utility nav, the quiet second menu</div>
+    <div class="node-row">
+      <div class="node"><span class="route">/about</span><span class="name">About</span></div>
+      <div class="node"><span class="route">/trust</span><span class="name">Trust &amp; sources</span></div>
+      <div class="node"><span class="route">/towns</span><span class="name">Towns</span></div>
+      <div class="node"><span class="route">/places</span><span class="name">All places</span></div>
+      <div class="node problem"><span class="route">/events</span><span class="name">Events, again</span><p class="note">Already a primary tab. Eleven nav destinations total before chips.</p><span class="stamp">DUPLICATE</span></div>
+      <div class="node"><span class="route">/submit</span><span class="name">Suggest a correction</span></div>
+    </div>
+  </div>
+
+  <div class="flow-band">
+    <div class="band-label">Step 4 · Side doors a user can also fall into</div>
+    <div class="node-row">
+      <div class="node"><span class="route">/nearby?c=coffee…</span><span class="name">Category browse</span><p class="note">Seven chips on Today each open their own list surface.</p></div>
+      <div class="node"><span class="route">/pulse</span><span class="name">Live Pulse</span><p class="note">Reached from an unlabeled header icon.</p></div>
+      <div class="node"><span class="route">/events/calendar</span><span class="name">Month calendar</span></div>
+      <div class="node"><span class="route">/collections/…</span><span class="name">Collections</span></div>
+      <div class="node"><span class="route">/places/[slug]</span><span class="name">Place detail</span><p class="note">The destination almost every journey is actually trying to reach.</p></div>
+    </div>
+  </div>
+
+  <div class="doors">
+    <h3>Four doors, one room</h3>
+    <p>The single intent "what is open right now" has four separate entry points. Each one was added to help. Together they read as clutter.</p>
+    <div class="door-grid">
+      <div class="door"><span class="where">header · every page</span>"What's open right now? ⌘K"</div>
+      <div class="door-arrow">→</div>
+      <div class="room">Open-now results<br><span style="font-weight:400;font-size:11px;color:var(--ink-soft)">one answer, four doors</span></div>
+      <div class="door"><span class="where">/today · stat card</span>"195 places open near downtown"</div>
+      <div class="door-arrow">→</div>
+      <div class="door"><span class="where">/today · link</span>"See what's open"</div>
+      <div class="door-arrow">→</div>
+      <div class="door"><span class="where">/map?open=now</span>Map open-now mode</div>
+      <div class="door-arrow">→</div>
+    </div>
+  </div>
+
+  <div class="flow-band">
+    <div class="band-label">The bottleneck index</div>
+    <button class="bn-card" onclick="jumpToScreen('root')">
+      <span class="bn-num">BOTTLENECK 01 · ROOT</span>
+      <div class="bn-title">Three start surfaces</div>
+      <p class="bn-body">Root, Today, and the command bar all behave like the front door. The first decision a user makes is figuring out which app they are in.</p>
+      <span class="bn-go">See the root screen →</span>
+    </button>
+    <button class="bn-card" onclick="jumpToScreen('today')">
+      <span class="bn-num">BOTTLENECK 02 · TODAY</span>
+      <div class="bn-title">A stat card intercepts the intent</div>
+      <p class="bn-body">A user looking for an open place is handed a number instead. "195 places open" answers a question nobody asked and delays the one they did.</p>
+      <span class="bn-go">See the Today stack →</span>
+    </button>
+    <button class="bn-card" onclick="jumpToScreen('today')">
+      <span class="bn-num">BOTTLENECK 03 · TODAY</span>
+      <div class="bn-title">The same event, four times</div>
+      <p class="bn-body">Miscast Cabaret is named in four separate modules on one screen. Repetition reads as a bug, and it kills scanning momentum.</p>
+      <span class="bn-go">See the duplicates →</span>
+    </button>
+    <button class="bn-card" onclick="jumpToScreen('events')">
+      <span class="bn-num">BOTTLENECK 04 · EVENTS</span>
+      <div class="bn-title">Two complete systems stacked on one page</div>
+      <p class="bn-body">An editorial layer and a full browse engine occupy the same screen, with three search affordances between them. Roughly 27 phone screens of scroll.</p>
+      <span class="bn-go">See the Events stack →</span>
+    </button>
+    <button class="bn-card" onclick="jumpToScreen('events')">
+      <span class="bn-num">BOTTLENECK 05 · EVENTS</span>
+      <div class="bn-title">The counts contradict each other</div>
+      <p class="bn-body">The header says 13 weekend events, the list below says 12. Editorial says 12 later this week, browse says 11. The header says 76 upcoming, the town chips say 80. Drifting numbers erode the exact trust the app sells.</p>
+      <span class="bn-go">See the count drift →</span>
+    </button>
+    <button class="bn-card" onclick="jumpToScreen('map')">
+      <span class="bn-num">BOTTLENECK 06 · MAP</span>
+      <div class="bn-title">Twin routes for one map</div>
+      <p class="bn-body">/map and /radius render the identical view with identical controls. The namesake feature is a duplicate URL.</p>
+      <span class="bn-go">See the map screen →</span>
+    </button>
+    <button class="bn-card" onclick="jumpToScreen('pulse')">
+      <span class="bn-num">BOTTLENECK 07 · PULSE</span>
+      <div class="bn-title">Five empty rows lead the page</div>
+      <p class="bn-body">Fire, traffic, power, schools, and 311 all display "0 · clear" before any content, followed by a census trivia block formatted like live data.</p>
+      <span class="bn-go">See the Pulse stack →</span>
+    </button>
+  </div>
+</section>
+
+<!-- ============ SCREENS VIEW ============ -->
+<section id="view-screens" class="view">
+  <p class="lede">Each page as the user actually receives it: every module, in order, to scale.</p>
+  <p class="sub">Block height is proportional to real content captured from the live site. The ruler marks one phone viewport, roughly 35 lines of text. Tap any module for the verdict on it.</p>
+  <div class="chips" id="screen-chips"></div>
+  <div class="screen-meta" id="screen-meta"></div>
+  <div class="legend">
+    <span><i class="dot k"></i>Keep, serves the screen's job</span>
+    <span><i class="dot d"></i>Demote, reveal on intent</span>
+    <span><i class="dot x"></i>Kill, duplicate or noise</span>
+  </div>
+  <div class="frame-wrap">
+    <div class="ruler" id="ruler"></div>
+    <div class="frame" id="frame"></div>
+  </div>
+</section>
+
+<!-- ============ JOURNEYS VIEW ============ -->
+<section id="view-journeys" class="view">
+  <p class="lede">Walk the site as five different people. Watch where each one stalls.</p>
+  <p class="sub">These are the same five personas defined in the subtraction brief, so a journey that fails here is a journey the Playwright agents will fail too. Step through with the buttons.</p>
+  <div class="personas" id="personas"></div>
+  <div class="player" id="player"></div>
+  <p class="footnote">Every screen, module name, count, and route in this atlas was captured from the live site on June 12, 2026 at 4:11 PM ET. Viewport estimates assume roughly 35 visible text lines per phone screen. Module heights are proportional to captured content and rounded for legibility.</p>
+</section>
+
+</main>
+
+<script>
+/* ================= DATA ================= */
+const SCREENS = {
+  root: {
+    label: "Root · Ask tab",
+    route: "/  (byte-identical to /guide)",
+    lines: 50, kb: "157 KB decoded",
+    mods: [
+      {id:"r0", w:30, status:"keep", name:"App header + double tab bar", sample:"Frederick Radius · \"What's open right now? ⌘K\" · Frederick, MD · Ask Today Map Events Saved (rendered twice)", note:"The ⌘K button is the real search and should become the only one. The tab bar exists twice in the DOM; render both bars from one config object so they can never diverge."},
+      {id:"r2", w:14, status:"kill", name:"Utility nav · 6 links", sample:"About · Trust & sources · Towns · All places · Events · Suggest a correction", note:"Events is already a primary tab. Eleven total nav destinations greet a first-time visitor before any content does. Kill the duplicate link."},
+      {id:"r4", w:16, status:"demote", name:"Hero · \"What are you looking for?\"", sample:"Frederick County · Field guide", note:"A question with no input field. The answer lives in ⌘K, which a phone user never discovers. Either give this hero a real input or give the screen a different job."},
+      {id:"r5", w:60, status:"demote", name:"Hidden gems gallery · 6 cards", sample:"Gathland State Park · C&O Canal Towpath · Walkersville Southern Railroad · Brunswick Heritage Museum · Lebherz Oil & Vinegar · Dublin Roasters. Every card reads Closed at 4:11 PM on a Friday.", note:"Lovely content, wrong placement, wrong state. A landing page where all six featured items say Closed teaches the user the app is out of sync with their moment. Move to /collections/hidden-gems with one entry row from Today."}
+    ]
+  },
+  today: {
+    label: "Today",
+    route: "/today",
+    lines: 310, kb: "326 KB decoded",
+    mods: [
+      {id:"t0", w:24, status:"keep", name:"App header + tab bar", sample:"\"What's open right now? ⌘K\" appears here too: door one of four.", note:"Keeps the one search. The open-now stat card below makes it redundant on this screen."},
+      {id:"t1", w:10, status:"keep", name:"Date and time header", sample:"Friday · June 12 · 4:11 PM · Right now", note:"Grounds the screen in the moment. This is the job of Today."},
+      {id:"t2", w:12, status:"keep", name:"Category chips × 7", sample:"Coffee · Ice cream · Food · Pizza · Sweets · A drink · Fresh air", note:"The fastest path to a real answer on the whole screen. Keep, and let journeys prove they should sit first."},
+      {id:"t3", w:16, status:"kill", name:"Stat card · \"195 places open near downtown\"", sample:"Open now · Confirmed open right now · Google Places, checked today · See what's open · All places", note:"This is the card you named. A count is not an answer; the user wants a place, not a number. Doors two and three of four to the same room. Delete; the intent lives in ⌘K and the map."},
+      {id:"t4", w:12, status:"keep", name:"Time tabs", sample:"Now · Tonight 1 · Tomorrow 6 · Weekend 13", note:"Counts inside controls are navigation, which is the only place counts belong. This is the model the rest of the app should follow."},
+      {id:"t5", w:16, status:"keep", name:"What's on Tonight", sample:"Miscast Cabaret · 6:00 PM · Frederick   (mention 1 of 4)", note:"The one legitimate render of tonight's event. Everything after this that repeats it is noise."},
+      {id:"t6", w:26, status:"kill", name:"Weather block · 4 affordances", sample:"No. 01 · The full briefing · Hourly forecast · 7-day forecast · More weather details", note:"The phone already has a weather app. Radius earns its keep with context, not forecasts. Replace all four with one sentence and one link out."},
+      {id:"t7", w:10, status:"demote", name:"Quick handoffs · ParkMobile", sample:"Pay for street parking", note:"Useful at the moment of going somewhere, which is the place detail page, not the feed."},
+      {id:"t8", w:16, status:"kill", name:"Tonight module", sample:"1 event tonight · Best bet: Miscast Cabaret at Frederick   (mention 2 of 4)", dup:"×2", note:"Same event, second module. Rule 2 of the brief: no entity renders twice on one screen."},
+      {id:"t9", w:16, status:"kill", name:"Weekend module", sample:"13 this weekend · Don't miss Miscast Cabaret   (mention 3 of 4)", dup:"×3", note:"Third mention, now filed under the weekend. The module also restates the Weekend 13 count already shown in the time tabs."},
+      {id:"t10", w:10, status:"keep", name:"Parking downtown · MARC & transit", sample:"Two compact handoff rows", note:"Genuinely useful, compact, and honest. Keep as is."},
+      {id:"t11", w:26, status:"kill", name:"Event row + OpenTable + explainer", sample:"Miscast Cabaret · 6:00 PM (mention 4 of 4) · \"Reserve a table tonight\" · a paragraph explaining ParkMobile and OpenTable", dup:"×4", note:"Fourth mention of the same event, and a reserve button attached to no restaurant. The explainer paragraph belongs on place detail pages."},
+      {id:"t12", w:12, status:"demote", name:"Book promo · \"From above\"", sample:"Six years over Frederick · A drone-photography book by Michael DeMattia", note:"Your own cross-promo, sitting mid-feed where it interrupts the answer the screen exists to give. Footer slot or About page."},
+      {id:"t13", w:44, status:"keep", name:"Worth a look today · 6 picks", sample:"Rosati's Pizza · Gravel and Grind · Carroll Creek Amphitheater · Wag's · Clue IQ · The Little Pottery Shop", note:"This is the product. Editorial picks are what no competing Frederick surface has. It currently sits below four killable modules; after subtraction it lands above the fold."},
+      {id:"t14", w:12, status:"keep", name:"Heads up · Heat Advisory", sample:"NWS · Until 4:30 PM · Frederick County + 34 areas", note:"This conditional strip is what Pulse should be everywhere: present only when something is true."},
+      {id:"t15", w:14, status:"demote", name:"Best move now · \"Duck inside somewhere good\"", sample:"Rain's in play: a museum, a long coffee, a bookshop.", note:"Good weather-aware editorial. Merge it with the one surviving weather sentence so context and suggestion are a single module."},
+      {id:"t16", w:10, status:"kill", name:"Tonight · 1 starting soon", sample:"The fourth separate Tonight surface on this screen", note:"Tonight now exists as a time tab, a What's on block, a Tonight module, and this strip. One screen, one Tonight."},
+      {id:"t17", w:12, status:"demote", name:"Near you · within a 10-min walk", sample:"K Town Takeout · Gaslight Gallery · Voila in Frederick", note:"This is the map's job. Replace with one action row, \"What's open near you,\" that opens the map's open-now state."},
+      {id:"t18", w:34, status:"keep", name:"An afternoon plan · 3 stops", sample:"1 Lunch, K Town Takeout, 15m · 2 Duck into Gaslight Gallery, 3m · 3 Coffee, Voila, 1m", note:"The other differentiator. A generated plan from live downtown data is something nobody else in Frederick offers. Keep, and move it up once the dead weight above is gone."},
+      {id:"t19", w:8, status:"keep", name:"Forecast strip", sample:"12 hours · 94° → 71° · Storms 3 to 8 PM", note:"One honest line. This is the entire weather feature after subtraction."}
+    ]
+  },
+  events: {
+    label: "Events",
+    route: "/events",
+    lines: 951, kb: "788 KB decoded",
+    mods: [
+      {id:"e0", w:24, status:"keep", name:"App header + tab bar", sample:"Third search affordance on this page once both inputs below are counted.", note:"⌘K stays. Both page-level inputs below go."},
+      {id:"e1", w:10, status:"keep", name:"H1 · \"What's worth going to?\"", sample:"Hand-picked from across Frederick County · Month", note:"Right promise. The page below it currently breaks the promise by showing everything twice."},
+      {id:"sysA", divider:true, name:"SYSTEM A · EDITORIAL LAYER"},
+      {id:"e2", w:14, status:"demote", name:"Best tonight", sample:"Miscast Cabaret · 6:00 PM · Frederick", note:"Keep at most one pinned Tonight row at the top of the single list. Today owns best-of; Events owns the complete list."},
+      {id:"e3", w:14, status:"keep", name:"Date strip", sample:"F 12 (1) · S 13 (6) · S 14 (6) · M 15 · T 16 (0) …", note:"The primary grouping for the whole page after subtraction. Counts inside controls, where they belong."},
+      {id:"e4", w:10, status:"kill", name:"More tonight", sample:"A second tonight grouping", note:"Duplicate of Best tonight and of the date strip's Friday column."},
+      {id:"e5", w:12, status:"kill", name:"Happening soon · 8", sample:"8 starting soon →", note:"A third time-based grouping competing with the date strip."},
+      {id:"e6", w:80, status:"kill", name:"This weekend · \"13 events\"", sample:"Sippin Shenanigan's · Sky Stage FOTA Concert · Classic Cinema at the Weinberg · Summer Solstice 8K …", dup:"says 13", note:"The browse list below renders 12 for the same window. Two systems counting the same data differently on one screen. The editorial section dies; the list keeps the events."},
+      {id:"e7", w:10, status:"demote", name:"Browse by mood", sample:"Live music · Family", note:"Merges into the single chip row in the browse system."},
+      {id:"e8", w:70, status:"kill", name:"Later this week · \"12 events\"", sample:"Junior Firefighter Day · Veterans Advisory Council · Sky Stage Salsa Dance …", dup:"says 12", note:"Browse counts 11 for the identical window. Same drift, second instance."},
+      {id:"sysB", divider:true, name:"SYSTEM B · BROWSE ENGINE"},
+      {id:"e9", w:10, status:"kill", name:"Header · \"Browse & search all events · 76 upcoming\"", sample:"Town chips below total 80.", dup:"76 vs 80", note:"Third count contradiction on the page. After merging, every label derives from the query that renders the list, or labels carry no numbers at all."},
+      {id:"e10", w:10, status:"kill", name:"Search input 1", sample:"\"Search events, venues…\"", note:"Rule 4: one search system. Free text goes to ⌘K; this field goes."},
+      {id:"e11", w:10, status:"keep", name:"Mood chips × 7", sample:"Today · This weekend · Live music · Free · Happy hour · Family · Civic", note:"Keep five at most. Chips are the page's filtering language; they just should not compete with a second system above."},
+      {id:"e12", w:10, status:"kill", name:"View modes × 4", sample:"List · Compact · Agenda · Map", note:"Compact is a density toggle nobody asked for; Agenda duplicates the date strip. Two modes survive: List and Map."},
+      {id:"e13", w:10, status:"demote", name:"Filters · 76 events · Sort: Soonest", sample:"A separate panel holding what the chips do not", note:"Filters, sort, and towns collapse into one Refine sheet, revealed on intent."},
+      {id:"e14", w:10, status:"kill", name:"Search input 2", sample:"\"Search story time, market, council…\"", note:"The second text input on one page, plus ⌘K makes three search affordances. This one goes too."},
+      {id:"e15", w:420, status:"keep", name:"The list · the one that should remain", sample:"Today 1 · This weekend 12, Show all 12 · Later this week 11, Show all 11 · Show all 51 … Miscast Cabaret appears here again, its second render on this page.", note:"This is the entire Events page after subtraction: one list, grouped by the date strip, filtered by chips, refined by one sheet. Roughly 420 of the 951 lines already live here."},
+      {id:"e16", w:12, status:"demote", name:"Town chips", sample:"All 80 · Frederick 30 · Frederick County 25 · Thurmont 14 · Mount Airy 10", note:"Into the Refine sheet. Town is a refinement, not a primary axis, for most journeys."},
+      {id:"e17", w:60, status:"demote", name:"Civic cluster", sample:"Civic & meetings 1 · Civic meetings, 7 meetings · Civic & municipal calendar, 225 series", note:"Seven meetings a civic user wants, sitting beside a 225-series municipal fire hose. The civic chip filters the main list; the 225-series feed needs curation or a sub-page, not a slot here."},
+      {id:"e18", w:8, status:"keep", name:"Submit it →", sample:"/submit/event", note:"Honest community door. Keep at the foot of the list."}
+    ]
+  },
+  map: {
+    label: "Map",
+    route: "/map  (and /radius, identically)",
+    lines: 60, kb: "126 KB decoded",
+    mods: [
+      {id:"m0", w:24, status:"keep", name:"App header + tab bar", sample:"Same global chrome", note:"Unchanged."},
+      {id:"m1", w:120, status:"keep", name:"Map canvas", sample:"The county, the pins, the radius tool", note:"The screen's one job. Everything else on this page exists to serve it."},
+      {id:"m2", w:18, status:"demote", name:"Controls × 4", sample:"Fit radius · Show whole county · Map layers · Use my location", note:"Use my location stays primary. Fit radius, whole county, and layers consolidate under one control. Two visible buttons, not four."},
+      {id:"m3", w:16, status:"kill", name:"Twin route · /radius", sample:"Identical title, identical controls, identical view at a second URL", dup:"twin", note:"301 /radius to /map. The radius tool remains as a map control, which it already is. The app's namesake should be a feature, not a duplicate address."}
+    ]
+  },
+  pulse: {
+    label: "Pulse",
+    route: "/pulse",
+    lines: 122, kb: "194 KB decoded",
+    mods: [
+      {id:"p0", w:12, status:"keep", name:"Header · \"1 situation across the county\"", sample:"Weather, traffic, power, schools, fire & rescue, from six county and state feeds · refreshed 3:35 PM", note:"The one true sentence on the page. It becomes a conditional strip on Today that renders only when the situation count is above zero."},
+      {id:"p1", w:30, status:"kill", name:"Five empty category rows", sample:"Fire & rescue 0 · clear · Traffic 0 · clear · Power 0 · clear · Schools 0 · clear · 311 reports 0 · clear", note:"Rule 5: empty states collapse. Five \"no issues\" cards before any content is the page announcing it has nothing to say, at length."},
+      {id:"p2", w:26, status:"keep", name:"Weather alert · Heat Advisory", sample:"NWS Baltimore/Washington · until 8 PM · followed by a 34-region wall of jurisdictions", note:"The real content. Keep, and trim the region list to Frederick County plus a See full alert link."},
+      {id:"p3", w:10, status:"demote", name:"Frederick Scanner embed", sample:"Live tweets from @FredScanner", note:"Useful on an active day, dead weight on a quiet one. Lives on /alerts behind the conditional strip."},
+      {id:"p4", w:8, status:"demote", name:"Rivers & streams", sample:"USGS gauges · Monocacy · Potomac · Catoctin", note:"Same conditional logic: show when a gauge is moving, collapse when it is not."},
+      {id:"p5", w:18, status:"demote", name:"In the news · 6", sample:"Data center alley fears · East Street closure · Summer Food Service Program …", note:"Solid feed, wrong host. News can live on /alerts or get one row on Today, not a permanent block here."},
+      {id:"p6", w:10, status:"demote", name:"Police calls-for-service explainer", sample:"Frederick PD publishes prior-day CAD calls on an official map", note:"One link row. The paragraph of caveats moves behind it."},
+      {id:"p7", w:18, status:"kill", name:"By the numbers · census block", sample:"285,464 population · 663 mi² · Founded 1748 · 12 municipalities · 1,888 ft Catoctin · TransIT routes: —", note:"Static trivia formatted as live data, including one stat that renders as a dash. Two or three of these facts can live on /about. The block dies."}
+    ]
+  }
+};
+
+const PERSONAS = [
+  {
+    id:"visitor", name:"Saturday visitor", goal:"Three free hours downtown. Find an open place and get directions.",
+    target:"Target: a place with directions in 3 taps or fewer.",
+    steps:[
+      {screen:"root", focus:"r5", taps:0, mono:"I landed on the front page. It asks what I am looking for, but there is nowhere to type an answer. And every single card in this gallery says Closed.", fric:["A question with no input","All six featured gems show Closed at 4 PM Friday"]},
+      {screen:"root", focus:"r0", taps:1, mono:"There is a tab bar at the bottom. Today sounds like the right place for right now.", fric:[]},
+      {screen:"today", focus:"t3", taps:1, mono:"A card tells me 195 places are open near downtown. A number is not a place. I have to keep moving.", fric:["Stat card intercepts the intent"]},
+      {screen:"today", focus:"t2", taps:2, mono:"These chips look faster. Coffee. That opens another list page I did not know existed.", fric:["Side-door surface: /nearby"]},
+      {screen:"map", focus:"m1", taps:4, mono:"A list, then a place, then directions. I am here, but that was tap three and tap four, plus two screens of scrolling past weather modules and a stat card.", fric:["Four taps against a three-tap target"]}
+    ],
+    verdict:{kind:"fail", title:"Fail · 4 taps, 5 friction points", body:"The root never answered. The fastest real path was the category chips, and they sat below a stat card that exists to be impressive rather than useful. After subtraction, the chips are the first thing this visitor touches and the journey is three taps."}
+  },
+  {
+    id:"parent", name:"Parent", goal:"Free, family-friendly events this weekend.",
+    target:"Target: a filtered weekend family list in 2 interactions, with counts that agree.",
+    steps:[
+      {screen:"root", focus:"r0", taps:1, mono:"Events tab. Easy start.", fric:[]},
+      {screen:"events", focus:"e6", taps:1, mono:"The top says This weekend, 13 events. But as I scroll, a whole second system appears underneath with its own search box and its own chips. Which half of the page am I supposed to use?", fric:["Two complete systems on one page"]},
+      {screen:"events", focus:"e11", taps:2, mono:"I will use the chips. Family. That is interaction two, and I still need Free.", fric:[]},
+      {screen:"events", focus:"e13", taps:3, mono:"Free is not stackable here; it lives in a separate Filters panel. Interaction three, and I am past my patience budget while holding a toddler.", fric:["Filters split between chips and a panel"]},
+      {screen:"events", focus:"e15", taps:3, mono:"The list now says This weekend, 12. The header up top said 13. Which number is wrong, and what else is?", fric:["Counts disagree on the same screen"]}
+    ],
+    verdict:{kind:"fail", title:"Fail · 3 interactions and a contradiction", body:"She got a list, but it took one interaction too many and the page disagreed with itself about how many events exist. Count drift is the most expensive bug on the site because the entire product is a promise of accurate local data."}
+  },
+  {
+    id:"date", name:"Date-night local", goal:"Pick dinner plus one event tonight, then reserve.",
+    target:"Target: tonight's event and a reserve action without being sold the same event twice.",
+    steps:[
+      {screen:"today", focus:"t5", taps:0, mono:"Miscast Cabaret at 6. Found the event in one scroll. Now dinner.", fric:[]},
+      {screen:"today", focus:"t8", taps:0, mono:"Scrolling for food. Best bet: Miscast Cabaret. The same event again, in a different frame.", fric:["Mention 2 of 4"]},
+      {screen:"today", focus:"t9", taps:0, mono:"Don't miss Miscast Cabaret. Third time. I am starting to wonder if the site is broken or if there is genuinely only one thing happening in this county.", fric:["Mention 3 of 4"]},
+      {screen:"today", focus:"t11", taps:0, mono:"A fourth Miscast row, this one with a Reserve a table button. Reserve where? It is not attached to any restaurant.", fric:["Mention 4 of 4","Reserve action attached to no restaurant"]},
+      {screen:"today", focus:"t2", taps:2, mono:"Back up to the top. Food chip, pick a place, reserve from its page. The chips were the answer the whole time.", fric:[]}
+    ],
+    verdict:{kind:"pass", title:"Pass, with friction · the screen repeated itself four times", body:"She gets to dinner and a show, but the path ran backwards: the reserve button appeared before any restaurant, and one event was pitched four times. After subtraction, Tonight renders once and reserving happens where it belongs, on the place page."}
+  },
+  {
+    id:"resident", name:"New resident", goal:"Just moved here. What is this site, and can I trust it?",
+    target:"Target: state the value proposition from one screen, then find the sources page.",
+    steps:[
+      {screen:"root", focus:"r4", taps:0, mono:"The tab says Ask. The page says Field guide. The header asks what is open right now. Three pitches before I have scrolled once.", fric:["Three competing identities on arrival"]},
+      {screen:"today", focus:"t1", taps:1, mono:"Today is a different app again, a daily briefing this time. Which one of these is the front door?", fric:["Three start surfaces"]},
+      {screen:"root", focus:"r2", taps:2, mono:"Trust and sources, hiding in the small links. This page is what actually convinces me, and it is the quietest thing on the site.", fric:[]}
+    ],
+    verdict:{kind:"partial", title:"Partial · trust exists but identity is diffuse", body:"The site has the receipts, six county feeds and a sources page, but a new user meets three different front doors before finding them. One root surface with one sentence of promise fixes this persona entirely."}
+  },
+  {
+    id:"civic", name:"Civic user", goal:"When is the next Planning Commission meeting?",
+    target:"Target: find the meeting via the civic chip or search, without wading through noise.",
+    steps:[
+      {screen:"events", focus:"e1", taps:1, mono:"I need one county meeting date. This page opens with what is worth going to tonight.", fric:[]},
+      {screen:"events", focus:"e6", taps:1, mono:"Tonight picks, weekend picks, moods. None of this is for me, and there is a lot of it between me and the boring thing I came for.", fric:["Civic intent buried under the editorial layer"]},
+      {screen:"events", focus:"e14", taps:1, mono:"A second search box mentions council. So this page has two search boxes plus the command bar in the header. Three places to type.", fric:["Three search affordances on one page"]},
+      {screen:"events", focus:"e17", taps:2, mono:"Civic and municipal calendar, 225 series. Two hundred and twenty-five. Next to the seven meetings I might actually want.", fric:["A 225-series fire hose beside curated meetings"]},
+      {screen:"events", focus:"e15", taps:3, mono:"Found it. Planning Commission, Wednesday June 17, 9:30 AM. The data was right; the path to it was not.", fric:[]}
+    ],
+    verdict:{kind:"pass", title:"Pass, with friction · the data wins, the path loses", body:"The civic feed is genuinely good and the meeting was there with the correct time. But it sat under an editorial layer built for a different persona, beside a 225-series feed nobody curated. The civic chip filtering one clean list is the fix."}
+  }
+];
+
+/* ================= RENDERING ================= */
+const LINES_PER_VIEWPORT = 35;
+const PX_PER_LINE = 2.4;
+let currentScreen = "today";
+let currentPersona = null;
+let stepIndex = 0;
+
+function setView(v){
+  document.querySelectorAll('.view').forEach(s=>s.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  ['flow','screens','journeys'].forEach(k=>{
+    document.getElementById('vb-'+k).setAttribute('aria-pressed', k===v ? 'true':'false');
+  });
+  window.scrollTo({top:0});
+}
+
+function jumpToScreen(key){
+  currentScreen = key;
+  setView('screens');
+  renderScreens();
+}
+
+function modBlock(m, mini){
+  if(m.divider){
+    return `<div class="sys-divider">${m.name}</div>`;
+  }
+  const h = Math.max(36, Math.round(m.w * PX_PER_LINE));
+  const dup = m.dup ? `<span class="dup-badge">${m.dup}</span>` : "";
+  const pill = `<span class="pill ${m.status}">${m.status.toUpperCase()}</span>`;
+  return `<div class="mod ${m.status}" data-mod="${m.id}" style="min-height:${h}px" tabindex="${mini?'-1':'0'}" role="button" aria-expanded="false">
+    <div class="mod-top"><span class="mod-name">${m.name}${dup}</span>${pill}</div>
+    <div class="mod-sample">${m.sample||""}</div>
+    <div class="mod-note">${m.note||""}</div>
+  </div>`;
+}
+
+function renderScreens(){
+  const chips = document.getElementById('screen-chips');
+  chips.innerHTML = Object.keys(SCREENS).map(k=>
+    `<button aria-pressed="${k===currentScreen}" onclick="currentScreen='${k}';renderScreens()">${SCREENS[k].label}</button>`
+  ).join('');
+  const s = SCREENS[currentScreen];
+  const viewports = (s.lines / LINES_PER_VIEWPORT);
+  document.getElementById('screen-meta').innerHTML =
+    `<span>Route <b>${s.route}</b></span>
+     <span>Visible text <b>${s.lines} lines</b></span>
+     <span>Scroll depth <b>≈ ${viewports.toFixed(viewports<3?1:0)} phone screens</b></span>
+     <span>Payload <b>${s.kb}</b></span>`;
+  const frame = document.getElementById('frame');
+  frame.innerHTML = s.mods.map(m=>modBlock(m,false)).join('');
+  frame.querySelectorAll('.mod').forEach(el=>{
+    const toggle = ()=>{ el.classList.toggle('open'); el.setAttribute('aria-expanded', el.classList.contains('open')); };
+    el.addEventListener('click', toggle);
+    el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();} });
+  });
+  // ruler
+  const ruler = document.getElementById('ruler');
+  const totalPx = frame.scrollHeight;
+  ruler.style.height = totalPx+'px';
+  let html = '';
+  const screens = Math.ceil(s.lines / LINES_PER_VIEWPORT);
+  for(let i=1;i<=screens;i++){
+    const y = Math.min(totalPx-12, Math.round(i * LINES_PER_VIEWPORT * PX_PER_LINE * (totalPx/(s.lines*PX_PER_LINE))));
+    html += `<div class="tick" style="top:${y}px"><b>${i}</b> scr</div>`;
+  }
+  ruler.innerHTML = html;
+}
+
+function renderPersonas(){
+  document.getElementById('personas').innerHTML = PERSONAS.map(p=>
+    `<button class="persona-btn" aria-pressed="${currentPersona&&currentPersona.id===p.id}" onclick="pickPersona('${p.id}')">
+      <div class="p-name">${p.name}</div><div class="p-goal">${p.goal}</div>
+    </button>`).join('');
+}
+
+function pickPersona(id){
+  currentPersona = PERSONAS.find(p=>p.id===id);
+  stepIndex = 0;
+  renderPersonas();
+  renderPlayer();
+}
+
+function renderPlayer(){
+  const el = document.getElementById('player');
+  if(!currentPersona){
+    el.innerHTML = `<p style="font-family:'Fraunces',Georgia,serif;font-size:16px">Pick a persona above to start walking.</p>
+    <p style="font-size:13px;color:var(--ink-soft);margin-top:6px">Each step shows the real screen they are on, highlights the module they are dealing with, counts their taps, and flags friction as it happens.</p>`;
+    return;
+  }
+  const p = currentPersona;
+  const isVerdict = stepIndex >= p.steps.length;
+  const totalFric = p.steps.reduce((a,s)=>a+s.fric.length,0);
+  let body = '';
+
+  const dots = p.steps.map((s,i)=>`<i class="${i<stepIndex||isVerdict?(s.fric.length? 'on bad':'on'):''} ${i===stepIndex&&!isVerdict?'on':''}"></i>`).join('') + `<i class="${isVerdict?'on':''}"></i>`;
+
+  if(isVerdict){
+    body = `<div class="verdict ${p.verdict.kind}"><h4>${p.verdict.title}</h4><p>${p.verdict.body}</p></div>
+    <div class="bubble"><span class="screen-tag">TOTALS</span><p>Taps used: ${p.steps[p.steps.length-1].taps} · Friction points hit: ${totalFric}</p></div>`;
+  } else {
+    const st = p.steps[stepIndex];
+    const scr = SCREENS[st.screen];
+    body = `
+    <div class="bubble"><span class="screen-tag">STEP ${stepIndex+1} OF ${p.steps.length} · ON ${scr.label.toUpperCase()} (${scr.route.split(' ')[0]})</span>
+      <p>“${st.mono}”</p></div>
+    ${st.fric.length?`<div class="frictions">${st.fric.map(f=>`<span>⚑ ${f}</span>`).join('')}</div>`:''}
+    <div class="mini-frame" id="mini">${scr.mods.map(m=>modBlock(m,true)).join('')}</div>`;
+  }
+
+  el.innerHTML = `
+    <div class="player-head">
+      <div><div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:18px">${p.name}</div>
+      <div class="target">${p.target}</div></div>
+      <div class="counter"><span class="taps">${isVerdict?p.steps[p.steps.length-1].taps:p.steps[stepIndex].taps} taps</span> · <span class="fric">${isVerdict?totalFric:p.steps.slice(0,stepIndex+1).reduce((a,s)=>a+s.fric.length,0)} friction</span></div>
+    </div>
+    <div class="dots">${dots}</div>
+    ${body}
+    <div class="player-nav">
+      <button onclick="stepIndex=Math.max(0,stepIndex-1);renderPlayer()" ${stepIndex===0?'disabled':''}>Back</button>
+      <button class="primary" onclick="stepIndex=Math.min(${p.steps.length},stepIndex+1);renderPlayer()" ${isVerdict?'disabled':''}>${stepIndex===p.steps.length-1?'See verdict':'Next step'}</button>
+    </div>`;
+
+  if(!isVerdict){
+    const st = p.steps[stepIndex];
+    const mini = document.getElementById('mini');
+    const target = mini.querySelector(`[data-mod="${st.focus}"]`);
+    if(target){
+      target.classList.add('focused','open');
+      requestAnimationFrame(()=>{ mini.scrollTop = Math.max(0, target.offsetTop - 60); });
+    }
+  }
+}
+
+/* init */
+renderScreens();
+renderPersonas();
+renderPlayer();
+</script>
+</body>
+</html>
