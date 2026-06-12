@@ -13,7 +13,7 @@ import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
 import { Star } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
-import CategoryGraphic from "@/components/ui/CategoryGraphic";
+import SpecimenPanel from "@/components/ui/SpecimenPanel";
 import SourceBadge from "./SourceBadge";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
@@ -251,10 +251,10 @@ export default function PlaceCard({
                 />
               </>
             ) : (
-              <CategoryGraphic
+              <SpecimenPanel
                 category={place.category}
                 seed={place.slug}
-                className="absolute inset-0 transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
+                className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
               />
             )}
             {/* A crisp inner edge hugging the photo so it reads as set
@@ -391,7 +391,9 @@ export default function PlaceCard({
         className="tactile tactile-interactive group relative w-[244px] shrink-0 overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
         style={{
           borderColor: "var(--app-border)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          // One step deeper than the list default: photo-led shelf
+          // tiles float like the premium-mock gallery cards.
+          boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
         }}
       >
         <button
@@ -427,10 +429,10 @@ export default function PlaceCard({
                 />
               </>
             ) : (
-              <CategoryGraphic
+              <SpecimenPanel
                 category={place.category}
                 seed={place.slug}
-                className="absolute inset-0 transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
+                className="transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
               />
             )}
             {/* Category chip — top-left. Glass treatment on photos,
@@ -478,7 +480,7 @@ export default function PlaceCard({
           <div className="space-y-1 p-3.5">
             <div className="flex items-baseline gap-2">
               <h3
-                className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-tight"
+                className="min-w-0 flex-1 truncate font-serif text-[17px] font-semibold tracking-tight"
                 style={{ color: "var(--app-ink)" }}
               >
                 {place.name}
@@ -563,16 +565,7 @@ export default function PlaceCard({
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
               </>
             ) : (
-              <div
-                aria-hidden
-                className="flex h-full w-full items-center justify-center"
-                style={{
-                  background: `radial-gradient(120% 120% at 30% 20%, ${color}2e, ${color}0a 70%)`,
-                  color,
-                }}
-              >
-                <CategoryIcon slug={place.category} strokeWidth={1.75} className="h-8 w-8 opacity-90" style={{ color }} />
-              </div>
+              <SpecimenPanel category={place.category} seed={place.slug} />
             )}
             <div
               aria-hidden
@@ -582,7 +575,7 @@ export default function PlaceCard({
           </div>
           <div className="space-y-0.5 px-2.5 py-2">
             <h3
-              className="truncate text-[13.5px] font-semibold tracking-tight"
+              className="truncate font-serif text-[15px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
               {place.name}
@@ -680,7 +673,7 @@ export default function PlaceCard({
             type="button"
             onClick={openDetail}
             aria-label={`View ${place.name} details`}
-            className="line-clamp-2 min-w-0 flex-1 text-left text-[15.5px] font-semibold leading-[1.2] tracking-tight outline-none focus-visible:underline"
+            className="line-clamp-2 min-w-0 flex-1 text-left font-serif text-[16.5px] font-semibold leading-[1.2] tracking-tight outline-none focus-visible:underline"
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />

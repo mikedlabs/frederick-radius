@@ -120,12 +120,9 @@ export default function PartnerAppsRow() {
           );
         })}
       </ul>
-      <p
-        className="px-1 text-[10px] leading-relaxed"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        The City of Frederick uses ParkMobile for all street parking — fully digital, zone-based. OpenTable handles dinner reservations for most downtown restaurants.
-      </p>
+      {/* (No explainer paragraph: the icon, label, and per-app nudge
+          line already say what each handoff is for. A standing block
+          of prose under the row was pure filler.) */}
       </div>
     </CollapsibleSection>
   );

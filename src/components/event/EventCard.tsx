@@ -354,7 +354,9 @@ export default function EventCard({
       <article className="tactile tactile-interactive group relative flex h-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
         style={{
           borderColor: "var(--app-border)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          // Matches PlaceCard's tile: photo-led shelf cards float one
+          // elevation step above list rows.
+          boxShadow: "var(--app-elev-2), var(--app-edge), var(--app-hi)",
         }}
       >
         {/* Banner — taller (152px) and more cinematic than v1 (112).
@@ -472,7 +474,7 @@ export default function EventCard({
         <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
           <Link
             href={`/events/${event.slug}`}
-            className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
+            className={`line-clamp-2 font-serif text-[15.5px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />
@@ -586,7 +588,7 @@ export default function EventCard({
               {/* Title — secondary now: lighter weight + size so the time
                   leads. Still line-clamp-2 to cap card height ~108px. */}
               <h3
-                className="mt-1 text-[14px] font-semibold leading-snug tracking-tight line-clamp-2"
+                className="mt-1 font-serif text-[15.5px] font-semibold leading-snug tracking-tight line-clamp-2"
                 style={{ color: "var(--app-ink)" }}
               >
                 {event.title}
@@ -725,7 +727,7 @@ export default function EventCard({
           )}
           <Link
             href={`/events/${event.slug}`}
-            className={`text-[15px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
+            className={`font-serif text-[16.5px] font-semibold tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
             style={{ color: "var(--app-ink)" }}
           >
             <span className="absolute inset-0" aria-hidden />

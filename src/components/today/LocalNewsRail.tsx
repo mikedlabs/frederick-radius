@@ -119,13 +119,9 @@ export default async function LocalNewsRail() {
           </li>
         ))}
       </ol>
-
-      <p
-        className="px-1 pt-2 text-[10px]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Headlines via RSS · each link opens the publisher&rsquo;s site
-      </p>
+      {/* (No RSS footer line: the external-link arrow on every row
+          already signals "opens the publisher's site". A standing
+          caption restating it was filler.) */}
     </CollapsibleSection>
   );
 }

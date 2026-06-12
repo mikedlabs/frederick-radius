@@ -434,27 +434,23 @@ export default async function EventsIndexPage({
         </CollapsibleSection>
       )}
 
-      {/* ── 7. Honesty footer ───────────────────────────────────────── */}
-      <footer
-        className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-      >
-        <p>
-          Live event data pulled from Downtown Frederick Partnership,
-          Celebrate Frederick, the Frederick County calendar, the Hood
-          College Trumba feed, and Ticketmaster (music + Frederick Keys
-          home games). Cached for one hour.
-        </p>
-        <p>
-          Missing an event?{" "}
-          <a
-            href="/submit/event"
-            className="underline"
-            style={{ color: "var(--app-cool)" }}
-          >
-            Submit it →
-          </a>
-        </p>
+      {/* ── 7. Honesty footer — one muted line. The full source list
+            lives on /trust; a bordered card restating it on every
+            visit was filler. The submit link stays: it's the one
+            actionable thing the footer held. ──────────────────────── */}
+      <footer className="px-1 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+        <a href="/trust" className="underline underline-offset-2">
+          Where this data comes from
+        </a>
+        {" · "}
+        Missing an event?{" "}
+        <a
+          href="/submit/event"
+          className="underline underline-offset-2"
+          style={{ color: "var(--app-cool)" }}
+        >
+          Submit it →
+        </a>
       </footer>
     </div>
   );
