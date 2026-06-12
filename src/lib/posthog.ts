@@ -79,13 +79,15 @@ function capture(name: EventName, props?: Record<string, unknown>): void {
 }
 
 export const track = {
-  /** A query submitted: search overlay (enter or result tap), the
-   *  command palette, or the Ask box. query_length, never the raw
-   *  query (house privacy posture). */
+  /** A query submitted: the search overlay (the one Cmd+K system,
+   *  enter or result tap) or the Ask box. query_length, never the
+   *  raw query (house privacy posture). The cmdk palette source was
+   *  dropped when the rebase landed on the main where PR #577 had
+   *  retired it. */
   searchSubmitted: (props: {
     query_length: number;
-    source: "search_overlay" | "command_palette" | "ask";
-    method?: "enter" | "result_tap" | "palette_select";
+    source: "search_overlay" | "ask";
+    method?: "enter" | "result_tap";
     result_type?: string;
   }) => capture("search_submitted", props),
   /** Any intent / category / filter / town chip. */

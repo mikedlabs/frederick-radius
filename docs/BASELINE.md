@@ -33,21 +33,21 @@ Failures are expected at baseline; they are the work the sessions exist to do.
 
 Note on stability: across three runs the two page-contract tests flipped once (passed in one run minutes apart), so they are sensitive to time-of-day content on production. The other three failures were identical in every run. Fixes land in Sessions 1 (routes), 2 (/today), and 3 (/events).
 
-## Session 0 (instrumentation), June 12, 2026, local production build
+## Session 0 (instrumentation), June 12, 2026, local production build of the rebased branch
 
-Session 0 changes no UI by design: the PostHog provider renders null and every capture rides an existing handler. Numbers below are from a local production build on port 3100, not the production deployment (Vercel previews are auth-protected; see docs/PARKING.md item 4), so they are not directly comparable to the morning production baseline. Visible-line deltas against that baseline reflect time of day (evening content) and environment, not added UI.
+A correction first: Session 0 was initially built on a local checkout nine days behind origin (June 3, before the ~160 merged PRs ending at #583). The branch was rebased onto the real main the same evening; one instrumented file had been deleted upstream (the duplicate cmdk palette, retired by #577 — the SearchOverlay, already instrumented, is the one Cmd+K system), and the remaining hooks re-verified firing against the current components. The numbers below are from a production build of the REBASED tree on port 3100 (Vercel previews are auth-protected; see docs/PARKING.md item 4).
 
 ```
-Clutter budget against http://localhost:3100 on Fri Jun 12 18:11:48 EDT 2026
+Clutter budget against http://localhost:3100 on Fri Jun 12, evening
 page | visible lines | decoded bytes
 -----|---------------|--------------
 / | 42 | 88130
-/today | 349 | 354785
-/events | 951 | 1338135
+/today | 349 | 357243
+/events | 964 | 1350214
 /map | 127 | 158200
 /alerts | 7 | 28223
 ```
 
-Clutter suite against the same build: 2 failed, 5 passed. The two failures are the pre-existing baseline failures Sessions 1 to 3 exist to fix (twin routes do not redirect; /today and /events payloads over budget). The page contracts and count integrity passed on this run; those three are content-dependent and flip with time of day, as noted in the baseline section.
+Clutter suite against the same build: 5 failed, 2 passed — the same failure shape as the production baseline (stat card on /today, inputs in /events main, count integrity, twin redirects, payload budgets), which is the expected pre-subtraction state and confirms the rebase landed on the code production actually runs. Session 0 changes no UI by design: the PostHog provider renders null and every capture rides an existing handler.
 
-Session 0 gate status: all ten events wired; nine demonstrated firing locally with correct names and payloads (digest_subscribed has no UI surface until Session 6; the name is wired and type-checked). The PostHog-debugger-from-a-real-phone gate is blocked on creating the PostHog project and setting NEXT_PUBLIC_POSTHOG_KEY in Vercel; the wiring is inert until then by design.
+Session 0 gate status: all ten events wired on the current main; chip_tapped, place_viewed, directions_tapped, save_tapped, and search_submitted re-verified firing after the rebase (plan, event, outbound hooks merged without conflict and were verified pre-rebase; digest_subscribed has no UI surface until Session 6). The PostHog-debugger-from-a-real-phone gate is blocked on creating the PostHog project and setting NEXT_PUBLIC_POSTHOG_KEY in Vercel; the wiring is inert until then by design.
