@@ -25,7 +25,15 @@ const ICON: Record<IntentIcon, typeof Clock> = {
   pin: MapPin,
 };
 
-export default function TodayAsk() {
+export default function TodayAsk({
+  onSky = false,
+}: {
+  /** Mounted on the SkyHero canvas: the headline inherits the hero's
+   *  mood-adjusted text color (SkyHero owns the contrast guarantee).
+   *  The ask box and chips are self-surfaced cards, legible on any
+   *  sky. */
+  onSky?: boolean;
+}) {
   // The five strongest needs as hero chips (skip the generic "events").
   const chips = QUICK_INTENTS.filter((i) => i.key !== "events").slice(0, 5);
 
@@ -33,7 +41,10 @@ export default function TodayAsk() {
     <div className="space-y-3">
       <h1
         className="text-[26px] font-semibold leading-tight tracking-tight"
-        style={{ color: "var(--app-ink)", fontFamily: "var(--font-display, Georgia, serif)" }}
+        style={{
+          color: onSky ? "inherit" : "var(--app-ink)",
+          fontFamily: "var(--font-display, Georgia, serif)",
+        }}
       >
         Ask Radius anything.
       </h1>

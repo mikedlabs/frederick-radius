@@ -548,6 +548,24 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
   background-size: 200px 200px;
 }
+/* The day's aerial — the photographic canvas under the sky gradient.
+ * The gradient overlay (painted by SkyHero) keeps owning COLOR
+ * (time-of-day + weather mood); the photo underneath supplies the
+ * MATERIAL: real Frederick from above, season-matched, one shot per
+ * day. Slow drift gives it breath; the overscan inset keeps edges
+ * covered through the drift translate. z-0 sits below the celestial
+ * glow (z-1), grain (z-1), and content (z-2). */
+.sky-hero > .sky-photo {
+  position: absolute;
+  inset: -4%;
+  z-index: 0;
+  pointer-events: none;
+  animation: sky-drift 90s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sky-hero > .sky-photo { animation: none; }
+}
+
 /* Atmospheric depth — a soft inset shadow hugging the bottom edge so
  * the sky has volume and the content below reads as a distinct layer,
  * not a flat seam. */

@@ -326,40 +326,32 @@ export default async function HomePage({
     <div className="relative">
       <PageBloom />
 
-      {/* First-visit beta intro — explains what Frederick Radius is,
-          the current beta state, what's coming, and how to send
-          feedback. Renders only when the dismiss cookie hasn't been
-          set; once dismissed, never shows again until we ship a v2
-          message and bump the key. Client component so the SSR HTML
-          is empty and there's no hydration flash. Full-width above
-          the desktop split so it spans both columns. */}
-      <div className="space-y-4">
-        <BetaIntroCard />
-        {/* DateLine + BriefingLine lifted to full width above the
-            desktop split so the orientation + "what should I do?"
-            answer always leads — on mobile the weather column now
-            drops BELOW the action stack (see the order- classes on
-            the split children), so the page opens with the answer
-            instead of a stack of weather modules. */}
-        <div className="space-y-2">
-          <DateLine />
+      {/* ── CINEMATIC LEAD — the answer-first front door ON the day's
+          canvas (FINAL_LOOK port #1). SkyHero paints the season-matched
+          aerial graded by the hour + weather; DateLine and the ask ride
+          it with inherited, mood-correct ink. The content decision
+          (UX_REDO Build 1: "answer my question in one move") is
+          unchanged — only the stage is: real Frederick from above
+          instead of bare page paper. The first-visit BetaIntroCard and
+          the answer cards are self-surfaced paper, legible on any sky.
+          North Star: "Answer my question in one move. Don't make me
+          dig." */}
+      <SkyHero className="pb-5">
+        <div className="space-y-4">
+          <BetaIntroCard />
+          <DateLine onSky />
+          <section className="space-y-3" aria-label="Ask Radius">
+            <TodayAsk onSky />
+            {todayAnswers.length > 0 && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {todayAnswers.map((a, i) => (
+                  <AnswerCard key={a.id} answer={a} featured={i === 0} />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
-      </div>
-
-      {/* ── ANSWER-FIRST LEAD (UX_REDO Build 1) ─────────────────────────
-          The ask + 3 to 5 anticipatory answer cards are the front door.
-          Weather drops into the supporting split below. North Star:
-          "Answer my question in one move. Don't make me dig." */}
-      <section className="mt-4 space-y-3" aria-label="Ask Radius">
-        <TodayAsk />
-        {todayAnswers.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {todayAnswers.map((a, i) => (
-              <AnswerCard key={a.id} answer={a} featured={i === 0} />
-            ))}
-          </div>
-        )}
-      </section>
+      </SkyHero>
 
       {/* RESPONSIVE SPLIT (desktop only):
        *   mobile  : everything stacks single-column (space-y-6).
@@ -423,7 +415,10 @@ export default async function HomePage({
           SkyHero casts depth onto the panel. Net visual: weather
           card floats, week + hourly + more peeks from underneath. */}
       <div className="relative">
-        <SkyHero className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
+        {/* photo={false}: the page's ONE aerial lives on the lead
+            canvas above; the weather panel keeps the pure gradient so
+            the shot doesn't repeat within a single page. */}
+        <SkyHero photo={false} className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
           {/* TodayCard — the daily hook (P1): greeting + weather mood +
               now/high/sunset + tonight's event + two situational CTAs.
               Folds in the old BriefingLine's job and the compact weather

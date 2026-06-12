@@ -68,3 +68,27 @@ export function nearestAerial(
   }
   return best;
 }
+
+/**
+ * The day's aerial — one season-matched shot, picked deterministically
+ * from the Eastern-time date so it holds steady all day (no per-request
+ * shuffle, no hydration jitter) and rolls over at midnight. Today's
+ * hero borrows this as its photographic canvas; every season has 20+
+ * shots, so the rotation stays fresh for weeks before repeating.
+ */
+export function dailyAerial(now: Date = new Date()): Aerial | null {
+  const season = currentSeason(now);
+  const pool = AERIALS.filter((a) => a.season === season);
+  if (pool.length === 0) return null;
+  const dayKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  let h = 5381;
+  for (let i = 0; i < dayKey.length; i++) {
+    h = ((h * 33) ^ dayKey.charCodeAt(i)) | 0;
+  }
+  return pool[Math.abs(h) % pool.length];
+}

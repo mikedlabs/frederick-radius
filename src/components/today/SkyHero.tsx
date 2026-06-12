@@ -9,8 +9,11 @@
  * fetch cache dedupes the call).
  */
 
+import Image from "next/image";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { dailyAerial } from "@/lib/aerial";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 // Two silhouette attempts have now been pulled from the SkyHero
 // bottom edge:
@@ -163,6 +166,7 @@ export default async function SkyHero({
   children,
   className = "",
   fill = false,
+  photo = true,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -172,6 +176,10 @@ export default async function SkyHero({
    *  normal-height block at lg+ so the desktop two-column layout is
    *  untouched. */
   fill?: boolean;
+  /** Render the day's aerial under the gradient (the photographic
+   *  canvas). Default on; turn off where a second sky section on the
+   *  same page would repeat the shot — one aerial per page. */
+  photo?: boolean;
 }) {
   const nyHour = parseInt(
     new Intl.DateTimeFormat("en-US", {
@@ -218,6 +226,14 @@ export default async function SkyHero({
   const celX = celestial === "moon" ? 74 : sunX;
   const celY = celestial === "moon" ? 24 : sunY;
 
+  // The day's aerial — the photographic canvas under the gradient.
+  // Season-matched, one shot per Eastern day (see dailyAerial). The
+  // gradient still owns COLOR (time of day + weather mood, and all the
+  // text-contrast guarantees that come with it); the photo underneath
+  // supplies MATERIAL: real Frederick from above instead of a flat CSS
+  // wash. Null (no season match) falls back to the pure gradient.
+  const aerial = photo ? dailyAerial() : null;
+
   return (
     <section
       className={`sky-hero -mx-4 -mt-4 px-4 pb-3 pt-4 sm:rounded-b-[var(--app-radius-xl)] ${
@@ -239,6 +255,40 @@ export default async function SkyHero({
       data-sky-mood={mood}
       data-celestial={celestial}
     >
+      {/* The day's aerial canvas. Sits at z-0 (below the celestial
+          glow, grain, and content). The inner overlay re-paints the
+          sky gradient over the photo at 78% so the hour/mood palette
+          keeps governing color and legibility, and the photo reads as
+          the material beneath the light. The section's own gradient
+          background remains the fallback while the image streams in. */}
+      {aerial && (
+        <div aria-hidden className="sky-photo">
+          <Image
+            src={aerial.src}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            placeholder="blur"
+            blurDataURL={PAPER_CREAM_BLUR}
+            className="object-cover"
+          />
+          {/* Literal palette values, NOT var(--sky-*): those custom
+              properties are @property-registered with inherits:false,
+              so a child div resolving them gets the initial sunrise
+              fallbacks, not the section's hour/mood palette. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(180deg, ${sky.top} 0%, ${sky.mid} 55%, ${sky.bottom} 100%)`,
+              // 0.66: low enough that the aerial reads as photography,
+              // high enough that the hour/mood palette still governs
+              // the canvas color and the ink contrast on top of it.
+              opacity: 0.66,
+            }}
+          />
+        </div>
+      )}
       {/* Fine film grain — sits above the gradient + celestial light but
           below content, giving the sky real material texture instead of
           a flat CSS wash. The detail that reads as "crafted." */}

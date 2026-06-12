@@ -17,7 +17,17 @@ import HomeMuniChip from "./HomeMuniChip";
  *   - Date: small caps under the weekday — calendar fact.
  *   - Time: monospace + live pulse dot on the right — "right now".
  */
-export default function DateLine() {
+export default function DateLine({
+  onSky = false,
+}: {
+  /** Mounted on the SkyHero canvas: inherit the hero's mood-adjusted
+   *  text color (dark ink on a bright sky, paper-white on night or
+   *  storm) instead of the fixed page inks, with opacity carrying the
+   *  sub-line hierarchy. SkyHero owns the contrast guarantee, so the
+   *  anchor stays legible across every palette including weather
+   *  overrides the base time-of-day tone can't see. */
+  onSky?: boolean;
+}) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     // Tick the clock so the time stays live after load. The initial value
@@ -33,6 +43,12 @@ export default function DateLine() {
   const date = part({ month: "long", day: "numeric" });
   const time = part({ hour: "numeric", minute: "2-digit" });
 
+  const inkMain = onSky ? "inherit" : "var(--app-ink)";
+  const inkSub = onSky ? "inherit" : "var(--app-ink-2)";
+  const inkMeta = onSky ? "inherit" : "var(--app-ink-3)";
+  const subOpacity = onSky ? 0.85 : undefined;
+  const metaOpacity = onSky ? 0.72 : undefined;
+
   return (
     <header className="flex items-end justify-between gap-3">
       <div className="min-w-0">
@@ -41,14 +57,14 @@ export default function DateLine() {
             three-<h1> document-hierarchy bug the craft audit flagged. */}
         <p
           className="font-serif text-[26px] font-semibold leading-none tracking-tight sm:text-[30px]"
-          style={{ color: "var(--app-ink)" }}
+          style={{ color: inkMain }}
           suppressHydrationWarning
         >
           {weekday}
         </p>
         <p
           className="mt-1 text-meta font-semibold uppercase tracking-[0.14em]"
-          style={{ color: "var(--app-ink-3)" }}
+          style={{ color: inkMeta, opacity: metaOpacity }}
           suppressHydrationWarning
         >
           {date}
@@ -62,7 +78,7 @@ export default function DateLine() {
         />
         <span
           className="font-mono text-[14px] font-semibold tabular-nums sm:text-[15px]"
-          style={{ color: "var(--app-ink-2)" }}
+          style={{ color: inkSub, opacity: subOpacity }}
           suppressHydrationWarning
         >
           {time}
