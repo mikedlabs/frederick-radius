@@ -114,7 +114,7 @@ reading as "a maps app with dark mode."
 
 Two changes make the light state identity rather than a setting. First, the
 switch is tied to the real sun position in Frederick and is not user-toggled
-by default, so the product is genuinely a different thing at 8am and 9pm
+by default, so the product is a different thing at 8am and 9pm
 rather than offering a preference. The evening state does not merely darken; it
 reorders the content and changes what the map emphasizes, so the same data
 becomes two products. Second, the map itself is the signature, so it gets

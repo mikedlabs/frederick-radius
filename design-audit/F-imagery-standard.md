@@ -74,7 +74,7 @@ over 150 images, recorded as `lead-images.json`, plus a treatment layer that
 is one component and a handful of tokens. Until the lead list exists, a
 direction may prototype with the curated subset already visible on production
 hero surfaces (the places that already pass), and the Tier 3 type card carries
-everything else honestly.
+everything else without apology.
 
 ## The asset standard for new sources
 
