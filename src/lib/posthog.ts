@@ -46,7 +46,12 @@ export function initAnalytics(): void {
     session_recording: {
       maskAllInputs: true,
     },
-    persistence: "localStorage+cookie",
+    // localStorage, NOT cookie: the site's deliberate position is
+    // cookieless analytics with no consent banner (see the comment in
+    // app/layout.tsx). Distinct-id continuity holds per device, which
+    // is all a ten-event product stream needs. PARKING.md item 1,
+    // decided June 12, 2026.
+    persistence: "localStorage",
   });
 }
 
