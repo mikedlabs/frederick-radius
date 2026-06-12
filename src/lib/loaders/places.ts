@@ -299,18 +299,32 @@ const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
   .map((p) => (p.name ? { ...p, name: normalizePlaceName(p.name) } : p))
   .map((p) => patchRecord(p, OV_PATCH))
   // Urbana geo-claim runs LAST so it composes with dedupe + overrides.
-  .map(claimUrbana);
+  .map(claimUrbana)
+  // County gate (2026-06 redesign audit, ranking-trust blocker). The
+  // dataset carried 79 out-of-county records wearing member-town labels
+  // (a Smithsburg bar tagged thurmont led the guide's "Best match" with
+  // a "498 min walk" caption; Boonsboro coffee shops tagged myersville).
+  // isValidCoord now tests the real county outline plus a 1.5km straddle
+  // buffer, so Mount Airy's cross-line Main Street survives and true
+  // foreigners leave every surface. EXCLUDED, not down-ranked: these are
+  // not Frederick County places, and one confident wrong answer costs
+  // more trust than 79 missing rows.
+  .filter((p) => isValidCoord(p.geom));
 
-// Build-time visibility into off-bbox places. Server-only so it
+// Build-time visibility into excluded places. Server-only so it
 // doesn't run in the browser. Same shape as the events placement
 // warning so build logs read consistently.
 if (typeof window === "undefined") {
-  const offBbox = BASE_PLACES.filter((p) => !isValidCoord(p.geom));
-  if (offBbox.length > 0) {
-    const sample = offBbox.slice(0, 5).map((p) => p.slug).join(", ");
-     
+  const preGate = (DEDUPE_ON ? STATIC_DEDUPED : PLACES).filter(
+    (p) =>
+      !OV_REMOVE.has(p.slug) &&
+      (!DEDUPE_ON || (!AUTO_FOLD.has(p.slug) && !OV_FOLD[p.slug])),
+  );
+  const excluded = preGate.filter((p) => !isValidCoord(claimUrbana(p).geom));
+  if (excluded.length > 0) {
+    const sample = excluded.slice(0, 5).map((p) => p.slug).join(", ");
     console.warn(
-      `[placement] places: ${offBbox.length} row(s) flagged needs_review (off-bbox or missing coord). Examples: ${sample}`,
+      `[placement] places: ${excluded.length} row(s) excluded (outside county outline + 1.5km buffer, or missing coord). Examples: ${sample}`,
     );
   }
 }

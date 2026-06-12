@@ -18,6 +18,7 @@ import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { upcomingEvents, EVENT_BY_SLUG, type Event } from "@/data/events";
 import { haversineMeters, FREDERICK_CENTER, formatDistance, type LngLat } from "@/lib/geo";
+import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 
 export type PlanInputs = {
   audience: "solo" | "date" | "family" | "friends" | "visitor";
@@ -161,7 +162,15 @@ function hashStr(s: string): number {
 function scoredCandidates(input: PlanInputs, origin: LngLat, now: Date): Scored[] {
   const slot = slotFor(now);
   const seed = input.seed ?? 0;
+  // Candidate gate (2026-06 audit, ranking-trust blocker): a plan stop
+  // is a recommendation, so only destination categories qualify. The
+  // "easy" vibe scores every category at least +1, which let a church
+  // community room with unknown hours clear score > 0 and seat a date
+  // night. One exception: the active vibe legitimately wants wellness.
+  const allowCategory = (cat: string) =>
+    isDestinationCategory(cat) || (input.vibe === "active" && cat === "wellness");
   return clientPlaces()
+    .filter((p) => isRecommendable(p) && allowCategory(p.category))
     .map((p) => {
       const d: PlaceCardData = { ...p, distance_m: haversineMeters(origin, p.geom) };
       const distance = d.distance_m ?? haversineMeters(origin, p.geom);
