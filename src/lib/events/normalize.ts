@@ -147,7 +147,35 @@ export function cleanDescription(raw: string | null | undefined): string {
   // Drop a leading "Description:/Details:/…" label, keeping the prose behind
   // it (the format real feeds use: "Event Time: 7 PM Description: <prose>").
   d = d.replace(CONTENT_PREFIX, "");
-  return dedupeSentences(d.replace(/\s+/g, " ").trim());
+  d = dedupeSentences(d.replace(/\s+/g, " ").trim());
+  // An officials roster is CMS metadata (the "attending officials" field),
+  // not a description. The county calendar emits it verbatim: "Council
+  // Vice President Kavonte Duckett, Council Member Jerry Donald, …". No
+  // description beats a list of names (2026-06 redesign audit, blocker 3).
+  if (isOfficialsRoster(d)) return "";
+  return d;
+}
+
+// Civic titles that open roster segments. Matched at segment start only,
+// so prose that merely mentions "the mayor" is never touched.
+const CIVIC_TITLE =
+  /^(?:council\s+(?:vice\s+)?president|council\s*(?:member|man|woman)|mayor|vice\s+mayor|alderman|alderwoman|commissioner|county\s+executive|burgess|supervisor|delegate|senator|councilmember)\b/i;
+
+/**
+ * True when the text is a comma-separated roster of officials rather than
+ * prose: 3 or more comma segments, at least 60 percent of them opening
+ * with a civic title, every titled segment short enough to be a name
+ * (under 50 chars), and no sentence-ending punctuation at the close.
+ * Initials inside names ("M.C. Keegan-Ayer") are expected and allowed;
+ * a real sentence about officials ("Mayor O'Connor will speak at noon.")
+ * fails on the title ratio and the closing period at once.
+ */
+export function isOfficialsRoster(text: string): boolean {
+  if (!text || /[.!?]$/.test(text.trim())) return false;
+  const segments = text.split(",").map((s) => s.trim()).filter(Boolean);
+  if (segments.length < 3) return false;
+  const titled = segments.filter((s) => CIVIC_TITLE.test(s) && s.length < 50);
+  return titled.length / segments.length >= 0.6;
 }
 
 /**

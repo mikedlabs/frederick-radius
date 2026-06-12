@@ -4,6 +4,7 @@ import {
   cleanVenueName,
   dedupeSentences,
   clampDescription,
+  isOfficialsRoster,
 } from "./normalize";
 
 describe("dedupeSentences", () => {
@@ -132,5 +133,29 @@ describe("cleanDescription", () => {
   it("is idempotent", () => {
     const once = cleanDescription("Event date: Jun 9 Time: 6 PM Location: Carroll Creek");
     expect(cleanDescription(once)).toBe(once);
+  });
+});
+
+describe("isOfficialsRoster + cleanDescription roster handling", () => {
+  it("drops the county calendar officials roster (2026-06 audit, blocker 3)", () => {
+    const roster =
+      "Council Vice President Kavonte Duckett, Council Member Jerry Donald, Council Member Renee Knapp, Council Member M.C. Keegan-Ayer";
+    expect(isOfficialsRoster(roster)).toBe(true);
+    expect(cleanDescription(roster)).toBe("");
+  });
+
+  it("keeps real prose that mentions officials", () => {
+    const prose =
+      "Mayor O'Connor will speak at noon. The celebration includes live music, food vendors, and a kids zone.";
+    expect(isOfficialsRoster(prose)).toBe(false);
+    expect(cleanDescription(prose)).toContain("live music");
+  });
+
+  it("keeps short comma lists that are not rosters", () => {
+    expect(isOfficialsRoster("Live music, food vendors, kids zone, face painting")).toBe(false);
+  });
+
+  it("keeps a two-name roster fragment (under the 3-segment floor)", () => {
+    expect(isOfficialsRoster("Mayor Smith, Council Member Jones")).toBe(false);
   });
 });
