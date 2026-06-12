@@ -65,17 +65,30 @@ prose.
 ## Still to port (ranked, each its own PR)
 
 1. **Cinematic /today hero** — full-bleed aerial + glass almanac bar
-   (HomeMock recipe #1). Replaces the text-first TodayCard lead.
+   (HomeMock recipe #1). Landed as PR #586: the answer-first lead rides
+   a season-matched daily aerial graded by the hour/mood palette.
 2. **Staggered two-column gallery** for /places browse + search results
    (DiscoverMock recipe #2): right column offset, same card frame.
+   Landed as PR #587 (PlaceList grid mode).
 3. **Snap-rail hero events** — 4:5 "happening now" card + numbered rail
    tiles (EventsMock recipe #3) for the /events lead.
 4. **FieldIndexRow** — the compact specimen row (accent spine, mono
-   index) as the dense-list variant on /my-radius.
+   index) as the dense-list variant on /my-radius. Recipe lives in
+   FieldCard.tsx on `mock/bento-field-card` (keep that branch until
+   this lands).
 5. **Timeline spine for /plan** — numbered nodes + travel pills
    (PlanMock recipe #4).
 6. **Remaining kill-list** (lower priority): town subtitle lines in
    SavedList → tooltip; empty-state explainer → one sentence.
+
+## Someday ideas, harvested from retired prototypes
+
+- **Fly Frederick** (`proto/fly-descent`, PR #420) — a cinematic map
+  descent into downtown with a season toggle. Would make a striking
+  landing or About moment; parked, not planned.
+- **Radius gesture** (`feat/radius-gesture`, PR #422) — drag your
+  reach on the map, live. Kept as an active branch: it is the natural
+  payoff of the raised center launcher (PR #584).
 
 ## Test for every future card
 
