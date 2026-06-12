@@ -342,7 +342,7 @@ export default function SavedList() {
               className="block text-[13px] font-semibold leading-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {dominantTown![1]} of your Radius is in {dominantMuni.name}
+              {dominantTown![1]} of your saved places are in{dominantMuni.name}
             </span>
             <span className="block text-[11.5px]" style={{ color: "var(--app-ink-3)" }}>
               Build a route from these → Planner
@@ -496,7 +496,7 @@ export default function SavedList() {
       )}
 
       {events.length > 0 && (
-        <section aria-label="Events in your Radius" className="space-y-2">
+        <section aria-label="Saved events" className="space-y-2">
           <header className="flex items-baseline gap-2.5">
             <span
               aria-hidden
@@ -533,13 +533,13 @@ export default function SavedList() {
 }
 
 function summarySentence(placeN: number, eventN: number, townN: number): string {
-  if (placeN === 0 && eventN === 0) return "Start building your Radius.";
+  if (placeN === 0 && eventN === 0) return "Start building your saved list.";
   const parts: string[] = [];
   if (placeN > 0) parts.push(`${placeN} place${placeN === 1 ? "" : "s"}`);
   if (eventN > 0) parts.push(`${eventN} event${eventN === 1 ? "" : "s"}`);
   let body = parts.join(" and ");
   if (placeN > 0 && townN > 1) body += ` across ${townN} town${townN === 1 ? "" : "s"}`;
-  return `${body} in your Radius.`;
+  return `${body} in your saved list.`;
 }
 
 /**
@@ -557,7 +557,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   return (
     <div className="space-y-5">
       <section
-        aria-label="What is My Radius?"
+        aria-label="What is the saved list?"
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5 shadow-[var(--app-shadow-1)]"
         style={{ borderColor: "var(--app-border)" }}
       >
@@ -584,13 +584,13 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
             className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Start building your Radius.
+            Start building your saved list.
           </p>
           <p className="text-[13px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
             Follow the places you care about, and this page becomes your
             personal view of Frederick County. Tap the bookmark on anything in
             the field guide and it lands here — things you&apos;ve been meaning
-            to try, dates worth a return visit, or a short list to send a
+            to try, the dates worth a return visit, or a short list to send a
             friend who&apos;s coming through town.
           </p>
           {/* Three primary entry points so the empty page suggests three

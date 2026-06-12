@@ -3,30 +3,39 @@ import {
   Map as MapIcon,
   Calendar,
   Bookmark,
+  LocateFixed,
   type LucideIcon,
 } from "lucide-react";
 
 /**
- * Shared primary-tab definition for BottomNav (mobile) + SideRail
- * (desktop). One source of truth — change a label here and both
- * navs follow.
+ * Shared primary-nav definition for BottomNav (mobile) and SideRail
+ * (desktop). One source of truth holds the labels, so a change here
+ * flows to both navs at once.
  *
- * Four tabs (May 2026 IA cleanup):
+ * Four tabs plus a raised center launcher (May 2026 five-slot pass):
  *   - Today    /today
- *   - Map      /map
+ *   - Map      /map?mode=browse   (the panable browse map)
+ *   - Radius   /map?mode=radius   (raised center, the reach tool)
  *   - Events   /events
- *   - My Radius /my-radius
+ *   - Saved    /my-radius         (the saved and followed list)
  *
- * The fifth "Field guide" tab was retired — it housed four unrelated
- * jobs (geographic data, alternate map/now views, app settings,
- * editorial books) and a 5-tab nav couldn't articulate any of them.
- * The drawer's CONTENT still exists; the trigger moved to a "More"
- * icon button in the header so secondary destinations remain
- * reachable without a tab-sized claim on the primary nav.
+ * The "Radius" launcher is the signature center action, so it lives
+ * apart from TABS as RADIUS_LAUNCHER. Map and Radius now read as two
+ * distinct jobs instead of one ambiguous destination: Map opens the
+ * browse map, the raised center opens the reach builder. Saved is the
+ * renamed "My Radius" list, which is the saved and followed places, not
+ * the radius tool. The retired "Field guide" tab moved to a More button
+ * in the header, so its content stays reachable without a tab.
  */
 
 export type Tab = {
+  /** Pathname used for active-state matching. Query strings are not
+   *  visible to usePathname, so this stays query-free. */
   href: string;
+  /** Optional navigation target when it differs from the match path,
+   *  for example a tab that opens a specific mode of a shared route.
+   *  Falls back to href when unset. */
+  nav?: string;
   label: string;
   icon: LucideIcon;
   /** Switch from outline to filled when this tab is active. Only the
@@ -35,11 +44,24 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/today",     label: "Today",     icon: Sun,      fillOnActive: true  },
-  { href: "/map",       label: "Map",       icon: MapIcon,  fillOnActive: false },
-  { href: "/events",    label: "Events",    icon: Calendar, fillOnActive: false },
-  { href: "/my-radius", label: "My Radius", icon: Bookmark, fillOnActive: true  },
+  { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: true  },
+  { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false, nav: "/map?mode=browse" },
+  { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
+  { href: "/my-radius", label: "Saved",  icon: Bookmark, fillOnActive: true  },
 ] as const;
+
+/**
+ * The raised center launcher. It opens the radius reach builder from any
+ * screen, which is the brief's "radius as the action from anywhere". It
+ * navigates to the dedicated radius render rather than mounting the full
+ * Mapbox builder in a sheet, so the heavy map chunk loads only on the
+ * radius surface and the sheet drag gesture never fights the map pan.
+ */
+export const RADIUS_LAUNCHER = {
+  href: "/map?mode=radius",
+  label: "Radius",
+  icon: LocateFixed,
+} as const;
 
 /** Resolve a pathname to its tab index (or -1 if it isn't a tab). */
 export function tabIndexForPath(pathname: string): number {

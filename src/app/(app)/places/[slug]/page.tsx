@@ -183,10 +183,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               previous design crowded a FollowButton + SaveButton
               icon pair into the right of this row — both delegated
               to the SAME useFollows hook as the prominent
-              "Add to My Radius" CTA below, so the visitor was
+              "Save" CTA below, so the visitor was
               looking at three save controls for one action. v2
               keeps just the text CTA below the title (the verb
-              that matches the "My Radius" nav tab) and lets the
+              that matches the "Saved" nav tab) and lets the
               title breathe. Sharing remains accessible from the
               footer ShareButton. */}
           <div className="min-w-0">
@@ -198,7 +198,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
             </p>
           </div>
           {/* Prominent text-style follow CTA — Phase 1's
-              "Add to My Radius" / "In My Radius" pattern. Sits below
+              "Save" / "Saved" pattern. Sits below
               the title row so it reads as the primary action on the
               place, not a header chrome icon. PendingFollowApplier
               consumes ?follow=<slug> from a post-sign-in redirect

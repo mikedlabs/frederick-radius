@@ -82,7 +82,7 @@ export default async function SettingsPage() {
                 className="mt-1 text-[11.5px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                My Radius syncs across your devices.
+                Your saved places sync across your devices.
               </p>
             </div>
             <form action="/auth/signout" method="post">
@@ -126,7 +126,7 @@ export default async function SettingsPage() {
                 className="block text-[11.5px]"
                 style={{ color: "var(--app-ink-3)" }}
               >
-                Magic link — no password. My Radius comes with you.
+                Magic link, no password. Your saved places come with you.
               </span>
             </span>
             <span

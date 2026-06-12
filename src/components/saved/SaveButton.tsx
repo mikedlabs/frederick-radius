@@ -77,27 +77,27 @@ export default function SaveButton({
         // is missed at a glance. Undo action mirrors the toggle so
         // a mistaken save is one tap to reverse.
         if (isSaved) {
-          toast(`Removed from My Radius`, {
+          toast(`Removed from Saved`, {
             action: { label: "Undo", onClick: () => toggle() },
           });
         } else if (totalBefore === 0) {
           // First add ever — moment worth marking. Editorial copy
           // instead of the routine acknowledgement, plus a longer
           // dwell so the user has time to read what just happened.
-          toast.success("Your Radius starts here", {
-            description: "Follow places you care about — they'll live in My Radius.",
+          toast.success("Your list starts here", {
+            description: "Follow places you care about. They live in Saved.",
             duration: 5000,
             action: { label: "Undo", onClick: () => toggle() },
           });
         } else {
-          toast.success(`Added to My Radius · ${label.replace(/^Save\s+/, "")}`, {
+          toast.success(`Saved · ${label.replace(/^Save\s+/, "")}`, {
             action: { label: "Undo", onClick: () => toggle() },
           });
         }
       }}
       aria-pressed={isSaved}
-      aria-label={isSaved ? `Remove ${label} from My Radius` : `Add ${label} to My Radius`}
-      title={isSaved ? "In My Radius" : "Add to My Radius"}
+      aria-label={isSaved ? `Remove ${label} from Saved` : `Add ${label} to Saved`}
+      title={isSaved ? "Saved" : "Save"}
       className="relative grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)] active:scale-[0.92]"
       style={{
         color: isSaved ? "var(--app-cool)" : "var(--app-ink-3)",

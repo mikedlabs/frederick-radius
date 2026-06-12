@@ -7,13 +7,13 @@ import NotificationsNudge from "@/components/pwa/NotificationsNudge";
 import { getServerUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "My Radius",
+  title: "Saved",
   description:
-    "Your personal Frederick Radius — the places, events, and routes you're keeping an eye on.",
+    "The places, events, and routes you're keeping an eye on across Frederick County.",
 };
 
 /**
- * /my-radius — the user's personal corner of the field guide.
+ * /my-radius is the user's personal corner of the field guide.
  *
  * Renamed from /saved (Phase 0). Phase 1d adds the cross-device-sync
  * framing: a "Signed in as you@…" indicator + sign-out button when
@@ -30,8 +30,8 @@ export default async function MyRadiusPage() {
         <div>
           <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
             {user
-              ? `My Radius · signed in as ${user.email ?? "you"}`
-              : "My Radius · on this device"}
+              ? `Saved · signed in as ${user.email ?? "you"}`
+              : "Saved · on this device"}
           </p>
           <h1 className="display-1" style={{ color: "var(--app-ink)" }}>
             Your Frederick
@@ -77,13 +77,13 @@ export default async function MyRadiusPage() {
               className="block text-[13px] font-semibold leading-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              Sign in to sync My Radius across devices
+              Sign in to sync your saved places across devices
             </span>
             <span
               className="block text-[11.5px]"
               style={{ color: "var(--app-ink-3)" }}
             >
-              Magic link — no password. Your current list comes with you.
+              Magic link, no password. Your current list comes with you.
             </span>
           </span>
           <span
