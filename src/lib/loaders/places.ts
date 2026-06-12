@@ -5,7 +5,7 @@ import { eventsAtVenue, type Event } from "@/data/events";
 import { haversineMeters, isValidCoord, type LngLat } from "@/lib/geo";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
 import { isNonDiscoverable, isRecommendable, SUPPRESSED_JUNK_SLUGS } from "@/lib/relevance";
-import { getOpenStatus, type OpenStatus } from "@/lib/hours";
+import { getOpenStatus, isOpenNow, type OpenStatus } from "@/lib/hours";
 import { stampPlaceProvenance, type Provenance } from "@/lib/provenance";
 import { mayAssertOpenState } from "@/lib/hours-freshness";
 import { parseGoogleHours } from "@/lib/googleHours";
@@ -909,6 +909,27 @@ export function likelyOpenPlaces(origin?: LngLat, now: Date = new Date()): Place
     .filter((p) => p.slug in RELIABLE_OPEN_WINDOWS && isLikelyOpenNow(p.slug, now))
     .map((p) => ({ ...decoratePlace(p, origin, now), open_confidence: "likely" as const }))
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity));
+}
+
+/**
+ * THE county-wide open-now count. Every surface that headlines a
+ * county-wide "N open now" number reads this one function, so two
+ * screens can never disagree (2026-06 redesign audit, offender 2:
+ * /today said 54 while /open-now said 15 within minutes, because the
+ * briefing counted raw PLACES with every curated hour trusted as
+ * verified, while /open-now counted the decorated pipeline with the
+ * freshness-window policy). Population and predicate are exactly the
+ * /open-now headline's: the discovery pipeline, recommendable places,
+ * the shared isOpenNow predicate over decorated open_status.
+ */
+export function countOpenNow(now: Date = new Date()): number {
+  return BASE_PLACES
+    .filter(isOperational)
+    .filter(isDiscoverable)
+    .filter(isSubstantive)
+    .filter(isRecommendable)
+    .filter((p) => isOpenNow(decoratePlace(p, undefined, now).open_status))
+    .length;
 }
 
 export function rankPlaces(ctx: RankingContext = {}): PlaceCardData[] {

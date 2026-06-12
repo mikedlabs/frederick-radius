@@ -163,8 +163,8 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
     return c;
   }, [ready, places]);
 
-  const results = useMemo(() => {
-    if (!intent && !lens) return [];
+  const resultsState = useMemo(() => {
+    if (!intent && !lens) return { list: [] as PlaceCardData[], totalCount: 0 };
     const origin = geo.status === "granted" ? { lng: geo.position.lng, lat: geo.position.lat } : null;
     let r = lens ? places.filter(lens.match) : places.filter(intent!.match);
     if (!lens && chosenSub && chosenSub !== "all") r = r.filter(chosenSub.match);
@@ -246,14 +246,20 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
       }
       return a.name.localeCompare(b.name);
     });
-    return ranked.slice(0, RESULT_CAP);
+    // Cap the LIST, never the count: the entry card promised "286
+    // places" and this line answered "24+", which converts both numbers
+    // into guesses (2026-06 audit, offender 2). totalCount carries the
+    // honest figure; the render below still shows RESULT_CAP rows.
+    return { list: ranked.slice(0, RESULT_CAP), totalCount: ranked.length };
   }, [places, intent, lens, chosenSub, openOnly, favOnly, walkOnly, geo, sort]);
+  const results = resultsState.list;
+  const totalCount = resultsState.totalCount;
 
   const sortLabel =
     sort === "nearest" ? "nearest first" : sort === "rated" ? "top rated" : geo.status === "granted" ? "best nearby" : "top picks";
   const resultsSub = !ready
     ? "Finding places…"
-    : `${results.length}${results.length === RESULT_CAP ? "+" : ""} ${openOnly ? "open " : ""}place${results.length === 1 ? "" : "s"} · ${sortLabel}`;
+    : `${totalCount} ${openOnly ? "open " : ""}place${totalCount === 1 ? "" : "s"} · ${sortLabel}`;
   // The sort control's options — "Nearest" only appears once we have a
   // location to make it meaningful.
   const sortOpts: { key: SortKey; label: string }[] = [

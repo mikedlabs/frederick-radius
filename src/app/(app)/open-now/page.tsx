@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { MapIcon, ArrowRight } from "lucide-react";
 import { rankPlaces, likelyOpenPlaces } from "@/lib/loaders/places";
+import { isOpenNow } from "@/lib/hours";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
@@ -56,8 +57,12 @@ export default async function OpenNowPage() {
   // (#500): a counseling office being open is true but it's never the
   // answer to "what's open right now?". Stable sort keeps the quality+
   // proximity order within each group.
+  // The shared isOpenNow predicate (open OR closing-soon), so this
+  // page's headline and /today's briefing read the same number from
+  // the same rule. A place closing in 40 minutes IS open right now;
+  // its card already says "closing soon" (2026-06 audit, offender 2).
   const verified = rankPlaces({ origin, now, preferOpen: true, limit: 500 })
-    .filter((p) => p.open_status.state === "open")
+    .filter((p) => isOpenNow(p.open_status))
     .filter(isRecommendable)
     .map((p, i) => ({ p, i }))
     .sort((a, b) => {

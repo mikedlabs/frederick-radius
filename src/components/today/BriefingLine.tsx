@@ -1,6 +1,5 @@
-import { PLACES } from "@/data/places";
 import { allUpcoming, eventsLive } from "@/lib/loaders/events";
-import { getOpenStatus, isOpenNow } from "@/lib/hours";
+import { countOpenNow } from "@/lib/loaders/places";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 
@@ -59,18 +58,13 @@ function bandGreeting(band: TimeBand): string {
   }
 }
 
-/** Count places whose curated hours currently report open. Capped at
- *  the curated set so the count reflects places we trust enough to
- *  recommend, not the raw OSM long-tail. */
+/** The county-wide open-now count, from THE one shared source
+ *  (countOpenNow in the places loader). The old local count read raw
+ *  PLACES with every curated hour trusted as verified, which said "54
+ *  open" while /open-now said 15 (2026-06 redesign audit, offender 2).
+ *  One function, one number, every surface. */
 function openNowCount(now: Date): number {
-  let n = 0;
-  for (const p of PLACES) {
-    if (p.source !== "seed" && p.source !== "manual") continue;
-    if (!p.hours) continue;
-    const status = getOpenStatus(p.hours, { verified: true }, now);
-    if (isOpenNow(status)) n++;
-  }
-  return n;
+  return countOpenNow(now);
 }
 
 /** The single most useful event to NAME in the briefing. Priority:
@@ -168,7 +162,7 @@ export default async function BriefingLine() {
 
   if (band === "morning" || band === "midday" || band === "afternoon") {
     if (openCount >= 3) {
-      fragments.push(`${openCount} curated places open now`);
+      fragments.push(`${openCount} places open now`);
     }
   }
 
