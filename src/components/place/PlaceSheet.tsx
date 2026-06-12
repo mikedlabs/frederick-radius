@@ -460,7 +460,11 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             className="mt-3 inline-flex items-center gap-3 rounded-full border px-3 py-1.5 text-xs font-medium"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
-            {travel.walkMin != null && (
+            {/* A walk leg only reads as advice when walking is plausible.
+                "498 min walk" (the 2026-06 audit's example) is a data
+                readout, not a recommendation; past 35 minutes the drive
+                leg carries the message alone. */}
+            {travel.walkMin != null && travel.walkMin <= 35 && (
               <span className="inline-flex items-center gap-1">
                 <Footprints className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
                 {travel.walkMin} min walk

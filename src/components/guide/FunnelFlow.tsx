@@ -224,10 +224,15 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
         return Math.abs(byRate) > 1e-9 ? byRate : a.name.localeCompare(b.name);
       }
       // "best": open now leads for "right now" lanes, then a blend of
-      // nearby AND well-loved (never just the closest).
+      // nearby AND well-loved (never just the closest). The open-first
+      // advantage only applies within a plausible trip (12km): late at
+      // night the only open bar may be across the county, and "open but
+      // 30 minutes away" must not outrank "closed but down the block"
+      // for a Best match (2026-06 audit, ranking-trust blocker).
       if (prefersOpen) {
-        const ao = isOpenNow(a.open_status) ? 0 : 1;
-        const bo = isOpenNow(b.open_status) ? 0 : 1;
+        const plausible = (p: PlaceCardData) => p.distance_m == null || p.distance_m <= 12_000;
+        const ao = isOpenNow(a.open_status) && plausible(a) ? 0 : 1;
+        const bo = isOpenNow(b.open_status) && plausible(b) ? 0 : 1;
         if (ao !== bo) return ao - bo;
       }
       const ad = demote(a);

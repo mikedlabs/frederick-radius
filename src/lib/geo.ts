@@ -1,3 +1,5 @@
+import COUNTY_RING from "@/data/county-ring.json";
+
 export type LngLat = { lng: number; lat: number };
 
 export const EARTH_RADIUS_M = 6_371_000;
@@ -91,12 +93,77 @@ export function isInsideFrederickCounty(lat: number, lng: number): boolean {
 }
 
 /**
+ * The real county outline, down-sampled to 716 vertices (every 8th
+ * point of the county GIS boundary in public/overlays/, ~400m vertex
+ * spacing). The bbox test above passes places in Washington and
+ * Carroll County (Smithsburg sits inside the box but 8km outside the
+ * county), which let 79 out-of-county records survive into discovery
+ * surfaces. The 2026-06 redesign audit caught a Smithsburg bar served
+ * as the guide's "Best match" for a downtown Frederick user.
+ */
+const RING: ReadonlyArray<readonly [number, number]> = COUNTY_RING as [number, number][];
+
+function pointInCountyRing(lng: number, lat: number): boolean {
+  let inside = false;
+  let j = RING.length - 1;
+  for (let i = 0; i < RING.length; i++) {
+    const [xi, yi] = RING[i];
+    const [xj, yj] = RING[j];
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) {
+      inside = !inside;
+    }
+    j = i;
+  }
+  return inside;
+}
+
+/** Distance in meters from a point to the nearest ring vertex. With
+ *  ~400m vertex spacing this overestimates the true distance to the
+ *  boundary line by at most ~200m, which the buffer absorbs. */
+function metersToRing(lng: number, lat: number): number {
+  let best = Infinity;
+  const mLat = 111320;
+  const mLng = 111320 * Math.cos((lat * Math.PI) / 180);
+  for (const [vlng, vlat] of RING) {
+    const d = Math.hypot((vlat - lat) * mLat, (vlng - lng) * mLng);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/**
+ * Polygon-accurate county membership with a 1.5km buffer. The buffer
+ * exists because member municipalities straddle the line: Mount Airy's
+ * Main Street is partly in Carroll County and belongs here; a Boonsboro
+ * coffee shop 5km past the ridge does not. Buffer chosen so every
+ * straddling Main Street survives and every true foreigner dies.
+ */
+export function isInFrederickCountyArea(lng: number, lat: number): boolean {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  // Fast-path rejector: the bbox padded by ~2km so the straddle buffer
+  // still works at the bbox edges (Mount Airy's Carroll-side block sits
+  // 200m past the unpadded eastern bound).
+  const PAD = 0.02;
+  if (
+    lat < FREDERICK_COUNTY_BBOX.south - PAD ||
+    lat > FREDERICK_COUNTY_BBOX.north + PAD ||
+    lng < FREDERICK_COUNTY_BBOX.west - PAD ||
+    lng > FREDERICK_COUNTY_BBOX.east + PAD
+  ) {
+    return false;
+  }
+  if (pointInCountyRing(lng, lat)) return true;
+  return metersToRing(lng, lat) <= 1500;
+}
+
+/**
  * A coordinate is "valid" for the app when it has finite numbers AND
- * lands inside the county bbox. (0, 0) or any default fallback fails
- * by construction. Callers use this at loader boundaries to drop
+ * lands inside the county (real outline plus a 1.5km straddle buffer,
+ * not just the bbox). (0, 0) or any default fallback fails by
+ * construction. Callers use this at loader boundaries to drop
  * mis-positioned rows from public surfaces.
  */
 export function isValidCoord(coord: { lng: number; lat: number } | null | undefined): boolean {
   if (!coord) return false;
-  return isInsideFrederickCounty(coord.lat, coord.lng);
+  return isInFrederickCountyArea(coord.lng, coord.lat);
 }

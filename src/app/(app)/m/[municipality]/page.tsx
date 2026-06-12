@@ -84,6 +84,16 @@ export default async function MunicipalityPage(
   //      and civic/utility categories (wellness/services/worship…). Within
   //      each group, feature_score still orders. A stable sort keeps it
   //      deterministic. Down-rank, never delete — a thin town still fills.
+  // Evidence floor for a "worth your time" claim: a real rating with a
+  // handful of reviews, or a human curation flag. The 2026-06 audit
+  // caught a travel agency, a wig shop, and a funeral home leading this
+  // module at night: all tagged shopping, none with rating evidence,
+  // all sorting as "not closed" because their hours are unknown. A tier,
+  // not a filter, so a thin town still fills (down-rank, never delete).
+  const hasEvidence = (p: (typeof places)[number]) =>
+    p.hidden_gem ||
+    p.local_favorite ||
+    ((p.google_rating ?? 0) >= 4.0 && (p.google_rating_count ?? 0) >= 5);
   const worthYourTime = places
     .filter(isRecommendable)
     .map((p, i) => ({ p, i }))
@@ -94,12 +104,21 @@ export default async function MunicipalityPage(
       const da = isDestinationCategory(a.p.category) ? 0 : 1;
       const db = isDestinationCategory(b.p.category) ? 0 : 1;
       if (da !== db) return da - db;
-      // 2) Among destinations, lead with what's OPEN — a closed lead can't be
-      //    the glow "go here" answer.
-      const ca = a.p.open_status.state === "closed" ? 1 : 0;
-      const cb = b.p.open_status.state === "closed" ? 1 : 0;
+      // 2) Places with rating evidence or curation outrank the phone-book
+      //    tail regardless of hours, so junk can never lead on data gaps.
+      const ea = hasEvidence(a.p) ? 0 : 1;
+      const eb = hasEvidence(b.p) ? 0 : 1;
+      if (ea !== eb) return ea - eb;
+      // 3) Among those, three open tiers: verified open, unknown, closed.
+      //    The old two-tier sort (closed last) let unknown-hours places
+      //    rank EQUAL to open ones, which surfaced the tail at 11 PM when
+      //    every real destination had closed (2026-06 audit).
+      const tier = (s: (typeof a.p)["open_status"]["state"]) =>
+        s === "closed" ? 2 : s === "open" || s === "closing-soon" ? 0 : 1;
+      const ca = tier(a.p.open_status.state);
+      const cb = tier(b.p.open_status.state);
       if (ca !== cb) return ca - cb;
-      // 3) Then feature_score, with the original (proximity-aware) order as a
+      // 4) Then feature_score, with the original (proximity-aware) order as a
       //    deterministic tiebreak.
       return b.p.feature_score - a.p.feature_score || a.i - b.i;
     })
