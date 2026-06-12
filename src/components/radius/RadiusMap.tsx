@@ -239,6 +239,37 @@ export default function RadiusMap({
     return { type: "FeatureCollection", features: [circle] };
   }, [usingIsochrone, reachable, circle]);
 
+  // The reach veil — everything BEYOND the reach recedes under a gentle
+  // paper wash (a generous box minus the reach rings as holes; the same
+  // construction as the county spotlight, much softer). This is what
+  // makes the radius read as the hero of its own map: inside is vivid,
+  // outside stays visible but quiet, and the boundary needs no extra
+  // ink to be unmistakable.
+  const reachVeil = useMemo<GeoJSON.FeatureCollection>(() => {
+    const holes: GeoJSON.Position[][] = [];
+    for (const f of reachData.features) {
+      const g = f.geometry;
+      if (g.type === "Polygon" && g.coordinates[0]) holes.push(g.coordinates[0]);
+      else if (g.type === "MultiPolygon") {
+        for (const poly of g.coordinates) if (poly[0]) holes.push(poly[0]);
+      }
+    }
+    if (holes.length === 0) return { type: "FeatureCollection", features: [] };
+    const box: GeoJSON.Position[] = [
+      [-80.5, 37.5],
+      [-74.5, 37.5],
+      [-74.5, 41.5],
+      [-80.5, 41.5],
+      [-80.5, 37.5],
+    ];
+    return {
+      type: "FeatureCollection",
+      features: [
+        { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [box, ...holes] } },
+      ],
+    };
+  }, [reachData]);
+
   const placesGeoJson = useMemo<GeoJSON.FeatureCollection>(() => {
     return {
       type: "FeatureCollection",
@@ -661,16 +692,34 @@ export default function RadiusMap({
          *  fill + crisper line for the isochrone, quiet fade for the
          *  circle fallback. Same accent color throughout — only the
          *  shape and contrast change. */}
+        {/* Veil beyond the reach — mounted before the reach source so
+            the ring draws over the veil's inner edge. Dims everything
+            outside (beyond-reach pins included, which is the point:
+            they stay discoverable, just quiet). Eases back on zoom-in
+            so a street-level view isn't washed out. */}
+        <Source id="radius-reach-veil" type="geojson" data={reachVeil}>
+          <Layer
+            id="radius-reach-veil-fill"
+            type="fill"
+            paint={{
+              "fill-color": "#EAE2D2",
+              "fill-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.34, 13, 0.26, 15.5, 0.12],
+              "fill-opacity-transition": { duration: 420, delay: 0 },
+            }}
+          />
+        </Source>
         <Source id="radius-reach" type="geojson" data={reachData}>
           <Layer
             id="radius-reach-fill"
             type="fill"
             paint={{
               "fill-color": accentHex,
-              "fill-opacity": usingIsochrone ? 0.18 : 0.13,
+              "fill-opacity": usingIsochrone ? 0.14 : 0.1,
               // Cross-fade the fill when the reach changes (mode flip,
               // slider, isochrone arriving) instead of snapping — the
-              // reach reads as redrawn, not replaced.
+              // reach reads as redrawn, not replaced. Slightly LIGHTER
+              // than before: the veil now carries the inside/outside
+              // contrast, so the fill can stop tinting the pins.
               "fill-opacity-transition": { duration: 420, delay: 0 },
             }}
           />
@@ -682,9 +731,9 @@ export default function RadiusMap({
             type="line"
             paint={{
               "line-color": accentHex,
-              "line-width": usingIsochrone ? 9 : 8,
-              "line-blur": 6,
-              "line-opacity": 0.32,
+              "line-width": usingIsochrone ? 13 : 11,
+              "line-blur": 7,
+              "line-opacity": 0.4,
               "line-opacity-transition": { duration: 420, delay: 0 },
               "line-width-transition": { duration: 420, delay: 0 },
             }}
@@ -694,8 +743,8 @@ export default function RadiusMap({
             type="line"
             paint={{
               "line-color": accentHex,
-              "line-width": usingIsochrone ? 2.25 : 2,
-              "line-opacity": usingIsochrone ? 0.95 : 0.82,
+              "line-width": usingIsochrone ? 3 : 2.5,
+              "line-opacity": usingIsochrone ? 1 : 0.9,
               "line-opacity-transition": { duration: 420, delay: 0 },
               "line-width-transition": { duration: 420, delay: 0 },
             }}
