@@ -203,9 +203,26 @@ export default function PlaceList({
       </div>
 
       {layout === "grid" ? (
-        <div className="grid grid-cols-2 gap-2.5">
-          {sortedPlaces.map((p) => (
-            <PlaceCard key={p.slug} place={p} variant="grid" />
+        // Staggered gallery (FINAL_LOOK port 2): two columns with the
+        // right one dropped by ~28px so the cards interlock like a
+        // magazine spread instead of a flat checkerboard. Assignment
+        // alternates (1→L, 2→R, 3→L…) so rank still reads in the
+        // usual zigzag; the visual offset is the only change. Known
+        // tradeoff: DOM order runs left column then right, so
+        // screen-reader order is 1,3,5…2,4,6 — the List mode one
+        // toggle away remains the linear, rank-true reading.
+        <div className="flex gap-2.5">
+          {[0, 1].map((col) => (
+            <div
+              key={col}
+              className={`flex w-1/2 flex-col gap-2.5 ${col === 1 ? "pt-7" : ""}`}
+            >
+              {sortedPlaces
+                .filter((_, i) => i % 2 === col)
+                .map((p) => (
+                  <PlaceCard key={p.slug} place={p} variant="grid" />
+                ))}
+            </div>
           ))}
         </div>
       ) : (
