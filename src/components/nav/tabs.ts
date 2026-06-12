@@ -1,34 +1,41 @@
 import {
-  Compass,
   Sun,
   Map as MapIcon,
   Calendar,
   Bookmark,
+  LocateFixed,
   type LucideIcon,
 } from "lucide-react";
 
 /**
- * Shared primary-tab definition for BottomNav (mobile) + SideRail
- * (desktop). One source of truth — change a label here and both
- * navs follow.
+ * Shared primary-nav definition for BottomNav (mobile) and SideRail
+ * (desktop). One source of truth holds the labels, so a change here
+ * flows to both navs at once.
  *
- * Five tabs:
- *   - Radius    /guide      (the front door — "The Radius": what are you after?)
- *   - Today     /today      (weather + what's on + the live county pulse —
- *                            the daily-return surface for locals)
- *   - Map       /map
- *   - Events    /events
- *   - Saved     /my-radius  (matches the page H1; "My Radius" is the brand eyebrow)
+ * Four tabs plus a raised center launcher (May 2026 five-slot pass):
+ *   - Today    /today
+ *   - Map      /map?mode=browse   (the panable browse map)
+ *   - Radius   /map?mode=radius   (raised center, the reach tool)
+ *   - Events   /events
+ *   - Saved    /my-radius         (the saved and followed list)
  *
- * Today rejoined the primary nav (it had been demoted to a link under
- * the front door): the UI survey found the temporal / ambient-live-data layer is
- * the single biggest daily-return driver for residents, and a buried
- * link can't carry that. Secondary destinations (amenities, contacts,
- * trails…) still live behind the header "More" sheet.
+ * The "Radius" launcher is the signature center action, so it lives
+ * apart from TABS as RADIUS_LAUNCHER. Map and Radius now read as two
+ * distinct jobs instead of one ambiguous destination: Map opens the
+ * browse map, the raised center opens the reach builder. Saved is the
+ * renamed "My Radius" list, which is the saved and followed places, not
+ * the radius tool. The retired "Field guide" tab moved to a More button
+ * in the header, so its content stays reachable without a tab.
  */
 
 export type Tab = {
+  /** Pathname used for active-state matching. Query strings are not
+   *  visible to usePathname, so this stays query-free. */
   href: string;
+  /** Optional navigation target when it differs from the match path,
+   *  for example a tab that opens a specific mode of a shared route.
+   *  Falls back to href when unset. */
+  nav?: string;
   label: string;
   icon: LucideIcon;
   /** Switch from outline to filled when this tab is active. Only the
@@ -37,25 +44,37 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/guide",     label: "Radius", icon: Compass,  fillOnActive: false },
-  { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
-  { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
+  { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: true  },
+  { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false, nav: "/map?mode=browse" },
   { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
   { href: "/my-radius", label: "Saved",  icon: Bookmark, fillOnActive: true  },
 ] as const;
 
 /**
+ * The raised center launcher. It opens the radius reach builder from any
+ * screen, which is the brief's "radius as the action from anywhere". It
+ * navigates to the dedicated radius render rather than mounting the full
+ * Mapbox builder in a sheet, so the heavy map chunk loads only on the
+ * radius surface and the sheet drag gesture never fights the map pan.
+ */
+export const RADIUS_LAUNCHER = {
+  href: "/map?mode=radius",
+  label: "Radius",
+  icon: LocateFixed,
+} as const;
+
+/**
  * Secondary surfaces that belong UNDER a primary tab so the nav
  * highlights the right home. Place-browse + town + collection routes
- * read as the "Map" (explore places) context — index 2 now that Today
- * sits at index 1. Anything not listed returns -1 → no tab highlighted
+ * read as the "Map" (explore places) context — index 1 in the four-tab
+ * layout. Anything not listed returns -1 → no tab highlighted
  * (correct for /settings, /about, /parks, a place detail, etc.).
  */
 const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
-  ["/places", 2],
-  ["/category", 2],
-  ["/collections", 2],
-  ["/m/", 2],
+  ["/places", 1],
+  ["/category", 1],
+  ["/collections", 1],
+  ["/m/", 1],
 ];
 
 /** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */

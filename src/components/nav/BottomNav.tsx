@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
-import { TABS, tabIndexForPath } from "./tabs";
+import { TABS, RADIUS_LAUNCHER, tabIndexForPath } from "./tabs";
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -13,11 +13,10 @@ export default function BottomNav() {
   // Real index from the current route, or -1 when the page isn't under
   // any tab (a place detail, /settings, /about…). We deliberately do
   // NOT fall back to 0 — that's what made every non-tab page falsely
-  // light up "Today". At -1 the moving pill simply hides (the measure
-  // effect finds no cell), so no tab is mis-highlighted.
+  // light up "Today". At -1 the moving pill simply hides.
   const realIdx = tabIndexForPath(pathname);
 
-  // Optimistic index. Set on pointer-down so the indicator slides
+  // Optimistic index. It is set on pointer-down so the indicator slides
   // within one frame, before the server-side route work begins. The
   // reconcile effect below clears it when the real route catches up,
   // which collapses the optimistic state cleanly.
@@ -31,23 +30,28 @@ export default function BottomNav() {
 
   const activeIdx = pendingIdx ?? realIdx;
 
-  // Measure the tab strip + active tab so the indicator pill can sit
-  // EXACTLY behind the active chip. Recomputes on resize and on
+  // Measure the tab strip and active tab so the indicator pill can sit
+  // exactly behind the active chip. It recomputes on resize and on
   // active-tab change. Using a measured pill instead of a CSS-only
-  // "100% / 5" calc lets us pad the pill smaller than the tab cell
-  // so it reads as a chip behind the icon, not a full-column slab.
+  // "100% / 5" calc lets us pad the pill smaller than the tab cell so it
+  // reads as a chip behind the icon, not a full-column slab. The center
+  // launcher is not a tab, so its column carries no ref and the pill
+  // never parks behind it.
   const stripRef = useRef<HTMLUListElement>(null);
   const tabRefs = useRef<Array<HTMLLIElement | null>>([]);
   const [pill, setPill] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
   useEffect(() => {
     function measure() {
       const strip = stripRef.current;
-      const cell = tabRefs.current[activeIdx];
-      if (!strip || !cell) return;
+      const cell = activeIdx >= 0 ? tabRefs.current[activeIdx] : null;
+      if (!strip || !cell) {
+        // Non-tab route: collapse the pill (width 0 → opacity 0) so the
+        // brand chip never sits behind a tab that isn't active.
+        setPill((p) => (p.width === 0 ? p : { ...p, width: 0 }));
+        return;
+      }
       const sBox = strip.getBoundingClientRect();
       const cBox = cell.getBoundingClientRect();
-      // Pad the pill to roughly the chip width — 48px wide centered
-      // on the cell's icon, clamped to the cell.
       const pillW = Math.min(54, cBox.width - 8);
       const left = cBox.left - sBox.left + (cBox.width - pillW) / 2;
       setPill({ left, width: pillW });
@@ -57,128 +61,186 @@ export default function BottomNav() {
     return () => window.removeEventListener("resize", measure);
   }, [activeIdx]);
 
+  // Shared view-transition push so a tap animates the route change where
+  // the browser supports it, and falls back to a plain push otherwise.
+  function navigate(href: string, e?: { preventDefault?: () => void }) {
+    if (e && typeof document !== "undefined" && "startViewTransition" in document) {
+      e.preventDefault?.();
+      const doc = document as Document & {
+        startViewTransition?: (cb: () => void) => unknown;
+      };
+      doc.startViewTransition?.(() => router.push(href));
+    }
+  }
+
+  const RadiusIcon = RADIUS_LAUNCHER.icon;
+  const radiusActive =
+    pathname === "/map" || pathname.startsWith("/map/");
+
+  // Build the row: Today, Map, [raised center], Events, Saved. The
+  // center spacer is inserted before the Events tab (index 2) so the
+  // four real tabs keep their indices for the pill measurement.
+  const cells: React.ReactNode[] = [];
+  TABS.forEach((tab, idx) => {
+    if (idx === 2) {
+      cells.push(
+        <li key="radius-center" className="flex">
+          <Link
+            href={RADIUS_LAUNCHER.href}
+            onPointerDown={() => haptic("medium")}
+            onClick={(e) => navigate(RADIUS_LAUNCHER.href, e)}
+            aria-label="Open your radius reach"
+            className="group relative flex h-12 w-full flex-col items-center justify-end gap-1 rounded-full pb-1 text-center"
+          >
+            <span
+              className="text-[10.5px] font-semibold leading-none tracking-tight"
+              style={{ color: radiusActive ? "var(--app-brand)" : "var(--app-ink-3)" }}
+            >
+              {RADIUS_LAUNCHER.label}
+            </span>
+          </Link>
+        </li>,
+      );
+    }
+    const { href, nav, label, icon: Icon, fillOnActive } = tab;
+    const isRealActive = pathname === href || pathname.startsWith(href + "/");
+    const isPendingActive = pendingIdx === idx;
+    const active = isRealActive || isPendingActive;
+    const target = nav ?? href;
+
+    cells.push(
+      <li
+        key={href}
+        ref={(el) => {
+          tabRefs.current[idx] = el;
+        }}
+        className="flex"
+      >
+        <Link
+          href={target}
+          onPointerDown={() => {
+            if (!isRealActive) setPendingIdx(idx);
+          }}
+          onClick={(e) => {
+            if (isRealActive) return;
+            setPendingIdx(idx);
+            haptic("light");
+            navigate(target, e);
+          }}
+          className="group relative flex h-12 w-full flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]"
+          style={{
+            color: active ? "var(--app-brand)" : "var(--app-ink-3)",
+            transitionTimingFunction: "var(--app-ease-spring)",
+            transitionDuration: "var(--app-dur-fast)",
+          }}
+          aria-current={active ? "page" : undefined}
+        >
+          <Icon
+            className="transition-transform duration-200"
+            width={active ? 22 : 20}
+            height={active ? 22 : 20}
+            strokeWidth={active ? 2.25 : 2}
+            fill={active && fillOnActive ? "currentColor" : "none"}
+            style={{
+              transform: active ? "translateY(-1px) scale(1.04)" : "translateY(0)",
+              transitionTimingFunction: "var(--app-ease-spring)",
+            }}
+          />
+          <span
+            className="text-[10.5px] font-semibold leading-none tracking-tight transition-opacity"
+            style={{ opacity: active ? 1 : 0.78 }}
+          >
+            {label}
+          </span>
+        </Link>
+      </li>,
+    );
+  });
+
   return (
     <div
       aria-hidden
-      // Hide the floating bottom pill at lg+ where the SideRail
-      // takes over as the primary nav.
+      // Hide the floating bottom pill at lg+ where the SideRail takes
+      // over as the primary nav. Tokenized z-index (--z-nav). Lift the
+      // pill above the iOS safe-area inset so the nav clears the home
+      // indicator.
       className="pointer-events-none fixed inset-x-0 bottom-0 px-3 lg:hidden"
-      // Tokenized z-index (--z-nav) — see globals.css :root --z-*
-      // scale. Lift the pill above the iOS safe-area inset so the
-      // nav doesn't sit on top of the home indicator.
       style={{
         zIndex: "var(--z-nav)",
         paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
       }}
     >
-      <nav
-        aria-label="Primary"
-        className="pointer-events-auto relative mx-auto max-w-screen-md overflow-hidden rounded-full"
-        style={{
-          // Fully opaque so scroll content never ghosts through the pill
-          // (the audit caught tiles/headers bleeding at 92%). Blur kept for
-          // a faint frosted edge; with a solid fill it's purely aesthetic.
-          background: "var(--app-bg-elevated-solid)",
-          backdropFilter: "blur(22px) saturate(1.15)",
-          WebkitBackdropFilter: "blur(22px) saturate(1.15)",
-          border: "1px solid var(--app-border)",
-          boxShadow:
-            "0 10px 28px -8px rgba(20,20,18,0.22), 0 2px 6px rgba(20,20,18,0.10), var(--app-edge), var(--app-hi)",
-        }}
-      >
-        {/* Moving brand pill — sits BEHIND the active tab's icon. CSS
-            transform on `left/width` so the pill morphs between cells
-            with the same spring easing the indicator bar used before.
-            The pill carries the brand color + glow; the icon and
-            label ride on top with brand ink color when active. */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute top-1/2 z-0 h-10 -translate-y-1/2 rounded-full"
+      {/* Relative wrapper is the positioning context for the raised
+          launcher. It carries no overflow clip, so the raised circle can
+          rise above the bar while the nav below still clips its moving
+          pill to the rounded-pill shape. */}
+      <div className="pointer-events-auto relative mx-auto max-w-screen-md">
+        <nav
+          aria-label="Primary"
+          className="relative overflow-hidden rounded-full"
           style={{
-            left: pill.left,
-            width: pill.width,
-            background:
-              "linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 22%, var(--app-bg-elevated)) 0%, color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated)) 100%)",
+            background: "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+            backdropFilter: "blur(22px) saturate(1.15)",
+            WebkitBackdropFilter: "blur(22px) saturate(1.15)",
+            border: "1px solid var(--app-border)",
             boxShadow:
-              "0 6px 16px -6px color-mix(in srgb, var(--app-brand) 50%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--app-brand) 28%, transparent)",
-            transition:
-              "left 320ms var(--app-ease-spring), width 320ms var(--app-ease-spring), opacity 200ms ease",
-            opacity: pill.width > 0 ? 1 : 0,
+              "0 10px 28px -8px rgba(20,20,18,0.22), 0 2px 6px rgba(20,20,18,0.10), var(--app-edge), var(--app-hi)",
           }}
-        />
-
-        <ul
-          ref={stripRef}
-          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
         >
-          {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
-            const isRealActive =
-              pathname === href || pathname.startsWith(href + "/");
-            const isPendingActive = pendingIdx === idx;
-            const active = isRealActive || isPendingActive;
+          {/* Moving brand pill sits behind the active tab's icon. The
+              left and width morph between cells with a spring easing. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute top-1/2 z-0 h-10 -translate-y-1/2 rounded-full"
+            style={{
+              left: pill.left,
+              width: pill.width,
+              background:
+                "linear-gradient(155deg, color-mix(in srgb, var(--app-brand) 22%, var(--app-bg-elevated)) 0%, color-mix(in srgb, var(--app-brand) 14%, var(--app-bg-elevated)) 100%)",
+              boxShadow:
+                "0 6px 16px -6px color-mix(in srgb, var(--app-brand) 50%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--app-brand) 28%, transparent)",
+              transition:
+                "left 320ms var(--app-ease-spring), width 320ms var(--app-ease-spring), opacity 200ms ease",
+              opacity: pill.width > 0 ? 1 : 0,
+            }}
+          />
 
-            const handleActivate = (e?: { preventDefault?: () => void }) => {
-              if (isRealActive) return;
-              setPendingIdx(idx);
-              haptic("light");
-              if (e && typeof document !== "undefined" && "startViewTransition" in document) {
-                e.preventDefault?.();
-                const doc = document as Document & {
-                  startViewTransition?: (cb: () => void) => unknown;
-                };
-                doc.startViewTransition?.(() => router.push(href));
-              }
-            };
+          <ul
+            ref={stripRef}
+            className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
+          >
+            {cells}
+          </ul>
+        </nav>
 
-            const tabClass =
-              "group relative flex h-12 flex-col items-center justify-center gap-1 rounded-full text-center transition-transform active:scale-[0.92]";
-            const tabStyle = {
-              color: active ? "var(--app-brand)" : "var(--app-ink-3)",
-              transitionTimingFunction: "var(--app-ease-spring)",
-              transitionDuration: "var(--app-dur-fast)",
-            } as const;
-
-            return (
-              <li
-                key={href}
-                ref={(el) => {
-                  tabRefs.current[idx] = el;
-                }}
-                className="flex"
-              >
-                <Link
-                  href={href}
-                  onPointerDown={() => {
-                    if (!isRealActive) setPendingIdx(idx);
-                  }}
-                  onClick={(e) => handleActivate(e)}
-                  className={tabClass + " w-full"}
-                  style={tabStyle}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <Icon
-                    className="transition-transform duration-200"
-                    width={active ? 22 : 20}
-                    height={active ? 22 : 20}
-                    strokeWidth={active ? 2.25 : 2}
-                    fill={active && fillOnActive ? "currentColor" : "none"}
-                    style={{
-                      transform: active ? "translateY(-1px) scale(1.04)" : "translateY(0)",
-                      transitionTimingFunction: "var(--app-ease-spring)",
-                    }}
-                  />
-                  <span
-                    className="text-[11px] font-semibold leading-tight tracking-tight transition-opacity"
-                    style={{ opacity: active ? 1 : 0.78 }}
-                  >
-                    {label}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+        {/* Raised center launcher. It floats above the bar as a sibling
+            of the clipped nav so it is never cut off. The brand-filled
+            disc is the signature action and reads as the product mark:
+            tap it from any screen to open your radius reach. */}
+        <Link
+          href={RADIUS_LAUNCHER.href}
+          onPointerDown={() => haptic("medium")}
+          onClick={(e) => navigate(RADIUS_LAUNCHER.href, e)}
+          aria-label="Open your radius reach"
+          className="absolute left-1/2 grid h-[56px] w-[56px] -translate-x-1/2 place-items-center rounded-full transition-transform active:scale-90"
+          style={{
+            top: "-16px",
+            background:
+              "linear-gradient(155deg, var(--app-brand) 0%, var(--clay-deep, #97331F) 100%)",
+            boxShadow:
+              "0 0 0 4px color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent), 0 12px 24px -8px color-mix(in srgb, var(--app-brand) 60%, transparent), 0 4px 10px rgba(20,20,18,0.22), inset 0 1px 0 rgba(255,255,255,0.28)",
+            transitionTimingFunction: "var(--app-ease-spring)",
+          }}
+        >
+          <RadiusIcon
+            width={24}
+            height={24}
+            strokeWidth={2.25}
+            style={{ color: "#FBF7EF" }}
+            aria-hidden
+          />
+        </Link>
+      </div>
     </div>
   );
 }
