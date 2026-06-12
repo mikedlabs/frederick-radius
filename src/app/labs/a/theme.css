@@ -1,0 +1,113 @@
+/*
+ * Direction A: Field Guide, Executed. Token file (the source of truth for
+ * this prototype). Tests Hypothesis A: the field-guide identity was sound,
+ * the execution drifted. Everything here is scoped under .lab-a so the
+ * prototype never touches the production token system.
+ *
+ * Discipline is the identity. Five type sizes, one accent spent on exactly
+ * one action per screen, structure carried by ink rules and tints, never by
+ * color. The signature elements are the constant band (an unbroken ink rule
+ * under the masthead on every screen, after the NPS Unigrid) and the almanac
+ * line (one monospace line of the day's facts).
+ */
+
+.lab-a {
+  /* Palette. Paper cream ground, ink, a single vermilion. Structure is two
+     ink tints, never the accent. Spruce belongs to the map land only. */
+  --a-paper: #eee6d4;
+  --a-paper-raised: #e7ddc7;
+  --a-paper-sunk: #e4d9c0;
+  --a-ink: #16140e;
+  --a-ink-2: rgba(22, 20, 14, 0.64); /* secondary text */
+  --a-ink-3: rgba(22, 20, 14, 0.44); /* tertiary, captions */
+  --a-rule: rgba(22, 20, 14, 0.14); /* hairline, the index rules */
+  --a-band: #16140e; /* the constant band, full strength */
+  --a-accent: #e14328; /* ONE primary action per screen, nowhere else */
+  --a-spruce: #2f5d50; /* map land treatment only, never interface */
+
+  /* Type roles. Faces come from the root layout variables. */
+  --a-display: var(--font-display, Georgia, serif);
+  --a-text: var(--font-sans-base, system-ui, sans-serif);
+  --a-mono: var(--font-mono-base, ui-monospace, monospace);
+
+  /* The five sizes. A 1.25 modular scale, with the display title set far
+     larger than app chrome dares, so a place name reads as a broadsheet
+     headline. Nothing on a screen may use a size outside these five. */
+  --a-size-data: 0.75rem; /* 12px mono: counts, hours, coordinates */
+  --a-size-label: 0.8125rem; /* 13px: chips, captions, metadata */
+  --a-size-body: 1rem; /* 16px: prose, list titles */
+  --a-size-lead: 1.5rem; /* 24px Fraunces: card lead */
+  --a-size-title: 2.875rem; /* 46px Fraunces: the screen headline */
+
+  --a-gutter: 1.25rem; /* the single page margin */
+
+  background: var(--a-paper);
+  color: var(--a-ink);
+  font-family: var(--a-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The constant band. One unbroken 2px ink rule that runs the full width
+   under the masthead on every screen. It is the wayfinding signature: a
+   user always knows the masthead ends here. */
+.lab-a-band {
+  height: 2px;
+  background: var(--a-band);
+  width: 100%;
+}
+
+/* A hairline index rule between rows. Hierarchy comes from these, not boxes. */
+.lab-a-rule {
+  height: 1px;
+  background: var(--a-rule);
+  width: 100%;
+}
+
+.lab-a-display {
+  font-family: var(--a-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
+}
+
+.lab-a-mono {
+  font-family: var(--a-mono);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The one accent. A single primary action per screen wears it; a
+   token-lint in the real rebuild would fail the build on any other use. */
+.lab-a-primary {
+  background: var(--a-accent);
+  color: #fff;
+  font-family: var(--a-text);
+  font-weight: 600;
+  border-radius: 999px;
+}
+
+/* Images sit ON the paper: the imagery standard's inner line + tonal grade. */
+.lab-a-image {
+  filter: saturate(0.92) contrast(1.04);
+  box-shadow: inset 0 0 0 1px rgba(22, 20, 14, 0.08);
+  background: var(--a-paper-sunk);
+}
+
+/* The image load fade (imagery standard motion rule). */
+@keyframes lab-a-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.lab-a-fade {
+  animation: lab-a-fade 200ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lab-a-fade {
+    animation: none;
+  }
+}
