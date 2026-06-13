@@ -9,3 +9,7 @@ Out-of-scope observations logged during sessions, per the standing instructions.
 3. **No PostHog key exists anywhere** (checked local env files and `vercel env ls`). The Session 0 gate (events visible in the PostHog debugger from a real phone) requires creating the PostHog project and setting `NEXT_PUBLIC_POSTHOG_KEY` (and optionally `NEXT_PUBLIC_POSTHOG_HOST`) in Vercel, then redeploying.
 4. **Vercel preview deployments are auth-protected** (401 to anonymous requests), so `budget.sh` and the Playwright suite cannot run against preview URLs from a script without a protection-bypass token. Session 0's gate numbers were captured against a local production build instead; Sessions 1+ should either set `VERCEL_AUTOMATION_BYPASS_SECRET` or keep using local production builds for gates.
 5. **PR #490 (ResultBlock, closed in the pre-Session-1 triage)** carried a 4-tier result-presentation idea for Ask answers. If Session 3 wants tiered results inside the P5 search sheet, that closed PR is the reference.
+
+## From Session 1 (routes and navigation)
+
+6. **The root has no h1.** The Today page (now the root) renders its date line as a styled paragraph and has no h1 element; the old funnel root's h1 ("What are you after?") retired with it. Session 2 rebuilds the Today surface and should give the page a real h1 in the process.
