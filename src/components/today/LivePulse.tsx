@@ -33,7 +33,7 @@ export default async function LivePulse() {
       label: `${safety.length} active fire/rescue call${safety.length === 1 ? "" : "s"}`,
       value: `${top.type} · ${top.address}`,
       detail: "PulsePoint · live dispatch",
-      href: "/pulse#safety",
+      href: "/alerts#safety",
     });
   }
 
@@ -46,7 +46,7 @@ export default async function LivePulse() {
       label: closure.status === "closed" ? "FCPS closed" : closure.status === "delayed" ? "FCPS delayed" : "FCPS early dismissal",
       value: closure.title.slice(0, 60),
       detail: "Frederick County Public Schools · via FCPS RSS",
-      href: "/pulse#schools",
+      href: "/alerts#schools",
     });
   }
 
@@ -59,7 +59,7 @@ export default async function LivePulse() {
       label: `${outages.total_out.toLocaleString()} without power`,
       value: muni ? `${muni.area} hardest hit (${muni.customers_out.toLocaleString()})` : "Across the county",
       detail: "FirstEnergy / Potomac Edison · updated every 15 min",
-      href: "/pulse#power",
+      href: "/alerts#power",
     });
   }
 
@@ -73,7 +73,7 @@ export default async function LivePulse() {
       label: i.type === "Construction" ? "Major roadwork" : "Severe traffic",
       value: `${i.road}: ${i.description.slice(0, 60)}`,
       detail: "MDOT CHART · live",
-      href: "/pulse#traffic",
+      href: "/alerts#traffic",
     });
   } else if (incidents.length > 5) {
     items.push({
@@ -94,7 +94,7 @@ export default async function LivePulse() {
       label: `${fixit.length} recent 311 reports`,
       value: fixit[0].summary.slice(0, 60),
       detail: "FCG FixIT · SeeClickFix",
-      href: "/pulse#311",
+      href: "/alerts#fixit",
     });
   }
 

@@ -178,3 +178,50 @@ walk by hand). Orphaned event components (EventsExplorer, EventsMap,
 WeekendVibes, TonightRail, EventWeekRibbon, EventAgenda,
 EventsCompartmented, MunicipalEvents) are now unmounted — a later
 cleanup should delete the zero-caller ones.
+
+## Session 4 (Map, alerts, and the suite), June 13, 2026, local production build
+
+Decision 3 completed and the map controls consolidated (P2). /pulse (a
+dead 1343-line page shadowed by the Session-1 redirect) was relocated
+to /alerts and trimmed: the "By the numbers" census block deleted, three
+facts (population 285,464, founded 1748, municipalities — computed from
+MUNICIPALITIES, incorporated only) moved to /about as a quiet static
+band (not a dashboard, per /about's own design rule). /alerts keeps the
+live operational surface — the status grid shows every category
+collapsed to ONE line ("Fire & rescue — 0 · clear") with detail
+sections rendering only when active; on a quiet day it reads "All clear
+across the county." The conditional Today strip (CivicAlerts) is
+unchanged. LivePulse's five /pulse#anchors repointed to /alerts#.
+
+Map (radius mode): the three standalone camera/layer buttons folded
+into ONE "View and layers" popover (Fit radius + Show whole county +
+overlay toggles); "Use my location" stays the only other control. The
+3-detent vaul sheet and browse-mode pin→Directions (two taps) already
+existed from the merged queue, so no map rebuild was needed.
+
+Budget after Session 4 (production build on :3100):
+
+```
+page       visible lines   decoded bytes
+/          106             147,782
+/today     106             147,782   (= / ; /today 308-redirects)
+/events    229             275,388
+/map       19              118,021
+/alerts    84              150,931   (was a 7-line stub; now the real surface)
+```
+
+CLUTTER SUITE: 7 passed, 0 failed — the full suite stays green. A
+latent bug surfaced and was fixed mid-session: the Session-3 day-group
+<h2> read "Sunday, June 14", and the count-integrity regex grabbed the
+date numeral "14" as a card count (it had passed before only by the
+luck of which dates rendered). The numeric date now rides as a sibling
+<span>; the <h2> carries the weekday word only, so no section heading
+contains a digit.
+
+Routes: /pulse 308 → /alerts; /alerts, /about, /map all 200.
+
+Gate verdict: PASS (entire clutter.spec.ts green; budget deltas
+recorded above). Personas across Sessions 1–3 (1,3 Today; 2,5 Events)
+hold; Persona 4 (new resident — one clear entry point, value prop +
+sources reachable) is satisfied by the single-answer root (Session 1–2)
+and the /about value prop. The dead /pulse page is deleted.

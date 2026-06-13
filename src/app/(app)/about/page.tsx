@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { socialFor, type SocialPlatform } from "@/data/social-sources";
+import { MUNICIPALITIES } from "@/data/municipalities";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -191,6 +192,37 @@ export default async function AboutPage() {
           </span>
           , a downtown Frederick resident.
         </p>
+      </section>
+
+      {/* The county, in three facts. Migrated from the retired /pulse
+          "By the numbers" census block (Session 4). Kept to three —
+          a quiet reference line, not the live dashboard this page's
+          design rule explicitly refuses. Municipalities is computed
+          from the data (incorporated only) so it can't drift. */}
+      <section aria-label="Frederick County, in brief" className="border-t pt-5" style={{ borderColor: "var(--app-border)" }}>
+        <dl className="grid grid-cols-3 gap-3 text-center">
+          {[
+            { value: "285,464", label: "Population", note: "2023 ACS estimate" },
+            { value: "1748", label: "Founded", note: "Frederick City" },
+            {
+              value: String(MUNICIPALITIES.filter((m) => m.type !== "unincorporated").length),
+              label: "Municipalities",
+              note: "Incorporated",
+            },
+          ].map((f) => (
+            <div key={f.label}>
+              <dd className="font-serif text-[26px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+                {f.value}
+              </dd>
+              <dt className="mt-1 text-[12px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+                {f.label}
+              </dt>
+              <p className="mt-0.5 text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+                {f.note}
+              </p>
+            </div>
+          ))}
+        </dl>
       </section>
 
       {/* The CTA — single primary button. The whole point of this

@@ -67,7 +67,7 @@ function moodMatch(e: EventWithMeta, mood: Mood): boolean {
 }
 
 /** Eastern-time day key + human label for grouping. */
-function nyDay(iso: string): { key: string; weekday: string; dayNum: string; label: string } {
+function nyDay(iso: string): { key: string; weekday: string; weekdayLong: string; dayNum: string; dateLabel: string; label: string } {
   const p = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York",
     weekday: "short",
@@ -80,7 +80,13 @@ function nyDay(iso: string): { key: string; weekday: string; dayNum: string; lab
   return {
     key: `${get("year")}-${get("month")}-${get("day")}`,
     weekday: get("weekday"),
+    weekdayLong: longWeekday,
     dayNum: get("day"),
+    // The month + day, kept OUT of the day-group <h2> (the
+    // count-integrity test reads the first number in an h2; a date
+    // numeral there would be read as a card count). Rendered as a
+    // sibling span instead.
+    dateLabel: `${get("month")} ${get("day")}`,
     label: `${longWeekday}, ${get("month")} ${get("day")}`,
   };
 }
@@ -182,18 +188,19 @@ export default async function EventsIndexPage({
   const todayKey = todayKeyNY(now);
 
   // Group the soonest-sorted list by Eastern day. (A→Z renders flat.)
-  const dayGroups: { key: string; weekday: string; dayNum: string; label: string; events: EventWithMeta[] }[] = [];
+  const dayGroups: { key: string; weekday: string; weekdayLong: string; dayNum: string; dateLabel: string; label: string; events: EventWithMeta[] }[] = [];
   if (sort === "soonest") {
     const byKey = new Map<string, (typeof dayGroups)[number]>();
     for (const e of sorted) {
       const d = nyDay(e.starts_at);
-      let g = byKey.get(d.key);
-      if (!g) {
-        g = { ...d, events: [] };
+      const existing = byKey.get(d.key);
+      if (existing) {
+        existing.events.push(e);
+      } else {
+        const g = { ...d, events: [e] };
         byKey.set(d.key, g);
         dayGroups.push(g);
       }
-      g.events.push(e);
     }
   }
   // Take whole day-groups until we'd exceed MAX_EVENTS (always at least
@@ -326,12 +333,20 @@ export default async function EventsIndexPage({
         <>
           {shownDays.map((g) => (
             <section key={g.key} id={`day-${g.key}`} aria-label={g.label} className="scroll-mt-24 space-y-2">
-              <h2
-                className="pt-1 font-serif text-[16px] font-semibold tracking-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {g.key === todayKey ? "Tonight" : g.label}
-              </h2>
+              {/* The <h2> carries NO digit — the count-integrity test
+                  reads the first number in a section's h2 as a card
+                  count, so the numeric date is a SIBLING, never inside
+                  the heading. */}
+              <div className="flex items-baseline gap-2 pt-1">
+                <h2 className="font-serif text-[16px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  {g.key === todayKey ? "Tonight" : g.weekdayLong}
+                </h2>
+                {g.key !== todayKey && (
+                  <span className="text-[12px] font-medium tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {g.dateLabel}
+                  </span>
+                )}
+              </div>
               <ol className="space-y-2">
                 {g.events.map((e) => (
                   <li key={e.slug}>

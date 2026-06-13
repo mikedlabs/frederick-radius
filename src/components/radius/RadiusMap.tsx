@@ -995,37 +995,18 @@ export default function RadiusMap({
         </div>
       )}
 
-      {/* Camera controls — Fit radius / Show county. Right side so they
-          don't sit over the Mapbox attribution at the bottom-left. */}
-      <div className="absolute right-3 top-3 z-[var(--z-map-control)] flex flex-col gap-1.5">
-        <button
-          type="button"
-          onClick={fitToRadius}
-          aria-label="Fit radius"
-          title="Fit radius"
-          className="tap-44 grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-        >
-          <Crosshair className="h-4 w-4" strokeWidth={2} aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={fitToCounty}
-          aria-label="Show whole county"
-          title="Show whole county"
-          className="tap-44 grid h-9 w-9 place-items-center rounded-full border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-        >
-          <MapIcon className="h-4 w-4" strokeWidth={2} aria-hidden />
-        </button>
-        {/* Layers — opens a compact list of the ready field-guide
-            overlays. Dark by default; the reader pulls one in. */}
+      {/* ONE map control (Session 4 / P2): a single "View" button opens
+          a popover holding the camera actions (Fit radius, Show whole
+          county) AND the field-guide overlay toggles — the three former
+          standalone buttons folded into one, so "Use my location" (in
+          RadiusBuilder) is the only other control on the canvas. */}
+      <div className="absolute right-3 top-3 z-[var(--z-map-control)] flex flex-col items-end gap-1.5">
         <button
           type="button"
           onClick={() => setLayersOpen((v) => !v)}
-          aria-label="Map layers"
+          aria-label="View and layers"
           aria-expanded={layersOpen}
-          title="Map layers"
+          title="View and layers"
           className="tap-44 grid h-9 w-9 place-items-center rounded-full border shadow-[var(--app-shadow-1)] transition active:scale-[0.94]"
           style={{
             background: activeOverlays.length > 0 ? "var(--app-brand)" : "var(--app-bg-elevated)",
@@ -1040,6 +1021,28 @@ export default function RadiusMap({
             className="flex flex-col gap-1 rounded-[var(--app-radius-md)] border p-1.5 shadow-[var(--app-shadow-2)]"
             style={{ background: "color-mix(in srgb, var(--app-bg-elevated) 94%, transparent)", borderColor: "var(--app-border)", backdropFilter: "blur(8px)" }}
           >
+            {/* Camera actions — the old standalone Fit / County buttons. */}
+            <button
+              type="button"
+              onClick={() => { fitToRadius(); setLayersOpen(false); }}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
+              style={{ background: "transparent", color: "var(--app-ink-2)" }}
+            >
+              <Crosshair className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+              Fit radius
+            </button>
+            <button
+              type="button"
+              onClick={() => { fitToCounty(); setLayersOpen(false); }}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
+              style={{ background: "transparent", color: "var(--app-ink-2)" }}
+            >
+              <MapIcon className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+              Show whole county
+            </button>
+            {readyOverlays.length > 0 && (
+              <span aria-hidden className="my-0.5 h-px" style={{ background: "var(--app-border)" }} />
+            )}
             {readyOverlays.map((o) => {
               const on = activeOverlays.includes(o.key);
               return (
