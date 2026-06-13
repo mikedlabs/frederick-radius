@@ -51,3 +51,24 @@ page | visible lines | decoded bytes
 Clutter suite against the same build: 5 failed, 2 passed — the same failure shape as the production baseline (stat card on /today, inputs in /events main, count integrity, twin redirects, payload budgets), which is the expected pre-subtraction state and confirms the rebase landed on the code production actually runs. Session 0 changes no UI by design: the PostHog provider renders null and every capture rides an existing handler.
 
 Session 0 gate status: all ten events wired on the current main; chip_tapped, place_viewed, directions_tapped, save_tapped, and search_submitted re-verified firing after the rebase (plan, event, outbound hooks merged without conflict and were verified pre-rebase; digest_subscribed has no UI surface until Session 6). The PostHog-debugger-from-a-real-phone gate is blocked on creating the PostHog project and setting NEXT_PUBLIC_POSTHOG_KEY in Vercel; the wiring is inert until then by design.
+
+## Session 1 (routes and navigation), June 12, 2026, local production build
+
+Route work landed: / is the Today surface (Decision 1); /guide, /today, and /pulse permanently redirect (to /, /, and the new /alerts stub); /radius already redirected on main. The tab bar is Today, Events, Map, Search, Saved from the one shared config (Decision 2); Search is an action slot opening the one command sheet; the duplicate Events link left the utility footer.
+
+```
+Clutter budget, local production build, Fri Jun 12 evening
+page | visible lines | decoded bytes
+-----|---------------|--------------
+/ | 377 | 352662
+/today | 377 | 352662  (308 redirect to /, measured after following)
+/events | 919 | 735324
+/map | 19 | 119613
+/alerts | 18 | 54540
+```
+
+The / row now measures the Today surface, so it jumps from the old 50-line funnel to Today's count by definition; Session 2 subtracts it toward the under-150 target. /today is a permanent redirect, so its row now mirrors /.
+
+Clutter suite: 6 passed, 1 failed. PASSING now includes the Session 1 gate (routes: twins are redirects) plus every nav-404 check, the /events and /map contracts, and count integrity on this run. The one failure is the /today payload budget (decoded HTML over 150 KB), which is Session 2's named work. The / and /today page contracts pass or fail with the time-of-day stat card, as documented at baseline; the stat card itself is on Session 2's kill list.
+
+Gate verdict: PASS (route and nav-404 tests green; remaining pages verified visually unchanged; the tab bar change is the named scope).
