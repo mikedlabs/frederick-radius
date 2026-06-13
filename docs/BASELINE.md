@@ -225,3 +225,66 @@ recorded above). Personas across Sessions 1–3 (1,3 Today; 2,5 Events)
 hold; Persona 4 (new resident — one clear entry point, value prop +
 sources reachable) is satisfied by the single-answer root (Session 1–2)
 and the /about value prop. The dead /pulse page is deleted.
+
+## Session 5 (The signature layer), June 13, 2026, local production build
+
+The premium layer, unlocked now that Sessions 1–4 passed their gates
+(rule R6). This session ships the FLAGSHIP — S2, the clock — plus the
+project-spring foundation, and stops for the one human gate the runbook
+names: Mike's approval of the feel on a real phone.
+
+Shipped:
+- **The project spring** (S4 foundation): `--app-spring:
+  cubic-bezier(.3,1.18,.35,1)` added as the one signature curve. Kept
+  distinct from the existing `--app-ease-spring` so the ~15 current
+  consumers aren't re-felt; converging the app onto it is a separate
+  reviewable pass.
+- **S2 · the clock** (the flagship): a server-computed `data-daypart`
+  attribute on the (app) layout, driven by `sunTimes()` (pure NOAA
+  math, no fetch, no hydration flash). Three token sets in globals.css —
+  afternoon (baseline paper, no override), golden hour (warm amber
+  field + burnt accent), after dark (deep green-black ground, cards a
+  step lighter, warm lamp accent, ink flipped to paper-white). The
+  surface cross-fades over 600ms (the spec's allowed exception to the
+  250–400ms rule); reduced-motion users get the theme with no
+  cross-fade. The vermilion brand pill holds as the constant signal
+  across all three dayparts. Verified both themes in the browser by
+  forcing the attribute.
+
+Gate:
+- Clutter suite: 7 passed, 0 failed (afternoon = no daypart override, so
+  no byte/contract change; the cold-server flake on first run cleared
+  once routes were warmed).
+- Reduced-motion: the global `prefers-reduced-motion: reduce` block plus
+  an explicit `[data-daypart] { transition: none }` rule cover the new
+  cross-fade. Verified in CSS.
+- **Mike approves feel on a real phone: PENDING** — this is the human
+  gate; the after-dark theme especially is the biggest visual
+  commitment and wants his eye before the rest of the signature layer
+  builds on it.
+
+Deferred to the post-approval follow-on (scoped, not abandoned), so the
+daypart direction is approved before more is layered on it:
+- S1 Role 1 (arrival ring) — a route-transition overlay; the riskiest,
+  least-certain-without-the-phone piece.
+- S1 Role 3 (section-header rule) + Role 4 (the exact save ring-draw +
+  check) — the save button already carries a confirm motif (celebrate
+  ring + pop + haptic); the exact SVG ring is a refinement best on the
+  prominent place-detail save control, not the 36px per-card icon.
+- S1 Role 2 (map pulse retune to 3 rings) — the location pin already
+  pulses; this is a tune to the exact spec values.
+- S3 (drone imagery) — DEFERRED OFF /today: the recon measured only
+  ~2.5KB of headroom under the 150KB /today byte gate, and full-bleed
+  markup would flip it red. Scope to editorial routes outside the gate
+  (/collections, /plan).
+- S4 layoutId card→detail expansion — a deep interaction rebuild;
+  View Transitions are already wired and now have the project spring
+  available.
+- S2 copy shift ("Today in Frederick" → "This evening" → "After dark") —
+  needs the daypart threaded into the page copy; pairs with approval.
+
+Known preview note: when the daypart is forced while the real clock is
+midday, SkyHero (which computes its OWN palette by real hour) still
+shows the day sky — at genuine after-dark it renders its night palette
+and harmonizes with the green-black ground. Not a bug; a forced-preview
+artifact.

@@ -9,18 +9,41 @@ import { PlaceSheetProvider } from "@/components/place/PlaceSheetProvider";
 import ModeBootstrap from "@/components/mode/ModeBootstrap";
 import ModeParamSync from "@/components/mode/ModeParamSync";
 import { Suspense } from "react";
+import { sunTimes } from "@/lib/sun";
+import { FREDERICK_CENTER } from "@/lib/geo";
+
+// Signature layer S2 — the interface follows the sunset. sunTimes is
+// pure NOAA math (no fetch), so the daypart is computed server-side
+// with no hydration flash. The cross-fade to the next daypart lands on
+// the first render after sunset passes (the app routes revalidate
+// frequently); a live mid-session tick is deferred to a client island.
+function currentDaypart(now: Date): "afternoon" | "golden" | "dark" {
+  const { goldenEveningStart, sunset, dusk } = sunTimes(
+    now,
+    FREDERICK_CENTER.lat,
+    FREDERICK_CENTER.lng,
+  );
+  const t = +now;
+  const darkAt = dusk ?? sunset;
+  if (darkAt && t >= +darkAt) return "dark";
+  if (goldenEveningStart && sunset && t >= +goldenEveningStart && t < +sunset) return "golden";
+  return "afternoon";
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const daypart = currentDaypart(new Date());
   return (
     <PlaceSheetProvider>
       <RouteAccent>
-        {/* Inner wrapper. NO background here — the body element
-            (globals.css) already paints --app-bg, and removing the
-            duplicate lets the fixed PageBloom orbs sit visibly
-            BETWEEN the body bg and the wrapper's children. With a bg
-            on this wrapper the orbs (z:-10 fixed) were obscured. */}
+        {/* Inner wrapper. The data-daypart attribute (golden / dark)
+            swaps the ground+ink+accent token set in globals.css after
+            sunset; the afternoon baseline carries NO attribute, so the
+            paper theme and the PageBloom orbs behind the cards read
+            exactly as before. The themed grounds paint their own
+            background here, which is intended for golden / dark. */}
         <div
           className="min-h-screen"
+          data-daypart={daypart === "afternoon" ? undefined : daypart}
           style={{ color: "var(--app-ink)" }}
         >
           {/* Global printed-paper materiality (grain + warm vignette) on
