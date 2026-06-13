@@ -19,7 +19,11 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
  * image cross-fade.) See docs/PHOTO_POLICY.md.
  */
 export default async function WorthALook() {
-  const picks = await getWorthALookToday(easternDayKey());
+  // Four picks, not six: the rail is one of several modules on the lean
+  // Today canvas now, and trimming the tail keeps the page under its
+  // decoded-HTML budget. A horizontal rail of four still scrolls; the
+  // full discovery set lives on the browse surfaces.
+  const picks = (await getWorthALookToday(easternDayKey())).slice(0, 4);
   if (picks.length === 0) return null;
 
   return (

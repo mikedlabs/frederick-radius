@@ -17,7 +17,7 @@ import HomeMuniChip from "./HomeMuniChip";
  *   - Date: small caps under the weekday — calendar fact.
  *   - Time: monospace + live pulse dot on the right — "right now".
  */
-export default function DateLine() {
+export default function DateLine({ asHeading = false }: { asHeading?: boolean }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
     // Tick the clock so the time stays live after load. The initial value
@@ -36,16 +36,27 @@ export default function DateLine() {
   return (
     <header className="flex items-end justify-between gap-3">
       <div className="min-w-0">
-        {/* Styled like display type but semantically a <p>: the page's
-            one <h1> is TodayAsk ("Ask Frederick anything."). Avoids the
-            three-<h1> document-hierarchy bug the craft audit flagged. */}
-        <p
-          className="font-serif text-[26px] font-semibold leading-none tracking-tight sm:text-[30px]"
-          style={{ color: "var(--app-ink)" }}
-          suppressHydrationWarning
-        >
-          {weekday}
-        </p>
+        {/* The weekday is the page's heading on the root Today surface
+            (asHeading): a real <h1> the page was missing after the Ask
+            front door retired in Session 1. Off the root it stays a
+            styled <p> so other mounts don't introduce a second <h1>. */}
+        {asHeading ? (
+          <h1
+            className="font-serif text-[26px] font-semibold leading-none tracking-tight sm:text-[30px]"
+            style={{ color: "var(--app-ink)" }}
+            suppressHydrationWarning
+          >
+            {weekday}
+          </h1>
+        ) : (
+          <p
+            className="font-serif text-[26px] font-semibold leading-none tracking-tight sm:text-[30px]"
+            style={{ color: "var(--app-ink)" }}
+            suppressHydrationWarning
+          >
+            {weekday}
+          </p>
+        )}
         <p
           className="mt-1 text-meta font-semibold uppercase tracking-[0.14em]"
           style={{ color: "var(--app-ink-3)" }}

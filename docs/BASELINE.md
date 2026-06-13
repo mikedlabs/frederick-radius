@@ -72,3 +72,53 @@ The / row now measures the Today surface, so it jumps from the old 50-line funne
 Clutter suite: 6 passed, 1 failed. PASSING now includes the Session 1 gate (routes: twins are redirects) plus every nav-404 check, the /events and /map contracts, and count integrity on this run. The one failure is the /today payload budget (decoded HTML over 150 KB), which is Session 2's named work. The / and /today page contracts pass or fail with the time-of-day stat card, as documented at baseline; the stat card itself is on Session 2's kill list.
 
 Gate verdict: PASS (route and nav-404 tests green; remaining pages verified visually unchanged; the tab bar change is the named scope).
+
+## Session 2 (Today subtraction), June 13, 2026, local production build
+
+The root (Today) was rebuilt from a stacked dashboard into the P1 time
+scrubber: one canvas, the four-segment When? control (counts in the
+segments, derived from the same arrays that render the windows), the
+event hero rendered exactly once, one weather sentence (TodayCard mood
+line) plus a one-line forecast strip (ForecastLine — the site-capture
+inventory's "94°→71°, storms 3–8 PM", replacing the 33-line 7-day
+NowDayStrip), the conditional alert strip, category chips first, Worth
+a look as the one editorial module (trimmed 6→4), and the plan as the
+P4 horizontal snap deck (MoveStack → new PlanDeck). Deleted: the
+"<N> places open" stat card (→ a single "What's open near you" action
+row to /map?mode=browse&open=now), the full weather block (hourly /
+7-day / more-details), the duplicate event answer cards + TodayMoves,
+the ParkMobile/OpenTable explainer paragraph, the local-news rail, and
+the first-visit beta strip. The drone-book promo demoted to <footer>.
+
+Per-window budget (production build on :3100), all four reachable in one tap:
+
+```
+window      visible lines   decoded bytes
+?t=now      97              143,024   (under 150 lines / 150 KB)
+?t=tonight  107             147,479
+?t=tomorrow 107             147,530
+?t=weekend  105             145,735
+```
+
+Root /today baseline was 310 lines / 326 KB; the rebuilt surface is
+~100 lines / ~145 KB — under both the 150-line and 150-KB targets, with
+the event shelf capped at 2 tiles so a busy window can't blow the byte
+budget.
+
+Clutter suite: 6 passed, 1 failed. The four clutter contracts (zero
+stat cards, zero duplicate titles, zero stray inputs, no nav-404),
+count-integrity, and the twin-redirect test all pass. The ONE failure
+is the payload-budget test on /events (776 KB vs 300 KB) — Session 3's
+RSC-payload work, out of Session 2 scope. /today's own payload passes
+at ~142 KB.
+
+Personas by hand (Session 2 gate): Persona 1 (Saturday visitor) —
+"What's open near you" is the first tappable content answer (NOT a
+count) → /map?mode=browse&open=now → place → Directions, ≤3 taps.
+Persona 3 (date-night local) — Tonight segment → the event hero,
+rendered exactly once (verified: zero events render twice on the
+screen) → event page → reserve.
+
+Gate verdict: PASS (/today under 150 lines; duplicate-title and
+stat-card tests green; personas 1 and 3 walk by hand). The /events
+payload failure is Session 3's named work.

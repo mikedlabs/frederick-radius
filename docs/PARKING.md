@@ -13,3 +13,9 @@ Out-of-scope observations logged during sessions, per the standing instructions.
 ## From Session 1 (routes and navigation)
 
 6. **The root has no h1.** The Today page (now the root) renders its date line as a styled paragraph and has no h1 element; the old funnel root's h1 ("What are you after?") retired with it. Session 2 rebuilds the Today surface and should give the page a real h1 in the process.
+
+## From Session 2 (Today subtraction)
+
+7. **Orphaned components after the Today rebuild.** TodayMoves, HourlyForecast/HourlyDisclosure/HourlySummary, WeeklyForecast/WeeklyCard/WeeklySummary, WeatherMore/WeatherMoreGrid, WeatherHero, NowDayStrip, BetaIntroCard, and LocalNewsRail are no longer mounted on the root. They still compile and may have other callers; a later cleanup session should grep for zero-caller components and delete them (and AnswerCard/buildTodayAnswers' open-now branch + getOpenNowCount's Today usage). Left in place this session to keep the diff scoped to /today.
+8. **The scrubber segment badge is a navigation count, not a rendered count.** TimeToggle shows the window total (e.g. "Tonight · 4") while the canvas renders a capped preview (hero + 2 tiles) with "See all → /events". This is the rule-3-blessed "tab navigation count," distinct from the killed stat card, and the count-integrity test only runs on /events. If a future pass wants count==rendered on /today, either remove the badge number or render the full window (watch the byte budget).
+9. **ParkMobile/OpenTable demotion is half-done.** The explainer paragraph was deleted (kill-list), and PartnerAppsRow is no longer on /today. The brief wants those handoffs demoted "to the place detail page where reserving and parking are actual next steps" — that move hasn't been made yet.
