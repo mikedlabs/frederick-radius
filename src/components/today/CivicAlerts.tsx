@@ -160,7 +160,7 @@ export default async function CivicAlerts() {
         </div>
       </a>
       {more > 0 && (
-        <a href="/pulse" className="block px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
+        <a href="/alerts" className="block px-1 text-[11px] font-semibold" style={{ color: "var(--app-ink-3)" }}>
           +{more} more active {more === 1 ? "alert" : "alerts"} →
         </a>
       )}

@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     const r = await fanoutToTopic("civic-alerts", a.id, {
       title: a.event,
       body: a.headline,
-      url: "/pulse",
+      url: "/alerts",
       tag: `nws:${a.id}`,
     });
 

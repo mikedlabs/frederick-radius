@@ -82,7 +82,7 @@ export async function GET(request: Request) {
   const result = await fanoutToTopic("daily-briefing", `briefing:${todayKey}`, {
     title: "Today in Frederick",
     body: parts.join(" · "),
-    url: "/today",
+    url: "/",
     tag: `briefing:${todayKey}`,
   });
 

@@ -107,7 +107,7 @@ export default async function LivePulse() {
       aria-label="Live county pulse"
     >
       <Link
-        href="/pulse"
+        href="/alerts"
         className="mb-2 flex items-center justify-between gap-2 px-1"
       >
         <span className="inline-flex items-center gap-2">

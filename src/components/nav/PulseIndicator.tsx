@@ -59,7 +59,7 @@ export default function PulseIndicator() {
 
   return (
     <Link
-      href="/pulse"
+      href="/alerts"
       aria-label={
         active
           ? `County alerts: ${count} active ${count === 1 ? "item" : "items"}`

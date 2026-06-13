@@ -661,7 +661,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   // Four confident doorways — the same lane language as /places, pointing
   // at the surfaces that fill this page. A guided launchpad, not a paragraph.
   const LANES: { href: string; label: string; Icon: typeof Bookmark; color: string }[] = [
-    { href: "/guide", label: "Ask", Icon: Sparkles, color: "var(--app-brand)" },
+    { href: "/", label: "Today", Icon: Sparkles, color: "var(--app-brand)" },
     { href: "/map", label: "Map", Icon: MapPin, color: "var(--app-cool)" },
     { href: "/events", label: "Events", Icon: Calendar, color: "#C99632" },
     { href: "/towns", label: "Towns", Icon: Building2, color: "#7E2C6F" },

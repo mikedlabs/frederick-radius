@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { haptic } from "@/lib/haptics";
-import { TABS, tabIndexForPath } from "./tabs";
+import { TABS, OPEN_SEARCH_EVENT, tabIndexForPath } from "./tabs";
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -123,13 +123,22 @@ export default function BottomNav() {
           ref={stripRef}
           className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
         >
-          {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
+          {TABS.map(({ href, label, icon: Icon, fillOnActive, action }, idx) => {
             const isRealActive =
               pathname === href || pathname.startsWith(href + "/");
             const isPendingActive = pendingIdx === idx;
             const active = isRealActive || isPendingActive;
 
             const handleActivate = (e?: { preventDefault?: () => void }) => {
+              if (action === "search") {
+                // Decision 2: the Search tab opens the one command
+                // sheet (TopBar's SearchOverlay listens) and never
+                // navigates, so no pending pill and no route change.
+                e?.preventDefault?.();
+                haptic("light");
+                window.dispatchEvent(new Event(OPEN_SEARCH_EVENT));
+                return;
+              }
               if (isRealActive) return;
               setPendingIdx(idx);
               haptic("light");
@@ -150,6 +159,28 @@ export default function BottomNav() {
               transitionDuration: "var(--app-dur-fast)",
             } as const;
 
+            const body = (
+              <>
+                <Icon
+                  className="transition-transform duration-200"
+                  width={active ? 22 : 20}
+                  height={active ? 22 : 20}
+                  strokeWidth={active ? 2.25 : 2}
+                  fill={active && fillOnActive ? "currentColor" : "none"}
+                  style={{
+                    transform: active ? "translateY(-1px) scale(1.04)" : "translateY(0)",
+                    transitionTimingFunction: "var(--app-ease-spring)",
+                  }}
+                />
+                <span
+                  className="text-[11px] font-semibold leading-tight tracking-tight transition-opacity"
+                  style={{ opacity: active ? 1 : 0.78 }}
+                >
+                  {label}
+                </span>
+              </>
+            );
+
             return (
               <li
                 key={href}
@@ -158,34 +189,33 @@ export default function BottomNav() {
                 }}
                 className="flex"
               >
-                <Link
-                  href={href}
-                  onPointerDown={() => {
-                    if (!isRealActive) setPendingIdx(idx);
-                  }}
-                  onClick={(e) => handleActivate(e)}
-                  className={tabClass + " w-full"}
-                  style={tabStyle}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <Icon
-                    className="transition-transform duration-200"
-                    width={active ? 22 : 20}
-                    height={active ? 22 : 20}
-                    strokeWidth={active ? 2.25 : 2}
-                    fill={active && fillOnActive ? "currentColor" : "none"}
-                    style={{
-                      transform: active ? "translateY(-1px) scale(1.04)" : "translateY(0)",
-                      transitionTimingFunction: "var(--app-ease-spring)",
-                    }}
-                  />
-                  <span
-                    className="text-[11px] font-semibold leading-tight tracking-tight transition-opacity"
-                    style={{ opacity: active ? 1 : 0.78 }}
+                {action ? (
+                  // Action tab (Search): a real button, no navigation,
+                  // no optimistic pill. Same classes as the links so
+                  // the five slots read identically.
+                  <button
+                    type="button"
+                    onClick={() => handleActivate()}
+                    className={tabClass + " w-full"}
+                    style={tabStyle}
+                    aria-label={label}
                   >
-                    {label}
-                  </span>
-                </Link>
+                    {body}
+                  </button>
+                ) : (
+                  <Link
+                    href={href}
+                    onPointerDown={() => {
+                      if (!isRealActive) setPendingIdx(idx);
+                    }}
+                    onClick={(e) => handleActivate(e)}
+                    className={tabClass + " w-full"}
+                    style={tabStyle}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    {body}
+                  </Link>
+                )}
               </li>
             );
           })}

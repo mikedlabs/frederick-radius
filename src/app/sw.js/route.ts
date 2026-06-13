@@ -169,7 +169,7 @@ self.addEventListener("push", (event) => {
   }
   const title = payload.title || "Frederick Radius";
   const body = payload.body || "";
-  const url = payload.url || "/guide";
+  const url = payload.url || "/";
   const options = {
     body,
     icon: payload.icon || "/icons/icon-192.png",
@@ -182,7 +182,7 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/guide";
+  const url = (event.notification.data && event.notification.data.url) || "/";
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })

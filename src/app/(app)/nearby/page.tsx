@@ -9,5 +9,5 @@ import { redirect } from "next/navigation";
  * bookmark or old link lands on the live front door.
  */
 export default function NearbyRedirect(): never {
-  redirect("/guide");
+  redirect("/");
 }

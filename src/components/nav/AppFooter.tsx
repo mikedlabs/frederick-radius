@@ -19,7 +19,6 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: "/trust", label: "Trust & sources" },
   { href: "/towns", label: "Towns" },
   { href: "/places", label: "All places" },
-  { href: "/events", label: "Events" },
 ];
 
 export default function AppFooter() {

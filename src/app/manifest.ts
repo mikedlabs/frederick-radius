@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Frederick Radius",
     short_name: "Radius",
     description: "A better way to use Frederick County.",
-    start_url: "/guide",
+    start_url: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",
@@ -21,9 +21,9 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
     shortcuts: [
-      // URLs match start_url ("/guide") and the four primary BottomNav
+      // URLs match start_url ("/") and the four primary BottomNav
       // tabs. Mismatches here would PWA-install with broken jump targets.
-      { name: "Find", url: "/guide", short_name: "Find" },
+      { name: "Find", url: "/", short_name: "Find" },
       { name: "Map", url: "/map", short_name: "Map" },
       { name: "Events", url: "/events", short_name: "Events" },
       { name: "My Radius", url: "/my-radius", short_name: "My Radius" },

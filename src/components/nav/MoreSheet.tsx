@@ -59,7 +59,7 @@ type Item = {
 // hidden drawer; the drawer no longer needs a Tools section.
 
 const USEFUL: Item[] = [
-  { href: "/pulse",     label: "County pulse", description: "Right now: traffic, power outages, school closings, 311", icon: Activity, color: "var(--app-brand)" },
+  { href: "/alerts",     label: "County pulse", description: "Right now: traffic, power outages, school closings, 311", icon: Activity, color: "var(--app-brand)" },
   { href: "/plan",      label: "Plan a day", description: "Build a shareable Frederick day itinerary",           icon: Route,         color: "var(--app-brand-2)" },
   { href: "/parking",   label: "Parking",   description: "Downtown garages, rates, and event-day closures",     icon: SquareParking, color: "var(--app-ink-2)" },
   { href: "/amenities", label: "Amenities", description: "Restrooms, water, wifi, EV charging, bike parking", icon: Wrench,        color: "var(--app-brand)" },

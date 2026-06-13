@@ -28,7 +28,7 @@ export default function TodayActions() {
     h >= 5 && h < 11
       ? { label: "Find coffee", href: "/map?mode=browse&intent=coffee" }
       : h >= 17 || h < 5
-        ? { label: "What's tonight", href: "/today?t=tonight" }
+        ? { label: "What's tonight", href: "/?t=tonight" }
         : { label: "Open now nearby", href: "/open-now" };
 
   return (

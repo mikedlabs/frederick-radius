@@ -8,7 +8,7 @@ import LocationChip from "./LocationChip";
 import MoreSheet from "./MoreSheet";
 import PulseIndicator from "./PulseIndicator";
 import { usePathname, useRouter } from "next/navigation";
-import { tabIndexForPath } from "./tabs";
+import { tabIndexForPath, OPEN_SEARCH_EVENT } from "./tabs";
 
 /**
  * Auto-hide on scroll: the bar slides up out of view when the user
@@ -59,12 +59,13 @@ export default function TopBar() {
   // The left slot becomes a Back button here instead of the wordmark.
   const isDeepPage = pathname !== "/" && tabIndexForPath(pathname) === -1;
   const goBack = () => {
-    // Prefer real history; fall back to /guide when the user landed
-    // here cold (deep link / new tab) so Back is never a dead button.
+    // Prefer real history; fall back to the root (Today) when the
+    // user landed here cold (deep link / new tab) so Back is never a
+    // dead button.
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
     } else {
-      router.push("/guide");
+      router.push("/");
     }
   };
 
@@ -74,6 +75,15 @@ export default function TopBar() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: dismiss the drawer when the user navigates away
     setMoreOpen(false);
   }, [pathname]);
+
+  // The Search tab (BottomNav + SideRail action slot, Decision 2)
+  // opens the same overlay this bar owns. One search system; the tab
+  // is just another door to it.
+  useEffect(() => {
+    const open = () => setSearchOpen(true);
+    window.addEventListener(OPEN_SEARCH_EVENT, open);
+    return () => window.removeEventListener(OPEN_SEARCH_EVENT, open);
+  }, []);
 
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {

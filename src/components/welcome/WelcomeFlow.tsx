@@ -76,7 +76,7 @@ export default function WelcomeFlow() {
   // on every request, and a client-side router push can race
   // document.cookie on some Safari/cache states.
   function goToNow(): void {
-    window.location.assign("/guide");
+    window.location.assign("/");
   }
 
   const finish = useCallback(

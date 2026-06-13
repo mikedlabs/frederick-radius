@@ -197,7 +197,7 @@ export default async function AboutPage() {
           page is to push the visitor to actually use the app. */}
       <div className="pt-2">
         <Link
-          href="/guide"
+          href="/"
           className="tactile tactile-lift tactile-glow-brand inline-flex items-center gap-2 rounded-full px-5 py-3 text-[14px] font-semibold text-white"
           style={{ background: "var(--app-brand)" }}
         >

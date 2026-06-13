@@ -64,7 +64,7 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
       answer: named ? `Best bet: ${named.title}${atVenue(named)}.` : undefined,
       whyShown: "Starting this evening",
       sourceLabel: "Frederick event calendars",
-      primaryAction: { label: "See tonight", href: "/today?t=tonight" },
+      primaryAction: { label: "See tonight", href: "/?t=tonight" },
       secondaryAction: named ? { label: "Details", href: `/events/${named.slug}` } : { label: "All events", href: "/events" },
     });
   }
@@ -80,7 +80,7 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
       answer: named ? `Don't miss ${named.title}${atVenue(named)}.` : undefined,
       whyShown: "Coming up Friday to Sunday",
       sourceLabel: "Frederick event calendars",
-      primaryAction: { label: "See the weekend", href: "/today?t=weekend" },
+      primaryAction: { label: "See the weekend", href: "/?t=weekend" },
       secondaryAction: { label: "All events", href: "/events" },
     });
   }

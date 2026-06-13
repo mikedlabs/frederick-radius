@@ -171,8 +171,17 @@ const nextConfig: NextConfig = {
         destination: "https://frederickradius.app/:path*",
         permanent: true,
       },
+      // Session 1, Decision 1: the root IS the Today surface. The old
+      // funnel front door retires as a landing surface (its hidden
+      // gems live at /collections/hidden-gems), and every old Today
+      // alias points straight at the root so no link travels two hops.
+      { source: "/guide", destination: "/", permanent: true },
+      { source: "/today", destination: "/", permanent: true },
+      // Session 1, Decision 3: Pulse is a behavior, not a page. The
+      // route survives as /alerts for the rare active day.
+      { source: "/pulse", destination: "/alerts", permanent: true },
       // Editorial micro-pages → canonical category surfaces.
-      { source: "/tonight", destination: "/today?t=tonight", permanent: true },
+      { source: "/tonight", destination: "/?t=tonight", permanent: true },
       { source: "/markets", destination: "/category/market", permanent: true },
       { source: "/historic", destination: "/category/museum", permanent: true },
       { source: "/art", destination: "/category/arts", permanent: true },
@@ -180,14 +189,11 @@ const nextConfig: NextConfig = {
       // page showing what amenity data we actually have (live counts)
       // plus the wishlist of what's coming (trash cans, dog bags,
       // benches, mailboxes, FedEx/UPS drop-offs).
-      { source: "/discover", destination: "/today", permanent: true },
-      // /now → /today rename (May 2026). The route lived at /now for
-      // historical reasons (the page is about "right now") but the
-      // nav has always read "Today" and the URL/label mismatch was a
-      // small but consistent confusion. /now stays permanently
-      // redirected so PWA installs, push notifications, and crawler
-      // links never 404.
-      { source: "/now", destination: "/today", permanent: true },
+      { source: "/discover", destination: "/", permanent: true },
+      // /now lived at /now, then /today, now the root (Session 1).
+      // Stays permanently redirected so PWA installs, push
+      // notifications, and crawler links never 404.
+      { source: "/now", destination: "/", permanent: true },
       // /water → /rivers (May 2026). Both rendered "Rivers & streams"
       // USGS gauge data but /rivers is the canonical richer surface
       // (trend sparklines, 24h history, MetricCards). /water was a

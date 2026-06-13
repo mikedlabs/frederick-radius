@@ -172,7 +172,7 @@ export default async function TodayMoves({
       {/* Two supporting moves — Tonight + Near you. */}
       <div className="grid grid-cols-2 gap-2">
         <Link
-          href={tonightCount > 0 ? "/today?t=tonight" : "/events"}
+          href={tonightCount > 0 ? "/?t=tonight" : "/events"}
           className="tactile tactile-interactive block rounded-[var(--app-radius-md)] p-3"
           style={{ background: "var(--app-bg-elevated)" }}
         >

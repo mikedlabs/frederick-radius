@@ -86,7 +86,7 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
  *   • DecorativeDivider variants           — visual filler
  */
 export const metadata: Metadata = {
-  alternates: { canonical: "/today" },
+  alternates: { canonical: "/" },
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
   openGraph: {
     title: "Today in Frederick County",
@@ -521,7 +521,7 @@ export default async function HomePage({
             >
               Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
               {fallbackSlice ? (
-                <Link href={`/today?t=${fallbackSlice}`} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                <Link href={`/?t=${fallbackSlice}`} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
                   See what&rsquo;s {SLICE_LABEL[fallbackSlice]}
                 </Link>
               ) : (

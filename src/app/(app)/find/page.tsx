@@ -11,5 +11,5 @@ import { redirect } from "next/navigation";
  * reads it for "open near you."
  */
 export default function FindRedirect(): never {
-  redirect("/guide");
+  redirect("/");
 }
