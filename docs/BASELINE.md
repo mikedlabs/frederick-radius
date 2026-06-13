@@ -122,3 +122,59 @@ screen) → event page → reserve.
 Gate verdict: PASS (/today under 150 lines; duplicate-title and
 stat-card tests green; personas 1 and 3 walk by hand). The /events
 payload failure is Session 3's named work.
+
+## Session 3 (Events single system), June 13, 2026, local production build
+
+/events rebuilt from two stacked systems (an editorial "best of" layer +
+a full client browse explorer) into the P3 agenda rail: ONE server-
+rendered list grouped by Eastern day, a pinned scroll-synced date rail
+(client island fed day metadata only), five mood chips (All / Music /
+Family / Civic / Free) filtering via URL params, one Refine sheet
+(town + sort, toggles only — zero inputs), and the single pinned
+"Tonight" row as today's relabeled day-group. EventsExplorer + its
+full-event-array client prop (the 776 KB driver), both search inputs,
+the four view modes, EventsMap, WeekendVibes, TonightRail,
+EventWeekRibbon, and the MunicipalEvents module (which carried the
+second search input) are gone from the page.
+
+THE PAYLOAD FIX: the event objects no longer cross into a client
+component. The list is server-rendered; filtering is URL-param driven;
+the only client islands (EventDayRail, EventRefine) receive day
+metadata and the towns list, never events. The agenda is capped to
+whole day-groups up to 32 events, with overflow to the Month calendar
+(the complete list lives there).
+
+Budget across filter states (production build on :3100):
+
+```
+state             visible lines   decoded bytes   (target <400 / <300KB)
+/events (all)     223             275,049
+?mood=music       295             287,626
+?mood=free        96              129,718
+?mood=civic       85              132,420
+?sort=az          233             262,989
+?m=frederick      224             273,440
+```
+
+Was 951 lines / 776 KB. Every state is under both budgets.
+
+CLUTTER SUITE: 7 passed, 0 failed — the FULL suite is green for the
+first time since the 5-failure baseline. The /events payload test
+(776 KB → under 300 KB), count-integrity, the four clutter contracts
+(zero inputs incl. the Refine sheet, zero stat cards, zero duplicate
+titles, no nav-404), and twin-redirects all pass.
+
+Personas by hand (Session 3 gate): Persona 2 (parent) — the Family
+chip filters the one source array; chip counts are navigation, and
+count-integrity (h2 number == h3 cards) passes, so no label disagrees
+with its list. Persona 5 (civic) — the Civic chip surfaces only
+meetings (Council Legislative Meeting, Planning Commission, …) with
+zero facility-rental/non-event leakage; the Planning Commission is the
+second result.
+
+Gate verdict: PASS (count-integrity green; /events under 400 lines and
+under 300 KB across all states; zero inputs in main; personas 2 and 5
+walk by hand). Orphaned event components (EventsExplorer, EventsMap,
+WeekendVibes, TonightRail, EventWeekRibbon, EventAgenda,
+EventsCompartmented, MunicipalEvents) are now unmounted — a later
+cleanup should delete the zero-caller ones.
