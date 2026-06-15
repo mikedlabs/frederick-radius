@@ -1,22 +1,26 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import {
   Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock,
   Wand2, Shuffle, ChevronDown, Plus, ChevronRight,
   User, Heart, Users, UsersRound, Luggage,
   Leaf, Zap, Drama, Footprints, UtensilsCrossed,
   BookOpen, Coffee, Wine, Trees, CloudRain, Sun, Compass,
-  CloudSun, Sunset, SearchX,
+  CloudSun, Sunset, SearchX, Pin, Check, Bookmark,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import type { Plan, PlanInputs } from "@/lib/integrations/planner";
+import type { Plan, PlanInputs, PlanAlternative, PlanSlotCategory } from "@/lib/integrations/planner";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import { generatePlan, removeStop, swapStop } from "./actions";
+import { generatePlan, removeStop, stopAlternatives, stopSwapOptions, setStop, addStop, reshufflePlan } from "./actions";
 import { formatDistance } from "@/lib/geo";
 import BottomDrawer from "@/components/ui/BottomDrawer";
+import { useFollowedSlugs } from "@/hooks/useFollows";
+import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
+import CategoryIcon from "@/components/place/CategoryIcon";
 
 /**
  * PlanBuilder — the /plan workhorse.
@@ -150,6 +154,25 @@ export default function PlanBuilder({
   const [pending, startTransition] = useTransition();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // ── User agency (pick / add / pin) ──────────────────────────────
+  // Pinned place slugs survive a Shuffle (which now re-rolls only the
+  // unpinned stops). A place the user explicitly added is auto-pinned,
+  // so Shuffle never discards a choice they made on purpose.
+  const [pinned, setPinned] = useState<Set<string>>(new Set());
+  // Swap CHOOSER (vs the old blind swap): which stop is being chosen
+  // for, and the real alternatives fetched for that slot.
+  const [swapIdx, setSwapIdx] = useState<number | null>(null);
+  const [alts, setAlts] = useState<PlanAlternative[] | null>(null);
+  // The category switcher inside the Swap chooser: what kinds this slot
+  // could become, and which kind is currently selected.
+  const [swapCats, setSwapCats] = useState<PlanSlotCategory[] | null>(null);
+  const [swapCat, setSwapCat] = useState<string | null>(null);
+  // Add-from-Saved drawer.
+  const [addOpen, setAddOpen] = useState(false);
+  const { slugs: savedSlugs } = useFollowedSlugs();
+  // Monotonic shuffle seed — advanced on each re-roll.
+  const shuffleSeed = useRef(0);
+
   const useMyLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
     setGeoMsg(null);
@@ -210,7 +233,18 @@ export default function PlanBuilder({
   const currentAudience = AUDIENCES.find((a) => a.value === audience) ?? AUDIENCES[0];
   const currentStart = STARTS.find((s) => s.value === startMode) ?? STARTS[0];
 
-  const onShuffle = () => onBuild({ seed: Math.floor(Math.random() * 100_000) });
+  // Shuffle now re-rolls only the UNPINNED stops, keeping anything the
+  // user pinned or added — "pin what you love, shuffle the rest". With
+  // nothing pinned it re-rolls the whole plan (the old behavior), but
+  // spec-based so edits aren't silently discarded.
+  const onShuffle = () => {
+    if (!plan) return;
+    const token = plan.share;
+    // Monotonic seed — each shuffle advances it so the re-roll differs,
+    // without an impure Math.random() in render scope.
+    shuffleSeed.current += 1;
+    mutate(() => reshufflePlan(token, [...pinned], shuffleSeed.current), null);
+  };
 
   const onPreset = (p: Preset) => {
     setAudience(p.audience);
@@ -233,6 +267,78 @@ export default function PlanBuilder({
       setBusy(null);
     });
   };
+
+  // Open the Swap chooser for a stop: fetch the kinds this slot could be
+  // + the current kind's real alternatives, so the user picks what AND
+  // what kind (vs. the blind "next").
+  const openSwap = (idx: number) => {
+    if (!plan) return;
+    setSwapIdx(idx);
+    setAlts(null);
+    setSwapCats(null);
+    setSwapCat(null);
+    const token = plan.share;
+    startTransition(async () => {
+      const { categories, alternatives, selected } = await stopSwapOptions(token, idx);
+      setSwapCats(categories);
+      setSwapCat(selected);
+      setAlts(alternatives);
+    });
+  };
+  // Change WHAT KIND of stop this slot is, then show that kind's picks.
+  const pickSwapCat = (cat: string) => {
+    if (!plan || swapIdx === null) return;
+    const token = plan.share;
+    const idx = swapIdx;
+    setSwapCat(cat);
+    setAlts(null);
+    startTransition(async () => {
+      setAlts(await stopAlternatives(token, idx, cat));
+    });
+  };
+  const chooseStop = (idx: number, slug: string) => {
+    if (!plan) return;
+    const token = plan.share;
+    const oldSlug = plan.stops[idx]?.place?.slug;
+    setSwapIdx(null);
+    // If this slot was pinned, the pin follows the user's new choice (and
+    // the now-absent old slug is dropped, so it can't haunt a later Shuffle).
+    if (oldSlug && pinned.has(oldSlug)) {
+      setPinned((cur) => {
+        const next = new Set(cur);
+        next.delete(oldSlug);
+        next.add(slug);
+        return next;
+      });
+    }
+    mutate(() => setStop(token, idx, slug), idx);
+  };
+  const togglePin = (slug: string) => {
+    setPinned((cur) => {
+      const next = new Set(cur);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
+  const addFromSaved = (slug: string) => {
+    if (!plan) return;
+    const token = plan.share;
+    setAddOpen(false);
+    // A place the user added on purpose is pinned, so Shuffle keeps it.
+    setPinned((cur) => new Set(cur).add(slug));
+    mutate(() => addStop(token, slug), null);
+  };
+
+  // Saved places the user could drop in — resolvable, with a position,
+  // not already in the plan.
+  const inPlanSlugs = new Set(
+    (plan?.stops ?? []).map((s) => s.place?.slug).filter(Boolean) as string[],
+  );
+  const savedCandidates = [...savedSlugs]
+    .filter((s) => !inPlanSlugs.has(s))
+    .map((s) => clientPlaceBySlug(s))
+    .filter((p): p is NonNullable<typeof p> => Boolean(p && p.geom));
 
   const onShare = async () => {
     if (!plan) return;
@@ -672,10 +778,28 @@ export default function PlanBuilder({
                   busy={busy}
                   pending={pending}
                   editing={editing}
-                  onSwap={() => mutate(() => swapStop(plan.share, idx), idx)}
+                  isPinned={stop.place ? pinned.has(stop.place.slug) : false}
+                  onSwap={() => openSwap(idx)}
+                  onPin={stop.place ? () => togglePin(stop.place!.slug) : undefined}
                   onRemove={() => mutate(() => removeStop(plan.share, idx), idx)}
                 />
               ))}
+              {/* Add a specific place the user wants — from their Saved
+                  list — instead of only what the planner picked. */}
+              {editing && (
+                <li className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setAddOpen(true)}
+                    disabled={pending}
+                    className="tactile tactile-interactive flex w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-lg)] border border-dashed bg-[var(--app-bg-elevated)] px-3 py-3 text-[13px] font-semibold disabled:opacity-50"
+                    style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+                    Add a stop you want
+                  </button>
+                </li>
+              )}
             </ol>
           )}
 
@@ -839,6 +963,170 @@ export default function PlanBuilder({
           </button>
         </div>
       </BottomDrawer>
+
+      {/* Swap chooser — instead of blindly cycling to the "next best",
+          show the real alternatives for this slot and let the user pick. */}
+      <BottomDrawer
+        open={swapIdx !== null}
+        onOpenChange={(o) => { if (!o) setSwapIdx(null); }}
+        title="Swap this stop"
+        subtitle="Change the kind, or pick another. These all fit the slot."
+      >
+        <div className="px-4 py-4">
+          {/* Category switcher — make this slot a different KIND of stop
+              (dessert instead of a bar), then pick the place. */}
+          {swapCats && swapCats.length > 1 && (
+            <div className="-mx-4 mb-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex gap-1.5">
+                {swapCats.map((c) => {
+                  const cc = CATEGORY_BY_SLUG[c.category]?.color ?? "var(--app-brand)";
+                  const active = c.category === swapCat;
+                  return (
+                    <button
+                      key={c.category}
+                      type="button"
+                      disabled={pending}
+                      onClick={() => pickSwapCat(c.category)}
+                      aria-pressed={active}
+                      className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold disabled:opacity-50"
+                      style={{
+                        background: active ? cc : "var(--app-bg-sunken)",
+                        color: active ? "#fff" : "var(--app-ink-2)",
+                      }}
+                    >
+                      <CategoryIcon
+                        slug={c.category}
+                        className="h-3.5 w-3.5"
+                        strokeWidth={2.25}
+                        style={{ color: active ? "#fff" : cc }}
+                      />
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {alts === null ? (
+            <ul className="space-y-2" aria-busy>
+              {[0, 1, 2].map((i) => (
+                <li
+                  key={i}
+                  className="h-[64px] animate-pulse rounded-[var(--app-radius-md)] bg-[var(--app-bg-sunken)]"
+                />
+              ))}
+            </ul>
+          ) : alts.length === 0 ? (
+            <p className="py-6 text-center text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+              No other good fits for this slot right now.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {alts.map((a) => {
+                const cat = CATEGORY_BY_SLUG[a.category];
+                const catColor = cat?.color ?? "var(--app-brand)";
+                return (
+                  <li key={a.slug}>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => swapIdx !== null && chooseStop(swapIdx, a.slug)}
+                      className="tactile tactile-interactive flex w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
+                      style={{ borderColor: "var(--app-border)" }}
+                    >
+                      <span
+                        aria-hidden
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+                        style={{ background: `color-mix(in srgb, ${catColor} 16%, transparent)` }}
+                      >
+                        <CategoryIcon slug={a.category} className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: catColor }} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className="block font-serif text-[15px] font-semibold leading-tight"
+                          style={{ color: "var(--app-ink)" }}
+                        >
+                          {a.name}
+                        </span>
+                        <span
+                          className="mt-0.5 block truncate text-[12px] leading-tight"
+                          style={{ color: "var(--app-ink-3)" }}
+                        >
+                          {a.why || a.categoryName}
+                        </span>
+                      </span>
+                      <Check className="h-4 w-4 shrink-0" style={{ color: catColor }} aria-hidden />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </BottomDrawer>
+
+      {/* Add-a-stop — pull a place the user already saved into the plan,
+          so they're building the night, not just accepting it. */}
+      <BottomDrawer
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        title="Add a stop you want"
+        subtitle="Drop in a place you've saved. We'll fit it into the night."
+      >
+        <div className="px-4 py-4">
+          {savedCandidates.length === 0 ? (
+            <div className="py-6 text-center">
+              <Bookmark className="mx-auto h-6 w-6" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+              <p className="mt-2 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+                {savedSlugs.size === 0
+                  ? "Save places you love and they'll show up here to add."
+                  : "Everything you've saved is already in this plan."}
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {savedCandidates.map((p) => {
+                const cat = CATEGORY_BY_SLUG[p.category];
+                const catColor = cat?.color ?? "var(--app-brand)";
+                return (
+                  <li key={p.slug}>
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => addFromSaved(p.slug)}
+                      className="tactile tactile-interactive flex w-full items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 text-left disabled:opacity-50"
+                      style={{ borderColor: "var(--app-border)" }}
+                    >
+                      <span
+                        aria-hidden
+                        className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
+                        style={{ background: `color-mix(in srgb, ${catColor} 16%, transparent)` }}
+                      >
+                        <CategoryIcon slug={p.category} className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: catColor }} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className="block font-serif text-[15px] font-semibold leading-tight"
+                          style={{ color: "var(--app-ink)" }}
+                        >
+                          {p.name}
+                        </span>
+                        <span
+                          className="mt-0.5 block truncate text-[12px] leading-tight"
+                          style={{ color: "var(--app-ink-3)" }}
+                        >
+                          {cat?.name ?? p.category}
+                        </span>
+                      </span>
+                      <Plus className="h-4 w-4 shrink-0" style={{ color: catColor }} aria-hidden />
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </BottomDrawer>
     </div>
   );
 }
@@ -846,14 +1134,16 @@ export default function PlanBuilder({
 /* ───────────────────────── Subcomponents ───────────────────────── */
 
 function Stop({
-  stop, idx, busy, pending, editing, onSwap, onRemove,
+  stop, idx, busy, pending, editing, isPinned, onSwap, onPin, onRemove,
 }: {
   stop: Plan["stops"][number];
   idx: number;
   busy: number | null;
   pending: boolean;
   editing: boolean;
+  isPinned: boolean;
   onSwap: () => void;
+  onPin?: () => void;
   onRemove: () => void;
 }) {
   const href = stop.place ? `/places/${stop.place.slug}` : stop.event ? `/events/${stop.event.slug}` : "#";
@@ -863,6 +1153,11 @@ function Stop({
     : stop.event?.venue_name ?? "";
   const geom = stop.place?.geom ?? stop.event?.geom;
   const ol = OPEN_LABEL[stop.open];
+  // Make the KIND of stop explicit — a labeled category mark in the
+  // category's own color. Place stops only; events read by their time.
+  const placeCat = stop.place?.category;
+  const catMeta = placeCat ? CATEGORY_BY_SLUG[placeCat] : undefined;
+  const catColor = catMeta?.color ?? "var(--app-cool)";
 
   return (
     <li className="relative">
@@ -974,6 +1269,20 @@ function Stop({
               </Link>
             </>
           )}
+          {placeCat && catMeta && (
+            <div className="mt-2">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]"
+                style={{
+                  background: `color-mix(in srgb, ${catColor} 13%, transparent)`,
+                  color: catColor,
+                }}
+              >
+                <CategoryIcon slug={placeCat} className="h-3 w-3" strokeWidth={2.25} />
+                {catMeta.name}
+              </span>
+            </div>
+          )}
           <p
             className="mt-2 text-[14px] leading-relaxed text-pretty"
             style={{ color: "var(--app-ink-2)" }}
@@ -1016,6 +1325,22 @@ function Stop({
                   />
                   Swap
                 </button>
+                {onPin && (
+                  <button
+                    type="button"
+                    onClick={onPin}
+                    disabled={pending}
+                    aria-pressed={isPinned}
+                    className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                    style={{
+                      background: isPinned ? "var(--app-cool)" : "var(--app-bg-sunken)",
+                      color: isPinned ? "#fff" : "var(--app-ink-2)",
+                    }}
+                  >
+                    <Pin className="h-3 w-3" strokeWidth={2.25} fill={isPinned ? "currentColor" : "none"} aria-hidden />
+                    {isPinned ? "Pinned" : "Pin"}
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={pending}

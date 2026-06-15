@@ -17,6 +17,7 @@ import type { Place } from "@/data/places";
 import { clientPlaces, clientPlaceBySlug } from "@/lib/loaders/places-client";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import { upcomingEvents, EVENT_BY_SLUG, type Event } from "@/data/events";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { haversineMeters, FREDERICK_CENTER, formatDistance, type LngLat } from "@/lib/geo";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 
@@ -421,6 +422,202 @@ export function swapStopInSpec(spec: PlanSpec, index: number): PlanSpec {
   if (!replacement) return spec;
   const next = { ...spec, s: spec.s.map((r, i) => (i === index ? { p: replacement.d.slug } : r)) };
   return next;
+}
+
+/* ── User agency: pick, add, pin (the "choose, don't be told" layer) ──
+ *
+ * swapStopInSpec above is the BLIND swap (next best alternative). The
+ * functions below let the user choose instead: see real alternatives
+ * for a slot and pick one, drop a specific saved place into the plan,
+ * and pin stops so a reshuffle only re-rolls the rest. All are pure
+ * spec edits — the caller reconstructs the plan from the returned spec,
+ * so the share token stays the source of truth.
+ */
+
+/** A pickable alternative for one slot, with enough to show in a list. */
+export type PlanAlternative = {
+  slug: string;
+  name: string;
+  category: string;
+  categoryName: string;
+  why: string;
+  photo_url?: string;
+};
+
+/**
+ * The top real alternatives for the place at `index`. Two modes:
+ *  - No `category`: unused and category-diverse against the OTHER stops,
+ *    so the default chooser never doubles up a kind the plan already has.
+ *  - Explicit `category` (the Swap chooser's category switcher): only that
+ *    category, honored even if another stop shares it — the user asked for
+ *    "make this a different KIND of stop," so we respect the choice.
+ * Always excludes places already in the plan. Powers the Swap chooser.
+ * Empty for an event stop or an out-of-range index.
+ */
+export function slotAlternatives(
+  spec: PlanSpec,
+  index: number,
+  category?: string,
+  limit = 5,
+): PlanAlternative[] {
+  const ref = spec.s[index];
+  if (!ref || !("p" in ref)) return [];
+  const { origin, now } = resolve(spec.i);
+  const inUse = new Set(
+    spec.s.filter((r): r is { p: string } => "p" in r).map((r) => r.p),
+  );
+  const otherCats = new Set(
+    spec.s
+      .filter((r, i): r is { p: string } => i !== index && "p" in r)
+      .map((r) => clientPlaceBySlug(r.p)?.category)
+      .filter(Boolean) as string[],
+  );
+  const ranked = scoredCandidates(spec.i, origin, now);
+  const out: PlanAlternative[] = [];
+  for (const c of ranked) {
+    if (out.length >= limit) break;
+    if (inUse.has(c.d.slug)) continue;
+    if (category) {
+      if (c.d.category !== category) continue;
+    } else if (otherCats.has(c.d.category)) {
+      continue;
+    }
+    out.push({
+      slug: c.d.slug,
+      name: c.d.name,
+      category: c.d.category,
+      categoryName: CATEGORY_BY_SLUG[c.d.category]?.name ?? c.d.category,
+      why: whyFor(c.d, spec.i),
+      photo_url: c.d.google_photo_url,
+    });
+  }
+  return out;
+}
+
+/** A category the user could turn a slot into, with how many unused
+ *  candidates back it. Powers the Swap chooser's category switcher. */
+export type PlanSlotCategory = {
+  category: string;
+  name: string;
+  count: number;
+  current: boolean;
+};
+
+/**
+ * The categories this slot could become — each backed by at least one
+ * unused candidate near the start, ordered by candidate strength, with
+ * the slot's current category flagged and floated to the front so "this
+ * kind" reads as the default. Lets the Swap chooser offer a real "change
+ * what kind of stop this is" control. Empty for an event stop or an
+ * out-of-range index.
+ */
+export function slotCategories(spec: PlanSpec, index: number, limit = 8): PlanSlotCategory[] {
+  const ref = spec.s[index];
+  if (!ref || !("p" in ref)) return [];
+  const { origin, now } = resolve(spec.i);
+  const inUse = new Set(
+    spec.s.filter((r): r is { p: string } => "p" in r).map((r) => r.p),
+  );
+  const currentCat = clientPlaceBySlug(ref.p)?.category;
+  const ranked = scoredCandidates(spec.i, origin, now);
+  const counts = new Map<string, number>();
+  const order: string[] = [];
+  for (const c of ranked) {
+    if (inUse.has(c.d.slug)) continue;
+    if (!counts.has(c.d.category)) order.push(c.d.category); // first-seen = strongest
+    counts.set(c.d.category, (counts.get(c.d.category) ?? 0) + 1);
+  }
+  let cats = order.slice(0, limit);
+  if (currentCat) {
+    cats = [currentCat, ...cats.filter((c) => c !== currentCat)].slice(0, limit);
+  }
+  return cats.map((cat) => ({
+    category: cat,
+    name: CATEGORY_BY_SLUG[cat]?.name ?? cat,
+    count: counts.get(cat) ?? 0,
+    current: cat === currentCat,
+  }));
+}
+
+/** Set the place at `index` to a specific slug the user chose. No-op
+ *  for an event stop, an unresolved slug, or a slug already in the plan. */
+export function setStopInSpec(spec: PlanSpec, index: number, slug: string): PlanSpec {
+  const ref = spec.s[index];
+  if (!ref || !("p" in ref)) return spec;
+  if (!clientPlaceBySlug(slug)) return spec;
+  if (spec.s.some((r, i) => i !== index && "p" in r && r.p === slug)) return spec;
+  return { ...spec, s: spec.s.map((r, i) => (i === index ? { p: slug } : r)) };
+}
+
+/** Append a specific place the user picked (e.g. from Saved). No-op for
+ *  an unresolved or already-present slug. schedule() re-times on rebuild. */
+export function addStopToSpec(spec: PlanSpec, slug: string): PlanSpec {
+  if (!clientPlaceBySlug(slug)) return spec;
+  if (spec.s.some((r) => "p" in r && r.p === slug)) return spec;
+  return { ...spec, s: [...spec.s, { p: slug }] };
+}
+
+/**
+ * Re-roll the plan, keeping pinned places (and all events) in their
+ * slots and regenerating only the unpinned ones — the "pin what you
+ * love, shuffle the rest" move. `seed` varies the candidate ordering so
+ * repeated taps give different valid fills.
+ */
+export function reshuffleSpec(spec: PlanSpec, pinnedSlugs: string[], seed: number): PlanSpec {
+  const pinned = new Set(pinnedSlugs);
+  const inputs: PlanInputs = { ...spec.i, seed };
+  const { origin, now } = resolve(inputs);
+
+  // What we're keeping: pinned places + every event stop.
+  const keptSlugs = new Set<string>();
+  const keptCats = new Set<string>();
+  let need = 0;
+  for (const r of spec.s) {
+    if ("e" in r) continue;
+    if (pinned.has(r.p)) {
+      keptSlugs.add(r.p);
+      const cat = clientPlaceBySlug(r.p)?.category;
+      if (cat) keptCats.add(cat);
+    } else {
+      need += 1;
+    }
+  }
+
+  // Fresh fills for the unpinned slots: unused, category-diverse. We
+  // group the eligible candidates by category (kept in score order),
+  // then for each slot pick from that category's TOP WINDOW using the
+  // seed — so repeated Shuffle taps actually rotate the unpinned stops
+  // instead of re-picking the same #1 every time. Taking the strict top
+  // made Shuffle look broken whenever a category had a dominant winner.
+  const ranked = scoredCandidates(inputs, origin, now);
+  const WINDOW = 5;
+  const byCat = new Map<string, Scored[]>();
+  for (const c of ranked) {
+    if (keptSlugs.has(c.d.slug)) continue;
+    if (keptCats.has(c.d.category)) continue; // pinned categories excluded
+    const arr = byCat.get(c.d.category);
+    if (arr) arr.push(c);
+    else byCat.set(c.d.category, [c]); // first-seen = score order = strength
+  }
+  const fills: string[] = [];
+  for (const [cat, pool] of byCat) {
+    if (fills.length >= need) break;
+    const win = pool.slice(0, WINDOW);
+    const pick = win[hashStr(`${cat}:${seed}`) % win.length];
+    keptSlugs.add(pick.d.slug);
+    keptCats.add(cat);
+    fills.push(pick.d.slug);
+  }
+
+  // Rebuild in place: pinned/events stay put, unpinned slots take the
+  // next fill (or keep their old ref if fills run dry — rare).
+  let fi = 0;
+  const s = spec.s.map((r) => {
+    if ("e" in r || pinned.has(r.p)) return r;
+    const fill = fills[fi++];
+    return fill ? { p: fill } : r;
+  });
+  return { ...spec, i: inputs, s };
 }
 
 function titleFor(input: PlanInputs, now: Date): string {
