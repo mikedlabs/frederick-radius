@@ -8,9 +8,9 @@ import { liveDowntownShows } from "@/lib/guide/live-downtown";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/guide" },
-  title: "What are you after?",
+  title: "What are you looking for?",
   description:
-    "Tell Frederick Radius what you're after and it narrows, tap by tap, to the answer — no map, no menu to read.",
+    "Tell Frederick Radius what you're looking for and it narrows, tap by tap, to the answer. No map, no menu to read.",
 };
 
 /**
