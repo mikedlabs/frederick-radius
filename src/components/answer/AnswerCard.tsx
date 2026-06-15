@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Surface } from "@/components/ui/Surface";
 import { Button } from "@/components/ui/Button";
@@ -133,11 +134,27 @@ export default function AnswerCard({
               {answer.primaryAction.label}
             </Button>
           )}
-          {answer.secondaryAction && (
-            <Button variant="quiet" size="sm" href={answer.secondaryAction.href}>
-              {answer.secondaryAction.label}
-            </Button>
-          )}
+          {answer.secondaryAction &&
+            (plated ? (
+              // On the photo-plated lead card the quiet Button's dark ink
+              // all but vanished against the dark gradient (the "All
+              // places" link read as disabled). Render a purpose-built
+              // light link for the dark plate instead — readable at rest,
+              // and a translucent-white hover that stays legible (the
+              // quiet variant's light hover-bg would have hidden white
+              // text). Cream cards keep the shared quiet Button.
+              <Link
+                href={answer.secondaryAction.href}
+                className="inline-flex h-8 items-center rounded-[var(--app-radius-md)] px-3 text-[12px] font-semibold tracking-tight outline-none transition hover:bg-white/15 focus-visible:ring-2 focus-visible:ring-white/70"
+                style={{ color: "rgba(255,255,255,0.92)" }}
+              >
+                {answer.secondaryAction.label}
+              </Link>
+            ) : (
+              <Button variant="quiet" size="sm" href={answer.secondaryAction.href}>
+                {answer.secondaryAction.label}
+              </Button>
+            ))}
         </div>
       )}
     </Surface>
