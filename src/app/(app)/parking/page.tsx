@@ -53,28 +53,28 @@ const CITY_PARKING_URL = "https://www.cityoffrederickmd.gov/207/Parking";
 const PARK_INTENTS: ParkIntent[] = [
   {
     label: "Carroll Creek concert",
-    hint: "Alive @ Five, summer movies — Carroll Creek Deck is closest",
+    hint: "Alive @ Five, summer movies: Carroll Creek Deck is closest",
     icon: Music,
     accent: "var(--app-brand)",
     href: "/places/carroll-creek-parking-garage-frederick",
   },
   {
     label: "Weinberg or theaters",
-    hint: "Weinberg Center, Maryland Ensemble — Church Street Garage",
+    hint: "Weinberg Center, Maryland Ensemble: Church Street Garage",
     icon: Theater,
     accent: "var(--app-accent)",
     href: "/places/church-street-garage",
   },
   {
     label: "Market Street shopping",
-    hint: "Boutiques, restaurants, the center of downtown — Court Street Garage",
+    hint: "Boutiques, restaurants, the center of downtown: Court Street Garage",
     icon: ShoppingBag,
     accent: "var(--app-brand-2)",
     href: "/places/court-street-parking-garage-frederick",
   },
   {
     label: "Late dinner, easy exit",
-    hint: "All garages run 24/7 — West Patrick is the quickest off-ramp out",
+    hint: "All garages run 24/7: West Patrick is the quickest off-ramp out",
     icon: Moon,
     accent: "var(--app-cool)",
     href: "/places/west-patrick-street-parking-deck",
@@ -97,7 +97,7 @@ const PARK_INTENTS: ParkIntent[] = [
   },
   {
     label: "Car was towed",
-    hint: "Call the City Parking Department BEFORE the police — most tows are routine",
+    hint: "Call the City Parking Department BEFORE the police: most tows are routine",
     icon: AlertTriangle,
     accent: "var(--app-warning)",
     href: CITY_PARKING_URL,
@@ -117,7 +117,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/parking" },
   title: "Parking",
   description:
-    "Downtown Frederick parking — the five city-owned garages, where to park for Alive @ Five, Carroll Creek, the Weinberg, and how the ParkMobile zone system works.",
+    "Downtown Frederick parking: the five city-owned garages, where to park for Alive @ Five, Carroll Creek, the Weinberg, and how the ParkMobile zone system works.",
 };
 
 /**
@@ -159,7 +159,7 @@ export default function ParkingPage() {
           24/7, all on the ParkMobile app. Street parking is metered
           via numbered ParkMobile zones (the number is on the sign;
           enter it in the app to pay). Pick the garage closest to
-          where you are headed — distances downtown are tiny, but the
+          where you are headed. Distances downtown are tiny, but the
           right garage saves a five-minute walk.
         </p>
       </header>
@@ -249,7 +249,7 @@ export default function ParkingPage() {
                   href={intent.href}
                   target={intent.external ? "_blank" : undefined}
                   rel={intent.external ? "noopener noreferrer" : undefined}
-                  aria-label={`${intent.label} — ${intent.hint}`}
+                  aria-label={`${intent.label}: ${intent.hint}`}
                   className="hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
                   style={{
                     borderColor: "var(--app-border)",
@@ -519,8 +519,8 @@ export default function ParkingPage() {
           className="text-[14px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          The downtown street grid is metered via ParkMobile zones —
-          the zone number is printed on the sign at each block.
+          The downtown street grid is metered via ParkMobile zones.
+          The zone number is printed on the sign at each block.
           Open the ParkMobile app, enter the number, pay for the
           duration you need. Time-limit and rate vary by zone; the
           sign always carries the current limit.
@@ -560,7 +560,7 @@ export default function ParkingPage() {
               >
                 When the city declares a snow emergency, parking is
                 BANNED on designated routes (Patrick, Market, 7th, and
-                others) — vehicles get ticketed and towed. Listen for
+                others). Vehicles get ticketed and towed. Listen for
                 the declaration on local news or check the city
                 website during a storm.
               </span>
@@ -609,7 +609,7 @@ export default function ParkingPage() {
                 style={{ color: "var(--app-ink-2)" }}
               >
                 Downtown blocks have weekly cleaning windows posted
-                on the sign — typically a 2-3 hour AM block, one
+                on the sign, typically a 2-3 hour AM block, one
                 weekday per side. Park on the wrong side that
                 morning and you&rsquo;ll find a ticket on the
                 windshield.
@@ -660,7 +660,7 @@ export default function ParkingPage() {
               >
                 Several blocks bordering downtown (parts of
                 Carrollton, Carroll Creek South, and the Hill area)
-                are residential permit zones — visitors get 2 hours
+                are residential permit zones. Visitors get 2 hours
                 free, then a ticket unless they have a guest pass
                 or zone permit. Signs always carry the rule.
               </span>
@@ -711,7 +711,7 @@ export default function ParkingPage() {
                 First Saturday, Alive @ Five, the In the Streets
                 festival, and a few other recurring events close
                 specific blocks. Move your car the night before if
-                you live or stay on one of those streets — signage
+                you live or stay on one of those streets. Signage
                 goes up Friday afternoon.
               </span>
             </span>
@@ -734,8 +734,8 @@ export default function ParkingPage() {
           />
           <span>
             Tow-and-impound is real downtown. If your car&rsquo;s gone, call
-            the City Parking Department before you call the police —
-            most &ldquo;thefts&rdquo; downtown turn out to be tows from a snow
+            the City Parking Department before you call the police.
+            Most &ldquo;thefts&rdquo; downtown turn out to be tows from a snow
             route or street-cleaning violation.
           </span>
         </p>

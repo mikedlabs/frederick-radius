@@ -111,8 +111,15 @@ export default function MapControlSheet({
           {/* Radix Dialog requires an accessible title — without it the
               map page logged "DialogContent requires a DialogTitle", a
               real screen-reader failure (WCAG 4.1.2, June-9 deep audit).
-              sr-only: BottomDrawer uses the same pattern. */}
+              sr-only: BottomDrawer uses the same pattern. The matching
+              Description silences Radix's "Missing Description or
+              aria-describedby for {DialogContent}" dev warning (it fired
+              on every snap-change re-render here) AND tells a screen
+              reader what this persistent sheet does. */}
           <Drawer.Title className="sr-only">Radius controls</Drawer.Title>
+          <Drawer.Description className="sr-only">
+            Adjust your radius and browse what&rsquo;s within reach of the spot you choose.
+          </Drawer.Description>
           {/* Drag handle — also a tap target (44px tall via the padding)
               so a tap toggles the sheet, not only a drag. The grabber is
               a touch wider/taller than before so it reads as draggable. */}

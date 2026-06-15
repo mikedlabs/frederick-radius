@@ -327,7 +327,7 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
             <Link
               href="/search"
               onClick={() => haptic("light")}
-              aria-label="Ask or search Frederick Radius"
+              aria-label="Search places, events, towns"
               className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3 pl-4 pr-2.5 backdrop-blur-xl"
               style={{ background: "color-mix(in srgb, var(--app-bg-elevated-solid) 62%, transparent)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}
             >

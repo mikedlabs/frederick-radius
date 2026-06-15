@@ -329,14 +329,23 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             </p>
             <SourceBadge place={place} size="sm" />
           </div>
-          {knownFor(place) && (
-            <p
-              className="mt-1.5 text-[13px] italic leading-snug"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              Known for {knownFor(place)}.
-            </p>
-          )}
+          {(() => {
+            const kf = knownFor(place);
+            if (!kf) return null;
+            // Blurbs usually already end in a sentence stop, so only add
+            // our own period when one's missing — otherwise the wrapped
+            // "Known for …." sentence doubles up ("…direct-trade beans..").
+            const text = kf.replace(/\s+$/, "");
+            const withStop = /[.!?]$/.test(text) ? text : `${text}.`;
+            return (
+              <p
+                className="mt-1.5 text-[13px] italic leading-snug"
+                style={{ color: "var(--app-ink-2)" }}
+              >
+                Known for {withStop}
+              </p>
+            );
+          })()}
 
           {/* Status + rating + price + distance — the at-a-glance
            *  data row. Kept compact so the next block (the trust pill
