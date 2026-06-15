@@ -74,6 +74,38 @@ function parseItems(xml: string): NewsHeadline[] {
 
 const normTitle = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
+// ── Quality gate (boundary cleaning — never render-time) ──────────────
+// Google News RSS occasionally surfaces items that aren't real local news
+// and hurt the field-guide feel:
+//   1. A title that is just a URL (a malformed feed item, e.g.
+//      "https://marylandreporter.com/2025/10/25/freedom-bank-wins…") — we
+//      don't fabricate a headline from a slug, we drop it.
+//   2. Obituary / death-notice listings (Legacy.com syndication, "… Obituary
+//      (1949 - 2026) - The Frederick News-Post", source "Legacy | Obituary
+//      Search") — real to someone, but not civic news, and they crowd out
+//      actual stories.
+// Applied once here so every consumer (/pulse, /today LocalNewsStrip) is
+// clean without each surface re-filtering.
+const URL_ONLY_TITLE = /^\s*(?:https?:\/\/|www\.)/i;
+// A spaceless "title" that is really a bare domain path ("marylandreporter.com/2025/…").
+const BARE_DOMAIN_PATH = /^\S+\.[a-z]{2,}\/\S*$/i;
+const OBITUARY_TITLE = /\bobituar(?:y|ies)\b|\bin memoriam\b|\bdeath notice/i;
+const OBITUARY_SOURCE = /\blegacy\b|obituary\s*search/i;
+
+/** True when a headline is real, publishable local news. Drops URL-only
+ *  titles and obituary listings. Exported for the boundary test. */
+export function isPublishableHeadline(
+  h: Pick<NewsHeadline, "title" | "source">,
+): boolean {
+  const title = (h.title ?? "").trim();
+  if (!title) return false;
+  if (URL_ONLY_TITLE.test(title)) return false;
+  if (!/\s/.test(title) && BARE_DOMAIN_PATH.test(title)) return false;
+  if (OBITUARY_TITLE.test(title)) return false;
+  if (OBITUARY_SOURCE.test((h.source ?? "").trim())) return false;
+  return true;
+}
+
 export async function getLocalHeadlines(): Promise<NewsHeadline[]> {
   const feeds = await Promise.all(
     QUERIES.map(async (q) => {
@@ -91,6 +123,9 @@ export async function getLocalHeadlines(): Promise<NewsHeadline[]> {
   const seen = new Set<string>();
   const merged: NewsHeadline[] = [];
   for (const h of feeds.flat()) {
+    // Drop URL-only titles + obituary listings at the boundary, before
+    // dedupe + cap, so the 24 we keep are 24 real stories.
+    if (!isPublishableHeadline(h)) continue;
     const k = normTitle(h.title);
     if (!k || seen.has(k)) continue;
     seen.add(k);
