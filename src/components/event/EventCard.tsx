@@ -137,10 +137,14 @@ export default function EventCard({
           )}
         </Link>
         <span
-          className="shrink-0 text-[11px] tabular-nums"
+          className="shrink-0 font-mono text-[11px] tabular-nums"
           style={{ color: "var(--app-ink-3)" }}
         >
-          {date.weekday} {date.month} {date.day} · {date.time}
+          {statusText && (
+            <span className="font-semibold" style={{ color: statusBg }}>{statusText} · </span>
+          )}
+          {date.weekday} {date.month} {date.day}
+          {date.time ? ` · ${date.time}` : ""}
         </span>
       </article>
     );
@@ -211,7 +215,7 @@ export default function EventCard({
             className="truncate text-[11px] leading-tight"
             style={{ color: "var(--app-ink-3)" }}
           >
-            {date.time}
+            <span className="font-mono tabular-nums">{date.time}</span>
             {event.venue_name && (
               <>
                 {" · "}
@@ -237,7 +241,7 @@ export default function EventCard({
             so a vertical scan stays aligned. */}
         {event.distance_m !== undefined && (
           <span
-            className="shrink-0 text-[11px] tabular-nums"
+            className="shrink-0 font-mono text-[11px] tabular-nums"
             style={{ color: "var(--app-ink-3)" }}
           >
             {formatDistance(event.distance_m)}
@@ -281,27 +285,35 @@ export default function EventCard({
                 <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
               )}
               {event.distance_m !== undefined && (
-                <span className="ml-auto shrink-0 text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{formatDistance(event.distance_m)}</span>
+                <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{formatDistance(event.distance_m)}</span>
               )}
             </div>
             <Link
               href={`/events/${event.slug}`}
-              className={`mt-0.5 block font-serif text-[21px] font-semibold leading-tight tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
+              className={`mt-0.5 block font-serif text-[19px] font-semibold leading-tight tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
               style={{ color: "var(--app-ink)" }}
             >
               <span className="absolute inset-0" aria-hidden />
               {event.title}
             </Link>
+            {/* WHEN — the temporal token in mono (design-system thesis). */}
             <p className="mt-1 truncate text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-              {date.time}
-              {event.venue_name ? ` · ${event.venue_name}` : ""}
+              {date.time && <span className="font-mono tabular-nums">{date.time}</span>}
+              {date.time && event.venue_name ? " · " : ""}
+              {event.venue_name}
             </p>
-            {/* "Why it matters" — one honest line derived upstream from the
-                event's real description, never fabricated. */}
+            {/* "In their words" — one honest line lifted from the event's own
+                description, never fabricated. A plain caption, not editorial
+                serif-italic: it is the source's sentence, not the guide's. */}
             {whyItMatters && (
-              <p className="mt-1.5 line-clamp-2 font-serif text-[13px] italic leading-snug" style={{ color: "var(--app-ink-3)" }}>
-                {whyItMatters}
-              </p>
+              <div className="mt-1.5">
+                <span className="text-[9.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
+                  In their words
+                </span>
+                <p className="line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                  {whyItMatters}
+                </p>
+              </div>
             )}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {reasons.length > 0 ? (
@@ -359,7 +371,7 @@ export default function EventCard({
             {event.title}
           </Link>
           <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            <span style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
+            <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
             {event.venue_name ? <> · {event.venue_name}</> : null}
           </p>
           {/* Reason chips — same producer as before. Stay below the
@@ -376,7 +388,7 @@ export default function EventCard({
                     <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
                   )}
                   {event.distance_m !== undefined && (
-                    <span className="ml-auto tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    <span className="ml-auto font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                       {formatDistance(event.distance_m)}
                     </span>
                   )}
@@ -414,7 +426,6 @@ export default function EventCard({
   // Save / share actions also move to the detail page; the glance
   // card is a Link to the event, full stop.
   if (variant === "glance") {
-    const accentLabel = cat?.name ?? (event.category ? event.category : "Event");
     return (
       <article
         className="tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3"
@@ -428,7 +439,11 @@ export default function EventCard({
       >
         <Link
           href={`/events/${event.slug}`}
-          aria-label={`${event.title} on ${date.weekday} ${date.month} ${date.day} at ${date.time}`}
+          aria-label={
+            date.time
+              ? `${event.title} on ${date.weekday} ${date.month} ${date.day} at ${date.time}`
+              : `${event.title} on ${date.weekday} ${date.month} ${date.day}`
+          }
           className={`block outline-none ${isCancelled ? "line-through opacity-70" : ""}`}
           style={{ color: "var(--app-ink)" }}
         >
@@ -438,42 +453,49 @@ export default function EventCard({
           <span className="absolute inset-0" aria-hidden />
           <div className="flex items-stretch gap-3">
             <div className="min-w-0 flex-1">
-              {/* When — TIME-FIRST (audit D3). The clock time is the
-                  dominant anchor (big serif, category accent); the
-                  weekday + date ride alongside it small. A timeless event
-                  leads with its weekday instead, so the lead is never
-                  blank. The title drops to a secondary weight below, so
-                  the card answers "when" before "what". */}
-              <div className="flex items-baseline gap-2">
-                <span
-                  className="shrink-0 font-serif text-[19px] font-bold leading-none tabular-nums"
-                  style={{ color: accent }}
-                >
-                  {date.time || date.weekday}
-                </span>
-                <span
-                  className="min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-[0.1em]"
-                  style={{ color: "var(--app-ink-3)" }}
-                >
-                  {date.time
-                    ? `${date.weekday} · ${date.month} ${date.day}`
-                    : `${date.month} ${date.day}`}
-                  {statusText && (
-                    <span className="font-bold" style={{ color: statusBg }}>
-                      {" · "}
-                      {statusText}
-                    </span>
-                  )}
-                </span>
-              </div>
-              {/* Title — secondary now: lighter weight + size so the time
-                  leads. Still line-clamp-2 to cap card height ~108px. */}
+              {/* WHAT leads. A stack of glance cards should read as a column
+                  of titles, not a column of identical clock times — the
+                  group header ("On tonight", "This weekend") already carries
+                  the rough WHEN, so each card answers "what" first. (Reverses
+                  the old time-first glance, which buried the title.) */}
               <h3
-                className="mt-1 text-[14px] font-semibold leading-snug tracking-tight line-clamp-2"
+                className="text-[15px] font-semibold leading-snug tracking-tight line-clamp-2"
                 style={{ color: "var(--app-ink)" }}
               >
                 {event.title}
               </h3>
+              {/* WHEN — supporting mono data (the design-system thesis on the
+                  temporal token). A live dot + "Now" when it's happening
+                  right now. Time-or-weekday so a (future) null all-day time
+                  leads with the weekday, never a bare "12:00 AM". */}
+              <p
+                className="mt-1 flex flex-wrap items-center gap-x-1.5 font-mono text-[11px] tabular-nums"
+                style={{ color: "var(--app-ink-3)" }}
+              >
+                {live && (
+                  <span
+                    className="inline-flex items-center gap-1 font-medium"
+                    style={{ color: "var(--app-positive)" }}
+                  >
+                    <span
+                      aria-hidden
+                      className="live-dot h-1.5 w-1.5 rounded-full"
+                      style={{ background: "var(--app-positive)" }}
+                    />
+                    Now
+                    <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+                  </span>
+                )}
+                <span>
+                  {date.weekday} {date.month} {date.day}
+                  {date.time ? ` · ${date.time}` : ""}
+                </span>
+                {statusText && (
+                  <span className="font-medium" style={{ color: statusBg }}>
+                    · {statusText}
+                  </span>
+                )}
+              </p>
               {/* Venue line — small, calm, single-line truncate. */}
               {event.venue_name && (
                 <p
@@ -483,42 +505,31 @@ export default function EventCard({
                   {event.venue_name}
                 </p>
               )}
-              {/* Meta row — category · price · distance. Free + price
-                  live in the SAME slot (mutually exclusive). Distance
-                  right-aligns when present, so a vertical scan keeps
-                  its visual rhythm even with mixed signals. */}
-              <div className="mt-2 flex items-center gap-x-2 text-[11px]">
-                <span
-                  className="font-semibold uppercase tracking-[0.06em]"
-                  style={{ color: accent }}
-                >
-                  {accentLabel}
-                </span>
-                {event.is_free ? (
-                  <>
-                    <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+              {/* Meta row — price/free + distance only. The category WORD is
+                  dropped: the left accent rail + the icon tile already encode
+                  the kind, so naming it again was redundant chrome. */}
+              {(event.is_free || event.price_text || event.distance_m !== undefined) && (
+                <div className="mt-2 flex items-center gap-x-2 text-[11px]">
+                  {event.is_free ? (
                     <span style={{ color: "var(--app-positive)" }}>Free</span>
-                  </>
-                ) : event.price_text ? (
-                  <>
-                    <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+                  ) : event.price_text ? (
                     <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
-                  </>
-                ) : null}
-                {event.distance_m !== undefined && (
-                  <span
-                    className="ml-auto tabular-nums"
-                    style={{ color: "var(--app-ink-3)" }}
-                  >
-                    {formatDistance(event.distance_m)}
-                  </span>
-                )}
-              </div>
+                  ) : null}
+                  {event.distance_m !== undefined && (
+                    <span
+                      className="ml-auto font-mono tabular-nums"
+                      style={{ color: "var(--app-ink-3)" }}
+                    >
+                      {formatDistance(event.distance_m)}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             {/* Trailing visual anchor — a small CENTERED category icon on
                 a tonal tile (category accent at 14% over the sunken paper).
                 No imported photo: the icon + tint carry the category, the
-                left accent rail anchors the row, the date leads. */}
+                left accent rail anchors the row, the title leads. */}
             <div
               aria-hidden
               className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[12px]"
@@ -575,7 +586,7 @@ export default function EventCard({
           </Link>
         </div>
         <p className="mt-0.5 text-xs" style={{ color: "var(--app-ink-3)" }}>
-          {date.time} · {event.venue_name}
+          <span className="font-mono tabular-nums">{date.time}</span> · {event.venue_name}
         </p>
         <div className="mt-2 flex items-center gap-2">
           {cat && (
@@ -594,7 +605,7 @@ export default function EventCard({
             </span>
           )}
           {event.distance_m !== undefined && (
-            <span className="ml-auto text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+            <span className="ml-auto font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
               {formatDistance(event.distance_m)}
             </span>
           )}
