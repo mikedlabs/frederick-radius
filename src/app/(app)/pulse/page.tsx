@@ -57,6 +57,7 @@ import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import LiveTransitPill from "@/components/transit/LiveTransitPill";
 import WeatherHero from "@/components/today/WeatherHero";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import {
   Users,
   Square,
@@ -760,33 +761,35 @@ export default async function PulsePage({
           feed to count from. */}
       <section
         id="police"
-        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border"
+        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
+          borderLeftWidth: 3,
+          borderLeftColor: "var(--app-cool)",
         }}
       >
-        <div
-          className="flex items-center gap-2.5 border-b px-4 py-2.5"
+        <header
+          className="flex items-center gap-3 border-b px-4 py-2.5"
           style={{ borderColor: "var(--app-border)" }}
         >
-          <span
-            aria-hidden
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-cool) 10%, transparent)",
-              color: "var(--app-cool)",
-            }}
-          >
-            <Siren className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </span>
           <h2
-            className="font-serif text-[16px] font-semibold tracking-tight"
+            className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
+            <span
+              aria-hidden
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+              style={{
+                background: "color-mix(in srgb, var(--app-cool) 10%, transparent)",
+                color: "var(--app-cool)",
+              }}
+            >
+              <Siren className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </span>
             Police calls for service
           </h2>
-        </div>
+        </header>
         <div className="space-y-2.5 px-4 py-3">
           <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
             Frederick PD publishes the prior day&apos;s calls for service
@@ -811,32 +814,19 @@ export default async function PulsePage({
         </div>
       </section>
 
-      {/* By the numbers — county canon + live directory counts.
-          Sits BELOW the live ops sections because static reference
-          stats shouldn't compete with urgent live data, but ABOVE
-          the footer because it's still substantive content (not
-          legalese / sourcing). Mobile-first 2-col, sm 3-col,
-          lg 4-col so the tiles always read as a balanced grid. */}
-      <section
-        aria-labelledby="pulse-canon-heading"
-        className="space-y-3"
+      {/* By the numbers — county canon + live directory counts. Collapsed
+          by DEFAULT: on a live-status page this is the largest block and pure
+          static reference (zero live-"pulse" value), so it recedes behind a
+          one-tap disclosure instead of making every visitor scroll an almanac
+          to reach the footer. The choice persists per visitor (localStorage),
+          and the internal links (/parks, /transit, /category/food, Carroll
+          Creek) ship in the HTML, just display:none until expanded. */}
+      <CollapsibleSection
+        title="By the numbers · census + canon"
+        storageKey="pulse-canon"
+        defaultOpen={false}
       >
-        <div className="flex items-baseline gap-2">
-          <h2
-            id="pulse-canon-heading"
-            className="font-serif text-[20px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            By the numbers
-          </h2>
-          <span
-            className="text-[11px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Census + canon
-          </span>
-        </div>
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-2 pt-1 sm:grid-cols-3 lg:grid-cols-4">
           <CanonTile
             icon={Users}
             value="285,464"
@@ -911,7 +901,7 @@ export default async function PulsePage({
             accent="var(--app-ink-2)"
           />
         </ul>
-      </section>
+      </CollapsibleSection>
 
       {/* Footer — disclaimer + sources at a glance */}
       <footer
