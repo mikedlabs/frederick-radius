@@ -18,8 +18,6 @@ type Best = { title: string; venue?: string | null; slug: string } | null;
 export type TodayAnswerInput = {
   tonightCount: number;
   tonightBest: Best;
-  weekendCount: number;
-  weekendBest: Best;
   parking: { name: string; slug: string } | null;
   /** Slug of the event already shown as the prominent featured hero
    *  (TodayMoves "best move now" + the "What's on" hero). When a
@@ -60,23 +58,12 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
     });
   }
 
-  // 3. This weekend. Same rule — don't re-name the featured hero.
-  if (input.weekendCount > 0) {
-    const b = input.weekendBest;
-    const named = b && b.slug !== input.featuredSlug ? b : null;
-    out.push({
-      id: "weekend",
-      status: "weekend",
-      title: "This weekend",
-      answer: named ? `Don't miss ${named.title}${atVenue(named)}.` : undefined,
-      whyShown: "Coming up Friday to Sunday",
-      sourceLabel: "Frederick event calendars",
-      primaryAction: { label: "See the weekend", href: "/today?t=weekend" },
-      secondaryAction: { label: "All events", href: "/events" },
-    });
-  }
+  // (The standalone "This weekend" card was removed on 2026-06-15 — /today
+  //  is a TODAY-first briefing, and a Friday-to-Sunday card was wrongly
+  //  inheriting the photo-plated hero on quiet weekdays. Weekend now lives
+  //  in the "What's on" TimeToggle's Weekend chip + one quiet tail link.)
 
-  // 4. Parking — real garage metadata. Rates are intentionally NOT
+  // 2. Parking — real garage metadata. Rates are intentionally NOT
   //    asserted (the data marks them placeholder), so we never imply a
   //    price we can't source.
   if (input.parking) {

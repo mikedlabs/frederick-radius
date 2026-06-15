@@ -10,8 +10,6 @@ import { buildTodayAnswers, type TodayAnswerInput } from "@/lib/answers/defaultT
 const base: TodayAnswerInput = {
   tonightCount: 0,
   tonightBest: null,
-  weekendCount: 0,
-  weekendBest: null,
   parking: null,
 };
 const find = (a: ReturnType<typeof buildTodayAnswers>, id: string) => a.find((x) => x.id === id);
@@ -40,18 +38,6 @@ describe("buildTodayAnswers — no duplicate naming of the featured event", () =
     const tonight = find(out, "tonight")!;
     expect(tonight.answer).toContain("Open Mic");
     expect(tonight.secondaryAction?.href).toBe("/events/open-mic-nola");
-  });
-
-  it("weekend card drops the name when it is the featured hero", () => {
-    const out = buildTodayAnswers({
-      ...base,
-      weekendCount: 5,
-      weekendBest: { title: "Oktoberfest", venue: "Carroll Creek", slug: "oktoberfest" },
-      featuredSlug: "oktoberfest",
-    });
-    const weekend = find(out, "weekend")!;
-    expect(weekend.title).toBe("This weekend"); // insight-led; count no longer headlines
-    expect(weekend.answer).toBeUndefined();
   });
 
   it("with no featuredSlug, naming behaves as before (back-compat)", () => {
