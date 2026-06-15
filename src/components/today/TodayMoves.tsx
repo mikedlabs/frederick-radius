@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Coffee, MoonStar, Umbrella, Footprints, Sun, Snowflake, CalendarClock, Compass, ArrowRight } from "lucide-react";
+import { Coffee, MoonStar, Umbrella, Footprints, Sun, Snowflake, ArrowRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
@@ -116,11 +116,8 @@ function bestMove(
 }
 
 export default async function TodayMoves({
-  tonightCount,
   tonightEvent = null,
 }: {
-  /** Events starting tonight (computed by the page's per-mode counts). */
-  tonightCount: number;
   tonightEvent?: { slug: string; title: string; venue_name?: string | null } | null;
 }) {
   const now = new Date();
@@ -168,41 +165,6 @@ export default async function TodayMoves({
           />
         </div>
       </Link>
-
-      {/* Two supporting moves — Tonight + Near you. */}
-      <div className="grid grid-cols-2 gap-2">
-        <Link
-          href={tonightCount > 0 ? "/today?t=tonight" : "/events"}
-          className="tactile tactile-interactive block rounded-[var(--app-radius-md)] p-3"
-          style={{ background: "var(--app-bg-elevated)" }}
-        >
-          <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full" style={{ background: "var(--app-cool-tint-14)", color: "var(--app-cool)" }}>
-            <CalendarClock className="h-4 w-4" strokeWidth={2} />
-          </span>
-          <p className="mt-1.5 font-serif text-[15px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            Tonight
-          </p>
-          <p className="text-meta-lg" style={{ color: "var(--app-ink-3)" }}>
-            {tonightCount > 0 ? "Starting soon" : "See what's on"}
-          </p>
-        </Link>
-
-        <Link
-          href="/map?mode=radius"
-          className="tactile tactile-interactive block rounded-[var(--app-radius-md)] p-3"
-          style={{ background: "var(--app-bg-elevated)" }}
-        >
-          <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full" style={{ background: "var(--app-positive-tint-14)", color: "var(--app-positive)" }}>
-            <Compass className="h-4 w-4" strokeWidth={2} />
-          </span>
-          <p className="mt-1.5 font-serif text-[15px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-            Near you
-          </p>
-          <p className="text-meta-lg" style={{ color: "var(--app-ink-3)" }}>
-            Within a 10-min walk
-          </p>
-        </Link>
-      </div>
     </section>
   );
 }

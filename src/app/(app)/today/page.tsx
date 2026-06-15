@@ -440,13 +440,6 @@ export default async function HomePage({
         )}
       </section>
 
-      {/* First-visit beta intro — moved out of the lead to here (after the
-          first answers) so it never delays the answer. Dismissible; renders
-          only until the cookie is set. */}
-      <div className="mt-4">
-        <BetaIntroCard />
-      </div>
-
       {/* ── HEADS UP — high-signal interruption layer, only if needed ────
           "Before you make a plan, is there anything you need to know?"
           Self-hides when nothing is active; shows ONE worst-first alert
@@ -468,7 +461,6 @@ export default async function HomePage({
       <section className="mt-4 space-y-3" aria-label="Your next move">
         <Suspense fallback={<Skeleton.Block height={170} round="var(--app-radius-lg)" />}>
           <TodayMoves
-            tonightCount={counts.tonight ?? 0}
             tonightEvent={
               featuredEvent
                 ? {
@@ -498,7 +490,7 @@ export default async function HomePage({
           do today?", so they're a guided answer here — not buried under the
           weather. The When? toggle drives the window; the full weather stack
           and the rest stay collapsed below. */}
-      <section className="mt-6 space-y-3" aria-label="What's on">
+      <section className="mt-4 space-y-3" aria-label="What's on">
         <TimeToggle active={mode} counts={counts} />
         <DismissibleSection
           id="upcoming"
@@ -553,6 +545,14 @@ export default async function HomePage({
        *             partner apps, WorthALook, events, From Above).
        * Each column keeps its own internal space-y-6 spine so the
        * vertical rhythm doesn't collapse at the breakpoint. */}
+      {/* First-visit "New here?" intro — sits at the END of the primary
+          content (was interrupting the answers → best-move flow up top).
+          Dismissible; renders only until the cookie is set, so it never
+          weighs on a returning visitor. */}
+      <div className="mt-6">
+        <BetaIntroCard />
+      </div>
+
       {/* THE FULL BRIEFING — weather, events, and the rest, COLLAPSED by
           default so the first screen is just the ask + the answers. Depth
           is one tap away, not the opening wall. Reversible: flip
