@@ -38,7 +38,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Siren,
-  CheckCircle2, ExternalLink, MapPin, Clock, ChevronRight,
+  ExternalLink, MapPin, Clock, ChevronRight,
   Newspaper, Radio, Waves,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
@@ -55,6 +55,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import LiveTransitPill from "@/components/transit/LiveTransitPill";
+import WeatherHero from "@/components/today/WeatherHero";
 import {
   Users,
   Square,
@@ -429,6 +430,19 @@ export default async function PulsePage({
           >
             {heroSub}
           </p>
+          {/* Live conditions — what the sky is actually DOING right now.
+              /pulse is named for the live read but, before this, only ever
+              showed a weather-ALERTS count; on a calm day the page never
+              told you it was 72° and clear. Reuses /today's compact
+              WeatherHero (the underlying NWS fetch is Next-deduped) and
+              degrades to a quiet "briefly unavailable" line on fetch fail —
+              a calm page that errored on weather is worse than no glance. */}
+          <div
+            className="border-t pt-3"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
+          >
+            <WeatherHero compact />
+          </div>
           <p
             className="flex items-center gap-1.5 pt-0.5 text-[11px] tabular-nums"
             style={{ color: "var(--app-ink-3)" }}
@@ -652,41 +666,11 @@ export default async function PulsePage({
       )}
       </div>{/* /active-sections grid */}
 
-      {/* All-clear card — only renders when literally every feed is
-          quiet. Celebratory, not just empty. Catoctin-green wash
-          keeps it on-brand without resorting to a generic
-          green-checkmark UI. */}
-      {allClear && (
-        <section
-          aria-label="All clear"
-          className="rounded-[var(--app-radius-lg)] border p-5 text-center"
-          style={{
-            borderColor: "color-mix(in srgb, var(--app-positive) 30%, transparent)",
-            background:
-              "linear-gradient(155deg, color-mix(in srgb, var(--app-positive) 6%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 100%)",
-          }}
-        >
-          <CheckCircle2
-            className="mx-auto h-10 w-10"
-            strokeWidth={1.5}
-            style={{ color: "var(--app-positive)" }}
-            aria-hidden
-          />
-          <p
-            className="mt-3 font-serif text-[20px] font-semibold leading-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Quiet across the board.
-          </p>
-          <p
-            className="mt-1.5 text-[13px] leading-relaxed"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            All five feeds report nothing major right now. Page updates
-            automatically when that changes.
-          </p>
-        </section>
-      )}
+      {/* The all-clear verdict lives ONCE, in the hero ("All clear across
+          the county" + the sage live dot at the top). A second celebration
+          card here repeated it AFTER the user had already scrolled past the
+          tiles, scanner, and news — the verdict landing last, divorced from
+          the headline. One verdict, one place; removed. */}
 
       {/* Police — kept as a quiet card with its required disclaimer.
           Not part of the active-sections loop because there's no
