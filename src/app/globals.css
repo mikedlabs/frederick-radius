@@ -40,17 +40,22 @@
   --app-paper: #F4EFE6;           /* warm almanac cream */
   --app-paper-2: #ECE5D5;         /* slightly deeper paper */
 
-  --app-bg: #EEE6D4;              /* Paper — Frederick Radius brand deck (was almanac #E5D8BF).
-                                     Slightly lighter/cleaner ground; dark ink gains contrast. */
+  --app-bg: #EBE2CD;              /* Paper — deepened one step in the 2026 readability pass
+                                     (was #EEE6D4) so the lighter elevated cards genuinely
+                                     separate from the ground instead of blurring into it.
+                                     Still warm field-guide paper; dark ink gains contrast. */
   /* --app-bg-elevated is slightly translucent so the PageBloom aurora
      orbs tint cards from behind — the "glass" effect that lets the
      animated background read THROUGH the dense card stacks. Modals,
      sheets, popups that need full opacity should set their bg to
-     --app-bg-elevated-solid instead. */
+     --app-bg-elevated-solid instead. Opacity raised 93% -> 96% in the
+     readability pass so cards read as solid cream over the deeper ground
+     (a faint 4% still lets the aurora tint through). */
   --app-bg-elevated-solid: #F8F2E6;  /* paper-2 — elevated cream card (brand deck) */
-  --app-bg-elevated: color-mix(in srgb, #F8F2E6 93%, transparent);
-  --app-bg-sunken: #E3D8C2;       /* paper-3 — deeper sunken (brand deck) */
-  --app-border: #DBD2BF;          /* warm hairline against the new paper */
+  --app-bg-elevated: color-mix(in srgb, #F8F2E6 96%, transparent);
+  --app-bg-sunken: #E1D5BD;       /* paper-3 — deeper sunken (kept below the new ground) */
+  --app-border: #C9BD9F;          /* warm hairline, strengthened so card edges are visible
+                                     against the deeper paper (was #DBD2BF) */
   --app-border-strong: rgba(22, 20, 14, 0.13);
 
   /* Body ink: warm near-black (brand-deck default). Spruce (#16352B) is
@@ -196,8 +201,8 @@
    * at once, every card on every screen.
    * ───────────────────────────────────────────────────── */
   --app-elev-1:
-    0 1px 2px rgba(40, 30, 20, 0.05),
-    0 4px 10px -2px rgba(40, 30, 20, 0.08);
+    0 1px 2px rgba(40, 30, 20, 0.07),
+    0 5px 12px -2px rgba(40, 30, 20, 0.11);
   --app-elev-2:
     0 1px 2px rgba(40, 30, 20, 0.05),
     0 6px 14px -3px rgba(40, 30, 20, 0.09),
@@ -217,7 +222,7 @@
   /* Deck stack — a faint card peeking behind the bottom edge, so a
    * surface reads as the top of a physical stack (the Wallet feel). */
   --app-deck-edge: 0 1px 2px rgba(26, 26, 26, 0.05), 0 2px 5px -1px rgba(26, 26, 26, 0.08);
-  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.07);
+  --app-edge: inset 0 0 0 1px rgba(26, 26, 26, 0.10);
   /* A 1px darker bottom inner shadow — the "lip" on filled controls. */
   --app-lip: inset 0 -1px 0 rgba(0, 0, 0, 0.14);
   /* Gloss overlay — applied as background-image on filled controls
