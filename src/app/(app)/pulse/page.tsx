@@ -37,9 +37,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Activity, Construction, Zap, School, AlertTriangle, Siren,
+  Siren,
   CheckCircle2, ExternalLink, MapPin, Clock, ChevronRight,
-  CloudAlert, Newspaper, Radio, Waves,
+  Newspaper, Radio, Waves,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
@@ -52,8 +52,8 @@ import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 import { publicPlaces } from "@/lib/loaders/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
-import CollapsibleDashSection from "@/components/pulse/CollapsibleDashSection";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
+import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import LiveTransitPill from "@/components/transit/LiveTransitPill";
 import {
   Users,
@@ -101,7 +101,14 @@ function nowClock(): string {
   }).format(new Date());
 }
 
-export default async function PulsePage() {
+export default async function PulsePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ open?: string }>;
+}) {
+  // ?open=<tileKey> opens that feed's window on arrival (e.g. tapped from
+  // /today's LivePulse, which deep-links /pulse?open=traffic).
+  const { open: openParam } = await searchParams;
   const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes] = await Promise.all([
     getChartIncidentsFrederick(),
     getFrederickOutages(),
@@ -190,6 +197,164 @@ export default async function PulsePage() {
       ? ((outages.total_out / outages.total_served) * 100).toFixed(2)
       : "0";
 
+  // The dashboard tiles. Each carries an at-a-glance datum + its feed's full
+  // detail (`body`), rendered server-side here so the client shell only owns
+  // open/close state. Tapping a tile opens the body as a bottom-sheet window;
+  // the long stacked sections this replaces are gone. Source attribution
+  // lives once, in the footer data-trail below.
+  const emptyNote = (text: string) => (
+    <p className="px-1 py-6 text-center text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+      {text}
+    </p>
+  );
+  const pulseTiles: PulseTile[] = [
+    {
+      key: "safety",
+      label: "Fire & rescue",
+      iconName: "Siren",
+      countLabel: safety.length > 0 ? `${safety.length} active` : "Clear",
+      accent: "var(--app-danger)",
+      active: safety.length > 0,
+      sourceLabel: "PulsePoint",
+      body: safety.length > 0
+        ? safety.slice(0, 12).map((s) => (
+            <Row key={s.id} tone="danger" title={s.type} meta={[s.address, timeAgo(s.received_at)]} />
+          ))
+        : emptyNote("No active fire or rescue calls right now."),
+    },
+    {
+      key: "traffic",
+      label: "Traffic",
+      iconName: "Construction",
+      countLabel: traffic.length > 0 ? `${traffic.length} ${traffic.length === 1 ? "incident" : "incidents"}` : "Clear",
+      accent: "var(--app-warning)",
+      active: traffic.length > 0,
+      sourceLabel: "MDOT CHART",
+      body: traffic.length > 0
+        ? traffic.slice(0, 12).map((i) => (
+            <Row
+              key={i.id}
+              tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
+              title={`${i.road}${i.direction ? ` ${i.direction}` : ""} · ${i.type}`}
+              body={i.description}
+              meta={[
+                i.location,
+                i.lanes_affected,
+                i.expected_end
+                  ? `Clears ~${new Date(i.expected_end).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric" })}`
+                  : undefined,
+              ]}
+            />
+          ))
+        : emptyNote("No traffic incidents or roadwork reported right now."),
+    },
+    {
+      key: "power",
+      label: "Power",
+      iconName: "Zap",
+      countLabel: outagesActive ? `${outages.total_out.toLocaleString()} out` : "Clear",
+      accent: "var(--app-danger)",
+      active: outagesActive,
+      sourceLabel: "FirstEnergy / Potomac Edison",
+      body: outagesActive ? (
+        <>
+          <div
+            className="mb-1 flex items-baseline gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
+            style={{
+              borderColor: "var(--app-border)",
+              background: "color-mix(in srgb, var(--app-danger) 6%, var(--app-bg-elevated))",
+            }}
+          >
+            <span className="font-mono text-[28px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-danger)" }}>
+              {outages.total_out.toLocaleString()}
+            </span>
+            <span className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              customers without power
+              <br />
+              {pct}% of {outages.total_served.toLocaleString()} served
+            </span>
+          </div>
+          {outages.munis.map((m) => (
+            <Row
+              key={m.area}
+              tone={m.customers_out > 500 ? "danger" : "warning"}
+              title={m.area}
+              body={`${m.customers_out.toLocaleString()} out of ${m.customers_served.toLocaleString()} (${m.percentage.toFixed(1)}%)`}
+            />
+          ))}
+        </>
+      ) : emptyNote("No significant power outages right now."),
+    },
+    {
+      key: "schools",
+      label: "Schools",
+      iconName: "School",
+      countLabel: schoolAlerts.length > 0 ? `${schoolAlerts.length} ${schoolAlerts.length === 1 ? "alert" : "alerts"}` : "Clear",
+      accent: "var(--app-warning)",
+      active: schoolAlerts.length > 0,
+      sourceLabel: "FCPS RSS",
+      body: schoolAlerts.length > 0
+        ? schoolAlerts.map((a) => (
+            <Row
+              key={a.id}
+              tone={a.status === "closed" ? "danger" : a.status === "open" ? "muted" : "warning"}
+              title={
+                a.status === "closed" ? "Schools closed"
+                  : a.status === "delayed" ? "Delayed opening"
+                  : a.status === "early_dismissal" ? "Early dismissal"
+                  : "Update"
+              }
+              body={a.title}
+              meta={[timeAgo(a.published_at)]}
+            />
+          ))
+        : emptyNote("No school closures or delays right now."),
+    },
+    {
+      key: "fixit",
+      label: "311 reports",
+      iconName: "AlertTriangle",
+      countLabel: fixit.length > 0 ? `${fixit.length} open` : "Clear",
+      accent: "var(--app-cool)",
+      active: fixit.length > 0,
+      sourceLabel: "FCG FixIT · SeeClickFix",
+      body: fixit.length > 0
+        ? fixit.slice(0, 10).map((i) => (
+            <Row
+              key={i.id}
+              tone={i.status === "closed" ? "muted" : "cool"}
+              title={i.summary}
+              body={i.category && i.category !== i.summary ? i.category : undefined}
+              meta={[i.address, timeAgo(i.reported_at), i.status]}
+            />
+          ))
+        : emptyNote("No open 311 reports right now."),
+    },
+    {
+      key: "alerts",
+      label: "Weather alerts",
+      iconName: "CloudAlert",
+      countLabel: activeAlerts.length > 0 ? `${activeAlerts.length} active` : "Clear",
+      accent: "var(--app-danger)",
+      active: activeAlerts.length > 0,
+      sourceLabel: "NWS · weather.gov",
+      body: activeAlerts.length > 0
+        ? activeAlerts.slice(0, 6).map((a) => {
+            const tone =
+              a.severity === "Extreme" || a.severity === "Severe"
+                ? "danger"
+                : a.severity === "Moderate"
+                  ? "warning"
+                  : "cool";
+            const endsLabel = a.ends_at
+              ? `Through ${new Date(a.ends_at).toLocaleString("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", minute: "2-digit" })}`
+              : undefined;
+            return <Row key={a.id} tone={tone} title={a.event} body={a.headline} meta={[a.area, endsLabel]} />;
+          })
+        : emptyNote("No weather alerts for Frederick County right now."),
+    },
+  ];
+
   return (
     <div className="relative space-y-6 pb-4">
       <PageBloom variant={allClear ? "warm-cool" : "single"} />
@@ -255,76 +420,10 @@ export default async function PulsePage() {
         </div>
       </header>
 
-      {/* ── Status tile grid ───────────────────────────────────── */}
-      <section
-        aria-label="At-a-glance county status"
-        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6"
-      >
-        <StatusTile
-          href="#safety"
-          icon={Siren}
-          label="Fire & rescue"
-          count={totals.safety}
-          activeCopy={totals.safety === 1 ? "Active call" : "Active calls"}
-          accent="var(--app-danger)"
-          show={safety.length > 0}
-        />
-        <StatusTile
-          href="#traffic"
-          icon={Construction}
-          label="Traffic"
-          count={totals.traffic}
-          activeCopy={totals.traffic === 1 ? "Incident" : "Incidents"}
-          accent="var(--app-warning)"
-        />
-        <StatusTile
-          href="#power"
-          icon={Zap}
-          label="Power"
-          count={outagesActive ? outages.total_out : 0}
-          activeCopy={outagesActive ? "Customers out" : "Customers out"}
-          formatNumber={outagesActive}
-          accent="var(--app-danger)"
-        />
-        <StatusTile
-          href="#schools"
-          icon={School}
-          label="Schools"
-          count={totals.schools}
-          activeCopy={totals.schools === 1 ? "Alert" : "Alerts"}
-          accent="var(--app-warning)"
-        />
-        <StatusTile
-          href="#fixit"
-          icon={AlertTriangle}
-          label="311 reports"
-          count={totals.fixit}
-          activeCopy={totals.fixit === 1 ? "Open report" : "Open reports"}
-          accent="var(--app-cool)"
-        />
-        {/* Sixth tile: alerts beat police when something's up — a
-            tornado watch is more actionable than yesterday's CFS map.
-            Falls back to Police (external CFS map) when no alerts. */}
-        {totals.alerts > 0 ? (
-          <StatusTile
-            href="#alerts"
-            icon={CloudAlert}
-            label="Weather alerts"
-            count={totals.alerts}
-            activeCopy={totals.alerts === 1 ? "Active alert" : "Active alerts"}
-            accent="var(--app-danger)"
-          />
-        ) : (
-          <StatusTile
-            href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
-            external
-            icon={Siren}
-            label="Police"
-            accent="var(--app-cool)"
-            subtitle="Daily CFS map"
-          />
-        )}
-      </section>
+      {/* ── Status dashboard — each tile opens the feed's detail in a
+          bottom-sheet "window"; no more scroll-to-section. Police stays a
+          quiet card below (no feed to count); News + Rivers + Scanner too. */}
+      <PulseDashboard tiles={pulseTiles} initialOpen={openParam} />
 
       {/* ── Active sections only ──────────────────────────────── */}
       {/* Desktop multi-column: at lg+ the operational sections fall
@@ -333,192 +432,11 @@ export default async function PulsePage() {
           Mobile keeps the natural vertical stack. The grid is on the
           parent <div>; conditional children populate cells in source
           order so urgency stays top-left. */}
-      <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
-      {/* Weather alerts — NWS active alerts for Frederick County, MD.
-          Top-of-page placement when active: a flood warning or severe
-          thunderstorm watch beats every other feed for urgency. */}
-      {activeAlerts.length > 0 && (
-        <DashSection
-          id="alerts"
-          icon={CloudAlert}
-          title="Weather alerts"
-          count={activeAlerts.length}
-          accent="var(--app-danger)"
-          source={{ label: "NWS · weather.gov", href: "https://www.weather.gov/" }}
-        >
-          {activeAlerts.slice(0, 6).map((a) => {
-            const tone =
-              a.severity === "Extreme" || a.severity === "Severe"
-                ? "danger"
-                : a.severity === "Moderate"
-                  ? "warning"
-                  : "cool";
-            const endsLabel = a.ends_at
-              ? `Through ${new Date(a.ends_at).toLocaleString("en-US", {
-                  timeZone: "America/New_York",
-                  weekday: "short",
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}`
-              : undefined;
-            return (
-              <Row
-                key={a.id}
-                tone={tone}
-                title={a.event}
-                body={a.headline}
-                meta={[a.area, endsLabel]}
-              />
-            );
-          })}
-        </DashSection>
-      )}
-
-      {/* Safety — public fire & rescue scanner */}
-      {safety.length > 0 && (
-        <DashSection
-          id="safety"
-          icon={Siren}
-          title="Active fire & rescue"
-          count={safety.length}
-          accent="var(--app-danger)"
-          source={{ label: "PulsePoint", href: "https://web.pulsepoint.org/" }}
-        >
-          {safety.slice(0, 12).map((s) => (
-            <Row
-              key={s.id}
-              tone="danger"
-              title={s.type}
-              meta={[s.address, timeAgo(s.received_at)]}
-            />
-          ))}
-        </DashSection>
-      )}
-
-      {/* Traffic */}
-      {traffic.length > 0 && (
-        <DashSection
-          id="traffic"
-          icon={Construction}
-          title="Traffic & roadwork"
-          count={traffic.length}
-          accent="var(--app-warning)"
-          source={{ label: "MDOT CHART", href: "https://chart.maryland.gov/" }}
-        >
-          {traffic.slice(0, 12).map((i) => (
-            <Row
-              key={i.id}
-              tone={i.severity === "High" ? "danger" : i.severity === "Medium" ? "warning" : "muted"}
-              title={`${i.road}${i.direction ? ` ${i.direction}` : ""} — ${i.type}`}
-              body={i.description}
-              meta={[
-                i.location,
-                i.lanes_affected,
-                i.expected_end
-                  ? `Clears ~${new Date(i.expected_end).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric" })}`
-                  : undefined,
-              ]}
-            />
-          ))}
-        </DashSection>
-      )}
-
-      {/* Power */}
-      {outagesActive && (
-        <DashSection
-          id="power"
-          icon={Zap}
-          title="Power outages"
-          count={outagesCount}
-          accent="var(--app-danger)"
-          source={{ label: "FirstEnergy / Potomac Edison", href: "https://outages-mdwv.firstenergycorp.com/" }}
-        >
-          <div
-            className="mb-1 flex items-baseline gap-3 rounded-[var(--app-radius-md)] border px-3 py-2.5"
-            style={{
-              borderColor: "var(--app-border)",
-              background: "color-mix(in srgb, var(--app-danger) 6%, var(--app-bg-elevated))",
-            }}
-          >
-            <span
-              className="font-serif text-[28px] font-semibold leading-none tabular-nums"
-              style={{ color: "var(--app-danger)" }}
-            >
-              {outages.total_out.toLocaleString()}
-            </span>
-            <span className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              customers without power
-              <br />
-              {pct}% of {outages.total_served.toLocaleString()} served
-            </span>
-          </div>
-          {outages.munis.map((m) => (
-            <Row
-              key={m.area}
-              tone={m.customers_out > 500 ? "danger" : "warning"}
-              title={m.area}
-              body={`${m.customers_out.toLocaleString()} out of ${m.customers_served.toLocaleString()} (${m.percentage.toFixed(1)}%)`}
-            />
-          ))}
-        </DashSection>
-      )}
-
-      {/* Schools */}
-      {schoolAlerts.length > 0 && (
-        <DashSection
-          id="schools"
-          icon={School}
-          title="Schools (FCPS)"
-          count={schoolAlerts.length}
-          accent="var(--app-warning)"
-          source={{ label: "FCPS RSS", href: "https://www.fcps.org/" }}
-        >
-          {schoolAlerts.map((a) => (
-            <Row
-              key={a.id}
-              tone={a.status === "closed" ? "danger" : a.status === "open" ? "muted" : "warning"}
-              title={
-                a.status === "closed" ? "Schools closed"
-                  : a.status === "delayed" ? "Delayed opening"
-                  : a.status === "early_dismissal" ? "Early dismissal"
-                  : "Update"
-              }
-              body={a.title}
-              meta={[timeAgo(a.published_at)]}
-            />
-          ))}
-        </DashSection>
-      )}
-
-      {/* 311 — collapsed by default. The feed is always SOMETHING
-          (potholes, sign-down requests, tree-limb cleanups) and was
-          pushing the urgent feeds below the fold on every visit.
-          User can expand for the long-tail civic queue; the
-          preference sticks via localStorage. */}
-      {fixit.length > 0 && (
-        <CollapsibleDashSection
-          id="fixit"
-          icon={<AlertTriangle className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />}
-          title="Citizen 311 reports"
-          count={fixit.length}
-          accent="var(--app-cool)"
-          source={{ label: "FCG FixIT · SeeClickFix", href: "https://www.frederickcountymd.gov/8235/FCG-FixIT" }}
-          summary="Potholes, signs, tree limbs"
-          defaultOpen={false}
-        >
-          {fixit.slice(0, 10).map((i) => (
-            <Row
-              key={i.id}
-              tone={i.status === "closed" ? "muted" : "cool"}
-              title={i.summary}
-              body={
-                i.category && i.category !== i.summary ? i.category : undefined
-              }
-              meta={[i.address, timeAgo(i.reported_at), i.status]}
-            />
-          ))}
-        </CollapsibleDashSection>
-      )}
+      {/* Secondary surfaces — the scanner handoff, the rivers quick-link,
+          and local news. The operational feeds (weather alerts, fire &
+          rescue, traffic, power, schools, 311) are the tap-to-open dashboard
+          tiles above now, not a stacked run here. */}
+      <div className="space-y-4">
 
       {/* Frederick Scanner — Twitter/X timeline embed. Sits between
           the operational feeds and the editorial news section because
@@ -938,222 +856,6 @@ export default async function PulsePage() {
 /* ─────────────────────────────────────────────────────────────
  * Components
  * ───────────────────────────────────────────────────────────── */
-
-function StatusTile({
-  href,
-  external,
-  icon: Icon,
-  label,
-  count,
-  activeCopy,
-  accent,
-  subtitle,
-  show,
-  formatNumber,
-}: {
-  href: string;
-  external?: boolean;
-  icon: typeof Activity;
-  label: string;
-  count?: number;
-  activeCopy?: string;
-  accent: string;
-  subtitle?: string;
-  /** Force the tile to render even with count=0 (used for police). */
-  show?: boolean;
-  /** Use compact thousands formatting for big numbers like 1.2K. */
-  formatNumber?: boolean;
-}) {
-  const isActive = (count ?? 0) > 0 || show === true;
-  // Tiles tint with their accent color when active so the grid reads
-  // as a heat-map. Paper-cream + faint accent stripe when calm.
-  const bg = isActive
-    ? `linear-gradient(155deg, color-mix(in srgb, ${accent} 11%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 100%)`
-    : "var(--app-bg-elevated)";
-  const borderColor = isActive
-    ? `color-mix(in srgb, ${accent} 28%, var(--app-border))`
-    : "var(--app-border)";
-  const displayCount =
-    count == null
-      ? null
-      : formatNumber && count >= 1000
-        ? `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}K`
-        : count.toLocaleString();
-  // Wrap in correct element for internal vs external link.
-  const Inner = (
-    <div
-      className="group relative flex h-full flex-col gap-1 overflow-hidden rounded-[var(--app-radius-lg)] border p-3.5 transition active:scale-[0.985]"
-      style={{ background: bg, borderColor }}
-    >
-      {/* Top accent stripe — louder when active, hairline when calm.
-          Lives on the top edge so it reads at a glance even in a tile
-          you haven't focused on. */}
-      <span
-        aria-hidden
-        className="absolute inset-x-3.5 top-0 h-0.5 rounded-full"
-        style={{
-          background: accent,
-          opacity: isActive ? 1 : 0.18,
-        }}
-      />
-      <div className="flex items-center justify-between gap-1">
-        <span
-          className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-          style={{
-            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
-            color: accent,
-          }}
-          aria-hidden
-        >
-          <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
-        </span>
-        {!external && (count ?? 0) > 0 && (
-          <ChevronRight
-            className="h-3.5 w-3.5"
-            strokeWidth={2.25}
-            style={{ color: accent }}
-            aria-hidden
-          />
-        )}
-        {external && (
-          <ExternalLink
-            className="h-3 w-3"
-            strokeWidth={2.25}
-            style={{ color: accent }}
-            aria-hidden
-          />
-        )}
-      </div>
-      <p
-        className="text-[11px] font-bold uppercase tracking-[0.08em]"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        {label}
-      </p>
-      {displayCount != null ? (
-        <p className="flex items-baseline gap-1.5">
-          <span
-            className="font-serif text-[26px] font-semibold leading-none tabular-nums"
-            style={{ color: isActive ? accent : "var(--app-ink-2)" }}
-          >
-            {(count ?? 0) === 0 ? "0" : displayCount}
-          </span>
-          {(count ?? 0) === 0 && (
-            <span
-              className="text-[11px] font-semibold"
-              style={{ color: "var(--app-positive)" }}
-            >
-              · clear
-            </span>
-          )}
-        </p>
-      ) : (
-        <p
-          className="font-serif text-[18px] font-semibold leading-tight"
-          style={{ color: accent }}
-        >
-          View →
-        </p>
-      )}
-      <p
-        className="text-[11px] leading-snug"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        {subtitle ??
-          ((count ?? 0) === 0
-            ? "No issues right now"
-            : activeCopy)}
-      </p>
-    </div>
-  );
-  if (external) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`${label} — open external map`}
-        className="block h-full"
-      >
-        {Inner}
-      </a>
-    );
-  }
-  return (
-    <Link href={href} aria-label={`${label} section`} className="block h-full">
-      {Inner}
-    </Link>
-  );
-}
-
-function DashSection({
-  id, icon: Icon, title, count, accent, source, children,
-}: {
-  id: string;
-  icon: typeof Activity;
-  title: string;
-  count: number;
-  accent: string;
-  source: { label: string; href: string };
-  children: React.ReactNode;
-}) {
-  return (
-    <section
-      id={id}
-      className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-      style={{
-        borderColor: "var(--app-border)",
-        background: "var(--app-bg-elevated)",
-        // Left-edge accent band — the section's identity color reads
-        // even when the user has scrolled past the title.
-        borderLeftWidth: 3,
-        borderLeftColor: accent,
-      }}
-    >
-      <header
-        className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
-        style={{ borderColor: "var(--app-border)" }}
-      >
-        <h2
-          className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
-          style={{ color: "var(--app-ink)" }}
-        >
-          <span
-            aria-hidden
-            className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-            style={{
-              background: `color-mix(in srgb, ${accent} 13%, transparent)`,
-              color: accent,
-            }}
-          >
-            <Icon className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          </span>
-          {title}
-        </h2>
-        <span
-          className="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
-          style={{
-            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
-            color: accent,
-          }}
-        >
-          {count}
-        </span>
-      </header>
-      <div className="space-y-1.5 px-4 py-3">{children}</div>
-      <a
-        href={source.href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 px-4 pb-3 pt-1 text-[10px] uppercase tracking-wide"
-        style={{ color: "var(--app-ink-3)" }}
-      >
-        Source: {source.label}
-        <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
-      </a>
-    </section>
-  );
-}
 
 function Row({
   title, body, meta, tone,
