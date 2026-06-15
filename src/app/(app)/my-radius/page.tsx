@@ -3,7 +3,6 @@ import ContourPlate from "@/components/ui/ContourPlate";
 import Link from "next/link";
 import { Settings, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
-import RecentlyViewedRail from "@/components/saved/RecentlyViewedRail";
 import NotificationsNudge from "@/components/pwa/NotificationsNudge";
 import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
@@ -61,14 +60,11 @@ export default async function MyRadiusPage() {
         </Link>
       </header>
 
+      {/* SavedList renders its own "Recently viewed" trail at the bottom
+          (off the same useRecentPlaces), so the page no longer also mounts
+          a standalone RecentlyViewedRail here — that double-rendered the
+          section, with two headers and two Clear buttons on every visit. */}
       <SavedList />
-
-      {/* Recently viewed — device-local trail of the last 6 places
-          the user opened (via PlaceSheet OR direct /places/[slug]).
-          Self-hides when empty. Sits below the saved list because
-          the saved list is the user's intentional shortlist;
-          recents are passive context underneath. */}
-      <RecentlyViewedRail />
 
       {/* Anonymous-only sign-in CTA, demoted BELOW the saved content
           (June-9 review §15: a Saved page must open on saved value, not
