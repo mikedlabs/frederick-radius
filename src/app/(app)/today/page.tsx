@@ -355,10 +355,30 @@ export default async function HomePage({
           render nothing. */}
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
-      {/* Slim orientation line — date + time. Kept tiny so the answer
-          leads; the "new here?" intro moved BELOW the first answers (a
-          new user gets a taste of value before the explainer). */}
-      <div className="space-y-2">
+      {/* ── WEATHER HERO — the time-of-day gradient sky + today's weather +
+          tonight's event LEADS the page (owner call: it's the most beautiful,
+          most-glanceable opener). Moved up from the collapsed "full briefing";
+          the detailed hourly / 7-day / almanac forecast still lives there.
+          SkyHero's own -mx-4 -mt-4 bleeds it flush under the header for a
+          full-bleed sky; the soft downward shadow floats it over the page. */}
+      <SkyHero className="relative z-10 shadow-[0_12px_28px_-16px_rgba(22,20,14,0.22)]">
+        <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
+          <TodayCard
+            tonightEvent={
+              featuredEvent
+                ? {
+                    slug: featuredEvent.slug,
+                    title: featuredEvent.title,
+                    venue_name: featuredEvent.venue_name ?? null,
+                  }
+                : null
+            }
+          />
+        </Suspense>
+      </SkyHero>
+
+      {/* Slim orientation line — date + time, now BELOW the sky hero. */}
+      <div className="mt-3 space-y-2">
         <DateLine />
       </div>
 
@@ -585,66 +605,12 @@ export default async function HomePage({
           synthesis of time-of-day, open places, and the next
           notable event) — the centerpiece of the data → decisions
           shift the review called for. */}
-      {/* 1 — Sky-tinted hero. Sun countdown + weather (now and the
-          7-day, on one card) + plan card, layered on the time-of-day
-          gradient. */}
-      {/* WEATHER BLOCK — one cohesive unit. SkyHero + CivicAlerts
-          (when active) + Hourly + 7-day + Almanac all sit in a tight
-          `space-y-2` (8px) container so they read as a connected
-          stack instead of four floating cards. The parent's
-          space-y-6 only kicks back in BELOW this group, when
-          MoodTiles and the rest of /now take over. */}
-      {/* CivicAlerts placement: moved OUT of SkyHero (where it lived
-          on the sky gradient and visually competed with the weather
-          hero) to its own row between SkyHero and HourlyForecast.
-          During a severe-weather event the red/orange alert banner
-          now reads as a distinct row above the hourly forecast — the
-          warning lands with the visual weight it needs, instead of
-          getting absorbed into the sky gradient. When no alert is
-          active CivicAlerts renders nothing and the stack collapses
-          (Suspense fallback={null}). */}
-      {/* WEATHER BLOCK — one cohesive unit. SkyHero is the visual hero;
-          everything below (CivicAlerts when active, Hourly, More-details
-          disclosure, 7-day disclosure, Almanac) lives in ONE bordered
-          container with internal hairline dividers so the four sub-cards
-          read as ONE weather panel instead of four floating cards. The
-          gradient hero overlaps the panel's top edge by 8px so the two
-          read as connected; the panel's own border holds the rest of
-          the weather stack together. */}
-      {/* Wallet-card stack: SkyHero (weather) sits ON TOP of the
-          weather sub-card panel (hourly + weekly + more), like two
-          physical cards laying on each other. The sub-card panel
-          slides UP by -3 (12px) so its top edge tucks behind the
-          SkyHero's rounded bottom; a soft downward shadow on the
-          SkyHero casts depth onto the panel. Net visual: weather
-          card floats, week + hourly + more peeks from underneath. */}
+      {/* The sky-tinted weather hero (SkyHero + TodayCard) moved to the TOP
+          of the page (owner call). This briefing column now holds the
+          DETAILED forecast — the hourly / 7-day / more-details panel + the
+          multi-day NowDayStrip — for readers who want depth. CivicAlerts
+          lives in its own top-level "Heads up" slot above. */}
       <div className="relative">
-        <SkyHero className="relative z-10 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.22)]">
-          {/* TodayCard — the daily hook (P1): greeting + weather mood +
-              now/high/sunset + tonight's event + two situational CTAs.
-              Folds in the old BriefingLine's job and the compact weather
-              readout into one editorial "why this exists" moment. */}
-          <Suspense
-            fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}
-          >
-            <TodayCard
-              tonightEvent={
-                featuredEvent
-                  ? {
-                      slug: featuredEvent.slug,
-                      title: featuredEvent.title,
-                      venue_name: featuredEvent.venue_name ?? null,
-                    }
-                  : null
-              }
-            />
-          </Suspense>
-        </SkyHero>
-
-        {/* (Best move now + Build a plan were lifted OUT of this collapsed
-            briefing to the primary area above — see "Your next move". The
-            weather hero below stays as collapsed context.) */}
-
         {(() => {
           // Sky-aware wash on the weather sub-card stack so the
           // supplemental cards (Hourly / Weekly / More Details) read
