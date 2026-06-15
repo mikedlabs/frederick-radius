@@ -8,6 +8,7 @@ import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import LocalNewsRail from "@/components/today/LocalNewsRail";
 import NowDayStrip from "@/components/today/NowDayStrip";
+import NearbyNow from "@/components/today/NearbyNow";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
 // header above the hero now carries the temporal anchor — weekday +
@@ -374,6 +375,17 @@ export default async function HomePage({
           answer. Sits first so a craving never has to dig. */}
       <div className="mt-3">
         <CravingStrip />
+      </div>
+
+      {/* ── OPEN + HAPPENING NEAR YOU — the free-evening answer. Time +
+          distance led: one tap shares location, then the nearest OPEN
+          places and live/soon events, true-distance sorted. Revived from
+          an orphaned component (it was built, then mounted nowhere) and
+          made the lead per the 2026 standard: a no-plan evening user wants
+          "what's good right now, near me," not a category directory. The
+          no-geo state is a calm one-action invite, not a wall. */}
+      <div className="mt-3">
+        <NearbyNow />
       </div>
 
       {/* ── ANSWER-FIRST LEAD (UX_REDO Build 1) ─────────────────────────
