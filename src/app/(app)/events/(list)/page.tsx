@@ -284,7 +284,12 @@ export default async function EventsIndexPage({
     { label: "Free", Icon: Ticket, accent: "#1E6B3A", href: "/events?free=1" },
     ...(artsCats.length ? [{ label: "Arts", Icon: Palette, accent: "#7E2C6F", href: `/events?cats=${artsCats.join(",")}` }] : []),
     ...(outdoorCats.length ? [{ label: "Outdoors", Icon: Trees, accent: "#1E6B3A", href: `/events?cats=${outdoorCats.join(",")}` }] : []),
-    { label: "Civic", Icon: Building2, accent: "#2F5470", href: "#civic-meetings" },
+    // Civic only when the #civic-meetings anchor actually renders (same gate
+    // as the section at line ~501), so on a thin civic day the tile can't
+    // scroll-to-nothing like the gated Music/Family/Arts/Outdoors tiles.
+    ...((civicEvents.length > 0 || reminderEvents.length > 0)
+      ? [{ label: "Civic", Icon: Building2, accent: "#2F5470", href: "#civic-meetings" }]
+      : []),
   ];
 
   // The Browse explorer opens automatically when arriving on a filtered
