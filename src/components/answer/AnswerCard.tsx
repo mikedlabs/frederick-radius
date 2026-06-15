@@ -93,7 +93,10 @@ export default function AnswerCard({
             <span />
           )}
           {metaRight && (
-            <span className="text-[12px] font-medium tabular-nums" style={{ color: inkQuiet }}>
+            // Data voice: distances/times in JetBrains Mono + tabular-nums
+            // (the brand reserves mono for data), so the numeric datum reads
+            // as a measured figure, not prose, and column-aligns card to card.
+            <span className="font-mono text-[12px] font-medium tabular-nums" style={{ color: inkQuiet }}>
               {metaRight}
             </span>
           )}

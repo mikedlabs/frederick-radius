@@ -91,3 +91,33 @@ export const getOpenNowCount = unstable_cache(
   ["find-open-count", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 600, tags: ["find-picks", "places"] },
 );
+
+/**
+ * The single best open-now food & drink pick near downtown — name,
+ * category, distance from the downtown anchor, slug. Powers the /today
+ * "open now" answer card so it NAMES a real place instead of an abstract
+ * "open near downtown" label. Same curated ranking, origin, cache window,
+ * and tags as getOpenNowCount, so the named lead and the count never
+ * disagree and an admin closure flushes both at once. Returns null when
+ * nothing is open (the card then falls back to a count-only line).
+ */
+export const getOpenNowLead = unstable_cache(
+  async (
+    bucket: string,
+  ): Promise<{ name: string; category: string; distance_m: number; slug: string } | null> => {
+    void bucket;
+    const cats = new Set<string>(FIND_FILTERS.all);
+    const pick = getCuratedPicks({ origin: FREDERICK_CENTER, limit: 200 }).find(
+      (p) => cats.has(p.category) || (p.subcategories ?? []).some((s) => cats.has(s)),
+    );
+    if (!pick) return null;
+    return {
+      name: pick.name,
+      category: pick.category,
+      distance_m: pick.distance_m ?? 0,
+      slug: pick.slug,
+    };
+  },
+  ["find-open-lead", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  { revalidate: 600, tags: ["find-picks", "places"] },
+);

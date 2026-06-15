@@ -1,4 +1,5 @@
 import type { Answer } from "./types";
+import { formatDistance } from "@/lib/geo";
 
 /**
  * Build the default anticipatory answers for /today — the 3 to 5 cards
@@ -17,6 +18,11 @@ type Best = { title: string; venue?: string | null; slug: string } | null;
 
 export type TodayAnswerInput = {
   openCount: number;
+  /** The single best open-now pick (getOpenNowLead) — lets the open-now
+   *  card NAME a real place instead of an abstract "open near downtown".
+   *  Optional/null: the card falls back to a count-only line. distance_m
+   *  is from the downtown anchor the picks are ranked against. */
+  openLead?: { name: string; distance_m: number; slug: string } | null;
   tonightCount: number;
   tonightBest: Best;
   weekendCount: number;
@@ -36,19 +42,36 @@ const atVenue = (b: Best) => (b?.venue ? ` at ${b.venue}` : "");
 export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
   const out: Answer[] = [];
 
-  // 1. Open now — only with a confirmed count.
+  // 1. Open now — gated on a confirmed count, but now NAMES a real open
+  //    pick when we have one. The old card ("Open near downtown" /
+  //    "Confirmed open right now, close to downtown") was the biggest,
+  //    photo-plated card on the page yet said the least: no place, no
+  //    number, and a "near downtown" proximity the county-wide count never
+  //    actually computed. Counts still never headline — the headline is the
+  //    place name; the count drops to the supporting line; the distance
+  //    (from the downtown anchor the picks rank against) fills the card's
+  //    mono data slot. NearbyNow above handles true "near you" geo.
   if (input.openCount > 0) {
+    const lead = input.openLead ?? null;
+    // Only show the distance when it reads as a real proximity from
+    // downtown; a far-flung county pick's distance isn't its selling point.
+    const dist =
+      lead && lead.distance_m > 0 && lead.distance_m < 8047
+        ? formatDistance(lead.distance_m)
+        : undefined;
     out.push({
       id: "open-now",
       status: "open-now",
-      // Count gates whether this card appears (honest), but never headlines
-      // it. The door + freshness source carry trust; the open places are one
-      // tap away. (Counts are supporting detail, never the headline.)
-      title: "Open near downtown",
-      answer: "Confirmed open right now, close to downtown.",
-      whyShown: "Open this hour, within reach",
+      title: lead ? `${lead.name} is open now` : "Open right now",
+      answer: lead
+        ? input.openCount > 1
+          ? `Plus ${input.openCount - 1} more food and drink spots open across the county.`
+          : "Open right now across the county."
+        : `${input.openCount} food and drink spots open right now across the county.`,
+      whyShown: "Open this hour",
       sourceLabel: "Google Places",
       freshnessLabel: "checked today",
+      distanceLabel: dist,
       primaryAction: { label: "See what's open", href: "/map?mode=browse&open=now" },
       secondaryAction: { label: "All places", href: "/places" },
     });
