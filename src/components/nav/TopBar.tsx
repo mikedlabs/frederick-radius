@@ -59,12 +59,13 @@ export default function TopBar() {
   // The left slot becomes a Back button here instead of the wordmark.
   const isDeepPage = pathname !== "/" && tabIndexForPath(pathname) === -1;
   const goBack = () => {
-    // Prefer real history; fall back to /guide when the user landed
-    // here cold (deep link / new tab) so Back is never a dead button.
+    // Prefer real history; fall back to /today (the front door) when the
+    // user landed here cold (deep link / new tab) so Back is never a dead
+    // button. Was /guide before that page lost its primary-nav tab.
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
     } else {
-      router.push("/guide");
+      router.push("/today");
     }
   };
 

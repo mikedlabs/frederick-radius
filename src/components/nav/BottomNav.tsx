@@ -121,7 +121,7 @@ export default function BottomNav() {
 
         <ul
           ref={stripRef}
-          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-5 px-1.5 py-1.5"
+          className="relative z-10 mx-auto grid max-w-screen-md grid-cols-4 px-1.5 py-1.5"
         >
           {TABS.map(({ href, label, icon: Icon, fillOnActive }, idx) => {
             const isRealActive =

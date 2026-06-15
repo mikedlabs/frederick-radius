@@ -13,7 +13,9 @@ describe("sitemap (T2) — only canonical, indexable, non-redirecting URLs", () 
     expect(urls.some((u) => /\/$/.test(u))).toBe(false); // no bare-root "…/"
   });
 
-  it("includes the real home (/guide) and the main content routes", () => {
+  it("includes /today (the home), the /guide browse funnel, and main content routes", () => {
+    // /guide lost its primary-nav tab but stays in the sitemap — it's still
+    // a real indexable page (browse-by-town / hidden gems / live downtown).
     expect(urls.some((u) => u.endsWith("/guide"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/today"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/collections"))).toBe(true);
