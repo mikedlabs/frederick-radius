@@ -8,6 +8,7 @@ import {
   School,
   AlertTriangle,
   CloudAlert,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
@@ -51,6 +52,10 @@ export type PulseTile = {
   active: boolean;
   /** Named source, shown as the drawer subtitle (trust is the product). */
   sourceLabel: string;
+  /** Top live item, ONE line — shown on active tile faces only, so a glance
+   *  reads the situation ("I-70 W · Incident"), not just a count. Undefined on
+   *  a clear tile, which stays a quiet count so a calm day reads calm. */
+  peek?: string;
   /** The feed's detail, rendered inside the tapped window. Server-rendered. */
   body: ReactNode;
 };
@@ -87,16 +92,25 @@ export default function PulseDashboard({
               aria-label={`${t.label}: ${t.countLabel}. Tap for detail.`}
               className="tactile tactile-interactive relative flex flex-col items-start gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] p-3 text-left"
               style={{
+                // Active tiles assert (warmer tint + full accent band +
+                // chevron + peek); clear tiles recede into the sunken paper
+                // with no band — so a calm screen reads honestly calm and a
+                // busy one reads as a heat-map at a glance.
                 background: t.active
-                  ? `color-mix(in srgb, ${t.accent} 8%, var(--app-bg-elevated))`
-                  : "var(--app-bg-elevated)",
+                  ? `color-mix(in srgb, ${t.accent} 12%, var(--app-bg-elevated))`
+                  : "var(--app-bg-sunken)",
                 boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
               }}
             >
               <span
                 aria-hidden
                 className="absolute inset-x-0 top-0 h-[3px]"
-                style={{ background: t.accent, opacity: t.active ? 1 : 0.28 }}
+                style={{ background: t.accent, opacity: t.active ? 1 : 0 }}
+              />
+              <ChevronRight
+                aria-hidden
+                className="absolute right-2.5 top-2.5 h-3.5 w-3.5"
+                style={{ color: t.active ? t.accent : "var(--app-ink-3)", opacity: t.active ? 0.8 : 0.4 }}
               />
               <span
                 aria-hidden
@@ -120,6 +134,14 @@ export default function PulseDashboard({
               >
                 {t.countLabel}
               </span>
+              {t.peek && (
+                <span
+                  className="line-clamp-1 text-[11px] leading-snug"
+                  style={{ color: "var(--app-ink-2)" }}
+                >
+                  {t.peek}
+                </span>
+              )}
             </button>
           );
         })}
