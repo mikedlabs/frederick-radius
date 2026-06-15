@@ -39,7 +39,7 @@ import Link from "next/link";
 import {
   Siren,
   ExternalLink, MapPin, Clock, ChevronRight,
-  Newspaper, Radio, Waves,
+  Newspaper, Radio,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
@@ -49,6 +49,7 @@ import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
+import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
 import { publicPlaces } from "@/lib/loaders/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
@@ -102,6 +103,37 @@ function nowClock(): string {
   }).format(new Date());
 }
 
+// ── River display helpers (mirror /rivers so the two surfaces agree) ──
+function titleCaseRiver(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (m) => m.toUpperCase())
+    .replace(/\b(Nr|Ab|Bl|At|Md)\b/gi, (m) => m.toUpperCase())
+    .replace(/\bOf\b/g, "of");
+}
+/** "MONOCACY RIVER AT JUG BRIDGE NEAR FREDERICK, MD" → "At Jug Bridge near Frederick". */
+function riverLocationOf(name: string): string {
+  const m = name.match(/\s+(NEAR|AT|ABOVE|BELOW|NR|BL|AB)\s+(.+?)(?:,\s*MD)?$/i);
+  if (!m) return "";
+  const prefix = m[1].toLowerCase();
+  return `${prefix.charAt(0).toUpperCase()}${prefix.slice(1)} ${titleCaseRiver(m[2].trim())}`;
+}
+/** Group gauges under one waterway, most-gauged river first. */
+function groupByRiver(sites: WaterSite[]): Array<{ river: string; sites: WaterSite[] }> {
+  const m = new Map<string, WaterSite[]>();
+  for (const s of sites) {
+    const bucket = m.get(s.river.toUpperCase());
+    if (bucket) bucket.push(s);
+    else m.set(s.river.toUpperCase(), [s]);
+  }
+  return [...m.entries()]
+    .map(([river, list]) => ({
+      river: titleCaseRiver(river),
+      sites: list.sort((a, b) => a.name.localeCompare(b.name)),
+    }))
+    .sort((a, b) => b.sites.length - a.sites.length);
+}
+
 export default async function PulsePage({
   searchParams,
 }: {
@@ -110,7 +142,7 @@ export default async function PulsePage({
   // ?open=<tileKey> opens that feed's window on arrival (e.g. tapped from
   // /today's LivePulse, which deep-links /pulse?open=traffic).
   const { open: openParam } = await searchParams;
-  const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes, rivers] = await Promise.all([
     getChartIncidentsFrederick(),
     getFrederickOutages(),
     getFcpsAlerts(),
@@ -126,6 +158,11 @@ export default async function PulsePage({
     // TransIT route count for the "by the numbers" canon grid below.
     // Same Socrata feed /transit uses; the loader caches weekly.
     getFrederickTransitRoutes().catch(() => []),
+    // USGS live gage height + streamflow for county rivers — the only
+    // live county feed that wasn't in the dashboard grid. Latest reading
+    // only (the loader never synthesizes a flood "stage"); degrades to []
+    // so a USGS hiccup never blocks the page.
+    getFrederickWaterSites().catch(() => [] as WaterSite[]),
   ]);
 
   // ── "By the numbers" canon — pure / no fetch beyond the routes
@@ -197,6 +234,15 @@ export default async function PulsePage({
     outages.total_served > 0
       ? ((outages.total_out / outages.total_served) * 100).toFixed(2)
       : "0";
+
+  // Rivers — group the live gauges and pick a representative reading for
+  // the tile peek (the most-gauged river's first reporting gauge). Honest:
+  // height + observed time only, never a synthesized flood "stage".
+  const riverGroups = groupByRiver(rivers);
+  const riverPeekSite = riverGroups[0]?.sites.find((s) => s.gageHeightFt != null);
+  const riverPeek = riverPeekSite
+    ? `${riverGroups[0].river} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft`
+    : undefined;
 
   // The dashboard tiles. Each carries an at-a-glance datum + its feed's full
   // detail (`body`), rendered server-side here so the client shell only owns
@@ -375,6 +421,78 @@ export default async function PulsePage({
           })
         : emptyNote("No weather alerts for Frederick County right now."),
     },
+    {
+      // Rivers is live county data (rising water), not an alert — it stays a
+      // calm cool tile (active:false): no accent band, no "situation" count
+      // in the hero roll-up. The peek carries a representative gage reading
+      // so a glance gets the water level; the window lists every gauge by
+      // river with height + streamflow + observed-ago, and links to the full
+      // /rivers dashboard for 24-hour trends + the map.
+      key: "rivers",
+      label: "Rivers",
+      iconName: "Waves",
+      countLabel: rivers.length > 0
+        ? `${rivers.length} ${rivers.length === 1 ? "gauge" : "gauges"}`
+        : "No data",
+      accent: "var(--app-cool)",
+      active: false,
+      sourceLabel: "USGS Water Services",
+      peek: riverPeek,
+      body: rivers.length > 0
+        ? (
+          <>
+            {riverGroups.map((g) => (
+              <div
+                key={g.river}
+                className="rounded-[var(--app-radius-md)] border px-3 py-2.5"
+                style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+              >
+                <p className="flex items-baseline gap-1.5">
+                  <span className="text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+                    {g.river}
+                  </span>
+                  <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {g.sites.length} {g.sites.length === 1 ? "gauge" : "gauges"}
+                  </span>
+                </p>
+                <ul className="mt-1 space-y-1">
+                  {g.sites.map((s) => (
+                    <li key={s.id} className="flex items-baseline justify-between gap-2 text-[12px]">
+                      <span className="min-w-0 flex-1 truncate" style={{ color: "var(--app-ink-2)" }}>
+                        {riverLocationOf(s.name) || titleCaseRiver(s.name)}
+                      </span>
+                      <span className="shrink-0 font-mono tabular-nums" style={{ color: "var(--app-ink)" }}>
+                        {s.gageHeightFt != null
+                          ? `${s.gageHeightFt.toFixed(2)} ft`
+                          : s.streamflowCfs != null
+                            ? `${s.streamflowCfs.toLocaleString()} ft³/s`
+                            : "—"}
+                        {s.observedAt && (
+                          <span className="ml-1.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+                            {timeAgo(s.observedAt)}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+            <Link
+              href="/rivers"
+              className="inline-flex items-center gap-1 px-1 pt-1 text-[12px] font-semibold"
+              style={{ color: "var(--app-cool)" }}
+            >
+              See 24-hour trends and the gauge map
+              <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+            </Link>
+            <p className="px-1 pt-0.5 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              Latest reading only. Flood forecasts are the National Weather Service&rsquo;s job, not ours.
+            </p>
+          </>
+        )
+        : emptyNote("River gauge readings are briefly unavailable."),
+    },
   ];
 
   return (
@@ -456,8 +574,9 @@ export default async function PulsePage({
       </header>
 
       {/* ── Status dashboard — each tile opens the feed's detail in a
-          bottom-sheet "window"; no more scroll-to-section. Police stays a
-          quiet card below (no feed to count); News + Rivers + Scanner too. */}
+          bottom-sheet "window"; no more scroll-to-section. Seven tiles now
+          (the six operational feeds + Rivers). Police stays a quiet card
+          below (no feed to count); News + Scanner too. */}
       <PulseDashboard tiles={pulseTiles} initialOpen={openParam} />
 
       {/* ── Active sections only ──────────────────────────────── */}
@@ -530,47 +649,11 @@ export default async function PulsePage({
         </a>
       </section>
 
-      {/* Rivers & streams quick link — full dashboard lives at /rivers,
-          here we just surface a count + last-reading pulse so a user
-          watching the pulse page sees water levels alongside the
-          operational feeds. */}
-      <Link
-        href="/rivers"
-        className="group flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] px-4 py-3 shadow-[var(--app-shadow-1)] transition active:scale-[0.995]"
-        style={{
-          borderColor: "var(--app-border)",
-          borderLeftWidth: 3,
-          borderLeftColor: "var(--app-cool)",
-        }}
-      >
-        <span
-          aria-hidden
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full"
-          style={{
-            background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-            color: "var(--app-cool)",
-          }}
-        >
-          <Waves className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span
-            className="block font-serif text-[15px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            Rivers &amp; streams
-          </span>
-          <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Live USGS gauges · Monocacy · Potomac · Catoctin · 24-hour trend
-          </span>
-        </span>
-        <ChevronRight
-          className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
-          strokeWidth={2.25}
-          style={{ color: "var(--app-cool)" }}
-          aria-hidden
-        />
-      </Link>
+      {/* Rivers moved INTO the dashboard as the cool-accent 7th tile — it's
+          live county data (gage height), so it belongs in the heat-map grid
+          alongside the other live feeds, not stranded below as a quiet link.
+          The full /rivers dashboard (24h trends + map) is linked from inside
+          the tile's window. */}
 
       {/* City signal — Local news. Always-on city data even when the
           operational feeds are quiet. Top headlines from Google News
