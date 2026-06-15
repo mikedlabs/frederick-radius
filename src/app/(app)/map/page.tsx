@@ -301,6 +301,7 @@ export default async function MapPage({
       }));
     return (
       <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
+        <h1 className="sr-only">Frederick County map — places within reach</h1>
         <PageBloom variant="cool" />
         {/* Mode toggle is handed to RadiusBuilder, which renders it in two
             places: a modest floating copy over the collapsed map (always
@@ -322,6 +323,7 @@ export default async function MapPage({
   // the slowest upstream AND the Mapbox JS downloads during that fetch.
   return (
     <div className="-mx-4 -mt-4 lg:ml-0">
+      <h1 className="sr-only">Frederick County map</h1>
       <Suspense
         fallback={
           <div

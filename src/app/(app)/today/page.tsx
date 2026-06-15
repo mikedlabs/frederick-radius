@@ -353,6 +353,11 @@ export default async function HomePage({
 
   return (
     <div className="relative">
+      {/* Document-outline anchor. The visible "Sunday June 14" DateLine is an
+          editorial orientation line, not the page title, so the page carried
+          no <h1>; this sr-only heading gives screen readers + crawlers a clean
+          single top-level heading without changing the layout. */}
+      <h1 className="sr-only">What&rsquo;s worth your time in Frederick County right now</h1>
       <PageBloom />
 
       {/* Stale-shell guard (June-9 review P0): a cached SW/CDN shell can
