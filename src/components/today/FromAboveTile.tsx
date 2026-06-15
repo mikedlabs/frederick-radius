@@ -31,7 +31,7 @@ export default function FromAboveTile() {
         background: "var(--app-bg-elevated)",
         boxShadow: "var(--app-elev-2), var(--app-edge)",
       }}
-      aria-label="From above — a book of Frederick from the sky. Visit miked.store."
+      aria-label="From above: a book of Frederick from the sky. Visit miked.store."
     >
       {/* Photo — the cover. 16:10 aspect ratio so it reads like a
           magazine spread, not a square tile. Subtle scale on hover

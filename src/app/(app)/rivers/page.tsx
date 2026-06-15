@@ -171,7 +171,7 @@ export default async function RiversPage() {
           Just the numbers.
         </strong>{" "}
         We show the USGS reading and its 24-hour trend. We don&rsquo;t
-        compute flood stages — those need per-site NWS thresholds, and
+        compute flood stages. Those need per-site NWS thresholds, and
         making them up would be unsafe.{" "}
         <a
           href="https://water.weather.gov/ahps/region.php?state=md"
