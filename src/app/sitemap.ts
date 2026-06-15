@@ -9,11 +9,12 @@ const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   // Only canonical, indexable, 200-status URLs (T2). The root "/" 307s to
-  // /guide, and /now + /radius 308-redirect — listing a redirect in the
-  // sitemap is the bug, so they're gone and /guide is the home entry.
+  // /today (the answer surface is now the home entry), and /now + /radius
+  // 308-redirect — listing a redirect in the sitemap is the bug, so they're
+  // gone. /today is priority 1; /guide (the funnel) stays a strong entry.
   const top: MetadataRoute.Sitemap = [
-    { url: `${BASE}/guide`, lastModified: now, changeFrequency: "daily", priority: 1 },
-    { url: `${BASE}/today`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
+    { url: `${BASE}/today`, lastModified: now, changeFrequency: "hourly", priority: 1 },
+    { url: `${BASE}/guide`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/open-now`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
