@@ -107,7 +107,7 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
         title={`Sun rises over the Monocacy at ${sunriseStr}`}
       >
         <Sunrise className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-        <span>{sunriseStr}</span>
+        <span className="font-mono">{sunriseStr}</span>
         <span style={{ opacity: 0.7 }}> over Monocacy</span>
       </span>
       <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
@@ -118,7 +118,7 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
         title={`Sun sets behind Catoctin at ${sunsetStr}`}
       >
         <Sunset className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-        <span>{sunsetStr}</span>
+        <span className="font-mono">{sunsetStr}</span>
         <span style={{ opacity: 0.7 }}> behind Catoctin</span>
       </span>
       {/* "+2m" delta dropped from the in-sky variant — it was cryptic
@@ -132,7 +132,7 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
           <span aria-hidden style={{ color: sepColor, opacity: sepOpacity }}>
             ·
           </span>
-          <span className="tabular-nums" title={deltaTitle}>
+          <span className="font-mono tabular-nums" title={deltaTitle}>
             {deltaShort}
           </span>
         </>
