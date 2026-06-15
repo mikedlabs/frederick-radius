@@ -330,17 +330,16 @@ export default function NotificationsCard() {
         </button>
       )}
 
-      {toast && (
-        <p
-          className="mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px] font-medium"
-          style={{
-            background: "color-mix(in srgb, var(--app-cool) 12%, transparent)",
-            color: "var(--app-cool)",
-          }}
-        >
-          {toast}
-        </p>
-      )}
+      {/* Always-present live region so screen readers announce the toast
+          when it appears (a conditionally-mounted region can be missed). */}
+      <p
+        role="status"
+        aria-live="polite"
+        className={toast ? "mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px] font-medium" : "sr-only"}
+        style={toast ? { background: "color-mix(in srgb, var(--app-cool) 12%, transparent)", color: "var(--app-cool)" } : undefined}
+      >
+        {toast}
+      </p>
     </article>
   );
 }

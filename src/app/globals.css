@@ -827,6 +827,10 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 @keyframes shimmer-sweep {
   100% { transform: translateX(100%); }
 }
+@media (prefers-reduced-motion: reduce) {
+  /* Hold the skeleton as a calm static surface; the sweep is decorative. */
+  .shimmer::after { animation: none; }
+}
 /* Dark-mode shimmer override removed alongside the html.dark
  * block above — restore when a real dark toggle ships. */
 

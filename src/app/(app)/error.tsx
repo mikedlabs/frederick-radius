@@ -18,7 +18,7 @@ export default function AppError({
   reset: () => void;
 }) {
   return (
-    <div className="relative mx-auto flex min-h-[60vh] max-w-sm flex-col items-center justify-center gap-4 text-center">
+    <div role="alert" className="relative mx-auto flex min-h-[60vh] max-w-sm flex-col items-center justify-center gap-4 text-center">
       <ContourPlate size={150} className="absolute -top-2 right-0" />
       <p
         className="text-[11px] font-semibold uppercase tracking-[0.14em]"
@@ -33,7 +33,7 @@ export default function AppError({
         This page hit a snag.
       </h1>
       <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-        The county data is fine — the page just failed to draw. Try it
+        The county data is fine. The page just failed to draw. Try it
         again, or head back to the guide.
       </p>
       <div className="flex items-center gap-2.5 pt-1">

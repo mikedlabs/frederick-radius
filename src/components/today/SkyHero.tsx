@@ -263,7 +263,7 @@ export default async function SkyHero({
           className="mt-4 flex shrink-0 justify-center pb-1 opacity-60 lg:hidden"
         >
           <svg
-            className="h-5 w-5 animate-bounce"
+            className="h-5 w-5 animate-bounce motion-reduce:animate-none"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"

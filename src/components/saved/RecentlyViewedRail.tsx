@@ -62,7 +62,7 @@ export default function RecentlyViewedRail() {
         <button
           type="button"
           onClick={clear}
-          className="text-[11px] font-medium hover:underline"
+          className="tap-44 text-[11px] font-medium hover:underline"
           style={{ color: "var(--app-ink-3)" }}
         >
           Clear

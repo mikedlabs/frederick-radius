@@ -87,7 +87,7 @@ export default function SubmitPlaceForm() {
       </div>
 
       {error && (
-        <p className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: `${"#A02929"}1A`, color: "var(--app-danger)" }}>
+        <p role="alert" className="rounded-[var(--app-radius-md)] px-3 py-2 text-sm" style={{ background: "var(--app-danger-tint-14)", color: "var(--app-danger)" }}>
           {error}
         </p>
       )}
@@ -115,7 +115,7 @@ function FieldText({ name, label, required, type = "text", placeholder }: { name
       </span>
       <input
         name={name} type={type} required={required} placeholder={placeholder}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>
@@ -128,7 +128,7 @@ function FieldTextarea({ name, label, rows = 3 }: { name: string; label: string;
       <span className="text-xs font-medium" style={{ color: "var(--app-ink-2)" }}>{label}</span>
       <textarea
         name={name} rows={rows}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>
@@ -144,7 +144,7 @@ function FieldSelect({ name, label, required, options }: { name: string; label: 
       <select
         name={name} required={required}
         defaultValue=""
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2 focus:ring-[var(--app-brand)]"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       >
         <option value="" disabled>Pick one…</option>
