@@ -43,7 +43,7 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 
 import { eventsLive, type EventWithMeta } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { getOpenNowCount, findBucket } from "@/lib/find-picks";
+import { getOpenNowCount, getOpenNowLead, findBucket } from "@/lib/find-picks";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { easternWallToUtcISO } from "@/lib/tz";
 import CravingStrip from "@/components/now/CravingStrip";
@@ -303,7 +303,14 @@ export default async function HomePage({
 
   // Live counts for the two doors. Both cached (10-min / hourly buckets)
   // so the home page reads them off the edge, never paying the rank cost.
-  const openCount = await getOpenNowCount(findBucket(now));
+  // openLead names the single best open pick so the open-now answer card
+  // leads with a real place, not an abstract "open near downtown" label
+  // (same cache bucket + tags as the count, so they can't disagree).
+  const bucket = findBucket(now);
+  const [openCount, openLead] = await Promise.all([
+    getOpenNowCount(bucket),
+    getOpenNowLead(bucket),
+  ]);
 
   // ── Answer-first lead (UX_REDO Build 1): build 3 to 5 anticipatory
   //    answers from the real data this page already computed. Honest by
@@ -316,6 +323,7 @@ export default async function HomePage({
     null;
   const todayAnswers = buildTodayAnswers({
     openCount,
+    openLead,
     tonightCount: counts.tonight ?? 0,
     tonightBest: tonightBest
       ? { title: tonightBest.title, venue: tonightBest.venue_name ?? null, slug: tonightBest.slug }
