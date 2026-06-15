@@ -43,7 +43,6 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 
 import { eventsLive, type EventWithMeta } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { getOpenNowCount, getOpenNowLead, findBucket } from "@/lib/find-picks";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { easternWallToUtcISO } from "@/lib/tz";
 import CravingStrip from "@/components/now/CravingStrip";
@@ -301,17 +300,6 @@ export default async function HomePage({
     ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
     : sliceItems;
 
-  // Live counts for the two doors. Both cached (10-min / hourly buckets)
-  // so the home page reads them off the edge, never paying the rank cost.
-  // openLead names the single best open pick so the open-now answer card
-  // leads with a real place, not an abstract "open near downtown" label
-  // (same cache bucket + tags as the count, so they can't disagree).
-  const bucket = findBucket(now);
-  const [openCount, openLead] = await Promise.all([
-    getOpenNowCount(bucket),
-    getOpenNowLead(bucket),
-  ]);
-
   // ── Answer-first lead (UX_REDO Build 1): build 3 to 5 anticipatory
   //    answers from the real data this page already computed. Honest by
   //    construction — empty windows drop out, nothing is fabricated.
@@ -322,8 +310,6 @@ export default async function HomePage({
     PARKING_GARAGES[0] ??
     null;
   const todayAnswers = buildTodayAnswers({
-    openCount,
-    openLead,
     tonightCount: counts.tonight ?? 0,
     tonightBest: tonightBest
       ? { title: tonightBest.title, venue: tonightBest.venue_name ?? null, slug: tonightBest.slug }

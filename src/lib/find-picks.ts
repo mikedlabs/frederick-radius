@@ -74,50 +74,6 @@ export function findBucket(now: Date = new Date()): string {
   return tenMinBucket(now);
 }
 
-/**
- * Count of open-now food & drink places near downtown — the honest
- * number on the home "Find somewhere good" door. Cached per 10-minute
- * bucket so the home page never pays the full ranking cost per request
- * (the count is the length of the unscoped curated set, uncapped).
- */
-export const getOpenNowCount = unstable_cache(
-  async (bucket: string): Promise<number> => {
-    void bucket;
-    const cats = new Set<string>(FIND_FILTERS.all);
-    return getCuratedPicks({ origin: FREDERICK_CENTER, limit: 600 }).filter(
-      (p) => cats.has(p.category) || (p.subcategories ?? []).some((s) => cats.has(s)),
-    ).length;
-  },
-  ["find-open-count", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-  { revalidate: 600, tags: ["find-picks", "places"] },
-);
-
-/**
- * The single best open-now food & drink pick near downtown — name,
- * category, distance from the downtown anchor, slug. Powers the /today
- * "open now" answer card so it NAMES a real place instead of an abstract
- * "open near downtown" label. Same curated ranking, origin, cache window,
- * and tags as getOpenNowCount, so the named lead and the count never
- * disagree and an admin closure flushes both at once. Returns null when
- * nothing is open (the card then falls back to a count-only line).
- */
-export const getOpenNowLead = unstable_cache(
-  async (
-    bucket: string,
-  ): Promise<{ name: string; category: string; distance_m: number; slug: string } | null> => {
-    void bucket;
-    const cats = new Set<string>(FIND_FILTERS.all);
-    const pick = getCuratedPicks({ origin: FREDERICK_CENTER, limit: 200 }).find(
-      (p) => cats.has(p.category) || (p.subcategories ?? []).some((s) => cats.has(s)),
-    );
-    if (!pick) return null;
-    return {
-      name: pick.name,
-      category: pick.category,
-      distance_m: pick.distance_m ?? 0,
-      slug: pick.slug,
-    };
-  },
-  ["find-open-lead", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
-  { revalidate: 600, tags: ["find-picks", "places"] },
-);
+// (getOpenNowCount / getOpenNowLead were removed on 2026-06-15 when the
+//  /today open-now answer card was retired — they had no other consumer.
+//  getFindPicks below still powers the craving short-lists on /find.)
