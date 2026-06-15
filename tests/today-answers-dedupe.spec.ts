@@ -8,7 +8,6 @@ import { buildTodayAnswers, type TodayAnswerInput } from "@/lib/answers/defaultT
  * to a count + door. A *different* best bet is still named (additive).
  */
 const base: TodayAnswerInput = {
-  openCount: 0,
   tonightCount: 0,
   tonightBest: null,
   weekendCount: 0,
