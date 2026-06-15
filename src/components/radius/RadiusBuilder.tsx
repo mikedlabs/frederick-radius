@@ -803,7 +803,7 @@ export default function RadiusBuilder({
           }}
         >
           <Locate
-            className={`h-4 w-4 ${geoStatus === "loading" ? "animate-pulse" : ""}`}
+            className={`h-4 w-4 ${geoStatus === "loading" ? "animate-pulse motion-reduce:animate-none" : ""}`}
             strokeWidth={myLoc ? 2.5 : 2}
             fill={myLoc ? "currentColor" : "none"}
             aria-hidden
@@ -1329,7 +1329,7 @@ export default function RadiusBuilder({
       )}
 
       {groups.length > 0 && (
-        <section aria-label="Categories in radius" className="space-y-3">
+        <section aria-label="Categories within reach" className="space-y-3">
           <header className="flex items-end justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p
