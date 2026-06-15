@@ -300,11 +300,19 @@ body {
 }
 .focus\:not-sr-only:focus { position: fixed; width: auto; height: auto; clip: auto; white-space: normal; }
 
-/* Focus styles */
+/* Focus styles. NOTE: no `border-radius` here — setting it would reshape
+   the FOCUSED ELEMENT (squaring rounded pills/cards to 4px on focus) and
+   force the ring to that radius. Modern browsers already draw the outline
+   following each element's own border-radius, so the ring traces the real
+   shape. Elements inside overflow-hidden cards can use .focus-ring-inset. */
 :focus-visible {
   outline: 2px solid var(--app-brand);
-  outline-offset: 3px;
-  border-radius: 4px;
+  outline-offset: 2px;
+}
+/* Inset ring for interactive elements nested inside overflow-hidden /
+   rounded cards, where an offset outline would be clipped by the parent. */
+.focus-ring-inset:focus-visible {
+  outline-offset: -3px;
 }
 
 /* Range slider thumb — sized to the Apple HIG / Material Design 44pt
