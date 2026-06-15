@@ -1102,7 +1102,7 @@ export default function AppMap({
           >
             {osmLoading ? (
               <>
-                <span className="inline-block h-2 w-2 animate-pulse rounded-full" style={{ background: "var(--app-cool)" }} />
+                <span className="inline-block h-2 w-2 animate-pulse rounded-full motion-reduce:animate-none" style={{ background: "var(--app-cool)" }} />
                 Loading public places from OpenStreetMap…
               </>
             ) : osmError ? (
