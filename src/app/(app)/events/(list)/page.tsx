@@ -4,7 +4,7 @@ import { CalendarDays, Moon, Music, Baby, Ticket, Palette, Trees, Building2 } fr
 import { eventsLive, type EventWithMeta } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
-import { easternParts, easternWallToUtcISO } from "@/lib/tz";
+import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
@@ -171,23 +171,16 @@ export default async function EventsIndexPage({
     .map((s) => ({ slug: s, name: MUNICIPALITY_BY_SLUG[s]?.name ?? s }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Server-computed window boundaries. The today + weekend windows MUST
-  // be America/New_York wall time — the old server-local setHours(17) put
-  // the weekend at ~1 PM ET on a UTC production server (the date-window
-  // bug). Mirror the loader's eventsWeekend() ET math.
-  const et = easternParts(now);
-  const daysToFri = (5 - et.weekday + 7) % 7;
-  const friBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri, 12)));
-  const monBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + daysToFri + 3, 12)));
-  const friday = new Date(Date.parse(easternWallToUtcISO(friBase.year, friBase.month, friBase.day, 17, 0)));
-  const monday = new Date(Date.parse(easternWallToUtcISO(monBase.year, monBase.month, monBase.day, 0, 0)));
-  // End of TODAY in America/New_York (next Eastern midnight). The lead
-  // tier is bounded to today, not a rolling +24h — so a section that
-  // says "Today" can never quietly include tomorrow's events, and an
-  // afternoon event reads honestly as today rather than "Tonight". The
-  // day+1 rollover goes through easternParts so month/year-end is safe.
-  const todayEndBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + 1, 12)));
-  const todayEnd = new Date(Date.parse(easternWallToUtcISO(todayEndBase.year, todayEndBase.month, todayEndBase.day, 0, 0)));
+  // Server-computed window boundaries, in America/New_York wall time, from
+  // ONE source: buildHorizonBounds. This carries the weekend fix — when
+  // today is Fri/Sat/Sun the "This weekend" window CONTAINS today, instead
+  // of the old inline daysToFri math that jumped to NEXT Friday the moment
+  // it was already the weekend (so a Saturday showed next weekend). next24
+  // is the next Eastern midnight, so "Today" never spills into tomorrow.
+  const bounds = buildHorizonBounds(now, new Set(liveSlugs));
+  const friday = new Date(bounds.weekendStart);
+  const monday = new Date(bounds.weekendEnd);
+  const todayEnd = new Date(bounds.next24);
 
   // Parse the deep-link view server-side so the explorer's first paint
   // already reflects it.
@@ -326,7 +319,7 @@ export default async function EventsIndexPage({
             What&rsquo;s worth going to?
           </h1>
           <p className="mt-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Hand-picked from across Frederick County.
+            Live from county calendars and venue feeds.
           </p>
         </div>
         <Link
@@ -344,11 +337,11 @@ export default async function EventsIndexPage({
           Always visible (not behind a collapsible), so the page opens on
           the answer, never on a calendar. */}
       {heroEvent && (
-        <section aria-label="Best next" className="space-y-2">
+        <section aria-label="Next up" className="space-y-2">
           <header className="flex items-center gap-2">
             <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-brand)" }} />
             <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              {todayEvents.length === 0 ? "Best next" : "Best tonight"}
+              {todayEvents.length === 0 ? "Next up" : "On tonight"}
             </h2>
           </header>
           <EventCard
@@ -360,7 +353,7 @@ export default async function EventsIndexPage({
         </section>
       )}
 
-      {/* ── WEEK RIBBON — the density trick, BELOW the lead so "Best next"
+      {/* ── WEEK RIBBON — the density trick, BELOW the lead so "Next up"
           opens the page (never calendar-first). A slim whole-week row: seven
           frosted cells with weekday + numeral + live event count; tapping a
           day deep-links the explorer to ?d=YYYY-MM-DD. A jump-to-a-day
@@ -589,7 +582,7 @@ export default async function EventsIndexPage({
           Live event data pulled from Celebrate Frederick, the Frederick
           County calendar, Ticketmaster (music + Frederick Keys home
           games), Bandsintown, the Weinberg Center lineup, and the county
-          municipal calendars. Cached for one hour.
+          municipal calendars. Refreshed about every 10 minutes.
         </p>
         <p>
           Missing an event?{" "}

@@ -11,6 +11,7 @@
  * Pure and unit-tested: every boundary is injected (no hidden clock),
  * so it is deterministic and runs identically on server and client.
  */
+import { easternParts, easternWallToUtcISO } from "@/lib/tz";
 
 export type Horizon = "live" | "today" | "weekend" | "week" | "later";
 
@@ -94,4 +95,39 @@ export function groupByHorizon<E extends EventLike>(
     label: HORIZON_LABEL[k],
     events: byKey.get(k)!,
   }));
+}
+
+/**
+ * Build the horizon time-bounds for an instant, in America/New_York wall
+ * time. THE weekend-window fix lives here: when today is Fri/Sat/Sun the
+ * weekend the user is standing in CONTAINS today, instead of the old
+ * `daysToFri = (5 - weekday + 7) % 7` math that jumped to NEXT Friday the
+ * moment it was already the weekend (so a Saturday saw next weekend, never
+ * the one it was in). Centralized so every surface reads one correct window
+ * and the bug can't reappear per-page. `now` is injected (no hidden clock),
+ * so this stays deterministic + unit-testable like the rest of the module.
+ */
+export function buildHorizonBounds(
+  now: Date,
+  live: ReadonlySet<string> = new Set(),
+): HorizonBounds {
+  const et = easternParts(now);
+  // Days from THIS weekend's Friday: Fri=0, Sat=1, Sun=2, Mon=3 … Thu=6.
+  const daysFromFri = (et.weekday - 5 + 7) % 7;
+  // Fri/Sat/Sun: the weekend's Friday is `daysFromFri` days BEHIND today, so
+  // the window contains today. Mon-Thu: the upcoming Friday is ahead. This
+  // one line is the Sat/Sun next-weekend fix.
+  const friOffset = daysFromFri <= 2 ? -daysFromFri : 7 - daysFromFri;
+  // Walk the Eastern calendar via noon-UTC dates re-read as Eastern parts so
+  // month/year rollover stays correct (mirrors eventsWeekend()).
+  const friBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + friOffset, 12)));
+  const monBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + friOffset + 3, 12)));
+  const endBase = easternParts(new Date(Date.UTC(et.year, et.month - 1, et.day + 1, 12)));
+  return {
+    now: +now,
+    next24: Date.parse(easternWallToUtcISO(endBase.year, endBase.month, endBase.day, 0, 0)),
+    weekendStart: Date.parse(easternWallToUtcISO(friBase.year, friBase.month, friBase.day, 17, 0)),
+    weekendEnd: Date.parse(easternWallToUtcISO(monBase.year, monBase.month, monBase.day, 0, 0)),
+    live,
+  };
 }
