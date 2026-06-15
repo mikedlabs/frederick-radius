@@ -1094,7 +1094,11 @@ export default function AppMap({
             <button type="button" onClick={() => setGeoMsg(null)} aria-label="Dismiss" style={{ color: "var(--app-ink-3)" }}>✕</button>
           </div>
         )}
-        {(osmLoading || osmError || osmPlaces.length > 0) && (
+        {/* Transient OSM status only — loading + error. The old steady-state
+            "{N} verified OSM places" chip was a permanent floating count with
+            no tap target (pure top-left noise once everything had loaded), so
+            on a healthy map nothing shows here now. */}
+        {(osmLoading || osmError) && (
           <div
             className="absolute left-3 top-3 z-[var(--z-map-control)] inline-flex items-center gap-2 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium shadow-[var(--app-shadow-1)] backdrop-blur"
             style={{ color: "var(--app-ink-2)" }}
@@ -1105,15 +1109,10 @@ export default function AppMap({
                 <span className="inline-block h-2 w-2 animate-pulse rounded-full motion-reduce:animate-none" style={{ background: "var(--app-cool)" }} />
                 Loading public places from OpenStreetMap…
               </>
-            ) : osmError ? (
+            ) : (
               <>
                 <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-warning)" }} />
                 Couldn&apos;t reach OSM; showing curated only
-              </>
-            ) : (
-              <>
-                <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
-                {trustedOsmCount.toLocaleString()} verified OSM places
               </>
             )}
           </div>
