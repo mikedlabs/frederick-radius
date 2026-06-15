@@ -7,7 +7,18 @@ import { placeHoursTrust } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
 import { ChevronDown, AlertCircle } from "lucide-react";
 
-export default function HoursBlock({ hours, verified = false }: { hours?: Hours; verified?: boolean }) {
+export default function HoursBlock({
+  hours,
+  verified = false,
+  provenance,
+}: {
+  hours?: Hours;
+  verified?: boolean;
+  /** Hours source + freshness line (e.g. "Hours from Google, confirmed 3
+   *  days ago."). Lives inside the expanded details so it stays honest
+   *  without competing with the open/closed dot in the decision zone. */
+  provenance?: string;
+}) {
   const [open, setOpen] = useState(false);
   if (!hours) return null;
   const status = getOpenStatus(hours, { verified });
@@ -59,6 +70,11 @@ export default function HoursBlock({ hours, verified = false }: { hours?: Hours;
             </li>
           ))}
         </ul>
+        {provenance && (
+          <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+            {provenance}
+          </p>
+        )}
       </div>
     </details>
   );

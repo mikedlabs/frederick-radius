@@ -26,7 +26,7 @@ describe("buildTodayAnswers — no duplicate naming of the featured event", () =
       featuredSlug: "jazz-sky-stage",
     });
     const tonight = find(out, "tonight")!;
-    expect(tonight.title).toBe("3 events tonight");
+    expect(tonight.title).toBe("On tonight"); // insight-led; count no longer headlines
     expect(tonight.answer).toBeUndefined(); // not "Best bet: Jazz at Sky Stage"
     expect(tonight.secondaryAction?.href).toBe("/events"); // not the per-event detail
   });
@@ -51,7 +51,7 @@ describe("buildTodayAnswers — no duplicate naming of the featured event", () =
       featuredSlug: "oktoberfest",
     });
     const weekend = find(out, "weekend")!;
-    expect(weekend.title).toBe("5 this weekend");
+    expect(weekend.title).toBe("This weekend"); // insight-led; count no longer headlines
     expect(weekend.answer).toBeUndefined();
   });
 

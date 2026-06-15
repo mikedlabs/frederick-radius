@@ -385,6 +385,7 @@ export default async function EventsIndexPage({
           title="This weekend"
           count={weekendEvents.length}
           countLabel={weekendEvents.length === 1 ? "event" : "events"}
+          countAriaOnly
           storageKey="fr.events.weekend"
           defaultOpen
         >
@@ -440,6 +441,7 @@ export default async function EventsIndexPage({
           title="Later this week"
           count={laterThisWeek.length}
           countLabel={laterThisWeek.length === 1 ? "event" : "events"}
+          countAriaOnly
           storageKey="fr.events.later"
           defaultOpen={false}
         >
@@ -518,6 +520,7 @@ export default async function EventsIndexPage({
           title="Civic meetings"
           count={civicEvents.length}
           countLabel={civicEvents.length === 1 ? "meeting" : "meetings"}
+          countAriaOnly
           storageKey="fr.events.civic-meetings"
           defaultOpen={false}
         >
@@ -538,6 +541,7 @@ export default async function EventsIndexPage({
           title="Town reminders"
           count={reminderEvents.length}
           countLabel={reminderEvents.length === 1 ? "notice" : "notices"}
+          countAriaOnly
           storageKey="fr.events.town-reminders"
           defaultOpen={false}
         >
@@ -560,6 +564,7 @@ export default async function EventsIndexPage({
           title="Civic & municipal calendar"
           count={publicSeries.length}
           countLabel="series"
+          countAriaOnly
           storageKey="fr.events.official"
           defaultOpen={false}
         >

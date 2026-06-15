@@ -16,7 +16,6 @@ import CategoryIcon from "./CategoryIcon";
 import SourceBadge from "./SourceBadge";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
-import { BeenHereIndicator } from "./BeenHereIndicator";
 
 /**
  * PlaceCard — the unified TYPOGRAPHIC browse card (Photo Policy, Phase 1).
@@ -56,9 +55,6 @@ function Rave({
     >
       <Star className="h-3 w-3" strokeWidth={0} fill="var(--app-warning)" aria-hidden />
       {rating.toFixed(1)}
-      <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>
-        ({count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count})
-      </span>
     </span>
   );
 }
@@ -268,7 +264,6 @@ export default function PlaceCard({
                 {(place.known_for?.[0] ?? kf) && (
                   <> · <span style={{ color: "var(--app-ink-2)" }}>{place.known_for?.[0] ?? kf}</span></>
                 )}
-                <BeenHereIndicator slug={place.slug} />
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
@@ -331,7 +326,6 @@ export default function PlaceCard({
             {kf && (
               <p className="text-body" style={{ color: "var(--app-ink-2)" }}>
                 {kf}
-                <BeenHereIndicator slug={place.slug} />
               </p>
             )}
             {/* The decision row: open + closing time, rating, price. */}
@@ -417,7 +411,6 @@ export default function PlaceCard({
               {place.distance_m !== undefined && (
                 <>{place.known_for?.[0] ? " · " : ""}{formatDistance(place.distance_m)}</>
               )}
-              <BeenHereIndicator slug={place.slug} />
             </p>
             {nonOpenReasons.length > 0 ? (
               <ReasonChipRow reasons={nonOpenReasons.slice(0, 2)} className="pt-0.5" />
@@ -462,7 +455,6 @@ export default function PlaceCard({
               <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                 {cat?.name ?? place.category}
                 {place.distance_m !== undefined && <> · {formatDistance(place.distance_m)}</>}
-                <BeenHereIndicator slug={place.slug} />
               </p>
               {reasons.length > 0 ? (
                 <ReasonChipRow reasons={reasons.slice(0, 2)} className="pt-0.5" />
@@ -516,7 +508,6 @@ export default function PlaceCard({
         <p className="mt-0.5 truncate text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {cat?.name ?? place.category}
           {kf && <> · {kf}</>}
-          <BeenHereIndicator slug={place.slug} />
         </p>
         {!compact && (
           rowReasons.length > 0 ? (

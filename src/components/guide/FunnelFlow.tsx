@@ -22,7 +22,6 @@ import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
 import { placeQuality } from "@/lib/quality/placeQuality";
 import { gateRecommendable, tierRank } from "@/lib/guided/rank";
-import { frederickHour } from "@/lib/search-suggestions";
 import { haptic } from "@/lib/haptics";
 import { track } from "@vercel/analytics";
 import { INTENT_ICON } from "./intentIcons";
@@ -58,14 +57,6 @@ const tileItem: Variants = {
   hidden: { opacity: 0, y: 14 },
   show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: [0.34, 1.4, 0.5, 1] } },
 };
-
-function daypartGreeting(hour: number): string {
-  if (hour < 5) return "Late night";
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  if (hour < 21) return "Good evening";
-  return "Tonight";
-}
 
 // Situational lenses — find by the moment, ACROSS categories, using the
 // place `tags` we already hold. Honest by construction: only lenses with
@@ -132,14 +123,6 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
   const [lens, setLens] = useState<Lens | null>(null);
   const [sort, setSort] = useState<SortKey>("best");
   const { state: geo, request: requestGeo } = useGeolocation();
-  const [mounted, setMounted] = useState(false);
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical mounted flag: the daypart greeting must differ between SSR (none) and client (real hour), so it can only resolve post-mount
-  useEffect(() => setMounted(true), []);
-  // Daypart greeting + "good right now" picks resolve only after mount,
-  // so SSR and the first client paint match.
-  const nowHour = mounted ? frederickHour() : null;
-  const greeting = nowHour !== null ? daypartGreeting(nowHour) : null;
-
   const intent = intentKey ? INTENT_BY_KEY[intentKey] : null;
   // Rehydrate the sub-intent OBJECT from its URL key against the active
   // intent's own list — an alien key simply degrades to "no sub filter."
@@ -154,14 +137,6 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
   // PLACE via a chip rail in the results header (no full-screen "what
   // kind?" detour), and they stack with Open now / Near me.
   const step: "intent" | "results" = intent || lens ? "results" : "intent";
-
-  // Live per-intent counts so the first screen reads as real, not a menu.
-  const counts = useMemo(() => {
-    const c: Record<string, number> = {};
-    if (!ready) return c;
-    for (const k of TOP) c[k] = places.filter(INTENT_BY_KEY[k].match).length;
-    return c;
-  }, [ready, places]);
 
   const resultsState = useMemo(() => {
     if (!intent && !lens) return { list: [] as PlaceCardData[], totalCount: 0 };
@@ -257,9 +232,11 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
 
   const sortLabel =
     sort === "nearest" ? "nearest first" : sort === "rated" ? "top rated" : geo.status === "granted" ? "best nearby" : "top picks";
+  // Sort label leads (the data-honesty promise); the count trails as quiet
+  // supporting detail rather than headlining the subtitle.
   const resultsSub = !ready
     ? "Finding places…"
-    : `${totalCount} ${openOnly ? "open " : ""}place${totalCount === 1 ? "" : "s"} · ${sortLabel}`;
+    : `${sortLabel} · ${totalCount} ${openOnly ? "open " : ""}place${totalCount === 1 ? "" : "s"}`;
   // The sort control's options — "Nearest" only appears once we have a
   // location to make it meaningful.
   const sortOpts: { key: SortKey; label: string }[] = [
@@ -333,7 +310,7 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
             {!hideHeader && (
               <header className="pb-2.5">
                 <p className="text-[12px] font-semibold uppercase tracking-[0.13em]" style={{ color: "var(--app-ink-3)" }}>
-                  {greeting ? `${greeting} · Frederick County` : "Frederick County"}
+                  Frederick County · Field guide
                 </p>
                 <h1 className="display-2 mt-1" style={{ color: "var(--app-ink)" }}>
                   What are you looking for?
@@ -392,7 +369,6 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
                     color={it.color}
                     icon={<Icon className={lead ? "h-[24px] w-[24px]" : "h-[22px] w-[22px]"} strokeWidth={2} aria-hidden />}
                     label={it.label}
-                    count={counts[k]}
                     onClick={() => {
                       haptic("light");
                       track("find_intent", { intent: k });
@@ -732,14 +708,12 @@ function Tile({
   color,
   icon,
   label,
-  count,
   onClick,
   lead = false,
 }: {
   color: string;
   icon?: ReactNode;
   label: string;
-  count?: number;
   onClick: () => void;
   /** The bento lead lane — spans both columns and runs as a wide, taller
    *  cell (icon + name side-by-side) so it reads as the hero of the grid. */
@@ -779,18 +753,13 @@ function Tile({
           <span className="text-[18px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             {label}
           </span>
-          {typeof count === "number" && (
-            <span className="text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-              {count} place{count === 1 ? "" : "s"}
-            </span>
-          )}
         </span>
         <ChevronRight className="h-5 w-5 shrink-0 transition-transform group-active:translate-x-0.5" strokeWidth={2.25} style={{ color }} aria-hidden />
       </motion.button>
     );
   }
 
-  // Standard frosted lane — colored mark, name, quiet count. No description,
+  // Standard frosted lane — colored mark, name. No count, no description,
   // no chevron: the grid reads as a confident set of glass doors.
   return (
     <motion.button
@@ -811,11 +780,6 @@ function Tile({
         <span className="text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
           {label}
         </span>
-        {typeof count === "number" && (
-          <span className="text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {count} place{count === 1 ? "" : "s"}
-          </span>
-        )}
       </span>
     </motion.button>
   );

@@ -63,11 +63,11 @@ const GREETING: Record<Band, string> = {
 /** A short, confident weather mood line — not cute, just human. */
 function moodLine(condition: string, temp: number | null): string {
   const c = condition.toLowerCase();
-  if (/thunder|storm/.test(c)) return "Storms around — keep it indoors.";
+  if (/thunder|storm/.test(c)) return "Storms around. Keep it indoors.";
   if (/rain|shower|drizzle/.test(c)) return "Rain in play. Have a backup plan.";
   if (/snow|sleet|ice|wintry/.test(c)) return "Wintry out. Bundle up.";
   if (/fog|mist|haze/.test(c)) return "Low and gray. Soft light for a walk.";
-  if (temp != null && temp >= 88) return "Hot one — chase the shade.";
+  if (temp != null && temp >= 88) return "Hot one. Chase the shade.";
   if (temp != null && temp <= 38) return "Cold and clear. Layers today.";
   if (/cloud|overcast/.test(c)) return "Soft, gray light over the county.";
   if (temp != null && temp >= 60 && temp <= 84) return "Patio weather.";

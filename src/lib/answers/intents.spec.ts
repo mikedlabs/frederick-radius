@@ -46,8 +46,10 @@ describe("buildTodayAnswers (honest, never fabricates)", () => {
       parking: { name: "Carroll Creek Parking Deck", slug: "carroll-creek-parking-garage-frederick" },
     });
     expect(a.length).toBeLessThanOrEqual(5);
+    // openCount gates the card's presence (honest), but no longer headlines
+    // it with the tally — the title is the calm place-led insight.
     expect(a[0].id).toBe("open-now");
-    expect(a[0].title).toContain("7");
+    expect(a[0].title).toBe("Open near downtown");
     // Every answer must carry a primary action (one move).
     expect(a.every((x) => x.primaryAction?.href)).toBe(true);
   });

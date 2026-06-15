@@ -131,12 +131,6 @@ export default function WeekendVibes({
               >
                 {g.label}
               </h3>
-              <span
-                className="text-[11px] tabular-nums"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                {g.events.length}
-              </span>
             </header>
             <ol className="space-y-2.5">
               {g.events.map((e) => (

@@ -22,7 +22,7 @@ import { placeHoursTrust, formatChecked } from "@/lib/trust";
 import { knownFor } from "@/lib/cuisine";
 import { classifyDescription } from "@/lib/copy-quality";
 import { formatDistance } from "@/lib/geo";
-import type { ParcelContext } from "@/lib/loaders/cofParcels";
+import { nearestAerial, currentSeason } from "@/lib/aerial";
 import PhotoLightbox from "@/components/ui/PhotoLightbox";
 
 /**
@@ -163,19 +163,6 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
       .then((d) => { if (!cancelled && Array.isArray(d?.events)) setVenueEvents(d.events); })
       .catch(() => {});
     return () => { cancelled = true; setVenueEvents([]); };
-  }, [place.slug]);
-
-  // City of Frederick parcel context, on-demand. Dormant by default:
-  // the route returns null until the City source is approved, activated,
-  // and COF_PARCELS=1, so nothing renders in production until then.
-  const [parcel, setParcel] = useState<ParcelContext | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    fetch(`/api/place/${place.slug}/parcel`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (!cancelled && d && d.parcel_id) setParcel(d as ParcelContext); })
-      .catch(() => {});
-    return () => { cancelled = true; setParcel(null); };
   }, [place.slug]);
 
   // Static enrichment wins; on-demand fills the gap.
@@ -396,63 +383,11 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             <FreshnessChip iso={place.last_verified_at} />
           </div>
 
-        {parcel && (
-          <div
-            className="mt-3 rounded-[var(--app-radius-md)] border p-3"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-                City of Frederick record
-              </p>
-              <TrustChip
-                signal={{
-                  level: "official",
-                  label: "City record",
-                  basis: "Matched to the City of Frederick parcel",
-                }}
-              />
-            </div>
-            <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
-              {parcel.zoning && (
-                <>
-                  <dt style={{ color: "var(--app-ink-3)" }}>Zoning</dt>
-                  <dd>{parcel.zoning}{parcel.zoning_overlays.length > 0 ? ` (+ ${parcel.zoning_overlays.join(", ")})` : ""}</dd>
-                </>
-              )}
-              {parcel.land_use && (
-                <>
-                  <dt style={{ color: "var(--app-ink-3)" }}>Land use</dt>
-                  <dd>{parcel.land_use}</dd>
-                </>
-              )}
-              {parcel.subdivision && (
-                <>
-                  <dt style={{ color: "var(--app-ink-3)" }}>Subdivision</dt>
-                  <dd>{parcel.subdivision}</dd>
-                </>
-              )}
-              {parcel.neighborhood_advisory_council && (
-                <>
-                  <dt style={{ color: "var(--app-ink-3)" }}>Neighborhood council</dt>
-                  <dd>{parcel.neighborhood_advisory_council}</dd>
-                </>
-              )}
-              {parcel.election_district != null && (
-                <>
-                  <dt style={{ color: "var(--app-ink-3)" }}>Election district</dt>
-                  <dd>{parcel.election_district}</dd>
-                </>
-              )}
-              {(parcel.schools.elementary || parcel.schools.middle || parcel.schools.high) && (
-                <>
-                  <dt style={{ color: "var(--app-ink-3)" }}>Schools</dt>
-                  <dd>{[parcel.schools.elementary, parcel.schools.middle, parcel.schools.high].filter(Boolean).join(" / ")}</dd>
-                </>
-              )}
-            </dl>
-          </div>
-        )}
+        {/* City of Frederick parcel context (zoning / land use / schools /
+            election district) was removed from the discovery sheet — it read
+            as an institutional data dump, not a "should I visit" signal. When
+            the feature activates (COF_PARCELS + City approval) it belongs in a
+            dedicated Land-records section on /places/[slug], not this overlay. */}
 
         {/* Real travel time from downtown (Routes API) */}
         {travel && (travel.walkMin != null || travel.driveMin != null) && (
@@ -516,6 +451,55 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             ))}
           </div>
         )}
+
+        {/* From above — the nearest geotagged drone shot of this block,
+            when one genuinely sits close enough to depict it (self-hiding
+            via the maxMeters gate, so it never captions a photo as a place
+            it isn't). The reliable LOCAL archive, not the dead City ortho.
+            Blur-up gives a calm load; honest distance in the caption. */}
+        {(() => {
+          const aerial = nearestAerial(
+            { lng: place.geom.lng, lat: place.geom.lat },
+            { maxMeters: 800, preferSeason: currentSeason() },
+          );
+          if (!aerial) return null;
+          const seasonLabel = aerial.season.charAt(0).toUpperCase() + aerial.season.slice(1);
+          return (
+            <div className="mt-5">
+              <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>From above</h3>
+              <figure
+                className="relative overflow-hidden rounded-[var(--app-radius-lg)]"
+                style={{ boxShadow: "var(--app-edge), var(--app-elev-1)" }}
+              >
+                <div className="relative aspect-[16/10] w-full bg-[var(--app-bg-sunken)]">
+                  <Image
+                    src={aerial.src}
+                    alt={`${place.name} from above`}
+                    fill
+                    loading="lazy"
+                    sizes="(max-width: 720px) 100vw, 720px"
+                    placeholder="blur"
+                    blurDataURL={PAPER_CREAM_BLUR}
+                    className="object-cover"
+                  />
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0"
+                    style={{ background: "linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.5) 100%)" }}
+                  />
+                  <figcaption
+                    className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 p-3 text-[11px] font-semibold text-white"
+                    style={{ textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}
+                  >
+                    <span>{seasonLabel} from the air</span>
+                    <span aria-hidden style={{ opacity: 0.65 }}>·</span>
+                    <span style={{ opacity: 0.9 }}>{formatDistance(aerial.distance_m)} from here</span>
+                  </figcaption>
+                </div>
+              </figure>
+            </div>
+          );
+        })()}
 
         {/* Upcoming events AT this venue — what's on here, not just what it is */}
         {venueEvents.length > 0 && (

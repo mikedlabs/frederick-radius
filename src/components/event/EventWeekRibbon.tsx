@@ -154,19 +154,14 @@ export default function EventWeekRibbon({
             >
               {d.dom}
             </span>
-            {/* Count badge — a soft pill when there's something on, a
-                muted dot when the day is honestly empty. Both occupy the
-                same slot so the ribbon's baseline never jumps. */}
-            {d.count > 0 ? (
+            {/* The ribbon is a date picker, not a tally grid. Today keeps
+                its count (the one day the exact number helps); every other
+                day is a presence DOT — brand-tinted when something's on, a
+                muted dot when it's honestly empty. Same slot, calm baseline. */}
+            {d.count > 0 && d.key === todayKey ? (
               <span
                 className="inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums leading-[16px]"
-                style={{
-                  background:
-                    d.key === todayKey
-                      ? "var(--app-brand)"
-                      : "color-mix(in srgb, var(--app-ink) 9%, transparent)",
-                  color: d.key === todayKey ? "white" : "var(--app-ink-2)",
-                }}
+                style={{ background: "var(--app-brand)", color: "white" }}
               >
                 {d.count}
               </span>
@@ -174,7 +169,12 @@ export default function EventWeekRibbon({
               <span
                 aria-hidden
                 className="block h-[6px] w-[6px] rounded-full"
-                style={{ background: "color-mix(in srgb, var(--app-ink-3) 35%, transparent)" }}
+                style={{
+                  background:
+                    d.count > 0
+                      ? "color-mix(in srgb, var(--app-brand) 55%, transparent)"
+                      : "color-mix(in srgb, var(--app-ink-3) 35%, transparent)",
+                }}
               />
             )}
           </Link>
