@@ -31,7 +31,6 @@ export type TodayAnswerInput = {
   featuredSlug?: string | null;
 };
 
-const place = (n: number) => `${n} ${n === 1 ? "place" : "places"}`;
 const atVenue = (b: Best) => (b?.venue ? ` at ${b.venue}` : "");
 
 export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
@@ -42,7 +41,10 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
     out.push({
       id: "open-now",
       status: "open-now",
-      title: `${place(input.openCount)} open near downtown`,
+      // Count gates whether this card appears (honest), but never headlines
+      // it. The door + freshness source carry trust; the open places are one
+      // tap away. (Counts are supporting detail, never the headline.)
+      title: "Open near downtown",
       answer: "Confirmed open right now, close to downtown.",
       whyShown: "Open this hour, within reach",
       sourceLabel: "Google Places",
@@ -60,7 +62,10 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
     out.push({
       id: "tonight",
       status: "tonight",
-      title: input.tonightCount === 1 ? "1 event tonight" : `${input.tonightCount} events tonight`,
+      // Insight leads, not the tally — the named best bet (when present) or
+      // the "tonight" status chip carries the substance; the count lives in
+      // the TimeToggle, not three places at once.
+      title: "On tonight",
       answer: named ? `Best bet: ${named.title}${atVenue(named)}.` : undefined,
       whyShown: "Starting this evening",
       sourceLabel: "Frederick event calendars",
@@ -76,7 +81,7 @@ export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
     out.push({
       id: "weekend",
       status: "weekend",
-      title: `${input.weekendCount} this weekend`,
+      title: "This weekend",
       answer: named ? `Don't miss ${named.title}${atVenue(named)}.` : undefined,
       whyShown: "Coming up Friday to Sunday",
       sourceLabel: "Frederick event calendars",

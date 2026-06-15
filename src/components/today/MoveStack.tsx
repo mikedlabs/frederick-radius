@@ -99,7 +99,7 @@ export default async function MoveStack() {
       </ol>
 
       <p className="mt-2 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-        A suggested plan from what&rsquo;s downtown — check hours before you go.
+        A suggested plan from what&rsquo;s downtown. Check hours before you go.
       </p>
     </section>
   );

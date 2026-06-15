@@ -27,13 +27,16 @@ export default function ParkAmenitiesStrip({ slug }: { slug: string }) {
   const a = MAP[slug];
   if (!a) return null;
 
+  // Amenity TYPE labels answer "does this park have X?" — no emoji (off
+  // brand), no directory tallies. Trail miles is the one magnitude kept:
+  // it materially changes the plan (a short loop vs a long network).
   const chips: string[] = [];
-  if (a.playgrounds) chips.push(`🛝 ${a.playgrounds} playground${a.playgrounds === 1 ? "" : "s"}`);
-  if (a.shelters) chips.push(`⛺ ${a.shelters} shelter${a.shelters === 1 ? "" : "s"}${a.maxShelterCap ? ` · seats ${a.maxShelterCap}` : ""}`);
-  if (a.fields) chips.push(`🏟️ ${a.fields} field${a.fields === 1 ? "" : "s"}/court${a.fields === 1 ? "" : "s"}`);
-  if (a.trails) chips.push(`🥾 ${a.trailMiles ? `${a.trailMiles} mi` : `${a.trails}`} trail${!a.trailMiles && a.trails === 1 ? "" : "s"}`);
-  if (a.facilities) chips.push(`🚻 ${a.facilities} facilit${a.facilities === 1 ? "y" : "ies"}`);
-  if (a.barrierFree) chips.push("♿ Barrier-free");
+  if (a.playgrounds) chips.push("Playgrounds");
+  if (a.shelters) chips.push("Shelters");
+  if (a.fields) chips.push("Sports fields");
+  if (a.trails) chips.push(a.trailMiles ? `Trails · ${a.trailMiles} mi` : "Trails");
+  if (a.facilities) chips.push("Restrooms");
+  if (a.barrierFree) chips.push("Barrier-free");
   if (chips.length === 0) return null;
 
   return (

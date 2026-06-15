@@ -291,15 +291,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               </span>
             )}
             <SourceBadge place={place} size="md" />
-            {hoursConfirmed && (
-              <span
-                className="ml-auto text-[10px] font-medium"
-                style={{ color: "var(--app-ink-3)" }}
-                title="Hours provenance and freshness"
-              >
-                {hoursConfirmed}
-              </span>
-            )}
+            {/* Hours provenance moved into the HoursBlock details (passed as
+                `provenance`) so the freshness label stays honest without
+                crowding the open/closed decision zone in the header. */}
           </div>
         </div>
       </header>
@@ -321,15 +315,17 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         />
       )}
 
-      <div className="flex">
-        <BeenHereToggle placeSlug={place.slug} label={place.name} />
-      </div>
-
       <div className="grid grid-cols-2 gap-2">
         <ActionButton href={appleUrl} icon={Apple} label="Apple Maps" external />
         <ActionButton href={googleUrl} icon={Navigation} label="Google Maps" external />
         {place.phone && <ActionButton href={`tel:${place.phone}`} icon={Phone} label="Call" />}
         {place.website && <ActionButton href={place.website} icon={Globe} label="Website" external />}
+      </div>
+
+      {/* Personal "been here" marker — demoted below the directional/contact
+          grid; it's a quiet device-local note, not a primary action. */}
+      <div className="flex">
+        <BeenHereToggle placeSlug={place.slug} label={place.name} />
       </div>
 
       {/* Waze-style amenity icon row. Lives right after the primary
@@ -393,7 +389,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       )}
 
       {place.hours ? (
-        <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} />
+        <HoursBlock hours={place.hours} verified={place.hours_verified ?? false} provenance={hoursConfirmed ?? undefined} />
       ) : place.google_hours && place.google_hours.length > 0 ? (
         <GoogleHours lines={place.google_hours} />
       ) : null}

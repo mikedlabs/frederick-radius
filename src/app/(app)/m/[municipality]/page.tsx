@@ -322,16 +322,16 @@ export default async function MunicipalityPage(
                 Submit an event for {m.name}
               </Link>
               {nearbyEvents.length > 0 && (
-                <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                    Happening near {m.name}
-                  </p>
-                  <ul className="space-y-2">
-                    {nearbyEvents.slice(0, 3).map((e) => (
-                      <li key={e.slug}><EventCard event={e} /></li>
-                    ))}
-                  </ul>
-                </div>
+                <p className="border-t pt-3 text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+                  Nearby:{" "}
+                  <Link
+                    href="/events"
+                    className="font-semibold underline-offset-2 hover:underline"
+                    style={{ color: "var(--app-ink-2)" }}
+                  >
+                    {nearbyEvents[0].title} and more nearby →
+                  </Link>
+                </p>
               )}
             </div>
           )}

@@ -215,7 +215,7 @@ export default async function WeatherMoreGrid() {
                 "Comfortable humidity."
               ) : (
                 <>
-                  <span style={{ color: comfort.color }}>{comfort.label}</span> —
+                  <span style={{ color: comfort.color }}>{comfort.label}</span>,{" "}
                   humidity makes it feel{" "}
                   {comfort.label === "Very dry" ? "drier" : "warmer"}.
                 </>
@@ -265,7 +265,7 @@ export default async function WeatherMoreGrid() {
               ? "Perfectly clear view."
               : metar.visibilityMi >= 5
                 ? "Hazy but workable."
-                : "Limited — fog or smoke nearby."}
+                : "Limited. Fog or smoke nearby."}
           </p>
         </MoreTile>
       )}

@@ -31,9 +31,9 @@ const ICONS: Record<string, LucideIcon> = {
 
 export default function CravingStrip() {
   return (
-    <section aria-label="Right now" className="space-y-1.5">
+    <section aria-label="I want" className="space-y-1.5">
       <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-        Right now
+        I want…
       </p>
       <div
         className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"

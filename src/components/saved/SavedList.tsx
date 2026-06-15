@@ -357,36 +357,12 @@ export default function SavedList() {
           >
             {summarySentence(places.length, events.length, townTally.size)}
           </p>
-          {/* Stat scoreboard — a quick, visual read of the collection. */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-              style={{ background: "color-mix(in srgb, var(--app-brand) 12%, transparent)", color: "var(--app-brand)" }}
-            >
-              <Bookmark className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              {places.length} {places.length === 1 ? "place" : "places"}
-            </span>
-            {townTally.size > 0 && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                style={{ background: "color-mix(in srgb, var(--app-cool) 12%, transparent)", color: "var(--app-cool)" }}
-              >
-                <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                {townTally.size} {townTally.size === 1 ? "town" : "towns"}
-              </span>
-            )}
-            {events.length > 0 && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold"
-                style={{ background: "color-mix(in srgb, var(--app-positive) 12%, transparent)", color: "var(--app-positive)" }}
-              >
-                <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                {events.length} {events.length === 1 ? "event" : "events"}
-              </span>
-            )}
-          </div>
+          {/* Stat-pill scoreboard removed: the serif summary sentence above
+              already states places/towns/events in prose, and the section +
+              chapter headers carry per-group counts. Pills repeated the same
+              numbers up to five times and read as a SaaS dashboard widget. */}
           <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            On this device · sign-in to sync across devices coming soon
+            Saved on this device
           </p>
         </div>
       </section>
@@ -448,15 +424,6 @@ export default function SavedList() {
               >
                 Places
               </h2>
-              <span
-                className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-                style={{
-                  background: "color-mix(in srgb, var(--app-cool) 14%, transparent)",
-                  color: "var(--app-cool)",
-                }}
-              >
-                {places.length}
-              </span>
             </div>
             <SortDropdown
               options={SORT_OPTIONS}
@@ -571,15 +538,6 @@ export default function SavedList() {
             >
               Recently viewed
             </h2>
-            <span
-              className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-              style={{
-                background: "color-mix(in srgb, var(--app-ink-3) 14%, transparent)",
-                color: "var(--app-ink-3)",
-              }}
-            >
-              {recentPlaces.length}
-            </span>
             <button
               type="button"
               onClick={clearRecent}
@@ -613,15 +571,6 @@ export default function SavedList() {
             >
               Events
             </h2>
-            <span
-              className="rounded-full px-1.5 text-[10px] font-bold tabular-nums"
-              style={{
-                background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-                color: "var(--app-brand)",
-              }}
-            >
-              {events.length}
-            </span>
           </header>
           <ul className="space-y-2">
             {events.map((e: DecoratedEvent) => (
@@ -661,7 +610,7 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   // Four confident doorways — the same lane language as /places, pointing
   // at the surfaces that fill this page. A guided launchpad, not a paragraph.
   const LANES: { href: string; label: string; Icon: typeof Bookmark; color: string }[] = [
-    { href: "/guide", label: "Ask", Icon: Sparkles, color: "var(--app-brand)" },
+    { href: "/guide", label: "Find", Icon: Sparkles, color: "var(--app-brand)" },
     { href: "/map", label: "Map", Icon: MapPin, color: "var(--app-cool)" },
     { href: "/events", label: "Events", Icon: Calendar, color: "#C99632" },
     { href: "/towns", label: "Towns", Icon: Building2, color: "#7E2C6F" },

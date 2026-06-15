@@ -67,12 +67,6 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
             Happening soon
           </h2>
         </div>
-        <span
-          className="text-[11px] font-bold uppercase tracking-[0.12em] tabular-nums"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          {visible.length} starting soon
-        </span>
       </header>
 
       {/* Horizontal-scroll affordance — a soft paper-cream gradient

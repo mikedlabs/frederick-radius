@@ -32,6 +32,7 @@ export default function CollapsibleSection({
   title,
   count,
   countLabel,
+  countAriaOnly = false,
   storageKey,
   defaultOpen = false,
   children,
@@ -42,6 +43,10 @@ export default function CollapsibleSection({
   count?: number;
   /** Unit label for the count ("picks", "events"). */
   countLabel?: string;
+  /** Keep the count for screen readers/SEO (folded into the section
+   *  aria-label) but hide it visually — counts are supporting detail, not
+   *  a badge competing with the section title. */
+  countAriaOnly?: boolean;
   /** localStorage key so the open/closed choice persists per section. */
   storageKey: string;
   defaultOpen?: boolean;
@@ -74,9 +79,16 @@ export default function CollapsibleSection({
     });
 
   const contentId = `collapsible-${storageKey.replace(/[^a-z0-9]/gi, "-")}`;
+  // When the count is aria-only, fold it into the section's accessible name
+  // so screen readers and crawlers keep the signal while the eye sees a calm
+  // title + chevron.
+  const ariaTitle =
+    countAriaOnly && typeof count === "number"
+      ? `${title} (${count}${countLabel ? ` ${countLabel}` : ""})`
+      : title;
 
   return (
-    <section aria-label={title} className={className}>
+    <section aria-label={ariaTitle} className={className}>
       <button
         type="button"
         onClick={toggle}
@@ -88,7 +100,7 @@ export default function CollapsibleSection({
           <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
             {title}
           </span>
-          {typeof count === "number" && (
+          {typeof count === "number" && !countAriaOnly && (
             <span
               className="text-[10px] font-medium uppercase tracking-[0.1em] tabular-nums"
               style={{ color: "var(--app-ink-3)" }}

@@ -54,7 +54,7 @@ function bestMove(
     return {
       eyebrow: "Best move now",
       title: "Duck inside somewhere good",
-      sub: "Rain's in play — a museum, a long coffee, a bookshop.",
+      sub: "Rain's in play. A museum, a long coffee, a bookshop.",
       href: "/category/coffee",
       icon: Umbrella,
     };
@@ -63,7 +63,7 @@ function bestMove(
     return {
       eyebrow: "Best move now",
       title: "Warm up downtown",
-      sub: "Cold out — coffee, a cozy lunch, somewhere with a fire.",
+      sub: "Cold out. Coffee, a cozy lunch, somewhere with a fire.",
       href: "/category/coffee",
       icon: Snowflake,
     };
@@ -91,7 +91,7 @@ function bestMove(
     return {
       eyebrow: "Best move now",
       title: "Chase the shade",
-      sub: "Hot one — a creekside walk, a patio, somewhere cool.",
+      sub: "Hot one. A creekside walk, a patio, somewhere cool.",
       href: "/map?mode=radius",
       icon: Sun,
     };
@@ -100,7 +100,7 @@ function bestMove(
     return {
       eyebrow: "Best move now",
       title: "Coffee, then Carroll Creek",
-      sub: "Good light for it — grab a cup and walk the creek.",
+      sub: "Good light for it. Grab a cup and walk the creek.",
       href: "/category/coffee",
       icon: Coffee,
     };
@@ -109,7 +109,7 @@ function bestMove(
   return {
     eyebrow: "Best move now",
     title: "Get outside while it's nice",
-    sub: "Patio weather — a walk, a park, lunch out.",
+    sub: "Patio weather. A walk, a park, lunch out.",
     href: "/map?mode=radius",
     icon: Footprints,
   };
@@ -183,7 +183,7 @@ export default async function TodayMoves({
             Tonight
           </p>
           <p className="text-meta-lg" style={{ color: "var(--app-ink-3)" }}>
-            {tonightCount > 0 ? `${tonightCount} starting soon` : "See what's on"}
+            {tonightCount > 0 ? "Starting soon" : "See what's on"}
           </p>
         </Link>
 

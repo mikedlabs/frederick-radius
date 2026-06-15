@@ -382,7 +382,7 @@ export default async function HomePage({
           The quick-intent chips were removed from TodayAsk — they
           duplicated these answer cards — and the box's "Ask Radius" eyebrow
           is hidden under the headline, so the first answer clears the fold. */}
-      <section className="mt-3 space-y-3" aria-label="Ask Radius">
+      <section className="mt-3 space-y-3" aria-label="Today's answers">
         {/* Ask Radius removed (Phase 4 verdict: the feature was dark on
             production, and a visible feature that does not work is the
             worst element on a site). The omnibox in the header carries
@@ -495,7 +495,6 @@ export default async function HomePage({
           href="/events"
           cta="See all"
           eyebrow="What's on"
-          plateNo="No. 01"
         >
           {heroInSlice || upcomingRest.length > 0 ? (
             <div className="space-y-3">
