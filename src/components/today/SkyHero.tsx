@@ -166,12 +166,14 @@ export default async function SkyHero({
 }: {
   children: React.ReactNode;
   className?: string;
-  /** Cinematic fold: on mobile the sky grows to own most of the first
-   *  screen (the 9:16 canvas), centering the weather glance in the
-   *  gradient with a quiet scroll cue at the bottom edge. Resets to a
+  /** Cinematic fold on mobile: grow the sky so it owns most of the first
+   *  screen, centering the weather glance in the gradient with a quiet
+   *  scroll cue at the bottom edge. `true` = tall (~72svh, the full
+   *  Apple-Weather fold); `"medium"` = ~55svh so the NEXT section still
+   *  peeks above the fold (drama without burying the answer). Resets to a
    *  normal-height block at lg+ so the desktop two-column layout is
    *  untouched. */
-  fill?: boolean;
+  fill?: boolean | "medium";
 }) {
   const nyHour = parseInt(
     new Intl.DateTimeFormat("en-US", {
@@ -221,9 +223,11 @@ export default async function SkyHero({
   return (
     <section
       className={`sky-hero -mx-4 -mt-4 px-4 pb-3 pt-4 sm:rounded-b-[var(--app-radius-xl)] ${
-        fill
-          ? "flex min-h-[72svh] flex-col lg:!min-h-0 lg:block"
-          : ""
+        fill === "medium"
+          ? "flex min-h-[55svh] flex-col lg:!min-h-0 lg:block"
+          : fill
+            ? "flex min-h-[72svh] flex-col lg:!min-h-0 lg:block"
+            : ""
       } ${className}`}
       style={
         {
