@@ -500,7 +500,7 @@ function InViewList({
                     hour: "numeric",
                     minute: "2-digit",
                   }).format(start);
-                  const color = e.category_color ?? "#A03A22";
+                  const color = e.category_color ?? "var(--app-brand)";
                   return (
                     <li key={e.slug}>
                       <Link
@@ -796,7 +796,7 @@ function InViewDrawer({
       .map(([slug, count]) => ({
         slug,
         count,
-        color: CATEGORY_BY_SLUG[slug]?.color ?? "#A03A22",
+        color: CATEGORY_BY_SLUG[slug]?.color ?? "var(--app-brand)",
         name: CATEGORY_BY_SLUG[slug]?.name ?? slug,
       }))
       .sort((a, b) => b.count - a.count)

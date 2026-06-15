@@ -302,10 +302,11 @@ export default async function MapPage({
     return (
       <div className="relative mx-auto max-w-screen-md space-y-3 lg:max-w-screen-lg">
         <PageBloom variant="cool" />
-        {/* Mode toggle is rendered INSIDE RadiusBuilder, in the row
-            immediately below the map — clear of the map's own camera
-            controls and the floating stats ribbon, and where the user
-            expects a UI control to live. */}
+        {/* Mode toggle is handed to RadiusBuilder, which renders it in two
+            places: a modest floating copy over the collapsed map (always
+            visible, so "Whole county" is reachable without expanding) and
+            inside the sheet body for the expanded state. Clear of the map's
+            camera controls and the locate button. */}
         <RadiusBuilder
           amenities={radiusAmenities}
           events={radiusEvents}

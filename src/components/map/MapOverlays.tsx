@@ -19,16 +19,20 @@ import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: "FeatureCollection", features: [] };
 
-// Per-overlay dot color, from the brand tokens (var with hex fallback,
-// the same pattern the trail/transit layers use). Distinct enough that
-// two active overlays read apart at a glance.
+// Per-overlay dot color. RESOLVED hex, NOT var(--app-*): these values
+// feed Mapbox GL paint expressions, which cannot read CSS custom
+// properties — a var() here fails to parse and the layer never colorizes
+// or renders (the bug that made overlays look broken). Values mirror the
+// brand tokens in src/app/globals.css; keep them in sync if a token moves.
+// (The earlier var() fallbacks had drifted stale: warning/ink-2/brand-2
+// no longer matched the tokens.)
 const COLOR: Partial<Record<OverlayKey, string>> = {
-  parks: "var(--app-positive, #1E6B3A)",
-  markets: "var(--app-warning, #B45309)",
-  art: "var(--app-brand, #E14328)",
-  trails: "var(--app-positive, #1E6B3A)",
-  historic: "var(--app-ink-2, #4A4636)",
-  bridges: "var(--app-brand-2, #2F5D50)",
+  parks: "#1E6B3A",     // --app-positive
+  markets: "#B26B00",   // --app-warning
+  art: "#E14328",       // --app-brand (Signal vermilion)
+  trails: "#1E6B3A",    // --app-positive
+  historic: "#423E34",  // --app-ink-2
+  bridges: "#16352B",   // --app-brand-2 (Spruce)
 };
 
 const ENDPOINT = new Map(OVERLAYS.map((o) => [o.key, o.endpoint] as const));
@@ -123,7 +127,7 @@ export default function MapOverlays({ active }: { active: OverlayKey[] }) {
       {active.map((key) => {
         const fc = data[key];
         if (!fc) return null;
-        const color = COLOR[key] ?? "var(--app-brand, #E14328)";
+        const color = COLOR[key] ?? "#E14328";
         // Geometry-aware: a layer can carry polygons (park grounds) AND
         // points (named markers) in one file. Fills draw first (under),
         // points draw over them; the filters keep each Layer honest, so
