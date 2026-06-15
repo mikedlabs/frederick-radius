@@ -490,7 +490,7 @@ export default function AppMapDeck({
         title="Layers"
         subtitle="Choose what to show on the map"
       >
-        <div className="space-y-4 px-4 pt-3">
+        <div className="space-y-3 px-4 pt-3">
         {/* CATEGORIES section — places by type. Was mixed in one flat
             wrap with the overlays; pulling them into a labeled
             cluster reads as "what kind of place" vs the OVERLAYS
