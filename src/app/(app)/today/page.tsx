@@ -361,7 +361,7 @@ export default async function HomePage({
           the detailed hourly / 7-day / almanac forecast still lives there.
           SkyHero's own -mx-4 -mt-4 bleeds it flush under the header for a
           full-bleed sky; the soft downward shadow floats it over the page. */}
-      <SkyHero fill="medium" className="relative z-10 shadow-[0_12px_28px_-16px_rgba(22,20,14,0.22)]">
+      <SkyHero className="relative z-10 shadow-[0_12px_28px_-16px_rgba(22,20,14,0.22)]">
         <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
           <TodayCard
             tonightEvent={
