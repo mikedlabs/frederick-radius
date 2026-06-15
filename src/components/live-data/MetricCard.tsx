@@ -110,7 +110,7 @@ export default function MetricCard({
             </span>
             {unit && (
               <span
-                className="text-[12px] font-semibold"
+                className="font-mono text-[12px] font-semibold"
                 style={{ color: "var(--app-ink-3)" }}
               >
                 {unit}
@@ -129,7 +129,7 @@ export default function MetricCard({
 
         {meta && (
           <p
-            className="text-[11px] tabular-nums"
+            className="font-mono text-[11px] tabular-nums"
             style={{ color: "var(--app-ink-3)" }}
           >
             {meta}
