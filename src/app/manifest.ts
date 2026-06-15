@@ -21,12 +21,12 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
     shortcuts: [
-      // start_url is now "/today" (the answer surface); these jump targets
-      // are the other primary BottomNav tabs. Find (/guide) is the funnel.
-      { name: "Find", url: "/guide", short_name: "Find" },
+      // start_url is "/today" (the answer surface); these jump targets are
+      // the other primary BottomNav tabs. The Find (/guide) shortcut was
+      // dropped when /guide lost its tab — /today + search cover that intent.
       { name: "Map", url: "/map", short_name: "Map" },
       { name: "Events", url: "/events", short_name: "Events" },
-      { name: "My Radius", url: "/my-radius", short_name: "My Radius" },
+      { name: "Saved", url: "/my-radius", short_name: "Saved" },
     ],
   };
 }

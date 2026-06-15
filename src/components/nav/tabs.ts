@@ -1,5 +1,4 @@
 import {
-  Compass,
   Sun,
   Map as MapIcon,
   Calendar,
@@ -12,28 +11,25 @@ import {
  * (desktop). One source of truth — change a label here and both
  * navs follow.
  *
- * Five tabs — each label names the destination literally (no brand
- * words that point somewhere else):
- *   - Find      /guide      (the front door — a tap-don't-type discovery
- *                            funnel: "what are you looking for?")
+ * Four tabs — each label names the destination literally:
  *   - Today     /today      (weather + what's on + the live county pulse —
- *                            the daily-return surface for locals)
+ *                            the daily-return surface, and now the front door)
  *   - Map       /map
  *   - Events    /events
  *   - Saved     /my-radius  (the page is titled "Saved" to match this tab)
  *
- * Label history of the first tab: "Radius" (read as the personal /my-radius
- * page) → "Guide" → "Ask". "Ask" was a scent lie — the page is a
- * tap-don't-type browse funnel, not an AI concierge, so the verb promised
- * something the surface doesn't do. Now "Find": it names the actual job
- * (find what you're looking for) and matches the funnel's own headline.
- * The route stays /guide — only the visible label changed.
+ * The /guide browse funnel ("Find" / formerly "Ask" / "Guide") was DROPPED
+ * from the primary nav: /today's craving strip + the global header search
+ * now cover the find-what-you-want intent, so a fifth tab for it was a
+ * redundant front door. /guide the PAGE stays alive (kept in the sitemap,
+ * reachable via search results + deep links) for its unique browse-by-town /
+ * hidden-gems / live-downtown content and its SEO value — it just no longer
+ * earns a tab. Visiting it reads as a deep page (TopBar Back, no tab lit).
  *
- * Today rejoined the primary nav (it had been demoted to a link under
- * the front door): the UI survey found the temporal / ambient-live-data layer is
- * the single biggest daily-return driver for residents, and a buried
- * link can't carry that. Secondary destinations (amenities, contacts,
- * trails…) still live behind the header "More" sheet.
+ * Today leads the nav: the UI survey found the temporal / ambient-live-data
+ * layer is the single biggest daily-return driver for residents. Secondary
+ * destinations (amenities, contacts, trails…) live behind the header "More"
+ * sheet; /guide is now among them rather than a tab.
  */
 
 export type Tab = {
@@ -46,7 +42,6 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/guide",     label: "Find",   icon: Compass,  fillOnActive: false },
   { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
   { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
   { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },
@@ -56,15 +51,16 @@ export const TABS: readonly Tab[] = [
 /**
  * Secondary surfaces that belong UNDER a primary tab so the nav
  * highlights the right home. Place-browse + town + collection routes
- * read as the "Map" (explore places) context — index 2 now that Today
- * sits at index 1. Anything not listed returns -1 → no tab highlighted
- * (correct for /settings, /about, /parks, a place detail, etc.).
+ * read as the "Map" (explore places) context — index 1 now that Today
+ * leads at index 0 and the Find tab is gone. Anything not listed returns
+ * -1 → no tab highlighted (correct for /guide, /settings, /about, /parks,
+ * a place detail, etc.).
  */
 const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
-  ["/places", 2],
-  ["/category", 2],
-  ["/collections", 2],
-  ["/m/", 2],
+  ["/places", 1],
+  ["/category", 1],
+  ["/collections", 1],
+  ["/m/", 1],
 ];
 
 /** Resolve a pathname to its tab index (or -1 if it isn't under a tab). */
