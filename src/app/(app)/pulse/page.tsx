@@ -216,6 +216,7 @@ export default async function PulsePage({
       accent: "var(--app-danger)",
       active: safety.length > 0,
       sourceLabel: "PulsePoint",
+      peek: safety.length > 0 ? safety[0].type : undefined,
       body: safety.length > 0
         ? safety.slice(0, 12).map((s) => (
             <Row key={s.id} tone="danger" title={s.type} meta={[s.address, timeAgo(s.received_at)]} />
@@ -230,6 +231,10 @@ export default async function PulsePage({
       accent: "var(--app-warning)",
       active: traffic.length > 0,
       sourceLabel: "MDOT CHART",
+      peek:
+        traffic.length > 0
+          ? `${traffic[0].road}${traffic[0].direction ? ` ${traffic[0].direction}` : ""} · ${traffic[0].type}`
+          : undefined,
       body: traffic.length > 0
         ? traffic.slice(0, 12).map((i) => (
             <Row
@@ -256,6 +261,10 @@ export default async function PulsePage({
       accent: "var(--app-danger)",
       active: outagesActive,
       sourceLabel: "FirstEnergy / Potomac Edison",
+      peek:
+        outagesActive && outages.munis.length > 0
+          ? `${outages.munis[0].area}, ${outages.munis[0].customers_out.toLocaleString()} out`
+          : undefined,
       body: outagesActive ? (
         <>
           <div
@@ -293,6 +302,16 @@ export default async function PulsePage({
       accent: "var(--app-warning)",
       active: schoolAlerts.length > 0,
       sourceLabel: "FCPS RSS",
+      peek:
+        schoolAlerts.length > 0
+          ? schoolAlerts[0].status === "closed"
+            ? "Schools closed"
+            : schoolAlerts[0].status === "delayed"
+              ? "Delayed opening"
+              : schoolAlerts[0].status === "early_dismissal"
+                ? "Early dismissal"
+                : "Update"
+          : undefined,
       body: schoolAlerts.length > 0
         ? schoolAlerts.map((a) => (
             <Row
@@ -318,6 +337,7 @@ export default async function PulsePage({
       accent: "var(--app-cool)",
       active: fixit.length > 0,
       sourceLabel: "FCG FixIT · SeeClickFix",
+      peek: fixit.length > 0 ? fixit[0].summary : undefined,
       body: fixit.length > 0
         ? fixit.slice(0, 10).map((i) => (
             <Row
@@ -338,6 +358,7 @@ export default async function PulsePage({
       accent: "var(--app-danger)",
       active: activeAlerts.length > 0,
       sourceLabel: "NWS · weather.gov",
+      peek: activeAlerts.length > 0 ? activeAlerts[0].event : undefined,
       body: activeAlerts.length > 0
         ? activeAlerts.slice(0, 6).map((a) => {
             const tone =
