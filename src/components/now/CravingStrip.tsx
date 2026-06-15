@@ -7,6 +7,8 @@ import {
   Cookie,
   Beer,
   Trees,
+  ShoppingBag,
+  Palette,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -35,6 +37,8 @@ const ICONS: Record<string, LucideIcon> = {
   Cookie,
   Beer,
   Trees,
+  ShoppingBag,
+  Palette,
 };
 
 const TILE =

@@ -28,7 +28,9 @@ export type Craving = {
     | "Pizza"
     | "Cookie"
     | "Beer"
-    | "Trees";
+    | "Trees"
+    | "ShoppingBag"
+    | "Palette";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -87,7 +89,36 @@ export const CRAVINGS: Craving[] = [
     label: "Outside",
     icon: "Trees",
     color: "var(--app-positive)",
-    match: (p) => p.category === "park" || p.category === "trail",
+    match: (p) =>
+      p.category === "park" ||
+      p.category === "trail" ||
+      p.category === "playground" ||
+      p.category === "outdoors",
+  },
+  {
+    // ~299 places (shopping 225 + market 61 + book-store 13) — the biggest
+    // answerable cluster after the non-craving worship/wellness. Mirrors the
+    // map's WithinReach "Shops" matcher so /today and /map never disagree.
+    key: "shops",
+    label: "Shops",
+    icon: "ShoppingBag",
+    color: "var(--app-cool)",
+    match: (p) =>
+      p.category === "shopping" ||
+      p.category === "market" ||
+      p.category === "book-store",
+  },
+  {
+    // ~64 places (gallery 31 + museum 20 + theater 13). Spruce token (not
+    // WithinReach's raw hex) and distinct from food's accent + shops' cool.
+    key: "art",
+    label: "Art",
+    icon: "Palette",
+    color: "var(--app-brand-2)",
+    match: (p) =>
+      p.category === "gallery" ||
+      p.category === "museum" ||
+      p.category === "theater",
   },
 ];
 
