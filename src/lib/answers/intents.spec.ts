@@ -28,8 +28,6 @@ describe("buildTodayAnswers (honest, never fabricates)", () => {
     const a = buildTodayAnswers({
       tonightCount: 0,
       tonightBest: null,
-      weekendCount: 0,
-      weekendBest: null,
       parking: null,
     });
     expect(a.map((x) => x.id)).toEqual(["transit"]);
@@ -39,14 +37,14 @@ describe("buildTodayAnswers (honest, never fabricates)", () => {
     const a = buildTodayAnswers({
       tonightCount: 3,
       tonightBest: { title: "Sky Stage", venue: "Carroll Creek", slug: "sky-stage" },
-      weekendCount: 5,
-      weekendBest: { title: "First Saturday", slug: "first-saturday" },
       parking: { name: "Carroll Creek Parking Deck", slug: "carroll-creek-parking-garage-frederick" },
     });
     expect(a.length).toBeLessThanOrEqual(5);
-    // The open-now card was retired; /today now leads with the time-window
-    // answers, so the first card is "tonight" when there are events tonight.
+    // The open-now AND standalone weekend cards were retired; /today leads
+    // with the today-scoped "tonight" answer, and weekend lives only in the
+    // What's-on TimeToggle + a quiet tail link.
     expect(a.some((x) => x.id === "open-now")).toBe(false);
+    expect(a.some((x) => x.id === "weekend")).toBe(false);
     expect(a[0].id).toBe("tonight");
     // Every answer must carry a primary action (one move).
     expect(a.every((x) => x.primaryAction?.href)).toBe(true);

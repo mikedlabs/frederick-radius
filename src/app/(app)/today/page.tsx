@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodayMoves from "@/components/today/TodayMoves";
-import MoveStack from "@/components/today/MoveStack";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import LocalNewsRail from "@/components/today/LocalNewsRail";
@@ -304,7 +303,6 @@ export default async function HomePage({
   //    answers from the real data this page already computed. Honest by
   //    construction — empty windows drop out, nothing is fabricated.
   const tonightBest = eventsForMode("tonight", now, publicEvents).items[0] ?? null;
-  const weekendBest = eventsForMode("weekend", now, publicEvents).items[0] ?? null;
   const parkingDefault =
     PARKING_GARAGES.find((g) => g.slug === "carroll-creek-parking-garage-frederick") ??
     PARKING_GARAGES[0] ??
@@ -314,13 +312,9 @@ export default async function HomePage({
     tonightBest: tonightBest
       ? { title: tonightBest.title, venue: tonightBest.venue_name ?? null, slug: tonightBest.slug }
       : null,
-    weekendCount: counts.weekend ?? 0,
-    weekendBest: weekendBest
-      ? { title: weekendBest.title, venue: weekendBest.venue_name ?? null, slug: weekendBest.slug }
-      : null,
     parking: parkingDefault ? { name: parkingDefault.name, slug: parkingDefault.slug } : null,
     // The featured event already heroes TodayMoves + the "What's on"
-    // section, so its answer card drops the duplicate name (count + door).
+    // section, so the tonight card drops the duplicate name (count + door).
     featuredSlug: featuredEvent?.slug ?? null,
   });
 
@@ -406,7 +400,13 @@ export default async function HomePage({
                 answer={a}
                 featured={i === 0}
                 plate={
-                  i === 0 ? (
+                  // Only a TODAY-scoped lead earns the full-bleed photo hero.
+                  // (The old positional `i === 0` gate let a non-today card —
+                  //  e.g. "This weekend" on a quiet Monday — inherit the Ken
+                  //  Burns plate on a page titled "what's worth your time
+                  //  right now." The weekend card is gone now; this keeps the
+                  //  plate honest for any future answer too.)
+                  i === 0 && a.status === "tonight" ? (
                     <SeasonalPhoto
                       season="auto"
                       alt=""
@@ -438,6 +438,19 @@ export default async function HomePage({
             ))}
           </div>
         )}
+        {/* Looking-ahead tail — weekend is not "today", so it never gets a
+            hero card; it stays one quiet tap away here (and in the What's-on
+            Weekend chip). Only shown when the weekend actually has events. */}
+        {(counts.weekend ?? 0) > 0 && (
+          <Link
+            href="/today?t=weekend"
+            className="tap-44 inline-flex items-center gap-1 px-1 text-[13px] font-semibold"
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Looking ahead? See this weekend
+            <span aria-hidden>→</span>
+          </Link>
+        )}
       </section>
 
       {/* ── HEADS UP — high-signal interruption layer, only if needed ────
@@ -452,13 +465,15 @@ export default async function HomePage({
         </div>
       </Suspense>
 
-      {/* ── BEST MOVE NOW + BUILD A PLAN ─────────────────────────────────
-          Lifted OUT of the collapsed "full briefing" below so the page's
-          two decision modules LEAD instead of hiding. TodayMoves = the
-          single "best move now"; MoveStack = "build a plan." The weather
-          hero, events, and news stay collapsed below as context — so the
-          ladder reads: Ask → heads up → best move → what's on → details. */}
-      <section className="mt-4 space-y-3" aria-label="Your next move">
+      {/* ── BEST MOVE NOW ───────────────────────────────────────────────
+          The single confident, weather- and time-aware answer to "what's
+          the move right now?", lifted OUT of the collapsed briefing so it
+          leads. (The generated "afternoon plan"/MoveStack that used to sit
+          here was removed 2026-06-15: it picked stops by editorial score +
+          proximity, NOT by being open, and ended by telling you to "check
+          hours before you go" — the opposite of a today answer. TodayMoves'
+          own sub-line already serves the "make an outing of it" instinct.) */}
+      <section className="mt-4" aria-label="Your next move">
         <Suspense fallback={<Skeleton.Block height={170} round="var(--app-radius-lg)" />}>
           <TodayMoves
             tonightEvent={
@@ -471,9 +486,6 @@ export default async function HomePage({
                 : null
             }
           />
-        </Suspense>
-        <Suspense fallback={<Skeleton.Block height={200} round="var(--app-radius-lg)" />}>
-          <MoveStack />
         </Suspense>
       </section>
 
