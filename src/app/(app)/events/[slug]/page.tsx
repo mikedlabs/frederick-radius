@@ -147,6 +147,13 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
   };
 
   const when = formatEventWhen(event);
+  // Split the formatted when into its human date and its clock range so the
+  // promoted "when" line can set the date in serif and the time in mono
+  // (the brand's data voice). formatEventWhen joins same-day events as
+  // "Sat, Jun 14 · 5:00 PM–8:00 PM"; multi-day has no " · " and stays whole.
+  const whenSep = when.indexOf(" · ");
+  const whenDate = whenSep >= 0 ? when.slice(0, whenSep) : when;
+  const whenTime = whenSep >= 0 ? when.slice(whenSep + 3) : null;
   // Lifecycle status — drives the cancellation banner + a dimmed hero.
   const eventStatus = event.status ?? "scheduled";
   // Server component: request-time clock is correct here, not impure render.
@@ -246,15 +253,9 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             {/* Legibility gradient — dark at bottom for the title, soft
              *  at top for the date pill. */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-            {/* Top row: date pill + action cluster */}
-            <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white backdrop-blur"
-                style={{ background: `${cat?.color ?? "#A03A22"}D0` }}
-              >
-                <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                {when}
-              </span>
+            {/* Top row: action cluster (the date moved to the promoted
+                WHEN line below the title — no longer a tiny hero pill). */}
+            <div className="absolute inset-x-0 top-0 flex items-start justify-end gap-3 p-4">
               <div className="flex shrink-0 items-center gap-1">
                 <EventActions event={event} actions={["share"]} />
                 <SaveButton refType="event" refId={event.slug} label={event.title} />
@@ -294,7 +295,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
                 className="text-[11px] font-medium uppercase tracking-[0.14em]"
                 style={{ color: cat?.color ?? "var(--app-brand)" }}
               >
-                {cat?.name ?? event.category} · {when}
+                {cat?.name ?? event.category}
               </p>
               <h1
                 className="mt-1 font-serif text-[26px] font-semibold leading-tight tracking-tight sm:text-[30px]"
@@ -308,6 +309,24 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         {/* Below-the-hero metadata strip: trust + description + venue/
          *  free/recurrence/organizer/freshness. */}
         <div className="space-y-3 bg-[var(--app-bg-elevated)] p-5">
+          {/* WHEN — promoted to the page's clear second-strongest element,
+              directly under the title. The full date+time was previously
+              the SMALLEST type on the page (a 10px hero pill / an eyebrow
+              fragment). Date in serif (human), time range in JetBrains Mono
+              (the data voice), one calm line, no box. */}
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <span className="inline-flex items-baseline gap-1.5">
+              <Calendar className="h-4 w-4 translate-y-0.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand)" }} aria-hidden />
+              <span className="font-serif text-[17px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                {whenDate}
+              </span>
+            </span>
+            {whenTime && (
+              <span className="font-mono tabular-nums text-[14px]" style={{ color: "var(--app-ink-2)" }}>
+                {whenTime}
+              </span>
+            )}
+          </div>
           <TrustChip signal={eventTrust(event)} detail />
           {desc && (
             <p className="text-[15px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
@@ -321,7 +340,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
             {event.is_free ? (
               <span className="font-medium" style={{ color: "var(--app-positive)" }}>Free</span>
             ) : event.price_text && (
-              <span>{event.price_text}</span>
+              <span className="font-mono tabular-nums">{event.price_text}</span>
             )}
             {event.is_recurring && event.recurrence_text && (
               <span className="rounded-full bg-[var(--app-bg-sunken)] px-2 py-0.5 text-[11px]">
