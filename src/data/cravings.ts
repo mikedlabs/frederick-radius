@@ -77,14 +77,14 @@ export const CRAVINGS: Craving[] = [
   },
   {
     key: "drinks",
-    label: "A drink",
+    label: "Drinks",
     icon: "Beer",
     color: "var(--app-positive)",
     match: (p) => p.category === "bar" || p.category === "brewery",
   },
   {
     key: "outside",
-    label: "Fresh air",
+    label: "Outside",
     icon: "Trees",
     color: "var(--app-positive)",
     match: (p) => p.category === "park" || p.category === "trail",
