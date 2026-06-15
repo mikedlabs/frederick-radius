@@ -355,20 +355,20 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             {place.google_rating !== undefined && (
               <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
                 <span style={{ color: "var(--app-accent)" }}>★</span>
-                {place.google_rating.toFixed(1)}
+                <span className="font-mono tabular-nums">{place.google_rating.toFixed(1)}</span>
                 {place.google_rating_count ? (
-                  <span style={{ color: "var(--app-ink-3)" }}>({place.google_rating_count.toLocaleString()})</span>
+                  <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>({place.google_rating_count.toLocaleString()})</span>
                 ) : null}
               </span>
             )}
             {place.price_band && (
-              <span className="font-medium" style={{ color: "var(--app-ink-3)" }}>
+              <span className="font-mono font-medium" style={{ color: "var(--app-ink-3)" }}>
                 {"$".repeat(place.price_band)}
               </span>
             )}
             {place.distance_m !== undefined && (
-              <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                {formatDistance(place.distance_m)} away
+              <span style={{ color: "var(--app-ink-3)" }}>
+                <span className="font-mono tabular-nums">{formatDistance(place.distance_m)}</span> away
               </span>
             )}
           </div>
@@ -411,13 +411,13 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             {travel.walkMin != null && travel.walkMin <= 35 && (
               <span className="inline-flex items-center gap-1">
                 <Footprints className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-                {travel.walkMin} min walk
+                <span className="font-mono tabular-nums">{travel.walkMin}</span> min walk
               </span>
             )}
             {travel.driveMin != null && (
               <span className="inline-flex items-center gap-1">
                 <Car className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-                {travel.driveMin} min drive
+                <span className="font-mono tabular-nums">{travel.driveMin}</span> min drive
               </span>
             )}
             <span style={{ color: "var(--app-ink-3)" }}>from downtown</span>
