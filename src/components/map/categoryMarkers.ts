@@ -12,7 +12,7 @@
 import type { Map as GLMap } from "mapbox-gl";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
-const DEFAULT_COLOR = "#A03A22";
+const DEFAULT_COLOR = "#E14328";
 
 type Bucket =
   | "food" | "brewery" | "wine" | "bar" | "coffee" | "bakery"

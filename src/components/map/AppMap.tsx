@@ -19,6 +19,8 @@ import { defaultsFor } from "@/lib/mode-defaults";
 import { scopeClosures } from "@/lib/mode-scope";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITIES } from "@/data/municipalities";
+import Link from "next/link";
+import { municipalCivicFor, civicContacts } from "@/lib/loaders/municipalCivic";
 import type { OsmPlace } from "@/lib/integrations/overpass";
 import { usePlaceSheet } from "@/components/place/PlaceSheetProvider";
 import { useFollowedSlugs } from "@/hooks/useFollows";
@@ -68,6 +70,56 @@ type AerialPhoto = {
 };
 const AERIAL_PHOTOS = AERIAL_MANIFEST as AerialPhoto[];
 
+// The aerial "time machine": scrub the drone archive by season. Colors
+// mirror the season tint on the pins (the decorative season palette) so a
+// chip reads as the same season as the dots it controls. DOM chips, so
+// var() is fine for the neutral "All".
+type AerialSeason = "all" | "spring" | "summer" | "fall" | "winter";
+const AERIAL_SEASONS: { key: AerialSeason; label: string; color: string }[] = [
+  { key: "all", label: "All", color: "var(--app-ink-2)" },
+  { key: "spring", label: "Spring", color: "#859076" },
+  { key: "summer", label: "Summer", color: "#C99632" },
+  { key: "fall", label: "Fall", color: "#A03A22" },
+  { key: "winter", label: "Winter", color: "#2F5470" },
+];
+const AERIAL_SEASON_COUNTS: Record<string, number> = AERIAL_PHOTOS.reduce(
+  (acc, p) => ((acc[p.season] = (acc[p.season] ?? 0) + 1), acc),
+  {} as Record<string, number>,
+);
+
+// ── Tap-a-town: which municipality is under a tapped point ──────────
+// Ray-cast point-in-polygon. Even-odd across all rings handles holes
+// (a point in a hole counts as outside), and MultiPolygon tries each
+// piece. Used to resolve the municipal boundary the user tapped inside.
+function pointInRing(lng: number, lat: number, ring: number[][]): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if (yi > lat !== yj > lat && lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function pointInPolygonGeom(lng: number, lat: number, geom: GeoJSON.Geometry): boolean {
+  if (geom.type === "Polygon") {
+    let c = false;
+    for (const ring of geom.coordinates) if (pointInRing(lng, lat, ring as number[][])) c = !c;
+    return c;
+  }
+  if (geom.type === "MultiPolygon") {
+    for (const poly of geom.coordinates) {
+      let c = false;
+      for (const ring of poly) if (pointInRing(lng, lat, ring as number[][])) c = !c;
+      if (c) return true;
+    }
+    return false;
+  }
+  return false;
+}
+/** Boundary "MUNIC" name -> municipality slug (slugified; matches our slugs). */
+function townSlug(name: string): string {
+  return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
 // Types, constants, and popup components were carved off into siblings
 // to keep this file focused on state + effects + layout. No behavior
 // change in this PR; later refactors can lift the bottom-deck JSX and
@@ -101,6 +153,7 @@ import {
   smoothFocus,
 } from "./constants";
 import MapOverlays from "./MapOverlays";
+import LiveBuses from "./LiveBuses";
 import {
   parseLayersParam,
   serializeLayers,
@@ -255,6 +308,15 @@ export default function AppMap({
   // one opens a Popup with the photo thumbnail + season + date.
   const [showAerial, setShowAerial] = useState(false);
   const [selectedAerial, setSelectedAerial] = useState<AerialPhoto | null>(null);
+  // Time machine: which season's drone shots are lit. "all" shows every
+  // pin; a season fades the others out (cross-fade, not a hard cut).
+  const [aerialSeason, setAerialSeason] = useState<AerialSeason>("all");
+  // Mapbox paint transitions ignore the prefers-reduced-motion media
+  // query, so gate the cross-fade duration ourselves to honor it.
+  const aerialFade = (typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) ? 0 : 450;
+  // Tap-a-town: the municipality under the last empty-map tap (name +
+  // tap point for the popup anchor). Null when no town sheet is open.
+  const [civicTown, setCivicTown] = useState<{ name: string; lng: number; lat: number } | null>(null);
 
   // GIS overlays (6.3/6.4): the toggleable layer set, dark by default.
   // The active set lives in the URL (?layers=art,parks) so a view is
@@ -576,8 +638,11 @@ export default function AppMap({
         slug: p.slug,
         name: p.name,
         category: p.category,
-        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#A03A22",
+        color: CATEGORY_BY_SLUG[p.category]?.color ?? "#E14328",
         bucket: bucketOf(p.category),
+        // "Last call" — open now but closing within the hour. Drives a
+        // soft amber halo so a glance catches what's about to close.
+        closing: p.open_status?.state === "closing-soon",
         // Draw order within the curated tier: verified places first so
         // the strongest pins win the spot when icons stack.
         pri: p.is_verified ? 0 : 1,
@@ -594,7 +659,7 @@ export default function AppMap({
       features: p
         ? [{
             type: "Feature" as const,
-            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#A03A22" },
+            properties: { color: CATEGORY_BY_SLUG[p.category]?.color ?? "#E14328" },
             geometry: { type: "Point" as const, coordinates: [p.geom.lng, p.geom.lat] },
           }]
         : [],
@@ -623,8 +688,20 @@ export default function AppMap({
   // the camera position.
 
   const onClick = (e: MapMouseEvent) => {
+    setCivicTown(null); // any tap dismisses a prior town sheet
     const feature = e.features?.[0];
-    if (!feature) { setSelectedSlug(null); return; }
+    if (!feature) {
+      setSelectedSlug(null);
+      // Tap empty map -> which town am I in? Point-in-polygon against the
+      // municipal boundaries already drawn, then open a compact civic sheet.
+      const { lng, lat } = e.lngLat;
+      const hit = municipalBoundaries.features.find(
+        (f) => f.geometry && pointInPolygonGeom(lng, lat, f.geometry as GeoJSON.Geometry),
+      );
+      const name = hit?.properties?.name ? String(hit.properties.name) : "";
+      if (name) { setCivicTown({ name, lng, lat }); haptic("light"); }
+      return;
+    }
     const layer = feature.layer?.id;
     if (!layer) { setSelectedSlug(null); return; }
     const map = mapRef.current?.getMap();
@@ -1052,13 +1129,45 @@ export default function AppMap({
               className="inline-flex max-w-full items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold shadow-[var(--app-shadow-2)] backdrop-blur"
               style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)", color: "var(--app-ink-2)" }}
             >
-              <span aria-hidden style={{ color: "#2F5470" }}>→</span>
+              <span aria-hidden style={{ color: "var(--app-cool)" }}>→</span>
               <span className="truncate">{routeInfo.name}</span>
               <span style={{ color: "var(--app-ink-3)" }}>
                 {routeInfo.dist} · ~{routeInfo.drive} min drive
               </span>
-              <span style={{ color: "#2F5470" }}>Directions ↗</span>
+              <span style={{ color: "var(--app-cool)" }}>Directions ↗</span>
             </a>
+          </div>
+        )}
+
+        {/* Aerial time machine — scrub the drone archive by season.
+            Only present while the aerial layer is on; selecting a season
+            cross-fades the pins (handled by the layer opacity transition
+            above) so the county visibly shifts spring -> winter. */}
+        {showAerial && (
+          <div
+            className="absolute bottom-[116px] left-1/2 z-[var(--z-map-control)] flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-full border px-1.5 py-1.5 shadow-[var(--app-shadow-2)] backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)" }}
+            role="group"
+            aria-label="Aerial photos by season"
+          >
+            {AERIAL_SEASONS.map((s) => {
+              const on = aerialSeason === s.key;
+              const count = s.key === "all" ? AERIAL_PHOTOS.length : (AERIAL_SEASON_COUNTS[s.key] ?? 0);
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => { setAerialSeason(s.key); haptic("light"); }}
+                  aria-pressed={on}
+                  className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold transition active:scale-[0.96]"
+                  style={{ background: on ? s.color : "transparent", color: on ? "#fff" : "var(--app-ink-2)" }}
+                >
+                  <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: on ? "#fff" : s.color }} />
+                  {s.label}
+                  {on && <span className="tabular-nums font-medium" style={{ opacity: 0.85 }}>{count}</span>}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -1125,7 +1234,7 @@ export default function AppMap({
                   <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                     {demo === "food-truck"
                       ? "This preview shows sample trucks parked at real Frederick spots. The live version will show every truck's current location and today's menu. Tap a beacon for its menu and the order-ahead preview."
-                      : "Coming soon: real-time TransIT bus and MARC train positions, right on the map."}
+                      : "Live now: turn on the Transit layer to watch real-time TransIT buses move on the map, route-colored and free. MARC train positions are next."}
                   </p>
                 )}
               </div>
@@ -1249,19 +1358,23 @@ export default function AppMap({
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "var(--app-cool, #2F5470)",
+                "line-color": "#20506A",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.5, 14, 3, 17, 5],
                 "line-opacity": 0.75,
               }}
             />
           </Source>
+          {/* Live TransIT vehicles — real GTFS-realtime positions, on with
+              the route lines. Eases between polls; honest empty when the
+              feed reports no buses (evenings/weekends run sparse). */}
+          <LiveBuses show={showTransit} />
           <Source id="trail-lines" type="geojson" data={(showTrails ? trailLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
             <Layer
               id="trail-line"
               type="line"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "var(--app-positive, #1E6B3A)",
+                "line-color": "#1E6B3A",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1, 14, 2.5, 17, 4],
                 "line-opacity": 0.7,
                 "line-dasharray": [2, 1.5],
@@ -1286,7 +1399,7 @@ export default function AppMap({
               type="line"
               layout={{ "line-join": "round", "line-cap": "round" }}
               paint={{
-                "line-color": "var(--app-ink-2, #4A4636)",
+                "line-color": "#423E34",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 1.2, 13, 2 ],
                 "line-opacity": 0.4,
               }}
@@ -1307,13 +1420,88 @@ export default function AppMap({
               type="line"
               layout={{ "line-join": "round" }}
               paint={{
-                "line-color": "var(--app-ink-3, #7A828C)",
+                "line-color": "#5C5A50",
                 "line-width": ["interpolate", ["linear"], ["zoom"], 9, 0.8, 13, 1.4],
                 "line-opacity": 0.35,
                 "line-dasharray": [3, 2],
               }}
             />
+            {/* Tap-a-town highlight: the tapped municipality's outline
+                lights up in brand cool and fades in (opacity transition)
+                as the civic sheet rises. Filtered to nothing when closed. */}
+            <Layer
+              id="municipal-boundary-highlight"
+              type="line"
+              layout={{ "line-join": "round", "line-cap": "round" }}
+              filter={["==", ["get", "name"], civicTown?.name ?? "__none__"]}
+              paint={{
+                "line-color": "#20506A",
+                "line-width": ["interpolate", ["linear"], ["zoom"], 9, 2, 13, 3.5],
+                "line-opacity": civicTown ? 0.9 : 0,
+                "line-opacity-transition": { duration: aerialFade, delay: 0 },
+              }}
+            />
           </Source>
+
+          {/* Tap-a-town civic sheet — "you're in {town}", the key contacts
+              (town hall, trash, ...) and a link to the town guide. Resolved
+              by point-in-polygon in onClick; honest when a town has no
+              civic record yet. */}
+          {civicTown && (() => {
+            // Boundary "MUNIC" name -> municipality. Handles "Frederick
+            // City" -> slug "frederick" and our "Downtown Frederick" naming
+            // by stripping the city/town suffix and the downtown- prefix.
+            const base = townSlug(civicTown.name.replace(/\b(city|town|village)\b/gi, " "));
+            const muni =
+              MUNICIPALITIES.find((m) => m.slug === base) ??
+              MUNICIPALITIES.find((m) => townSlug(m.name).replace(/^downtown-/, "") === base) ??
+              null;
+            const rec = muni ? municipalCivicFor(muni.slug) : null;
+            const contacts = rec ? civicContacts(rec).slice(0, 2) : [];
+            const title = muni?.name ?? civicTown.name;
+            return (
+              <Popup
+                longitude={civicTown.lng}
+                latitude={civicTown.lat}
+                offset={14}
+                closeOnClick={false}
+                onClose={() => setCivicTown(null)}
+                maxWidth="250px"
+              >
+                <div style={{ padding: "2px 2px 4px", minWidth: 198 }}>
+                  <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--app-cool, #20506A)", margin: 0 }}>
+                    You&rsquo;re in
+                  </p>
+                  <strong className="font-serif" style={{ display: "block", fontSize: 18, lineHeight: 1.15, color: "var(--app-ink, #16140E)", marginTop: 1 }}>
+                    {title}
+                  </strong>
+                  {contacts.length > 0 ? (
+                    <div style={{ marginTop: 7, display: "flex", flexDirection: "column", gap: 5 }}>
+                      {contacts.map((c) => (
+                        <div key={c.label} style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, fontSize: 12 }}>
+                          <span style={{ color: "var(--app-ink-2, #423E34)" }}>{c.label}</span>
+                          {c.phone ? (
+                            <a href={`tel:${c.phone.replace(/[^0-9]/g, "")}`} style={{ color: "var(--app-cool, #20506A)", fontWeight: 600, whiteSpace: "nowrap" }}>{c.phone}</a>
+                          ) : c.website ? (
+                            <a href={c.website} target="_blank" rel="noopener noreferrer" style={{ color: "var(--app-cool, #20506A)", fontWeight: 600 }}>Visit ↗</a>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ marginTop: 6, fontSize: 12, color: "var(--app-ink-3, #5C5A50)" }}>
+                      Civic details coming soon for {title}.
+                    </p>
+                  )}
+                  {muni && (
+                    <Link href={`/m/${muni.slug}`} style={{ display: "inline-block", marginTop: 8, fontSize: 12, fontWeight: 600, color: "var(--app-brand, #E14328)" }}>
+                      {title} guide &rarr;
+                    </Link>
+                  )}
+                </div>
+              </Popup>
+            );
+          })()}
 
           {/* OSM businesses — clustered. Calm tier: a soft cool dot that
               says "more here, zoom in", NOT a loud numbered disk. OSM is
@@ -1332,7 +1520,7 @@ export default function AppMap({
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": "#2F5470",
+                "circle-color": "#20506A",
                 "circle-opacity": 0.14,
                 "circle-blur": 1,
                 "circle-radius": [
@@ -1351,7 +1539,7 @@ export default function AppMap({
               type="circle"
               filter={["has", "point_count"]}
               paint={{
-                "circle-color": "#2F5470",
+                "circle-color": "#20506A",
                 "circle-opacity": 0.55,
                 "circle-blur": 0.25,
                 "circle-radius": [
@@ -1548,13 +1736,13 @@ export default function AppMap({
                   ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
                   [
                     "case",
-                    ["==", ["var", "mx"], 0], "#A03A22",
+                    ["==", ["var", "mx"], 0], "#E14328",
                     ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
                     ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
                     ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
                     ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
                     ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
-                    "#A03A22",
+                    "#E14328",
                   ],
                 ],
                 "circle-opacity": 0.18,
@@ -1578,13 +1766,13 @@ export default function AppMap({
                   ["max", ["get", "food"], ["get", "outdoors"], ["get", "arts"], ["get", "shopping"], ["get", "civic"]],
                   [
                     "case",
-                    ["==", ["var", "mx"], 0], "#A03A22",
+                    ["==", ["var", "mx"], 0], "#E14328",
                     ["==", ["get", "food"], ["var", "mx"]], BUCKET_COLOR.food,
                     ["==", ["get", "outdoors"], ["var", "mx"]], BUCKET_COLOR.outdoors,
                     ["==", ["get", "arts"], ["var", "mx"]], BUCKET_COLOR.arts,
                     ["==", ["get", "shopping"], ["var", "mx"]], BUCKET_COLOR.shopping,
                     ["==", ["get", "civic"], ["var", "mx"]], BUCKET_COLOR.civic,
-                    "#A03A22",
+                    "#E14328",
                   ],
                 ],
                 // Calm category tint. The count label below restores
@@ -1630,6 +1818,21 @@ export default function AppMap({
                 "text-halo-color": "rgba(0,0,0,0.25)",
                 "text-halo-width": 1.2,
                 "text-halo-blur": 0.5,
+              }}
+            />
+            {/* Last call — a soft amber halo under places open now but
+                closing within the hour. Calm by design (a warm glow, no
+                countdown, no pulse): a glance catches what's about to
+                close without the map ever shouting. */}
+            <Layer
+              id="curated-lastcall"
+              type="circle"
+              filter={["all", ["!", ["has", "point_count"]], ["==", ["get", "closing"], true]]}
+              paint={{
+                "circle-radius": ["interpolate", ["linear"], ["zoom"], 11, 9, 15, 15, 18, 20],
+                "circle-color": "#B26B00",
+                "circle-opacity": 0.26,
+                "circle-blur": 0.55,
               }}
             />
             <Layer
@@ -1747,14 +1950,14 @@ export default function AppMap({
               id="ring-fill"
               type="fill"
               beforeId="curated-clusters"
-              paint={{ "fill-color": "#A03A22", "fill-opacity": 0.07 }}
+              paint={{ "fill-color": "#E14328", "fill-opacity": 0.07 }}
             />
             <Layer
               id="ring-line"
               type="line"
               beforeId="curated-clusters"
               paint={{
-                "line-color": "#A03A22",
+                "line-color": "#E14328",
                 "line-width": 2,
                 "line-opacity": 0.55,
                 "line-dasharray": [2, 2],
@@ -1765,14 +1968,14 @@ export default function AppMap({
             <Layer
               id="dot-halo"
               type="circle"
-              paint={{ "circle-radius": 13, "circle-color": "#2F5470", "circle-opacity": 0.22 }}
+              paint={{ "circle-radius": 13, "circle-color": "#20506A", "circle-opacity": 0.22 }}
             />
             <Layer
               id="dot-core"
               type="circle"
               paint={{
                 "circle-radius": 5,
-                "circle-color": "#2F5470",
+                "circle-color": "#20506A",
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 2,
               }}
@@ -1785,7 +1988,7 @@ export default function AppMap({
               beforeId="curated-clusters"
               layout={{ "line-cap": "round", "line-join": "round" }}
               paint={{
-                "line-color": "#2F5470",
+                "line-color": "#20506A",
                 "line-width": 3.5,
                 "line-opacity": 0.75,
                 "line-dasharray": [0.5, 1.6],
@@ -1800,7 +2003,7 @@ export default function AppMap({
               type="circle"
               paint={{
                 "circle-radius": 9,
-                "circle-color": ["match", ["get", "kind"], "traffic", "#C99632", "#2F5470"],
+                "circle-color": ["match", ["get", "kind"], "traffic", "#C99632", "#20506A"],
                 "circle-opacity": 0.22,
               }}
             />
@@ -1809,7 +2012,7 @@ export default function AppMap({
               type="circle"
               paint={{
                 "circle-radius": 5,
-                "circle-color": ["match", ["get", "kind"], "traffic", "#C99632", "#2F5470"],
+                "circle-color": ["match", ["get", "kind"], "traffic", "#C99632", "#20506A"],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1.8,
               }}
@@ -1845,7 +2048,11 @@ export default function AppMap({
                   "winter", "#2F5470",
                   "#A03A22",
                 ],
-                "circle-opacity": 0.22,
+                "circle-opacity":
+                  aerialSeason === "all"
+                    ? 0.22
+                    : ["case", ["==", ["get", "season"], aerialSeason], 0.22, 0],
+                "circle-opacity-transition": { duration: aerialFade, delay: 0 },
               }}
             />
             <Layer
@@ -1864,6 +2071,16 @@ export default function AppMap({
                 ],
                 "circle-stroke-color": "#FFFFFF",
                 "circle-stroke-width": 1.6,
+                "circle-opacity":
+                  aerialSeason === "all"
+                    ? 1
+                    : ["case", ["==", ["get", "season"], aerialSeason], 1, 0],
+                "circle-opacity-transition": { duration: aerialFade, delay: 0 },
+                "circle-stroke-opacity":
+                  aerialSeason === "all"
+                    ? 1
+                    : ["case", ["==", ["get", "season"], aerialSeason], 1, 0],
+                "circle-stroke-opacity-transition": { duration: aerialFade, delay: 0 },
               }}
             />
           </Source>
@@ -1900,7 +2117,7 @@ export default function AppMap({
                       position: "absolute",
                       inset: 0,
                       borderRadius: 9999,
-                      background: "#A03A22",
+                      background: "var(--app-brand)",
                       opacity: 0.5,
                       animation: "fr-ft-pulse 2.2s ease-out infinite",
                     }}
@@ -1915,7 +2132,7 @@ export default function AppMap({
                       height: 28,
                       borderRadius: 9999,
                       background: "#fff",
-                      border: "1.5px solid #A03A22",
+                      border: "1.5px solid var(--app-brand)",
                       boxShadow: "var(--app-shadow-2)",
                       fontSize: 15,
                       lineHeight: 1,
@@ -2121,7 +2338,7 @@ export default function AppMap({
                     position: "absolute",
                     inset: 4,
                     borderRadius: 9999,
-                    background: e.category_color || "#A03A22",
+                    background: e.category_color || "var(--app-brand)",
                     opacity: 0.32,
                     animation: "fr-ev-pulse 2.6s ease-out infinite",
                   }}
@@ -2139,7 +2356,7 @@ export default function AppMap({
                       // 36px dot at up to 3× DPR → a 128px variant is
                       // plenty; the raw hero.jpg blob is 1–2 MB.
                       ? `center/cover no-repeat url("${sizedImage(e.hero_image, 128)}")`
-                      : e.category_color || "#A03A22",
+                      : e.category_color || "var(--app-brand)",
                     border: `2px solid #fff`,
                     boxShadow: "var(--app-shadow-2)",
                     color: "#fff",

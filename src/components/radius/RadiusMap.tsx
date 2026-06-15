@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Crosshair, Map as MapIcon, ArrowUpRight, X, Layers as LayersIcon } from "lucide-react";
 import MapOverlays from "@/components/map/MapOverlays";
+import LiveBuses from "@/components/map/LiveBuses";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import type { TravelMode } from "@/lib/geo";
@@ -181,6 +182,10 @@ export default function RadiusMap({
   // MapOverlays handles its own lazy fetch, render, and popups.
   const [activeOverlays, setActiveOverlays] = useState<OverlayKey[]>([]);
   const [layersOpen, setLayersOpen] = useState(false);
+  // Live TransIT buses: ON by default in the default (radius) view so the
+  // map opens alive with real moving buses. Toggleable in the layers menu;
+  // honest-empty (nothing) when no buses are running.
+  const [showBuses, setShowBuses] = useState(true);
   const readyOverlays = OVERLAYS.filter((o) => o.ready);
   // Live position while dragging the center pin — gives the radius
   // circle a smooth follow without thrashing parent state on every
@@ -960,11 +965,15 @@ export default function RadiusMap({
         {/* GIS overlays — same self-contained renderer the browse map
             uses, now in the default Nearby map too. */}
         <MapOverlays active={activeOverlays} />
+        <LiveBuses show={showBuses} />
       </Map>
 
       {/* Center label pill — names the current center without making
-          the user look at the dropdown below. */}
-      <div className="pointer-events-none absolute inset-x-0 top-3 z-[var(--z-map-control)] flex justify-center px-4">
+          the user look at the dropdown below. Sits lower on mobile
+          (top-11) so it clears the Mapbox logo, which globals.css pins to
+          the top-left below lg (the bottom corners are under the sheet);
+          back to the snug top-3 at lg+ where the logo returns to bottom. */}
+      <div className="pointer-events-none absolute inset-x-0 top-11 z-[var(--z-map-control)] flex justify-center px-4 lg:top-3">
         <span
           className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em]"
           style={{
@@ -1040,6 +1049,18 @@ export default function RadiusMap({
             className="flex flex-col gap-1 rounded-[var(--app-radius-md)] border p-1.5 shadow-[var(--app-shadow-2)]"
             style={{ background: "color-mix(in srgb, var(--app-bg-elevated) 94%, transparent)", borderColor: "var(--app-border)", backdropFilter: "blur(8px)" }}
           >
+            {/* Live buses — a real-time layer (not a static overlay), so
+                its own toggle. Cool-tinted to match the transit identity. */}
+            <button
+              type="button"
+              onClick={() => setShowBuses((v) => !v)}
+              aria-pressed={showBuses}
+              className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition active:scale-[0.96]"
+              style={{ background: showBuses ? "var(--app-cool)" : "transparent", color: showBuses ? "#fff" : "var(--app-ink-2)" }}
+            >
+              <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showBuses ? "#fff" : "var(--app-cool)" }} />
+              Live buses
+            </button>
             {readyOverlays.map((o) => {
               const on = activeOverlays.includes(o.key);
               return (

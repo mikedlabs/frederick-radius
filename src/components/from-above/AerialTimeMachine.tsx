@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Map, { Source, Layer } from "react-map-gl/mapbox";
 import type { RasterLayerSpecification } from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -38,6 +38,27 @@ const INITIAL = { longitude: -77.4105, latitude: 39.4143, zoom: 14.2 };
 export default function AerialTimeMachine() {
   const [yearIdx, setYearIdx] = useState(AERIAL_YEARS.length - 1); // default newest
   const activeYear = AERIAL_YEARS[yearIdx];
+  // The City's ortho `export` endpoint can hang/fail (the historical
+  // layers then never load). Detect that and show an honest banner
+  // instead of a silently blank map; the scrubber hides when it's useless.
+  const [orthoFailed, setOrthoFailed] = useState(false);
+
+  // Proactive reachability probe: the City's `export` endpoint hangs when
+  // it's down, and Mapbox's tile-abort errors don't carry a matchable
+  // source, so we ping one tile with a short timeout. If it can't be
+  // reached, flip to the honest fallback. (no-cors: we only need to know
+  // the request completes, not read its body.)
+  useEffect(() => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const probe =
+      `${AERIAL_BASE}${AERIAL_YEARS[AERIAL_YEARS.length - 1]}/MapServer/export` +
+      `?bbox=-8617500,4782500,-8616500,4783500&bboxSR=3857&imageSR=3857&size=64,64&format=jpeg&f=image`;
+    fetch(probe, { signal: ctrl.signal, mode: "no-cors" })
+      .catch(() => setOrthoFailed(true))
+      .finally(() => clearTimeout(t));
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, []);
 
   return (
     <div className="relative h-[calc(100vh-var(--app-nav-h,56px))] w-full overflow-hidden">
@@ -51,6 +72,11 @@ export default function AerialTimeMachine() {
           [-77.27, 39.50],
         ]}
         attributionControl={false}
+        onError={(e) => {
+          const src = (e as unknown as { sourceId?: string }).sourceId ?? "";
+          const msg = String((e as unknown as { error?: unknown }).error ?? "");
+          if (src.startsWith("aerial-") || /cityoffrederick|Aerial_/i.test(msg)) setOrthoFailed(true);
+        }}
       >
         {/* Every year is mounted; only the active layer is opaque, so
             scrubbing crossfades with the raster-fade-duration. The newest
@@ -71,7 +97,30 @@ export default function AerialTimeMachine() {
         })}
       </Map>
 
-      {/* ── Scrubber overlay ───────────────────────────────────────── */}
+      {orthoFailed && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-4">
+          <div
+            className="pointer-events-auto mx-auto w-full max-w-md rounded-[var(--app-radius-lg)] border p-3.5"
+            style={{
+              borderColor: "var(--app-border)",
+              background: "color-mix(in srgb, var(--app-bg-elevated-solid) 92%, transparent)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)",
+            }}
+          >
+            <p className="font-serif text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+              Historical imagery is unavailable right now
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              The City of Frederick GIS isn&rsquo;t serving its aerial archive at the moment. The live map still pans below; check back soon for the decade scrubber.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Scrubber overlay (hidden when the archive is down) ──────── */}
+      {!orthoFailed && (
       <div
         className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4"
         style={{ paddingBottom: "max(env(safe-area-inset-bottom,0px)+16px,16px)" }}
@@ -119,6 +168,7 @@ export default function AerialTimeMachine() {
           </p>
         </div>
       </div>
+      )}
     </div>
   );
 }

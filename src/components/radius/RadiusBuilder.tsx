@@ -1026,7 +1026,7 @@ export default function RadiusBuilder({
             type="button"
             onClick={requestMyLocation}
             className="tactile tactile-interactive fixed right-4 inline-flex items-center gap-1.5 rounded-full py-2 pl-3 pr-3.5 text-[13px] font-semibold text-white shadow-[var(--app-shadow-2)] transition active:scale-[0.96]"
-            style={{ background: "var(--app-brand)", bottom: "120px", zIndex: "var(--z-map-control)" }}
+            style={{ background: "var(--app-brand)", bottom: `calc(${SNAP_COLLAPSED} + 16px)`, zIndex: "var(--z-map-control)" }}
           >
             <Locate className="h-4 w-4" strokeWidth={2.5} aria-hidden />
             Use my location
@@ -1038,7 +1038,7 @@ export default function RadiusBuilder({
             aria-label={myLoc ? "Recenter on your location" : "Use my location"}
             className="tactile fixed right-4 grid h-10 w-10 place-items-center rounded-full shadow-[var(--app-shadow-2)] transition active:scale-[0.94]"
             style={{
-              bottom: "120px",
+              bottom: `calc(${SNAP_COLLAPSED} + 16px)`,
               zIndex: "var(--z-map-control)",
               background: "var(--app-bg-elevated)",
               color: myLoc ? "var(--app-brand)" : "var(--app-ink-2)",
@@ -1046,6 +1046,23 @@ export default function RadiusBuilder({
           >
             <Locate className="h-[18px] w-[18px]" strokeWidth={2.25} fill={myLoc ? "currentColor" : "none"} aria-hidden />
           </button>
+        )}
+
+        {/* Mode toggle, surfaced. It also lives in the sheet body (shown
+            when expanded), but radius mode is the DEFAULT and the sheet
+            opens collapsed — so the only way to reach "Whole county" used
+            to be a hidden tap behind "Adjust". A modest floating copy over
+            the collapsed map keeps radius-first primary while making the
+            switch discoverable without expanding. Mirrors the locate
+            control's anchor; left so it clears the locate button at right.
+            Only when collapsed — the body copy takes over once expanded. */}
+        {modeToggle && snap === SNAP_COLLAPSED && (
+          <div
+            className="fixed left-4"
+            style={{ bottom: `calc(${SNAP_COLLAPSED} + 16px)`, zIndex: "var(--z-map-control)" }}
+          >
+            {modeToggle}
+          </div>
         )}
       </div>
 
@@ -1081,7 +1098,6 @@ export default function RadiusBuilder({
                 {placesReady
                   ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}`
                   : "Finding places…"}
-                {openNowCount > 0 ? ` · ${openNowCount} open now` : ""}
               </p>
             </div>
             <span
@@ -1115,20 +1131,22 @@ export default function RadiusBuilder({
             Best near {center.label}
           </h2>
           <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {placesReady ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}` : "Finding places"}
-            {openNowCount > 0 ? ` · ${openNowCount} open now` : ""} · {minutes}-min {MODE_VERB[mode]}
+            {placesReady ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}` : "Finding places"} · {minutes}-min {MODE_VERB[mode]}
           </p>
         </div>
 
         {placesReady && displayedInside[0] && (
-          <button
-            type="button"
-            onClick={() => openSheet(displayedInside[0])}
-            className="block w-full rounded-[var(--app-radius-lg)] text-left"
+          // Plain wrapper, not a <button>: PlaceCard's feature variant
+          // renders its own button (openDetail -> openSheet), so wrapping
+          // it in another button nested interactive controls (invalid HTML
+          // + a hydration error). The glow lives on the div; the card's own
+          // button still opens the same sheet.
+          <div
+            className="rounded-[var(--app-radius-lg)]"
             style={{ boxShadow: `0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)` }}
           >
             <PlaceCard place={displayedInside[0]} variant="feature" />
-          </button>
+          </div>
         )}
 
         {/* Compact utility row — the five things people most need nearby. */}
@@ -1276,7 +1294,7 @@ export default function RadiusBuilder({
               className="h-2 w-2 rounded-full"
               style={{ background: openOnly ? "white" : "var(--app-positive)" }}
             />
-            {openOnly ? "Showing open only" : `Open now · ${openNowCount}`}
+            {openOnly ? "Showing open only" : "Show open only"}
           </button>
           {openOnly && (
             <button
@@ -1344,7 +1362,7 @@ export default function RadiusBuilder({
                     creates multiple text nodes that screen readers
                     and text extractors concatenate with whitespace,
                     rendering "488 place s · 11 categor ies." */}
-                {`${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}${!openOnly && openNowCount > 0 ? ` · ${openNowCount} open now` : ""} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
+                {`${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"} · ${groups.length} ${groups.length === 1 ? "category" : "categories"}`}
               </p>
             </div>
             <button

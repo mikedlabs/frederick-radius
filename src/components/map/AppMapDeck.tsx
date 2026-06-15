@@ -190,9 +190,9 @@ export default function AppMapDeck({
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search the map"
-              aria-label="Search the map"
-              className="min-w-0 flex-1 bg-transparent px-2.5 py-2.5 text-sm outline-none"
+              placeholder="Search this map…"
+              aria-label="Search this map"
+              className="min-w-0 flex-1 bg-transparent px-2.5 py-3 text-sm outline-none"
               style={{ color: "var(--app-ink)" }}
             />
             {/* Locate-me icon button — sits at the search bar's
@@ -554,7 +554,7 @@ export default function AppMapDeck({
                 border: `1px solid ${activeCats.has("coffee") ? "#8B5A2B" : "var(--app-border)"}`,
                 boxShadow: activeCats.has("coffee") ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
               }}
-              title="Just coffee — cafes, roasters, espresso bars"
+              title="Just coffee: cafes, roasters, espresso bars"
             >
               <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{"☕"}</span>
               Coffee
@@ -644,7 +644,7 @@ export default function AppMapDeck({
                   border: `1px solid ${activeAmenityGroupCount > 0 || amenityOpen ? "var(--app-cool)" : "var(--app-border)"}`,
                   boxShadow: activeAmenityGroupCount > 0 ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                 }}
-                title="Amenities — restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water, trash, AED"
+                title="Amenities: restrooms, Wi-Fi, EV charging, bike parking, picnic, playgrounds, water, trash, AED"
               >
                 <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{CHIP_GLYPH.amenities}</span>
                 Amenities
@@ -677,26 +677,28 @@ export default function AppMapDeck({
               </button>
             </li>
           )}
-          {transitLines.features.length > 0 && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setShowTransit((v) => !v)}
-                aria-pressed={showTransit}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                style={{
-                  background: showTransit ? "var(--app-cool)" : "var(--app-bg-elevated)",
-                  color: showTransit ? "white" : "var(--app-ink-2)",
-                  border: `1px solid ${showTransit ? "var(--app-cool)" : "var(--app-border)"}`,
-                  boxShadow: showTransit ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
-                }}
-                title="TransIT bus routes"
-              >
-                <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showTransit ? "white" : "var(--app-cool)" }} />
-                Transit · {transitLines.features.length}
-              </button>
-            </li>
-          )}
+          {/* Transit is ALWAYS available: live buses ride this toggle even
+              when the route-shape feed is empty (the vehicle feed is the
+              reliable part). Route lines draw under the buses when shapes
+              are present; the label shows the route count only then. */}
+          <li>
+            <button
+              type="button"
+              onClick={() => setShowTransit((v) => !v)}
+              aria-pressed={showTransit}
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+              style={{
+                background: showTransit ? "var(--app-cool)" : "var(--app-bg-elevated)",
+                color: showTransit ? "white" : "var(--app-ink-2)",
+                border: `1px solid ${showTransit ? "var(--app-cool)" : "var(--app-border)"}`,
+                boxShadow: showTransit ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+              }}
+              title="TransIT bus routes and live buses"
+            >
+              <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showTransit ? "white" : "var(--app-cool)" }} />
+              Transit{transitLines.features.length > 0 ? ` · ${transitLines.features.length}` : ""}
+            </button>
+          </li>
           {trailLines.features.length > 0 && (
             <li>
               <button
@@ -730,7 +732,7 @@ export default function AppMapDeck({
                   border: `1px solid ${showAerial ? "var(--app-accent)" : "var(--app-border)"}`,
                   boxShadow: showAerial ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
                 }}
-                title="Drone photos from the Frederick Radius seasonal archive — each pin marks where a shot was taken"
+                title="Drone photos from the Frederick Radius seasonal archive. Each pin marks where a shot was taken"
               >
                 <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: showAerial ? "white" : "var(--app-accent)" }} />
                 Aerial photos · {aerialCount}
