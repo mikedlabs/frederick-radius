@@ -36,7 +36,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
-        className="w-full bg-transparent py-2.5 text-[15px] outline-none placeholder:text-[color:var(--app-ink-3)]"
+        className="w-full bg-transparent py-3 text-[15px] outline-none placeholder:text-[color:var(--app-ink-3)]"
         style={{ color: "var(--app-ink)" }}
       />
       {q && (

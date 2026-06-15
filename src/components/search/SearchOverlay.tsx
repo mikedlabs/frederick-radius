@@ -296,7 +296,7 @@ export default function SearchOverlay({
               type="button"
               onClick={() => setQuery("")}
               aria-label="Clear"
-              className="shrink-0 rounded-full p-1 transition hover:bg-[var(--app-bg-sunken)]"
+              className="tap-44 shrink-0 rounded-full p-1 transition hover:bg-[var(--app-bg-sunken)]"
             >
               <X className="h-4 w-4" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
             </button>

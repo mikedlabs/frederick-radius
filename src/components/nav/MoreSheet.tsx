@@ -58,13 +58,18 @@ type Item = {
 // All three action verbs have better, more-contextual homes than a
 // hidden drawer; the drawer no longer needs a Tools section.
 
-const USEFUL: Item[] = [
-  { href: "/pulse",     label: "County pulse", description: "Right now: traffic, power outages, school closings, 311", icon: Activity, color: "var(--app-brand)" },
-  { href: "/plan",      label: "Plan a day", description: "Build a shareable Frederick day itinerary",           icon: Route,         color: "var(--app-brand-2)" },
+// The old flat "Useful" wall (9 undifferentiated tiles) read as a
+// low-scent grid — you had to read every label to find anything. Split
+// into three labeled, scannable clusters (Getting around / Outdoors /
+// Around the county) so the eye can jump to the right neighborhood
+// first. Nothing removed — every tile is still a live, indexable route.
+const GETTING_AROUND: Item[] = [
   { href: "/parking",   label: "Parking",   description: "Downtown garages, rates, and event-day closures",     icon: SquareParking, color: "var(--app-ink-2)" },
-  { href: "/amenities", label: "Amenities", description: "Restrooms, water, wifi, EV charging, bike parking", icon: Wrench,        color: "var(--app-brand)" },
-  { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2,     color: "var(--app-ink-2)" },
   { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus,           color: "var(--app-cool)" },
+  { href: "/amenities", label: "Amenities", description: "Restrooms, water, wifi, EV charging, bike parking", icon: Wrench,        color: "var(--app-brand)" },
+];
+
+const OUTDOORS: Item[] = [
   { href: "/trails",    label: "Trails",    description: "200+ miles of hikes, towpaths, and rail-trails",    icon: Mountain,      color: "var(--app-positive)" },
   { href: "/parks",     label: "Parks",     description: "Public parks across all 12 municipalities",          icon: TreeDeciduous, color: "var(--app-brand-2)" },
   // "Water" tile collapsed into Rivers (May 2026 IA cleanup). The
@@ -72,6 +77,12 @@ const USEFUL: Item[] = [
   // USGS gauge data; the intended "drinking fountains" surface lives
   // under the Pools/Amenities map filter when curated data lands.
   { href: "/rivers",    label: "Rivers & creeks", description: "Live USGS gauges · gage height + flow + 24-hour trend", icon: Waves, color: "var(--app-cool)" },
+];
+
+const AROUND_COUNTY: Item[] = [
+  { href: "/pulse",     label: "County pulse", description: "Right now: traffic, power outages, school closings, 311", icon: Activity, color: "var(--app-brand)" },
+  { href: "/plan",      label: "Plan a day", description: "Build a shareable Frederick day itinerary",           icon: Route,         color: "var(--app-brand-2)" },
+  { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2,     color: "var(--app-ink-2)" },
 ];
 
 const APP: Item[] = [
@@ -102,12 +113,15 @@ export default function MoreSheet({
             moved to /about as Companion content. Tools (Plan,
             Within reach, Pulse) moved to their natural homes —
             /events CTA, /map default mode, header indicator
-            respectively. The drawer now leads with USEFUL — the
-            secondary destinations that don't yet have a primary
-            surface to live on. APP closes out the sheet so About,
-            Trust, Settings stay reachable. */}
+            respectively. The drawer now leads with the secondary
+            destinations, split into three scannable clusters — Getting
+            around / Outdoors / Around the county — instead of one flat
+            "Useful" wall you had to read end-to-end. APP closes out the
+            sheet so About, Trust, Settings stay reachable. */}
 
-        <IconCluster heading="Useful" items={USEFUL} onClose={close} columns={4} />
+        <IconCluster heading="Getting around" items={GETTING_AROUND} onClose={close} columns={3} />
+        <IconCluster heading="Outdoors" items={OUTDOORS} onClose={close} columns={3} />
+        <IconCluster heading="Around the county" items={AROUND_COUNTY} onClose={close} columns={3} />
         <IconCluster heading="App" items={APP} onClose={close} columns={3} />
       </div>
     </BottomDrawer>
@@ -190,7 +204,7 @@ function IconTile({
     borderColor: "var(--app-border)",
     boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
   };
-  const aria = `${label} — ${description}`;
+  const aria = `${label}: ${description}`;
   return external ? (
     <a
       href={href}

@@ -48,7 +48,7 @@ export default function AppFooter() {
         </ul>
       </nav>
       <p className="mt-3 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-        Frederick Radius — one guide for Frederick City and the towns around it.
+        Frederick Radius: one guide for Frederick City and the towns around it.
       </p>
     </footer>
   );

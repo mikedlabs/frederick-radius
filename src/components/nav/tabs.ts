@@ -14,16 +14,20 @@ import {
  *
  * Five tabs — each label names the destination literally (no brand
  * words that point somewhere else):
- *   - Guide     /guide      (the front door — "what are you after?")
+ *   - Find      /guide      (the front door — a tap-don't-type discovery
+ *                            funnel: "what are you looking for?")
  *   - Today     /today      (weather + what's on + the live county pulse —
  *                            the daily-return surface for locals)
  *   - Map       /map
  *   - Events    /events
  *   - Saved     /my-radius  (the page is titled "Saved" to match this tab)
  *
- * The first tab was "Radius" → /guide, which read as the personal page
- * (the one titled "My Radius"). Relabeled "Guide" so the tab and the page
- * it opens agree; "Radius" is the product name, not a nav destination.
+ * Label history of the first tab: "Radius" (read as the personal /my-radius
+ * page) → "Guide" → "Ask". "Ask" was a scent lie — the page is a
+ * tap-don't-type browse funnel, not an AI concierge, so the verb promised
+ * something the surface doesn't do. Now "Find": it names the actual job
+ * (find what you're looking for) and matches the funnel's own headline.
+ * The route stays /guide — only the visible label changed.
  *
  * Today rejoined the primary nav (it had been demoted to a link under
  * the front door): the UI survey found the temporal / ambient-live-data layer is
@@ -42,7 +46,7 @@ export type Tab = {
 };
 
 export const TABS: readonly Tab[] = [
-  { href: "/guide",     label: "Ask",    icon: Compass,  fillOnActive: false },
+  { href: "/guide",     label: "Find",   icon: Compass,  fillOnActive: false },
   { href: "/today",     label: "Today",  icon: Sun,      fillOnActive: false },
   { href: "/map",       label: "Map",    icon: MapIcon,  fillOnActive: false },
   { href: "/events",    label: "Events", icon: Calendar, fillOnActive: false },

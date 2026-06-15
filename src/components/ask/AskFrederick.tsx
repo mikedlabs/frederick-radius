@@ -63,9 +63,10 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
       }}
       aria-label="Ask Radius"
     >
-      {/* Eyebrow is the box's label on /guide; on /today the page's
-          "Ask Radius anything." headline already labels it, so it's hidden
-          to avoid saying "Ask Radius" twice in a row. */}
+      {/* Eyebrow is the box's own label when the concierge is used
+          standalone. On /today — its only current home (TodayAsk passes
+          hideLabel) — the page's "Ask Radius anything." headline already
+          labels it, so the eyebrow is hidden to avoid saying it twice. */}
       {!hideLabel && (
         <div className="mb-2 inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-brand)" }}>
           <Sparkles className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden /> Ask Radius
@@ -83,7 +84,7 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Ask anything, like “coffee open now near me”"
+          placeholder="Ask anything, like coffee open now near me"
           className="h-11 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[var(--app-ink-3)]"
           style={{ color: "var(--app-ink)" }}
           aria-label="Ask Radius a question"
@@ -92,8 +93,8 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
           type="submit"
           disabled={!q.trim() || loading}
           aria-label="Ask"
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-white transition active:scale-90 disabled:opacity-40"
-          style={{ background: "var(--app-brand)" }}
+          className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-full transition active:scale-90 disabled:opacity-40"
+          style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
         >
           <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden />
         </button>
@@ -112,7 +113,7 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
               Only when there's genuinely nothing do we fall back to a hint. */}
           {res.configured === false && res.sources.length === 0 ? (
             <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              The concierge is warming up. Meanwhile, try a category above — or ask for a place, a cuisine, or “open now”.
+              The concierge is warming up. Meanwhile, try a category above, or ask for a place, a cuisine, or &ldquo;open now&rdquo;.
             </p>
           ) : (
             <>
