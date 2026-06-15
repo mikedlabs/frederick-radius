@@ -8,6 +8,7 @@ import {
   School,
   AlertTriangle,
   CloudAlert,
+  Waves,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const ICONS: Record<string, LucideIcon> = {
   School,
   AlertTriangle,
   CloudAlert,
+  Waves,
 };
 
 export type PulseTile = {
@@ -52,9 +54,12 @@ export type PulseTile = {
   active: boolean;
   /** Named source, shown as the drawer subtitle (trust is the product). */
   sourceLabel: string;
-  /** Top live item, ONE line — shown on active tile faces only, so a glance
-   *  reads the situation ("I-70 W · Incident"), not just a count. Undefined on
-   *  a clear tile, which stays a quiet count so a calm day reads calm. */
+  /** Top live item, ONE line — so a glance reads the situation ("I-70 W ·
+   *  Incident"), not just a count. Set on active tiles; left undefined on a
+   *  clear OPERATIONAL tile so a calm day reads calm. The exception is an
+   *  ambient feed like Rivers (active:false) that carries a representative
+   *  reading ("Monocacy · 3.2 ft") because the reading IS the point — a peek
+   *  here is data, not an alarm, and renders in quiet ink either way. */
   peek?: string;
   /** The feed's detail, rendered inside the tapped window. Server-rendered. */
   body: ReactNode;
