@@ -69,6 +69,7 @@ export default function SourceBadge({
         color: meta.color,
       }}
       title={meta.tooltip}
+      aria-label={`Source: ${meta.label}`}
     >
       <Icon
         className={isSm ? "h-2.5 w-2.5" : "h-3 w-3"}

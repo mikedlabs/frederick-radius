@@ -46,7 +46,7 @@ export default function SearchInput({ defaultValue = "" }: { defaultValue?: stri
             setQ("");
             router.push("/search");
           }}
-          className="rounded px-1 text-xs"
+          className="tap-44 rounded px-1 text-xs"
           style={{ color: "var(--app-ink-3)" }}
         >
           Clear

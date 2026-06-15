@@ -105,7 +105,7 @@ function Body({
   return (
     <>
       {spinner ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2.25} aria-hidden />
+        <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" strokeWidth={2.25} aria-hidden />
       ) : (
         icon
       )}

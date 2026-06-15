@@ -9,7 +9,11 @@ export default function OpenClosedDot({ status, withLabel = true }: { status: Op
     status.state === "unverified" ? "var(--app-cool)" :
     "var(--app-ink-3)";
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color }}>
+    <span
+      className="inline-flex items-center gap-1.5 text-xs font-medium"
+      style={{ color }}
+      {...(!withLabel ? { role: "img", "aria-label": formatHoursLine(status) } : {})}
+    >
       <span
         aria-hidden
         className="inline-block h-1.5 w-1.5 rounded-full"
