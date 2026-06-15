@@ -314,7 +314,7 @@ export default function SavedList() {
     : null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Personal hero — the "your Frederick" briefing. Stitches the
           tallies into one editorial sentence; the bar of stat pills
           underneath gives the at-a-glance read without a heavy 4-cell
