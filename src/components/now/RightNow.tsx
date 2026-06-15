@@ -9,6 +9,8 @@ import {
   Cookie,
   Beer,
   Trees,
+  ShoppingBag,
+  Palette,
   ArrowLeft,
   Navigation,
   type LucideIcon,
@@ -43,6 +45,8 @@ const ICONS: Record<string, LucideIcon> = {
   Cookie,
   Beer,
   Trees,
+  ShoppingBag,
+  Palette,
 };
 
 // ~80 m/min walking — same constant the reason chips use.
