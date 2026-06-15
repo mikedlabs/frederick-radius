@@ -618,7 +618,7 @@ export default function EventsExplorer({
         // weekend / later" — so the page is navigable at a glance, not
         // a 400-row chronological scroll. Each group shows a scannable
         // peek and expands in place; nothing is hidden.
-        <div className="space-y-6">
+        <div className="space-y-4">
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
             // One photo-backed FEATURE leads the first group as the

@@ -28,7 +28,7 @@ export default function HiddenGemsRail() {
   if (gems.length < 3) return null;
 
   return (
-    <section className="mt-8 space-y-2.5" aria-label="Hidden gems">
+    <section className="mt-6 space-y-2.5" aria-label="Hidden gems">
       <div className="flex items-end justify-between gap-3">
         <div>
           <h2 className="font-serif text-lg font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
