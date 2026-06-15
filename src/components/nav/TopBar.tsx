@@ -133,7 +133,7 @@ export default function TopBar() {
           ) : (
             <Link
               href="/"
-              aria-label="Frederick Radius — home"
+              aria-label="Frederick Radius, home"
               className="tap-44 flex items-center gap-2 font-serif text-[16px] font-semibold tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >

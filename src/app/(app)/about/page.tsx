@@ -322,7 +322,7 @@ export default async function AboutPage() {
                 borderColor: "var(--app-border)",
                 boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
               }}
-              aria-label="From Above — drone photography over Frederick"
+              aria-label="From Above: drone photography over Frederick"
             >
               <Image
                 src="/from-above/cover-front.webp"
@@ -394,7 +394,7 @@ export default async function AboutPage() {
                 borderColor: "var(--app-border)",
                 boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
               }}
-              aria-label="Color Frederick — the Frederick coloring book"
+              aria-label="Color Frederick: the Frederick coloring book"
             >
               <Image
                 src="/images/color-frederick-cover.webp"
