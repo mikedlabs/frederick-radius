@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, ChevronDown, ChevronUp, Locate, X, Compass, SquareParking, Toilet, Coffee, CalendarDays, Bus } from "lucide-react";
+import { Footprints, Bike, Car, MapPin, ChevronDown, ChevronUp, Locate, X, Compass } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
-import IconStamp from "@/components/ui/IconStamp";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
 import RadiusMap from "./RadiusMap";
@@ -26,6 +25,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 // allAmenities()), so this client component never imports the loader
 // or amenities.json — same loader-free discipline as places.
 import type { Amenity, AmenityKind } from "@/lib/loaders/amenities";
+import WithinReach from "./WithinReach";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { cuisineFacets, cuisinesOf } from "@/lib/cuisine";
 import { isOpenNow } from "@/lib/hours";
@@ -700,6 +700,17 @@ export default function RadiusBuilder({
       .sort((a, b) => a.distance_m - b.distance_m);
   }, [amenities, center.lng, center.lat, meters]);
 
+  // Distance-ascending inside list for the "Within reach" strip. WithinReach
+  // picks the FIRST match per kind as "nearest", so it needs true distance
+  // order regardless of the user's chosen result sort (rating / A-Z).
+  const reachInput = useMemo(
+    () =>
+      [...displayedInside].sort(
+        (a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity),
+      ),
+    [displayedInside],
+  );
+
   // Grouped by kind in the most-asked-for order; only kinds that
   // actually have a point inside the radius. Nearest stays first.
   const amenityGroups = useMemo(() => {
@@ -1149,30 +1160,15 @@ export default function RadiusBuilder({
           </div>
         )}
 
-        {/* Compact utility row — the five things people most need nearby. */}
-        <div className="grid grid-cols-5 gap-2">
-          {[
-            { href: "/amenities", label: "Parking", Icon: SquareParking, accent: "var(--app-ink-3)" },
-            { href: "/amenities", label: "Restrooms", Icon: Toilet, accent: "var(--app-cool)" },
-            { href: "/category/coffee", label: "Coffee", Icon: Coffee, accent: "#8B5A2B" },
-            { href: "/events", label: "Events", Icon: CalendarDays, accent: "var(--app-brand)" },
-            { href: "/transit", label: "Transit", Icon: Bus, accent: "#2F5470" },
-          ].map(({ href, label, Icon, accent }) => (
-            <Link
-              key={label}
-              href={href}
-              className="tactile tactile-interactive flex flex-col items-center gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2.5"
-              style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)" }}
-            >
-              <IconStamp accent={accent} size="sm">
-                <Icon aria-hidden />
-              </IconStamp>
-              <span className="text-[11px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-                {label}
-              </span>
-            </Link>
-          ))}
-        </div>
+        {/* Within reach — the LIVE nearest-of-each-kind for the current
+            radius (coffee 4m, park 7m…), tappable into the place sheet.
+            Revived from the orphaned WithinReach primitive; the static
+            5-icon nav row it replaces surfaced no radius data at all and
+            just linked out to /amenities, /category, /events, /transit.
+            Self-hides kinds with no match (and the whole strip when
+            nothing's reachable), and recomputes on every slider/center
+            change. Minutes render in mono (the data voice). */}
+        <WithinReach places={reachInput} amenities={insideAmenities} mode={mode} />
       </section>
 
 

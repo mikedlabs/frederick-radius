@@ -148,7 +148,7 @@ export default function WithinReach({
                   {r.group.label}
                 </span>
                 <span
-                  className="text-[12px] font-bold tabular-nums"
+                  className="font-mono text-[12px] font-bold tabular-nums"
                   style={{ color: r.group.color }}
                 >
                   {r.minutes}m
