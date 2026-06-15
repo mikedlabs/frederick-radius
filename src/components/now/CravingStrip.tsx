@@ -7,6 +7,7 @@ import {
   Cookie,
   Beer,
   Trees,
+  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import { CRAVINGS } from "@/data/cravings";
@@ -14,10 +15,17 @@ import { CRAVINGS } from "@/data/cravings";
 /**
  * CravingStrip — the fast lane on Today.
  *
- * "I want ___ right now" as a one-tap row. Each chip deep-links into /now
- * with the craving preselected, so a person standing on the sidewalk goes
- * Today → tap "Ice cream" → nearest open one, in two taps. Server component
- * (plain links) so it costs nothing and renders above the fold.
+ * "I want ___ right now" as a tap-to-answer grid. Each tile deep-links into
+ * /nearby with the craving preselected, so a person on the sidewalk goes
+ * Today → tap "Ice cream" → nearest open one, in two taps.
+ *
+ * A GRID (not the old horizontal pill scroll) so every craving is visible at
+ * once — the scroll hid "Drinks"/"Outside" off the right edge. Each tile is a
+ * tactile paper well matching /nearby's RightNow picker (same vocabulary, one
+ * visual voice), with a tinted icon well; the whole tile is the 44px+ target.
+ * An 8th "Something else" tile routes to the full picker so a missing noun
+ * never dead-ends. Server component (plain links) — costs nothing above the
+ * fold.
  */
 const ICONS: Record<string, LucideIcon> = {
   Coffee,
@@ -29,30 +37,66 @@ const ICONS: Record<string, LucideIcon> = {
   Trees,
 };
 
+const TILE =
+  "tactile tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-2.5";
+const TILE_STYLE = {
+  background: "var(--app-bg-elevated)",
+  boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+} as const;
+
 export default function CravingStrip() {
   return (
-    <section aria-label="I want" className="space-y-1.5">
-      <p className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
-        I want…
-      </p>
-      <div
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1"
-        style={{ scrollbarWidth: "none" }}
-      >
+    <section aria-labelledby="i-want-eyebrow" className="space-y-2">
+      <div>
+        <p id="i-want-eyebrow" className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+          I want…
+        </p>
+        <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          Tap one; we find the nearest one open.
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {CRAVINGS.map((c) => {
           const Icon = ICONS[c.icon];
           return (
             <Link
               key={c.key}
               href={`/nearby?c=${c.key}`}
-              className="tap-44 tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[13px] font-semibold"
-              style={{ color: "var(--app-ink-2)" }}
+              aria-label={`${c.label} — nearest open`}
+              className={TILE}
+              style={TILE_STYLE}
             >
-              <Icon className="h-4 w-4" strokeWidth={2} style={{ color: c.color }} aria-hidden />
-              {c.label}
+              <span
+                aria-hidden
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                style={{ background: `color-mix(in srgb, ${c.color} 14%, var(--app-bg-elevated-solid))` }}
+              >
+                <Icon className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: c.color }} />
+              </span>
+              <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+                {c.label}
+              </span>
             </Link>
           );
         })}
+        {/* A missing noun routes to the full picker, never a dead end. */}
+        <Link
+          href="/nearby"
+          aria-label="Something else — open the full picker"
+          className={TILE}
+          style={TILE_STYLE}
+        >
+          <span
+            aria-hidden
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+            style={{ background: "var(--app-bg-sunken)" }}
+          >
+            <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+          </span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
+            Something else
+          </span>
+        </Link>
       </div>
     </section>
   );
