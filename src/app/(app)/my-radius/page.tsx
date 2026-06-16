@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import ContourPlate from "@/components/ui/ContourPlate";
 import Link from "next/link";
 import { Settings, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
@@ -32,12 +31,9 @@ export default async function MyRadiusPage() {
   return (
     <div className="relative space-y-4">
       <PageBloom variant="warm-cool" />
-      {/* Compact header with a field-guide "plate" mark — a faint concentric
-          contour/radius locator bleeding off the corner + a coordinate line
-          in mono caps, like a naturalist guide's specimen plate. Character,
-          no bulk: the SVG is decorative and the screen still opens on content. */}
+      {/* Compact header — the coordinate line in mono caps gives it a quiet
+          field-guide character without a decorative plate. */}
       <header className="relative flex items-center justify-between gap-3 pt-0.5">
-        <ContourPlate size={88} className="absolute -top-6 right-7" />
         <div className="relative min-w-0">
           <h1 className="font-serif text-[23px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             Your field guide

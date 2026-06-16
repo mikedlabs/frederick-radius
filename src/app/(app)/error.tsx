@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import ContourPlate from "@/components/ui/ContourPlate";
 import { RefreshCw, Compass } from "lucide-react";
 
 /**
@@ -19,7 +18,6 @@ export default function AppError({
 }) {
   return (
     <div role="alert" className="relative mx-auto flex min-h-[60vh] max-w-sm flex-col items-center justify-center gap-4 text-center">
-      <ContourPlate size={150} className="absolute -top-2 right-0" />
       <p
         className="text-[11px] font-semibold uppercase tracking-[0.14em]"
         style={{ color: "var(--app-ink-3)" }}
