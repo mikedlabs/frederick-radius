@@ -1,22 +1,30 @@
 import Link from "next/link";
-import { Martini, Beer, Wine, Utensils, Pizza, Coffee, Croissant, Clock3, MapPin, type LucideIcon } from "lucide-react";
+import { Martini, Beer, Wine, Utensils, Pizza, Coffee, Croissant, type LucideIcon } from "lucide-react";
 import { todaysDeals, EASTERN_WEEKDAY } from "@/lib/loaders/todaysDeals";
 
 /** A happy-hour-vibe glyph keyed to the place category — a drink or a plate,
- *  never a retail price tag. Defaults to the cocktail glass (the going-out
- *  read) so a deal reads as "worth heading out for," not "a coupon". */
+ *  never a retail price tag. Defaults to the cocktail glass. */
 const DEAL_ICON: Record<string, LucideIcon> = {
   bar: Martini, brewery: Beer, winery: Wine, pizza: Pizza, restaurant: Utensils, bakery: Croissant, coffee: Coffee,
 };
 const iconFor = (cat?: string): LucideIcon => DEAL_ICON[cat ?? ""] ?? Martini;
 
+/** Each pass takes the color of its category — earthy Frederick-palette tones
+ *  (not garish), so a glance reads bar vs brewery vs winery. The card gradient
+ *  darkens toward ink at the bottom so white pass text always holds. */
+const DEAL_COLOR: Record<string, string> = {
+  bar: "#7E1F1F", brewery: "#9A6B1A", winery: "#6E2233", pizza: "#A8421F",
+  restaurant: "#A03A22", bakery: "#B0701E", coffee: "#7A4E26", market: "#3F5E4A",
+};
+const colorFor = (cat?: string): string => DEAL_COLOR[cat ?? ""] ?? "#A8421F";
+
 /**
- * Today's Deals — a compact strip of the VERIFIED day-of-week specials
- * running today (the Field Notes moat made visible on the front door, the
- * 4pm "what's worth going out for" answer). Server component; self-hides
- * when nothing runs today (honest empty). Each row taps through to the place;
- * each carries a "verified" chip so the trust is legible at the point of
- * decision.
+ * Today's Deals — the VERIFIED day-of-week specials running today (the Field
+ * Notes moat on the front door), now presented as a STACK OF PASSES in the
+ * Apple-Wallet idiom: each deal is a color-saturated rounded card carrying a
+ * glyph + the venue (the pass "org" line), the offer as the primary field, and
+ * WHEN / WHERE as wallet label-over-value fields. Color is the category in the
+ * Frederick palette. Server component; self-hides when nothing runs today.
  */
 export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: number }) {
   const deals = todaysDeals(now, limit);
@@ -24,90 +32,83 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
   const weekday = EASTERN_WEEKDAY(now);
 
   return (
-    <div className="relative pt-[14px]">
-      {/* Folder tab — same card language as the event tiles. */}
-      <span
-        className="absolute left-3 top-0 z-10 rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white"
-        style={{ background: "color-mix(in srgb, var(--app-brand) 82%, var(--app-ink))", boxShadow: "var(--app-edge)" }}
-      >
-        Today&rsquo;s deals
-      </span>
-      <section
-        aria-label={`Verified deals for ${weekday}`}
-        className="overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)]"
-        style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
-      >
-        <div className="flex items-center gap-2 px-3.5 pt-3">
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-2)" }}>
-            {weekday}
-          </span>
-          <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-          <span className="font-mono text-[9.5px] uppercase tracking-[0.08em]" style={{ color: "var(--app-positive)" }}>
-            verified
-          </span>
-        </div>
+    <section aria-label={`Verified deals for ${weekday}`} className="space-y-2.5">
+      {/* Minimal header — the passes carry the visual weight. */}
+      <div className="flex items-center gap-2 px-0.5">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand)" }}>
+          Today&rsquo;s deals
+        </span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>{weekday}</span>
+        <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+        <span className="font-mono text-[9.5px] uppercase tracking-[0.08em]" style={{ color: "var(--app-positive)" }}>verified</span>
+      </div>
 
-      <ul className="mt-1.5 px-1.5 pb-1.5">
-        {deals.map((d, i) => {
+      {/* The pass stack. */}
+      <ul className="space-y-2.5">
+        {deals.map((d) => {
           const Icon = iconFor(d.category);
+          const color = colorFor(d.category);
           return (
-          <li key={d.slug} className={i > 0 ? "border-t" : ""} style={i > 0 ? { borderColor: "color-mix(in srgb, var(--app-border) 60%, transparent)" } : undefined}>
-            <Link
-              href={`/places/${d.slug}`}
-              className="tactile-interactive flex items-start gap-3 rounded-[var(--app-radius-md)] px-2 py-2.5 transition"
-            >
-              {/* Icon-led — a happy-hour glyph (drink/plate by category) gives
-                  each deal a going-out anchor, not a retail price-tag read. */}
-              <span
-                aria-hidden
-                className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                style={{ background: "color-mix(in srgb, var(--app-accent) 15%, var(--app-bg-elevated-solid))", color: "var(--app-accent)", boxShadow: "var(--app-edge)" }}
+            <li key={d.slug}>
+              <Link
+                href={`/places/${d.slug}`}
+                aria-label={`${d.name}: ${d.offer}`}
+                className="tactile-interactive relative block overflow-hidden rounded-[20px] p-3.5"
+                style={{
+                  background: `linear-gradient(155deg, color-mix(in srgb, ${color} 92%, #17120c) 0%, color-mix(in srgb, ${color} 54%, #17120c) 100%)`,
+                  boxShadow: "var(--app-elev-2), inset 0 1px 0 rgba(255,255,255,0.14)",
+                  color: "#fff",
+                }}
               >
-                <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
-              </span>
-              <span className="min-w-0 flex-1">
-                {/* Three distinct parts, each its own visual datum:
-                    1. the DEAL — the offer, ink headline (day prefix trimmed);
-                    2. the TIME — an accent clock pill (when it runs);
-                    3. the PLACE — pin + venue · town, mono.
-                    Field-guide catalog grammar: the offer reads, the data
-                    scans. */}
-                <span className="line-clamp-2 text-[14px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-                  {d.offer}
-                </span>
-                <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {d.hours && (
-                    <span
-                      className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.06em]"
-                      style={{ background: "color-mix(in srgb, var(--app-accent) 15%, transparent)", color: "var(--app-accent)" }}
-                    >
-                      <Clock3 className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                      {d.hours}
+                {/* Pass header — glyph chip + venue (the "org" line) + trust. */}
+                <div className="flex items-center gap-2">
+                  <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "rgba(255,255,255,0.18)" }}>
+                    <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "rgba(255,255,255,0.94)" }}>
+                    {d.name}
+                  </span>
+                  {d.verified && (
+                    <span className="shrink-0 font-mono text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: "rgba(255,255,255,0.82)" }}>
+                      ✓ verified
                     </span>
                   )}
-                  <span className="inline-flex min-w-0 items-center gap-1 font-mono text-[10.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
-                    <MapPin className="h-3 w-3 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
-                    <span className="truncate">
-                      {d.name}{d.town ? ` · ${d.town}` : ""}
-                    </span>
-                  </span>
-                </span>
-              </span>
-            </Link>
-          </li>
+                </div>
+
+                {/* Primary field — the offer. */}
+                <p className="mt-2.5 line-clamp-2 font-serif text-[17px] font-semibold leading-snug" style={{ color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.18)" }}>
+                  {d.offer}
+                </p>
+
+                {/* Wallet field row — label over value. */}
+                <div className="mt-3 flex items-end gap-6">
+                  {d.hours && (
+                    <div className="shrink-0">
+                      <p className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.62)" }}>When</p>
+                      <p className="font-mono text-[12.5px] font-semibold tabular-nums leading-tight" style={{ color: "#fff" }}>{d.hours}</p>
+                    </div>
+                  )}
+                  {d.town && (
+                    <div className="min-w-0">
+                      <p className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.62)" }}>Where</p>
+                      <p className="truncate text-[12.5px] font-semibold leading-tight" style={{ color: "#fff" }}>{d.town}</p>
+                    </div>
+                  )}
+                </div>
+              </Link>
+            </li>
           );
         })}
       </ul>
 
       <Link
         href="/happy-hour"
-        className="tap-44 flex items-center justify-between border-t px-3.5 py-2 text-[12px] font-semibold"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-brand)" }}
+        className="tap-44 flex items-center justify-between px-0.5 pt-0.5 text-[12px] font-semibold"
+        style={{ color: "var(--app-brand)" }}
       >
         Happy hours &amp; more
         <span aria-hidden>→</span>
       </Link>
-      </section>
-    </div>
+    </section>
   );
 }
