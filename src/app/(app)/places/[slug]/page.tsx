@@ -18,6 +18,8 @@ import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
 import ParkAmenitiesStrip from "@/components/place/ParkAmenitiesStrip";
 import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
+import FieldNotesCard from "@/components/place/FieldNotesCard";
+import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
 import { businessInfoFor } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
 import PlaceHero, { PhotoCredit } from "@/components/place/PlaceHero";
@@ -265,11 +267,16 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           {/* Park amenity rollup (shelters/fields/playgrounds/trails) from
               the county GIS — renders only for parks that have it. */}
           <ParkAmenitiesStrip slug={place.slug} />
-          {/* "Good to know" — happy hour / specials / a notable detail
-              pulled straight from the place's OWN website by the
-              business-info agent, with source + freshness. Renders
-              nothing until that data exists for this place. */}
-          <BusinessExtrasCard info={businessInfoFor(place.slug)} />
+          {/* Verified Field Notes (the moat) take precedence — happy hour /
+              deals / parking / insider, each agent-confirmed at a cited
+              source, with the FieldStamp seal. Falls back to the legacy
+              business-info "Good to know" card when a place has no Field
+              Notes yet. Both render nothing when empty. */}
+          {hasFieldNotes(place.slug) ? (
+            <FieldNotesCard slug={place.slug} />
+          ) : (
+            <BusinessExtrasCard info={businessInfoFor(place.slug)} />
+          )}
           {place.review_snippet && (
             <figure
               className="border-l-2 pl-3"
