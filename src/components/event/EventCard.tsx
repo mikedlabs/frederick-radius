@@ -343,39 +343,38 @@ export default function EventCard({
     // color band are gone — the tab IS the category now. The wrapper reserves
     // the tab's height so it never clips inside a rail (no parent change).
     const tabBg = `color-mix(in srgb, ${accent} 82%, var(--app-ink))`;
+    const reasons = eventReasons(event);
     return (
-      <div className="relative h-full pt-[14px]">
+      <div className="relative pt-[14px]">
         <span
-          className="absolute left-3 top-0 z-10 max-w-[70%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
+          className="absolute left-3 top-0 z-10 max-w-[75%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
           style={{ background: tabBg, boxShadow: "var(--app-edge)" }}
         >
           {live ? "Live now" : categoryLabel}
         </span>
+        {/* Compact horizontal layout — date block beside the content, no empty
+            header band, no bottom-pinned reasons. The card hugs its content
+            (no h-full stretch) so a rail of these wastes no vertical space. */}
         <article
-          className="tactile tactile-interactive group relative flex h-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)]"
+          className="tactile tactile-interactive group relative flex gap-3 overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)] px-3 pb-3 pt-2.5"
           style={{
             borderColor: "var(--app-border)",
             boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
           }}
         >
-          {/* Date-led header — the category label moved up to the tab. */}
-          <div className="flex items-center gap-2.5 px-3.5 pb-2 pt-3.5">
-            <div
-              aria-hidden
-              className="flex shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
-              style={{ minWidth: 46, background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)" }}
-            >
-              <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{date.month}</span>
-              <span className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
-              <span className="text-[9px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
-            </div>
-            <span className="min-w-0 flex-1" />
-            {statusText && (
-              <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
-            )}
+          <div
+            aria-hidden
+            className="flex shrink-0 flex-col items-center justify-center self-start rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
+            style={{ minWidth: 46, background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)" }}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{date.month}</span>
+            <span className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
+            <span className="text-[9px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
           </div>
-          {/* Body — title + meta + reasons row. */}
-          <div className="flex min-w-0 flex-1 flex-col gap-1 px-3.5 pb-3.5">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            {statusText && (
+              <span className="self-start rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
+            )}
             <Link
               href={`/events/${event.slug}`}
               className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
@@ -388,26 +387,20 @@ export default function EventCard({
               <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
               {event.venue_name ? <> · {event.venue_name}</> : null}
             </p>
-            <div className="mt-auto pt-1">
-              {(() => {
-                const reasons = eventReasons(event);
-                if (reasons.length > 0) {
-                  return <ReasonChipRow reasons={reasons} />;
-                }
-                return (
-                  <div className="flex items-center gap-1.5 text-[11px]">
-                    {event.price_text && !event.is_free && (
-                      <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
-                    )}
-                    {event.distance_m !== undefined && (
-                      <span className="ml-auto font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                        {formatDistance(event.distance_m)}
-                      </span>
-                    )}
-                  </div>
-                );
-              })()}
-            </div>
+            {reasons.length > 0 ? (
+              <div className="pt-0.5"><ReasonChipRow reasons={reasons} /></div>
+            ) : (event.price_text && !event.is_free) || event.distance_m !== undefined ? (
+              <div className="flex items-center gap-1.5 pt-0.5 text-[11px]">
+                {event.price_text && !event.is_free && (
+                  <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
+                )}
+                {event.distance_m !== undefined && (
+                  <span className="ml-auto font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    {formatDistance(event.distance_m)}
+                  </span>
+                )}
+              </div>
+            ) : null}
           </div>
         </article>
       </div>
