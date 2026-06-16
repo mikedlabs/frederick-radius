@@ -50,6 +50,7 @@ import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
 import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
+import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
 import { publicPlaces } from "@/lib/loaders/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
@@ -143,7 +144,7 @@ export default async function PulsePage({
   // ?open=<tileKey> opens that feed's window on arrival (e.g. tapped from
   // /today's LivePulse, which deep-links /pulse?open=traffic).
   const { open: openParam } = await searchParams;
-  const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes, rivers] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes, rivers, airports] = await Promise.all([
     getChartIncidentsFrederick(),
     getFrederickOutages(),
     getFcpsAlerts(),
@@ -164,6 +165,10 @@ export default async function PulsePage({
     // only (the loader never synthesizes a flood "stage"); degrades to []
     // so a USGS hiccup never blocks the page.
     getFrederickWaterSites().catch(() => [] as WaterSite[]),
+    // FAA status for the three airports the county flies out of (BWI / Dulles
+    // / Reagan) — "on time" unless the national delay feed lists them. [] on a
+    // feed hiccup so it never blocks the page and the tile self-hides.
+    getAreaAirportStatus().catch(() => [] as AirportStatus[]),
   ]);
 
   // ── "By the numbers" canon — pure / no fetch beyond the routes
@@ -243,6 +248,21 @@ export default async function PulsePage({
   const riverPeekSite = riverGroups[0]?.sites.find((s) => s.gageHeightFt != null);
   const riverPeek = riverPeekSite
     ? `${riverGroups[0].river} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft`
+    : undefined;
+
+  // Airports — BWI / Dulles / Reagan. An empty `airports` means the FAA feed
+  // was unreachable, so the tile self-hides rather than claim a status we
+  // couldn't read; otherwise each airport is "on time" unless the feed lists a
+  // delay / ground stop / closure. The peek carries the first delayed airport.
+  const airportIssues = airports.filter((a) => a.state !== "clear");
+  const airportPeek = airportIssues[0]
+    ? `${airportIssues[0].name} ${
+        airportIssues[0].state === "closure"
+          ? "closed"
+          : airportIssues[0].state === "ground_stop"
+            ? "ground stop"
+            : "delays"
+      }`
     : undefined;
 
   // The dashboard tiles. Each carries an at-a-glance datum + its feed's full
@@ -494,6 +514,40 @@ export default async function PulsePage({
         )
         : emptyNote("River gauge readings are briefly unavailable."),
     },
+    ...(airports.length > 0
+      ? [{
+          // BWI / Dulles / Reagan. The accent goes amber + the tile tints only
+          // when there's an actual delay; an "on time" day stays a calm cool
+          // tile. Not part of the hero situation roll-up (a flight delay isn't
+          // a county emergency) — the peek names the delayed airport.
+          key: "airports",
+          label: "Airports",
+          iconName: "Plane",
+          countLabel: airportIssues.length > 0 ? `${airportIssues.length} delayed` : "On time",
+          accent: airportIssues.length > 0 ? "var(--app-warning)" : "var(--app-cool)",
+          active: airportIssues.length > 0,
+          sourceLabel: "FAA",
+          peek: airportPeek,
+          body: (
+            <div className="space-y-1.5">
+              {airports.map((a) => (
+                <Row
+                  key={a.code}
+                  tone={
+                    a.state === "closure" || a.state === "ground_stop"
+                      ? "danger"
+                      : a.state === "delay"
+                        ? "warning"
+                        : "muted"
+                  }
+                  title={a.name}
+                  meta={[a.code, a.state === "clear" ? "On time" : a.detail ?? a.state.replace("_", " ")]}
+                />
+              ))}
+            </div>
+          ),
+        } as PulseTile]
+      : []),
   ];
 
   return (

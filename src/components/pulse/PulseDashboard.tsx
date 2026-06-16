@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   CloudAlert,
   Waves,
+  Plane,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -39,6 +40,7 @@ const ICONS: Record<string, LucideIcon> = {
   AlertTriangle,
   CloudAlert,
   Waves,
+  Plane,
 };
 
 export type PulseTile = {
