@@ -7,6 +7,7 @@ import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { happyHourStatus, type HHStatus } from "@/lib/happyHour";
 import PageBloom from "@/components/ui/PageBloom";
+import FieldStamp from "@/components/ui/FieldStamp";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/happy-hour" },
@@ -220,18 +221,26 @@ export default function HappyHourPage() {
           <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>Frederick County</span>
           <span className="font-mono text-[10.5px] tabular-nums tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>{rows.length} spot{rows.length === 1 ? "" : "s"}</span>
         </div>
-        <h1 className="flex items-center gap-2.5 font-serif text-[30px] font-semibold leading-[0.98] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
-          <Martini className="h-7 w-7 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-accent)" }} aria-hidden />
-          Happy hour
-        </h1>
-        <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          {onNow.length > 0 ? (
-            <><span className="font-semibold" style={{ color: "var(--app-brand)" }}>{onNow.length} on right now.</span>{" "}The deal, where to park, and what locals know. Verified means confirmed at the source.</>
-          ) : (
-            <>The deal, where to park, and what locals know — around the county. Verified means confirmed at the source.</>
-          )}
-        </p>
-        <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-accent)" }} />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2.5 font-serif text-[30px] font-semibold leading-[0.98] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+              <Martini className="h-7 w-7 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-accent)" }} aria-hidden />
+              Happy hour
+            </h1>
+            <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              {onNow.length > 0 ? (
+                <><span className="font-semibold" style={{ color: "var(--app-brand)" }}>{onNow.length} on right now.</span>{" "}The deal, where to park, and what locals know. Verified means confirmed at the source.</>
+              ) : (
+                <>The deal, where to park, and what locals know — around the county. Verified means confirmed at the source.</>
+              )}
+            </p>
+            <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-accent)" }} />
+          </div>
+          {/* The page's certification mark — a field-guide rubber stamp that
+              says the whole layer is source-verified (the moat). Decorative;
+              the "verified" promise is also stated in the copy + per card. */}
+          <FieldStamp id="hh" top="VERIFIED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
+        </div>
       </header>
 
       {rows.length === 0 ? (
