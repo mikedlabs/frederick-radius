@@ -34,7 +34,14 @@
         "source_url": "https://averysmarylandgrille.com/nightly-specials",
         "confidence": "high"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Tue, Wed & Thu specials",
+      "details": "Tue $4 craft pints and 25% off crab legs, Wed crab specials, Thu $1 oysters.",
+      "source_url": "https://averysmarylandgrille.com/nightly-specials",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
   },
   "belles-sports-bar-grill-frederick": {
     "insider": [
@@ -111,7 +118,7 @@
   "black-hog-bbq-bar": {
     "happy_hour": {
       "schedule": "Mon-Fri 4-6:30 PM",
-      "details": "Discounted wine, beer, rail and specialty cocktails throughout the restaurant.",
+      "details": "Discounted wine, beer, rail and specialty cocktails.",
       "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -176,7 +183,14 @@
         "source_url": "https://downtownfrederick.org/vm-event/taco-tuesday-2_2026-12-08-08-00/",
         "confidence": "medium"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Mon-Thu 4-7 PM; Fri 11 AM-7 PM (Main Bar)",
+      "details": "$2.75 house drafts and discounted apps like wings and BBQ pork nachos at the Main Bar.",
+      "source_url": "https://brewers-alley.com/menu/happy-hour/",
+      "last_verified": "2026-06-16",
+      "confidence": "medium"
+    }
   },
   "brookside-inn-burkittsville": {
     "parking": {
@@ -229,7 +243,14 @@
         "source_url": "https://www.bushwallers.com/events",
         "confidence": "medium"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Sun 4-6 PM & 10 PM-close",
+      "details": "$5 off all scotch and $5.50 Irish pints.",
+      "source_url": "https://www.bushwallers.com/menu",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
   },
   "cactus-flats-walkersville": {
     "insider": [
@@ -250,7 +271,7 @@
   "cafe-nola": {
     "happy_hour": {
       "schedule": "Daily 4-7 PM (no day exclusions stated on the official site)",
-      "details": "$5 featured cocktail; $2 off wine; \"Draft Countdown\" pricing on drafts: $4 at 4pm, $5 at 5pm, $6 at 6pm. Stated plainly on the official homepage; the page's images appear to date to ~Dec 2023, so confirm the cocktail/wine pricing before relying on it.",
+      "details": "$5 featured cocktail, $2 off wine, drafts $4 at 4pm, $5 at 5pm, $6 at 6pm.",
       "source_url": "https://www.cafe-nola.com/",
       "confidence": "medium",
       "last_verified": "2026-06-15"
@@ -484,7 +505,7 @@
   "isabellas-taverna-tapas-bar-frederick": {
     "happy_hour": {
       "schedule": "Mon-Wed 4-9 PM, Thu-Fri 4-7 PM (bar only)",
-      "details": "Drink specials: $2 off all draft beer and wine by the glass; $5 house margarita and red or white sangria; $3.50 rail drinks plus Bud Light, Michelob Ultra, High Life, Bold Rock, Yuengling; $10 espresso martini. Food: all tapas $7 (Empanada Grande, Asparagus Fries, Papas Bravas, Ensalada Verde, Meatballs, House Made Chips & Goat Cheese Dip, Chicken Skewers, Chicken Paella Tapa; Sizzling Shrimp and Mussels add $2). Happy hour applies to bar seating only.",
+      "details": "All tapas $7, $2 off draft and wine, $5 margaritas and sangria, $3.50 rail (bar only).",
       "source_url": "https://isabellas-tavern.com/menus/",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -636,7 +657,7 @@
   "madrones": {
     "happy_hour": {
       "schedule": "Mon-Fri 3:00-6:00 PM and every night 9:00 PM-close (late-night happy hour). Bar area only.",
-      "details": "Daily: $7 house spirits and $1 off all other drinks. Happy-hour snacks served the same hours (bar area only), e.g. Spinach & Artichoke Dip $9, Hot Crab Dip $12, French Sliders $4 ea, Tiger Wings/Buffalo Wings $13. Day-specific weekly deals (note: windows vary from the 3-6 core): MON $13 burgers + half-price 20oz beers (3-7pm, bar only); TUE $1 off all drinks (3-6pm, bar only); WED half-price bottle wines all day for everyone; THU $8 house martinis (3-7pm, bar only); FRI $1 off all drinks (3-6pm, bar only). The Wednesday wine deal and the late-night happy hour apply beyond the bar/standard window as noted.",
+      "details": "Daily $7 house spirits and $1 off other drinks; day-specific deals vary.",
       "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -747,7 +768,14 @@
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-6 PM",
+      "details": "$2 off beer, wine, and signature cocktails; half-off bottled wine Mon-Wed.",
+      "source_url": "https://www.instagram.com/themaincup/reel/C51g0yoPoMM/",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
   },
   "mays-seafood-restaurant-frederick": {
     "parking": {
@@ -794,7 +822,7 @@
   "mcclintocks-back-bar": {
     "happy_hour": {
       "schedule": "Thursdays 4-7 PM (seasonal, Alive @ Five)",
-      "details": "\"Alive at Five Happy Hour\": every Thursday, any drink from the Signature Cocktail or Safe Bet menu is $5, 4-7 PM. The official site lists this as running with the Alive @ Five concert series (stated window May 12 to Sept 29), so it is seasonal, not year-round.",
+      "details": "$5 signature cocktails and Safe Bet drinks (seasonal, with Alive @ Five).",
       "source_url": "https://www.mccbackbar.com/",
       "confidence": "medium",
       "last_verified": "2026-06-15"
@@ -901,7 +929,7 @@
   "monocacy-crossing-restaurant-frederick": {
     "happy_hour": {
       "schedule": "Tue-Fri 4-7 PM",
-      "details": "Bar & Patio only: $2 off all beer, wines by the glass, and rail drinks; $2 off all appetizers.",
+      "details": "$2 off beer, wines by the glass, rail drinks, and all appetizers (bar and patio).",
       "source_url": "https://monocacycrossing.com/value-nights/",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -1198,12 +1226,19 @@
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Mon-Sat day specials",
+      "details": "Day specials like Mon $2 Yuengling and wings, Tue $2 drafts; deals vary by day.",
+      "source_url": "https://ott-house.weeblyte.com/menu",
+      "last_verified": "2026-06-16",
+      "confidence": "medium"
+    }
   },
   "pistarros": {
     "happy_hour": {
       "schedule": "Mon-Fri 4-6 PM",
-      "details": "At the bar: deals on cocktails, beer, sangria, and house wine plus old-school pizzas and snacks. Posted bar pricing: brews $4.50, drafts $5.50, house wine and rail cocktails $5.50, house cocktails $7.50; happy-hour appetizers also available.",
+      "details": "At the bar: brews $4.50, drafts $5.50, house wine and rail $5.50, plus pizza and snacks.",
       "source_url": "https://pistarro.com/menu/",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -1331,7 +1366,14 @@
         "source_url": "https://roasthousepubfrederick.com/",
         "confidence": "medium"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-6 PM",
+      "details": "50% off all wings and $2 off full-pour drafts.",
+      "source_url": "https://roasthousepubfrederick.com/",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
   },
   "rocky-point-creamery-brunswick": {
     "insider": [
@@ -1424,7 +1466,7 @@
   "simple-theory-wine-co-frederick": {
     "happy_hour": {
       "schedule": "Mon, Wed, Thu 3-6 PM",
-      "details": "Half off all wines by the glass during happy hour (Mon/Wed/Thu 3-6 PM). Closed Tuesdays.",
+      "details": "Half off all wines by the glass.",
       "source_url": "https://simpletheorywines.com/visit-us/",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -1743,7 +1785,14 @@
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Happy hour Mon-Fri 4-6 PM (bar only)",
+      "details": "Drink specials at the bar; Wed 50% off pasta entrees.",
+      "source_url": "https://www.yelp.com/biz/the-derby-new-market",
+      "last_verified": "2026-06-16",
+      "confidence": "medium"
+    }
   },
   "the-lodge-myersville": {
     "parking": {
@@ -1874,7 +1923,7 @@
   "village-tavern-walkersville": {
     "happy_hour": {
       "schedule": "Mon-Fri 4-6 PM",
-      "details": "$3 beers (Bud, Bud Light, Coors Light, Yuengling Lager); $6 specialty drinks (e.g. Cranberry Mule, Jameson Mule, Bourbon Pecan Coffee); discounted wine by the bottle ($14 CK Mondavi, $18 Leonard Kreusch). Food: Wing Dings $7, Chicken Tender Basket $8, Popcorn Shrimp Basket $9, Fried Pickles $6.",
+      "details": "$3 beers, $6 specialty drinks, discounted wine bottles, plus food specials from $6.",
       "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
       "confidence": "high",
       "last_verified": "2026-06-15"
@@ -1923,7 +1972,7 @@
   "white-rabbit-gastropub": {
     "happy_hour": {
       "schedule": "All day Monday; 3-6pm Tuesday-Friday",
-      "details": "Discounts on food and beer. Recent (June 2026) secondary source lists $5 16oz draft pours, $6 margaritas and crushes, and discounted apps ($6 cheesy bread, $7 smash burger sliders, $7 Brussel Crowe). NOTE: deal specifics vary by source and appear to rotate; an older 2019 Frederick News-Post listed a 5-6pm Tue-Fri window with $4 food, $1 Miller High Life, $4 craft cans, $4 Orange Crush, so treat exact prices/window as subject to change and confirm by phone (240-651-1952). The official site (Squarespace) does not publish happy hour on a fetchable page.",
+      "details": "$5 16oz drafts, $6 margaritas and crushes, plus discounted apps.",
       "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick-md/",
       "confidence": "medium",
       "last_verified": "2026-06-15"
@@ -1993,5 +2042,140 @@
         "last_verified": "2026-06-15"
       }
     ]
+  },
+  "oscars-alehouse": {
+    "happy_hour": {
+      "schedule": "Sun-Fri 3-6 PM",
+      "details": "Restaurant-wide food and drink specials.",
+      "source_url": "https://www.oscarsalehouse.net/west",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "the-wine-kitchen-frederick": {
+    "happy_hour": {
+      "schedule": "Tue-Fri 3-6 PM",
+      "details": "$3 beer, discounted wines, plus app and oyster deals.",
+      "source_url": "https://www.thewinekitchen.com/location/frederick/",
+      "last_verified": "2026-06-16",
+      "confidence": "medium"
+    }
+  },
+  "il-forno-pizza-frederick": {
+    "happy_hour": {
+      "schedule": "Daily themed specials",
+      "details": "Mon $5 margaritas, Tue $4 domestics and $0.99 wings; deals vary by day.",
+      "source_url": "https://ilfornopizzeria.com/specials",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "anchor-bar-frederick-frederick": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-6 PM",
+      "details": "Food and drink specials at the bar, including $5 pints.",
+      "source_url": "https://anchorbar.com/locations-menus/frederick-md/frederick-faq/",
+      "last_verified": "2026-06-16",
+      "confidence": "medium"
+    }
+  },
+  "pride-on-the-patio": {
+    "happy_hour": {
+      "schedule": "Tuesdays 5:30-9 PM (at Showroom, 882 N East St)",
+      "details": "Happy-hour pricing on cocktails, wine, and beer.",
+      "source_url": "https://www.eventbrite.com/e/lgbtq-social-mixer-pride-on-the-patio-at-showroom-registration-796200335637",
+      "last_verified": "2026-06-16",
+      "confidence": "medium"
+    }
+  },
+  "showroom-frederick": {
+    "happy_hour": {
+      "schedule": "Wed, Thu & Fri 2-6 PM",
+      "details": "Food and drink specials at the bar.",
+      "source_url": "https://www.showroomfrederick.com/about",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "the-tasting-room-frederick": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 4-6 PM",
+      "details": "Food and beverage specials.",
+      "source_url": "https://trrestaurant.com/",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "wags-restaurant": {
+    "happy_hour": {
+      "schedule": "Mon-Sat 3-7 PM",
+      "details": "Food and drink specials at the bar.",
+      "source_url": "https://www.fredericknewspost.com/news/arts_and_entertainment/wags-restaurant-provides-classic-american-charm-and-happy-hour-food/article_af172e1d-54f8-544c-b778-3bea8824cead.html",
+      "last_verified": "2026-06-16",
+      "confidence": "medium"
+    }
+  },
+  "firebirds-wood-fired-grill-frederick": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-7 PM",
+      "details": "$2 off drafts, $5 wells, $6 wines, $7.95 classic cocktails, plus reduced bar bites.",
+      "source_url": "https://firebirdsrestaurants.com/frederick/menu/firebar",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "shuckin-shack-oyster-bar": {
+    "happy_hour": {
+      "schedule": "Mon-Thurs 12-7 PM & Fri 3-7 PM",
+      "details": "$1 oysters, 25% off peel-n-eat shrimp, $7 crushes, $1 off drafts, $4 well, $5 house wine.",
+      "source_url": "https://www.theshuckinshack.com/events/happy-hour-specials",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "sumittra-thai-cuisine": {
+    "happy_hour": {
+      "schedule": "Mon-Thurs 4:30-6:30 PM",
+      "details": "Happy-hour appetizers and full-bar drink specials.",
+      "source_url": "https://www.facebook.com/sumittraMD/videos/happy-hour-specials-daily/479737042730262/",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "callahans-seafood-bar-grill-frederick": {
+    "happy_hour": {
+      "schedule": "Happy hour Tue-Fri 3-6 PM (bar area)",
+      "details": "$3.50 domestics, $4.25 house cocktails, $5 house wine, plus nightly food specials.",
+      "source_url": "https://callahansrestaurantfrederick.com/",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "maxwells-burgers-shakes-frederick": {
+    "happy_hour": {
+      "schedule": "Frank's Franks happy hour Tue-Fri & Sun 3-5 PM",
+      "details": "Frank's Franks specialty hot dogs at the bar.",
+      "source_url": "https://www.eatatmaxwells.com/menu/red-and-yellow-hotdog-bar-menu/",
+      "last_verified": "2026-06-16",
+      "confidence": "medium"
+    }
+  },
+  "vintage-restaurant-new-market": {
+    "happy_hour": {
+      "schedule": "Afternoon menu + happy hour drink specials, Tue-Sun 3-5 PM",
+      "details": "Afternoon food menu with happy-hour drink specials.",
+      "source_url": "http://www.vintage-eats.com/home-1",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
+  },
+  "the-orchard-frederick": {
+    "happy_hour": {
+      "schedule": "Happy hour Mon-Thu 4-6 PM",
+      "details": "Half-price draft beer, wine, and kombucha.",
+      "source_url": "https://www.theorchardrestaurant.com/contact-us",
+      "last_verified": "2026-06-16",
+      "confidence": "high"
+    }
   }
 }
