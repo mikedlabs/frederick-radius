@@ -70,7 +70,7 @@ export default function FreshnessGuard({ renderedAtIso }: { renderedAtIso: strin
         type="button"
         onClick={() => window.location.reload()}
         className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold transition active:scale-95"
-        style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
+        style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
       >
         <RefreshCw className="h-3.5 w-3.5" strokeWidth={2.5} aria-hidden />
         Refresh

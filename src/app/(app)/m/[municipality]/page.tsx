@@ -213,7 +213,7 @@ export default async function MunicipalityPage(
         </span>
         <span
           className="grid h-8 w-8 shrink-0 place-items-center rounded-full transition-transform group-active:scale-95"
-          style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
+          style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
           aria-hidden
         >
           <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.5} />
