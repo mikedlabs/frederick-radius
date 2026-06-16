@@ -19,8 +19,11 @@ cards and the map result list — the two surfaces that had been forced to
 - **Category / intent NAVIGATION** — the I WANT craving tiles (`CravingStrip`),
   the category filter chips, lane doorways. These name a *category*, not a
   specific business, so there is no single honest photo to show. Glyphs stay.
-- **Event cards** — the date-block system below is unchanged. Events stay
-  calendar-native, never photo-led. This reversal is places-only.
+- **Event cards (amended 2026-06-16)** — the glance / default event card now
+  shows the venue's hero photo when present (category-glyph tile fallback);
+  the date block still LEADS the text, and the dense utility / compact
+  variants stay photoless. Events remain calendar-native in structure — the
+  photo is a trailing face on the row, not the lead.
 - **Town heroes** — still curated/controlled only (seasonal/aerial/approved),
   never a random place's imported photo.
 
