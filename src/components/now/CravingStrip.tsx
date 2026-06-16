@@ -10,6 +10,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Palette,
+  Music,
   Martini,
   ParkingCircle,
   Train,
@@ -55,6 +56,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShoppingBag,
   ShoppingCart,
   Palette,
+  Music,
 };
 
 const TILE =

@@ -30,7 +30,8 @@ export type Craving = {
     | "Trees"
     | "ShoppingBag"
     | "ShoppingCart"
-    | "Palette";
+    | "Palette"
+    | "Music";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -128,6 +129,20 @@ export const CRAVINGS: Craving[] = [
       p.category === "gallery" ||
       p.category === "museum" ||
       p.category === "theater",
+  },
+  {
+    // The formal music halls + stages (Weinberg, Sky Stage, New Spire, the
+    // amphitheater). The brewery/bar live-music venues are categorized by
+    // what they sell, so they answer via Drinks + the events feed, not here
+    // — but "I want live music" deserves its own one-tap door given the
+    // county's stages. ~24 places in the `music` category.
+    key: "music",
+    label: "Live music",
+    icon: "Music",
+    color: "var(--app-accent)",
+    match: (p) =>
+      p.category === "music" ||
+      /\bamphitheat(er|re)|music hall|sky stage|bandshell\b/i.test(p.name),
   },
 ];
 
