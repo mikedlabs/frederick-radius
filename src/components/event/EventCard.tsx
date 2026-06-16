@@ -337,70 +337,80 @@ export default function EventCard({
   // reason chips. The category color stays the through-line so a music
   // tile reads differently from a planning meeting at a glance.
   if (variant === "tile") {
+    // Folder-tab card: the category rides a colored TAB on the top-left
+    // (deepened toward ink so white reads AA on light accents), the card's
+    // top-left corner squares to meet it, and the old inline label + bottom
+    // color band are gone — the tab IS the category now. The wrapper reserves
+    // the tab's height so it never clips inside a rail (no parent change).
+    const tabBg = `color-mix(in srgb, ${accent} 82%, var(--app-ink))`;
     return (
-      <article className="tactile tactile-interactive group relative flex h-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
-        style={{
-          borderColor: "var(--app-border)",
-          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
-        }}
-      >
-        {/* Date-led header strip — replaces the photo banner. */}
-        <div className="flex items-center gap-2.5 px-3.5 pb-2 pt-3.5">
-          <div
-            aria-hidden
-            className="flex shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
-            style={{ minWidth: 46, background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)" }}
-          >
-            <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{date.month}</span>
-            <span className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
-            <span className="text-[9px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
+      <div className="relative h-full pt-[14px]">
+        <span
+          className="absolute left-3 top-0 z-10 max-w-[70%] truncate rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-white"
+          style={{ background: tabBg, boxShadow: "var(--app-edge)" }}
+        >
+          {live ? "Live now" : categoryLabel}
+        </span>
+        <article
+          className="tactile tactile-interactive group relative flex h-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)]"
+          style={{
+            borderColor: "var(--app-border)",
+            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          }}
+        >
+          {/* Date-led header — the category label moved up to the tab. */}
+          <div className="flex items-center gap-2.5 px-3.5 pb-2 pt-3.5">
+            <div
+              aria-hidden
+              className="flex shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
+              style={{ minWidth: 46, background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`, boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)" }}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{date.month}</span>
+              <span className="font-serif text-[18px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
+              <span className="text-[9px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
+            </div>
+            <span className="min-w-0 flex-1" />
+            {statusText && (
+              <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
+            )}
           </div>
-          <span className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{categoryLabel}</span>
-          {statusText && (
-            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
-          )}
-        </div>
-        {/* Body — title + meta + reasons row. */}
-        <div className="flex min-w-0 flex-1 flex-col gap-1 px-3.5 pb-3.5">
-          <Link
-            href={`/events/${event.slug}`}
-            className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span className="absolute inset-0" aria-hidden />
-            {event.title}
-          </Link>
-          <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
-            {event.venue_name ? <> · {event.venue_name}</> : null}
-          </p>
-          {/* Reason chips — same producer as before. Stay below the
-              meta line, capped at 3, as the decision-context row. */}
-          <div className="mt-auto pt-1">
-            {(() => {
-              const reasons = eventReasons(event);
-              if (reasons.length > 0) {
-                return <ReasonChipRow reasons={reasons} />;
-              }
-              return (
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  {event.price_text && !event.is_free && (
-                    <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
-                  )}
-                  {event.distance_m !== undefined && (
-                    <span className="ml-auto font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                      {formatDistance(event.distance_m)}
-                    </span>
-                  )}
-                </div>
-              );
-            })()}
+          {/* Body — title + meta + reasons row. */}
+          <div className="flex min-w-0 flex-1 flex-col gap-1 px-3.5 pb-3.5">
+            <Link
+              href={`/events/${event.slug}`}
+              className={`line-clamp-2 text-[14px] font-semibold leading-snug tracking-tight outline-none focus-visible:underline ${isCancelled ? "line-through opacity-70" : ""}`}
+              style={{ color: "var(--app-ink)" }}
+            >
+              <span className="absolute inset-0" aria-hidden />
+              {event.title}
+            </Link>
+            <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-2)" }}>{date.time}</span>
+              {event.venue_name ? <> · {event.venue_name}</> : null}
+            </p>
+            <div className="mt-auto pt-1">
+              {(() => {
+                const reasons = eventReasons(event);
+                if (reasons.length > 0) {
+                  return <ReasonChipRow reasons={reasons} />;
+                }
+                return (
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    {event.price_text && !event.is_free && (
+                      <span style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>
+                    )}
+                    {event.distance_m !== undefined && (
+                      <span className="ml-auto font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                        {formatDistance(event.distance_m)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
-        </div>
-        {/* Category color band — the through-line that makes a music
-            tile read differently from a planning meeting at a glance. */}
-        <div aria-hidden className="h-[3px] w-full" style={{ background: accent }} />
-      </article>
+        </article>
+      </div>
     );
   }
 
