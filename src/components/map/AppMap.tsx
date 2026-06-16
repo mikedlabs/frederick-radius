@@ -268,6 +268,12 @@ export default function AppMap({
   const [selected, setSelected] = useState<Selected>(null);
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [hover, setHover] = useState<{ lng: number; lat: number; label: string; sub?: string } | null>(null);
+  // The hover preview is for a real hovering pointer (a mouse) only. On touch
+  // there is no hover: a pan drag fires synthetic mousemove events, so leaving
+  // it on makes preview popups flash constantly while the user is just trying
+  // to move the map — the "too responsive, snaps up something while moving"
+  // complaint. Cached once; `(hover: hover)` is false on phones/tablets.
+  const canHoverRef = useRef<boolean | null>(null);
   // activeCats starts EMPTY (was: pre-seeded from the mode's default
   // category set). The internal category filter is now opt-in via
   // the Layers panel; the primary filter mechanism on /browse is
@@ -775,6 +781,12 @@ export default function AppMap({
   // Lightweight hover preview: name (and category) of the pin under the
   // pointer, so the map is scannable without clicking every icon.
   const onHover = (e: MapMouseEvent) => {
+    if (canHoverRef.current === null) {
+      canHoverRef.current =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(hover: hover) and (pointer: fine)").matches === true;
+    }
+    if (!canHoverRef.current) return; // touch device: no hover preview while panning
     const f = e.features?.[0];
     if (!f || !f.layer?.id) { setHover((h) => (h ? null : h)); return; }
     const props = (f.properties ?? {}) as Record<string, string | number>;
