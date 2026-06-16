@@ -374,5 +374,895 @@
         "confidence": "medium"
       }
     ]
+  },
+  "memories-charcoal-house-mount-airy": {
+    "parking": {
+      "text": "Located in the Mount Airy Shopping Center at 403 E Ridgeville Blvd, so park in the shared shopping-center surface lot out front (free).",
+      "source_url": "https://www.shopmtairy.com/stores/memories-charcoal-house/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "There's an outdoor bar and patio in addition to the small dining room and larger bar area; the patio is open whenever weather allows.",
+        "source_url": "https://foursquare.com/memories1024402",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Entertainment regulars: karaoke and live music on weekends, Keno, and Pour House Trivia on Wednesdays at 7 PM.",
+        "source_url": "https://www.pourhousetrivia.com/memories-charcoal-house.html",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "mountain-gate-family-restaurant-thurmont": {
+    "insider": [
+      {
+        "text": "Open every day 8 AM-8 PM. If you want the buffet specifically, note it does not run Mondays for lunch/dinner (weekday buffet service is Tue-Sat); the menu is still served all day.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/news/our-hours/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Has a banquet room and does catering for groups up to 1,000, and hosts community events like gospel sings; a good option for large family gatherings rather than a date-night bar scene.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Home-style buffets daily: breakfast buffet Sat-Sun 8-11 AM, lunch buffet Tue-Sat 11 AM-3:30 PM, dinner buffet Tue-Sat 4-8 PM, and an all-day Sunday dinner buffet 11 AM-8 PM. A full menu is also served all day.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/news/our-hours/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Themed buffet nights: Wednesday is Italian night and Friday is the seafood buffet. The buffet also rotates country-cooking specialties (Salisbury steak, liver and onions, stuffed peppers, ham and cabbage) and features their home-fried chicken.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/buffet/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Breakfast is available all day from the menu (platters, sandwiches, hotcakes), in addition to the weekend morning breakfast buffet.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "fratellis-italian-seafood-middletown": {
+    "insider": [
+      {
+        "text": "Kitchen stays open later on weekends: Sun-Thu 11am-10pm, but Fri-Sat run until 11pm, so it is a reliable late-ish dinner option in Middletown.",
+        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Takes reservations (Resy is linked from the site), useful for weekend evenings; phone is (301) 371-4000.",
+        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Lunch sandwiches and wraps include french fries and a cup of soup, per the official lunch menu (no price or time window stated).",
+        "source_url": "https://www.fratellispasta.com/lunch/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "the-lodge-myersville": {
+    "parking": {
+      "text": "The venue has its own parking lot at the remote log-cabin site on National Pike; arrive early on Friday/Saturday show nights, which historically drew large crowds.",
+      "source_url": "https://evendo.com/locations/maryland/cunningham-falls-state-park/bar/the-lodge-show-dance-club-summer-patio",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Listed here as Myersville, but The Lodge actually sits at 21614 National Pike in Boonsboro, MD. It is Maryland's oldest rural gay bar, a converted 1970s log cabin (the former Deer Park Lodge) and one of the few of its kind left in the country.",
+        "source_url": "https://www.thebanner.com/community/local-news/western-maryland-lgbtq-bar-5MOI2XTUCRFCPPNWZITZQ6UWYM/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "21+ only, open just three nights a week (Wed karaoke, Fri drag/burlesque, Sat themed parties) with an outdoor summer patio; hours can shift for special events, so check the calendar before heading out.",
+        "source_url": "http://thelodgemd.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wednesday 'Karaoke With The Queen' (hosted by Miss Gay Maryland 2021) has no cover charge all night.",
+        "source_url": "http://thelodgemd.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Spotlight drag performances on the first and third Wednesdays of the month, alongside the weekly karaoke.",
+        "source_url": "http://thelodgemd.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "pour-decisions-restaurant-bar-music-new-market": {
+    "parking": {
+      "text": "Has its own free parking lot on site at 10519 Old National Pike, just off I-70 / Old National Pike — no street-parking hunt.",
+      "source_url": "https://www.checkle.com/biz/pour-decisions-restaurant-bar-music-ijamsville",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Late hours for the area: open Wed-Sun from 11 AM, until midnight Wed/Thu/Sun and until 2 AM Fri/Sat; closed Mon-Tue. Listed under both 'New Market' and 'Ijamsville' (21774) — same spot at 10519 Old National Pike. Phone (240) 915-2682.",
+        "source_url": "https://www.checkle.com/biz/pour-decisions-restaurant-bar-music-ijamsville",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "fountain-rock": {
+    "parking": {
+      "text": "Use the Church Street Garage (17 E Church St) - the closest garage to 124 N Market, accessible off the 100 block of N Market St right behind the restaurant. All downtown garages are $1/hour, open 24/7, with a $5 weekend/nightly max and free parking Sunday 8 AM-2 PM.",
+      "source_url": "https://www.cityoffrederickmd.gov/1342/Garage-Parking",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "'Fountain Rock' is the management/corporate name; the public-facing venue at 124 N Market St is Brewer's Alley, Frederick's original brewpub (opened July 1996). 'Olde Fountain Rock' is also one of their house beers, so the name carries brand history.",
+        "source_url": "https://www.beermenus.com/beers/15533-brewer-s-alley-olde-fountain-rock",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Right on Market Street in the heart of downtown Frederick - a family-friendly brewpub anchor; later kitchen hours on Fri-Sat make it a solid late-bite stop after other downtown spots close.",
+        "source_url": "https://www.visitfrederick.org/listing/brewers-alley-restaurant/19/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "rocky-point-creamery-brunswick": {
+    "insider": [
+      {
+        "text": "Hours are seasonal, so check the website before driving out. Summer 2026 hours are Tuesday-Sunday 11:30 AM to 8:30 PM, closed Mondays. The site directs you to its Facebook/Instagram for the most current updates and sunflower bloom status.",
+        "source_url": "https://www.rockypointcreamery.com/hours",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "The farm has worked this land since 1883 and is a stop on the Maryland Ice Cream Trail; the on-site ice cream is made fresh from their own dairy herd.",
+        "source_url": "https://www.rockypointcreamery.com/about-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Sunflower field fundraiser: cut your own sunflowers at $1 per stem, with 100% of proceeds donated to St. Jude Children's Research Hospital. A clipping station with scissors is provided; pay at the field entrance or at the register. Field is seasonal (typically blooms mid-to-late summer, roughly July) and weather-dependent, with multiple plantings to extend the season.",
+        "source_url": "https://www.rockypointcreamery.com/sunflowers",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Working dairy farm storefront: beyond 80+ flavors of homemade ice cream, they also sell farm products including milk, brown eggs, cheese, and beef on site.",
+        "source_url": "https://www.rockypointcreamery.com/about-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Group tours and party room rentals are available by booking; the farm has hosted on-farm activities and seasonal events.",
+        "source_url": "https://www.rockypointcreamery.com/about-us",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "village-tavern-walkersville": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 4-6 PM",
+      "details": "$3 beers (Bud, Bud Light, Coors Light, Yuengling Lager); $6 specialty drinks (e.g. Cranberry Mule, Jameson Mule, Bourbon Pecan Coffee); discounted wine by the bottle ($14 CK Mondavi, $18 Leonard Kreusch). Food: Wing Dings $7, Chicken Tender Basket $8, Popcorn Shrimp Basket $9, Fried Pickles $6.",
+      "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Free surface lot. The tavern sits in the Walkers Village shopping plaza off Walkers Village Way, so park anywhere in the shared center lot out front.",
+      "source_url": "https://restaurantguru.com/Village-Tavern-Walkersville",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Closed Sundays. Open Mon-Thu 11 AM-11 PM and Fri-Sat 11 AM-midnight, but the kitchen closes earlier than the bar: 9 PM Mon-Wed and 10 PM Thu-Sat, so come before then if you want food.",
+        "source_url": "https://villagetavernwalkersville.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "A genuine neighborhood institution, family-run since 1987 (celebrating its 39th anniversary) with a casual, comfortable pub feel rather than a chain vibe.",
+        "source_url": "https://villagetavernwalkersville.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Happy hour food baskets at a fixed low price: Wing Dings $7, Chicken Tender Basket $8, Popcorn Shrimp Basket $9, Fried Pickles $6 (offered Mon-Fri 4-6 PM).",
+        "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Discounted wine by the bottle during happy hour: $14 CK Mondavi (Chardonnay, Cabernet or Merlot) and $18 Leonard Kreusch Riesling / Piazzo Moscato d'Asti.",
+        "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Kitchen offers rotating daily lunch and dinner specials in addition to the regular menu, though the specific specials are not published online.",
+        "source_url": "https://villagetavernwalkersville.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "ott-house-emmitsburg": {
+    "insider": [
+      {
+        "text": "Family-operated corner pub on Main Street, open since 1970.",
+        "source_url": "https://ott-house.weeblyte.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Mon-Fri lunchtime food specials for $6.50",
+        "source_url": "https://ott-house.weeblyte.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Monday evenings (from 5 PM): $2 Yuengling drafts and discounted wings",
+        "source_url": "https://ott-house.weeblyte.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "2 Buck Tuesday: $2 drafts, $2.75 rail drinks, $5 select pizzas",
+        "source_url": "https://ott-house.weeblyte.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "flood-zone-marketplace-brewery-woodsboro": {
+    "insider": [
+      {
+        "text": "Family-owned since 2018 in a historic building on the banks of Little Pipe Creek; the dog-friendly beer garden has a heated pavilion and a patio with a wood-burning fireplace for cold-weather visits.",
+        "source_url": "https://www.floodzonebrewery.com/about-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "It is more than a brewery: the on-site Flood Zone Marketplace sells local produce, groceries and crafts, and The Food Spot kitchen runs pub fare (flatbreads with gluten-free options, wings, nachos). Closed Monday and Tuesday.",
+        "source_url": "https://www.floodzonebrewery.com/the-food-spot",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "School employees get 15% off with a valid school ID.",
+        "source_url": "https://www.floodzonebrewery.com/the-brewery",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Friday happy hour (3-6 PM) includes half-price appetizers from The Food Spot.",
+        "source_url": "https://www.floodzonebrewery.com/the-brewery",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Pub Trivia every Wednesday night at 6:00 PM.",
+        "source_url": "http://www.floodzonebrewery.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "brookside-inn-burkittsville": {
+    "parking": {
+      "text": "Ample on-site parking; it's a roadside neighborhood pub on Jefferson Pike (Rt 180) with its own lot, plus an outdoor patio and deck.",
+      "source_url": "https://www.restaurantji.com/md/jefferson/brookside-inn-inc-/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "A friendly little neighborhood roadside pub that welcomes bikers, families, and locals alike. Casual, lively atmosphere with jukebox/DJ music and an outdoor patio and deck.",
+        "source_url": "https://www.restaurantji.com/md/jefferson/brookside-inn-inc-/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "monocacy-crossing-restaurant-frederick": {
+    "happy_hour": {
+      "schedule": "Tue-Fri 4-7 PM",
+      "details": "Bar & Patio only: $2 off all beer, wines by the glass, and rail drinks; $2 off all appetizers.",
+      "source_url": "https://monocacycrossing.com/value-nights/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Private lot on site, free for patrons.",
+      "source_url": "https://monocacycrossing.com/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Closed Mondays. Lunch is served only on Friday, and brunch only on Sunday.",
+        "source_url": "https://monocacycrossing.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Happy hour deals and the Bar & Patio specials are limited to the bar and patio, not the full dining room.",
+        "source_url": "https://monocacycrossing.com/value-nights/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wednesday: Special Burger or Dinner Burger and any draft beer for $20.",
+        "source_url": "https://monocacycrossing.com/value-nights/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Thursday: $10 off all bottles of wine.",
+        "source_url": "https://monocacycrossing.com/value-nights/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Sunday: $10 off all bottles of wine throughout the restaurant, plus $2 off beer, wines by the glass, and rail drinks (Bar & Patio only).",
+        "source_url": "https://monocacycrossing.com/value-nights/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "the-upper-deck-sports-bar-and-grill-mount-airy": {
+    "parking": {
+      "text": "The Upper Deck has its own free parking lot, a plus on downtown Mount Airy's tight Main Street.",
+      "source_url": "https://the-upper-deck-sports-bar-and-grill.wheree.com/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Set inside the historic 'OLD' Firehouse building in downtown Mount Airy, at 237 S Main St. A wheelchair ramp leads to the entrance and there is outdoor dining plus a billiards room.",
+        "source_url": "https://the-upper-deck-sports-bar-and-grill.wheree.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Regulars rate the wings as among the best in town; it is a participating venue in Mount Airy Restaurant Week.",
+        "source_url": "https://www.mountairymd.gov/495/Upper-Deck-Sports-Bar-and-Grill",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Taco specials on Tuesdays (part of a rotating weekly dine-in specials lineup).",
+        "source_url": "https://www.upperdeckmtairy.com/menus/weekly-dine-in-only-specials",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Pour House Trivia every Tuesday at 7:00 PM.",
+        "source_url": "https://www.pourhousetrivia.com/upper-deck.html",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Karaoke nights are a regular fixture at the venue.",
+        "source_url": "https://www.karaokeatlas.com/venue/the-upper-deck-sports-bar-and-grill-mt-airy",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "red-heifer-winery-thurmont": {
+    "parking": {
+      "text": "On-site parking lot at the top of the property. Drive up the farm lane to the vineyard and winery at the crest of the hill; the lot, patio, and lawn are where leashed pets are welcome.",
+      "source_url": "https://www.redheiferwinery.com/visit",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Adults only, 21+. Children are not permitted. Outside alcohol is prohibited; only Red Heifer wine may be consumed on site.",
+        "source_url": "https://www.redheiferwinery.com/visit",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Bring a picnic (carry-in, carry-out) and grab a hilltop seat for sweeping vineyard views; charcuterie boards, salads, paninis, and snacks are also available. Friendly leashed pets welcome in the parking, patio, and lawn areas.",
+        "source_url": "https://www.redheiferwinery.com/visit",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wine flight: 4 three-ounce pours of your choice; tasting-room attendant offers the day's options. Price not stated on the official site.",
+        "source_url": "https://www.redheiferwinery.com/visit",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Wine club membership and gift cards available (membership benefits/pricing not detailed on the site).",
+        "source_url": "https://www.redheiferwinery.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "main-cup-middletown": {
+    "insider": [
+      {
+        "text": "The building has been a Middletown landmark for over 100 years, dating to C.F. Main's ice cream and butcher shop. Main's was a regional institution, and presidents and officials reportedly stopped here en route to Shangri-La (now Camp David).",
+        "source_url": "https://www.themaincuprestaurant.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Multiple seating areas including a dog-friendly outdoor patio; consistently ranked the top restaurant in Middletown and a local favorite for weekend brunch.",
+        "source_url": "https://www.themaincuprestaurant.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Sunday brunch 10 AM-3 PM with bottomless mimosas; signature dishes include eggs Chesapeake and strawberry French toast.",
+        "source_url": "https://www.themaincuprestaurant.com/brunch-menu/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "1/2 off bottled wine Monday through Wednesday (advertised on the official site alongside the regular happy hour).",
+        "source_url": "https://themaincup.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "six-wicket-vineyards-myersville": {
+    "parking": {
+      "text": "On-site parking at the estate (10819 Church Hill Rd). It is an intimate farm visit, not a walk-in tasting room: owner Ed typically greets you as you pull into the driveway and starts the tour from there.",
+      "source_url": "https://epicbend.com/six-wicket-vineyards/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Book ahead. There is no walk-in tasting room: visits are by appointment only, arranged by calling 240-315-9805 or emailing Kathy (kathy@sixwicketvineyards.com).",
+        "source_url": "https://sixwicketvineyards.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "The name comes from croquet (six wickets on a court). Family-owned by Ed and Kathy O'Laughlin, the estate has a full-size croquet court built into the vineyard, and you can play with a glass in hand. Pours are estate-grown: Albarino, Rose, Cabernet Franc, Petit Verdot, Teroldego.",
+        "source_url": "https://epicbend.com/six-wicket-vineyards/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Guided vineyard tour + tasting is $20 per person, which includes a guided vineyard tour and a tasting of their handcrafted estate wines.",
+        "source_url": "https://sixwicketvineyards.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Visits are by appointment only; bring a picnic to enjoy with your wine (no outside alcohol). Lawn games are free to use: full-size croquet court, cornhole, Giant Jenga and Giant Connect Four.",
+        "source_url": "https://sixwicketvineyards.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "new-market-plains-vineyards-new-market": {
+    "insider": [
+      {
+        "text": "Open only three days a week (Fri-Sun, 12 PM) and closes for the winter season, typically early December through reopening in March, so check the season before driving out.",
+        "source_url": "https://www.newmarketplains.com",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Family-owned winery on a historic estate dating to the 1760s; come Saturday afternoon (2-5 PM) for the live music and bring your own food to pair with a glass.",
+        "source_url": "https://marylandsbest.maryland.gov/item/new-market-plains-vineryards/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wine tasting: $10 for 7 wines (Cabernet Franc, Cabernet Sauvignon, Chardonnay, Merlot, Muscat Blanc, Petit Verdot, Syrah).",
+        "source_url": "https://marylandsbest.maryland.gov/item/new-market-plains-vineryards/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Live music every Saturday 2-5 PM, spring through fall.",
+        "source_url": "https://www.newmarketplains.com",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Wine available by the glass or bottle; you are welcome to bring your own food.",
+        "source_url": "https://www.newmarketplains.com",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "the-alley-wagon": {
+    "insider": [
+      {
+        "text": "The Alley Wagon is run by Brewer's Alley (Frederick County's original brewpub), which also contract-bottles for itself out of this Monocacy facility, so the kitchen is built around pairing food with the Rockwell/Monocacy beers on tap.",
+        "source_url": "https://monocacybrewing.com/series/the-alley-wagon/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "The taproom is closed Monday and Tuesday. Core hours: Wed-Thu 3-9 PM (some listings to 10 PM), Fri-Sat 12-9/10 PM, Sun 12-8 PM. The Alley Wagon food truck only runs Wed/Thu, so come midweek if the truck is the draw.",
+        "source_url": "https://monocacybrewing.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "The Alley Wagon is a permanently-stationed food truck by Brewer's Alley serving brewpub fare at Monocacy Brewing: a 1/4 lb burger with fries, bone-in wings (Buffalo, BBQ, or Old Bay), boneless wings, and a petite-tender steak sandwich on pizza bread.",
+        "source_url": "https://monocacybrewing.com/series/the-alley-wagon/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Food-truck service runs on a recurring Wednesday and Thursday schedule, 4-9 PM, at the brewery (1781 N Market St). Days/times come from the brewery's event calendar feed, not a static official page, so confirm before relying on it.",
+        "source_url": "https://www.meetdaisy.co/calendars/monocacy-brewing-company/events/wed-thurs-food-truck-the-alley-wagon",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "smoketown-brewing-brunswick": {
+    "insider": [
+      {
+        "text": "Housed in Brunswick's restored 1948 downtown fire station, with a dog-friendly patio overlooking the bridge and passing trains.",
+        "source_url": "https://www.smoketownbrewing.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Closed Monday and Tuesday. Core hours: Wed-Thu 3-9 PM, Fri 3-10 PM, Sat 12-10 PM, Sun 12-8 PM (kitchen closes about an hour before the bar each day).",
+        "source_url": "http://www.smoketownbrewing.com/visit.shtml",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Live music on Friday nights (the brewery runs an open submission form for Friday-night bands/musicians).",
+        "source_url": "http://www.smoketownbrewing.com/visit.shtml",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Trivia nights are part of the regular event lineup (no fixed day/time published; confirm via their socials before going for trivia).",
+        "source_url": "https://www.canaltrust.org/pyv/smoketown-brewing-station/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Rotating food trucks on site; you're also allowed to bring in outside food, plus a kitchen serving pub fare, sandwiches, and flatbreads.",
+        "source_url": "https://www.canaltrust.org/pyv/smoketown-brewing-station/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "cactus-flats-walkersville": {
+    "insider": [
+      {
+        "text": "Old-school community roadhouse, not a Mexican spot despite the name — operating on this site since 1929 (originally the Roma Cafe), known as a friendly biker/locals bar where the staff are called 'Cactus Catz.' Kitchen leans grill: steaks and seafood are the local picks.",
+        "source_url": "https://thecatoctinbanner.com/cactus-flats/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Weekends are the draw: live music on Saturdays/weekends plus karaoke nights, with a patio for warm weather. It's closed early in the week — open Thu-Fri from 3 PM, Sat & Sun from noon — so plan around that and follow their Facebook for the live-entertainment lineup.",
+        "source_url": "https://evendo.com/locations/maryland/catoctin-mountain-park/bar/cactus-flats",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "rubes-crab-shack-llc-emmitsburg": {
+    "insider": [
+      {
+        "text": "Reservations are suggested, especially since AYCE crab service ramps up in the evening; last seating for crabs is earlier than closing (7 PM Tue-Thu, 8 PM Fri-Sat, 6 PM Sun).",
+        "source_url": "https://rubescrabshack.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Closed Mondays (except holidays like Memorial Day and Labor Day). Seafood restaurant and lounge with an outside patio and full bar; bikers are explicitly welcomed.",
+        "source_url": "https://rubescrabshack.com/pages/1724109",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "All-You-Can-Eat hard shell crab specials served Tue-Fri starting at 3 PM, and Sat & Sun starting at open. Dine-in only, no sharing. Three tiers (market price): #1 AYCE Hard Shell Crabs with soup & salad bar and fries; #2 adds fried & steamed shrimp and hushpuppies; #3 adds crab legs.",
+        "source_url": "https://rubescrabshack.com/all-you-can-eat-specials",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Nightly AYCE Crabs special Tuesday, Wednesday, and Thursday (starting at 3 PM): all-you-can-eat soup & salad bar, french fries, and fresh hot steamed crabs. Prices not posted (market price).",
+        "source_url": "https://rubescrabshack.com/nightly-specials",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Crabs also available by the dozen; lunch specials offered.",
+        "source_url": "https://rubescrabshack.com/all-you-can-eat-specials",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "rosie-cheeks-distillery-woodsboro": {
+    "insider": [
+      {
+        "text": "Tastings are by reservation. Sundays are reservations-only, and the site directs you to call (240) 285-8139 to schedule a tasting.",
+        "source_url": "https://www.rosiecheeksdistilling.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Leave the dog at home. The distillery asks that pets stay home: 'For everyone's comfort, we kindly ask that pets stay at home.'",
+        "source_url": "https://www.rosiecheeksdistilling.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "willow-oaks-craft-cider-and-wine-burkittsville": {
+    "parking": {
+      "text": "Down a gravel farm lane. Trust the sign, not your phone: their own directions warn that GPS says 'you have arrived' at the bend in the road, so keep going until you see the Willow Oaks sign. On-site farm parking, no street/meter situation.",
+      "source_url": "https://willowoakscraftcider.com/visit/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "It is a working farm, not just a tasting room: cats, dogs, and cattle are around, and they also sell farm beef, produce, fresh herbs/plants, and local art, pottery, and jewelry.",
+        "source_url": "https://willowoakscraftcider.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Well-socialized leashed dogs are welcome in the garden and on the deck, and there are board games and cards across multiple seating areas (deck, patio, garden). Per Maryland law, no outside alcohol on site.",
+        "source_url": "https://willowoakscraftcider.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Order online anytime for curbside pickup and local delivery via their Square store, even outside weekend tasting-room hours.",
+        "source_url": "https://willowoakscraftcider.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "sweet-babes-creamery-new-market": {
+    "parking": {
+      "text": "Easy parking on-site at Casabella Commons; a seasonal courtyard (March-October) with picnic tables and umbrellas for eating in.",
+      "source_url": "https://sweetbabescreamery.com/visit-urbana",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Rich, creamy soft serve made with 10% butterfat; chocolate and vanilla served daily. It's a walk-up window in Casabella Commons, not a sit-down shop.",
+        "source_url": "https://sweetbabescreamery.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Locally owned and community-minded: hosts monthly events like Bingo Night, Story Time, and Open Mic Nights. Hours run daily 1-9 PM, except Thursday which opens at 4 PM.",
+        "source_url": "https://sweetbabescreamery.com/visit-urbana",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Rewards card: ask for one when you order a sweet babe, fill it up, and your next sweet babe is free.",
+        "source_url": "https://sweetbabescreamery.com/visit-urbana",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Hidden rock promo: find the hidden Sweet Babe's rock and they treat you to a free ice cream cone.",
+        "source_url": "https://sweetbabescreamery.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Pup cups available for dogs.",
+        "source_url": "https://sweetbabescreamery.com/visit-urbana",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "black-ankle-vineyards-mount-airy": {
+    "insider": [
+      {
+        "text": "Outdoor spaces are dog-friendly (leashed) on the farm; dogs are not allowed indoors unless ADA service animals. Reservations are recommended, especially for the limited indoor seating, though walk-ins are accommodated when possible.",
+        "source_url": "https://www.blackankle.com/visit-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Look for recurring evening programming: First Fridays bring Pizza & Passeggiata and Second Thursdays host The Vineyard Table food-and-wine series; Friday hours run latest (12 PM to 9 PM, with the Terrace Kitchen open from 4 PM).",
+        "source_url": "https://www.exploretock.com/blackankle/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wine available by the glass, bottle, or flight in the tasting room; the rotating Featured Tasting is complimentary for members and their guests at the tasting bars (member tableside tasting is also complimentary, by reservation).",
+        "source_url": "https://www.blackankle.com/visit-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Lawn guests may bring their own picnic blankets, folding chairs, small tables, or pop-up tents, plus their own snacks and non-alcoholic beverages, no outside-food/corkage fee mentioned.",
+        "source_url": "https://www.blackankle.com/visit-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Reserving 14+ days ahead lets you pre-order your first wine selection (and food) by emailing gatherings@blackankle.com so it's ready on arrival.",
+        "source_url": "https://www.blackankle.com/visit-us",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "catoctin-breeze-vineyard-thurmont": {
+    "insider": [
+      {
+        "text": "Adults only: all guests must be 21+ (no children), and parties are capped at six people. Reserve a table through Tock for guaranteed seating; walk-ins are welcome but seated only as space allows.",
+        "source_url": "https://www.catoctinbreeze.com/faqs",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Dog friendly (leashed) in the tasting room and outdoors, but not the Cru Lounge. Outside food is allowed only in the upstairs lounge and outdoors; live music runs only on holiday and club-release weekends, and occasional pop-up food trucks appear (both weather-dependent).",
+        "source_url": "https://www.catoctinbreeze.com/faqs",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wine club members receive the Season Tasting (three current releases) complimentary; non-members pay $20. Premium Tasting is $25.",
+        "source_url": "https://www.catoctinbreeze.com/visit",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "The Catoctin Experience: a 60-90 minute guided tour (vineyard, Cuverie, barrel room) with a seated six-wine tasting and charcuterie pairing, offered Fridays and Saturdays at 11:00 AM and 2:00 PM. Reservations required via Tock; limited to eight people per session.",
+        "source_url": "https://www.catoctinbreeze.com/events",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "orchid-cellar-meadery-middletown": {
+    "insider": [
+      {
+        "text": "Hours are seasonal: Apr-Nov is Fri 2-8 PM, Sat noon-8 PM, Sun noon-6 PM (Mon-Thu by appointment); Dec-Mar shrinks to Fri noon-5 PM, Sat noon-6 PM, Sun noon-5 PM (Mon-Thu closed). Check the season before driving out.",
+        "source_url": "https://www.orchidcellar.com/visitus",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Seating is first-come, first-served for groups up to ~6; parties of 10+ need a private event rental. The hand-built log-cabin tasting room has a wrap-around deck with mountain views, and dogs are welcome outdoors on leash. No outside music.",
+        "source_url": "https://www.orchidcellar.com/visitus",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Build-your-own tasting flight: pick selections across classic meads, sparkling meads, and wines (or a mix of all three). Suggested groupings include a mead discovery flight (Blacksmith, Lumberjack, Highlander, Archer, Monk, Hunter) and a spiced 'Hunter' flight.",
+        "source_url": "https://www.orchidcellar.com/events/build-your-own-tasting",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Cheese platters and small snacks are available for purchase, and you are always welcome to bring your own food/picnic (outside alcohol is not permitted).",
+        "source_url": "https://www.orchidcellar.com/visitus",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Wine/mead club membership ('The Club') is offered for ongoing perks; tiers and benefits are not detailed publicly.",
+        "source_url": "https://www.orchidcellar.com/restaurants-retailers",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "jb-seafood-myersville": {
+    "insider": [
+      {
+        "text": "On the Maryland Crab & Oyster Trail; much of the seafood (crab dip, soups, oysters, crab cakes) is priced at market rate, so call ahead if budgeting.",
+        "source_url": "https://www.visitmaryland.org/listing/seafood/jb-seafood",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Signature move is the JB's Maryland Burger (6oz patty, bacon, cheese, a 2.5oz crab cake and crab dip drizzle, with Old Bay fries); there's also a crab specialty pizza.",
+        "source_url": "https://www.jbseafood.com/menus",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Taco Tuesday every Tuesday: fish or shrimp tacos, available all day (11am-8pm).",
+        "source_url": "https://www.jbseafood.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Gift cards available; catering offered for weddings, showers, birthdays, and office events.",
+        "source_url": "https://www.jbseafood.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
   }
 }
