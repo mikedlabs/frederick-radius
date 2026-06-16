@@ -428,20 +428,9 @@ export default async function HomePage({
           </div>
         )}
         {/* Parking + MARC/transit moved INTO the "I want…" grid below —
-            getting around is the same one-tap instinct as a craving. */}
-        {/* Looking-ahead tail — weekend is not "today", so it never gets a
-            hero card; it stays one quiet tap away here (and in the What's-on
-            Weekend chip). Only shown when the weekend actually has events. */}
-        {(counts.weekend ?? 0) > 0 && (
-          <Link
-            href="/today?t=weekend"
-            className="tap-44 inline-flex items-center gap-1 px-1 text-[13px] font-semibold"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Looking ahead? See this weekend
-            <span aria-hidden>→</span>
-          </Link>
-        )}
+            getting around is the same one-tap instinct as a craving. The
+            weekend look-ahead lives in the What's-on "Weekend" toggle, not a
+            stray link here (removed: it cluttered the answer lead). */}
       </section>
 
       {/* Location opt-in sits ABOVE "I want" — the craving tiles answer
