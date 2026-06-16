@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { todaysDeals, EASTERN_WEEKDAY } from "@/lib/loaders/todaysDeals";
 
+/** Drop a redundant leading weekday ("Tuesday: $5 burgers" -> "$5 burgers")
+ *  since the strip header already states the day. Only strips when the offer
+ *  STARTS with the weekday, so "Taco Tuesday" / "Crabby Wednesday" keep theirs. */
+function trimDay(offer: string): string {
+  const t = offer.replace(/^\s*(sun|mon|tues?|wed(?:nes)?|thur?s?|fri|sat)[a-z]*\s*[:.\-–]\s*/i, "");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 /**
  * Today's Deals — a compact strip of the VERIFIED day-of-week specials
  * running today (the Field Notes moat made visible on the front door, the
@@ -42,8 +50,14 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
             >
               <span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-brand)" }} />
               <span className="min-w-0 flex-1">
-                <span className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+                {/* The OFFER leads — it's the data the user came for, so it
+                    gets the weight (ink, 14px medium); the venue + town are
+                    the supporting line beneath. */}
+                <span className="line-clamp-2 text-[14px] font-medium leading-snug" style={{ color: "var(--app-ink)" }}>
+                  {trimDay(d.offer)}
+                </span>
+                <span className="mt-1 flex items-baseline justify-between gap-2">
+                  <span className="truncate text-[12px] font-semibold uppercase tracking-[0.04em]" style={{ color: "var(--app-ink-2)" }}>
                     {d.name}
                   </span>
                   {d.town && (
@@ -51,9 +65,6 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
                       {d.town}
                     </span>
                   )}
-                </span>
-                <span className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                  {d.offer}
                 </span>
               </span>
             </Link>

@@ -10,6 +10,8 @@ import {
   ShoppingBag,
   Palette,
   Martini,
+  ParkingCircle,
+  Train,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -104,6 +106,21 @@ export default function CravingStrip() {
             </Link>
           );
         })}
+        {/* Getting-around utilities live in the same one-tap grid — "I want…
+            parking" / "the bus" is the same instinct as "I want coffee".
+            They were a separate link pair above the grid; folded in here. */}
+        <Link href="/parking" aria-label="Parking" className={TILE} style={TILE_STYLE}>
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
+            <ParkingCircle className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
+          </span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Parking</span>
+        </Link>
+        <Link href="/transit" aria-label="MARC and transit" className={TILE} style={TILE_STYLE}>
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
+            <Train className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
+          </span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>MARC &amp; transit</span>
+        </Link>
         {/* A missing noun routes to the full picker, never a dead end. */}
         <Link
           href="/nearby"

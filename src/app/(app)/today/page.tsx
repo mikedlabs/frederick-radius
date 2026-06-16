@@ -5,7 +5,8 @@ import TodayCard from "@/components/today/TodayCard";
 import TodayMoves from "@/components/today/TodayMoves";
 import TodaysDeals from "@/components/today/TodaysDeals";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
-import DateLine from "@/components/today/DateLine";
+import TodayContext from "@/components/today/TodayContext";
+import LocationPrime from "@/components/today/LocationPrime";
 import NearbyNow from "@/components/today/NearbyNow";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
@@ -314,11 +315,10 @@ export default async function HomePage({
     featuredSlug: featuredEvent?.slug ?? null,
   });
 
-  // The day's ANSWERS lead (open now, tonight, weekend); parking and
-  // transit are utilities and render as two quiet links instead of two
-  // more full plates. This is the heaviness fix: fewer identical boxes.
+  // The day's ANSWERS lead (open now, tonight, weekend). Parking + transit
+  // are no longer separate answer links here — they live as one-tap tiles in
+  // the "I want…" grid (CravingStrip).
   const leadAnswers = todayAnswers.filter((a) => a.status !== "parking" && a.status !== "transit").slice(0, 3);
-  const utilityAnswers = todayAnswers.filter((a) => a.status === "parking" || a.status === "transit");
 
   // When the active slice is empty, nudge to a DIFFERENT slice that
   // actually has events — never back to the same (empty) one, which is
@@ -374,9 +374,11 @@ export default async function HomePage({
         </Suspense>
       </SkyHero>
 
-      {/* Slim orientation line — date + time, now BELOW the sky hero. */}
-      <div className="mt-3 space-y-2">
-        <DateLine />
+      {/* Salutation + golden-hour cue. The date / day / time itself now lives
+          in the SkyHero header above; this slim line carries only the
+          contextual extras and self-hides when there's neither. */}
+      <div className="mt-2.5">
+        <TodayContext />
       </div>
 
       {/* ── ANSWER-FIRST LEAD (UX_REDO Build 1) ─────────────────────────
@@ -418,24 +420,8 @@ export default async function HomePage({
             ))}
           </div>
         )}
-        {/* Getting around: parking and transit are utilities, not the
-            day's answer. They were two more full text plates in the
-            stack (the page read as heavy); now one compact pair of
-            links with the same data behind them. */}
-        {utilityAnswers.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {utilityAnswers.map((a) => (
-              <Link
-                key={a.id}
-                href={a.primaryAction?.href ?? "/explore"}
-                className="tactile tactile-interactive inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[13px] font-semibold"
-                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "var(--app-edge), var(--app-hi)" }}
-              >
-                {a.title}
-              </Link>
-            ))}
-          </div>
-        )}
+        {/* Parking + MARC/transit moved INTO the "I want…" grid below —
+            getting around is the same one-tap instinct as a craving. */}
         {/* Looking-ahead tail — weekend is not "today", so it never gets a
             hero card; it stays one quiet tap away here (and in the What's-on
             Weekend chip). Only shown when the weekend actually has events. */}
@@ -451,11 +437,16 @@ export default async function HomePage({
         )}
       </section>
 
-      {/* ── RIGHT NOW — the fast lane, AFTER the answers. "I want ___ right
-          now" one-tap craving chips into /now (nearest open one). Answer-
-          first ordering: the anticipatory answer cards lead; this is the
-          frictionless follow-on for a known craving. */}
+      {/* Location opt-in sits ABOVE "I want" — the craving tiles answer
+          "nearest OPEN one," which needs location to be any good, so consent
+          comes before the grid (not buried below). Self-hides once granted. */}
       <div className="mt-4">
+        <LocationPrime />
+      </div>
+
+      {/* ── RIGHT NOW — the fast lane. "I want ___ right now" one-tap craving
+          tiles (now incl. Parking + MARC/transit) into the nearest open one. */}
+      <div className="mt-2">
         <CravingStrip />
       </div>
 
