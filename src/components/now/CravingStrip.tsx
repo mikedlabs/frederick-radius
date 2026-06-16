@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   Coffee,
@@ -39,6 +40,10 @@ import { CRAVINGS } from "@/data/cravings";
  * (same vocabulary, one visual voice), with a tinted icon well; the whole tile
  * is the 44px+ target. Server component (plain links) — costs nothing above
  * the fold.
+ *
+ * `locationSlot` rides on the RIGHT of the "I want…" bar (the page passes the
+ * LocationPrime consent pill there), so the consent and the prompt share one
+ * tidy row instead of two stacked spots. Self-hides once granted.
  */
 const ICONS: Record<string, LucideIcon> = {
   Coffee,
@@ -59,17 +64,18 @@ const TILE_STYLE = {
   boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
 } as const;
 
-export default function CravingStrip() {
+export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNode }) {
   return (
     <div className="space-y-4">
     <section aria-labelledby="i-want-eyebrow" className="space-y-2">
-      <div>
+      {/* One bar: the "I want…" prompt on the left, the location consent pill
+          on the right — opposite ends of a single row, not two stacked spots.
+          The pill self-hides once granted, leaving the prompt alone. */}
+      <div className="flex min-h-[34px] items-center justify-between gap-3">
         <p id="i-want-eyebrow" className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
           I want…
         </p>
-        <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-          Tap one; we find the nearest one open.
-        </p>
+        {locationSlot}
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {/* Happy hour — the most-asked-for local intent. Leads the grid.

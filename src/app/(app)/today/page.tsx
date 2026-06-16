@@ -57,14 +57,14 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
  *   1. SkyHero        → time-of-day sky + date/clock + tonight teaser
  *   2. TodayContext   → slim salutation + golden-hour cue (self-hides)
  *   3. Answers lead   → anticipatory AnswerCards (tonight / weekend)
- *   4. LocationPrime  → the ONE location consent (self-hides once granted)
- *   5. CravingStrip   → "I want…" cravings + a "Getting around" utilities row
- *   6. TodaysDeals    → verified day-of-week specials (self-hides)
- *   7. NearbyNow      → geo-gated around-you (no second consent button)
- *   8. CivicAlerts    → worst-first heads-up (self-hides)
- *   9. TodayMoves     → the single confident "best move now"
- *  10. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
- *  11. The full briefing + More for today (collapsed)
+ *   4. CravingStrip   → "I want…" bar (LocationPrime consent pill on its
+ *                        right) + cravings grid + a "Getting around" row
+ *   5. TodaysDeals    → verified day-of-week specials (self-hides)
+ *   6. NearbyNow      → geo-gated around-you (no second consent button)
+ *   7. CivicAlerts    → worst-first heads-up (self-hides)
+ *   8. TodayMoves     → the single confident "best move now"
+ *   9. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
+ *  10. The full briefing + More for today (collapsed)
  *
  * What got cut in this pass:
  *   • RightNowStrip (On deck)    — overlapped the Upcoming events
@@ -439,18 +439,13 @@ export default async function HomePage({
             stray link here (removed: it cluttered the answer lead). */}
       </section>
 
-      {/* Location opt-in sits ABOVE "I want" — the craving tiles answer
-          "nearest OPEN one," which needs location to be any good, so consent
-          comes before the grid (not buried below). Self-hides once granted. */}
-      <div className="mt-4">
-        <LocationPrime />
-      </div>
-
       {/* ── RIGHT NOW — the fast lane. "I want ___ right now" one-tap craving
           tiles into the nearest open one, plus a labeled "Getting around" row
-          (Parking / MARC / Transit) so utilities don't read as cravings. */}
-      <div className="mt-2">
-        <CravingStrip />
+          (Parking / MARC / Transit) so utilities don't read as cravings. The
+          location consent now rides on the right of the "I want…" bar (one row,
+          opposite the prompt) instead of a separate banner above it. */}
+      <div className="mt-4">
+        <CravingStrip locationSlot={<LocationPrime />} />
       </div>
 
       {/* ── TODAY'S DEALS — the verified, day-of-week-aware specials running
