@@ -111,7 +111,7 @@ export default function TodayTabs({
           No verified open spots this late. Here is what is on tonight.
         </p>
         <ul className="space-y-2">
-          {tonight.map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
+          {tonight.map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
         </ul>
       </div>
     ) : weekendEvents.length > 0 ? (
@@ -120,7 +120,7 @@ export default function TodayTabs({
           No verified open spots right now. Here is what is on this weekend.
         </p>
         <ul className="space-y-2">
-          {weekendEvents.slice(0, 6).map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
+          {weekendEvents.slice(0, 6).map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
         </ul>
       </div>
     ) : null);
@@ -146,7 +146,7 @@ export default function TodayTabs({
       empty: "Nothing on tonight's calendar yet. Open the planner — we'll build one from what's open and what's near you.",
       content: tonight.length === 0 ? null : (
         <ul className="space-y-2">
-          {tonight.map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
+          {tonight.map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
         </ul>
       ),
     },
@@ -162,7 +162,7 @@ export default function TodayTabs({
       empty: "Nothing booked for the weekend yet. Most Frederick events post late — check back Thursday, or try tonight.",
       content: weekendEvents.length === 0 ? null : (
         <ul className="space-y-2">
-          {weekendEvents.slice(0, 6).map((e) => <li key={e.slug}><EventCard event={e} /></li>)}
+          {weekendEvents.slice(0, 6).map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
         </ul>
       ),
     },

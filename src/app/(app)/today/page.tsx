@@ -539,7 +539,7 @@ export default async function HomePage({
                 <div className="-mx-4 px-4">
                   <div className="reveal-up shelf-rail gap-3 pb-1">
                     {upcomingRest.map((e) => (
-                      <div key={e.slug} className="w-[280px] shrink-0">
+                      <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
                         <EventCard event={e} variant="tile" />
                       </div>
                     ))}

@@ -104,7 +104,7 @@ export default function TonightRail({ events }: { events: EventWithMeta[] }) {
             const photo = e.hero_image ?? null;
             return (
               <a
-                key={e.slug}
+                key={`${e.slug}-${e.starts_at}`}
                 href={`/events/${e.slug}`}
                 className="tactile tactile-interactive group relative block w-[220px] shrink-0 snap-start overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-1)]"
                 style={{ borderColor: "var(--app-border)" }}

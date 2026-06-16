@@ -96,7 +96,7 @@ export default function EventAgenda({
               const cat = CATEGORY_BY_SLUG[e.category];
               return (
                 <li
-                  key={e.slug}
+                  key={`${e.slug}-${e.starts_at}`}
                   className={i > 0 ? "border-t" : ""}
                   style={{ borderColor: "var(--app-border)" }}
                 >
