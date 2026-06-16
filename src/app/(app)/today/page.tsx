@@ -46,7 +46,7 @@ import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { AnswerCard } from "@/components/answer";
-import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
+import { buildTodayAnswers, TODAY_EXPLORE_FALLBACK } from "@/lib/answers/defaultTodayAnswers";
 import { PARKING_GARAGES } from "@/data/parking-garages";
 
 /**
@@ -330,6 +330,10 @@ export default async function HomePage({
   // are no longer separate answer links here — they live as one-tap tiles in
   // the "I want…" grid (CravingStrip).
   const leadAnswers = todayAnswers.filter((a) => a.status !== "parking" && a.status !== "transit").slice(0, 3);
+  // Never an empty front door: at off-hours with nothing data-backed, lead
+  // with one honest evergreen "explore" card instead of a blank section, so
+  // the answer-first promise holds at 11am as well as 6pm.
+  const answerCards = leadAnswers.length > 0 ? leadAnswers : [TODAY_EXPLORE_FALLBACK];
 
   // When the active slice is empty, nudge to a DIFFERENT slice that
   // actually has events — never back to the same (empty) one, which is
@@ -403,21 +407,21 @@ export default async function HomePage({
             production, and a visible feature that does not work is the
             worst element on a site). The omnibox in the header carries
             search; this section now leads with the answers themselves. */}
-        {leadAnswers.length > 0 && (
+        {answerCards.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {leadAnswers.map((a, i) => (
+            {answerCards.map((a, i) => (
               <AnswerCard
                 key={a.id}
                 answer={a}
                 featured={i === 0}
                 plate={
-                  // Only a TODAY-scoped lead earns the full-bleed photo hero.
-                  // (The old positional `i === 0` gate let a non-today card —
-                  //  e.g. "This weekend" on a quiet Monday — inherit the Ken
-                  //  Burns plate on a page titled "what's worth your time
-                  //  right now." The weekend card is gone now; this keeps the
-                  //  plate honest for any future answer too.)
-                  i === 0 && a.status === "tonight" ? (
+                  // The full-bleed county photo hero is earned by a TODAY-scoped
+                  // lead (tonight's event) OR the evergreen explore fallback —
+                  // turning the empty-state lead into a beautiful field-guide
+                  // doorway instead of a plain text box. (The old positional
+                  //  `i === 0` gate let a non-today card inherit the Ken Burns
+                  //  plate; this keeps the plate honest.)
+                  i === 0 && (a.status === "tonight" || a.id === "explore") ? (
                     <SeasonalPhoto
                       season="auto"
                       alt=""
@@ -431,8 +435,8 @@ export default async function HomePage({
             ))}
           </div>
         )}
-        {/* Parking + MARC/transit moved INTO the "I want…" grid below —
-            getting around is the same one-tap instinct as a craving. The
+        {/* Parking + MARC/transit are NOT answer links here — they live as
+            one-tap tiles in the "Getting around" row below the cravings. The
             weekend look-ahead lives in the What's-on "Weekend" toggle, not a
             stray link here (removed: it cluttered the answer lead). */}
       </section>
