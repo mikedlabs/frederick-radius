@@ -85,60 +85,65 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
               <Link
                 href={`/places/${d.slug}`}
                 aria-label={`${d.name}: ${d.offer}`}
-                className="tactile-interactive relative block overflow-hidden rounded-[22px] p-4"
+                className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-lg)] p-4 pl-[18px]"
                 style={{
-                  background: `linear-gradient(152deg, color-mix(in srgb, ${color} 88%, #fff) 0%, ${color} 34%, color-mix(in srgb, ${color} 58%, #120c08) 100%)`,
-                  boxShadow: `0 14px 30px -12px color-mix(in srgb, ${color} 60%, transparent), 0 2px 8px -2px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.28), inset 0 0 0 1px rgba(255,255,255,0.06)`,
-                  color: "#fff",
+                  // Field-guide "field record" card: warm category-tinted PAPER
+                  // (not a saturated pass), an index rail, a hairline frame.
+                  background: `color-mix(in srgb, ${color} 8%, var(--app-bg-elevated-solid))`,
+                  border: `1px solid color-mix(in srgb, ${color} 26%, var(--app-border))`,
+                  boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                  color: "var(--app-ink)",
                 }}
               >
-                <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(130% 90% at 0% -10%, rgba(255,255,255,0.30), rgba(255,255,255,0.06) 34%, transparent 58%)" }} />
-                <Icon aria-hidden className="pointer-events-none absolute -bottom-5 -right-3 h-[128px] w-[128px] rotate-[8deg]" strokeWidth={1.25} style={{ color: "#fff", opacity: 0.13 }} />
+                {/* Index rail (the card's category color). */}
+                <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} />
+                {/* Engraved specimen glyph, faint in the corner. */}
+                <Icon aria-hidden className="pointer-events-none absolute -bottom-5 -right-3 h-[120px] w-[120px] rotate-[8deg]" strokeWidth={1} style={{ color, opacity: 0.1 }} />
                 <div className="relative">
                   <div className="flex items-center gap-2">
-                    <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "rgba(255,255,255,0.22)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)" }}>
-                      <Icon className="h-[15px] w-[15px]" strokeWidth={2.25} />
+                    <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${color} 15%, transparent)`, color }}>
+                      <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
                     </span>
-                    <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.95)", textShadow: "0 1px 2px rgba(0,0,0,0.22)" }}>
+                    <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-2)" }}>
                       {d.name}
                     </span>
                     {d.verified && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.1em]" style={{ background: "rgba(255,255,255,0.18)", color: "#fff", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" }}>
-                        ✓ Verified
+                      // Verified stamp — a struck seal in the card's color.
+                      <span aria-hidden title="verified at the source" className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full font-bold" style={{ border: `1.5px solid color-mix(in srgb, ${color} 70%, transparent)`, color, transform: "rotate(-7deg)", fontSize: "13px" }}>
+                        ✓
                       </span>
                     )}
                   </div>
-                  <p className="mt-3 line-clamp-3 font-serif text-[18px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.22)" }}>
+                  <p className="mt-2.5 line-clamp-3 font-serif text-[18px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
                     {d.offer}
                   </p>
-                  <div className="mt-3.5 flex items-end gap-6 border-t pt-2.5" style={{ borderColor: "rgba(255,255,255,0.16)" }}>
+                  {/* Specimen labels (the reference's DATE SIGHTED / LOCATION). */}
+                  <div className="mt-3 flex items-end gap-6 border-t pt-2.5" style={{ borderColor: `color-mix(in srgb, ${color} 18%, var(--app-border))` }}>
                     {d.hours && (
                       <div className="shrink-0">
-                        <p className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.66)" }}>When</p>
-                        <p className="font-mono text-[13px] font-semibold tabular-nums leading-tight" style={{ color: "#fff" }}>{d.hours}</p>
+                        <p className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>When</p>
+                        <p className="font-mono text-[13px] font-semibold tabular-nums leading-tight" style={{ color }}>{d.hours}</p>
                       </div>
                     )}
                     {d.town && (
                       <div className="min-w-0">
-                        <p className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.66)" }}>Where</p>
-                        <p className="truncate text-[13px] font-semibold leading-tight" style={{ color: "#fff" }}>{d.town}</p>
+                        <p className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>Where</p>
+                        <p className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.town}</p>
                       </div>
                     )}
                   </div>
-                  {/* The local intel that filled the blank space — verified
-                      Field Notes the venue's own site buries: where to park, an
-                      insider tip. Each shows only when we have it. */}
+                  {/* Field Notes the venue's own site buries — park + a tip. */}
                   {(d.park || d.tip) && (
                     <div className="mt-2.5 space-y-1">
                       {d.park && (
-                        <p className="line-clamp-1 text-[11.5px] leading-snug" style={{ color: "rgba(255,255,255,0.84)" }}>
-                          <span className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.6)" }}>Park&nbsp;&nbsp;</span>
+                        <p className="line-clamp-1 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                          <span className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>Park&nbsp;&nbsp;</span>
                           {d.park}
                         </p>
                       )}
                       {d.tip && (
-                        <p className="line-clamp-2 text-[11.5px] leading-snug" style={{ color: "rgba(255,255,255,0.84)" }}>
-                          <span className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.6)" }}>Tip&nbsp;&nbsp;</span>
+                        <p className="line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                          <span className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>Tip&nbsp;&nbsp;</span>
                           {d.tip}
                         </p>
                       )}
