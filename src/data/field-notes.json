@@ -1,0 +1,378 @@
+{
+  "brewers-alley-frederick": {
+    "parking": {
+      "text": "Park at the Church Street parking garage (17 E Church St) - it sits directly behind Brewer's Alley and is reachable from E Church St or the 100 block of N Market St. City garage rate is about $1/hour ($12 weekday daily max), and downtown garages are typically free on Sundays.",
+      "source_url": "https://www.visitfrederick.org/downtown-frederick/parking/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "There's a rooftop bar that locals favor for happy hour - it has its own drinks menu and fills up fast (one couple noted it was easy at 4pm Saturday but 'WAY more crowded' 90 minutes later). Go early.",
+        "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d518165-Reviews-Brewer_s_Alley-Frederick_Maryland.html",
+        "confidence": "high"
+      },
+      {
+        "text": "Rooftop is open much later than the kitchen/happy hour windows - roughly 11am to 11:30pm Sun-Thu and 11am to 1am Fri-Sat, making it a solid late-night spot downtown.",
+        "source_url": "https://brewers-alley.com/menu/rooftop-drinks-menu/",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Taco Tuesday is a recurring weekly special (confirmed via Downtown Frederick Partnership event listings and search results); specific taco/drink pricing not sourced.",
+        "source_url": "https://downtownfrederick.org/vm-event/taco-tuesday-2_2026-12-08-08-00/",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "white-rabbit-gastropub": {
+    "happy_hour": {
+      "schedule": "All day Monday; 3-6pm Tuesday-Friday",
+      "details": "Discounts on food and beer. Recent (June 2026) secondary source lists $5 16oz draft pours, $6 margaritas and crushes, and discounted apps ($6 cheesy bread, $7 smash burger sliders, $7 Brussel Crowe). NOTE: deal specifics vary by source and appear to rotate; an older 2019 Frederick News-Post listed a 5-6pm Tue-Fri window with $4 food, $1 Miller High Life, $4 craft cans, $4 Orange Crush, so treat exact prices/window as subject to change and confirm by phone (240-651-1952). The official site (Squarespace) does not publish happy hour on a fetchable page.",
+      "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick-md/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Use the Church Street parking garage. White Rabbit is tucked at the end of a nondescript alley behind several buildings and the Church Street Garage at 18 Market Space, so the garage is the most convenient option; downtown street and lot parking also work.",
+      "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "It is a hidden-gem location: tucked at the end of a nondescript alleyway behind the Church Street Garage. First-timers routinely walk past it, so look for the alley rather than a street-front entrance.",
+        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
+        "confidence": "high"
+      },
+      {
+        "text": "No reservations and weekend waits are common, but sitting at the bar usually gets you seated faster. The upstairs back bar has a quieter, more relaxed vibe for lingering.",
+        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Brunch served Saturday and Sunday, 11am-3pm (stated on official site).",
+        "source_url": "https://www.whiterabbitgastropub.com/readme",
+        "confidence": "high"
+      },
+      {
+        "text": "All-day Monday happy hour pricing (deals run all day Monday, not just an evening window).",
+        "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick-md/",
+        "confidence": "medium"
+      },
+      {
+        "text": "Pizza Flights: order Detroit-style pizza in groups of 3 slices to sample multiple styles or build your own. The Detroit-style pizza is the signature draw (award-winning per their own site).",
+        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "madrones": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3:00-6:00 PM and every night 9:00 PM-close (late-night happy hour). Bar area only.",
+      "details": "Daily: $7 house spirits and $1 off all other drinks. Happy-hour snacks served the same hours (bar area only), e.g. Spinach & Artichoke Dip $9, Hot Crab Dip $12, French Sliders $4 ea, Tiger Wings/Buffalo Wings $13. Day-specific weekly deals (note: windows vary from the 3-6 core): MON $13 burgers + half-price 20oz beers (3-7pm, bar only); TUE $1 off all drinks (3-6pm, bar only); WED half-price bottle wines all day for everyone; THU $8 house martinis (3-7pm, bar only); FRI $1 off all drinks (3-6pm, bar only). The Wednesday wine deal and the late-night happy hour apply beyond the bar/standard window as noted.",
+      "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Free parking lot on site. Madrones sits in the Worman's Mill / Clemson Corner retail area at 7810 Worman's Mill Rd (Suite J), so the shared shopping-center lot directly out front is the place to park; no street parking or garage needed.",
+      "source_url": "https://bippermedia.com/restaurants/united-states/maryland/frederick/madrones-reviews-madrones-at-7810-wormans-mill-rd-frederick-md-21701-2/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "The happy hour and snack menu are bar-area only (the dining room doesn't get the deals), so sit at or near the bar if you came for the specials. The Wednesday half-price wine bottles are the exception that applies everywhere.",
+        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+        "confidence": "high"
+      },
+      {
+        "text": "It reads more upscale than a strip-mall spot suggests: hickory wood-grilled, hand-cut steaks. The filet mignon, prime rib, and shrimp and grits are the dishes reviewers single out; lighting is on the dark/date-night side.",
+        "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d3723280-Reviews-Madrones-Frederick_Maryland.html",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wednesday: half-price bottles of wine, all day, for the entire restaurant (not bar-only). This is the standout deal locals flag.",
+        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+        "confidence": "high"
+      },
+      {
+        "text": "Monday: $13 burgers and half-price 20oz draft beers (3-7pm, bar area only).",
+        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+        "confidence": "high"
+      },
+      {
+        "text": "Thursday: $8 house martinis (3-7pm, bar area only).",
+        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+        "confidence": "high"
+      }
+    ]
+  },
+  "bushwaller-irish-pub-frederick": {
+    "parking": {
+      "text": "Bushwaller's is at 209 N Market St, in the 200 block downtown. The closest garage is the Church Street Garage (17 E Church St), reachable from E Church St and from the 100 block of N Market; the metered North Market Street Lot (327 N Market) is also a short walk north. City garages/meters run $1/hr (garage cap $12/day); street meters are free Sunday 8am-2pm. Street parking on Market is metered and turns over fast - the garage is the safer bet on weekend nights.",
+      "source_url": "https://www.cityoffrederickmd.gov/FAQ.aspx?QID=60",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "It's a whiskey bar first: the back bar carries 70-85+ whiskeys plus 18 drafts (Guinness, Smithwick's, Harp, Kilkenny alongside local Olde Mother). The whiskey depth is the draw locals come back for, not the food.",
+        "source_url": "https://epicbend.com/best-bars-in-frederick-md/",
+        "confidence": "medium"
+      },
+      {
+        "text": "There are two happy-hour windows, not one - including a late-night block (Sun-Wed 11pm-close), which is easy to miss since the pub stays open until 2am nightly.",
+        "source_url": "http://places.singleplatform.com/bushwallers/menu",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Trivia night every Monday at 7:00pm (run by Pour House Trivia).",
+        "source_url": "https://www.pourhousetrivia.com/bushwallers.html",
+        "confidence": "high"
+      },
+      {
+        "text": "Karaoke on Tuesday nights at 9:00pm.",
+        "source_url": "https://bushwallers.com/event/karaoke-5/",
+        "confidence": "medium"
+      },
+      {
+        "text": "Live music weekly (local bands); the pub bills entertainment seven nights a week with trivia, karaoke, darts and live music. No single fixed live-music day/time is published; bands are booked through the Dan McGuire Group (bookings@danmcguiregroup.com).",
+        "source_url": "https://www.bushwallers.com/events",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "linganore-winecellars-mount-airy": {
+    "parking": {
+      "text": "Free on-site parking in a large lot at 13601 Glissans Mill Rd; reviewers say it is ample and well-organized, with easy exit even during big festivals. On festival/event days, arrive early for a closer spot and a good seat on the open lawn.",
+      "source_url": "https://www.tripadvisor.com/Attraction_Review-g41276-d1936941-Reviews-Linganore_Winecellars-Mount_Airy_Maryland.html",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "You can bring your own picnic food onto the grounds (the winery confirms patrons may bring food); buy a bottle and make a day of it on the lawn. Charcuterie is also sold on-site.",
+        "source_url": "https://www.tripadvisor.com/ShowUserReviews-g41276-d1936941-r787582838-Linganore_Winecellars-Mount_Airy_Maryland.html",
+        "confidence": "medium"
+      },
+      {
+        "text": "Bring your own chairs (and a pop-up canopy if you have one). Outdoor lawn seating is first-come; regulars set up their own shade. There's also a fenced dog park, so it's genuinely dog-friendly beyond the special Dog Days nights.",
+        "source_url": "https://wanderlog.com/place/details/348563/linganore-winecellars",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "50th-anniversary (2026) recurring deal: on the 4th Monday of each month, a bar tasting of five signature wines for $2 (the winery's original 1976 tasting price). 21+, pre-reservation encouraged as space is limited.",
+        "source_url": "https://wineindustryadvisor.com/2026/01/16/linganore-winecellars-toasts-to-50-years-of-maryland-winemaking-in-2026/",
+        "confidence": "high"
+      },
+      {
+        "text": "Free Tour Fridays: complimentary winery tours on the 1st Friday of every month at 2PM and 4PM, after which you can buy a bar tasting or bottle in the tasting room. 21+, pre-reservation encouraged. (Note: separate weekend free tours also run Saturdays & Sundays at 12PM & 4PM.)",
+        "source_url": "https://wineindustryadvisor.com/2026/01/16/linganore-winecellars-toasts-to-50-years-of-maryland-winemaking-in-2026/",
+        "confidence": "high"
+      },
+      {
+        "text": "Food Truck & Music Weekends: rotating local food trucks plus live local musicians every weekend (Fri-Sun); no entrance fee. Music times vary by weekend (example: Fri 5-8pm, Sat/Sun ~1-4pm).",
+        "source_url": "https://www.linganorewines.com/events",
+        "confidence": "high"
+      }
+    ]
+  },
+  "averys-maryland-grille-frederick": {
+    "parking": {
+      "text": "On-site parking is free and ample: there are upper and lower parking lots plus parking on both sides of the street out front. It is a busy crab house, so on peak weekend nights the close spots fill first; use the lower/upper overflow lot rather than circling the front.",
+      "source_url": "https://www.visitmaryland.org/listing/seafood/averys-maryland-grille",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "It is a busy, loud crab house with no table reservations. Get on the waiting list online before you drive over rather than walking in cold on a weekend.",
+        "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d6873944-Reviews-Avery_s_Maryland_Grille_Frederick-Frederick_Maryland.html",
+        "confidence": "medium"
+      },
+      {
+        "text": "Locals point to the cream of crab soup and the crab cakes as the standouts; the seasonal Crab BLT also gets singled out.",
+        "source_url": "https://www.visitmaryland.org/listing/seafood/averys-maryland-grille",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Kegs and Legs (Tuesday): $4 craft draft pints and 25% off crab legs by the pound.",
+        "source_url": "https://averysmarylandgrille.com/nightly-specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Crabby Wednesday: discount on hardshell crabs by the dozen, with an all-you-can-eat (AYCE) option.",
+        "source_url": "https://averysmarylandgrille.com/nightly-specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Oyster Thursday: $1 oysters (raw, steamed, or grilled), available by the half or full dozen.",
+        "source_url": "https://averysmarylandgrille.com/nightly-specials",
+        "confidence": "high"
+      }
+    ]
+  },
+  "roasthouse-pub-frederick": {
+    "parking": {
+      "text": "On-site lot is small and fills fast on Friday/Saturday evenings after 5 PM. Reviewers report overflow options: the Lowe's lot nearby and, per one note, the motel directly behind the pub. The pub sits on Urbana Pike (Route 355) at the south end of Frederick, so it is a drive-up spot, not a walkable downtown one.",
+      "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d2192662-Reviews-Roasthouse_Pub-Frederick_Maryland.html",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "The draw is 20 rotating taps with weekly additions, not a fixed beer list, so the menu online never matches what is actually pouring. The official site says new beers are added each week and to check Instagram for the current list. Ask staff for a recommendation rather than going by any printed list.",
+        "source_url": "https://roasthousepubfrederick.com/",
+        "confidence": "high"
+      },
+      {
+        "text": "Pours come in multiple sizes (roughly 9 oz to 16 oz) and small samplers, so you can flight your way through unfamiliar craft beers instead of committing to a pint.",
+        "source_url": "https://www.beeradvocate.com/beer/profile/26583/",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "$2 off draft beers during happy hour (stated on the official site).",
+        "source_url": "https://roasthousepubfrederick.com/",
+        "confidence": "high"
+      },
+      {
+        "text": "Flights, Bites & Bluegrass: a recurring event starting at 5:30 PM (time confirmed via the site's embedded Instagram post; the specific day of the week is not stated on the site).",
+        "source_url": "https://roasthousepubfrederick.com/",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "springfield-manor-thurmont": {
+    "parking": {
+      "text": "Free parking onsite at 11836 Auburn Rd. The lot is grass/gravel on a 130-acre working estate, so wear appropriate shoes and expect a short walk to the tasting room. During the Maryland Lavender Festival (mid-June) and lavender field-visit weekends parking fills fast and is managed by event staff; arrive early. No public-transit option, this is a rural Rt 15 destination, so plan to drive.",
+      "source_url": "https://www.springfieldmanor.com/lavender-festival.html",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Limited days are the thing people miss: it's only open Fri (5-9pm) and Sat/Sun (12-6pm), not a typical full-week winery. Check the calendar before driving up, it also closes for the Lavender Festival weekend.",
+        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
+        "confidence": "high"
+      },
+      {
+        "text": "It's three things in one stop, a winery, distillery AND brewery, so a group with different tastes is covered; ask for a cocktail flight (the distillery side is what sets it apart from other county wineries) and they'll do mocktail versions on request.",
+        "source_url": "https://www.tripadvisor.com/ShowUserReviews-g60764-d6783904-r971085320-Springfield_Manor_Winery_Brewery_and_Distillery-Thurmont_Maryland.html",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Trivia night every Friday at 7pm (registration/sign-up at 6:30pm), with food trucks onsite. Tasting room open Fri 5-9pm.",
+        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
+        "confidence": "high"
+      },
+      {
+        "text": "Live music on weekends, roughly 2-5pm Saturday and Sunday (tasting room open Sat/Sun 12-6pm). Food trucks present on weekends.",
+        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
+        "confidence": "high"
+      },
+      {
+        "text": "Weekend cocktail flights available (rotating; 'check our Facebook for dates & recipes'). 11 craft beers on tap alongside the wine and spirits.",
+        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "olde-mother-brewing-frederick": {
+    "parking": {
+      "text": "Free parking: use the lot right next to the brewery, shared with Gravel & Grind (15 E 6th St). Free for customers — a real perk on the North Market corridor where street parking is tight.",
+      "source_url": "https://oldemother.com/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "The $1-off-full-pours deal runs all day, not a narrow happy-hour window — you get it open to close.",
+        "source_url": "https://oldemother.com/events/",
+        "confidence": "medium"
+      },
+      {
+        "text": "There's an in-house burger kitchen in the back room, so you can eat a full meal here, not just drink. Pairing a burger and fries with a fresh pour is a local go-to.",
+        "source_url": "https://epicbend.com/olde-mother-brewing/",
+        "confidence": "high"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Trivia every Thursday, 7:00-9:30pm; sign-ups start at 6:30pm.",
+        "source_url": "https://oldemother.com/events/",
+        "confidence": "high"
+      },
+      {
+        "text": "$1 off any full pour, open to close (standing discount).",
+        "source_url": "https://oldemother.com/events/",
+        "confidence": "medium"
+      },
+      {
+        "text": "In-house burger kitchen (homepage names it 'Backslash Burger'; a Feb 2025 article calls it 'Fifty Fifty Burger' — half-beef/half-bacon patties). Order at counter, by QR code, or online. Outside food allowed; outside alcohol not.",
+        "source_url": "https://oldemother.com/",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "cafe-nola": {
+    "happy_hour": {
+      "schedule": "Daily 4-7 PM (no day exclusions stated on the official site)",
+      "details": "$5 featured cocktail; $2 off wine; \"Draft Countdown\" pricing on drafts: $4 at 4pm, $5 at 5pm, $6 at 6pm. Stated plainly on the official homepage; the page's images appear to date to ~Dec 2023, so confirm the cocktail/wine pricing before relying on it.",
+      "source_url": "https://www.cafe-nola.com/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Use the Carroll Creek Garage at 44 E Patrick St, the same block as Cafe Nola (4 E Patrick St). All city garages are $1/hr ($5 weekend/nightly max) and FREE on Sundays 8 AM-2 PM, which overlaps brunch. Patrick St meters are $2/hr but free after 6 PM and all day Sunday.",
+      "source_url": "https://www.visitfrederick.org/downtown-frederick/parking/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "The interior art rotates monthly (a collaboration with local artist Goodloe Byron) reflecting Frederick's arts district; the summer patio looks out over the arts district.",
+        "source_url": "https://downtownfrederick.org/item/cafe-nola/",
+        "confidence": "medium"
+      },
+      {
+        "text": "Reader-voted \"Best Breakfast in Frederick\" by Frederick News-Post readers (multiple recent years); it's a breakfast/brunch destination, not just a coffee bar.",
+        "source_url": "https://downtownfrederick.org/item/cafe-nola/",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Open mic night every Monday: sign-up 8 PM, music 9 PM (21+). Full bands welcome; house drum kit available.",
+        "source_url": "http://www.cafe-nola.com/musicevents",
+        "confidence": "medium"
+      },
+      {
+        "text": "Karaoke on Wednesdays, hosted by Maryland Karaoke Live, roughly 10 PM-1 AM.",
+        "source_url": "http://www.cafe-nola.com/musicevents",
+        "confidence": "medium"
+      },
+      {
+        "text": "Live music on Friday and Saturday nights; it is a working small music venue (capacity ~70). Under-21 patrons allowed inside until 9:30 PM.",
+        "source_url": "https://www.indieonthemove.com/venues/cafe-nola-frederick-maryland",
+        "confidence": "medium"
+      }
+    ]
+  }
+}

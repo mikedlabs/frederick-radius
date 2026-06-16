@@ -62,11 +62,10 @@ export default function CravingStrip() {
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {/* Happy hour — the most-asked-for local intent. Leads the grid.
-            Points at the events happy-hour filter for now; repoints to a
-            real "Happy hour now" view once the agent-built Field Notes
-            dataset (verified happy-hour times) lands. */}
+            Points at the /happy-hour view powered by the Field Notes layer
+            (verified happy-hour times, confirmed at the source). */}
         <Link
-          href="/events?happy=1"
+          href="/happy-hour"
           aria-label="Happy hour"
           className={TILE}
           style={TILE_STYLE}
