@@ -57,6 +57,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import LiveTransitPill from "@/components/transit/LiveTransitPill";
+import PulseFreshness from "@/components/pulse/PulseFreshness";
 import WeatherHero from "@/components/today/WeatherHero";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import {
@@ -590,6 +591,7 @@ export default async function PulsePage({
               }}
             />
             Live Pulse · Frederick County
+            <PulseFreshness renderedAt={nowMs} />
           </p>
           <h1
             className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
