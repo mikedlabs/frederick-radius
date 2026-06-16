@@ -45,7 +45,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/amenities" },
   title: "Amenities",
   description:
-    "Public restrooms, Wi-Fi, EV charging, bike racks, picnic spots and playgrounds across Frederick County — plus what's coming next.",
+    "Public restrooms, Wi-Fi, EV charging, bike racks, picnic spots and playgrounds across Frederick County, plus what's coming next.",
 };
 
 export const revalidate = 3600; // amenities data only changes on rebuild
@@ -75,7 +75,7 @@ const COMING_SOON: {
   {
     icon: Trash2,
     label: "Public trash cans",
-    why: "Where to actually put the wrapper — without trekking five blocks looking.",
+    why: "Where to actually put the wrapper, without trekking five blocks looking.",
   },
   {
     icon: PawPrint,
@@ -126,14 +126,14 @@ export default function AmenitiesPage() {
           className="font-serif text-[32px] font-semibold leading-[1.05] tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          Amenities — what&apos;s here, and what&apos;s coming.
+          Amenities: what&apos;s here, and what&apos;s coming.
         </h1>
         <p
           className="text-[15px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
           The county runs on more than restaurants and museums. Restrooms,
-          Wi-Fi, EV stations, benches — the dull-but-useful layer that turns
+          Wi-Fi, EV stations, benches, the dull-but-useful layer that turns
           a walk into a trip you actually finish. Here&apos;s what we map
           today, and what we&apos;re adding next.
         </p>
@@ -285,7 +285,7 @@ export default function AmenitiesPage() {
         </h2>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           A reliable restroom downtown, a Wi-Fi-friendly cafe, a tucked-away
-          picnic spot — tell us. The map only knows what people tell it.
+          picnic spot, tell us. The map only knows what people tell it.
         </p>
         <Link
           href="/submit/place"

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
   title: "Trails",
   description:
-    "Every maintained trail in Frederick County — park, surface, length, and what you can do on it. Live from Frederick County GIS.",
+    "Every maintained trail in Frederick County: park, surface, length, and what you can do on it. Live from Frederick County GIS.",
 };
 
 // Trails change rarely; the integration revalidates weekly.
@@ -76,7 +76,7 @@ export default async function TrailsPage() {
           Trails
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Every maintained trail in the county — surface, length, and what
+          Every maintained trail in the county: surface, length, and what
           you can do on it. Tap one to see it on the map.
         </p>
       </header>
@@ -101,7 +101,7 @@ export default async function TrailsPage() {
               {
                 href: "https://www.nps.gov/choh/index.htm",
                 title: "C&O Canal Towpath · NPS",
-                meta: "184 miles flat from Cumberland to Georgetown — Brunswick &amp; Point of Rocks segments",
+                meta: "184 miles flat from Cumberland to Georgetown. Brunswick &amp; Point of Rocks segments",
               },
               {
                 href: "https://www.frederickcountymd.gov/253/Trails",

@@ -45,9 +45,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/places" },
   title: "All places",
   description:
-    "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services — the directory.",
+    "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services. The directory.",
   openGraph: { title: "All places", description:
-    "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services — the directory." },
+    "Every place in Frederick County, by category, by town, or on the map. Restaurants, parks, breweries, shops, civic services. The directory." },
 };
 
 export default function PlacesIndexPage() {
@@ -356,7 +356,7 @@ export default function PlacesIndexPage() {
           className="mt-1.5 text-[13px] leading-relaxed"
           style={{ color: "var(--app-ink-2)" }}
         >
-          Tap the search bar at the top — or hit{" "}
+          Tap the search bar at the top, or hit{" "}
           <kbd
             className="rounded border px-1.5 py-0.5 font-mono text-[11px]"
             style={{
