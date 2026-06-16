@@ -3,7 +3,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { Martini } from "lucide-react";
 import { placesWithFieldHappyHour, fieldNotesFor, verifiedLabel } from "@/lib/loaders/fieldNotes";
-import { placesWithHappyHour } from "@/lib/loaders/businessInfo";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { happyHourStatus, type HHStatus } from "@/lib/happyHour";
@@ -187,7 +186,6 @@ export default function HappyHourPage() {
   const townName = (slug?: string) => slug ? (MUNICIPALITY_BY_SLUG[slug]?.name ?? slug.replace(/-/g, " ")) : undefined;
 
   const verified = placesWithFieldHappyHour();
-  const seen = new Set(verified.map((v) => v.slug));
   const rows: Row[] = [];
 
   for (const v of verified) {
@@ -202,16 +200,10 @@ export default function HappyHourPage() {
       status: happyHourStatus(v.happy_hour.schedule, now),
     });
   }
-  for (const l of placesWithHappyHour()) {
-    if (seen.has(l.slug) || !l.happy_hour) continue;
-    const p = clientPlaceBySlug(l.slug);
-    if (!p) continue;
-    rows.push({
-      slug: l.slug, name: p.name, town: townName(p.municipality), photo: p.google_photo_url,
-      schedule: l.happy_hour, sourceUrl: l.source?.url, verified: null,
-      status: happyHourStatus(l.happy_hour, now),
-    });
-  }
+  // VERIFIED ONLY: the unverified legacy business-info happy hours were
+  // dropped — they carried stale-name / duplicate problems (e.g. "Jraymonds
+  // Steakhouse", the old name of Wye Oak Tavern). Everything on this page is
+  // now agent-confirmed at the source. The Field Notes pipeline grows it.
 
   const byVerifiedName = (a: Row, b: Row) => (!!a.verified !== !!b.verified ? (a.verified ? -1 : 1) : a.name.localeCompare(b.name));
   const onNow = rows.filter((r) => r.status.state === "now").sort(byVerifiedName);
