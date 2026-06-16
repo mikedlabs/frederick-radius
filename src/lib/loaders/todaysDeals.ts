@@ -51,10 +51,44 @@ export type TodaysDeal = {
   name: string;
   town?: string;
   offer: string;
+  /** The hours the deal runs ("5–9 PM", "All day"), parsed out of the offer
+   *  text so the surface can show WHEN as its own distinct datum next to the
+   *  place and the deal. Undefined when the text states no time. */
+  hours?: string;
   source_url?: string;
   verified: string | null;
   confidence: string;
 };
+
+/** Tidy a raw time fragment into display form: en-dash range, single space
+ *  before an uppercased meridiem ("11am-8pm" → "11 AM–8 PM"). */
+function formatHours(raw: string): string {
+  return raw
+    .replace(/[–—]/g, "-")
+    .replace(/\s*-\s*/g, "–")
+    .replace(/(\d)\s*(am|pm)/gi, (_, d, mer) => `${d} ${mer.toUpperCase()}`)
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Pull the WHEN out of a free-text deal. Deals bundle the offer + day + hours
+ * in one sentence ("Tuesday: $13 shrimp, 5-9 PM"); the strip header already
+ * carries the day (it's today), so this surfaces just the hours as a scannable
+ * datum. Handles ranges ("5-9 PM", "7 PM-1 AM", "11am-8pm", "5 PM-close"),
+ * "all day", and a single anchored time ("at 6:00 PM"). Returns undefined when
+ * no time is stated, so the surface shows no time chip rather than a fake one.
+ */
+function extractHours(text: string): string | undefined {
+  const range = text.match(
+    /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*[-–—]\s*(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|close)\b/i,
+  );
+  if (range) return formatHours(range[0]);
+  if (/\ball day\b/i.test(text)) return "All day";
+  const at = text.match(/\b(?:at|from|starting at)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm))\b/i);
+  if (at) return formatHours(at[1]);
+  return undefined;
+}
 
 const OK: Record<string, number> = { high: 2, medium: 1 };
 
@@ -75,9 +109,11 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       if (!OK[conf] || !d.last_verified) continue;
       const days = daysInText(d.text || "");
       if (!days.has(dow)) continue; // no-day standing specials are not "today" news
+      const offer = (d.text || "").trim();
       const cand: TodaysDeal = {
         slug, name: place.name, town,
-        offer: (d.text || "").trim(),
+        offer,
+        hours: extractHours(offer),
         source_url: d.source_url, verified: verifiedLabel(d.last_verified), confidence: conf,
       };
       const prev = best.get(slug);

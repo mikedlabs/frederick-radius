@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Tag } from "lucide-react";
+import { Tag, Clock3, MapPin } from "lucide-react";
 import { todaysDeals, EASTERN_WEEKDAY } from "@/lib/loaders/todaysDeals";
 
 /** Drop a redundant leading weekday ("Tuesday: $5 burgers" -> "$5 burgers")
@@ -64,19 +64,31 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
                 <Tag className="h-[15px] w-[15px]" strokeWidth={2} />
               </span>
               <span className="min-w-0 flex-1">
-                {/* The OFFER leads in ink; the venue + town are the mono
-                    supporting line, field-guide catalog style. */}
+                {/* Three distinct parts, each its own visual datum:
+                    1. the DEAL — the offer, ink headline (day prefix trimmed);
+                    2. the TIME — an accent clock pill (when it runs);
+                    3. the PLACE — pin + venue · town, mono.
+                    Field-guide catalog grammar: the offer reads, the data
+                    scans. */}
                 <span className="line-clamp-2 text-[14px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
                   {trimDay(d.offer)}
                 </span>
-                <span className="mt-1 flex items-baseline gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.06em]">
-                  <span className="truncate" style={{ color: "var(--app-ink-2)" }}>{d.name}</span>
-                  {d.town && (
-                    <>
-                      <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-                      <span className="shrink-0" style={{ color: "var(--app-ink-3)" }}>{d.town}</span>
-                    </>
+                <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  {d.hours && (
+                    <span
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.06em]"
+                      style={{ background: "color-mix(in srgb, var(--app-accent) 15%, transparent)", color: "var(--app-accent)" }}
+                    >
+                      <Clock3 className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                      {d.hours}
+                    </span>
                   )}
+                  <span className="inline-flex min-w-0 items-center gap-1 font-mono text-[10.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
+                    <MapPin className="h-3 w-3 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} aria-hidden />
+                    <span className="truncate">
+                      {d.name}{d.town ? ` · ${d.town}` : ""}
+                    </span>
+                  </span>
                 </span>
               </span>
             </Link>
