@@ -1,8 +1,37 @@
 # Frederick Radius — Photo Policy (decision record)
 
-**Status:** Decided (2026-06-06). Owner-approved.
+**Status:** Amended (2026-06-16). Owner-approved.
 **Scope:** Where photography may and may not appear in the UI.
 **Companion:** implementation phases at the bottom — *no code until the plan is approved.*
+
+---
+
+## ⚠️ Revision — 2026-06-16 (places now lead with photos)
+
+The owner reversed the places-on-cards rule below. **Place RESULT cards now lead
+with the place's hero photo, with the category glyph as the fallback** when a
+place has no usable photo (~86% of places carry `google_photo_url`; the rest
+fall back to `CategoryMark`). This applies to the nearby (`/nearby`) answer
+cards and the map result list — the two surfaces that had been forced to
+`noPhoto`; every other `PlaceCard` already defaulted to photos.
+
+**Still typographic on purpose — do NOT add photos to:**
+- **Category / intent NAVIGATION** — the I WANT craving tiles (`CravingStrip`),
+  the category filter chips, lane doorways. These name a *category*, not a
+  specific business, so there is no single honest photo to show. Glyphs stay.
+- **Event cards** — the date-block system below is unchanged. Events stay
+  calendar-native, never photo-led. This reversal is places-only.
+- **Town heroes** — still curated/controlled only (seasonal/aerial/approved),
+  never a random place's imported photo.
+
+**Quality guard stays:** the #437 suppression mechanism still governs — a bad /
+duplicate / mis-geocoded photo is suppressed and that place falls back to its
+glyph. The reasoning below (why imported photos are risky) still explains *why*
+suppression matters; the owner judged that, for a list of specific businesses, a
+real storefront photo reads faster than a glyph and the surviving photos clear
+the bar. Everything from "## Principle" down is the ORIGINAL 2026-06-06 record,
+kept for context; where it conflicts with this revision (place result cards), the
+revision wins.
 
 ---
 
@@ -74,6 +103,11 @@ with a **unified typographic card**:
 ---
 
 ## Places
+
+> **Superseded for RESULT cards by the 2026-06-16 revision at the top** — place
+> result cards now lead with the hero photo (glyph fallback). The text below is
+> the original 2026-06-06 stance, kept for the reasoning; it still holds for
+> category/intent navigation, events, and town heroes.
 
 Place cards in browse / list / recommendation surfaces are **typographic by
 default**. Applies to: Today place cards, category cards, town cards, map

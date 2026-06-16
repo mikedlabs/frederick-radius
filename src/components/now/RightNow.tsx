@@ -246,9 +246,10 @@ export default function RightNow({
         <ul className="space-y-2">
           {results.map((p) => (
             <li key={p.slug}>
-              {/* Map-style typographic decision card — name, open status,
-                  walk time, one tap to details + directions. */}
-              <PlaceCard place={p} noPhoto />
+              {/* Business decision card — the place's photo leads (category
+                  glyph fallback), then name, open status, walk time, one tap
+                  to details + directions. */}
+              <PlaceCard place={p} />
               {p.distance_m !== undefined && (
                 <span className="sr-only">{walkLabel(p.distance_m)}</span>
               )}

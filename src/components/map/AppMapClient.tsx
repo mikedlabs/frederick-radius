@@ -581,12 +581,13 @@ function InViewList({
               Best in this view
             </p>
           </li>
-          {/* Map results are compact, typographic DECISION cards — no photo
-              thumbnails (the Map redesign brief: the sheet is a decision
-              tool, not a gallery). noPhoto forces the category mark. */}
+          {/* Map result cards lead with the place's photo (category-glyph
+              fallback) — matches the rest of the browse surfaces and the
+              selected decision card above; a real photo reads faster than a
+              glyph when scanning a list of places. */}
           {visiblePlaces.map((p) => (
             <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
-              <PlaceCard place={p} noPhoto />
+              <PlaceCard place={p} />
             </li>
           ))}
           {(hiddenCount > 0 || showAll) && results.length > CAP && (
