@@ -4,6 +4,7 @@ import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodayMoves from "@/components/today/TodayMoves";
 import TodaysDeals from "@/components/today/TodaysDeals";
+import HappyHourNow from "@/components/today/HappyHourNow";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
 import LocationPrime from "@/components/today/LocationPrime";
@@ -342,7 +343,10 @@ export default async function HomePage({
     tomorrow: "tomorrow",
     weekend: "this weekend",
   };
-  const fallbackSlice = (["now", "tonight", "tomorrow", "weekend"] as const).find(
+  // Only suggest the OTHER today window (now/tonight) when the active one is
+  // empty — tomorrow/weekend are off /today now, so anything beyond points to
+  // the full /events browser instead.
+  const fallbackSlice = (["now", "tonight"] as const).find(
     (m) => m !== mode && (counts[m] ?? 0) > 0,
   );
 
@@ -372,7 +376,10 @@ export default async function HomePage({
         <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
           <TodayCard
             tonightEvent={
-              featuredEvent
+              // Today-only: the hero teaser shows tonight's event, never
+              // tomorrow's — /today is the next 24 hours, so a "Tomorrow: …"
+              // line has no place in the masthead.
+              featuredEvent && isEventToday(featuredEvent.starts_at, now)
                 ? {
                     slug: featuredEvent.slug,
                     title: featuredEvent.title,
@@ -446,10 +453,16 @@ export default async function HomePage({
         <CravingStrip locationSlot={<LocationPrime />} />
       </div>
 
+      {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
+          Field Notes moat; self-hides when none are in-window. */}
+      <div className="mt-4">
+        <HappyHourNow now={now} />
+      </div>
+
       {/* ── TODAY'S DEALS — the verified, day-of-week-aware specials running
           today, from the Field Notes moat. The 4pm "what's worth going out
           for" answer; self-hides when nothing runs today. */}
-      <div className="mt-4">
+      <div className="mt-3">
         <TodaysDeals now={now} />
       </div>
 
