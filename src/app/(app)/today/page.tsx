@@ -370,6 +370,7 @@ export default async function HomePage({
                     slug: featuredEvent.slug,
                     title: featuredEvent.title,
                     venue_name: featuredEvent.venue_name ?? null,
+                    starts_at: featuredEvent.starts_at,
                   }
                 : null
             }
@@ -502,6 +503,7 @@ export default async function HomePage({
                     slug: featuredEvent.slug,
                     title: featuredEvent.title,
                     venue_name: featuredEvent.venue_name ?? null,
+                    starts_at: featuredEvent.starts_at,
                   }
                 : null
             }

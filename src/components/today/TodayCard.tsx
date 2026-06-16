@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
+import { eventWhenLabel } from "@/lib/eventWhenLabel";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 
 /**
@@ -29,6 +30,9 @@ type TonightEvent = {
   slug: string;
   title: string;
   venue_name?: string | null;
+  /** ISO start — so the line labels by the event's REAL day (Tonight /
+   *  Tomorrow / Friday), never just by the current time-of-day band. */
+  starts_at: string;
 } | null;
 
 type Band = "morning" | "midday" | "afternoon" | "evening" | "late";
@@ -173,7 +177,7 @@ export default async function TodayCard({
 
       {tonightEvent && (
         <p className="mt-1 text-body opacity-80">
-          {band === "evening" || band === "late" ? "Tonight" : "Coming up"}:{" "}
+          {eventWhenLabel(tonightEvent.starts_at, now, band === "evening" || band === "late")}:{" "}
           <Link
             href={`/events/${tonightEvent.slug}`}
             className="font-semibold underline decoration-[1.5px] underline-offset-2"
