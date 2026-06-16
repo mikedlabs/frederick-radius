@@ -163,12 +163,17 @@ export default function AppMapClient({
   // and already have the user's consent-cached fix, sort/label distances
   // from where they're standing; otherwise fall back to the city center
   // (the map's default camera home). Read once on mount — no prompt.
-  const origin = useMemo(() => {
+  // origin = the point we measure "how far" from; hasFix = whether that point
+  // is the user's REAL consent-cached location (vs the city-center fallback).
+  // We only ever DISPLAY a distance when hasFix is true — a distance measured
+  // from downtown when we don't know where the user is standing is a guess, and
+  // the field guide never prints a number it can't stand behind.
+  const { origin, hasFix } = useMemo(() => {
     if (recenterToKnownLocation) {
       const cached = readCachedPosition();
-      if (cached) return cached;
+      if (cached) return { origin: cached, hasFix: true };
     }
-    return FREDERICK_CENTER;
+    return { origin: FREDERICK_CENTER, hasFix: false };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional one-shot read of the cached fix at mount
   }, []);
 
@@ -190,9 +195,12 @@ export default function AppMapClient({
       inView
         .map((slug) => bySlug.get(slug))
         .filter((p): p is PlaceCardData => Boolean(p))
-        .map((p) => ({ ...p, distance_m: haversineMeters(origin, p.geom) }))
+        // Distance only with a real fix — otherwise it would be a guess from
+        // downtown. The list still ranks open-first then by quality, and
+        // `inView` already arrives nearest-center ordered, so the order holds.
+        .map((p) => ({ ...p, distance_m: hasFix ? haversineMeters(origin, p.geom) : undefined }))
         .sort(rankInView),
-    [inView, bySlug, origin]
+    [inView, bySlug, origin, hasFix]
   );
 
   // Shared by the desktop list pane and the mobile drawer so they never
