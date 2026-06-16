@@ -158,3 +158,17 @@ function venueEventToCard(e: VenueEvent): EventWithMeta {
 export function venueEventsAsCards(now: Date = new Date()): EventWithMeta[] {
   return upcomingVenueEvents(now).map(venueEventToCard);
 }
+
+/**
+ * Adapt an ARBITRARY set of VenueEvents to feed-ready cards — the same
+ * place-resolution + boundary normalization venueEventsAsCards applies to the
+ * committed venue-events.json, but for rows sourced at runtime (the
+ * Squarespace `?format=json` lineups in squarespace-live.ts). Sorted soonest
+ * first; the caller (unifiedEvents) handles the time-sanity guard + dedupe.
+ */
+export function venueEventsToCards(events: VenueEvent[]): EventWithMeta[] {
+  return events
+    .slice()
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .map(venueEventToCard);
+}

@@ -32,7 +32,8 @@ import { fetchSeatGeek } from "@/lib/integrations/seatgeek";
 import { fetchEventbrite } from "@/lib/integrations/eventbrite";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
-import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
+import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
+import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { isPublicEvent } from "@/lib/events/classify";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
@@ -48,7 +49,7 @@ export type UnifiedEvents = {
 export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents] = await Promise.all([
+  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, squarespaceRaw] = await Promise.all([
     getLiveEvents(60).catch(() => ({
       events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
     })),
@@ -61,6 +62,10 @@ export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
     // Eventbrite organizer registry (Phase 4 item 4): inert without
     // EVENTBRITE_TOKEN or an empty registry.
     fetchEventbrite().catch(() => []),
+    // Squarespace venue lineups (The Banyan, …): runtime-fetched from each
+    // venue's `?format=json` events feed. Inert ([]) until a venue carries a
+    // `squarespace` URL in live-music-venues.ts.
+    fetchSquarespaceVenueEvents(60).catch(() => []),
   ]);
 
   // Live/county + music + sports feeds, curated duplicates dropped.
@@ -71,9 +76,12 @@ export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
     curatedUpcoming,
   );
 
-  // Extracted venue lineups (The Banyan, Sky Stage, …) folded into the
-  // same feed so a venue with a band tonight reads as an event.
-  const venueCards = venueEventsAsCards(now);
+  // Extracted venue lineups folded into the same feed so a venue with a band
+  // tonight reads as an event. Two sources, same EventWithMeta shape + shared
+  // adapter: the committed venue-events.json snapshot, and the runtime
+  // Squarespace `?format=json` lineups (The Banyan, …). The slug-keyed dedupe
+  // below collapses any overlap between them.
+  const venueCards = [...venueEventsAsCards(now), ...venueEventsToCards(squarespaceRaw)];
 
   // Time-sanity guard on FEED/EXTRACTED rows only (curated seeds are
   // hand-authored): a theater curtain at 7 AM is a parsing artifact —
