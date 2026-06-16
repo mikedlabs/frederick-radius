@@ -483,17 +483,45 @@ function InViewList({
         </li>
       ) : (
         <>
-          {/* Promoted-section model: Events nearby → Useful nearby →
-              Best in this view. Time-sensitive leads, then the practical
-              infrastructure, then the ranked places. */}
+          {/* Search-first drawer: lead with the PLACES in view — what the
+              reader is actually looking at — and let them pick. No promoted
+              event and no "best" verdict on top. The list is still sorted
+              open-now → quality → nearest so the useful ones float up, but
+              it's never framed as the app's opinion. Events + amenities follow
+              BELOW as quiet context, never above what they came to see. */}
+          <li>
+            <p
+              className="mb-0.5 mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-ink-3)" }}
+            >
+              <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+              In this view
+            </p>
+          </li>
+          {visiblePlaces.map((p) => (
+            <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
+              <PlaceCard place={p} />
+            </li>
+          ))}
+          {(hiddenCount > 0 || showAll) && results.length > CAP && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="tactile-interactive w-full rounded-[var(--app-radius-md)] border border-dashed px-3 py-2.5 text-[12px] font-semibold"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+              >
+                {showAll ? "Show fewer" : `See all ${results.length}`}
+              </button>
+            </li>
+          )}
 
-          {/* Events nearby — promoted ABOVE everything when the visible
-              viewport has any. A concert at Carroll Creek tonight should
-              beat 12 restaurant rows. Full details on the event page. */}
+          {/* Events happening near the visible places — quiet context BELOW
+              the list, not a promoted lead. */}
           {eventsHere.length > 0 && (
             <li>
               <p
-                className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
+                className="mb-1.5 mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
                 style={{ color: "var(--app-brand)" }}
               >
                 <Calendar className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -532,14 +560,12 @@ function InViewList({
             </li>
           )}
 
-          {/* Useful nearby — the practical infrastructure within a short
-              walk. One compact chip per kind, nearest first. Non-tappable
-              (these are reference points, not detail pages); the distance
-              is the payload. */}
+          {/* Practical infrastructure within a short walk — reference chips,
+              nearest first; the distance is the payload. Non-tappable. */}
           {usefulHere.length > 0 && (
             <li>
               <p
-                className="mb-1.5 mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
+                className="mb-1.5 mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
                 style={{ color: "var(--app-cool)" }}
               >
                 <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
@@ -574,40 +600,6 @@ function InViewList({
                   );
                 })}
               </ul>
-            </li>
-          )}
-
-          {/* Best in this view — the ranked places (open now → quality →
-              nearest). Always labelled so the list reads as an answer, not
-              a raw count. */}
-          <li>
-            <p
-              className="mb-0.5 mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              Best in this view
-            </p>
-          </li>
-          {/* Map result cards lead with the place's photo (category-glyph
-              fallback) — matches the rest of the browse surfaces and the
-              selected decision card above; a real photo reads faster than a
-              glyph when scanning a list of places. */}
-          {visiblePlaces.map((p) => (
-            <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
-              <PlaceCard place={p} />
-            </li>
-          ))}
-          {(hiddenCount > 0 || showAll) && results.length > CAP && (
-            <li>
-              <button
-                type="button"
-                onClick={() => setShowAll((v) => !v)}
-                className="tactile-interactive w-full rounded-[var(--app-radius-md)] border border-dashed px-3 py-2.5 text-[12px] font-semibold"
-                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-              >
-                {showAll ? "Show fewer" : `See all ${results.length}`}
-              </button>
             </li>
           )}
         </>
