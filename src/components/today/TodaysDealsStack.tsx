@@ -100,13 +100,15 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                 {/* Engraved specimen glyph, faint in the corner. */}
                 <Icon aria-hidden className="pointer-events-none absolute -bottom-5 -right-3 h-[120px] w-[120px] rotate-[8deg]" strokeWidth={1} style={{ color, opacity: 0.1 }} />
                 <div className="relative">
-                  <div className="flex items-center gap-2">
-                    <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${color} 15%, transparent)`, color }}>
-                      <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
+                  {/* Header — the venue IS the specimen title (serif), with the
+                      verified seal struck beside it. */}
+                  <div className="flex items-start gap-2.5">
+                    <span aria-hidden className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${color} 15%, transparent)`, color }}>
+                      <Icon className="h-[16px] w-[16px]" strokeWidth={2} />
                     </span>
-                    <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-2)" }}>
+                    <h3 className="min-w-0 flex-1 font-serif text-[16.5px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
                       {d.name}
-                    </span>
+                    </h3>
                     {d.verified && (
                       // Verified stamp — a struck seal in the card's color.
                       <span aria-hidden title="verified at the source" className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-full font-bold" style={{ border: `1.5px solid color-mix(in srgb, ${color} 70%, transparent)`, color, transform: "rotate(-7deg)", fontSize: "13px" }}>
@@ -114,24 +116,28 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       </span>
                     )}
                   </div>
-                  <p className="mt-2.5 line-clamp-2 font-serif text-[18px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+                  {/* The data line — WHEN as a struck time pill (the actionable
+                      datum) then WHERE. Reads at a glance even in the stacked
+                      sliver; no pill when the source states no time. */}
+                  {(d.hours || d.town) && (
+                    <div className="mt-2 flex items-center gap-2">
+                      {d.hours && (
+                        <span className="inline-flex shrink-0 items-center rounded-full px-2.5 py-1 font-mono text-[12px] font-bold tabular-nums tracking-[0.02em]" style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}>
+                          {d.hours}
+                        </span>
+                      )}
+                      {d.town && (
+                        <span className="min-w-0 truncate font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
+                          {d.town}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {/* The offer — a short supporting line, no longer the oversized
+                      headline (the venue + time carry the card now). */}
+                  <p className="mt-2 line-clamp-2 text-[13.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                     {d.offer}
                   </p>
-                  {/* Specimen labels (the reference's DATE SIGHTED / LOCATION). */}
-                  <div className="mt-3 flex items-end gap-6 border-t pt-2.5" style={{ borderColor: `color-mix(in srgb, ${color} 18%, var(--app-border))` }}>
-                    {d.hours && (
-                      <div className="shrink-0">
-                        <p className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>When</p>
-                        <p className="font-mono text-[13px] font-semibold tabular-nums leading-tight" style={{ color }}>{d.hours}</p>
-                      </div>
-                    )}
-                    {d.town && (
-                      <div className="min-w-0">
-                        <p className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>Where</p>
-                        <p className="truncate text-[13px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{d.town}</p>
-                      </div>
-                    )}
-                  </div>
                   {/* Field Notes the venue's own site buries — park + a tip.
                       Only when the deck is fanned open: the stacked sliver stays
                       lean (offer + when + where), and the extra intel fills the
