@@ -38,10 +38,14 @@ type Row = {
 };
 
 /** A labeled field-guide note line — the almanac-annotation look: a fixed
- *  mono label column + the value. WHEN is the accent key fact. */
-function NoteLine({ label, children, accent, mono, clamp }: {
-  label: string; children: React.ReactNode; accent?: boolean; mono?: boolean; clamp?: 1 | 2;
+ *  mono label column + the value. The scan targets get weight: `accent`
+ *  (WHEN) is bold ink, `strong` (DEAL) is medium ink; PARK/NOTE stay quiet
+ *  ink-2 so the eye lands on the time + the deal first. */
+function NoteLine({ label, children, accent, strong, mono, clamp }: {
+  label: string; children: React.ReactNode; accent?: boolean; strong?: boolean; mono?: boolean; clamp?: 1 | 2;
 }) {
+  const valColor = accent || strong ? "var(--app-ink)" : "var(--app-ink-2)";
+  const weight = accent ? "font-semibold" : strong ? "font-medium" : "";
   return (
     <div className="flex gap-3">
       <span
@@ -51,8 +55,8 @@ function NoteLine({ label, children, accent, mono, clamp }: {
         {label}
       </span>
       <span
-        className={`min-w-0 flex-1 text-[12.5px] leading-snug ${mono ? "font-mono tabular-nums" : ""} ${clamp === 1 ? "line-clamp-1" : clamp === 2 ? "line-clamp-2" : ""}`}
-        style={{ color: accent ? "var(--app-ink)" : "var(--app-ink-2)" }}
+        className={`min-w-0 flex-1 text-[12.5px] leading-snug ${weight} ${mono ? "font-mono tabular-nums" : ""} ${clamp === 1 ? "line-clamp-1" : clamp === 2 ? "line-clamp-2" : ""}`}
+        style={{ color: valColor }}
       >
         {children}
       </span>
@@ -116,7 +120,7 @@ function HappyFeature({ r }: { r: Row }) {
         </div>
         <div className="space-y-1.5 p-3.5">
           <NoteLine label="When" accent mono clamp={2}>{r.schedule}</NoteLine>
-          {r.deal && <NoteLine label="Deal" clamp={2}>{r.deal}</NoteLine>}
+          {r.deal && <NoteLine label="Deal" strong clamp={2}>{r.deal}</NoteLine>}
           {r.parking && <NoteLine label="Park" clamp={2}>{r.parking}</NoteLine>}
           {r.note && <NoteLine label="Note" clamp={2}>{r.note}</NoteLine>}
           <div className="pt-1.5" style={{ borderTop: "1px solid var(--app-border)" }} />
@@ -149,7 +153,7 @@ function HappyRow({ r }: { r: Row }) {
           ) : null}
         </div>
         <NoteLine label="When" accent mono clamp={1}>{r.schedule}</NoteLine>
-        {r.deal && <NoteLine label="Deal" clamp={1}>{r.deal}</NoteLine>}
+        {r.deal && <NoteLine label="Deal" strong clamp={1}>{r.deal}</NoteLine>}
         <Footer town={r.town} host={host} />
       </div>
     </article>
