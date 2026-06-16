@@ -50,6 +50,9 @@ export type TodaysDeal = {
   slug: string;
   name: string;
   town?: string;
+  /** True when the place is in Frederick City (municipality "frederick") —
+   *  downtown deals lead the deck (the densest, most-walkable cluster). */
+  downtown?: boolean;
   /** Place category — drives the happy-hour-vibe glyph (bar/brewery/winery/
    *  restaurant), so a deal never wears a retail price-tag icon. */
   category?: string;
@@ -148,6 +151,7 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       const fn = fieldNotesFor(slug);
       const cand: TodaysDeal = {
         slug, name: place.name, town,
+        downtown: place.municipality === "frederick",
         category: place.category,
         // The offer leads with the WHAT; the day prefix + the hours are pulled
         // out (header states the day, a chip states the time) so the headline
@@ -163,6 +167,13 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
     }
   }
   return [...best.values()]
-    .sort((a, b) => OK[b.confidence] - OK[a.confidence] || a.name.localeCompare(b.name))
+    .sort(
+      (a, b) =>
+        // Downtown Frederick leads (the walkable core), then verification
+        // confidence, then name — so the deck opens on the best downtown deals.
+        Number(Boolean(b.downtown)) - Number(Boolean(a.downtown)) ||
+        OK[b.confidence] - OK[a.confidence] ||
+        a.name.localeCompare(b.name),
+    )
     .slice(0, limit);
 }
