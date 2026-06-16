@@ -1194,7 +1194,7 @@ export default function RadiusBuilder({
             {eventsInReach.slice(0, 5).map((e) => {
               const parts = eventDateParts(e.startsAt);
               return (
-                <li key={e.slug}>
+                <li key={`${e.slug}-${e.startsAt}`}>
                   <Link
                     href={`/events/${e.slug}`}
                     className="tactile tactile-interactive flex items-center gap-3 rounded-[var(--app-radius-md)] bg-[var(--app-bg-elevated)] px-3 py-2.5 transition active:scale-[0.99]"

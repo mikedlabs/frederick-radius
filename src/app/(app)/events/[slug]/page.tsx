@@ -634,7 +634,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           </div>
           <ul className="space-y-2">
             {moreUpcoming.items.map((e) => (
-              <li key={e.slug}>
+              <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard event={e} variant="row" />
               </li>
             ))}

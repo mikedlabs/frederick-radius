@@ -271,7 +271,7 @@ export default async function EventsIndexPage({
         >
           <ol className="space-y-2">
             {civicEvents.slice(0, 24).map((e) => (
-              <li key={e.slug}>
+              <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard event={e} variant="glance" live={liveSlugs.includes(e.slug)} />
               </li>
             ))}
@@ -292,7 +292,7 @@ export default async function EventsIndexPage({
         >
           <ol className="space-y-2">
             {reminderEvents.slice(0, 24).map((e) => (
-              <li key={e.slug}>
+              <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard event={e} variant="glance" live={false} />
               </li>
             ))}

@@ -531,7 +531,7 @@ export default function EventsExplorer({
           }}
         >
           {filtered.slice(0, 200).map((e) => (
-            <li key={e.slug}>
+            <li key={`${e.slug}-${e.starts_at}`}>
               <EventCard event={e} variant="compact" />
             </li>
           ))}
@@ -600,7 +600,7 @@ export default function EventsExplorer({
         // by tightening filters or switching to the calendar/map view.
         <ul className="space-y-2">
           {filtered.slice(0, 100).map((e) => (
-            <li key={e.slug}>
+            <li key={`${e.slug}-${e.starts_at}`}>
               <EventCard event={e} />
             </li>
           ))}
@@ -659,7 +659,7 @@ export default function EventsExplorer({
                     {shown.length > 0 && (
                       <ol className="reveal-up space-y-2.5">
                         {shown.map((e) => (
-                          <li key={e.slug}>
+                          <li key={`${e.slug}-${e.starts_at}`}>
                             <EventCard event={e} variant="glance" live={live.has(e.slug)} />
                           </li>
                         ))}
@@ -719,7 +719,7 @@ export default function EventsExplorer({
                 style={{ borderColor: "var(--app-border)" }}
               >
                 {utilityFiltered.slice(0, 80).map((e) => (
-                  <li key={e.slug}>
+                  <li key={`${e.slug}-${e.starts_at}`}>
                     <EventCard event={e} variant="compact" />
                   </li>
                 ))}

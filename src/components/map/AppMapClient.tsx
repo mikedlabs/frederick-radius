@@ -502,7 +502,7 @@ function InViewList({
                   }).format(start);
                   const color = e.category_color ?? "var(--app-brand)";
                   return (
-                    <li key={e.slug}>
+                    <li key={`${e.slug}-${e.starts_at}`}>
                       <Link
                         href={`/events/${e.slug}`}
                         className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"

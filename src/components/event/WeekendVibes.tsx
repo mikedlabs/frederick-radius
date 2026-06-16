@@ -134,7 +134,7 @@ export default function WeekendVibes({
             </header>
             <ol className="space-y-2.5">
               {g.events.map((e) => (
-                <li key={e.slug}>
+                <li key={`${e.slug}-${e.starts_at}`}>
                   <EventCard event={e} variant="glance" live={live.has(e.slug)} />
                 </li>
               ))}

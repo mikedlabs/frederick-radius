@@ -574,7 +574,7 @@ export default function SavedList() {
           </header>
           <ul className="space-y-2">
             {events.map((e: DecoratedEvent) => (
-              <li key={e.slug}>
+              <li key={`${e.slug}-${e.starts_at}`}>
                 <EventCard event={e} />
               </li>
             ))}

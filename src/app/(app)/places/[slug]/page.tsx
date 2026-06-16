@@ -433,7 +433,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           </h2>
           <ul className="space-y-2">
             {eventsAtThisVenue.map((e) => (
-              <li key={e.slug}><EventCard event={e} /></li>
+              <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
             ))}
           </ul>
         </section>

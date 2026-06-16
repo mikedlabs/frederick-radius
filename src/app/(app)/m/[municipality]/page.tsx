@@ -309,7 +309,7 @@ export default async function MunicipalityPage(
           {upcomingEvents.length > 0 ? (
             <ul className="space-y-2">
               {upcomingEvents.map((e) => (
-                <li key={e.slug}><EventCard event={e} /></li>
+                <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>
               ))}
             </ul>
           ) : (

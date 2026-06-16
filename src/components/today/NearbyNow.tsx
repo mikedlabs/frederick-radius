@@ -282,7 +282,7 @@ export default function NearbyNow() {
               </div>
               <ul className="space-y-1.5">
                 {ctx.liveEvents.slice(0, 4).map((e) => (
-                  <li key={e.slug}>
+                  <li key={`${e.slug}-${e.starts_at}`}>
                     <Link
                       href={`/events/${e.slug}`}
                       onClick={() => haptic("light")}
@@ -337,7 +337,7 @@ export default function NearbyNow() {
               </div>
               <ul className="space-y-1.5">
                 {ctx.upcomingEvents.slice(0, 3).map((e) => (
-                  <li key={e.slug}>
+                  <li key={`${e.slug}-${e.starts_at}`}>
                     <Link
                       href={`/events/${e.slug}`}
                       onClick={() => haptic("light")}
