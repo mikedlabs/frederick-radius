@@ -61,7 +61,7 @@ export default function LiveActivityPill({ activities }: { activities: Activity[
             animate={{ opacity: 1, scale: 1, y: 0, filter: "blur(0px)" }}
             exit={{ opacity: 0, scale: 0.9, y: 6, filter: "blur(8px)" }}
             transition={{ type: "spring", stiffness: 380, damping: 28 }}
-            className="relative flex items-center gap-3 overflow-hidden rounded-full border bg-[#0a0a0a] px-3 py-2 text-white shadow-[var(--app-shadow-3)] sm:px-4"
+            className="relative flex items-center gap-3 overflow-hidden rounded-full border bg-[var(--app-bedrock)] px-3 py-2 text-white shadow-[var(--app-shadow-3)] sm:px-4"
             style={{ borderColor: "rgba(255,255,255,0.08)" }}
           >
             {/* Soft accent glow on the left */}

@@ -432,7 +432,7 @@ const EndPage = forwardRef<HTMLDivElement, { cover: string; onClose: () => void 
             The hardcover. 152 photos. Six years of mornings and storms.
           </div>
           <a
-            href="https://miked.store"
+            href="https://www.miked.store"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-5 grid w-full place-items-center rounded-full bg-white px-4 py-3 text-[14px] font-semibold tracking-tight text-black transition hover:bg-white/90"
