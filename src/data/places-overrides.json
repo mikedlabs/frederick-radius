@@ -21,7 +21,10 @@
     "manoushe",
     "south-market-creamery-frederick",
     "subway-197",
-    "thatsa-wrapp-frederick"
+    "thatsa-wrapp-frederick",
+    "frederick-county-public-schools",
+    "ms-caitlins-school",
+    "square-corner"
   ],
   "keepApart": [
     "clarity-psychotherapy",
@@ -259,6 +262,54 @@
     },
     "jojos-restaurant-tap-house": {
       "name": "JoJo's Restaurant Tap House"
+    },
+    "keeney-and-basford-funeral-homes": {
+      "category": "services"
+    },
+    "lough-memorials": {
+      "category": "services"
+    },
+    "frederick-police-department": {
+      "category": "public-safety"
+    },
+    "upper-echelon-auto-service": {
+      "category": "services"
+    },
+    "simply-clean-automotive-detailing": {
+      "category": "services"
+    },
+    "w-a-tolbard-heating-and-ac-llc": {
+      "category": "services"
+    },
+    "wa-tolbard-heating-and-air-conditioning": {
+      "category": "services"
+    },
+    "sos-safe-ride": {
+      "category": "services"
+    },
+    "cruise-holidays": {
+      "category": "services"
+    },
+    "shift-work-play": {
+      "category": "services"
+    },
+    "lc-stylez": {
+      "category": "services"
+    },
+    "bloom-asian-haus": {
+      "category": "restaurant"
+    },
+    "mazako": {
+      "category": "restaurant"
+    },
+    "smokers-paradise-mount-airy-mount-airy": {
+      "category": "shopping"
+    },
+    "aquatic-training-consulting-services": {
+      "category": "wellness"
+    },
+    "frederick-childrens-chorus": {
+      "category": "music"
     }
   }
 }

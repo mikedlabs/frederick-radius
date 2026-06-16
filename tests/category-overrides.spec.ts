@@ -1,13 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { publicPlaces } from "@/lib/loaders/places";
+import { CATEGORY_BY_SLUG } from "@/data/categories";
 import OVERRIDES from "@/data/places-overrides.json";
 
 /**
- * Category mis-tag cleanup — service/practitioner businesses dumped into
- * destination categories (mostly `shopping`) are reclassified to
- * wellness/services via places-overrides.json `patch`, so they leave the
- * destination lanes and (once cards go typographic) wear the right mark.
- * Deterministic + reviewable; legit retail must NOT move.
+ * Category mis-tag cleanup via places-overrides.json `patch`. Two jobs:
+ *   1. Service/practitioner businesses dumped into destination categories
+ *      (mostly `shopping`) are demoted to services/wellness so they leave the
+ *      discovery lanes.
+ *   2. Genuine miscategorizations are corrected to their RIGHT lane — a
+ *      restaurant filed under shopping moves to `restaurant`, the police HQ to
+ *      `public-safety`, a children's chorus to `music`.
+ * Patches are the final word (they win over Google's primaryType in the
+ * loader). Deterministic + reviewable; legit retail must NOT move.
  */
 const bySlug = new Map((publicPlaces() as { slug: string; category: string; name: string }[]).map((p) => [p.slug, p]));
 
@@ -40,10 +45,17 @@ describe("category overrides — services leave destination lanes", () => {
     expect(leaks).toHaveLength(0);
   });
 
-  it("every category patch targets wellness or services (non-destination)", () => {
-    const ok = new Set(["wellness", "services"]);
-    for (const [, v] of Object.entries(OVERRIDES.patch as Record<string, { category?: string }>)) {
-      if (v.category) expect(ok.has(v.category)).toBe(true);
+  it("every category patch targets a real, known category slug", () => {
+    // Patches now fix genuine miscategorizations to the CORRECT lane, not only
+    // demotions to services/wellness. The guardrail that remains: every target
+    // must be a REAL category slug (a typo'd or dead slug fails), while the
+    // leak + no-over-reach tests above hold the line against junk.
+    for (const [slug, v] of Object.entries(OVERRIDES.patch as Record<string, { category?: string }>)) {
+      if (v.category)
+        expect(
+          CATEGORY_BY_SLUG[v.category],
+          `patch ${slug} targets unknown category "${v.category}"`,
+        ).toBeDefined();
     }
   });
 });
