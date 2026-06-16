@@ -256,56 +256,14 @@ export default function MapIntentChips({
           })}
         </div>
       )}
-      <div
-        className="pointer-events-auto mx-auto flex w-full max-w-[680px] gap-2 overflow-x-auto rounded-full p-1.5 backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{
-          background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
-          boxShadow: "var(--app-shadow-2)",
-        }}
-      >
-        <Link
-          href={clearHref}
-          aria-current={!active ? "page" : undefined}
-          className="shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.1em] transition active:scale-[0.97]"
-          style={{
-            background: !active ? "var(--app-ink)" : "transparent",
-            color: !active ? "var(--app-bg)" : "var(--app-ink-2)",
-          }}
-        >
-          All
-        </Link>
-        {INTENTS.map((intent) => {
-          const Icon = ICON[intent.icon];
-          const isActive = active === intent.key;
-          // Chip label: prefer the full label when it's one word so
-          // "Wineries" / "Breweries" / "Coffee" don't get chopped, but
-          // collapse multi-word labels to their first word so a chip
-          // never wraps. "Eat & drink" → "Eat", "Get outside" → "Get",
-          // "Take the kids" → "Take", "Arts & culture" → "Arts",
-          // "Civic services" → "Civic". Wineries + Breweries now show
-          // by name, which was the whole point of splitting them out.
-          const chipLabel = /^\S+$/.test(intent.label)
-            ? intent.label
-            : intent.label.split(" ")[0];
-          return (
-            <Link
-              key={intent.key}
-              href={`/map?intent=${intent.key}${openSuffix}`}
-              aria-current={isActive ? "page" : undefined}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
-              style={{
-                background: isActive
-                  ? intent.color
-                  : `color-mix(in srgb, ${intent.color} 14%, transparent)`,
-                color: isActive ? "#fff" : intent.color,
-              }}
-            >
-              <Icon className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-              {chipLabel}
-            </Link>
-          );
-        })}
-      </div>
+      {/* The always-on intent "quick picks" row (Coffee · Eat & drink ·
+          Wineries · …) was removed: it pre-decided what the user was looking
+          for the moment they opened the map. The map is now search-first — the
+          header search finds anything in seconds, and the full category list
+          still lives in the Layers panel for browse-by-kind. The active-intent
+          banner + sub-intent strip above stay, so arriving via a deep link
+          (?intent=coffee, e.g. a Today craving) still shows what's filtered and
+          how to clear it. */}
       {/* Bottom slot — typically the MapTimeChips strip. Lives inside
           the same absolute container so the layout naturally stacks
           regardless of which intent rows above it are visible (banner,
