@@ -52,6 +52,12 @@ const ICONS: Record<string, LucideIcon> = {
 // ~80 m/min walking — same constant the reason chips use.
 const WALK_M_PER_MIN = 80;
 
+// Show up to this many matches. The old cap of 6 hid closed or farther-out
+// downtown spots behind the open-first sort, so "where's all the ice cream /
+// coffee?" looked incomplete. 16 surfaces effectively every in-town option
+// while staying bounded; still sorted open-first then nearest.
+const RESULT_LIMIT = 16;
+
 function walkLabel(distance_m: number): string {
   const mins = Math.max(1, Math.round(distance_m / WALK_M_PER_MIN));
   if (mins <= 25) return `${mins} min walk`;
@@ -106,7 +112,7 @@ export default function RightNow({
         if (a.open !== b.open) return a.open ? -1 : 1; // open first
         return a.dist - b.dist; // then nearest
       })
-      .slice(0, 6)
+      .slice(0, RESULT_LIMIT)
       // Attach distance for the card ONLY when we have a real fix — never
       // print a distance measured from a place the user isn't standing at.
       .map(({ p, dist }) => ({ ...p, distance_m: hasFix ? dist : undefined }));
