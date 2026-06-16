@@ -69,7 +69,7 @@ export default function PhotoMosaic({
           {p.google_photo_url && (
             <Image
               src={p.google_photo_url}
-              alt={p.name}
+              alt=""
               fill
               sizes="(max-width: 720px) 33vw, 240px"
               placeholder="blur"

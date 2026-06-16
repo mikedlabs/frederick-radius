@@ -39,7 +39,7 @@ export default function FromAboveTile() {
       <div className="relative aspect-[16/10] w-full overflow-hidden">
         <Image
           src="/from-above/cover-front.webp"
-          alt="From above — the book cover, Downtown Frederick from the sky"
+          alt=""
           fill
           sizes="(max-width: 480px) 100vw, 480px"
           priority={false}

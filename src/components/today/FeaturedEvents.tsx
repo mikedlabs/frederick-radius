@@ -82,7 +82,7 @@ export default function FeaturedEvents({ events }: { events: EventSlide[] }) {
               {e.photo && !failed.has(e.slug) && (
                 <Image
                   src={e.photo}
-                  alt={e.title}
+                  alt=""
                   fill
                   priority={i === 0}
                   sizes="(max-width: 720px) 100vw, 720px"
