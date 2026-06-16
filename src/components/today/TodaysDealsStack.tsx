@@ -19,7 +19,10 @@ const iconFor = (cat?: string): LucideIcon => DEAL_ICON[cat ?? ""] ?? Martini;
 const PALETTE = ["#A03A22", "#2F5E50", "#6E2233", "#3F5680", "#8A5A1C", "#76305F"];
 const colorAt = (i: number): string => PALETTE[i % PALETTE.length];
 
-const OVERLAP = 96;
+// Tighter overlap so the deck stays snug (each pass peeks just its header) —
+// the cards-tucked-in-a-wallet read, and it keeps the collapsed deck compact
+// even with more cards.
+const OVERLAP = 108;
 const SPRING = { type: "spring" as const, stiffness: 360, damping: 38, mass: 0.9 };
 
 /**
@@ -55,6 +58,18 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
         />
       </button>
 
+      {/* Card-holder POCKET — when the deck is stacked the passes sit in a
+          recessed paper slot (inset shadow + a thin highlight lip), so they
+          read as cards tucked inside a wallet; it relaxes to transparent when
+          fanned open. */}
+      <div
+        className="transition-all duration-300"
+        style={
+          stacked
+            ? { background: "var(--app-bg-sunken)", boxShadow: "inset 0 2px 10px -3px rgba(22,20,14,0.16), inset 0 -1px 0 rgba(255,255,255,0.5)", borderRadius: 26, padding: "10px 8px 12px" }
+            : { background: "transparent", boxShadow: "none", borderRadius: 26, padding: 0 }
+        }
+      >
       <ul className="relative">
         {deals.map((d, i) => {
           const Icon = iconFor(d.category);
@@ -93,7 +108,7 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       </span>
                     )}
                   </div>
-                  <p className="mt-3 line-clamp-2 font-serif text-[18px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.22)" }}>
+                  <p className="mt-3 line-clamp-3 font-serif text-[18px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.22)" }}>
                     {d.offer}
                   </p>
                   <div className="mt-3.5 flex items-end gap-6 border-t pt-2.5" style={{ borderColor: "rgba(255,255,255,0.16)" }}>
@@ -110,12 +125,32 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       </div>
                     )}
                   </div>
+                  {/* The local intel that filled the blank space — verified
+                      Field Notes the venue's own site buries: where to park, an
+                      insider tip. Each shows only when we have it. */}
+                  {(d.park || d.tip) && (
+                    <div className="mt-2.5 space-y-1">
+                      {d.park && (
+                        <p className="line-clamp-1 text-[11.5px] leading-snug" style={{ color: "rgba(255,255,255,0.84)" }}>
+                          <span className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.6)" }}>Park&nbsp;&nbsp;</span>
+                          {d.park}
+                        </p>
+                      )}
+                      {d.tip && (
+                        <p className="line-clamp-2 text-[11.5px] leading-snug" style={{ color: "rgba(255,255,255,0.84)" }}>
+                          <span className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.6)" }}>Tip&nbsp;&nbsp;</span>
+                          {d.tip}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </Link>
             </motion.li>
           );
         })}
       </ul>
+      </div>
 
       <Link
         href="/happy-hour"

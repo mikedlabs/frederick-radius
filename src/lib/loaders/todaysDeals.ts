@@ -1,7 +1,7 @@
 import data from "@/data/field-notes.json";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { verifiedLabel } from "@/lib/loaders/fieldNotes";
+import { verifiedLabel, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 
 /**
  * Today's Deals — the verified, day-of-week-aware specials happening TODAY,
@@ -58,6 +58,10 @@ export type TodaysDeal = {
    *  text so the surface can show WHEN as its own distinct datum next to the
    *  place and the deal. Undefined when the text states no time. */
   hours?: string;
+  /** Verified Field Notes for this place — where to park + an insider tip —
+   *  so a deal card can carry the local intel, not just the offer. */
+  park?: string;
+  tip?: string;
   source_url?: string;
   verified: string | null;
   confidence: string;
@@ -141,6 +145,7 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       if (!days.has(dow)) continue; // no-day standing specials are not "today" news
       const raw = (d.text || "").trim();
       const hours = extractHours(raw);
+      const fn = fieldNotesFor(slug);
       const cand: TodaysDeal = {
         slug, name: place.name, town,
         category: place.category,
@@ -149,6 +154,8 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
         // isn't a redundant restatement.
         offer: stripHours(trimDay(raw)),
         hours,
+        park: fn?.parking?.text,
+        tip: fn?.insider?.[0]?.text,
         source_url: d.source_url, verified: verifiedLabel(d.last_verified), confidence: conf,
       };
       const prev = best.get(slug);
