@@ -9,6 +9,7 @@ import {
   Trees,
   ShoppingBag,
   Palette,
+  Martini,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -60,6 +61,27 @@ export default function CravingStrip() {
         </p>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {/* Happy hour — the most-asked-for local intent. Leads the grid.
+            Points at the events happy-hour filter for now; repoints to a
+            real "Happy hour now" view once the agent-built Field Notes
+            dataset (verified happy-hour times) lands. */}
+        <Link
+          href="/events?happy=1"
+          aria-label="Happy hour"
+          className={TILE}
+          style={TILE_STYLE}
+        >
+          <span
+            aria-hidden
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full"
+            style={{ background: "color-mix(in srgb, var(--app-accent) 16%, var(--app-bg-elevated-solid))" }}
+          >
+            <Martini className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-accent)" }} />
+          </span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            Happy hour
+          </span>
+        </Link>
         {CRAVINGS.map((c) => {
           const Icon = ICONS[c.icon];
           return (
