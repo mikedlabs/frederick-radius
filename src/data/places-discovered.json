@@ -21119,5 +21119,658 @@
     "feature_score": 5,
     "updated_at": "2026-06-04",
     "last_verified_at": "2026-06-04T00:00:00Z"
+  },
+  {
+    "slug": "que-chivo-pupuseria-restaurant-frederick",
+    "name": "Que Chivo Pupuseria & Restaurant",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "200 Amber Dr, Frederick, MD 21702",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4111996,
+      "lat": 39.448114499999996
+    },
+    "website": "http://quechivopupuseria.com/",
+    "phone": "(240) 575-9583",
+    "google_place_id": "ChIJzWOwgTPbyYkRiCq09saJKlU",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "grace-of-india-frederick",
+    "name": "Grace of India",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "3531 John Simmons St, Frederick, MD 21704",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.3527532,
+      "lat": 39.3310587
+    },
+    "website": "http://graceofindiafrederick.com/",
+    "phone": "(301) 874-5000",
+    "google_place_id": "ChIJX1YsgQrXyYkRjmNMhrHTwHw",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "clay-oven-restaurant-frederick",
+    "name": "Clay Oven Restaurant",
+    "category": "restaurant",
+    "short_blurb": "Colorful, homey place offering a familiar variety of Indian specialties, plus takeout & delivery.",
+    "address": "1170 W Patrick St, Frederick, MD 21702",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4495347,
+      "lat": 39.4175602
+    },
+    "website": "https://clayovenrestaurants.com/?utm_source=google",
+    "phone": "(301) 631-2004",
+    "google_place_id": "ChIJa4_91J7byYkRgB2OdNvPrG4",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "akira-ramen-sushi-izakaya-ijamsville",
+    "name": "Akira Ramen Sushi & Izakaya",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Frederick County.",
+    "address": "3290 Bennett Creek Ave Unit D, Urbana, MD 21704",
+    "city": "Frederick County",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "ijamsville",
+    "geom": {
+      "lng": -77.3526029,
+      "lat": 39.3232129
+    },
+    "website": "http://www.akiraramenurbana.com/",
+    "phone": "(240) 341-7177",
+    "google_place_id": "ChIJN1ZdldfXyYkRpcwCkv02qaQ",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "tropix-pots-cuisines-bar-grill-caribbean-authentic-cuisine-frederick",
+    "name": "Tropix Pots Cuisines Bar & Grill - Caribbean Authentic Cuisine",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "490 Prospect Blvd, Frederick, MD 21701",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4301254,
+      "lat": 39.4059868
+    },
+    "website": "http://tropixpotscuisines.com/",
+    "phone": "(240) 877-4858",
+    "google_place_id": "ChIJWdmAwQfbyYkRB_MsmS19E_c",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "modern-asia-frederick",
+    "name": "Modern Asia",
+    "category": "restaurant",
+    "short_blurb": "Unassuming sit-down eatery with a broad Pan-Asian menu spanning curries & pho to lo mein.",
+    "address": "1306 W Patrick St, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4545366,
+      "lat": 39.417326599999996
+    },
+    "website": "https://modernasiaonline.com/",
+    "phone": "(301) 732-5193",
+    "google_place_id": "ChIJrS3-vZvbyYkR9a4RpwTMQtE",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "rice-thai-bistro-frederick",
+    "name": "Rice Thai Bistro",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "181 Thomas Johnson Dr, Frederick, MD 21702",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.40847,
+      "lat": 39.4414261
+    },
+    "website": "https://www.ricethaibistro-fd.com/",
+    "phone": "(301) 329-5199",
+    "google_place_id": "ChIJQ6i_LNzbyYkRRqKGDCJdu4s",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "kittiwat-thai-kitchen-frederick",
+    "name": "Kittiwat Thai Kitchen",
+    "category": "restaurant",
+    "short_blurb": "Thai spot serving modern & classic dishes in a sunny space with big windows & industrial ceilings.",
+    "address": "5205 Presidents Ct, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4163888,
+      "lat": 39.377472
+    },
+    "website": "https://kittiwat.com/?utm_source=google",
+    "phone": "(301) 631-0999",
+    "google_place_id": "ChIJh6XhEYfZyYkRwvuXuuuuBRc",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "cafe-bueno-frederick",
+    "name": "Cafe Bueno",
+    "category": "restaurant",
+    "short_blurb": "Compact Mexican joint serving homestyle cooking in a colorful space with ethnic decor touches.",
+    "address": "255 E 4th St, Frederick, MD 21701",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4047897,
+      "lat": 39.4189102
+    },
+    "website": "https://cafebuenofrederick.com/?utm_source=google",
+    "phone": "(301) 620-8858",
+    "google_place_id": "ChIJ97n0sfXayYkRspg7D_vHGXo",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "the-inn-at-stone-manor-middletown",
+    "name": "The Inn at Stone Manor",
+    "category": "lodging",
+    "short_blurb": "Charming suites in a circa-1700s manor house-turned-refined B&B offering a garden & afternoon tea.",
+    "address": "5820 Carroll Boyer Rd, Middletown, MD 21769",
+    "city": "Middletown",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "middletown",
+    "geom": {
+      "lng": -77.5547172,
+      "lat": 39.395507599999995
+    },
+    "website": "https://www.innatstonemanor.com/",
+    "phone": "(301) 371-0099",
+    "google_place_id": "ChIJv_Uaxf3dyYkROYWiBIxYqC0",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "peace-and-plenty-new-market",
+    "name": "Peace and Plenty",
+    "category": "lodging",
+    "short_blurb": "Lodging in New Market.",
+    "address": "Peace and Plenty, MD 21774",
+    "city": "New Market",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "new-market",
+    "geom": {
+      "lng": -77.2516495,
+      "lat": 39.412602799999995
+    },
+    "website": "https://www.airbnb.com/rooms/45968654",
+    "google_place_id": "ChIJrfB1tlrSyYkRGTnQMuHtpc0",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "lodging-at-first-stop-brunswick-brunswick",
+    "name": "Lodging at First Stop Brunswick",
+    "category": "lodging",
+    "short_blurb": "Lodging in Brunswick.",
+    "address": "2 E Potomac St, Brunswick, MD 21716",
+    "city": "Brunswick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "brunswick",
+    "geom": {
+      "lng": -77.62671879999999,
+      "lat": 39.3127725
+    },
+    "website": "https://firststopbrunswick.com/",
+    "phone": "(571) 477-0880",
+    "google_place_id": "ChIJi6KSfbQftokRQCxZ0TjQtl4",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "the-wedgewood-inn-frederick",
+    "name": "The Wedgewood Inn",
+    "category": "lodging",
+    "short_blurb": "Lodging in Downtown Frederick.",
+    "address": "3 W 2nd St, Frederick, MD 21701",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.41115239999999,
+      "lat": 39.416725899999996
+    },
+    "website": "https://thewedgewoodinn.com/",
+    "phone": "(301) 898-2198",
+    "google_place_id": "ChIJ8Ym87DvbyYkReBKaN0JhGc0",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "welcome-to-the-rusty-rose-restored-farmhouse-feel-in-the-hea-jefferson",
+    "name": "Welcome to the Rusty Rose-Restored Farmhouse feel in the heart of Jefferson, MD",
+    "category": "lodging",
+    "short_blurb": "Lodging in Frederick County.",
+    "address": "Jefferson, MD 21755",
+    "city": "Frederick County",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "jefferson",
+    "geom": {
+      "lng": -77.53692629999999,
+      "lat": 39.359119400000004
+    },
+    "website": "https://www.us.despegar.com/hotels/h-4998372",
+    "google_place_id": "ChIJiePxT0jeyYkR-uCsGzttzm4",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "dutchs-daughter-frederick",
+    "name": "Dutch's Daughter",
+    "category": "restaurant",
+    "short_blurb": "This upscale American choice offers a genteel dining room & a casual downstairs bar, The Dungeon.",
+    "address": "581 Himes Ave, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4370885,
+      "lat": 39.4079395
+    },
+    "website": "http://www.dutchsdaughter.com/",
+    "phone": "(301) 668-9500",
+    "google_place_id": "ChIJqWdysLvbyYkRB5YyVLiNarc",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "thai-meric-eatery-bar-frederick",
+    "name": "Thai Meric Eatery & Bar",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "1170 W Patrick St Ste E, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.4495077,
+      "lat": 39.4175453
+    },
+    "website": "https://www.thaimeric.com/",
+    "phone": "(240) 651-0998",
+    "google_place_id": "ChIJESDAocjbyYkRY9uN6AsiLRU",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "woodsboro-tavern-woodsboro",
+    "name": "Woodsboro Tavern",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Woodsboro.",
+    "address": "10730 Woodsboro Rd, Woodsboro, MD 21798",
+    "city": "Woodsboro",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "woodsboro",
+    "geom": {
+      "lng": -77.3151319,
+      "lat": 39.5289231
+    },
+    "website": "https://www.facebook.com/p/Woodsboro-Tavern-100071971296244/",
+    "google_place_id": "ChIJSylHprTOyYkRqJ2OUSuBAqU",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "pumpernickel-rye-urbana",
+    "name": "Pumpernickel + Rye",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Urbana.",
+    "address": "3538 Urbana Pike, Urbana, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3550317,
+      "lat": 39.326951300000005
+    },
+    "website": "https://pumpandrye.com/",
+    "phone": "(240) 397-9600",
+    "google_place_id": "ChIJR8YmNVHXyYkR1jv871y28yU",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "elk-run-winery-mount-airy",
+    "name": "Elk Run Winery",
+    "category": "brewery",
+    "short_blurb": "Breweries in Mount Airy.",
+    "address": "15113 Liberty Rd, Mt Airy, MD 21771",
+    "city": "Mount Airy",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "mount-airy",
+    "geom": {
+      "lng": -77.13596199999999,
+      "lat": 39.465519
+    },
+    "website": "https://elkrun.com/",
+    "phone": "(410) 775-2513",
+    "google_place_id": "ChIJN64f700yyIkRHBxNtEYXHJ8",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "catoctin-creek-aqueduct-co-canal-jefferson",
+    "name": "Catoctin Creek Aqueduct | C&O Canal",
+    "category": "trail",
+    "short_blurb": "Trails in Frederick County.",
+    "address": "Chesapeake and Ohio Canal Towpath, Jefferson, MD 21755",
+    "city": "Frederick County",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "jefferson",
+    "geom": {
+      "lng": -77.5686123,
+      "lat": 39.311076899999996
+    },
+    "website": "https://www.nps.gov/places/catoctin-aqueduct.htm",
+    "phone": "(301) 600-2888",
+    "google_place_id": "ChIJB0wczv0ftokREapSAhESvSQ",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "vesuvius-italian-wine-bar-urbana",
+    "name": "Vesuvius Italian & Wine Bar",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Urbana.",
+    "address": "3290 Bennett Creek Ave Unit A, Frederick, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3526232,
+      "lat": 39.3235555
+    },
+    "website": "http://vesuviusitalianwinebar.com/",
+    "phone": "(240) 341-4020",
+    "google_place_id": "ChIJbaRrdgDXyYkRi_Buk7ZpgbM",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "ekiben-frederick",
+    "name": "Ekiben",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Downtown Frederick.",
+    "address": "500 N Market St, Frederick, MD 21701",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.409986,
+      "lat": 39.420435999999995
+    },
+    "website": "https://ekibenbaltimore.com/",
+    "google_place_id": "ChIJVXW4eADbyYkR8rSdaX5MxOE",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "wonder-frederick-urbana",
+    "name": "Wonder Frederick",
+    "category": "restaurant",
+    "short_blurb": "Restaurants in Urbana.",
+    "address": "5473 Urbana Pike, Frederick, MD 21704",
+    "city": "Urbana",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "urbana",
+    "geom": {
+      "lng": -77.3997492,
+      "lat": 39.382070399999996
+    },
+    "website": "https://www.wonder.com/food-delivery-locations/frederick",
+    "phone": "(855) 818-5755",
+    "google_place_id": "ChIJW3yMIAjbyYkRGjOqSOAmBLQ",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "ledo-pizza-ijamsville",
+    "name": "Ledo Pizza",
+    "category": "pizza",
+    "short_blurb": "Local favorite since 1955 for pies with a unique flaky, rectangular crust & Italian standards.",
+    "address": "10162 Old National Pike suite 200, Ijamsville, MD 21754",
+    "city": "Frederick County",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "ijamsville",
+    "geom": {
+      "lng": -77.3110975,
+      "lat": 39.3921269
+    },
+    "website": "https://ledopizza.com/store/md-lake-linganore/",
+    "phone": "(301) 882-2811",
+    "google_place_id": "ChIJoYmtt7_RyYkR6qLLtSx81EI",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "chick-fil-a-frederick",
+    "name": "Chick-fil-A",
+    "category": "restaurant",
+    "short_blurb": "Fast-food chain serving chicken sandwiches & nuggets along with salads & sides.",
+    "address": "5308 New Design Rd, Frederick, MD 21703",
+    "city": "Downtown Frederick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "frederick",
+    "geom": {
+      "lng": -77.42177099999999,
+      "lat": 39.379574
+    },
+    "website": "https://www.chick-fil-a.com/locations/md/ballenger-creek?utm_source=google&utm_medium=gmb",
+    "phone": "(301) 637-7836",
+    "google_place_id": "ChIJcZgA7jLbyYkRZ-UOoCbu6ds",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "summers-farm-middletown",
+    "name": "Summers Farm",
+    "category": "market",
+    "short_blurb": "Markets in Middletown.",
+    "address": "7503 Hollow Rd, Middletown, MD 21769",
+    "city": "Middletown",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "middletown",
+    "geom": {
+      "lng": -77.51669059999999,
+      "lat": 39.438908999999995
+    },
+    "website": "http://www.summersfarm.com/",
+    "phone": "(301) 304-3031",
+    "google_place_id": "ChIJFV5mRHfcyYkRPpS-Htymk_w",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "magnolia-meadow-farms-thurmont",
+    "name": "Magnolia Meadow Farms",
+    "category": "market",
+    "short_blurb": "Markets in Thurmont.",
+    "address": "13001 Creagerstown Rd, Thurmont, MD 21788",
+    "city": "Thurmont",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "thurmont",
+    "geom": {
+      "lng": -77.37904689999999,
+      "lat": 39.5887799
+    },
+    "website": "http://www.magnoliameadowfarms.com/",
+    "phone": "(301) 606-4086",
+    "google_place_id": "ChIJZ_8HPNjHyYkR4AcrfbBuRI8",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "historic-roddy-road-covered-bridge-thurmont",
+    "name": "Historic Roddy Road Covered Bridge",
+    "category": "civic",
+    "short_blurb": "Civic & Public in Thurmont.",
+    "address": "14760 Roddy Rd, Thurmont, MD 21788",
+    "city": "Thurmont",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "thurmont",
+    "geom": {
+      "lng": -77.3937119,
+      "lat": 39.6409539
+    },
+    "website": "http://www.visitfrederick.org/members/view/297",
+    "phone": "(301) 600-1646",
+    "google_place_id": "ChIJNdoLij24yYkR6P4BkDbjsp0",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "historic-utica-covered-bridge-thurmont",
+    "name": "Historic Utica Covered Bridge",
+    "category": "civic",
+    "short_blurb": "Civic & Public in Thurmont.",
+    "address": "7720 Utica Rd, Thurmont, MD 21788",
+    "city": "Thurmont",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "thurmont",
+    "geom": {
+      "lng": -77.3976871,
+      "lat": 39.525228999999996
+    },
+    "website": "https://www.visitfrederick.org/listing/utica-mills-covered-bridge/284/",
+    "phone": "(301) 600-4047",
+    "google_place_id": "ChIJrw0IcOnFyYkRKCgf3r_QHCI",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "new-market-historic-district-new-market",
+    "name": "New Market Historic District",
+    "category": "antiques",
+    "short_blurb": "Antiques in New Market.",
+    "address": "New Market Historic District, New Market, MD 21774",
+    "city": "New Market",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "new-market",
+    "geom": {
+      "lng": -77.26840659999999,
+      "lat": 39.3831329
+    },
+    "website": "https://www.townofnewmarket.org/",
+    "google_place_id": "ChIJTfzk5MHTyYkRzy_v7_zOUw4",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "brunswick-main-street-brunswick",
+    "name": "Brunswick Main Street",
+    "category": "civic",
+    "short_blurb": "Civic & Public in Brunswick.",
+    "address": "1 W Potomac St, Brunswick, MD 21716",
+    "city": "Brunswick",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "brunswick",
+    "geom": {
+      "lng": -77.6270504,
+      "lat": 39.3131061
+    },
+    "website": "https://brunswickmainstreet.org/",
+    "phone": "(301) 834-7500 ext. 124",
+    "google_place_id": "ChIJBQLi9AAftokRnxnxCBH6HfQ",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "east-main-street-middletown",
+    "name": "East Main Street",
+    "category": "services",
+    "short_blurb": "Services in Middletown.",
+    "address": "E Main St, Middletown, MD 21769",
+    "city": "Middletown",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "middletown",
+    "geom": {
+      "lng": -77.5358251,
+      "lat": 39.4410526
+    },
+    "website": "https://mainstreetmiddletown.org/",
+    "google_place_id": "ChIJI6jMsQ3dyYkR2Z1yq0riXlY",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
+  },
+  {
+    "slug": "mount-airy-historic-district-mount-airy-2",
+    "name": "Mount Airy Historic District",
+    "category": "services",
+    "short_blurb": "Services in Mount Airy.",
+    "address": "Mount Airy Historic District, Mt Airy, MD 21771",
+    "city": "Mount Airy",
+    "state": "MD",
+    "postal_code": "",
+    "municipality": "mount-airy",
+    "geom": {
+      "lng": -77.1546566,
+      "lat": 39.3765852
+    },
+    "website": "https://www.mountairymainstreet.org/",
+    "google_place_id": "ChIJq12ENvEsyIkRji5or4Eg-qo",
+    "feature_score": 5,
+    "updated_at": "2026-06-16"
   }
 ]
