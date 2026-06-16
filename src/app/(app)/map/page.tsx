@@ -540,9 +540,13 @@ async function BrowseMapArea({
           // first thing they see.
           autoOpenList={Boolean(intent)}
           recenterToKnownLocation={Boolean(intent)}
-          // Pinpoint-first: with no intent filter, open the map CLEAN and
-          // let the user add what they want (vs. dumping all ~1,700 pins).
-          pinpointDefault={!intent}
+          // Show the county by default — never an empty map. The curated
+          // places ride a CLUSTERED source, so "all ~1,700" reads as a
+          // handful of tidy numbered bubbles that answer "what's here?" at a
+          // glance and break apart as you zoom; the chips then REFINE rather
+          // than gate. (Was pinpoint-first: blank until you tapped a chip,
+          // which assumed you didn't want to see anything yet.)
+          pinpointDefault={false}
         >
           {/* In-context filter UI — passed as children so it overlays
               only the map column, never the desktop list pane. */}
