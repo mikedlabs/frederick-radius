@@ -40,6 +40,7 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 import { eventsLive, type EventWithMeta } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { isUtilityEvent } from "@/lib/event-kind";
+import { isEventToday } from "@/lib/eventWhenLabel";
 import { easternWallToUtcISO } from "@/lib/tz";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -290,9 +291,15 @@ export default async function HomePage({
   // shelf below the hero. Only show the featured hero when the active
   // slice actually contains it.
   const sliceItems = slice.items.slice(0, 7);
-  const heroInSlice =
-    featuredEvent && sliceItems.some((e) => e.slug === featuredEvent.slug);
-  const upcomingRest = heroInSlice
+  // Only LEAD with the big feature card when the featured event is actually
+  // TODAY / tonight — /today must never headline a big card for a tomorrow
+  // (or later) event. Otherwise the lead event just rides along as a tile.
+  const showHero = Boolean(
+    featuredEvent &&
+      sliceItems.some((e) => e.slug === featuredEvent.slug) &&
+      isEventToday(featuredEvent.starts_at, now),
+  );
+  const upcomingRest = showHero
     ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
     : sliceItems;
 
@@ -523,9 +530,9 @@ export default async function HomePage({
           cta="See all"
           eyebrow="What's on"
         >
-          {heroInSlice || upcomingRest.length > 0 ? (
+          {showHero || upcomingRest.length > 0 ? (
             <div className="space-y-3">
-              {heroInSlice && featuredEvent && (
+              {showHero && featuredEvent && (
                 <EventCard event={featuredEvent} variant="feature" />
               )}
               {upcomingRest.length > 0 && (

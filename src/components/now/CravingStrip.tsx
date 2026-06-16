@@ -3,15 +3,16 @@ import {
   Coffee,
   IceCream,
   Utensils,
-  Pizza,
   Cookie,
   Beer,
   Trees,
   ShoppingBag,
+  ShoppingCart,
   Palette,
   Martini,
   ParkingCircle,
   Train,
+  Bus,
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
@@ -36,11 +37,11 @@ const ICONS: Record<string, LucideIcon> = {
   Coffee,
   IceCream,
   Utensils,
-  Pizza,
   Cookie,
   Beer,
   Trees,
   ShoppingBag,
+  ShoppingCart,
   Palette,
 };
 
@@ -115,11 +116,17 @@ export default function CravingStrip() {
           </span>
           <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Parking</span>
         </Link>
-        <Link href="/transit" aria-label="MARC and transit" className={TILE} style={TILE_STYLE}>
+        <Link href="/transit" aria-label="MARC train" className={TILE} style={TILE_STYLE}>
           <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
             <Train className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
           </span>
-          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>MARC &amp; transit</span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>MARC</span>
+        </Link>
+        <Link href="/transit" aria-label="TransIT bus" className={TILE} style={TILE_STYLE}>
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
+            <Bus className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
+          </span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Transit</span>
         </Link>
         {/* A missing noun routes to the full picker, never a dead end. */}
         <Link
