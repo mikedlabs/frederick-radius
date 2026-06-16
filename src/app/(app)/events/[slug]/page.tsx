@@ -208,10 +208,10 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
           className="flex items-center gap-2 rounded-[var(--app-radius-md)] px-4 py-2.5 text-[13px] font-semibold"
           style={{
             background: eventStatus === "cancelled"
-              ? "color-mix(in srgb, var(--app-negative, #C0392B) 16%, var(--app-bg-elevated))"
-              : "color-mix(in srgb, var(--app-warning, #B8860B) 16%, var(--app-bg-elevated))",
-            color: eventStatus === "cancelled" ? "var(--app-negative, #C0392B)" : "var(--app-warning, #B8860B)",
-            border: `1px solid ${eventStatus === "cancelled" ? "var(--app-negative, #C0392B)" : "var(--app-warning, #B8860B)"}`,
+              ? "color-mix(in srgb, var(--app-danger) 16%, var(--app-bg-elevated))"
+              : "color-mix(in srgb, var(--app-warning) 16%, var(--app-bg-elevated))",
+            color: eventStatus === "cancelled" ? "var(--app-danger)" : "var(--app-warning)",
+            border: `1px solid ${eventStatus === "cancelled" ? "var(--app-danger)" : "var(--app-warning)"}`,
           }}
         >
           <Ban className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden />

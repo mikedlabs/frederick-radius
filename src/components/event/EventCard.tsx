@@ -91,7 +91,7 @@ export default function EventCard({
   const statusText = statusLabel(status);
   const isCancelled = status === "cancelled";
   // Badge palette: red for cancelled, amber for postponed.
-  const statusBg = isCancelled ? "var(--app-negative, #C0392B)" : "var(--app-warning, #B8860B)";
+  const statusBg = isCancelled ? "var(--app-danger)" : "var(--app-warning)";
   // Accent MUST be a hex literal — used in templates like `${accent}38`
   // to compose color-with-alpha. A CSS var() fallback would produce
   // invalid CSS. An unrecognized/blank category resolves to a NEUTRAL

@@ -25,8 +25,8 @@ type PulseStatus = {
 };
 
 const TONE_COLOR: Record<PulseStatus["tone"], string> = {
-  alert: "var(--app-negative, #C0392B)",
-  caution: "var(--app-warning, #B8860B)",
+  alert: "var(--app-danger)",
+  caution: "var(--app-warning)",
   quiet: "var(--app-positive)",
 };
 
