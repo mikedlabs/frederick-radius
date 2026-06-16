@@ -46,7 +46,7 @@ import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import { AnswerCard } from "@/components/answer";
-import { buildTodayAnswers, TODAY_EXPLORE_FALLBACK } from "@/lib/answers/defaultTodayAnswers";
+import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
 import { PARKING_GARAGES } from "@/data/parking-garages";
 
 /**
@@ -328,12 +328,10 @@ export default async function HomePage({
 
   // The day's ANSWERS lead (open now, tonight, weekend). Parking + transit
   // are no longer separate answer links here — they live as one-tap tiles in
-  // the "I want…" grid (CravingStrip).
+  // the "I want…" grid (CravingStrip). When nothing is data-backed for the
+  // next 24 hours the section self-hides — /today is a today-scoped briefing,
+  // so an evergreen "explore the whole field guide" card has no place here.
   const leadAnswers = todayAnswers.filter((a) => a.status !== "parking" && a.status !== "transit").slice(0, 3);
-  // Never an empty front door: at off-hours with nothing data-backed, lead
-  // with one honest evergreen "explore" card instead of a blank section, so
-  // the answer-first promise holds at 11am as well as 6pm.
-  const answerCards = leadAnswers.length > 0 ? leadAnswers : [TODAY_EXPLORE_FALLBACK];
 
   // When the active slice is empty, nudge to a DIFFERENT slice that
   // actually has events — never back to the same (empty) one, which is
@@ -407,21 +405,21 @@ export default async function HomePage({
             production, and a visible feature that does not work is the
             worst element on a site). The omnibox in the header carries
             search; this section now leads with the answers themselves. */}
-        {answerCards.length > 0 && (
+        {leadAnswers.length > 0 && (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {answerCards.map((a, i) => (
+            {leadAnswers.map((a, i) => (
               <AnswerCard
                 key={a.id}
                 answer={a}
                 featured={i === 0}
                 plate={
-                  // The full-bleed county photo hero is earned by a TODAY-scoped
-                  // lead (tonight's event) OR the evergreen explore fallback —
-                  // turning the empty-state lead into a beautiful field-guide
-                  // doorway instead of a plain text box. (The old positional
-                  //  `i === 0` gate let a non-today card inherit the Ken Burns
-                  //  plate; this keeps the plate honest.)
-                  i === 0 && (a.status === "tonight" || a.id === "explore") ? (
+                  // Only a TODAY-scoped lead earns the full-bleed photo hero.
+                  // (The old positional `i === 0` gate let a non-today card —
+                  //  e.g. "This weekend" on a quiet Monday — inherit the Ken
+                  //  Burns plate on a page titled "what's worth your time
+                  //  right now." The weekend card is gone now; this keeps the
+                  //  plate honest for any future answer too.)
+                  i === 0 && a.status === "tonight" ? (
                     <SeasonalPhoto
                       season="auto"
                       alt=""
