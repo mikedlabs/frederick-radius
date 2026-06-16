@@ -52,15 +52,19 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
 /**
  * Now — the daily briefing.
  *
- * Spine (post-cleanup pass):
+ * Spine (post-findability pass, top to bottom — matches the render below):
  *
- *   1. Hero          → DateLine + day strip + SkyHero + weather panel
- *   2. MoodTiles     → "in the mood for" 6-up affordance row
- *   3. PartnerApps   → ParkMobile + OpenTable handoffs
- *   4. WorthALook    → one editorial place card
- *   5. When?         → temporal toggle: Now / Tonight / Tomorrow / Weekend
- *   6. Upcoming      → featured event hero + the queue (mode-scoped)
- *   7. From Above    → quiet exit beat → photography book
+ *   1. SkyHero        → time-of-day sky + date/clock + tonight teaser
+ *   2. TodayContext   → slim salutation + golden-hour cue (self-hides)
+ *   3. Answers lead   → anticipatory AnswerCards (tonight / weekend)
+ *   4. LocationPrime  → the ONE location consent (self-hides once granted)
+ *   5. CravingStrip   → "I want…" cravings + a "Getting around" utilities row
+ *   6. TodaysDeals    → verified day-of-week specials (self-hides)
+ *   7. NearbyNow      → geo-gated around-you (no second consent button)
+ *   8. CivicAlerts    → worst-first heads-up (self-hides)
+ *   9. TodayMoves     → the single confident "best move now"
+ *  10. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
+ *  11. The full briefing + More for today (collapsed)
  *
  * What got cut in this pass:
  *   • RightNowStrip (On deck)    — overlapped the Upcoming events
@@ -441,7 +445,8 @@ export default async function HomePage({
       </div>
 
       {/* ── RIGHT NOW — the fast lane. "I want ___ right now" one-tap craving
-          tiles (now incl. Parking + MARC/transit) into the nearest open one. */}
+          tiles into the nearest open one, plus a labeled "Getting around" row
+          (Parking / MARC / Transit) so utilities don't read as cravings. */}
       <div className="mt-2">
         <CravingStrip />
       </div>
@@ -684,8 +689,6 @@ export default async function HomePage({
        *  lifted to a top-level section above the full briefing so the page
        *  reads Ask → best move → what's on → details, not a stacked
        *  dashboard with the answer buried in a column. */}
-
-      {/* MoodTiles — "what do you need right now" quick-needs row. */}
 
       {/* Visitor "Stay" door — self-hides for Residents. Kept inline
           (only shows for visitors, so it's not clutter for locals). */}
