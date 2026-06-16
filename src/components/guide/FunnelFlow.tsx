@@ -231,7 +231,7 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
   const totalCount = resultsState.totalCount;
 
   const sortLabel =
-    sort === "nearest" ? "nearest first" : sort === "rated" ? "top rated" : geo.status === "granted" ? "best nearby" : "top picks";
+    sort === "nearest" ? "nearest first" : sort === "rated" ? "top rated" : geo.status === "granted" ? "nearby & well-loved" : "by rating";
   // Sort label leads (the data-honesty promise); the count trails as quiet
   // supporting detail rather than headlining the subtitle.
   const resultsSub = !ready
@@ -522,7 +522,7 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
             )}
             {geo.status === "denied" && (
               <p className="-mt-1 pb-3 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-                Location is off, so this shows our top picks. Turn it on for the best nearby.
+                Location is off, so this shows places ranked by rating. Turn it on to sort by what&apos;s nearest.
               </p>
             )}
             {!ready ? (
@@ -616,8 +616,8 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
                     : sort === "rated"
                       ? "Highest-rated first (enough reviews to be real). Tap any for hours, photos & reviews."
                       : geo.status === "granted"
-                        ? "Ranked by the best balance of nearby & well-loved. Tap any for hours, photos & reviews."
-                        : "Ranked by our most useful, best-reviewed picks. Turn on location for the best nearby."}
+                        ? "Ranked by what's both nearby & well-loved. Tap any for hours, photos & reviews."
+                        : "Sorted by rating. Turn on location to sort by distance."}
                 </motion.p>
               </motion.div>
             )}
