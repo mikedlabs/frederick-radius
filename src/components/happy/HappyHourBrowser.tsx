@@ -61,19 +61,30 @@ function PhotoFallback() {
   );
 }
 
-/** Dense field-guide row: 52px thumb + name·town, then the time (accent mono)
- *  and the FULL deal. On-now gets a red edge + a "till X" flag. */
-function RowCard({ r, when, live, endsAt }: { r: HHRow; when: string; live?: boolean; endsAt?: number }) {
+// A deterministic accent per town so each town reads as its own colored
+// "chapter" of the guide (same family the Saved page uses).
+const TOWN_ACCENTS = ["#A03A22", "#2F5470", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
+function townAccent(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return TOWN_ACCENTS[Math.abs(h) % TOWN_ACCENTS.length];
+}
+
+/** Dense field-guide row: a colored chapter rail + 52px thumb, then the venue,
+ *  the time (accent mono), and the FULL deal. On-now gets a red rail + a
+ *  "till X" flag; otherwise the rail takes the town's chapter color. */
+function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: string; live?: boolean; endsAt?: number; accent?: string; hideTown?: boolean }) {
+  const rail = live ? "var(--app-brand)" : accent ?? "var(--app-border)";
   return (
     <article
-      className="tactile-interactive relative flex gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2"
+      className="tactile-interactive relative flex gap-2.5 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-2 pl-3"
       style={{
         borderColor: live ? "color-mix(in srgb, var(--app-brand) 34%, var(--app-border))" : "var(--app-border)",
         boxShadow: "var(--app-edge), var(--app-hi)",
       }}
     >
-      {/* On-now accent rail. */}
-      {live && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] rounded-l-[var(--app-radius-md)]" style={{ background: "var(--app-brand)" }} />}
+      {/* Chapter / on-now accent rail. */}
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: rail }} />
       <Link href={`/places/${r.slug}`} className="block outline-none"><span className="absolute inset-0" aria-hidden /></Link>
       <div className="relative h-[52px] w-[52px] shrink-0 overflow-hidden rounded-[10px]">
         {r.photo ? <Image src={r.photo} alt="" fill sizes="52px" className="object-cover" /> : <PhotoFallback />}
@@ -82,7 +93,7 @@ function RowCard({ r, when, live, endsAt }: { r: HHRow; when: string; live?: boo
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="min-w-0 truncate text-[14px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
             {r.name}
-            {r.town && <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>{`  ·  ${r.town}`}</span>}
+            {!hideTown && r.town && <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>{`  ·  ${r.town}`}</span>}
           </h3>
           {live ? (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.06em] text-white" style={{ background: "var(--app-brand)" }}>
@@ -121,15 +132,33 @@ export default function HappyHourBrowser({ rows, today, nowMin }: { rows: HHRow[
   const varies = useMemo(() => rows.filter((r) => r.windows.length === 0), [rows]);
 
   const forDay = useMemo(() => {
-    const list = parsed
+    const isToday = day === today;
+    type Item = { r: HHRow; ws: HHWindowLite[]; live: boolean; endsAt?: number };
+    const list: Item[] = parsed
       .map((r) => ({ r, ws: dayWindows(r, day) }))
       .filter((x) => x.ws.length > 0)
-      .sort((a, b) => a.ws[0].start - b.ws[0].start);
-    const isToday = day === today;
-    const live = isToday ? list.filter((x) => x.ws.some((w) => nowMin >= w.start && nowMin < w.end)) : [];
-    const liveSlugs = new Set(live.map((x) => x.r.slug));
-    const upcoming = list.filter((x) => !liveSlugs.has(x.r.slug));
-    return { live, upcoming, isToday, total: list.length };
+      .map((x) => {
+        const liveWin = isToday ? x.ws.find((w) => nowMin >= w.start && nowMin < w.end) : undefined;
+        return { r: x.r, ws: x.ws, live: Boolean(liveWin), endsAt: liveWin?.end };
+      });
+    // Group the day's spots into TOWN chapters.
+    const groups = new Map<string, Item[]>();
+    for (const it of list) {
+      const town = it.r.town || "Frederick County";
+      (groups.get(town) ?? groups.set(town, []).get(town)!).push(it);
+    }
+    // Within a town: on-now first, then by start time.
+    for (const arr of groups.values()) {
+      arr.sort((a, b) => Number(b.live) - Number(a.live) || a.ws[0].start - b.ws[0].start);
+    }
+    // Town order: towns with something on-now first, then by count, then name.
+    const towns = [...groups.entries()].sort((a, b) => {
+      const al = a[1].some((x) => x.live), bl = b[1].some((x) => x.live);
+      if (al !== bl) return al ? -1 : 1;
+      if (b[1].length !== a[1].length) return b[1].length - a[1].length;
+      return a[0].localeCompare(b[0]);
+    });
+    return { towns, isToday, total: list.length };
   }, [parsed, day, today, nowMin]);
 
   return (
@@ -175,14 +204,27 @@ export default function HappyHourBrowser({ rows, today, nowMin }: { rows: HHRow[
             No verified happy hours on {DAY_FULL[day]} yet. Try another day.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {forDay.live.map(({ r, ws }) => (
-              <li key={r.slug}><RowCard r={r} when={fmtWindows(ws)} live endsAt={ws.find((w) => nowMin >= w.start && nowMin < w.end)?.end} /></li>
-            ))}
-            {forDay.upcoming.map(({ r, ws }) => (
-              <li key={r.slug}><RowCard r={r} when={fmtWindows(ws)} /></li>
-            ))}
-          </ul>
+          <div className="space-y-3.5">
+            {forDay.towns.map(([town, items]) => {
+              const color = townAccent(town);
+              return (
+                <section key={town} className="space-y-2">
+                  {/* Town chapter header — the field-guide "chapter" band in the
+                      town's own color (matches the Saved page grammar). */}
+                  <header className="flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-3 py-1.5" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
+                    <span aria-hidden className="block h-5 w-1.5 shrink-0 rounded-full" style={{ background: color }} />
+                    <h3 className="min-w-0 flex-1 truncate font-serif text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>{town}</h3>
+                    <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{items.length}</span>
+                  </header>
+                  <ul className="space-y-2">
+                    {items.map(({ r, ws, live, endsAt }) => (
+                      <li key={r.slug}><RowCard r={r} when={fmtWindows(ws)} live={live} endsAt={endsAt} accent={color} hideTown /></li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            })}
+          </div>
         )}
       </div>
 
