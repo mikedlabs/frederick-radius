@@ -222,7 +222,11 @@ export async function runSeed(): Promise<SeedSummary> {
     });
   }
 
-  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
+  // pg_trgm lives in the dedicated `extensions` schema, never public (Supabase
+  // advisory; drizzle/0008_move_pg_trgm_out_of_public.sql does the move on an
+  // existing DB). On a fresh DB this creates it there directly.
+  await db.execute(sql`CREATE SCHEMA IF NOT EXISTS extensions`);
+  await db.execute(sql`CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions`);
 
   return {
     municipalities: MUNICIPALITIES.length,

@@ -510,7 +510,9 @@ export const business_updates = pgTable(
 
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
--- CREATE EXTENSION IF NOT EXISTS pg_trgm;
--- CREATE INDEX places_name_trgm_idx ON places USING GIN (name gin_trgm_ops);
+-- pg_trgm lives in the extensions schema (NOT public — Supabase advisory),
+-- so qualify the opclass: extensions.gin_trgm_ops.
+-- CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
+-- CREATE INDEX places_name_trgm_idx ON places USING GIN (name extensions.gin_trgm_ops);
 -- CREATE INDEX places_fts_idx ON places USING GIN (to_tsvector('english', coalesce(name,'') || ' ' || coalesce(description,'')));
 -- CREATE INDEX events_fts_idx ON events USING GIN (to_tsvector('english', coalesce(title,'') || ' ' || coalesce(description,'')));`;
