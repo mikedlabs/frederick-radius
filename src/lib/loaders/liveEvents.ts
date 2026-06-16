@@ -15,7 +15,8 @@ import {
   fetchTicketmasterSports,
 } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
-import { venueEventsAsCards } from "@/lib/loaders/venueEvents";
+import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
+import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -123,11 +124,12 @@ export async function getLiveCardEventBySlug(
   // 6 of 45 listing links dead). Same fail-soft pattern as the index:
   // a hung provider degrades to [], never throws. All four fetches are
   // HTTP-cached upstream, so this shares the index's cache entries.
-  const [ical, tmMusic, tmSports, bit] = await Promise.all([
+  const [ical, tmMusic, tmSports, bit, sqRaw] = await Promise.all([
     getLiveEvents(windowDays).then((r) => r.events).catch(() => [] as LiveEvent[]),
     fetchTicketmasterMusic().catch(() => [] as LiveEvent[]),
     fetchTicketmasterSports().catch(() => [] as LiveEvent[]),
     fetchBandsintownForArtists([]).catch(() => [] as LiveEvent[]),
+    fetchSquarespaceVenueEvents(windowDays).catch(() => []),
   ]);
   const events = [...ical, ...tmMusic, ...tmSports, ...bit];
   // Clean stored slug first (the canonical form a card links to).
@@ -139,11 +141,15 @@ export async function getLiveCardEventBySlug(
     hit = events.find((e) => liveEventSlug(e) === slug);
   }
   if (hit) return liveToCardEvent(hit);
-  // FIFTH source: extracted venue lineups (the Weinberg's cinema/talk
-  // slate — TED Democracy Live, The Age of Innocence). The listing folds
-  // venueEventsAsCards into the same unified set, so its slugs are
-  // first-class listing links and must resolve here too. These are
-  // already EventWithMeta cards with their slug stamped — match directly.
-  const venueHit = venueEventsAsCards(new Date()).find((c) => c.slug === slug);
+  // FIFTH + SIXTH sources: extracted venue lineups — the committed
+  // venue-events.json snapshot (the Weinberg's cinema/talk slate) AND the
+  // runtime Squarespace `?format=json` lineups (The Banyan). The listing
+  // folds BOTH into the same unified set, so their slugs are first-class
+  // links and must resolve here too. Both are already EventWithMeta cards
+  // with their slug stamped — match directly.
+  const venueHit = [
+    ...venueEventsAsCards(new Date()),
+    ...venueEventsToCards(sqRaw),
+  ].find((c) => c.slug === slug);
   return venueHit ?? null;
 }

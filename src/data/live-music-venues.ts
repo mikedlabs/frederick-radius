@@ -27,6 +27,13 @@ export type LiveMusicVenue = {
   slug: string;
   /** Public iCal/webcal feed for per-show ingestion, when one exists. */
   ical?: string;
+  /** Squarespace events page URL (no `?format=json` suffix). Squarespace
+   *  exposes a clean structured JSON of the events collection at
+   *  `<url>?format=json` (an `upcoming` array of dated shows) — concrete
+   *  dated events, not RRULE-recurring, so they ingest at RUNTIME via
+   *  src/lib/integrations/squarespace-live.ts (no cron, kept fresh hourly
+   *  by ISR), unlike the venue iCal exports that this parser can't expand. */
+  squarespace?: string;
   /** How shows are published when there's no machine feed (honest note). */
   scheduleNote?: string;
 };
@@ -65,9 +72,10 @@ export const LIVE_MUSIC_VENUES: LiveMusicVenue[] = [
   { slug: "attaboy-beer-frederick",             scheduleNote: "attaboybeer.com" },
   { slug: "citizens-ballroom",                  scheduleNote: "Facebook events" },
   // Open downtown now; live music most Fri & Sat ~9 PM (cover bands + regional
-  // acts) on a Squarespace page (thebanyanmd.com/livemusic) with per-event
-  // .ics but no master feed, so it stays scrape-tier, not wire-first.
-  { slug: "the-banyan-frederick",               scheduleNote: "Live music most Fri & Sat, 9 PM" },
+  // acts) on a Squarespace events page. No master iCal, but the page exposes
+  // a clean structured JSON (`?format=json` → `upcoming[]`), so the lineup
+  // ingests at runtime (squarespace-live.ts) and stays fresh on its own.
+  { slug: "the-banyan-frederick",               squarespace: "https://www.thebanyanmd.com/livemusic", scheduleNote: "Live music most Fri & Sat, 9 PM" },
 
   // ── Wineries / farm breweries (weekend live music, seasonal) ──
   { slug: "linganore-winecellars-mount-airy",   scheduleNote: "Wine & music festivals (Mission Tix)" },
@@ -90,4 +98,10 @@ export const LIVE_MUSIC_VENUE_SLUGS: ReadonlySet<string> = new Set(
 /** The subset with a machine-readable iCal feed — the per-show ingest spine. */
 export const LIVE_MUSIC_ICAL_FEEDS = LIVE_MUSIC_VENUES.filter(
   (v): v is LiveMusicVenue & { ical: string } => Boolean(v.ical),
+);
+
+/** The subset with a Squarespace events page — ingested at runtime from the
+ *  page's `?format=json` `upcoming[]` feed (see squarespace-live.ts). */
+export const LIVE_MUSIC_SQUARESPACE_VENUES = LIVE_MUSIC_VENUES.filter(
+  (v): v is LiveMusicVenue & { squarespace: string } => Boolean(v.squarespace),
 );
