@@ -154,6 +154,110 @@ export const Landmark: FC<GlyphProps> = (p) => (
   </Svg>
 );
 
+/** Worship — a chapel with a cross and a round window. */
+export const Church: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 2.5V6M10.5 4h3" />
+    <path d="M6.5 11 12 6.5 17.5 11" />
+    <path d="M8 11v9h8v-9" />
+    <path d="M6.5 20h11" />
+    <path d="M10.5 20v-4a1.5 1.5 0 0 1 3 0v4" />
+    <circle cx="12" cy="13.6" r="1.1" {...HATCH} />
+  </Svg>
+);
+
+/** Shopping — a bag with handles. */
+export const ShoppingBag: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M6 8h12l-1 11H7Z" />
+    <path d="M9.5 8V6.5a2.5 2.5 0 0 1 5 0V8" />
+    <path d="M6.6 11.5h10.8" {...HATCH} />
+  </Svg>
+);
+
+/** Wellness — a heart with a soft highlight. */
+export const Heart: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 20C12 20 4 15 4 9.2 4 6.9 5.9 5 8.2 5c1.6 0 3.1 1 3.8 2.3C12.7 6 14.2 5 15.8 5 18.1 5 20 6.9 20 9.2 20 15 12 20 12 20Z" />
+    <path d="M7.6 9.2A2.2 2.2 0 0 1 9.8 7" {...HATCH} />
+  </Svg>
+);
+
+/** Arts & public art — a painter's palette. */
+export const Palette: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 4C7 4 3.5 7.2 3.5 11s3.5 6.5 7.5 6.5c1.3 0 1.8-1 1.3-1.9-.5-.9.2-1.6 1.1-1.6H17.5c1.7 0 3-1.4 3-3.1C20.5 7 16.7 4 12 4Z" />
+    <circle cx="7.6" cy="10.2" r="1" fill="currentColor" stroke="none" fillOpacity={0.55} />
+    <circle cx="10.2" cy="7.6" r="1" fill="currentColor" stroke="none" fillOpacity={0.55} />
+    <circle cx="14.4" cy="7.8" r="1" fill="currentColor" stroke="none" fillOpacity={0.55} />
+  </Svg>
+);
+
+/** Theater — a stage mask. */
+export const Theater: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M7 5.5h10v5.5a5 6 0 0 1-10 0Z" />
+    <path d="M9.5 12.5a3 2.2 0 0 0 5 0" {...HATCH} />
+    <circle cx="9.8" cy="9.2" r="0.6" fill="currentColor" stroke="none" fillOpacity={0.7} />
+    <circle cx="14.2" cy="9.2" r="0.6" fill="currentColor" stroke="none" fillOpacity={0.7} />
+  </Svg>
+);
+
+/** Galleries — a framed landscape. */
+export const Gallery: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M5 6h14v12H5Z" />
+    <path d="M5 15.5 9 11.5l3 3 3-3.5 4 4" />
+    <circle cx="8.5" cy="9.5" r="1.2" />
+  </Svg>
+);
+
+/** Libraries — an open book. */
+export const Library: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 7.5C10 6 6.5 6 4.5 7.2V18C6.5 16.8 10 16.8 12 18" />
+    <path d="M12 7.5C14 6 17.5 6 19.5 7.2V18C17.5 16.8 14 16.8 12 18" />
+    <path d="M12 7.5V18" />
+    <path d="M6.5 10h3.4M14 10h3.4" {...HATCH} />
+  </Svg>
+);
+
+/** Lodging — a turned-down bed. */
+export const Hotel: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M4 9v9" />
+    <path d="M4 18v-6h12a4 4 0 0 1 4 4v2" />
+    <path d="M4 15.5h16" />
+    <path d="M6 12v-1.5a1 1 0 0 1 1-1h2.5a1 1 0 0 1 1 1V12" {...HATCH} />
+    <path d="M4.5 18v1.5M19.5 18v1.5" />
+  </Svg>
+);
+
+/** Civic & government — a windowed public building. */
+export const CivicBuilding: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M6 20V7l6-3 6 3v13" />
+    <path d="M5 20h14" />
+    <path d="M11 20v-3.2h2V20" />
+    <path d="M9 10.5h1.6M13.4 10.5H15M9 13.5h1.6M13.4 13.5H15" {...HATCH} />
+  </Svg>
+);
+
+/** Public safety — a shield with a check. */
+export const Shield: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M12 3 19 5.5V11c0 4.8-3.3 7.8-7 9.4C8.3 18.8 5 15.8 5 11V5.5Z" />
+    <path d="M9 11.5 11 13.6 15.2 9" {...HATCH} />
+  </Svg>
+);
+
+/** Sports & fitness — a heartbeat line. */
+export const Activity: FC<GlyphProps> = (p) => (
+  <Svg {...p}>
+    <path d="M3 12h3.5l2-5 3.5 10 2-5H21" />
+  </Svg>
+);
+
 /** The registry the icon seam reads. Keys = categories.ts `icon` strings. */
 export const GLYPHS: Record<string, FC<GlyphProps>> = {
   Utensils: EatDrink,
@@ -168,4 +272,16 @@ export const GLYPHS: Record<string, FC<GlyphProps>> = {
   Apple,
   Music,
   Landmark,
+  Church,
+  ShoppingBag,
+  Heart,
+  Palette,
+  Theater,
+  ImageIcon: Gallery,
+  Library,
+  Hotel,
+  Building: CivicBuilding,
+  Building2: CivicBuilding,
+  ShieldCheck: Shield,
+  Activity,
 };
