@@ -1,45 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { CalendarDays, Moon, Music, Baby, Ticket, Palette, Trees, Building2 } from "lucide-react";
-import { eventsLive, type EventWithMeta } from "@/lib/loaders/events";
+import { Building2 } from "lucide-react";
+import { eventsLive } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { classifyEvent } from "@/lib/events/classify";
 import { buildHorizonBounds } from "@/lib/eventHorizon";
 import { parseViewState, type ViewState } from "@/lib/view-state";
 import EventsExplorer from "@/components/event/EventsExplorer";
 import EventCard from "@/components/event/EventCard";
-import WeekendVibes from "@/components/event/WeekendVibes";
-import TonightRail from "@/components/event/TonightRail";
-import EventWeekRibbon from "@/components/event/EventWeekRibbon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 import { itemListJsonLd } from "@/lib/seo/jsonld";
 import PageBloom from "@/components/ui/PageBloom";
-import IconStamp from "@/components/ui/IconStamp";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
-
-/**
- * One honest "why it matters" line for the hero — the first sentence of
- * the event's own description, trimmed to a clause length that reads as
- * a caption, not a paragraph. Returns undefined when there's nothing to
- * say, so the hero never shows a fabricated or empty line (the HONESTY
- * RULE: only ever restyle data that's already there).
- */
-function whyItMatters(e: EventWithMeta): string | undefined {
-  const desc = (e.description ?? "").trim();
-  if (!desc) return undefined;
-  // The raw "Event date: … Event Time: … Location:" feed dump is stripped at
-  // the loader boundary now (cleanDescription in lib/events/normalize), so by
-  // here `desc` is already clean — the old render-time regex guard is gone.
-  // First sentence (up to the first ., ! or ?), else the whole thing.
-  const m = desc.match(/^.*?[.!?](?=\s|$)/);
-  let line = (m ? m[0] : desc).trim();
-  // Guard against a runaway "sentence" (some feeds omit punctuation).
-  if (line.length > 150) line = `${line.slice(0, 147).trimEnd()}…`;
-  return line || undefined;
-}
 
 /**
  * Slim an event before it crosses into a client component.
@@ -75,37 +49,29 @@ export const metadata: Metadata = {
 export const revalidate = 600;
 
 /**
- * /events — TIERED, progressively-disclosed front-of-the-county.
+ * /events — DISCOVERY-FIRST: one premium masthead + one results region.
  *
- * The old page led with a flat, equal-weight list — "a spreadsheet with
- * nicer shoes." This redesign leads with the ANSWER, not the calendar,
- * and maps visual weight to importance so the page reads as tiered and
- * calm instead of a wall.
+ * The previous page ran FIVE overlapping schemes (Best-next feature, week
+ * ribbon, Tonight rail, Weekend-by-vibe, mood tiles, Later-this-week) that
+ * each re-sliced the SAME events on top of a collapsed explorer — the
+ * sprawl that made it "hard to understand." This collapses to:
  *
- * Composition, top to bottom (each tucked behind a CollapsibleSection
- * with a count, so secondary weight is present but never dumped):
+ *   1. HEADER — the almanac nameplate (dateline + serif title + mono count
+ *      + vermilion tick). Server-rendered, premium, typography-first.
+ *   2. THE BOARD — EventsExplorer promoted to the page body (no longer a
+ *      collapsed power tool): quick doorways (Today / This weekend / Live
+ *      music / Free / Happy hour / Family / Civic) steer ONE reflowing
+ *      horizon spine (feature lead + glance cards), with map + search +
+ *      lenses on the same filtered set. Every event lands in exactly once.
+ *   3. GOVERNMENT & NOTICES — civic meetings + town reminders + the
+ *      municipal series, fenced off at the bottom, collapsed.
+ *   4. HONESTY FOOTER — what feeds, where to submit.
  *
- *   1. MASTHEAD — eyebrow + serif H1 + Plan / Month-view pivots.
- *   2. WEEK STRIP — 7-day rail; tap a day to deep-link the explorer.
- *   3. "TONIGHT" (open) — ONE hero event (the soonest, photo or
- *      category-art) carrying a real "why it matters" line, plus a
- *      highlights rail of what's starting soon. When the evening is
- *      empty the hero honestly leads with the next event up.
- *   4. "THIS WEEKEND" (open) — glance cards grouped by VIBE
- *      (music / food / family / arts / outdoors / civic).
- *   5. "LATER THIS WEEK" (collapsed) — the rest of the next 7 days,
- *      as a dense glance list. "Show N more."
- *   6. "BROWSE & SEARCH ALL EVENTS" (collapsed) — the full explorer
- *      (search, lenses, map, calendar) as the power tool, not the
- *      lead.
- *   7. "CIVIC & MUNICIPAL CALENDAR" (collapsed) — the long tail of
- *      meetings, recurring pickups, municipal notices. Tucked.
- *   8. HONESTY FOOTER — what feeds, where to submit.
- *
- * Server-rendered. Pure data composition; the explorer is the only
- * client browse surface and owns its own filter state via URL params.
- * HONESTY: every card, time, and "why it matters" line is restyled
- * from data already present — nothing is invented.
+ * Server-rendered shell; the explorer is the client browse surface and
+ * owns its filter state via URL params. HONESTY: every card + time is
+ * restyled from data already present — nothing is invented. Photos for the
+ * feature lead + the premium vibe-doorway TILES + the prominent county-map
+ * toggle are the next passes (PR3b/PR3c).
  */
 export default async function EventsIndexPage({
   searchParams,
@@ -194,102 +160,9 @@ export default async function EventsIndexPage({
   const initialDay =
     dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
 
-  // ── Tier windows (ms; absolute arithmetic, DST-safe) ────────────────
-  const nowMs = +now;
-  const todayEndMs = +todayEnd;
-  const weekendStartMs = +friday;
-  const weekendEndMs = +monday;
-  const weekEndMs = nowMs + 7 * 864e5;
-  const startsMs = (e: EventWithMeta) => +new Date(e.starts_at);
-
-  // HERO — lead with the ANSWER. The soonest upcoming event carries the
-  // hero card (the feature variant renders category art when there's no
-  // photo, so the page leads with a real event even when nothing is
-  // photo-backed — the old "no photo → cold SeasonalPhoto" gap). Live
-  // events sort first via allEvents' chronological order + the live set.
-  // Prefer the soonest event that actually STARTS in the future, so the
-  // featured card never leads with a past start date (e.g. a multi-day
-  // event that began last week). Falls back to the soonest in-progress
-  // event only when nothing upcoming is left.
-  // Belt-and-suspenders hero guard: even within the public lane, the ONE
-  // lead card for "What's worth going to?" should never be an internal /
-  // members-only item that the classifier can't reasonably lane as civic
-  // (luncheons, annual/board meetings, orientations, fundraiser breakfasts).
-  // Skip those for the lead; fall back gracefully so the hero never goes
-  // empty. (Review P0: the page led with a committee planning luncheon.)
-  const HERO_INELIGIBLE =
-    /\b(luncheon|annual\s+meeting|board\s+meeting|orientation|info(rmation)?\s+session|members?\s+only|fundraiser\s+(breakfast|luncheon)|staff\s+meeting|ribbon\s+cutting)\b/i;
-  const upcoming = (e: EventWithMeta) => +new Date(e.starts_at) >= nowMs;
-  const heroEvent: EventWithMeta | null =
-    allEvents.find((e) => upcoming(e) && !HERO_INELIGIBLE.test(e.title ?? "")) ??
-    allEvents.find(upcoming) ??
-    allEvents[0] ??
-    null;
-
-  // "Today" — events still to come TODAY (now → next Eastern midnight),
-  // tonight included. Bounded to today, not a rolling +24h, so the
-  // section never silently includes tomorrow. Drives the count + rail.
-  const todayEvents = allEvents.filter((e) => {
-    const t = startsMs(e);
-    return t >= nowMs && t < todayEndMs;
-  });
-  // Highlights rail under the hero: what's starting soonest. Prefer
-  // today; if the day is thin, widen to the soonest upcoming so the
-  // rail still answers "what's next." Hero is excluded so it isn't
-  // shown twice.
-  const highlightPool = (todayEvents.length >= 3 ? todayEvents : allEvents)
-    .filter((e) => e.slug !== heroEvent?.slug)
-    .slice(0, 8);
-
-  // "This weekend" — Fri 5pm → Mon, grouped by vibe downstream.
-  const weekendEvents = allEvents.filter((e) => {
-    const t = startsMs(e);
-    return t >= weekendStartMs && t < weekendEndMs;
-  });
-
-  // "Later this week" — the rest of the next 7 days that isn't already
-  // surfaced as Tonight or This weekend, so the tiers don't repeat. The
-  // hero is excluded too. Collapsed by default ("Show N more").
-  const shownSlugs = new Set<string>([
-    ...(heroEvent ? [heroEvent.slug] : []),
-    ...todayEvents.map((e) => e.slug),
-    ...weekendEvents.map((e) => e.slug),
-  ]);
-  const laterThisWeek = allEvents.filter((e) => {
-    const t = startsMs(e);
-    return t >= nowMs && t < weekEndMs && !shownSlugs.has(e.slug);
-  });
-
-  // ── Browse by mood — category slugs derived from the categories
-  // actually present, so a mood tile never deep-links to an empty
-  // filtered view (a mood with no match is simply omitted). Music /
-  // family / arts / outdoors map to real event categories; Free and
-  // Civic are handled separately (a free-only filter and the civic lane).
-  const moodCats = (re: RegExp) =>
-    categories.filter((c) => re.test(`${c.slug} ${c.name}`.toLowerCase())).map((c) => c.slug);
-  const musicCats = moodCats(/music|concert|band|\bdj\b|orchestra|symphony/);
-  const familyCats = moodCats(/family|kid|child|youth|story/);
-  const artsCats = moodCats(/\bart|theat|museum|galler|craft|cultur|film|comedy|dance|exhibit/);
-  const outdoorCats = moodCats(/outdoor|park|trail|hike|farm|market|festiv|nature|garden|run/);
-  const moodTiles: { label: string; Icon: typeof Music; accent: string; href: string }[] = [
-    ...(musicCats.length ? [{ label: "Live music", Icon: Music, accent: "#7E2C6F", href: `/events?cats=${musicCats.join(",")}` }] : []),
-    ...(familyCats.length ? [{ label: "Family", Icon: Baby, accent: "#C99632", href: `/events?cats=${familyCats.join(",")}` }] : []),
-    { label: "Free", Icon: Ticket, accent: "#1E6B3A", href: "/events?free=1" },
-    ...(artsCats.length ? [{ label: "Arts", Icon: Palette, accent: "#7E2C6F", href: `/events?cats=${artsCats.join(",")}` }] : []),
-    ...(outdoorCats.length ? [{ label: "Outdoors", Icon: Trees, accent: "#1E6B3A", href: `/events?cats=${outdoorCats.join(",")}` }] : []),
-    // Civic only when the #civic-meetings anchor actually renders (same gate
-    // as the section at line ~501), so on a thin civic day the tile can't
-    // scroll-to-nothing like the gated Music/Family/Arts/Outdoors tiles.
-    ...((civicEvents.length > 0 || reminderEvents.length > 0)
-      ? [{ label: "Civic", Icon: Building2, accent: "#2F5470", href: "#civic-meetings" }]
-      : []),
-  ];
-
-  // The Browse explorer opens automatically when arriving on a filtered
-  // deep-link (a mood tile, free-only, or a day), so the filter is visible
-  // instead of hidden inside a collapsed section.
-  const browseOpen =
-    (initialView.cats?.length ?? 0) > 0 || sp.get("free") === "1" || !!initialDay;
+  // Masthead dateline — Eastern "Mon · Jun 15" for the almanac nameplate.
+  const dlWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(now);
+  const dlDate = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" }).format(now);
 
   // Structured data (June-9 audit P2): the listing as an ItemList of the
   // next public events, mirroring what the page renders.
@@ -306,191 +179,65 @@ export default async function EventsIndexPage({
       />
       <PageBloom variant="warm-cool" />
 
-      {/* ── 1. HERO — compacted to a single tight line. The question +
-          its hand-picked subline now sit on one row beside the Month-view
-          pivot, trading the old two-line stack of air for a denser
-          masthead so the week ribbon + lead card pull up the page. */}
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1
-            className="font-serif text-[24px] font-semibold leading-[1.08] tracking-tight text-balance"
-            style={{ color: "var(--app-ink)" }}
-          >
-            What&rsquo;s worth going to?
-          </h1>
-          <p className="mt-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Live from county calendars and venue feeds.
-          </p>
+      {/* ── HEADER — the almanac nameplate. Premium masthead: a hairline
+          rule, a "Frederick County / Mon · Jun 15" dateline, the serif
+          title dropping into an italic continuation, a mono count, and a
+          single vermilion accent tick. Typography carries it; high contrast
+          on the deepened paper ground. */}
+      <header className="pt-0.5">
+        <div
+          aria-hidden
+          className="h-px"
+          style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }}
+        />
+        <div className="flex items-center justify-between py-2.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>
+            Frederick County
+          </span>
+          <span className="font-mono text-[10.5px] tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
+            {dlWeekday} &middot; {dlDate}
+          </span>
         </div>
-        <Link
-          href="/events/calendar"
-          className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold"
-          style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)" }}
+        <h1
+          className="font-serif text-[32px] font-semibold leading-[0.98] tracking-[-0.02em]"
+          style={{ color: "var(--app-ink)" }}
         >
-          <CalendarDays className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-          Month
-        </Link>
+          What&rsquo;s on
+          <span className="block font-medium italic" style={{ color: "var(--app-ink-2)" }}>
+            around Frederick
+          </span>
+        </h1>
+        <p className="mt-2 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+          <span style={{ color: "var(--app-brand-press)" }}>{allEvents.length}</span> events &middot;{" "}
+          <span style={{ color: "var(--app-brand-press)" }}>{towns.length}</span> towns
+        </p>
+        <div
+          aria-hidden
+          className="mt-2.5 h-[3px] w-[42px] rounded-full"
+          style={{ background: "var(--app-brand)", boxShadow: "0 1px 4px color-mix(in srgb, var(--app-brand) 40%, transparent)" }}
+        />
       </header>
 
-      {/* ── 2. BEST NEXT — the lead. One large editorial card for the
-          soonest worthwhile event, carrying a real "why it matters" line.
-          Always visible (not behind a collapsible), so the page opens on
-          the answer, never on a calendar. */}
-      {heroEvent && (
-        <section aria-label="Next up" className="space-y-2">
-          <header className="flex items-center gap-2">
-            <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-brand)" }} />
-            <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              {todayEvents.length === 0 ? "Next up" : "On tonight"}
-            </h2>
-          </header>
-          <EventCard
-            event={heroEvent}
-            variant="feature"
-            live={liveSlugs.includes(heroEvent.slug)}
-            whyItMatters={whyItMatters(heroEvent)}
-          />
-        </section>
-      )}
-
-      {/* ── WEEK RIBBON — the density trick, BELOW the lead so "Next up"
-          opens the page (never calendar-first). A slim whole-week row: seven
-          frosted cells with weekday + numeral + live event count; tapping a
-          day deep-links the explorer to ?d=YYYY-MM-DD. A jump-to-a-day
-          navigator, not the lead. */}
-      <EventWeekRibbon events={allEvents} activeDay={initialDay} />
-
-      {/* ── 3. TONIGHT — only when there's actually something left today.
-          A short photo-led marquee of what's starting soon, not the whole
-          day's list. Self-hides on a quiet night. */}
-      {todayEvents.length > 0 && highlightPool.length > 0 && (
-        <section aria-label="Tonight" className="space-y-2.5">
-          <header className="flex items-center gap-2">
-            <Moon className="h-4 w-4" strokeWidth={2.25} style={{ color: "var(--app-cool)" }} aria-hidden />
-            <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-              More tonight
-            </h2>
-          </header>
-          <TonightRail events={highlightPool} />
-        </section>
-      )}
-
-      {/* ── 4. THIS WEEKEND — expanded, grouped by VIBE so the weekend
-          reads by feel (music / food / family / arts / outdoors /
-          civic), not as a flat chronological wall. */}
-      {weekendEvents.length > 0 && (
-        <CollapsibleSection
-          title="This weekend"
-          count={weekendEvents.length}
-          countLabel={weekendEvents.length === 1 ? "event" : "events"}
-          countAriaOnly
-          storageKey="fr.events.weekend"
-          defaultOpen
-        >
-          <WeekendVibes events={weekendEvents} liveSlugs={liveSlugs} />
-        </CollapsibleSection>
-      )}
-
-      {/* ── 4b. BROWSE BY MOOD — a calm entry into the rest of the
-          calendar by feel, not by date. Each tile deep-links a filtered
-          view (and opens the explorer below); Civic jumps to the
-          separated civic lane. Tiles with no matching events are omitted
-          upstream, so a tap never lands on an empty list. */}
-      <section aria-label="Browse by mood" className="space-y-2.5">
-        <header className="flex items-center gap-2">
-          <span aria-hidden className="inline-block h-[18px] w-[3px] rounded-full" style={{ background: "var(--app-ink-3)" }} />
-          <h2 className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Browse by mood
-          </h2>
-        </header>
-        {/* Frosted/translucent fluid doorways — denser than the old solid
-            tiles: a translucent accent-washed fill over backdrop-blur, a
-            hairline edge + soft top highlight + a quiet lift, matching the
-            Saved page's fluid-card grammar. 3-across with a tighter gap so
-            more moods sit above the fold. The smaller IconStamp + inline
-            label keep each tile shallow. */}
-        <div className="grid grid-cols-3 gap-2">
-          {moodTiles.map(({ label, Icon, accent, href }) => (
-            <Link
-              key={label}
-              href={href}
-              className="tactile tactile-interactive flex flex-col items-start gap-1.5 rounded-[var(--app-radius-lg)] p-2.5 backdrop-blur-md"
-              style={{
-                background: `linear-gradient(155deg, color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 70%)`,
-                boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
-              }}
-            >
-              <IconStamp accent={accent} size="sm">
-                <Icon aria-hidden />
-              </IconStamp>
-              <span className="text-[13px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-                {label}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* ── 5. LATER THIS WEEK — the rest of the next 7 days, COLLAPSED
-          ("Show N more"). Dense glance list; the long body of the week
-          without crowding the lead tiers. */}
-      {laterThisWeek.length > 0 && (
-        <CollapsibleSection
-          title="Later this week"
-          count={laterThisWeek.length}
-          countLabel={laterThisWeek.length === 1 ? "event" : "events"}
-          countAriaOnly
-          storageKey="fr.events.later"
-          defaultOpen={false}
-        >
-          <ol className="space-y-2">
-            {laterThisWeek.slice(0, 24).map((e) => (
-              <li key={e.slug}>
-                <EventCard event={e} variant="glance" live={liveSlugs.includes(e.slug)} />
-              </li>
-            ))}
-            {laterThisWeek.length > 24 && (
-              <li className="px-1 pt-1 text-center">
-                <Link
-                  href="/events/calendar"
-                  className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
-                  style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
-                >
-                  {laterThisWeek.length - 24} more on the calendar &rarr;
-                </Link>
-              </li>
-            )}
-          </ol>
-        </CollapsibleSection>
-      )}
-
-      {/* ── 6. BROWSE & SEARCH ALL EVENTS — the full explorer (search,
-          lenses, map, calendar) as the power tool, COLLAPSED so it
-          never opens as the lead. Everything above is the curated
-          answer; this is "let me dig." */}
-      <CollapsibleSection
-        title="Browse & search all events"
-        count={allEvents.length}
-        countLabel="upcoming"
-        storageKey="fr.events.browse"
-        defaultOpen={browseOpen}
-      >
-        <EventsExplorer
-          events={allEvents}
-          liveSlugs={liveSlugs}
-          categories={categories}
-          towns={towns}
-          nowISO={now.toISOString()}
-          // next24ISO carries end-of-today (next Eastern midnight) so the
-          // explorer's "Today" group matches the lead tier and never
-          // includes tomorrow. (Prop name is historical, not a rolling +24h.)
-          next24ISO={todayEnd.toISOString()}
-          weekendStartISO={friday.toISOString()}
-          weekendEndISO={monday.toISOString()}
-          initialView={initialView}
-          initialDay={initialDay}
-        />
-      </CollapsibleSection>
+      {/* ── THE BOARD — the explorer IS the page body now. It was a
+          collapsed "Browse & search" power tool buried beneath five tiered
+          sections (Best-next, week ribbon, Tonight rail, Weekend vibes,
+          mood tiles, Later-this-week) that each re-sliced the SAME events —
+          the sprawl that made the page hard to understand. Those are gone;
+          the explorer's quick doorways + reflowing horizon spine (feature
+          lead + glance cards) + map + search are now the single results
+          region, so every event lands in exactly one place. */}
+      <EventsExplorer
+        events={allEvents}
+        liveSlugs={liveSlugs}
+        categories={categories}
+        towns={towns}
+        nowISO={now.toISOString()}
+        next24ISO={todayEnd.toISOString()}
+        weekendStartISO={friday.toISOString()}
+        weekendEndISO={monday.toISOString()}
+        initialView={initialView}
+        initialDay={initialDay}
+      />
 
       {/* ── 6b. GOVERNMENT & NOTICES — civic meetings + town reminders,
           fenced off from social discovery by a clear divider + label so
