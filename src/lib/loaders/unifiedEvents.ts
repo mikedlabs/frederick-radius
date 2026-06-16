@@ -37,6 +37,7 @@ import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
 import { isPublicEvent } from "@/lib/events/classify";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
+import { unstable_cache } from "next/cache";
 
 export type UnifiedEvents = {
   /** Full deduplicated set, BEFORE public/civic laning (the /events page
@@ -46,7 +47,7 @@ export type UnifiedEvents = {
   publicEvents: EventWithMeta[];
 };
 
-export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
+async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
 
   const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, squarespaceRaw] = await Promise.all([
@@ -103,4 +104,23 @@ export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
   );
 
   return { unified, publicEvents: unified.filter(isPublicEvent) };
+}
+
+// Cache the whole assembly per 5-minute bucket so /today + /events stop paying
+// the multi-feed fetch (~8s on a cold/uncached render) on EVERY request. The
+// cached value is the same serializable EventWithMeta set the pages already
+// ship across the RSC boundary to client components, so it round-trips
+// through the data cache cleanly. `now` is rounded to a 300s bucket (the cache
+// key), matching revalidate, so within a window every render is a HIT and the
+// page is fast even though it renders dynamically. The pages still window the
+// set against the REAL now (eventsForMode), so "tonight/weekend" stay exact.
+// Bump "unified-events-v1" if the assembled shape changes (CLAUDE.md rule).
+const cachedAssemble = unstable_cache(
+  (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
+  ["unified-events-v1"],
+  { revalidate: 300 },
+);
+
+export async function assembleUnifiedEvents(now: Date): Promise<UnifiedEvents> {
+  return cachedAssemble(Math.floor(now.getTime() / 300_000));
 }
