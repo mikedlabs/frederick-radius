@@ -460,12 +460,19 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
     haversineMeters(p.geom, { lng: e.lng, lat: e.lat }) <= 2000
       ? { lng: e.lng, lat: e.lat }
       : p.geom;
-  // Category correction: Google's primaryType is authoritative — it
-  // fixes the DFP miscategorization that no name heuristic can (a
-  // coffee shop with no "coffee" in its name, a hotel filed under
-  // shopping, etc.). Conservative: only confident Google types map;
-  // a vague type returns null and the existing category is kept.
-  const category = categoryFromPrimaryType(e.primary_type) ?? p.category;
+  // Category correction precedence:
+  //   1. An explicit human category patch (places-overrides.json) is the
+  //      FINAL word — per the overrides contract, patches win over every
+  //      automated normalizer, including Google's primaryType. This is what
+  //      lets a curator fix a contractor that Google labels
+  //      "home_improvement_store" (a funeral home, an HVAC installer, a
+  //      coworking space) that no type heuristic would get right.
+  //   2. Otherwise Google's primaryType fixes the DFP miscategorization that
+  //      no name heuristic can (a coffee shop with no "coffee" in its name).
+  //      Conservative: only confident Google types map; a vague type returns
+  //      null and the existing category is kept.
+  const category =
+    OV_PATCH?.[p.slug]?.category ?? categoryFromPrimaryType(e.primary_type) ?? p.category;
   // Curated editorial voice (seed/manual) is kept; for DFP + Google-
   // discovered, Google's real one-line description replaces the
   // scraped/placeholder blurb ("Coffee in Thurmont"). Never blank,
