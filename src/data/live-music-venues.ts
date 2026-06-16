@@ -64,7 +64,10 @@ export const LIVE_MUSIC_VENUES: LiveMusicVenue[] = [
   { slug: "ott-house-emmitsburg",               scheduleNote: "Mon/Tue/Fri — Facebook" },
   { slug: "attaboy-beer-frederick",             scheduleNote: "attaboybeer.com" },
   { slug: "citizens-ballroom",                  scheduleNote: "Facebook events" },
-  { slug: "the-banyan-frederick",               scheduleNote: "Opening 2026 — regional touring acts" },
+  // Open downtown now; live music most Fri & Sat ~9 PM (cover bands + regional
+  // acts) on a Squarespace page (thebanyanmd.com/livemusic) with per-event
+  // .ics but no master feed, so it stays scrape-tier, not wire-first.
+  { slug: "the-banyan-frederick",               scheduleNote: "Live music most Fri & Sat, 9 PM" },
 
   // ── Wineries / farm breweries (weekend live music, seasonal) ──
   { slug: "linganore-winecellars-mount-airy",   scheduleNote: "Wine & music festivals (Mission Tix)" },
