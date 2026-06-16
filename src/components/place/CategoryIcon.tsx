@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { GLYPHS } from "@/components/glyphs";
 
 /**
  * The category's real Lucide icon, by slug. Replaces the emoji glyph
@@ -42,6 +43,10 @@ export default function CategoryIcon({
   strokeWidth?: number;
 }) {
   const name = CATEGORY_BY_SLUG[slug]?.icon ?? "";
+  // Bespoke engraved glyph first (it bakes its own stroke, so strokeWidth is
+  // intentionally not forwarded); otherwise the Lucide icon, else MapPin.
+  const Glyph = GLYPHS[name];
+  if (Glyph) return <Glyph className={className} style={style} aria-hidden />;
   const Icon = MAP[name] ?? MapPin;
   return <Icon className={className} style={style} strokeWidth={strokeWidth} aria-hidden />;
 }
