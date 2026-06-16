@@ -1125,7 +1125,9 @@ export default function AppMap({
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => haptic("light")}
-              className="inline-flex max-w-full items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold shadow-[var(--app-shadow-2)] backdrop-blur"
+              // Capped so a long venue name can't stretch the chip into the
+              // top-right zoom controls; the name itself truncates within it.
+              className="inline-flex max-w-[calc(100%-7rem)] items-center gap-2 rounded-full border px-3.5 py-1.5 text-[12px] font-semibold shadow-[var(--app-shadow-2)] backdrop-blur"
               style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.95)", color: "var(--app-ink-2)" }}
             >
               <span aria-hidden style={{ color: "var(--app-cool)" }}>→</span>

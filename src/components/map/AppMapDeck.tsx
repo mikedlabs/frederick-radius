@@ -821,29 +821,38 @@ export default function AppMapDeck({
           <ul className="flex flex-wrap items-center gap-2 py-0.5">
             {AMENITY_GROUPS.map((g) => {
               const on = amenityGroups.has(g.key);
+              // Registered-ahead-of-data kinds (Pools, Dog stations) render
+              // dimmed + disabled with a "soon" tag, never an empty toggle
+              // that turns on and shows nothing on the map.
+              const soon = g.comingSoon === true;
               return (
                 <li key={g.key}>
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      if (soon) return;
                       setAmenityGroups((prev) => {
                         const next = new Set(prev);
                         if (next.has(g.key)) next.delete(g.key);
                         else next.add(g.key);
                         return next;
-                      })
-                    }
-                    aria-pressed={on}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.96]"
+                      });
+                    }}
+                    aria-pressed={soon ? undefined : on}
+                    disabled={soon}
+                    title={soon ? `${g.label} — coming soon` : undefined}
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.96] disabled:cursor-default"
                     style={{
                       background: on ? "var(--app-cool)" : "var(--app-bg-elevated)",
                       color: on ? "white" : "var(--app-ink-2)",
                       border: `1px solid ${on ? "var(--app-cool)" : "var(--app-border)"}`,
                       boxShadow: on ? "var(--app-shadow-1)" : "none",
+                      opacity: soon ? 0.5 : 1,
                     }}
                   >
                     <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>{g.glyph}</span>
                     {g.label}
+                    {soon && <span style={{ fontSize: 9, opacity: 0.8 }}>soon</span>}
                   </button>
                 </li>
               );
