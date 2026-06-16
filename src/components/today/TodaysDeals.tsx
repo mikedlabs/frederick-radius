@@ -8,7 +8,7 @@ import TodaysDealsStack from "@/components/today/TodaysDealsStack";
  * as an Apple-Wallet DECK (overlapping passes that fan open with a spring).
  * Self-hides when nothing runs today (honest empty).
  */
-export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: number }) {
+export default function TodaysDeals({ now, limit = 6 }: { now: Date; limit?: number }) {
   const deals = todaysDeals(now, limit);
   if (deals.length === 0) return null;
   return <TodaysDealsStack deals={deals} weekday={EASTERN_WEEKDAY(now)} />;
