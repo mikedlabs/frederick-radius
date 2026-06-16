@@ -70,21 +70,24 @@ export default function FreshnessChip({
   const isStale = tier === "stale";
   const finalLabel = label || formatAbsolute(new Date(t), isStale);
 
+  // Hue lives on the ICON (graphical, 3:1 is enough); the readable label
+  // uses an ink color that clears AA on cream. The stale state in
+  // particular must not render its amber on small text.
   const palette =
     tier === "fresh"
-      ? { color: "var(--app-positive)", Icon: CheckCircle2 }
+      ? { color: "var(--app-positive)", textColor: "var(--app-positive)", Icon: CheckCircle2 }
       : tier === "recent"
-      ? { color: "var(--app-ink-3)", Icon: Clock }
-      : { color: "var(--app-warning)", Icon: AlertCircle };
+      ? { color: "var(--app-ink-3)", textColor: "var(--app-ink-3)", Icon: Clock }
+      : { color: "var(--app-warning)", textColor: "var(--app-ink-2)", Icon: AlertCircle };
   const { Icon } = palette;
 
   return (
     <span
       className={`inline-flex items-center gap-1 text-[11px] font-medium ${className}`}
-      style={{ color: palette.color }}
+      style={{ color: palette.textColor }}
       title={new Date(t).toLocaleString()}
     >
-      <Icon className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
+      <Icon className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden style={{ color: palette.color }} />
       {finalLabel}
     </span>
   );

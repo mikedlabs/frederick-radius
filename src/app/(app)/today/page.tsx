@@ -554,7 +554,7 @@ export default async function HomePage({
             >
               Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
               {fallbackSlice ? (
-                <Link href={`/today?t=${fallbackSlice}`} className="font-semibold underline" style={{ color: "var(--app-brand)" }}>
+                <Link href={`/today?t=${fallbackSlice}`} className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
                   See what&rsquo;s {SLICE_LABEL[fallbackSlice]}
                 </Link>
               ) : (

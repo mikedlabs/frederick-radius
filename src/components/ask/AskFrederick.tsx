@@ -94,7 +94,7 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
           disabled={!q.trim() || loading}
           aria-label="Ask"
           className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-full transition active:scale-90 disabled:opacity-40"
-          style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
+          style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
         >
           <ArrowUp className="h-4 w-4" strokeWidth={2.5} aria-hidden />
         </button>

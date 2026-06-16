@@ -342,7 +342,7 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
               </span>
               <span
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform group-active:scale-95"
-                style={{ background: "var(--app-brand)", color: "var(--app-on-brand, #fff)" }}
+                style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand, #fff)" }}
                 aria-hidden
               >
                 <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.5} />

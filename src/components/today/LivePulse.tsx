@@ -185,7 +185,7 @@ export async function LivePulseVisitor() {
       <ul className="space-y-1.5">
         {severe.map((i) => (
           <li key={i.id} className="text-xs" style={{ color: "var(--app-ink-2)" }}>
-            <strong style={{ color: "var(--app-warning)" }}>{i.road}:</strong> {i.description.slice(0, 80)}
+            <strong style={{ color: "var(--app-ink)" }}>{i.road}:</strong> {i.description.slice(0, 80)}
           </li>
         ))}
       </ul>

@@ -50,9 +50,9 @@ export default function HoursBlock({
         {!verified && (
           <p
             className="mb-2 flex items-start gap-1.5 text-[11px] leading-relaxed"
-            style={{ color: "var(--app-warning)" }}
+            style={{ color: "var(--app-ink-2)" }}
           >
-            <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
+            <AlertCircle className="mt-0.5 h-3 w-3 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-warning)" }} />
             <span>
               Hours below are <strong>typical</strong> but not confirmed by the business. Always call ahead.
             </span>

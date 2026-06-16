@@ -78,7 +78,7 @@ export default async function MyRadiusPage() {
           <span className="min-w-0 flex-1 truncate text-[13px] font-medium" style={{ color: "var(--app-ink-2)" }}>
             Sync across devices
           </span>
-          <span className="shrink-0 text-[12px] font-semibold transition-transform group-hover:translate-x-0.5" style={{ color: "var(--app-brand)" }}>
+          <span className="shrink-0 text-[12px] font-semibold transition-transform group-hover:translate-x-0.5" style={{ color: "var(--app-brand-press)" }}>
             Magic link →
           </span>
         </Link>

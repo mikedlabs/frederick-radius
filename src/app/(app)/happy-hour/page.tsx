@@ -87,7 +87,7 @@ export default function HappyHourPage() {
             </h1>
             <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
               {onNowCount > 0 ? (
-                <><span className="font-semibold" style={{ color: "var(--app-brand)" }}>{onNowCount} on right now.</span>{" "}Pick a day to see the deal, where to park, and what locals know. Verified means confirmed at the source.</>
+                <><span className="font-semibold" style={{ color: "var(--app-brand-press)" }}>{onNowCount} on right now.</span>{" "}Pick a day to see the deal, where to park, and what locals know. Verified means confirmed at the source.</>
               ) : (
                 <>Pick a day to see the deal, where to park, and what locals know. Verified means confirmed at the source.</>
               )}

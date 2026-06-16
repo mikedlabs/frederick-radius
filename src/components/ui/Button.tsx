@@ -26,7 +26,7 @@ function variantOf(v: Variant): { cls: string; style: CSSProperties } {
     case "primary":
       return {
         cls: "tactile tactile-interactive tactile-lift tactile-glow-brand text-white",
-        style: { backgroundColor: "var(--app-brand)" },
+        style: { backgroundColor: "var(--app-brand-press)" },
       };
     case "secondary":
       return {
