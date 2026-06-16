@@ -1128,18 +1128,17 @@ export default function RadiusBuilder({
         {modeToggle && <div className="flex justify-center pb-1">{modeToggle}</div>}
         {controlCard}
 
-      {/* ── BEST NEAR — the calm sheet lead. Replaces the dumped count
-          ribbon: a clear "Best near {center}" heading + a one-line reach
-          summary, the single strongest nearby place rendered SELECTED (a
-          soft brand glow), and a compact five-item utility row. Results
-          read as chosen, not piled. */}
-      <section aria-label={`Best near ${center.label}`} className="space-y-3">
+      {/* ── WITHIN REACH — the calm sheet lead. A neutral "Within reach of
+          {center}" heading + a one-line reach summary, then the places you can
+          actually get to. No "best" verdict and no single place pre-selected
+          for you: the reader sees what's reachable and picks. */}
+      <section aria-label={`Within reach of ${center.label}`} className="space-y-3">
         <div>
           <h2
             className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Best near {center.label}
+            Within reach of {center.label}
           </h2>
           <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
             {placesReady ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}` : "Finding places"} · {minutes}-min {MODE_VERB[mode]}
@@ -1147,17 +1146,11 @@ export default function RadiusBuilder({
         </div>
 
         {placesReady && displayedInside[0] && (
-          // Plain wrapper, not a <button>: PlaceCard's feature variant
-          // renders its own button (openDetail -> openSheet), so wrapping
-          // it in another button nested interactive controls (invalid HTML
-          // + a hydration error). The glow lives on the div; the card's own
-          // button still opens the same sheet.
-          <div
-            className="rounded-[var(--app-radius-lg)]"
-            style={{ boxShadow: `0 16px 36px -20px color-mix(in srgb, var(--app-brand) 55%, transparent)` }}
-          >
-            <PlaceCard place={displayedInside[0]} variant="feature" />
-          </div>
+          // The lead place renders as a feature card — shown clearly, but no
+          // longer wrapped in the brand "selected" glow that framed it as the
+          // app's single pick. (No wrapping <button>: the feature variant
+          // renders its own button to open the place sheet.)
+          <PlaceCard place={displayedInside[0]} variant="feature" />
         )}
 
         {/* Within reach — the LIVE nearest-of-each-kind for the current
