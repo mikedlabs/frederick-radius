@@ -4,6 +4,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import { eventWhenLabel } from "@/lib/eventWhenLabel";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
+import LiveClock from "./LiveClock";
 
 /**
  * TodayCard — the daily hook at the very top of /now.
@@ -96,6 +97,12 @@ export default async function TodayCard({
 }) {
   const now = new Date();
   const band = bandFor(easternHour(now));
+  const dateStr = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(now);
 
   const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const cur = forecast?.hourly?.[0] ?? null;
@@ -134,14 +141,18 @@ export default async function TodayCard({
 
   return (
     <section aria-label="Today in Frederick" style={{ color: "currentColor" }}>
-      <div className="flex items-start justify-between gap-3">
+      {/* Header row — the page's date / day / time, built into the hero
+          itself (no separate band below). Date is server-rendered; the clock
+          ticks client-side. */}
+      <div className="flex items-center justify-between gap-3 text-meta font-semibold uppercase tracking-[0.14em] opacity-70">
+        <span suppressHydrationWarning>{dateStr}</span>
+        <LiveClock className="font-mono tabular-nums" />
+      </div>
+      <div className="mt-1.5 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-meta font-semibold uppercase tracking-[0.14em] opacity-70">
-            Frederick today
-          </p>
           {/* The hook — greeting + a confident weather mood, in the display
               face. This is the 3-second "I get it" line. */}
-          <h2 className="mt-1 font-serif text-[24px] font-semibold leading-tight tracking-tight sm:text-[28px]">
+          <h2 className="font-serif text-[24px] font-semibold leading-tight tracking-tight sm:text-[28px]">
             {GREETING[band]} {mood}
           </h2>
         </div>
