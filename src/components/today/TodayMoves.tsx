@@ -3,6 +3,7 @@ import { Coffee, MoonStar, Umbrella, Footprints, Sun, Snowflake, ArrowRight } fr
 import type { LucideIcon } from "lucide-react";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
+import { isEventToday } from "@/lib/eventWhenLabel";
 
 /**
  * TodayMoves — the command center (Review #2's headline ask).
@@ -118,13 +119,18 @@ function bestMove(
 export default async function TodayMoves({
   tonightEvent = null,
 }: {
-  tonightEvent?: { slug: string; title: string; venue_name?: string | null } | null;
+  tonightEvent?: { slug: string; title: string; venue_name?: string | null; starts_at: string } | null;
 }) {
   const now = new Date();
   const band = bandFor(easternHour(now));
   const forecast = await getNwsForecast(FREDERICK_CENTER).catch(() => null);
   const cur = forecast?.hourly?.[0] ?? null;
-  const move = bestMove(band, cur?.shortForecast ?? "", cur?.temperature ?? null, tonightEvent);
+  // Only let the event lead as "Best move tonight" when it is ACTUALLY today
+  // — the page hands us the soonest event within 72h, so a Wednesday show
+  // must not headline a Monday evening. Otherwise fall through to the
+  // weather/time-based move (which never claims a false "tonight").
+  const eventTonight = tonightEvent && isEventToday(tonightEvent.starts_at, now) ? tonightEvent : null;
+  const move = bestMove(band, cur?.shortForecast ?? "", cur?.temperature ?? null, eventTonight);
   const PrimaryIcon = move.icon;
 
   return (
