@@ -2,10 +2,45 @@
   "fold": {
     "summitra": "sumittra-thai-cuisine",
     "tagthe-artists-gallery": "tagthe-artists-gallery-frederick",
-    "jraymonds-steakhouse": "wye-oak-tavern-frederick"
+    "jraymonds-steakhouse": "wye-oak-tavern-frederick",
+    "mirage-cafe-grill-restaurant": "bloom-asian-haus",
+    "fountain-rock": "brewers-alley-frederick",
+    "deannadashhairstudio": "dash-hair-studio",
+    "worthington-antiques": "emporium-antiques",
+    "bbt-arena": "ronald-j-volpe-athletic-center",
+    "manhattan-mens-grooming-lounge": "new-york-new-york-hair-salon-spa",
+    "roros-mexican-grill-and-cantina": "plaza-mexico",
+    "the-trolley-stop-brunswick": "potomac-street-grill-brunswick",
+    "perfect-truffle": "rare-morsel",
+    "red-canyon-toll-house": "red-canyon-physical-therapy",
+    "tenth-wards-wedding-event-venue": "tenth-ward-distilling-company",
+    "moms-kitchen-thurmont": "thurmont-kountry-kitchen-thurmont"
   },
-  "remove": [],
-  "keepApart": [],
+  "remove": [
+    "cyclefit-frederick",
+    "manoushe",
+    "south-market-creamery-frederick",
+    "subway-197",
+    "thatsa-wrapp-frederick"
+  ],
+  "keepApart": [
+    "clarity-psychotherapy",
+    "cm3-solutions",
+    "drewskiithebarber",
+    "frederick-magic-theater-lounge-frederick",
+    "healing-circles-wellness-center",
+    "immersion-active",
+    "isabellas-taverna-tapas-bar-frederick",
+    "lifecycle-fitness-studio-frederick",
+    "marianne-riley-psychotherapy",
+    "mdtix",
+    "new-hope-cafe",
+    "tattoo-alchemy",
+    "the-healing-temple",
+    "the-inkery",
+    "united-states-postal-service-66",
+    "wastlers-barber-shop"
+  ],
   "patch": {
     "alice-mccormick-acupuncture": {
       "category": "wellness"
