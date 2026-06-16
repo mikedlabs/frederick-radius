@@ -53,47 +53,58 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
               <Link
                 href={`/places/${d.slug}`}
                 aria-label={`${d.name}: ${d.offer}`}
-                className="tactile-interactive relative block overflow-hidden rounded-[20px] p-3.5"
+                className="tactile-interactive group relative block overflow-hidden rounded-[22px] p-4"
                 style={{
-                  background: `linear-gradient(155deg, color-mix(in srgb, ${color} 92%, #17120c) 0%, color-mix(in srgb, ${color} 54%, #17120c) 100%)`,
-                  boxShadow: "var(--app-elev-2), inset 0 1px 0 rgba(255,255,255,0.14)",
+                  // Vivid in-hue gradient — color up top, deepened toward ink at
+                  // the foot so the fields stay crisp. Not muddied to grey.
+                  background: `linear-gradient(152deg, color-mix(in srgb, ${color} 88%, #fff) 0%, ${color} 34%, color-mix(in srgb, ${color} 58%, #120c08) 100%)`,
+                  // Color-tinted glow so the pass FLOATS, plus a crisp top edge.
+                  boxShadow: `0 14px 30px -12px color-mix(in srgb, ${color} 60%, transparent), 0 2px 8px -2px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.28), inset 0 0 0 1px rgba(255,255,255,0.06)`,
                   color: "#fff",
                 }}
               >
-                {/* Pass header — glyph chip + venue (the "org" line) + trust. */}
-                <div className="flex items-center gap-2">
-                  <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "rgba(255,255,255,0.18)" }}>
-                    <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "rgba(255,255,255,0.94)" }}>
-                    {d.name}
-                  </span>
-                  {d.verified && (
-                    <span className="shrink-0 font-mono text-[9px] font-semibold uppercase tracking-[0.08em]" style={{ color: "rgba(255,255,255,0.82)" }}>
-                      ✓ verified
+                {/* Glassy sheen — a soft diagonal light sweep across the top. */}
+                <span aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "radial-gradient(130% 90% at 0% -10%, rgba(255,255,255,0.30), rgba(255,255,255,0.06) 34%, transparent 58%)" }} />
+                {/* Oversized ghosted category glyph — the pass "logo"/strip; gives
+                    the card material + a field-guide read. Clipped by the card. */}
+                <Icon aria-hidden className="pointer-events-none absolute -bottom-5 -right-3 h-[128px] w-[128px] rotate-[8deg]" strokeWidth={1.25} style={{ color: "#fff", opacity: 0.13 }} />
+
+                <div className="relative">
+                  {/* Pass header — glyph chip + venue (the "org" line) + seal. */}
+                  <div className="flex items-center gap-2">
+                    <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: "rgba(255,255,255,0.22)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)" }}>
+                      <Icon className="h-[15px] w-[15px]" strokeWidth={2.25} />
                     </span>
-                  )}
-                </div>
+                    <span className="min-w-0 flex-1 truncate font-mono text-[10.5px] font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.95)", textShadow: "0 1px 2px rgba(0,0,0,0.22)" }}>
+                      {d.name}
+                    </span>
+                    {d.verified && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[8.5px] font-bold uppercase tracking-[0.1em]" style={{ background: "rgba(255,255,255,0.18)", color: "#fff", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.25)" }}>
+                        ✓ Verified
+                      </span>
+                    )}
+                  </div>
 
-                {/* Primary field — the offer. */}
-                <p className="mt-2.5 line-clamp-2 font-serif text-[17px] font-semibold leading-snug" style={{ color: "#fff", textShadow: "0 1px 2px rgba(0,0,0,0.18)" }}>
-                  {d.offer}
-                </p>
+                  {/* Primary field — the offer. */}
+                  <p className="mt-3 line-clamp-2 font-serif text-[18px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.22)" }}>
+                    {d.offer}
+                  </p>
 
-                {/* Wallet field row — label over value. */}
-                <div className="mt-3 flex items-end gap-6">
-                  {d.hours && (
-                    <div className="shrink-0">
-                      <p className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.62)" }}>When</p>
-                      <p className="font-mono text-[12.5px] font-semibold tabular-nums leading-tight" style={{ color: "#fff" }}>{d.hours}</p>
-                    </div>
-                  )}
-                  {d.town && (
-                    <div className="min-w-0">
-                      <p className="font-mono text-[8.5px] uppercase tracking-[0.12em]" style={{ color: "rgba(255,255,255,0.62)" }}>Where</p>
-                      <p className="truncate text-[12.5px] font-semibold leading-tight" style={{ color: "#fff" }}>{d.town}</p>
-                    </div>
-                  )}
+                  {/* Wallet field row — label over value, on a hairline. */}
+                  <div className="mt-3.5 flex items-end gap-6 border-t pt-2.5" style={{ borderColor: "rgba(255,255,255,0.16)" }}>
+                    {d.hours && (
+                      <div className="shrink-0">
+                        <p className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.66)" }}>When</p>
+                        <p className="font-mono text-[13px] font-semibold tabular-nums leading-tight" style={{ color: "#fff" }}>{d.hours}</p>
+                      </div>
+                    )}
+                    {d.town && (
+                      <div className="min-w-0">
+                        <p className="font-mono text-[8.5px] uppercase tracking-[0.14em]" style={{ color: "rgba(255,255,255,0.66)" }}>Where</p>
+                        <p className="truncate text-[13px] font-semibold leading-tight" style={{ color: "#fff" }}>{d.town}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </Link>
             </li>
