@@ -123,10 +123,12 @@ export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNod
             </Link>
           );
         })}
-        {/* A missing noun routes to the full picker, never a dead end. */}
+        {/* The escape hatch to the full directory — "More…" is clearer than the
+            vague "Something else" about what a tap does (opens every category),
+            and never dead-ends a want that isn't a tile. */}
         <Link
           href="/nearby"
-          aria-label="Something else — open the full picker"
+          aria-label="More — browse every category"
           className={TILE}
           style={TILE_STYLE}
         >
@@ -138,7 +140,7 @@ export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNod
             <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
           </span>
           <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink-2)" }}>
-            Something else
+            More&hellip;
           </span>
         </Link>
       </div>
