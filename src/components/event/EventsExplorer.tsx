@@ -621,75 +621,81 @@ export default function EventsExplorer({
         <div className="space-y-4">
           {horizonGroups.map((g, groupIdx) => {
             const isOpen = openGroups.has(g.key);
-            // One photo-backed FEATURE leads the first group as the
-            // editorial focal point; everything else is a dense,
-            // scannable listing (a printed-guide column, not a wall of
-            // big tiles). Peek 8 rows, expand to 40 — rows are ~⅕ a tile
-            // so a fuller peek no longer reads as endless.
-            const PEEK = 8;
+            // ONE lead per horizon — the next thing in this window — as the
+            // MAIN card; the rest of the window stays collapsed behind a
+            // "Show N more" drop-down, so each timeframe reads as a single
+            // answer you expand on demand (stronger hierarchy than a flat
+            // peek of eight). Group 0's lead is the photo-capable feature;
+            // the others lead with their first event as a glance card.
             const EXPANDED_CAP = 40;
-            const featureIdx =
-              groupIdx === 0 ? g.events.findIndex((e) => Boolean(e.hero_image)) : -1;
-            const feature = featureIdx >= 0 ? g.events[featureIdx] : null;
-            const rest = feature
-              ? g.events.filter((_, i) => i !== featureIdx)
-              : g.events;
-            const shown = isOpen
-              ? rest.slice(0, EXPANDED_CAP)
-              : rest.slice(0, PEEK);
+            const lead = g.events[0];
+            const leadIsFeature = groupIdx === 0;
+            const rest = g.events.slice(1);
+            const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : [];
             const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;
             return (
               <section key={g.key} className="space-y-3">
-                <SectionHeading
-                  title={g.label}
-                  count={g.events.length}
-                  cta={rest.length > PEEK ? (isOpen ? "Show fewer" : `Show all ${rest.length}`) : undefined}
-                  onCtaClick={
-                    rest.length > PEEK ? () => toggleGroup(g.key) : undefined
-                  }
-                />
-                {feature && (
-                  <div className="relative">
-                    {live.has(feature.slug) && (
-                      <span
-                        className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-                        style={{ background: "var(--app-positive)" }}
-                      >
-                        <span className="live-dot" /> Live
-                      </span>
+                <SectionHeading title={g.label} count={g.events.length} />
+                {/* The ONE lead — the main thing in this window. */}
+                <div className="relative">
+                  {live.has(lead.slug) && (
+                    <span
+                      className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+                      style={{ background: "var(--app-positive)" }}
+                    >
+                      <span className="live-dot" /> Live
+                    </span>
+                  )}
+                  <EventCard
+                    event={lead}
+                    variant={leadIsFeature ? "feature" : "glance"}
+                    live={live.has(lead.slug)}
+                  />
+                </div>
+                {/* Drop-down — the rest of this window, one tap away. The
+                    revealed cards animate in (reveal-up); the chevron flips. */}
+                {rest.length > 0 && (
+                  <>
+                    {shown.length > 0 && (
+                      <ol className="reveal-up space-y-2.5">
+                        {shown.map((e) => (
+                          <li key={e.slug}>
+                            <EventCard event={e} variant="glance" live={live.has(e.slug)} />
+                          </li>
+                        ))}
+                      </ol>
                     )}
-                    <EventCard event={feature} variant="feature" />
-                  </div>
-                )}
-                {/* Glance cards — each row carries a thumbnail (the venue's
-                    borrowed photo, or a category graphic when there's no
-                    photo) so the list scans as cards, not a wall of text.
-                    The ultra-dense "Compact" Rolodex is still one tap away
-                    via the view toggle for people who want max density. */}
-                {shown.length > 0 && (
-                  <ol className="space-y-2.5">
-                    {shown.map((e) => (
-                      <li key={e.slug}>
-                        <EventCard event={e} variant="glance" live={live.has(e.slug)} />
-                      </li>
-                    ))}
-                  </ol>
-                )}
-                {/* Overflow nudge — point the long tail at the calendar
-                    instead of dumping every remaining row inline. */}
-                {overflow > 0 && (
-                  <div className="px-1 pt-1 text-center">
-                    <Link
-                      href="/events/calendar"
-                      className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(g.key)}
+                      aria-expanded={isOpen}
+                      className="tactile tactile-interactive flex w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
                       style={{
                         borderColor: "var(--app-border)",
+                        background: "var(--app-bg-elevated)",
                         color: "var(--app-cool)",
                       }}
                     >
-                      {overflow} more on the calendar →
-                    </Link>
-                  </div>
+                      {isOpen ? "Show fewer" : `Show ${rest.length} more`}
+                      <ChevronDown
+                        className="h-4 w-4 transition-transform"
+                        strokeWidth={2.25}
+                        style={{ transform: isOpen ? "rotate(180deg)" : "none" }}
+                        aria-hidden
+                      />
+                    </button>
+                    {overflow > 0 && (
+                      <div className="px-1 pt-1 text-center">
+                        <Link
+                          href="/events/calendar"
+                          className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+                          style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                        >
+                          {overflow} more on the calendar →
+                        </Link>
+                      </div>
+                    )}
+                  </>
                 )}
               </section>
             );
