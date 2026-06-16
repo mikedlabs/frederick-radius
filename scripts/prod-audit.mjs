@@ -57,10 +57,11 @@ const run = async () => {
     }
   } catch (e) { bad(`/sw.js fetch failed: ${e.message}`); }
 
-  // 1. Nav label — the front door is labelled "Ask" (UI facelift; route stays /guide).
+  // 1. Nav — the 4-tab bottom bar (Today · Map · Events · Saved). The Ask/Find
+  //    tab was dropped in #624, so assert the current front-door tab instead.
   try {
     const { html } = await get("/today");
-    check(/<[^>]*>\s*Ask\s*</.test(html), "nav shows 'Ask'", "nav 'Ask' label not found");
+    check(/<[^>]*>\s*Today\s*</.test(html), "nav shows the 'Today' tab", "nav 'Today' tab not found");
   } catch (e) { bad(`/today fetch failed: ${e.message}`); }
 
   // 2. Events laning (#443) — no private/cancelled anywhere in the HTML.
