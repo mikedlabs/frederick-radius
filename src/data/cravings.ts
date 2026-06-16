@@ -38,7 +38,10 @@ export type Craving = {
   match: (p: CravingMatchable) => boolean;
 };
 
-const ICE_CREAM = /ice ?cream|creamery|gelato|scoop|frozen custard|froyo|frozen yogurt|soft serve/i;
+// Brand names with no descriptor (Dairy Queen / DQ) are matched explicitly —
+// "Queen"/"Treat" alone would false-positive, so only the full brand + the \bdq\b
+// word-boundary token are added.
+const ICE_CREAM = /ice ?cream|creamery|gelato|scoop|frozen custard|froyo|frozen yogurt|soft serve|dairy ?queen|\bdq\b/i;
 const PIZZA = /pizza|pizzeria/i;
 const SWEET = /donut|doughnut|fudge|candy|chocolat|dessert|cupcake|pastr|bakery|sweet|cookie|ice ?cream|creamery/i;
 const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market/i;
@@ -89,7 +92,14 @@ export const CRAVINGS: Craving[] = [
     label: "Ice cream",
     icon: "IceCream",
     color: "var(--app-cool)",
-    match: (p) => ICE_CREAM.test(p.name),
+    // Name-matched, but never an outdoors place: "Creamery Park" contains
+    // "creamery" yet is a park, not dessert. Ice cream is a food/treat venue.
+    match: (p) =>
+      ICE_CREAM.test(p.name) &&
+      p.category !== "park" &&
+      p.category !== "trail" &&
+      p.category !== "playground" &&
+      p.category !== "outdoors",
   },
   {
     key: "outside",
