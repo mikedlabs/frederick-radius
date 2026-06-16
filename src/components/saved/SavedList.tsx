@@ -16,7 +16,6 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
 import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route } from "lucide-react";
 import IconStamp from "@/components/ui/IconStamp";
-import ContourPlate from "@/components/ui/ContourPlate";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { isOpenNow } from "@/lib/hours";
@@ -616,7 +615,6 @@ function EmptyState() {
         className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5"
         style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
       >
-        <ContourPlate size={132} className="absolute -right-6 -top-6 opacity-70" />
         <div className="relative max-w-[19rem] space-y-2.5">
           <IconStamp accent="var(--app-brand)" size="md">
             <Bookmark aria-hidden />
