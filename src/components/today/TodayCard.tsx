@@ -76,7 +76,9 @@ function moodLine(condition: string, temp: number | null): string {
   if (temp != null && temp <= 38) return "Cold and clear. Layers today.";
   if (/cloud|overcast/.test(c)) return "Soft, gray light over the county.";
   if (temp != null && temp >= 60 && temp <= 84) return "Patio weather.";
-  return "A good day to get out.";
+  // Time-neutral fallback that never repeats a word with the greeting
+  // ("Good morning. A good day…" doubled "good").
+  return "Made for getting out.";
 }
 
 function fmtTime(d: Date | null): string | null {

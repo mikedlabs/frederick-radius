@@ -25,11 +25,11 @@ export type Craving = {
     | "Coffee"
     | "IceCream"
     | "Utensils"
-    | "Pizza"
     | "Cookie"
     | "Beer"
     | "Trees"
     | "ShoppingBag"
+    | "ShoppingCart"
     | "Palette";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
@@ -40,6 +40,7 @@ export type Craving = {
 const ICE_CREAM = /ice ?cream|creamery|gelato|scoop|frozen custard|froyo|frozen yogurt|soft serve/i;
 const PIZZA = /pizza|pizzeria/i;
 const SWEET = /donut|doughnut|fudge|candy|chocolat|dessert|cupcake|pastr|bakery|sweet|cookie|ice ?cream|creamery/i;
+const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market/i;
 
 export const CRAVINGS: Craving[] = [
   {
@@ -61,14 +62,13 @@ export const CRAVINGS: Craving[] = [
     label: "Food",
     icon: "Utensils",
     color: "var(--app-accent)",
-    match: (p) => p.category === "restaurant" || p.category === "food-truck",
-  },
-  {
-    key: "pizza",
-    label: "Pizza",
-    icon: "Pizza",
-    color: "var(--app-warning)",
-    match: (p) => p.category === "pizza" || PIZZA.test(p.name),
+    // Pizza folded in — a pizzeria is still "I want food," so it's not its
+    // own tile; Food answers it (category pizza OR a pizza/pizzeria name).
+    match: (p) =>
+      p.category === "restaurant" ||
+      p.category === "food-truck" ||
+      p.category === "pizza" ||
+      PIZZA.test(p.name),
   },
   {
     key: "sweets",
@@ -86,7 +86,7 @@ export const CRAVINGS: Craving[] = [
   },
   {
     key: "outside",
-    label: "Outside",
+    label: "Parks",
     icon: "Trees",
     color: "var(--app-positive)",
     match: (p) =>
@@ -107,6 +107,15 @@ export const CRAVINGS: Craving[] = [
       p.category === "shopping" ||
       p.category === "market" ||
       p.category === "book-store",
+  },
+  {
+    // Grocery stores by name (Common Market, Weis, Safeway, MOM's, Food
+    // Lion, Giant, Aldi, Lidl) — distinct from Shops' broad market/retail.
+    key: "grocery",
+    label: "Grocery",
+    icon: "ShoppingCart",
+    color: "var(--app-positive)",
+    match: (p) => GROCERY.test(p.name),
   },
   {
     // ~64 places (gallery 31 + museum 20 + theater 13). Spruce token (not
