@@ -25,7 +25,7 @@ export default function FeaturedTonight({ place }: { place: PlaceCardData | null
         {place.google_photo_url && (
           <Image
             src={place.google_photo_url}
-            alt={cat?.name ? `${place.name} ${cat.name}` : place.name}
+            alt=""
             fill
             priority
             sizes="(max-width: 720px) 100vw, 720px"

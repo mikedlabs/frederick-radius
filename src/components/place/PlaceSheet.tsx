@@ -448,7 +448,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
               >
                 <Image
                   src={u}
-                  alt={`${place.name} photo ${i + 2}`}
+                  alt=""
                   fill
                   loading="lazy"
                   sizes="128px"

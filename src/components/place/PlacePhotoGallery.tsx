@@ -39,7 +39,7 @@ export default function PlacePhotoGallery({
           >
             <Image
               src={url}
-              alt={`${name} photo ${i + 2}`}
+              alt=""
               fill
               loading="lazy"
               sizes="160px"
