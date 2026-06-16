@@ -76,6 +76,25 @@ function OnNowBadge() {
   );
 }
 
+/** The town, as a scannable chip — WHERE is a per-card detail, never a band
+ *  label. `onDark` for use over a photo. */
+function TownChip({ town, onDark }: { town?: string; onDark?: boolean }) {
+  if (!town) return null;
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.07em]"
+      style={
+        onDark
+          ? { background: "rgba(20,16,12,0.55)", color: "#fff" }
+          : { background: "color-mix(in srgb, var(--app-ink) 8%, transparent)", color: "var(--app-ink-2)" }
+      }
+    >
+      <span aria-hidden className="h-1 w-1 rounded-full" style={{ background: "currentColor", opacity: 0.7 }} />
+      {town}
+    </span>
+  );
+}
+
 function PhotoFallback({ rounded }: { rounded?: string }) {
   return (
     <div
@@ -113,6 +132,7 @@ function HappyFeature({ r }: { r: Row }) {
           <div aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(0deg, rgba(16,12,10,0.80) 0%, rgba(16,12,10,0.10) 46%, rgba(16,12,10,0.20) 100%)" }} />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
             <OnNowBadge />
+            <TownChip town={r.town} onDark />
           </div>
           <h2 className="absolute inset-x-0 bottom-0 p-3 font-serif text-[21px] font-semibold leading-tight tracking-tight text-white">
             {r.name}
@@ -124,7 +144,7 @@ function HappyFeature({ r }: { r: Row }) {
           {r.parking && <NoteLine label="Park" clamp={2}>{r.parking}</NoteLine>}
           {r.note && <NoteLine label="Note" clamp={2}>{r.note}</NoteLine>}
           <div className="pt-1.5" style={{ borderTop: "1px solid var(--app-border)" }} />
-          <Footer town={r.town} host={host} verified={r.verified} />
+          <Footer host={host} verified={r.verified} />
         </div>
       </Link>
     </article>
@@ -152,9 +172,10 @@ function HappyRow({ r }: { r: Row }) {
             <span className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[9.5px] tabular-nums" style={{ background: "color-mix(in srgb, var(--app-positive) 14%, transparent)", color: "var(--app-positive)" }}>verified</span>
           ) : null}
         </div>
+        <TownChip town={r.town} />
         <NoteLine label="When" accent mono clamp={1}>{r.schedule}</NoteLine>
         {r.deal && <NoteLine label="Deal" strong clamp={1}>{r.deal}</NoteLine>}
-        <Footer town={r.town} host={host} />
+        <Footer host={host} />
       </div>
     </article>
   );
@@ -251,7 +272,7 @@ export default function HappyHourPage() {
         <>
           <Band title="On right now" rows={onNow} feature />
           <Band title="Starting later today" rows={today} />
-          <Band title="Around the county" rows={rest} />
+          <Band title="On other days" rows={rest} />
         </>
       )}
 
