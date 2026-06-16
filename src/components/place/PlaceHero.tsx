@@ -71,24 +71,17 @@ export default function PlaceHero({
           background: `linear-gradient(135deg, ${color}26 0%, ${color}12 40%, var(--app-bg-sunken) 100%)`,
         }}
       />
-      {/* Topographic-feel overlay (very subtle) */}
-      <svg
+      {/* Soft radial sheen — a single gentle focal glow behind the centered
+          emblem (replaces the old concentric "target ring" stamp, which read
+          as a map crosshair, not a field-guide mark). No motif, just light. */}
+      <div
         aria-hidden
-        viewBox="0 0 600 400"
-        preserveAspectRatio="xMidYMid slice"
-        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.07 }}
-      >
-        <defs>
-          <radialGradient id={`r-${slug}`} cx="50%" cy="50%" r="60%">
-            <stop offset="0%" stopColor={color} stopOpacity="0.0" />
-            <stop offset="100%" stopColor={color} stopOpacity="1" />
-          </radialGradient>
-        </defs>
-        {[40, 90, 140, 200, 260, 320].map((r) => (
-          <circle key={r} cx="320" cy="200" r={r} fill="none" stroke={color} strokeWidth="0.6" />
-        ))}
-        <rect width="600" height="400" fill={`url(#r-${slug})`} />
-      </svg>
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: `radial-gradient(58% 58% at 50% 44%, color-mix(in srgb, ${color} 16%, transparent) 0%, transparent 72%)`,
+        }}
+      />
 
       {/* The hero photo runs through Vercel's image optimizer so every
        *  device gets a WebP at its true pixel size. The source is the
