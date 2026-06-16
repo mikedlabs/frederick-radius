@@ -22,7 +22,7 @@ import CategorySection from "./CategorySection";
  * town and renders the full answer spine.
  *
  * The point this proves: the page ranks from the user's town for real
- * (Best matches uses the balanced `categoryScore`), it is honest when it
+ * (the "Worth your time" lead uses the balanced `categoryScore`), it is honest when it
  * has no context ("Using Downtown Frederick as the default"), and it makes
  * small towns visible without digging ("Across the county").
  */
@@ -49,7 +49,7 @@ export default function CategoryView({
   const total = all.length;
   const openCount = all.filter((p) => isOpenNow(p.open_status)).length;
 
-  // Best matches is the LEAD: a tight 3-up tile row (mixed density — one
+  // "Worth your time" is the LEAD: a tight 3-up tile row (mixed density, one
   // strong lead over the scannable rows below), not a 6-tile block that
   // reads at parity with the dense sections and doubles the mobile scroll.
   //
@@ -113,7 +113,7 @@ export default function CategoryView({
       />
 
       <CategorySection
-        title="Best matches"
+        title="Worth your time"
         color={category.color}
         places={best}
         variant="tile"
