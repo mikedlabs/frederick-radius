@@ -75,11 +75,16 @@ export const AMENITY_GROUPS: {
   label: string;
   glyph: string;
   cats: string[];
+  /** Registered as a filter ahead of its data — the tray renders it dimmed
+   *  and disabled with a "soon" tag instead of an empty toggle that does
+   *  nothing when tapped. Drop this once the points are collected. */
+  comingSoon?: boolean;
 }[] = [
   { key: "restroom", label: "Restrooms", glyph: "\u{1F6BB}", cats: ["restroom"] },
   { key: "water", label: "Water", glyph: "\u{1F4A7}", cats: ["water"] },
   { key: "trash", label: "Trash", glyph: "\u{1F5D1}", cats: ["trash", "recycling"] },
-  { key: "dog", label: "Dog stations", glyph: "\u{1F43E}", cats: ["dog-waste"] },
+  // No dog-waste-station points collected yet — shown as coming soon.
+  { key: "dog", label: "Dog stations", glyph: "\u{1F43E}", cats: ["dog-waste"], comingSoon: true },
   { key: "wifi", label: "Wifi", glyph: "\u{1F4F6}", cats: ["wifi"] },
   { key: "ev", label: "EV charging", glyph: "\u{26A1}", cats: ["ev-charging"] },
   { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
@@ -90,7 +95,7 @@ export const AMENITY_GROUPS: {
   // and filter UI; point data is empty until verified city/county/Y
   // pool addresses + coords are collected. Layer appears in the
   // filter row immediately so the affordance is discoverable.
-  { key: "pool", label: "Pools", glyph: "\u{1F3CA}", cats: ["pool"] },
+  { key: "pool", label: "Pools", glyph: "\u{1F3CA}", cats: ["pool"], comingSoon: true },
   // River gauges — USGS sites surfaced as a map layer so the
   // "Rivers & creeks" data isn't trapped on /rivers alone. Tap a
   // gauge pin to jump to /rivers for live readings + trend.
