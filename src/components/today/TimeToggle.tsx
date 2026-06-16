@@ -1,15 +1,15 @@
-import { Zap, MoonStar, Sunrise, CalendarRange } from "lucide-react";
+import { Zap, MoonStar } from "lucide-react";
 import Pill from "@/components/ui/Pill";
 
 /**
- * TimeToggle — the brand-defining "when?" control at the top of /today.
- * Lets a user pivot the page between Now, Tonight, Tomorrow, and This
- * Weekend in a single tap. Mode lives in the ?t= URL param so the
- * view is shareable.
+ * TimeToggle — the "when?" control on /today. /today is a strictly
+ * next-24-hours briefing (owner call), so it pivots only between Now and
+ * Tonight; Tomorrow + Weekend are beyond today and live on /events ("See
+ * all"). The mode type still admits all four so a shared ?t=weekend deep
+ * link resolves, but the page only offers the two today windows here.
  *
  * Built on the canonical Pill primitive (ink tone, link variant) so it
- * shares the app's one press feel + pending behavior. Renders inside a
- * server component — Pill is a client component, which is fine here.
+ * shares the app's one press feel + pending behavior.
  */
 
 export type TodayTimeMode = "now" | "tonight" | "tomorrow" | "weekend";
@@ -25,8 +25,6 @@ const CHIPS: Array<{
 }> = [
   { key: "now", label: "Now", Icon: Zap },
   { key: "tonight", label: "Tonight", Icon: MoonStar },
-  { key: "tomorrow", label: "Tomorrow", Icon: Sunrise },
-  { key: "weekend", label: "Weekend", Icon: CalendarRange },
 ];
 
 export default function TimeToggle({
