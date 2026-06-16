@@ -19,10 +19,10 @@ const iconFor = (cat?: string): LucideIcon => DEAL_ICON[cat ?? ""] ?? Martini;
 const PALETTE = ["#A03A22", "#2F5E50", "#6E2233", "#3F5680", "#8A5A1C", "#76305F"];
 const colorAt = (i: number): string => PALETTE[i % PALETTE.length];
 
-// Tighter overlap so the deck stays snug (each pass peeks just its header) —
-// the cards-tucked-in-a-wallet read, and it keeps the collapsed deck compact
-// even with more cards.
-const OVERLAP = 108;
+// Light overlap — each stacked pass shows its venue AND the offer (not just a
+// header sliver), so the deals are readable at a glance; the layered wallet
+// look stays, just less buried. Fanning open still reveals the full fields.
+const OVERLAP = 58;
 const SPRING = { type: "spring" as const, stiffness: 360, damping: 38, mass: 0.9 };
 
 /**
