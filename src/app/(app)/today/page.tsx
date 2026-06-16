@@ -5,8 +5,6 @@ import TodayCard from "@/components/today/TodayCard";
 import TodayMoves from "@/components/today/TodayMoves";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
-import LocalNewsRail from "@/components/today/LocalNewsRail";
-import NowDayStrip from "@/components/today/NowDayStrip";
 import NearbyNow from "@/components/today/NearbyNow";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
@@ -28,13 +26,10 @@ import HourlySummary from "@/components/today/HourlySummary";
 import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
-import WeatherMore from "@/components/today/WeatherMore";
-import WeatherMoreGrid from "@/components/today/WeatherMoreGrid";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
 import FromYourSaved from "@/components/today/FromYourSaved";
-import FromAboveCta from "@/components/today/FromAboveCta";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // CreekHairline removed in the pleasant-layout pass — it was a
 // decorative divider between weather/discovery and action; the
@@ -383,25 +378,6 @@ export default async function HomePage({
         <DateLine />
       </div>
 
-      {/* ── RIGHT NOW — the fast lane. "I want ___ right now" as one-tap
-          craving chips that deep-link into /now (nearest open one). The
-          simplest path in the app: say the noun, get the closest open
-          answer. Sits first so a craving never has to dig. */}
-      <div className="mt-3">
-        <CravingStrip />
-      </div>
-
-      {/* ── OPEN + HAPPENING NEAR YOU — the free-evening answer. Time +
-          distance led: one tap shares location, then the nearest OPEN
-          places and live/soon events, true-distance sorted. Revived from
-          an orphaned component (it was built, then mounted nowhere) and
-          made the lead per the 2026 standard: a no-plan evening user wants
-          "what's good right now, near me," not a category directory. The
-          no-geo state is a calm one-action invite, not a wall. */}
-      <div className="mt-3">
-        <NearbyNow />
-      </div>
-
       {/* ── ANSWER-FIRST LEAD (UX_REDO Build 1) ─────────────────────────
           The ask + 3 to 5 anticipatory answer cards are the front door.
           North Star: "Answer my question in one move. Don't make me dig."
@@ -473,6 +449,21 @@ export default async function HomePage({
           </Link>
         )}
       </section>
+
+      {/* ── RIGHT NOW — the fast lane, AFTER the answers. "I want ___ right
+          now" one-tap craving chips into /now (nearest open one). Answer-
+          first ordering: the anticipatory answer cards lead; this is the
+          frictionless follow-on for a known craving. */}
+      <div className="mt-4">
+        <CravingStrip />
+      </div>
+
+      {/* ── OPEN + HAPPENING NEAR YOU — demoted below the answers + craving:
+          it gates on a geolocation prompt, and friction must never sit above
+          a real answer. Its no-geo state is a calm one-action invite. */}
+      <div className="mt-3">
+        <NearbyNow />
+      </div>
 
       {/* ── HEADS UP — high-signal interruption layer, only if needed ────
           "Before you make a plan, is there anything you need to know?"
@@ -592,7 +583,7 @@ export default async function HomePage({
           is one tap away, not the opening wall. Reversible: flip
           defaultOpen, or lift any module back above to taste. */}
       <CollapsibleSection title="The full briefing" storageKey="fr.today.briefing" defaultOpen={false}>
-      <div className="mt-2 flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-5">
+      <div className="mt-2 flex flex-col gap-4">
         {/* ── LEFT column: the weather block. Leads on mobile (weather
             at the top, per the premium-refresh direction) and sits in
             the left column at lg+. ───────────────────────────────── */}
@@ -666,26 +657,24 @@ export default async function HomePage({
               <WeeklyForecast />
             </Suspense>
           </WeeklyCard>
-          <WeatherMore>
-            <Suspense fallback={<Skeleton.Block height={280} round="0" />}>
-              <WeatherMoreGrid />
-            </Suspense>
-          </WeatherMore>
             </div>
             </div>
           );
         })()}
       </div>
 
-      {/* NowDayStrip — the multi-day weather strip. Moved BELOW the
-          cinematic sky fold (it used to sit above SkyHero and broke the
-          "slim header → full-bleed sky" first screen). It now caps the
-          weather column as a quick multi-day glance after the detailed
-          panel. Async (NWS daily forecast → glyph + hi/lo per day);
-          Suspense fallback matches the strip's height. */}
-      <Suspense fallback={<Skeleton.Block height={86} round="var(--app-radius-sm)" />}>
-        <NowDayStrip />
-      </Suspense>
+      {/* Weather DEPTH (the multi-day strip + almanac grid) now lives on
+          /pulse, the civic dashboard that owns it — /today keeps only the
+          cinematic sky + the hourly / 7-day disclosure pills, then hands off.
+          One link instead of a second weather app inside the front door. */}
+      <Link
+        href="/pulse#weather"
+        className="tap-44 mt-1 inline-flex items-center gap-1 px-1 text-[13px] font-semibold"
+        style={{ color: "var(--app-ink-3)" }}
+      >
+        Full forecast &amp; almanac
+        <span aria-hidden>→</span>
+      </Link>
 
         </div>{/* /LEFT column */}
 
@@ -721,10 +710,9 @@ export default async function HomePage({
           <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
             <WorthALook />
           </Suspense>
-          <Suspense fallback={null}>
-            <LocalNewsRail />
-          </Suspense>
-          <FromAboveCta />
+          {/* Local news moved to /pulse (the civic dashboard that owns it) and
+              the From Above drone-book doorway moved off the front door — both
+              are "check when curious," not "find something to do today." */}
         </div>
       </CollapsibleSection>
 
