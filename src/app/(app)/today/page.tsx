@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodayMoves from "@/components/today/TodayMoves";
+import TodaysDeals from "@/components/today/TodaysDeals";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import DateLine from "@/components/today/DateLine";
 import NearbyNow from "@/components/today/NearbyNow";
@@ -456,6 +457,13 @@ export default async function HomePage({
           frictionless follow-on for a known craving. */}
       <div className="mt-4">
         <CravingStrip />
+      </div>
+
+      {/* ── TODAY'S DEALS — the verified, day-of-week-aware specials running
+          today, from the Field Notes moat. The 4pm "what's worth going out
+          for" answer; self-hides when nothing runs today. */}
+      <div className="mt-4">
+        <TodaysDeals now={now} />
       </div>
 
       {/* ── OPEN + HAPPENING NEAR YOU — demoted below the answers + craving:
