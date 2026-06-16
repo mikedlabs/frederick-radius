@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Coffee,
   IceCream,
@@ -72,6 +72,20 @@ export default function RightNow({
   const [cravingKey, setCravingKey] = useState<string | null>(
     initialCraving && CRAVING_BY_KEY[initialCraving] ? initialCraving : null,
   );
+
+  // Arriving straight to an answer from a Today craving tile (?c=coffee skips
+  // the picker) should still ask for location, exactly like tapping a craving
+  // in the picker does — otherwise the deep-link path silently answers "near
+  // Downtown" and the only way to get "near you" is to spot the secondary
+  // button. Ask once, on arrival, when we haven't asked yet.
+  const askedOnArrival = useRef(false);
+  useEffect(() => {
+    if (askedOnArrival.current) return;
+    if (initialCraving && CRAVING_BY_KEY[initialCraving] && state.status === "idle") {
+      askedOnArrival.current = true;
+      request();
+    }
+  }, [initialCraving, state.status, request]);
 
   const hasFix = state.status === "granted";
   const origin = hasFix
