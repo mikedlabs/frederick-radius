@@ -1,4 +1,156 @@
 {
+  "averys-maryland-grille-frederick": {
+    "parking": {
+      "text": "On-site parking is free and ample: there are upper and lower parking lots plus parking on both sides of the street out front. It is a busy crab house, so on peak weekend nights the close spots fill first; use the lower/upper overflow lot rather than circling the front.",
+      "source_url": "https://www.visitmaryland.org/listing/seafood/averys-maryland-grille",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "It is a busy, loud crab house with no table reservations. Get on the waiting list online before you drive over rather than walking in cold on a weekend.",
+        "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d6873944-Reviews-Avery_s_Maryland_Grille_Frederick-Frederick_Maryland.html",
+        "confidence": "medium"
+      },
+      {
+        "text": "Locals point to the cream of crab soup and the crab cakes as the standouts; the seasonal Crab BLT also gets singled out.",
+        "source_url": "https://www.visitmaryland.org/listing/seafood/averys-maryland-grille",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Kegs and Legs (Tuesday): $4 craft draft pints and 25% off crab legs by the pound.",
+        "source_url": "https://averysmarylandgrille.com/nightly-specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Crabby Wednesday: discount on hardshell crabs by the dozen, with an all-you-can-eat (AYCE) option.",
+        "source_url": "https://averysmarylandgrille.com/nightly-specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Oyster Thursday: $1 oysters (raw, steamed, or grilled), available by the half or full dozen.",
+        "source_url": "https://averysmarylandgrille.com/nightly-specials",
+        "confidence": "high"
+      }
+    ]
+  },
+  "belles-sports-bar-grill-frederick": {
+    "insider": [
+      {
+        "text": "Free Pour House Trivia runs Wednesdays at 7 PM (and Saturdays at 6:30 PM) - a good non-game-day reason to come.",
+        "source_url": "https://www.pourhousetrivia.com/belles-sports-bar-wednesday.html",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Family-owned tavern serving Frederick since 1992, with free pool, billiards, darts, World Tavern Poker, Keno and Racetrax alongside the food and beer.",
+        "source_url": "https://eventsfrederick.com/directory/restaurants/belles-sports-bar-grill/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Tuesday: $13 all-you-can-eat steamed shrimp, 5-9 PM. Military & first responders 25% off all day.",
+        "source_url": "https://www.bellessportsbar.com/daily-specials/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Wednesday: $17 BBQ rib dinner.",
+        "source_url": "https://www.bellessportsbar.com/daily-specials/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Thursday: buffalo wing special, 4-10 PM (eat-in only); $4 flavored vodkas. Local restaurant staff 25% off 7 PM-close.",
+        "source_url": "https://www.bellessportsbar.com/daily-specials/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "black-ankle-vineyards-mount-airy": {
+    "insider": [
+      {
+        "text": "Outdoor spaces are dog-friendly (leashed) on the farm; dogs are not allowed indoors unless ADA service animals. Reservations are recommended, especially for the limited indoor seating, though walk-ins are accommodated when possible.",
+        "source_url": "https://www.blackankle.com/visit-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Look for recurring evening programming: First Fridays bring Pizza & Passeggiata and Second Thursdays host The Vineyard Table food-and-wine series; Friday hours run latest (12 PM to 9 PM, with the Terrace Kitchen open from 4 PM).",
+        "source_url": "https://www.exploretock.com/blackankle/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wine available by the glass, bottle, or flight in the tasting room; the rotating Featured Tasting is complimentary for members and their guests at the tasting bars (member tableside tasting is also complimentary, by reservation).",
+        "source_url": "https://www.blackankle.com/visit-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Lawn guests may bring their own picnic blankets, folding chairs, small tables, or pop-up tents, plus their own snacks and non-alcoholic beverages, no outside-food/corkage fee mentioned.",
+        "source_url": "https://www.blackankle.com/visit-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Reserving 14+ days ahead lets you pre-order your first wine selection (and food) by emailing gatherings@blackankle.com so it's ready on arrival.",
+        "source_url": "https://www.blackankle.com/visit-us",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "black-hog-bbq-bar": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 4-6:30 PM",
+      "details": "Discounted wine, beer, rail and specialty cocktails throughout the restaurant.",
+      "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "No dedicated lot. The closest public garage is Carroll Creek Garage (44 E Patrick St), reachable off the first block of S Market St; garages run $1/hour. Metered street parking on Market Street is now ParkMobile-only.",
+      "source_url": "https://www.cityoffrederickmd.gov/FAQ.aspx?QID=60",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "This is the downtown Frederick location at 118 S Market St (240-575-9062); kitchen hours are Sun 11-8, Mon-Thu 11-9, Fri-Sat 11-10.",
+        "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Black Hog runs several Frederick-area locations (Downtown Frederick, Market Square, Urbana, Middletown); confirm you are pricing the Market Street spot, as specials can vary by location.",
+        "source_url": "https://blackhogbbq.com/menu/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Tuesday: full slab of ribs with one side for $25, plus 8 wings for $10.",
+        "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Friday: beef ribs available while supplies last; pre-order recommended.",
+        "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
   "brewers-alley-frederick": {
     "parking": {
       "text": "Park at the Church Street parking garage (17 E Church St) - it sits directly behind Brewer's Alley and is reachable from E Church St or the 100 block of N Market St. City garage rate is about $1/hour ($12 weekday daily max), and downtown garages are typically free on Sundays.",
@@ -26,91 +178,19 @@
       }
     ]
   },
-  "white-rabbit-gastropub": {
-    "happy_hour": {
-      "schedule": "All day Monday; 3-6pm Tuesday-Friday",
-      "details": "Discounts on food and beer. Recent (June 2026) secondary source lists $5 16oz draft pours, $6 margaritas and crushes, and discounted apps ($6 cheesy bread, $7 smash burger sliders, $7 Brussel Crowe). NOTE: deal specifics vary by source and appear to rotate; an older 2019 Frederick News-Post listed a 5-6pm Tue-Fri window with $4 food, $1 Miller High Life, $4 craft cans, $4 Orange Crush, so treat exact prices/window as subject to change and confirm by phone (240-651-1952). The official site (Squarespace) does not publish happy hour on a fetchable page.",
-      "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick-md/",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
+  "brookside-inn-burkittsville": {
     "parking": {
-      "text": "Use the Church Street parking garage. White Rabbit is tucked at the end of a nondescript alley behind several buildings and the Church Street Garage at 18 Market Space, so the garage is the most convenient option; downtown street and lot parking also work.",
-      "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
-      "confidence": "high",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "It is a hidden-gem location: tucked at the end of a nondescript alleyway behind the Church Street Garage. First-timers routinely walk past it, so look for the alley rather than a street-front entrance.",
-        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
-        "confidence": "high"
-      },
-      {
-        "text": "No reservations and weekend waits are common, but sitting at the bar usually gets you seated faster. The upstairs back bar has a quieter, more relaxed vibe for lingering.",
-        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
-        "confidence": "medium"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Brunch served Saturday and Sunday, 11am-3pm (stated on official site).",
-        "source_url": "https://www.whiterabbitgastropub.com/readme",
-        "confidence": "high"
-      },
-      {
-        "text": "All-day Monday happy hour pricing (deals run all day Monday, not just an evening window).",
-        "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick-md/",
-        "confidence": "medium"
-      },
-      {
-        "text": "Pizza Flights: order Detroit-style pizza in groups of 3 slices to sample multiple styles or build your own. The Detroit-style pizza is the signature draw (award-winning per their own site).",
-        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
-        "confidence": "medium"
-      }
-    ]
-  },
-  "madrones": {
-    "happy_hour": {
-      "schedule": "Mon-Fri 3:00-6:00 PM and every night 9:00 PM-close (late-night happy hour). Bar area only.",
-      "details": "Daily: $7 house spirits and $1 off all other drinks. Happy-hour snacks served the same hours (bar area only), e.g. Spinach & Artichoke Dip $9, Hot Crab Dip $12, French Sliders $4 ea, Tiger Wings/Buffalo Wings $13. Day-specific weekly deals (note: windows vary from the 3-6 core): MON $13 burgers + half-price 20oz beers (3-7pm, bar only); TUE $1 off all drinks (3-6pm, bar only); WED half-price bottle wines all day for everyone; THU $8 house martinis (3-7pm, bar only); FRI $1 off all drinks (3-6pm, bar only). The Wednesday wine deal and the late-night happy hour apply beyond the bar/standard window as noted.",
-      "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
-      "confidence": "high",
-      "last_verified": "2026-06-15"
-    },
-    "parking": {
-      "text": "Free parking lot on site. Madrones sits in the Worman's Mill / Clemson Corner retail area at 7810 Worman's Mill Rd (Suite J), so the shared shopping-center lot directly out front is the place to park; no street parking or garage needed.",
-      "source_url": "https://bippermedia.com/restaurants/united-states/maryland/frederick/madrones-reviews-madrones-at-7810-wormans-mill-rd-frederick-md-21701-2/",
+      "text": "Ample on-site parking; it's a roadside neighborhood pub on Jefferson Pike (Rt 180) with its own lot, plus an outdoor patio and deck.",
+      "source_url": "https://www.restaurantji.com/md/jefferson/brookside-inn-inc-/",
       "confidence": "medium",
       "last_verified": "2026-06-15"
     },
     "insider": [
       {
-        "text": "The happy hour and snack menu are bar-area only (the dining room doesn't get the deals), so sit at or near the bar if you came for the specials. The Wednesday half-price wine bottles are the exception that applies everywhere.",
-        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
-        "confidence": "high"
-      },
-      {
-        "text": "It reads more upscale than a strip-mall spot suggests: hickory wood-grilled, hand-cut steaks. The filet mignon, prime rib, and shrimp and grits are the dishes reviewers single out; lighting is on the dark/date-night side.",
-        "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d3723280-Reviews-Madrones-Frederick_Maryland.html",
-        "confidence": "medium"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Wednesday: half-price bottles of wine, all day, for the entire restaurant (not bar-only). This is the standout deal locals flag.",
-        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
-        "confidence": "high"
-      },
-      {
-        "text": "Monday: $13 burgers and half-price 20oz draft beers (3-7pm, bar area only).",
-        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
-        "confidence": "high"
-      },
-      {
-        "text": "Thursday: $8 house martinis (3-7pm, bar area only).",
-        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
-        "confidence": "high"
+        "text": "A friendly little neighborhood roadside pub that welcomes bikers, families, and locals alike. Casual, lively atmosphere with jukebox/DJ music and an outdoor patio and deck.",
+        "source_url": "https://www.restaurantji.com/md/jefferson/brookside-inn-inc-/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
       }
     ]
   },
@@ -151,183 +231,19 @@
       }
     ]
   },
-  "linganore-winecellars-mount-airy": {
-    "parking": {
-      "text": "Free on-site parking in a large lot at 13601 Glissans Mill Rd; reviewers say it is ample and well-organized, with easy exit even during big festivals. On festival/event days, arrive early for a closer spot and a good seat on the open lawn.",
-      "source_url": "https://www.tripadvisor.com/Attraction_Review-g41276-d1936941-Reviews-Linganore_Winecellars-Mount_Airy_Maryland.html",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
+  "cactus-flats-walkersville": {
     "insider": [
       {
-        "text": "You can bring your own picnic food onto the grounds (the winery confirms patrons may bring food); buy a bottle and make a day of it on the lawn. Charcuterie is also sold on-site.",
-        "source_url": "https://www.tripadvisor.com/ShowUserReviews-g41276-d1936941-r787582838-Linganore_Winecellars-Mount_Airy_Maryland.html",
-        "confidence": "medium"
+        "text": "Old-school community roadhouse, not a Mexican spot despite the name — operating on this site since 1929 (originally the Roma Cafe), known as a friendly biker/locals bar where the staff are called 'Cactus Catz.' Kitchen leans grill: steaks and seafood are the local picks.",
+        "source_url": "https://thecatoctinbanner.com/cactus-flats/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
       },
       {
-        "text": "Bring your own chairs (and a pop-up canopy if you have one). Outdoor lawn seating is first-come; regulars set up their own shade. There's also a fenced dog park, so it's genuinely dog-friendly beyond the special Dog Days nights.",
-        "source_url": "https://wanderlog.com/place/details/348563/linganore-winecellars",
-        "confidence": "medium"
-      }
-    ],
-    "deals": [
-      {
-        "text": "50th-anniversary (2026) recurring deal: on the 4th Monday of each month, a bar tasting of five signature wines for $2 (the winery's original 1976 tasting price). 21+, pre-reservation encouraged as space is limited.",
-        "source_url": "https://wineindustryadvisor.com/2026/01/16/linganore-winecellars-toasts-to-50-years-of-maryland-winemaking-in-2026/",
-        "confidence": "high"
-      },
-      {
-        "text": "Free Tour Fridays: complimentary winery tours on the 1st Friday of every month at 2PM and 4PM, after which you can buy a bar tasting or bottle in the tasting room. 21+, pre-reservation encouraged. (Note: separate weekend free tours also run Saturdays & Sundays at 12PM & 4PM.)",
-        "source_url": "https://wineindustryadvisor.com/2026/01/16/linganore-winecellars-toasts-to-50-years-of-maryland-winemaking-in-2026/",
-        "confidence": "high"
-      },
-      {
-        "text": "Food Truck & Music Weekends: rotating local food trucks plus live local musicians every weekend (Fri-Sun); no entrance fee. Music times vary by weekend (example: Fri 5-8pm, Sat/Sun ~1-4pm).",
-        "source_url": "https://www.linganorewines.com/events",
-        "confidence": "high"
-      }
-    ]
-  },
-  "averys-maryland-grille-frederick": {
-    "parking": {
-      "text": "On-site parking is free and ample: there are upper and lower parking lots plus parking on both sides of the street out front. It is a busy crab house, so on peak weekend nights the close spots fill first; use the lower/upper overflow lot rather than circling the front.",
-      "source_url": "https://www.visitmaryland.org/listing/seafood/averys-maryland-grille",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "It is a busy, loud crab house with no table reservations. Get on the waiting list online before you drive over rather than walking in cold on a weekend.",
-        "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d6873944-Reviews-Avery_s_Maryland_Grille_Frederick-Frederick_Maryland.html",
-        "confidence": "medium"
-      },
-      {
-        "text": "Locals point to the cream of crab soup and the crab cakes as the standouts; the seasonal Crab BLT also gets singled out.",
-        "source_url": "https://www.visitmaryland.org/listing/seafood/averys-maryland-grille",
-        "confidence": "medium"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Kegs and Legs (Tuesday): $4 craft draft pints and 25% off crab legs by the pound.",
-        "source_url": "https://averysmarylandgrille.com/nightly-specials",
-        "confidence": "high"
-      },
-      {
-        "text": "Crabby Wednesday: discount on hardshell crabs by the dozen, with an all-you-can-eat (AYCE) option.",
-        "source_url": "https://averysmarylandgrille.com/nightly-specials",
-        "confidence": "high"
-      },
-      {
-        "text": "Oyster Thursday: $1 oysters (raw, steamed, or grilled), available by the half or full dozen.",
-        "source_url": "https://averysmarylandgrille.com/nightly-specials",
-        "confidence": "high"
-      }
-    ]
-  },
-  "roasthouse-pub-frederick": {
-    "parking": {
-      "text": "On-site lot is small and fills fast on Friday/Saturday evenings after 5 PM. Reviewers report overflow options: the Lowe's lot nearby and, per one note, the motel directly behind the pub. The pub sits on Urbana Pike (Route 355) at the south end of Frederick, so it is a drive-up spot, not a walkable downtown one.",
-      "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d2192662-Reviews-Roasthouse_Pub-Frederick_Maryland.html",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "The draw is 20 rotating taps with weekly additions, not a fixed beer list, so the menu online never matches what is actually pouring. The official site says new beers are added each week and to check Instagram for the current list. Ask staff for a recommendation rather than going by any printed list.",
-        "source_url": "https://roasthousepubfrederick.com/",
-        "confidence": "high"
-      },
-      {
-        "text": "Pours come in multiple sizes (roughly 9 oz to 16 oz) and small samplers, so you can flight your way through unfamiliar craft beers instead of committing to a pint.",
-        "source_url": "https://www.beeradvocate.com/beer/profile/26583/",
-        "confidence": "medium"
-      }
-    ],
-    "deals": [
-      {
-        "text": "$2 off draft beers during happy hour (stated on the official site).",
-        "source_url": "https://roasthousepubfrederick.com/",
-        "confidence": "high"
-      },
-      {
-        "text": "Flights, Bites & Bluegrass: a recurring event starting at 5:30 PM (time confirmed via the site's embedded Instagram post; the specific day of the week is not stated on the site).",
-        "source_url": "https://roasthousepubfrederick.com/",
-        "confidence": "medium"
-      }
-    ]
-  },
-  "springfield-manor-thurmont": {
-    "parking": {
-      "text": "Free parking onsite at 11836 Auburn Rd. The lot is grass/gravel on a 130-acre working estate, so wear appropriate shoes and expect a short walk to the tasting room. During the Maryland Lavender Festival (mid-June) and lavender field-visit weekends parking fills fast and is managed by event staff; arrive early. No public-transit option, this is a rural Rt 15 destination, so plan to drive.",
-      "source_url": "https://www.springfieldmanor.com/lavender-festival.html",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "Limited days are the thing people miss: it's only open Fri (5-9pm) and Sat/Sun (12-6pm), not a typical full-week winery. Check the calendar before driving up, it also closes for the Lavender Festival weekend.",
-        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
-        "confidence": "high"
-      },
-      {
-        "text": "It's three things in one stop, a winery, distillery AND brewery, so a group with different tastes is covered; ask for a cocktail flight (the distillery side is what sets it apart from other county wineries) and they'll do mocktail versions on request.",
-        "source_url": "https://www.tripadvisor.com/ShowUserReviews-g60764-d6783904-r971085320-Springfield_Manor_Winery_Brewery_and_Distillery-Thurmont_Maryland.html",
-        "confidence": "medium"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Trivia night every Friday at 7pm (registration/sign-up at 6:30pm), with food trucks onsite. Tasting room open Fri 5-9pm.",
-        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
-        "confidence": "high"
-      },
-      {
-        "text": "Live music on weekends, roughly 2-5pm Saturday and Sunday (tasting room open Sat/Sun 12-6pm). Food trucks present on weekends.",
-        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
-        "confidence": "high"
-      },
-      {
-        "text": "Weekend cocktail flights available (rotating; 'check our Facebook for dates & recipes'). 11 craft beers on tap alongside the wine and spirits.",
-        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
-        "confidence": "medium"
-      }
-    ]
-  },
-  "olde-mother-brewing-frederick": {
-    "parking": {
-      "text": "Free parking: use the lot right next to the brewery, shared with Gravel & Grind (15 E 6th St). Free for customers — a real perk on the North Market corridor where street parking is tight.",
-      "source_url": "https://oldemother.com/",
-      "confidence": "high",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "The $1-off-full-pours deal runs all day, not a narrow happy-hour window — you get it open to close.",
-        "source_url": "https://oldemother.com/events/",
-        "confidence": "medium"
-      },
-      {
-        "text": "There's an in-house burger kitchen in the back room, so you can eat a full meal here, not just drink. Pairing a burger and fries with a fresh pour is a local go-to.",
-        "source_url": "https://epicbend.com/olde-mother-brewing/",
-        "confidence": "high"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Trivia every Thursday, 7:00-9:30pm; sign-ups start at 6:30pm.",
-        "source_url": "https://oldemother.com/events/",
-        "confidence": "high"
-      },
-      {
-        "text": "$1 off any full pour, open to close (standing discount).",
-        "source_url": "https://oldemother.com/events/",
-        "confidence": "medium"
-      },
-      {
-        "text": "In-house burger kitchen (homepage names it 'Backslash Burger'; a Feb 2025 article calls it 'Fifty Fifty Burger' — half-beef/half-bacon patties). Order at counter, by QR code, or online. Outside food allowed; outside alcohol not.",
-        "source_url": "https://oldemother.com/",
-        "confidence": "medium"
+        "text": "Weekends are the draw: live music on Saturdays/weekends plus karaoke nights, with a patio for warm weather. It's closed early in the week — open Thu-Fri from 3 PM, Sat & Sun from noon — so plan around that and follow their Facebook for the live-entertainment lineup.",
+        "source_url": "https://evendo.com/locations/maryland/catoctin-mountain-park/bar/cactus-flats",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
       }
     ]
   },
@@ -375,273 +291,32 @@
       }
     ]
   },
-  "memories-charcoal-house-mount-airy": {
-    "parking": {
-      "text": "Located in the Mount Airy Shopping Center at 403 E Ridgeville Blvd, so park in the shared shopping-center surface lot out front (free).",
-      "source_url": "https://www.shopmtairy.com/stores/memories-charcoal-house/",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
+  "catoctin-breeze-vineyard-thurmont": {
     "insider": [
       {
-        "text": "There's an outdoor bar and patio in addition to the small dining room and larger bar area; the patio is open whenever weather allows.",
-        "source_url": "https://foursquare.com/memories1024402",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Entertainment regulars: karaoke and live music on weekends, Keno, and Pour House Trivia on Wednesdays at 7 PM.",
-        "source_url": "https://www.pourhousetrivia.com/memories-charcoal-house.html",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "mountain-gate-family-restaurant-thurmont": {
-    "insider": [
-      {
-        "text": "Open every day 8 AM-8 PM. If you want the buffet specifically, note it does not run Mondays for lunch/dinner (weekday buffet service is Tue-Sat); the menu is still served all day.",
-        "source_url": "https://mountaingatefamilyrestaurant.com/news/our-hours/",
+        "text": "Adults only: all guests must be 21+ (no children), and parties are capped at six people. Reserve a table through Tock for guaranteed seating; walk-ins are welcome but seated only as space allows.",
+        "source_url": "https://www.catoctinbreeze.com/faqs",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Has a banquet room and does catering for groups up to 1,000, and hosts community events like gospel sings; a good option for large family gatherings rather than a date-night bar scene.",
-        "source_url": "https://mountaingatefamilyrestaurant.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Home-style buffets daily: breakfast buffet Sat-Sun 8-11 AM, lunch buffet Tue-Sat 11 AM-3:30 PM, dinner buffet Tue-Sat 4-8 PM, and an all-day Sunday dinner buffet 11 AM-8 PM. A full menu is also served all day.",
-        "source_url": "https://mountaingatefamilyrestaurant.com/news/our-hours/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Themed buffet nights: Wednesday is Italian night and Friday is the seafood buffet. The buffet also rotates country-cooking specialties (Salisbury steak, liver and onions, stuffed peppers, ham and cabbage) and features their home-fried chicken.",
-        "source_url": "https://mountaingatefamilyrestaurant.com/buffet/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Breakfast is available all day from the menu (platters, sandwiches, hotcakes), in addition to the weekend morning breakfast buffet.",
-        "source_url": "https://mountaingatefamilyrestaurant.com/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "fratellis-italian-seafood-middletown": {
-    "insider": [
-      {
-        "text": "Kitchen stays open later on weekends: Sun-Thu 11am-10pm, but Fri-Sat run until 11pm, so it is a reliable late-ish dinner option in Middletown.",
-        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Takes reservations (Resy is linked from the site), useful for weekend evenings; phone is (301) 371-4000.",
-        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Lunch sandwiches and wraps include french fries and a cup of soup, per the official lunch menu (no price or time window stated).",
-        "source_url": "https://www.fratellispasta.com/lunch/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "the-lodge-myersville": {
-    "parking": {
-      "text": "The venue has its own parking lot at the remote log-cabin site on National Pike; arrive early on Friday/Saturday show nights, which historically drew large crowds.",
-      "source_url": "https://evendo.com/locations/maryland/cunningham-falls-state-park/bar/the-lodge-show-dance-club-summer-patio",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "Listed here as Myersville, but The Lodge actually sits at 21614 National Pike in Boonsboro, MD. It is Maryland's oldest rural gay bar, a converted 1970s log cabin (the former Deer Park Lodge) and one of the few of its kind left in the country.",
-        "source_url": "https://www.thebanner.com/community/local-news/western-maryland-lgbtq-bar-5MOI2XTUCRFCPPNWZITZQ6UWYM/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "21+ only, open just three nights a week (Wed karaoke, Fri drag/burlesque, Sat themed parties) with an outdoor summer patio; hours can shift for special events, so check the calendar before heading out.",
-        "source_url": "http://thelodgemd.com/",
+        "text": "Dog friendly (leashed) in the tasting room and outdoors, but not the Cru Lounge. Outside food is allowed only in the upstairs lounge and outdoors; live music runs only on holiday and club-release weekends, and occasional pop-up food trucks appear (both weather-dependent).",
+        "source_url": "https://www.catoctinbreeze.com/faqs",
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ],
     "deals": [
       {
-        "text": "Wednesday 'Karaoke With The Queen' (hosted by Miss Gay Maryland 2021) has no cover charge all night.",
-        "source_url": "http://thelodgemd.com/",
+        "text": "Wine club members receive the Season Tasting (three current releases) complimentary; non-members pay $20. Premium Tasting is $25.",
+        "source_url": "https://www.catoctinbreeze.com/visit",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Spotlight drag performances on the first and third Wednesdays of the month, alongside the weekly karaoke.",
-        "source_url": "http://thelodgemd.com/",
+        "text": "The Catoctin Experience: a 60-90 minute guided tour (vineyard, Cuverie, barrel room) with a seated six-wine tasting and charcuterie pairing, offered Fridays and Saturdays at 11:00 AM and 2:00 PM. Reservations required via Tock; limited to eight people per session.",
+        "source_url": "https://www.catoctinbreeze.com/events",
         "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "pour-decisions-restaurant-bar-music-new-market": {
-    "parking": {
-      "text": "Has its own free parking lot on site at 10519 Old National Pike, just off I-70 / Old National Pike — no street-parking hunt.",
-      "source_url": "https://www.checkle.com/biz/pour-decisions-restaurant-bar-music-ijamsville",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "Late hours for the area: open Wed-Sun from 11 AM, until midnight Wed/Thu/Sun and until 2 AM Fri/Sat; closed Mon-Tue. Listed under both 'New Market' and 'Ijamsville' (21774) — same spot at 10519 Old National Pike. Phone (240) 915-2682.",
-        "source_url": "https://www.checkle.com/biz/pour-decisions-restaurant-bar-music-ijamsville",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "fountain-rock": {
-    "parking": {
-      "text": "Use the Church Street Garage (17 E Church St) - the closest garage to 124 N Market, accessible off the 100 block of N Market St right behind the restaurant. All downtown garages are $1/hour, open 24/7, with a $5 weekend/nightly max and free parking Sunday 8 AM-2 PM.",
-      "source_url": "https://www.cityoffrederickmd.gov/1342/Garage-Parking",
-      "confidence": "high",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "'Fountain Rock' is the management/corporate name; the public-facing venue at 124 N Market St is Brewer's Alley, Frederick's original brewpub (opened July 1996). 'Olde Fountain Rock' is also one of their house beers, so the name carries brand history.",
-        "source_url": "https://www.beermenus.com/beers/15533-brewer-s-alley-olde-fountain-rock",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Right on Market Street in the heart of downtown Frederick - a family-friendly brewpub anchor; later kitchen hours on Fri-Sat make it a solid late-bite stop after other downtown spots close.",
-        "source_url": "https://www.visitfrederick.org/listing/brewers-alley-restaurant/19/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "rocky-point-creamery-brunswick": {
-    "insider": [
-      {
-        "text": "Hours are seasonal, so check the website before driving out. Summer 2026 hours are Tuesday-Sunday 11:30 AM to 8:30 PM, closed Mondays. The site directs you to its Facebook/Instagram for the most current updates and sunflower bloom status.",
-        "source_url": "https://www.rockypointcreamery.com/hours",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "The farm has worked this land since 1883 and is a stop on the Maryland Ice Cream Trail; the on-site ice cream is made fresh from their own dairy herd.",
-        "source_url": "https://www.rockypointcreamery.com/about-us",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Sunflower field fundraiser: cut your own sunflowers at $1 per stem, with 100% of proceeds donated to St. Jude Children's Research Hospital. A clipping station with scissors is provided; pay at the field entrance or at the register. Field is seasonal (typically blooms mid-to-late summer, roughly July) and weather-dependent, with multiple plantings to extend the season.",
-        "source_url": "https://www.rockypointcreamery.com/sunflowers",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Working dairy farm storefront: beyond 80+ flavors of homemade ice cream, they also sell farm products including milk, brown eggs, cheese, and beef on site.",
-        "source_url": "https://www.rockypointcreamery.com/about-us",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Group tours and party room rentals are available by booking; the farm has hosted on-farm activities and seasonal events.",
-        "source_url": "https://www.rockypointcreamery.com/about-us",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "village-tavern-walkersville": {
-    "happy_hour": {
-      "schedule": "Mon-Fri 4-6 PM",
-      "details": "$3 beers (Bud, Bud Light, Coors Light, Yuengling Lager); $6 specialty drinks (e.g. Cranberry Mule, Jameson Mule, Bourbon Pecan Coffee); discounted wine by the bottle ($14 CK Mondavi, $18 Leonard Kreusch). Food: Wing Dings $7, Chicken Tender Basket $8, Popcorn Shrimp Basket $9, Fried Pickles $6.",
-      "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
-      "confidence": "high",
-      "last_verified": "2026-06-15"
-    },
-    "parking": {
-      "text": "Free surface lot. The tavern sits in the Walkers Village shopping plaza off Walkers Village Way, so park anywhere in the shared center lot out front.",
-      "source_url": "https://restaurantguru.com/Village-Tavern-Walkersville",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "Closed Sundays. Open Mon-Thu 11 AM-11 PM and Fri-Sat 11 AM-midnight, but the kitchen closes earlier than the bar: 9 PM Mon-Wed and 10 PM Thu-Sat, so come before then if you want food.",
-        "source_url": "https://villagetavernwalkersville.com/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "A genuine neighborhood institution, family-run since 1987 (celebrating its 39th anniversary) with a casual, comfortable pub feel rather than a chain vibe.",
-        "source_url": "https://villagetavernwalkersville.com/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Happy hour food baskets at a fixed low price: Wing Dings $7, Chicken Tender Basket $8, Popcorn Shrimp Basket $9, Fried Pickles $6 (offered Mon-Fri 4-6 PM).",
-        "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Discounted wine by the bottle during happy hour: $14 CK Mondavi (Chardonnay, Cabernet or Merlot) and $18 Leonard Kreusch Riesling / Piazzo Moscato d'Asti.",
-        "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Kitchen offers rotating daily lunch and dinner specials in addition to the regular menu, though the specific specials are not published online.",
-        "source_url": "https://villagetavernwalkersville.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "ott-house-emmitsburg": {
-    "insider": [
-      {
-        "text": "Family-operated corner pub on Main Street, open since 1970.",
-        "source_url": "https://ott-house.weeblyte.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Mon-Fri lunchtime food specials for $6.50",
-        "source_url": "https://ott-house.weeblyte.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Monday evenings (from 5 PM): $2 Yuengling drafts and discounted wings",
-        "source_url": "https://ott-house.weeblyte.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "2 Buck Tuesday: $2 drafts, $2.75 rail drinks, $5 select pizzas",
-        "source_url": "https://ott-house.weeblyte.com/",
-        "confidence": "medium",
         "last_verified": "2026-06-15"
       }
     ]
@@ -682,18 +357,543 @@
       }
     ]
   },
-  "brookside-inn-burkittsville": {
+  "fountain-rock": {
     "parking": {
-      "text": "Ample on-site parking; it's a roadside neighborhood pub on Jefferson Pike (Rt 180) with its own lot, plus an outdoor patio and deck.",
-      "source_url": "https://www.restaurantji.com/md/jefferson/brookside-inn-inc-/",
+      "text": "Use the Church Street Garage (17 E Church St) - the closest garage to 124 N Market, accessible off the 100 block of N Market St right behind the restaurant. All downtown garages are $1/hour, open 24/7, with a $5 weekend/nightly max and free parking Sunday 8 AM-2 PM.",
+      "source_url": "https://www.cityoffrederickmd.gov/1342/Garage-Parking",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "'Fountain Rock' is the management/corporate name; the public-facing venue at 124 N Market St is Brewer's Alley, Frederick's original brewpub (opened July 1996). 'Olde Fountain Rock' is also one of their house beers, so the name carries brand history.",
+        "source_url": "https://www.beermenus.com/beers/15533-brewer-s-alley-olde-fountain-rock",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Right on Market Street in the heart of downtown Frederick - a family-friendly brewpub anchor; later kitchen hours on Fri-Sat make it a solid late-bite stop after other downtown spots close.",
+        "source_url": "https://www.visitfrederick.org/listing/brewers-alley-restaurant/19/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "fratellis-italian-seafood-middletown": {
+    "insider": [
+      {
+        "text": "Kitchen stays open later on weekends: Sun-Thu 11am-10pm, but Fri-Sat run until 11pm, so it is a reliable late-ish dinner option in Middletown.",
+        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Takes reservations (Resy is linked from the site), useful for weekend evenings; phone is (301) 371-4000.",
+        "source_url": "https://www.fratellispasta.com/location/fratellis-middletown/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Lunch sandwiches and wraps include french fries and a cup of soup, per the official lunch menu (no price or time window stated).",
+        "source_url": "https://www.fratellispasta.com/lunch/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "frederick-social": {
+    "parking": {
+      "text": "Frederick Social sits in Creekside Plaza, which has a covered skywalk to an adjacent parking garage. The public Carroll Creek Parking Garage at 44 E. Patrick St is the closest city garage if that is full.",
+      "source_url": "https://downtownfrederick.org/item/carroll-creek-parking-garage/",
       "confidence": "medium",
       "last_verified": "2026-06-15"
     },
     "insider": [
       {
-        "text": "A friendly little neighborhood roadside pub that welcomes bikers, families, and locals alike. Casual, lively atmosphere with jukebox/DJ music and an outdoor patio and deck.",
-        "source_url": "https://www.restaurantji.com/md/jefferson/brookside-inn-inc-/",
+        "text": "It is a self-pour taphouse: you pay by the ounce across 50 taps of beer, wine, and cocktails, so you can sample widely instead of committing to a full pour.",
+        "source_url": "https://www.frederick-social.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Family- and group-friendly with board games, shuffleboard, a chess club, and a kids play area (play area closes 7 PM Fri-Sat); closed Tuesdays.",
+        "source_url": "https://www.frederick-social.com/happenings",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "We Heart Wednesdays: $3 select beers, $5 margaritas, and $3 beef tacos.",
+        "source_url": "https://downtownfrederick.org/weheartwednesdays/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Thursday all day: Burger and a beer (or tots) special.",
+        "source_url": "https://www.frederick-social.com/happenings",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Friday all day: $8 personal pizza.",
+        "source_url": "https://www.frederick-social.com/happenings",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "hootch-and-banter-frederick": {
+    "parking": {
+      "text": "Use the Carroll Creek Parking Garage at 44 E Patrick St (one block from the restaurant at 49 S Market St); it is accessible off the first block of South Market Street. City garages run about $1/hour, open 24/7, with free Sunday morning parking. Street meters on Market St are about $2/hour.",
+      "source_url": "https://www.visitfrederick.org/downtown-frederick/parking/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "No reservations except select holidays. The downstairs bar is first-come, first-served and serves the full menu, so it's the move on a busy night.",
+        "source_url": "https://hootchandbanter.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "The kitchen closes weekends from 2:45 PM to 4:00 PM (between brunch and dinner), and the upstairs Hootch Lounge occasionally closes for private events. Time your visit accordingly.",
+        "source_url": "https://hootchandbanter.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "1/2 price wine by the bottle only, every Wednesday (stated on the official bar page).",
+        "source_url": "https://hootchandbanter.com/the-hootch-bar/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Signature cocktails listed at $14-$16; drafts around $6-$7 (from the posted bar menu, regular prices, not a discount).",
+        "source_url": "https://hootchandbanter.com/the-hootch-bar/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "isabellas-taverna-tapas-bar-frederick": {
+    "happy_hour": {
+      "schedule": "Mon-Wed 4-9 PM, Thu-Fri 4-7 PM (bar only)",
+      "details": "Drink specials: $2 off all draft beer and wine by the glass; $5 house margarita and red or white sangria; $3.50 rail drinks plus Bud Light, Michelob Ultra, High Life, Bold Rock, Yuengling; $10 espresso martini. Food: all tapas $7 (Empanada Grande, Asparagus Fries, Papas Bravas, Ensalada Verde, Meatballs, House Made Chips & Goat Cheese Dip, Chicken Skewers, Chicken Paella Tapa; Sizzling Shrimp and Mussels add $2). Happy hour applies to bar seating only.",
+      "source_url": "https://isabellas-tavern.com/menus/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "No private lot; this is downtown street/garage parking. The closest city garage is the Church Street Garage (17 E Church St), accessible off the 100 block of N Market St, a short walk from the door. City garages run $1/hour, $12/day max.",
+      "source_url": "https://www.cityoffrederickmd.gov/1342/Garage-Parking",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Happy hour is bar-seating only, so grab a stool at the bar rather than a table to get the discounted tapas and drinks.",
+        "source_url": "https://isabellas-tavern.com/menus/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Same owners run the next-door Italian spot Pistarro's Ristorante Pizzeria Napoletana, an easy plan-B if Isabella's has a wait.",
+        "source_url": "https://isabellas-tavern.com",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Weekend brunch served Saturday and Sunday 8 AM-3 PM.",
+        "source_url": "https://isabellas-tavern.com",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Happy hour tapas are a flat $7 each (a few seafood items add $2), making the bar a low-cost way to sample the Spanish small-plates menu.",
+        "source_url": "https://isabellas-tavern.com/menus/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "jb-seafood-myersville": {
+    "insider": [
+      {
+        "text": "On the Maryland Crab & Oyster Trail; much of the seafood (crab dip, soups, oysters, crab cakes) is priced at market rate, so call ahead if budgeting.",
+        "source_url": "https://www.visitmaryland.org/listing/seafood/jb-seafood",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Signature move is the JB's Maryland Burger (6oz patty, bacon, cheese, a 2.5oz crab cake and crab dip drizzle, with Old Bay fries); there's also a crab specialty pizza.",
+        "source_url": "https://www.jbseafood.com/menus",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Taco Tuesday every Tuesday: fish or shrimp tacos, available all day (11am-8pm).",
+        "source_url": "https://www.jbseafood.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Gift cards available; catering offered for weddings, showers, birthdays, and office events.",
+        "source_url": "https://www.jbseafood.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "jojos-restaurant-tap-house": {
+    "parking": {
+      "text": "Park in the city-run Carroll Creek garage at 44 E Patrick St, the same block as JoJo's (16-18 E Patrick St), a few doors' walk. Rate is $1/hr, $12 weekday max, $5 weekend max, and free Sundays 8 AM-2 PM; nightly Mon-Fri caps at $5.",
+      "source_url": "https://www.parkfrederick.org/garage-parking/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Two distinct spaces under one roof: a casual/semi-private dining room on one side and a livelier tap house side with live music and games/sports on the TVs. Pick the tap house for the bar scene and happy hour.",
+        "source_url": "https://jojosrestauranttaphouse.com/about/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "New-American spot open since August 2012; kitchen runs late on weekends (open until 2 AM Fri-Sat, with Sat-Sun opening at 10 AM). Closed Monday and Tuesday.",
+        "source_url": "https://jojosrestauranttaphouse.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "26 rotating drafts plus a full bar (wine, whiskey, craft cocktails) in the tap house side.",
+        "source_url": "https://jojosrestauranttaphouse.com/about/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Late-night \"munchie\" menu served in the tap house until last call.",
+        "source_url": "https://jojosrestauranttaphouse.com/about/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Rotating menu specials presented daily (specials change; not a fixed list).",
+        "source_url": "https://downtownfrederick.org/item/jojos-restaurant-tap-house/",
         "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "linganore-winecellars-mount-airy": {
+    "parking": {
+      "text": "Free on-site parking in a large lot at 13601 Glissans Mill Rd; reviewers say it is ample and well-organized, with easy exit even during big festivals. On festival/event days, arrive early for a closer spot and a good seat on the open lawn.",
+      "source_url": "https://www.tripadvisor.com/Attraction_Review-g41276-d1936941-Reviews-Linganore_Winecellars-Mount_Airy_Maryland.html",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "You can bring your own picnic food onto the grounds (the winery confirms patrons may bring food); buy a bottle and make a day of it on the lawn. Charcuterie is also sold on-site.",
+        "source_url": "https://www.tripadvisor.com/ShowUserReviews-g41276-d1936941-r787582838-Linganore_Winecellars-Mount_Airy_Maryland.html",
+        "confidence": "medium"
+      },
+      {
+        "text": "Bring your own chairs (and a pop-up canopy if you have one). Outdoor lawn seating is first-come; regulars set up their own shade. There's also a fenced dog park, so it's genuinely dog-friendly beyond the special Dog Days nights.",
+        "source_url": "https://wanderlog.com/place/details/348563/linganore-winecellars",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "50th-anniversary (2026) recurring deal: on the 4th Monday of each month, a bar tasting of five signature wines for $2 (the winery's original 1976 tasting price). 21+, pre-reservation encouraged as space is limited.",
+        "source_url": "https://wineindustryadvisor.com/2026/01/16/linganore-winecellars-toasts-to-50-years-of-maryland-winemaking-in-2026/",
+        "confidence": "high"
+      },
+      {
+        "text": "Free Tour Fridays: complimentary winery tours on the 1st Friday of every month at 2PM and 4PM, after which you can buy a bar tasting or bottle in the tasting room. 21+, pre-reservation encouraged. (Note: separate weekend free tours also run Saturdays & Sundays at 12PM & 4PM.)",
+        "source_url": "https://wineindustryadvisor.com/2026/01/16/linganore-winecellars-toasts-to-50-years-of-maryland-winemaking-in-2026/",
+        "confidence": "high"
+      },
+      {
+        "text": "Food Truck & Music Weekends: rotating local food trucks plus live local musicians every weekend (Fri-Sun); no entrance fee. Music times vary by weekend (example: Fri 5-8pm, Sat/Sun ~1-4pm).",
+        "source_url": "https://www.linganorewines.com/events",
+        "confidence": "high"
+      }
+    ]
+  },
+  "madrones": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3:00-6:00 PM and every night 9:00 PM-close (late-night happy hour). Bar area only.",
+      "details": "Daily: $7 house spirits and $1 off all other drinks. Happy-hour snacks served the same hours (bar area only), e.g. Spinach & Artichoke Dip $9, Hot Crab Dip $12, French Sliders $4 ea, Tiger Wings/Buffalo Wings $13. Day-specific weekly deals (note: windows vary from the 3-6 core): MON $13 burgers + half-price 20oz beers (3-7pm, bar only); TUE $1 off all drinks (3-6pm, bar only); WED half-price bottle wines all day for everyone; THU $8 house martinis (3-7pm, bar only); FRI $1 off all drinks (3-6pm, bar only). The Wednesday wine deal and the late-night happy hour apply beyond the bar/standard window as noted.",
+      "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Free parking lot on site. Madrones sits in the Worman's Mill / Clemson Corner retail area at 7810 Worman's Mill Rd (Suite J), so the shared shopping-center lot directly out front is the place to park; no street parking or garage needed.",
+      "source_url": "https://bippermedia.com/restaurants/united-states/maryland/frederick/madrones-reviews-madrones-at-7810-wormans-mill-rd-frederick-md-21701-2/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "The happy hour and snack menu are bar-area only (the dining room doesn't get the deals), so sit at or near the bar if you came for the specials. The Wednesday half-price wine bottles are the exception that applies everywhere.",
+        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+        "confidence": "high"
+      },
+      {
+        "text": "It reads more upscale than a strip-mall spot suggests: hickory wood-grilled, hand-cut steaks. The filet mignon, prime rib, and shrimp and grits are the dishes reviewers single out; lighting is on the dark/date-night side.",
+        "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d3723280-Reviews-Madrones-Frederick_Maryland.html",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wednesday: half-price bottles of wine, all day, for the entire restaurant (not bar-only). This is the standout deal locals flag.",
+        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+        "confidence": "high"
+      },
+      {
+        "text": "Monday: $13 burgers and half-price 20oz draft beers (3-7pm, bar area only).",
+        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+        "confidence": "high"
+      },
+      {
+        "text": "Thursday: $8 house martinis (3-7pm, bar area only).",
+        "source_url": "https://madrones.net/wp-content/uploads/2026/02/Madrones_DrinkMenu_01-19-26-1.pdf",
+        "confidence": "high"
+      }
+    ]
+  },
+  "magoos-frederick": {
+    "parking": {
+      "text": "Closest public garage is the Church Street Garage at 17 E Church St, a short walk from Magoo's at 1 W 2nd St. It runs $1/hour and is open 24/7 with free Sunday-morning parking. Real-time space counts are in the Park Frederick app.",
+      "source_url": "https://downtownfrederick.org/item/church-street-parking-garage/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Woman-owned business that accepts Downtown Frederick Gift Cards.",
+        "source_url": "https://downtownfrederick.org/item/magoos-pub-and-eatery/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "There is a separate downstairs pub called The Gate (open Fri & Sat 5 PM-1 AM) that hosts live traditional Irish music sessions on the 1st and 3rd Thursdays at 8 PM.",
+        "source_url": "https://downtownfrederick.org/item/magoos-pub-and-eatery/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Whiskey Wednesday returns, plus a new Monthly Wine Dinner (officially announced; exact time/price not published online, listed in a downloadable specials PDF or by phone at 301-378-2237).",
+        "source_url": "https://magoosfrederick.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Traditional Irish Session on the 1st and 3rd Thursdays each month starting at 8 PM in the downstairs pub, The Gate (open Fri & Sat 5 PM-1 AM).",
+        "source_url": "https://downtownfrederick.org/item/magoos-pub-and-eatery/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Light breakfast from 8 AM and weekend brunch on Saturday and Sunday, in addition to lunch and dinner daily.",
+        "source_url": "https://magoosfrederick.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "main-cup-middletown": {
+    "insider": [
+      {
+        "text": "The building has been a Middletown landmark for over 100 years, dating to C.F. Main's ice cream and butcher shop. Main's was a regional institution, and presidents and officials reportedly stopped here en route to Shangri-La (now Camp David).",
+        "source_url": "https://www.themaincuprestaurant.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Multiple seating areas including a dog-friendly outdoor patio; consistently ranked the top restaurant in Middletown and a local favorite for weekend brunch.",
+        "source_url": "https://www.themaincuprestaurant.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Sunday brunch 10 AM-3 PM with bottomless mimosas; signature dishes include eggs Chesapeake and strawberry French toast.",
+        "source_url": "https://www.themaincuprestaurant.com/brunch-menu/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "1/2 off bottled wine Monday through Wednesday (advertised on the official site alongside the regular happy hour).",
+        "source_url": "https://themaincup.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "mays-seafood-restaurant-frederick": {
+    "parking": {
+      "text": "On-site parking lot at 5640 Urbana Pike (Rt 355). No reservations are taken (first come, first served), so arrive before 6 PM to get a spot and a patio seat.",
+      "source_url": "https://www.visitmaryland.org/listing/american/mays-restaurant",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Open 12-8 PM every day, closed Tuesdays (also closed Easter and Thanksgiving). No reservations: first come, first served.",
+        "source_url": "https://maysrestaurant.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Covered patio has a 'beachy vibe'; regulars suggest arriving before 6 PM and grabbing a patio table. It's a stop on the Maryland Crab and Oyster Trail.",
+        "source_url": "https://www.visitmaryland.org/listing/american/mays-restaurant",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wednesdays: oysters $1.25 each raw and steamed, $1.50 each fried.",
+        "source_url": "https://maysrestaurant.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Thursdays: 25% off crab legs by the pound.",
+        "source_url": "https://maysrestaurant.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "All-you-can-eat crab in 'The Steam Room' (A.U.C.E. pricing posted on the menu page; market pricing varies).",
+        "source_url": "https://maysrestaurant.com/menu/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "mcclintocks-back-bar": {
+    "happy_hour": {
+      "schedule": "Thursdays 4-7 PM (seasonal, Alive @ Five)",
+      "details": "\"Alive at Five Happy Hour\": every Thursday, any drink from the Signature Cocktail or Safe Bet menu is $5, 4-7 PM. The official site lists this as running with the Alive @ Five concert series (stated window May 12 to Sept 29), so it is seasonal, not year-round.",
+      "source_url": "https://www.mccbackbar.com/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "It is the bar arm of McClintock Distilling, right next door, so the cocktails showcase the distillery's own spirits rather than a broad liquor list.",
+        "source_url": "https://downtownfrederick.org/item/mcclintocks-back-bar/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Closed Tuesdays; open afternoons Mon/Wed/Thu and from noon Fri-Sun, so plan around the limited early-week hours.",
+        "source_url": "https://www.mccbackbar.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Monday is Industry Night: 50% off all cocktails for service industry professionals.",
+        "source_url": "https://www.mccbackbar.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Cocktail bar attached to McClintock Distilling, pouring simple, refined cocktails built on the distillery's award-winning spirits and local Frederick County ingredients.",
+        "source_url": "https://downtownfrederick.org/item/mcclintocks-back-bar/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "memories-charcoal-house-mount-airy": {
+    "parking": {
+      "text": "Located in the Mount Airy Shopping Center at 403 E Ridgeville Blvd, so park in the shared shopping-center surface lot out front (free).",
+      "source_url": "https://www.shopmtairy.com/stores/memories-charcoal-house/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "There's an outdoor bar and patio in addition to the small dining room and larger bar area; the patio is open whenever weather allows.",
+        "source_url": "https://foursquare.com/memories1024402",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Entertainment regulars: karaoke and live music on weekends, Keno, and Pour House Trivia on Wednesdays at 7 PM.",
+        "source_url": "https://www.pourhousetrivia.com/memories-charcoal-house.html",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "merediths-good-luck-tavern-frederick": {
+    "insider": [
+      {
+        "text": "Hosts live music and an open mic on the patio. The venue's own Instagram promotes an Open Mic, and it is indexed as a live-music venue, so plan around event nights for the patio scene.",
+        "source_url": "https://www.instagram.com/p/DV6yKguEzLO/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Scratch bar-and-grill menu: blue crabs, burgers, subs, and hand-cut fries. Described as house-made.",
+        "source_url": "https://maps.roadtrippers.com/us/buckeystown-md/food-drink/meredith-s-good-luck-tavern-buckeystown-md--0",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "monkey-lala-frederick": {
+    "insider": [
+      {
+        "text": "It is the bar inside Avery's Maryland Grille (a 'laid back locals bar') with a distinctive horseshoe-shaped bar, high-tops, and a patio; the kitchen food comes from Avery's. DJs play on weekends.",
+        "source_url": "https://themonkeylala.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Hours run Tuesday-Friday 3pm-10pm and Saturday-Sunday 12pm-10pm, with extended hours during football games.",
+        "source_url": "https://themonkeylala.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Shares Avery's Maryland Grille nightly specials (food comes down from Avery's): Tuesday Kegs and Legs $4 craft draft pints and 25% off snow crab legs by the pound; Wednesday Crabby Wednesday discount on hardshell crabs; Thursday Oyster Thursday $1 oysters (raw, steamed, or grilled).",
+        "source_url": "https://averysmarylandgrille.com/nightly-specials",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Football-season bar with a dedicated football menu and full sports package: NFL Sunday Ticket, Golf Channel, and Thursday Night Amazon Prime games.",
+        "source_url": "https://themonkeylala.com/",
+        "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ]
@@ -747,145 +947,37 @@
       }
     ]
   },
-  "the-upper-deck-sports-bar-and-grill-mount-airy": {
-    "parking": {
-      "text": "The Upper Deck has its own free parking lot, a plus on downtown Mount Airy's tight Main Street.",
-      "source_url": "https://the-upper-deck-sports-bar-and-grill.wheree.com/",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
+  "mountain-gate-family-restaurant-thurmont": {
     "insider": [
       {
-        "text": "Set inside the historic 'OLD' Firehouse building in downtown Mount Airy, at 237 S Main St. A wheelchair ramp leads to the entrance and there is outdoor dining plus a billiards room.",
-        "source_url": "https://the-upper-deck-sports-bar-and-grill.wheree.com/",
-        "confidence": "medium",
+        "text": "Open every day 8 AM-8 PM. If you want the buffet specifically, note it does not run Mondays for lunch/dinner (weekday buffet service is Tue-Sat); the menu is still served all day.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/news/our-hours/",
+        "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Regulars rate the wings as among the best in town; it is a participating venue in Mount Airy Restaurant Week.",
-        "source_url": "https://www.mountairymd.gov/495/Upper-Deck-Sports-Bar-and-Grill",
+        "text": "Has a banquet room and does catering for groups up to 1,000, and hosts community events like gospel sings; a good option for large family gatherings rather than a date-night bar scene.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
     ],
     "deals": [
       {
-        "text": "Taco specials on Tuesdays (part of a rotating weekly dine-in specials lineup).",
-        "source_url": "https://www.upperdeckmtairy.com/menus/weekly-dine-in-only-specials",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Pour House Trivia every Tuesday at 7:00 PM.",
-        "source_url": "https://www.pourhousetrivia.com/upper-deck.html",
+        "text": "Home-style buffets daily: breakfast buffet Sat-Sun 8-11 AM, lunch buffet Tue-Sat 11 AM-3:30 PM, dinner buffet Tue-Sat 4-8 PM, and an all-day Sunday dinner buffet 11 AM-8 PM. A full menu is also served all day.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/news/our-hours/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Karaoke nights are a regular fixture at the venue.",
-        "source_url": "https://www.karaokeatlas.com/venue/the-upper-deck-sports-bar-and-grill-mt-airy",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "red-heifer-winery-thurmont": {
-    "parking": {
-      "text": "On-site parking lot at the top of the property. Drive up the farm lane to the vineyard and winery at the crest of the hill; the lot, patio, and lawn are where leashed pets are welcome.",
-      "source_url": "https://www.redheiferwinery.com/visit",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "Adults only, 21+. Children are not permitted. Outside alcohol is prohibited; only Red Heifer wine may be consumed on site.",
-        "source_url": "https://www.redheiferwinery.com/visit",
+        "text": "Themed buffet nights: Wednesday is Italian night and Friday is the seafood buffet. The buffet also rotates country-cooking specialties (Salisbury steak, liver and onions, stuffed peppers, ham and cabbage) and features their home-fried chicken.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/buffet/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Bring a picnic (carry-in, carry-out) and grab a hilltop seat for sweeping vineyard views; charcuterie boards, salads, paninis, and snacks are also available. Friendly leashed pets welcome in the parking, patio, and lawn areas.",
-        "source_url": "https://www.redheiferwinery.com/visit",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Wine flight: 4 three-ounce pours of your choice; tasting-room attendant offers the day's options. Price not stated on the official site.",
-        "source_url": "https://www.redheiferwinery.com/visit",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Wine club membership and gift cards available (membership benefits/pricing not detailed on the site).",
-        "source_url": "https://www.redheiferwinery.com/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "main-cup-middletown": {
-    "insider": [
-      {
-        "text": "The building has been a Middletown landmark for over 100 years, dating to C.F. Main's ice cream and butcher shop. Main's was a regional institution, and presidents and officials reportedly stopped here en route to Shangri-La (now Camp David).",
-        "source_url": "https://www.themaincuprestaurant.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Multiple seating areas including a dog-friendly outdoor patio; consistently ranked the top restaurant in Middletown and a local favorite for weekend brunch.",
-        "source_url": "https://www.themaincuprestaurant.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Sunday brunch 10 AM-3 PM with bottomless mimosas; signature dishes include eggs Chesapeake and strawberry French toast.",
-        "source_url": "https://www.themaincuprestaurant.com/brunch-menu/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "1/2 off bottled wine Monday through Wednesday (advertised on the official site alongside the regular happy hour).",
-        "source_url": "https://themaincup.com/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "six-wicket-vineyards-myersville": {
-    "parking": {
-      "text": "On-site parking at the estate (10819 Church Hill Rd). It is an intimate farm visit, not a walk-in tasting room: owner Ed typically greets you as you pull into the driveway and starts the tour from there.",
-      "source_url": "https://epicbend.com/six-wicket-vineyards/",
-      "confidence": "medium",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "Book ahead. There is no walk-in tasting room: visits are by appointment only, arranged by calling 240-315-9805 or emailing Kathy (kathy@sixwicketvineyards.com).",
-        "source_url": "https://sixwicketvineyards.com/visit/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "The name comes from croquet (six wickets on a court). Family-owned by Ed and Kathy O'Laughlin, the estate has a full-size croquet court built into the vineyard, and you can play with a glass in hand. Pours are estate-grown: Albarino, Rose, Cabernet Franc, Petit Verdot, Teroldego.",
-        "source_url": "https://epicbend.com/six-wicket-vineyards/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Guided vineyard tour + tasting is $20 per person, which includes a guided vineyard tour and a tasting of their handcrafted estate wines.",
-        "source_url": "https://sixwicketvineyards.com/visit/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Visits are by appointment only; bring a picnic to enjoy with your wine (no outside alcohol). Lawn games are free to use: full-size croquet court, cornhole, Giant Jenga and Giant Connect Four.",
-        "source_url": "https://sixwicketvineyards.com/visit/",
+        "text": "Breakfast is available all day from the menu (platters, sandwiches, hotcakes), in addition to the weekend morning breakfast buffet.",
+        "source_url": "https://mountaingatefamilyrestaurant.com/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
@@ -927,84 +1019,368 @@
       }
     ]
   },
-  "the-alley-wagon": {
+  "olde-mother-brewing-frederick": {
+    "parking": {
+      "text": "Free parking: use the lot right next to the brewery, shared with Gravel & Grind (15 E 6th St). Free for customers — a real perk on the North Market corridor where street parking is tight.",
+      "source_url": "https://oldemother.com/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
     "insider": [
       {
-        "text": "The Alley Wagon is run by Brewer's Alley (Frederick County's original brewpub), which also contract-bottles for itself out of this Monocacy facility, so the kitchen is built around pairing food with the Rockwell/Monocacy beers on tap.",
-        "source_url": "https://monocacybrewing.com/series/the-alley-wagon/",
+        "text": "The $1-off-full-pours deal runs all day, not a narrow happy-hour window — you get it open to close.",
+        "source_url": "https://oldemother.com/events/",
+        "confidence": "medium"
+      },
+      {
+        "text": "There's an in-house burger kitchen in the back room, so you can eat a full meal here, not just drink. Pairing a burger and fries with a fresh pour is a local go-to.",
+        "source_url": "https://epicbend.com/olde-mother-brewing/",
+        "confidence": "high"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Trivia every Thursday, 7:00-9:30pm; sign-ups start at 6:30pm.",
+        "source_url": "https://oldemother.com/events/",
+        "confidence": "high"
+      },
+      {
+        "text": "$1 off any full pour, open to close (standing discount).",
+        "source_url": "https://oldemother.com/events/",
+        "confidence": "medium"
+      },
+      {
+        "text": "In-house burger kitchen (homepage names it 'Backslash Burger'; a Feb 2025 article calls it 'Fifty Fifty Burger' — half-beef/half-bacon patties). Order at counter, by QR code, or online. Outside food allowed; outside alcohol not.",
+        "source_url": "https://oldemother.com/",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "olde-towne-tavern-frederick": {
+    "parking": {
+      "text": "Closest covered option is the Church Street Garage (17 E Church St), accessible from the 100 block of N Market St a few blocks south; garages are $1/hr (weekday max $12, nightly max $5) and free Sunday 8 AM-2 PM. There is also a metered municipal lot off the 300 block of N Market St near the tavern.",
+      "source_url": "https://www.cityoffrederickmd.gov/1342/Garage-Parking",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "A Frederick fixture since 1976, set in a former pharmacy/soda-shop space on N Market St; known for live music and unique drink specials.",
+        "source_url": "https://downtownfrederick.org/item/olde-towne-tavern/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Live music Friday through Sunday evenings, karaoke on Wednesday nights, and sports on six TVs; accepts Downtown Frederick Gift Cards. Open daily 11:30 AM-1:30 AM.",
+        "source_url": "https://www.ottfrederick.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Standing drink prices: PBR drafts $1.50, PBR pitchers $7, Miller Lite/Yuengling drafts $2, Miller Lite/Yuengling pitchers $9, rail drinks $3.50; wings 75 cents each, personal pizza $5.",
+        "source_url": "https://www.ottfrederick.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Monday: $2.50 drafts, $10 pitchers, 7 PM-1 AM.",
+        "source_url": "https://www.ottfrederick.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Tuesday: $5 burgers 7-11 PM, plus drink specials 7 PM-1 AM.",
+        "source_url": "https://www.ottfrederick.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "orchid-cellar-meadery-middletown": {
+    "insider": [
+      {
+        "text": "Hours are seasonal: Apr-Nov is Fri 2-8 PM, Sat noon-8 PM, Sun noon-6 PM (Mon-Thu by appointment); Dec-Mar shrinks to Fri noon-5 PM, Sat noon-6 PM, Sun noon-5 PM (Mon-Thu closed). Check the season before driving out.",
+        "source_url": "https://www.orchidcellar.com/visitus",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Seating is first-come, first-served for groups up to ~6; parties of 10+ need a private event rental. The hand-built log-cabin tasting room has a wrap-around deck with mountain views, and dogs are welcome outdoors on leash. No outside music.",
+        "source_url": "https://www.orchidcellar.com/visitus",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Build-your-own tasting flight: pick selections across classic meads, sparkling meads, and wines (or a mix of all three). Suggested groupings include a mead discovery flight (Blacksmith, Lumberjack, Highlander, Archer, Monk, Hunter) and a spiced 'Hunter' flight.",
+        "source_url": "https://www.orchidcellar.com/events/build-your-own-tasting",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "The taproom is closed Monday and Tuesday. Core hours: Wed-Thu 3-9 PM (some listings to 10 PM), Fri-Sat 12-9/10 PM, Sun 12-8 PM. The Alley Wagon food truck only runs Wed/Thu, so come midweek if the truck is the draw.",
-        "source_url": "https://monocacybrewing.com/",
+        "text": "Cheese platters and small snacks are available for purchase, and you are always welcome to bring your own food/picnic (outside alcohol is not permitted).",
+        "source_url": "https://www.orchidcellar.com/visitus",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Wine/mead club membership ('The Club') is offered for ongoing perks; tiers and benefits are not detailed publicly.",
+        "source_url": "https://www.orchidcellar.com/restaurants-retailers",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "orioles-nest-331-frederick": {
+    "insider": [
+      {
+        "text": "This is a Fraternal Order of Orioles \"Nest\" (social club) at 1037 W Patrick St, but the public is welcome without membership; it runs a full restaurant, bar, and bingo hall. Optional membership is $25 men / $20 women plus a $5 initiation fee.",
+        "source_url": "https://oriolesnest331.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "It's a game-and-entertainment spot, not just a bar: new Diamond pool tables (with a pool league), 15 dart boards (dart league), karaoke, and live music most weekends. Best food/event intel is posted to their Facebook page, not the website.",
+        "source_url": "https://oriolesnest331.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Bingo most nights: secondary sources report bingo Wednesday through Saturday with doors at 4 PM and games starting 7 PM, in the dedicated bingo room. Not stated on the official site, so verify by phone (301-668-5668).",
+        "source_url": "https://www.bingoport.com/bingo-hall/orioles-nest-331-frederick-maryland",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Rotating daily food and drink specials, posted on the in-house specials board and the venue's Facebook page rather than the website; ask your server about soup/entree specials and check the daily specials board for desserts.",
+        "source_url": "https://oriolesnest331.com/menu/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Kitchen is budget-friendly: menu items run from a $5 hot dog to wings at $13/lb and burgers $12-$14, with steamed shrimp $18/lb ($10 half pound). Dine-in and takeout available.",
+        "source_url": "https://oriolesnest331.com/menu/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "ott-house-emmitsburg": {
+    "insider": [
+      {
+        "text": "Family-operated corner pub on Main Street, open since 1970.",
+        "source_url": "https://ott-house.weeblyte.com/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
     ],
     "deals": [
       {
-        "text": "The Alley Wagon is a permanently-stationed food truck by Brewer's Alley serving brewpub fare at Monocacy Brewing: a 1/4 lb burger with fries, bone-in wings (Buffalo, BBQ, or Old Bay), boneless wings, and a petite-tender steak sandwich on pizza bread.",
-        "source_url": "https://monocacybrewing.com/series/the-alley-wagon/",
+        "text": "Mon-Fri lunchtime food specials for $6.50",
+        "source_url": "https://ott-house.weeblyte.com/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Food-truck service runs on a recurring Wednesday and Thursday schedule, 4-9 PM, at the brewery (1781 N Market St). Days/times come from the brewery's event calendar feed, not a static official page, so confirm before relying on it.",
-        "source_url": "https://www.meetdaisy.co/calendars/monocacy-brewing-company/events/wed-thurs-food-truck-the-alley-wagon",
+        "text": "Monday evenings (from 5 PM): $2 Yuengling drafts and discounted wings",
+        "source_url": "https://ott-house.weeblyte.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "2 Buck Tuesday: $2 drafts, $2.75 rail drinks, $5 select pizzas",
+        "source_url": "https://ott-house.weeblyte.com/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
     ]
   },
-  "smoketown-brewing-brunswick": {
+  "pistarros": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 4-6 PM",
+      "details": "At the bar: deals on cocktails, beer, sangria, and house wine plus old-school pizzas and snacks. Posted bar pricing: brews $4.50, drafts $5.50, house wine and rail cocktails $5.50, house cocktails $7.50; happy-hour appetizers also available.",
+      "source_url": "https://pistarro.com/menu/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Closest public garage is the Church Street Garage (17 E Church St), a short walk from 221 N East St; downtown garages run $1/hour up to $12/day, with reduced flat nightly/weekend rates and free Sunday morning parking. Street meters nearby are an option for quick stops.",
+      "source_url": "https://www.parkfrederick.org/garage-parking/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
     "insider": [
       {
-        "text": "Housed in Brunswick's restored 1948 downtown fire station, with a dog-friendly patio overlooking the bridge and passing trains.",
-        "source_url": "https://www.smoketownbrewing.com/",
+        "text": "Specializes in traditional Naples-style wood-fired pizza; the Margherita is the signature pie. Same owners run the sister spot Isabella's Taverna & Tapas Bar.",
+        "source_url": "https://pistarro.com/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Closed Monday and Tuesday. Core hours: Wed-Thu 3-9 PM, Fri 3-10 PM, Sat 12-10 PM, Sun 12-8 PM (kitchen closes about an hour before the bar each day).",
-        "source_url": "http://www.smoketownbrewing.com/visit.shtml",
+        "text": "Rotating dinner specials appear regularly (e.g., chicken noodle soup, fried green tomatoes, peach caprese), so it is worth asking about the day's specials.",
+        "source_url": "https://pistarro.com/menu/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ],
     "deals": [
       {
-        "text": "Live music on Friday nights (the brewery runs an open submission form for Friday-night bands/musicians).",
-        "source_url": "http://www.smoketownbrewing.com/visit.shtml",
+        "text": "Pizza Night: $10 old-school red or white pizzas, $1 select toppings, and $5 pizza-night amber lager pints.",
+        "source_url": "https://pistarro.com/menu/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Trivia nights are part of the regular event lineup (no fixed day/time published; confirm via their socials before going for trivia).",
-        "source_url": "https://www.canaltrust.org/pyv/smoketown-brewing-station/",
-        "confidence": "medium",
+        "text": "Sunday Brunch, Sundays 10 AM-1:30 PM (excluding Easter and Mother's Day): benedicto, frittata, shrimp n' grits, breakfast pizza, plus mimosas, bloody marys, and bellinis.",
+        "source_url": "https://pistarro.com/menu/",
+        "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Rotating food trucks on site; you're also allowed to bring in outside food, plus a kitchen serving pub fare, sandwiches, and flatbreads.",
-        "source_url": "https://www.canaltrust.org/pyv/smoketown-brewing-station/",
+        "text": "Meatless Monday family meal: garden salad, pizzas, pasta, tiramisu, and sodas for $65 (no substitutions; available after 3:30 PM, takeout only).",
+        "source_url": "https://pistarro.com/menu/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "pour-decisions-restaurant-bar-music-new-market": {
+    "parking": {
+      "text": "Has its own free parking lot on site at 10519 Old National Pike, just off I-70 / Old National Pike — no street-parking hunt.",
+      "source_url": "https://www.checkle.com/biz/pour-decisions-restaurant-bar-music-ijamsville",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Late hours for the area: open Wed-Sun from 11 AM, until midnight Wed/Thu/Sun and until 2 AM Fri/Sat; closed Mon-Tue. Listed under both 'New Market' and 'Ijamsville' (21774) — same spot at 10519 Old National Pike. Phone (240) 915-2682.",
+        "source_url": "https://www.checkle.com/biz/pour-decisions-restaurant-bar-music-ijamsville",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
     ]
   },
-  "cactus-flats-walkersville": {
+  "red-heifer-winery-thurmont": {
+    "parking": {
+      "text": "On-site parking lot at the top of the property. Drive up the farm lane to the vineyard and winery at the crest of the hill; the lot, patio, and lawn are where leashed pets are welcome.",
+      "source_url": "https://www.redheiferwinery.com/visit",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
     "insider": [
       {
-        "text": "Old-school community roadhouse, not a Mexican spot despite the name — operating on this site since 1929 (originally the Roma Cafe), known as a friendly biker/locals bar where the staff are called 'Cactus Catz.' Kitchen leans grill: steaks and seafood are the local picks.",
-        "source_url": "https://thecatoctinbanner.com/cactus-flats/",
+        "text": "Adults only, 21+. Children are not permitted. Outside alcohol is prohibited; only Red Heifer wine may be consumed on site.",
+        "source_url": "https://www.redheiferwinery.com/visit",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Weekends are the draw: live music on Saturdays/weekends plus karaoke nights, with a patio for warm weather. It's closed early in the week — open Thu-Fri from 3 PM, Sat & Sun from noon — so plan around that and follow their Facebook for the live-entertainment lineup.",
-        "source_url": "https://evendo.com/locations/maryland/catoctin-mountain-park/bar/cactus-flats",
+        "text": "Bring a picnic (carry-in, carry-out) and grab a hilltop seat for sweeping vineyard views; charcuterie boards, salads, paninis, and snacks are also available. Friendly leashed pets welcome in the parking, patio, and lawn areas.",
+        "source_url": "https://www.redheiferwinery.com/visit",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wine flight: 4 three-ounce pours of your choice; tasting-room attendant offers the day's options. Price not stated on the official site.",
+        "source_url": "https://www.redheiferwinery.com/visit",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Wine club membership and gift cards available (membership benefits/pricing not detailed on the site).",
+        "source_url": "https://www.redheiferwinery.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "roasthouse-pub-frederick": {
+    "parking": {
+      "text": "On-site lot is small and fills fast on Friday/Saturday evenings after 5 PM. Reviewers report overflow options: the Lowe's lot nearby and, per one note, the motel directly behind the pub. The pub sits on Urbana Pike (Route 355) at the south end of Frederick, so it is a drive-up spot, not a walkable downtown one.",
+      "source_url": "https://www.tripadvisor.com/Restaurant_Review-g60903-d2192662-Reviews-Roasthouse_Pub-Frederick_Maryland.html",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "The draw is 20 rotating taps with weekly additions, not a fixed beer list, so the menu online never matches what is actually pouring. The official site says new beers are added each week and to check Instagram for the current list. Ask staff for a recommendation rather than going by any printed list.",
+        "source_url": "https://roasthousepubfrederick.com/",
+        "confidence": "high"
+      },
+      {
+        "text": "Pours come in multiple sizes (roughly 9 oz to 16 oz) and small samplers, so you can flight your way through unfamiliar craft beers instead of committing to a pint.",
+        "source_url": "https://www.beeradvocate.com/beer/profile/26583/",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "$2 off draft beers during happy hour (stated on the official site).",
+        "source_url": "https://roasthousepubfrederick.com/",
+        "confidence": "high"
+      },
+      {
+        "text": "Flights, Bites & Bluegrass: a recurring event starting at 5:30 PM (time confirmed via the site's embedded Instagram post; the specific day of the week is not stated on the site).",
+        "source_url": "https://roasthousepubfrederick.com/",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "rocky-point-creamery-brunswick": {
+    "insider": [
+      {
+        "text": "Hours are seasonal, so check the website before driving out. Summer 2026 hours are Tuesday-Sunday 11:30 AM to 8:30 PM, closed Mondays. The site directs you to its Facebook/Instagram for the most current updates and sunflower bloom status.",
+        "source_url": "https://www.rockypointcreamery.com/hours",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "The farm has worked this land since 1883 and is a stop on the Maryland Ice Cream Trail; the on-site ice cream is made fresh from their own dairy herd.",
+        "source_url": "https://www.rockypointcreamery.com/about-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Sunflower field fundraiser: cut your own sunflowers at $1 per stem, with 100% of proceeds donated to St. Jude Children's Research Hospital. A clipping station with scissors is provided; pay at the field entrance or at the register. Field is seasonal (typically blooms mid-to-late summer, roughly July) and weather-dependent, with multiple plantings to extend the season.",
+        "source_url": "https://www.rockypointcreamery.com/sunflowers",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Working dairy farm storefront: beyond 80+ flavors of homemade ice cream, they also sell farm products including milk, brown eggs, cheese, and beef on site.",
+        "source_url": "https://www.rockypointcreamery.com/about-us",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Group tours and party room rentals are available by booking; the farm has hosted on-farm activities and seasonal events.",
+        "source_url": "https://www.rockypointcreamery.com/about-us",
         "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "rosie-cheeks-distillery-woodsboro": {
+    "insider": [
+      {
+        "text": "Tastings are by reservation. Sundays are reservations-only, and the site directs you to call (240) 285-8139 to schedule a tasting.",
+        "source_url": "https://www.rosiecheeksdistilling.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Leave the dog at home. The distillery asks that pets stay home: 'For everyone's comfort, we kindly ask that pets stay at home.'",
+        "source_url": "https://www.rosiecheeksdistilling.com/",
+        "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ]
@@ -1045,49 +1421,155 @@
       }
     ]
   },
-  "rosie-cheeks-distillery-woodsboro": {
-    "insider": [
-      {
-        "text": "Tastings are by reservation. Sundays are reservations-only, and the site directs you to call (240) 285-8139 to schedule a tasting.",
-        "source_url": "https://www.rosiecheeksdistilling.com/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Leave the dog at home. The distillery asks that pets stay home: 'For everyone's comfort, we kindly ask that pets stay at home.'",
-        "source_url": "https://www.rosiecheeksdistilling.com/",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "willow-oaks-craft-cider-and-wine-burkittsville": {
-    "parking": {
-      "text": "Down a gravel farm lane. Trust the sign, not your phone: their own directions warn that GPS says 'you have arrived' at the bend in the road, so keep going until you see the Willow Oaks sign. On-site farm parking, no street/meter situation.",
-      "source_url": "https://willowoakscraftcider.com/visit/",
+  "simple-theory-wine-co-frederick": {
+    "happy_hour": {
+      "schedule": "Mon, Wed, Thu 3-6 PM",
+      "details": "Half off all wines by the glass during happy hour (Mon/Wed/Thu 3-6 PM). Closed Tuesdays.",
+      "source_url": "https://simpletheorywines.com/visit-us/",
       "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "No dedicated lot. It's in the lower blocks of N. Market St., so on-street metered parking is right out front ($2/hr, free after 6 PM and all day Sunday). The Carroll Creek Garage (44 E. Patrick St., reachable from S. Market) is the closest garage if the meters are full.",
+      "source_url": "https://www.visitfrederick.org/downtown-frederick/parking/",
+      "confidence": "medium",
       "last_verified": "2026-06-15"
     },
     "insider": [
       {
-        "text": "It is a working farm, not just a tasting room: cats, dogs, and cattle are around, and they also sell farm beef, produce, fresh herbs/plants, and local art, pottery, and jewelry.",
-        "source_url": "https://willowoakscraftcider.com/visit/",
+        "text": "It's a second-floor tasting lounge above Serendipity on Market, not a street-level shop. Enter through the Serendipity door, turn left into the atrium, then left again to the elevator up to the tasting room.",
+        "source_url": "https://simpletheorywines.com/visit-us/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Well-socialized leashed dogs are welcome in the garden and on the deck, and there are board games and cards across multiple seating areas (deck, patio, garden). Per Maryland law, no outside alcohol on site.",
-        "source_url": "https://willowoakscraftcider.com/visit/",
+        "text": "This is a wine tasting lounge pouring its own small-lot, sustainably made Maryland estate wines (Chardonnay, Albarino, Merlot, Bordeaux blends), with live music and themed tasting events, not a full bar.",
+        "source_url": "https://simpletheorywines.com/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ],
     "deals": [
       {
-        "text": "Order online anytime for curbside pickup and local delivery via their Square store, even outside weekend tasting-room hours.",
-        "source_url": "https://willowoakscraftcider.com/visit/",
+        "text": "Wine Wednesday: 15% off all bottles of wine every Wednesday.",
+        "source_url": "https://simpletheorywines.com/visit-us/",
         "confidence": "high",
         "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Teachers get happy hour pricing all day on Wednesdays.",
+        "source_url": "https://simpletheorywines.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "six-wicket-vineyards-myersville": {
+    "parking": {
+      "text": "On-site parking at the estate (10819 Church Hill Rd). It is an intimate farm visit, not a walk-in tasting room: owner Ed typically greets you as you pull into the driveway and starts the tour from there.",
+      "source_url": "https://epicbend.com/six-wicket-vineyards/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Book ahead. There is no walk-in tasting room: visits are by appointment only, arranged by calling 240-315-9805 or emailing Kathy (kathy@sixwicketvineyards.com).",
+        "source_url": "https://sixwicketvineyards.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "The name comes from croquet (six wickets on a court). Family-owned by Ed and Kathy O'Laughlin, the estate has a full-size croquet court built into the vineyard, and you can play with a glass in hand. Pours are estate-grown: Albarino, Rose, Cabernet Franc, Petit Verdot, Teroldego.",
+        "source_url": "https://epicbend.com/six-wicket-vineyards/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Guided vineyard tour + tasting is $20 per person, which includes a guided vineyard tour and a tasting of their handcrafted estate wines.",
+        "source_url": "https://sixwicketvineyards.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Visits are by appointment only; bring a picnic to enjoy with your wine (no outside alcohol). Lawn games are free to use: full-size croquet court, cornhole, Giant Jenga and Giant Connect Four.",
+        "source_url": "https://sixwicketvineyards.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "smoketown-brewing-brunswick": {
+    "insider": [
+      {
+        "text": "Housed in Brunswick's restored 1948 downtown fire station, with a dog-friendly patio overlooking the bridge and passing trains.",
+        "source_url": "https://www.smoketownbrewing.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Closed Monday and Tuesday. Core hours: Wed-Thu 3-9 PM, Fri 3-10 PM, Sat 12-10 PM, Sun 12-8 PM (kitchen closes about an hour before the bar each day).",
+        "source_url": "http://www.smoketownbrewing.com/visit.shtml",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Live music on Friday nights (the brewery runs an open submission form for Friday-night bands/musicians).",
+        "source_url": "http://www.smoketownbrewing.com/visit.shtml",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Trivia nights are part of the regular event lineup (no fixed day/time published; confirm via their socials before going for trivia).",
+        "source_url": "https://www.canaltrust.org/pyv/smoketown-brewing-station/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Rotating food trucks on site; you're also allowed to bring in outside food, plus a kitchen serving pub fare, sandwiches, and flatbreads.",
+        "source_url": "https://www.canaltrust.org/pyv/smoketown-brewing-station/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "springfield-manor-thurmont": {
+    "parking": {
+      "text": "Free parking onsite at 11836 Auburn Rd. The lot is grass/gravel on a 130-acre working estate, so wear appropriate shoes and expect a short walk to the tasting room. During the Maryland Lavender Festival (mid-June) and lavender field-visit weekends parking fills fast and is managed by event staff; arrive early. No public-transit option, this is a rural Rt 15 destination, so plan to drive.",
+      "source_url": "https://www.springfieldmanor.com/lavender-festival.html",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Limited days are the thing people miss: it's only open Fri (5-9pm) and Sat/Sun (12-6pm), not a typical full-week winery. Check the calendar before driving up, it also closes for the Lavender Festival weekend.",
+        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
+        "confidence": "high"
+      },
+      {
+        "text": "It's three things in one stop, a winery, distillery AND brewery, so a group with different tastes is covered; ask for a cocktail flight (the distillery side is what sets it apart from other county wineries) and they'll do mocktail versions on request.",
+        "source_url": "https://www.tripadvisor.com/ShowUserReviews-g60764-d6783904-r971085320-Springfield_Manor_Winery_Brewery_and_Distillery-Thurmont_Maryland.html",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Trivia night every Friday at 7pm (registration/sign-up at 6:30pm), with food trucks onsite. Tasting room open Fri 5-9pm.",
+        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
+        "confidence": "high"
+      },
+      {
+        "text": "Live music on weekends, roughly 2-5pm Saturday and Sunday (tasting room open Sat/Sun 12-6pm). Food trucks present on weekends.",
+        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
+        "confidence": "high"
+      },
+      {
+        "text": "Weekend cocktail flights available (rotating; 'check our Facebook for dates & recipes'). 11 craft beers on tap alongside the wine and spirits.",
+        "source_url": "https://www.springfieldmanor.com/event-calendar.html",
+        "confidence": "medium"
       }
     ]
   },
@@ -1133,133 +1615,380 @@
       }
     ]
   },
-  "black-ankle-vineyards-mount-airy": {
+  "tenth-ward-distilling-company": {
+    "parking": {
+      "text": "No private lot for the tasting room. Use metered street parking or a nearby downtown garage: Carroll Creek Garage and Church Street Garage are both close (it is at 55 E Patrick St in downtown Frederick).",
+      "source_url": "https://www.tenthwarddistilling.com/visit/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
     "insider": [
       {
-        "text": "Outdoor spaces are dog-friendly (leashed) on the farm; dogs are not allowed indoors unless ADA service animals. Reservations are recommended, especially for the limited indoor seating, though walk-ins are accommodated when possible.",
-        "source_url": "https://www.blackankle.com/visit-us",
+        "text": "No kitchen, but you are welcome to bring in outside food or order straight to your table from their neighbor, Maxwell's.",
+        "source_url": "https://www.tenthwarddistilling.com/visit/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Look for recurring evening programming: First Fridays bring Pizza & Passeggiata and Second Thursdays host The Vineyard Table food-and-wine series; Friday hours run latest (12 PM to 9 PM, with the Terrace Kitchen open from 4 PM).",
-        "source_url": "https://www.exploretock.com/blackankle/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ],
-    "deals": [
-      {
-        "text": "Wine available by the glass, bottle, or flight in the tasting room; the rotating Featured Tasting is complimentary for members and their guests at the tasting bars (member tableside tasting is also complimentary, by reservation).",
-        "source_url": "https://www.blackankle.com/visit-us",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Lawn guests may bring their own picnic blankets, folding chairs, small tables, or pop-up tents, plus their own snacks and non-alcoholic beverages, no outside-food/corkage fee mentioned.",
-        "source_url": "https://www.blackankle.com/visit-us",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Reserving 14+ days ahead lets you pre-order your first wine selection (and food) by emailing gatherings@blackankle.com so it's ready on arrival.",
-        "source_url": "https://www.blackankle.com/visit-us",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
-  "catoctin-breeze-vineyard-thurmont": {
-    "insider": [
-      {
-        "text": "Adults only: all guests must be 21+ (no children), and parties are capped at six people. Reserve a table through Tock for guaranteed seating; walk-ins are welcome but seated only as space allows.",
-        "source_url": "https://www.catoctinbreeze.com/faqs",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Dog friendly (leashed) in the tasting room and outdoors, but not the Cru Lounge. Outside food is allowed only in the upstairs lounge and outdoors; live music runs only on holiday and club-release weekends, and occasional pop-up food trucks appear (both weather-dependent).",
-        "source_url": "https://www.catoctinbreeze.com/faqs",
+        "text": "Woman-owned craft distillery making whiskey, gin, seasonal liqueurs, limited one-time releases, and Maryland's first and only absinthe; the tasting room pours spirit flights and craft cocktails, and a Barrel Room is available for cocktail-hour bookings.",
+        "source_url": "https://www.tenthwarddistilling.com/visit/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ],
     "deals": [
       {
-        "text": "Wine club members receive the Season Tasting (three current releases) complimentary; non-members pay $20. Premium Tasting is $25.",
-        "source_url": "https://www.catoctinbreeze.com/visit",
+        "text": "Wednesdays: $8 Smoked Bourbon Old Fashioneds, 2-10 PM (this is their stated Wednesday happy-hour/Game Night special).",
+        "source_url": "https://www.tenthwarddistilling.com/events/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "The Catoctin Experience: a 60-90 minute guided tour (vineyard, Cuverie, barrel room) with a seated six-wine tasting and charcuterie pairing, offered Fridays and Saturdays at 11:00 AM and 2:00 PM. Reservations required via Tock; limited to eight people per session.",
-        "source_url": "https://www.catoctinbreeze.com/events",
+        "text": "Wednesdays: Game Night meet-up, 6-8 PM.",
+        "source_url": "https://www.tenthwarddistilling.com/events/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Live music at the cocktail bar Thursday (7-9 PM) and Friday (8-10 PM) nights; Thursdays sometimes feature live jazz with Left of Center Jazz.",
+        "source_url": "https://www.tenthwarddistilling.com/events/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ]
   },
-  "orchid-cellar-meadery-middletown": {
+  "the-alley-wagon": {
     "insider": [
       {
-        "text": "Hours are seasonal: Apr-Nov is Fri 2-8 PM, Sat noon-8 PM, Sun noon-6 PM (Mon-Thu by appointment); Dec-Mar shrinks to Fri noon-5 PM, Sat noon-6 PM, Sun noon-5 PM (Mon-Thu closed). Check the season before driving out.",
-        "source_url": "https://www.orchidcellar.com/visitus",
-        "confidence": "high",
+        "text": "The Alley Wagon is run by Brewer's Alley (Frederick County's original brewpub), which also contract-bottles for itself out of this Monocacy facility, so the kitchen is built around pairing food with the Rockwell/Monocacy beers on tap.",
+        "source_url": "https://monocacybrewing.com/series/the-alley-wagon/",
+        "confidence": "medium",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Seating is first-come, first-served for groups up to ~6; parties of 10+ need a private event rental. The hand-built log-cabin tasting room has a wrap-around deck with mountain views, and dogs are welcome outdoors on leash. No outside music.",
-        "source_url": "https://www.orchidcellar.com/visitus",
-        "confidence": "high",
+        "text": "The taproom is closed Monday and Tuesday. Core hours: Wed-Thu 3-9 PM (some listings to 10 PM), Fri-Sat 12-9/10 PM, Sun 12-8 PM. The Alley Wagon food truck only runs Wed/Thu, so come midweek if the truck is the draw.",
+        "source_url": "https://monocacybrewing.com/",
+        "confidence": "medium",
         "last_verified": "2026-06-15"
       }
     ],
     "deals": [
       {
-        "text": "Build-your-own tasting flight: pick selections across classic meads, sparkling meads, and wines (or a mix of all three). Suggested groupings include a mead discovery flight (Blacksmith, Lumberjack, Highlander, Archer, Monk, Hunter) and a spiced 'Hunter' flight.",
-        "source_url": "https://www.orchidcellar.com/events/build-your-own-tasting",
+        "text": "The Alley Wagon is a permanently-stationed food truck by Brewer's Alley serving brewpub fare at Monocacy Brewing: a 1/4 lb burger with fries, bone-in wings (Buffalo, BBQ, or Old Bay), boneless wings, and a petite-tender steak sandwich on pizza bread.",
+        "source_url": "https://monocacybrewing.com/series/the-alley-wagon/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Cheese platters and small snacks are available for purchase, and you are always welcome to bring your own food/picnic (outside alcohol is not permitted).",
-        "source_url": "https://www.orchidcellar.com/visitus",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Wine/mead club membership ('The Club') is offered for ongoing perks; tiers and benefits are not detailed publicly.",
-        "source_url": "https://www.orchidcellar.com/restaurants-retailers",
+        "text": "Food-truck service runs on a recurring Wednesday and Thursday schedule, 4-9 PM, at the brewery (1781 N Market St). Days/times come from the brewery's event calendar feed, not a static official page, so confirm before relying on it.",
+        "source_url": "https://www.meetdaisy.co/calendars/monocacy-brewing-company/events/wed-thurs-food-truck-the-alley-wagon",
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
     ]
   },
-  "jb-seafood-myersville": {
+  "the-banyan-frederick": {
+    "parking": {
+      "text": "No onsite parking. The venue sits in downtown Frederick, where there are five centrally located public parking garages open 24/7 at about $1 per hour with low daily maximums and free Sunday-morning parking. A 500-space garage is planned to be built directly next to The Banyan in the coming years.",
+      "source_url": "https://www.visitfrederick.org/blog/stories/post/parking-in-downtown-frederick/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
     "insider": [
       {
-        "text": "On the Maryland Crab & Oyster Trail; much of the seafood (crab dip, soups, oysters, crab cakes) is priced at market rate, so call ahead if budgeting.",
-        "source_url": "https://www.visitmaryland.org/listing/seafood/jb-seafood",
+        "text": "Three distinct levels under one roof: a ground-floor speakeasy-style restaurant with private dining, a ~275-capacity second-floor event venue that also hosts regional touring acts, and an open-air rooftop bar (billed as the largest rooftop in downtown Frederick) with live music and its own food truck, The Hangry Rooster.",
+        "source_url": "https://www.businessinfrederickblog.com/businessinfrederick/2025/2/24/the-banyan-bringing-a-trifecta-of-food-music-amp-experience-to-downtown",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Signature move is the JB's Maryland Burger (6oz patty, bacon, cheese, a 2.5oz crab cake and crab dip drizzle, with Old Bay fries); there's also a crab specialty pizza.",
-        "source_url": "https://www.jbseafood.com/menus",
+        "text": "Owned by husband-and-wife trained-chef duo Dan and Staci Caiola; it is a brand-new spot, holding its red-carpet Grand Opening on April 11, 2026, so menus, hours, and any specials are still settling in.",
+        "source_url": "https://www.frederickcountymd.gov/Calendar.aspx?EID=14751",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "the-derby-restaurant-bar-new-market": {
+    "insider": [
+      {
+        "text": "Big outdoor scene: live music Wednesday through Saturday in The Yard (moves to the Bar Side in bad weather), plus an outdoor crush-cocktail bar on the deck.",
+        "source_url": "https://www.facebook.com/thederbynewmarket/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Has its own ice cream window, the Derby Cone (milkshakes, sundaes, soft serve), open spring through fall in the back of the property.",
+        "source_url": "https://www.facebook.com/thederbynewmarket/posts/the-derby-cone-is-open-until-1000pm-tonight-come-get-yourself-a-milkshake-sundae/1034997523564477/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
     ],
     "deals": [
       {
-        "text": "Taco Tuesday every Tuesday: fish or shrimp tacos, available all day (11am-8pm).",
-        "source_url": "https://www.jbseafood.com/",
+        "text": "Monday: Kids eat for $1 (any kids' meal with the purchase of an adult entree).",
+        "source_url": "https://www.facebook.com/thederbynewmarket/posts/-weekly-specials-at-the-derby-weve-got-something-tasty-for-everyone-all-week-lon/1372845704846313/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       },
       {
-        "text": "Gift cards available; catering offered for weddings, showers, birthdays, and office events.",
-        "source_url": "https://www.jbseafood.com/",
+        "text": "Tuesday: Derby Burger Tuesday, $12 build-your-own burger with unlimited toppings plus a side.",
+        "source_url": "https://www.facebook.com/thederbynewmarket/posts/-weekly-specials-at-the-derby-weve-got-something-tasty-for-everyone-all-week-lon/1372845704846313/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Wednesday: 50% off all pasta entrees (e.g. Fettuccine Alfredo, Chicken Parmesan, Spaghetti & Meatballs, Shrimp Scampi).",
+        "source_url": "https://www.facebook.com/thederbynewmarket/posts/-weekly-specials-at-the-derby-weve-got-something-tasty-for-everyone-all-week-lon/1372845704846313/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "the-lodge-myersville": {
+    "parking": {
+      "text": "The venue has its own parking lot at the remote log-cabin site on National Pike; arrive early on Friday/Saturday show nights, which historically drew large crowds.",
+      "source_url": "https://evendo.com/locations/maryland/cunningham-falls-state-park/bar/the-lodge-show-dance-club-summer-patio",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Listed here as Myersville, but The Lodge actually sits at 21614 National Pike in Boonsboro, MD. It is Maryland's oldest rural gay bar, a converted 1970s log cabin (the former Deer Park Lodge) and one of the few of its kind left in the country.",
+        "source_url": "https://www.thebanner.com/community/local-news/western-maryland-lgbtq-bar-5MOI2XTUCRFCPPNWZITZQ6UWYM/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "21+ only, open just three nights a week (Wed karaoke, Fri drag/burlesque, Sat themed parties) with an outdoor summer patio; hours can shift for special events, so check the calendar before heading out.",
+        "source_url": "http://thelodgemd.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Wednesday 'Karaoke With The Queen' (hosted by Miss Gay Maryland 2021) has no cover charge all night.",
+        "source_url": "http://thelodgemd.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Spotlight drag performances on the first and third Wednesdays of the month, alongside the weekly karaoke.",
+        "source_url": "http://thelodgemd.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "the-upper-deck-sports-bar-and-grill-mount-airy": {
+    "parking": {
+      "text": "The Upper Deck has its own free parking lot, a plus on downtown Mount Airy's tight Main Street.",
+      "source_url": "https://the-upper-deck-sports-bar-and-grill.wheree.com/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Set inside the historic 'OLD' Firehouse building in downtown Mount Airy, at 237 S Main St. A wheelchair ramp leads to the entrance and there is outdoor dining plus a billiards room.",
+        "source_url": "https://the-upper-deck-sports-bar-and-grill.wheree.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Regulars rate the wings as among the best in town; it is a participating venue in Mount Airy Restaurant Week.",
+        "source_url": "https://www.mountairymd.gov/495/Upper-Deck-Sports-Bar-and-Grill",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Taco specials on Tuesdays (part of a rotating weekly dine-in specials lineup).",
+        "source_url": "https://www.upperdeckmtairy.com/menus/weekly-dine-in-only-specials",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Pour House Trivia every Tuesday at 7:00 PM.",
+        "source_url": "https://www.pourhousetrivia.com/upper-deck.html",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Karaoke nights are a regular fixture at the venue.",
+        "source_url": "https://www.karaokeatlas.com/venue/the-upper-deck-sports-bar-and-grill-mt-airy",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "top-secret-tap-room-thurmont": {
+    "insider": [
+      {
+        "text": "Rotating local taps: the official site says taps are 'constantly changing with a new beer coming up almost every week,' featuring breweries from around Maryland and Pennsylvania.",
+        "source_url": "https://www.tstaproom.com/drinks",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Housed in a historic 1934 building on the former Fort Ritchie base (a one-time Maryland National Guard / WWII military site), now restored as part of the Ritchie revival.",
+        "source_url": "https://www.tstaproom.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Trivia Night every Thursday, 6:00-8:00 PM (Geeks Who Drink). Winner gets free beer and bragging rights, plus an occasional special prize.",
+        "source_url": "https://www.tstaproom.com/event-details/trivia-night-2025-04-24-18-00",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "valley-grill-sports-bar-middletown": {
+    "insider": [
+      {
+        "text": "Valley Sports Grill is the public restaurant and bar inside Richland Golf Club, not a freestanding sports bar; it serves contemporary American fare (sandwiches, salads, burgers, wings) with indoor seating for 95 and outdoor seating for 150.",
+        "source_url": "https://www.richlandgolfclub.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "The grill hosts live entertainment and events (e.g. a Piano Party Night listed for June 26, 2026), so it is more than a daytime golfers' snack bar. Restaurant hours run roughly 7:30 AM-8 PM weekdays and 7 AM-8 PM weekends.",
+        "source_url": "https://www.richlandgolfclub.com/contact",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Thursday Team Trivia at 7 PM with 1/2 price appetizers and extended happy hour until close; prizes for the top 3 teams.",
+        "source_url": "https://www.pourhousetrivia.com/valley-sports-grill.html",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "village-tavern-walkersville": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 4-6 PM",
+      "details": "$3 beers (Bud, Bud Light, Coors Light, Yuengling Lager); $6 specialty drinks (e.g. Cranberry Mule, Jameson Mule, Bourbon Pecan Coffee); discounted wine by the bottle ($14 CK Mondavi, $18 Leonard Kreusch). Food: Wing Dings $7, Chicken Tender Basket $8, Popcorn Shrimp Basket $9, Fried Pickles $6.",
+      "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Free surface lot. The tavern sits in the Walkers Village shopping plaza off Walkers Village Way, so park anywhere in the shared center lot out front.",
+      "source_url": "https://restaurantguru.com/Village-Tavern-Walkersville",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "Closed Sundays. Open Mon-Thu 11 AM-11 PM and Fri-Sat 11 AM-midnight, but the kitchen closes earlier than the bar: 9 PM Mon-Wed and 10 PM Thu-Sat, so come before then if you want food.",
+        "source_url": "https://villagetavernwalkersville.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "A genuine neighborhood institution, family-run since 1987 (celebrating its 39th anniversary) with a casual, comfortable pub feel rather than a chain vibe.",
+        "source_url": "https://villagetavernwalkersville.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Happy hour food baskets at a fixed low price: Wing Dings $7, Chicken Tender Basket $8, Popcorn Shrimp Basket $9, Fried Pickles $6 (offered Mon-Fri 4-6 PM).",
+        "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Discounted wine by the bottle during happy hour: $14 CK Mondavi (Chardonnay, Cabernet or Merlot) and $18 Leonard Kreusch Riesling / Piazzo Moscato d'Asti.",
+        "source_url": "https://www.villagetavernwalkersville.com/happyhour.php",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Kitchen offers rotating daily lunch and dinner specials in addition to the regular menu, though the specific specials are not published online.",
+        "source_url": "https://villagetavernwalkersville.com/",
+        "confidence": "medium",
+        "last_verified": "2026-06-15"
+      }
+    ]
+  },
+  "white-rabbit-gastropub": {
+    "happy_hour": {
+      "schedule": "All day Monday; 3-6pm Tuesday-Friday",
+      "details": "Discounts on food and beer. Recent (June 2026) secondary source lists $5 16oz draft pours, $6 margaritas and crushes, and discounted apps ($6 cheesy bread, $7 smash burger sliders, $7 Brussel Crowe). NOTE: deal specifics vary by source and appear to rotate; an older 2019 Frederick News-Post listed a 5-6pm Tue-Fri window with $4 food, $1 Miller High Life, $4 craft cans, $4 Orange Crush, so treat exact prices/window as subject to change and confirm by phone (240-651-1952). The official site (Squarespace) does not publish happy hour on a fetchable page.",
+      "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick-md/",
+      "confidence": "medium",
+      "last_verified": "2026-06-15"
+    },
+    "parking": {
+      "text": "Use the Church Street parking garage. White Rabbit is tucked at the end of a nondescript alley behind several buildings and the Church Street Garage at 18 Market Space, so the garage is the most convenient option; downtown street and lot parking also work.",
+      "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "It is a hidden-gem location: tucked at the end of a nondescript alleyway behind the Church Street Garage. First-timers routinely walk past it, so look for the alley rather than a street-front entrance.",
+        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
+        "confidence": "high"
+      },
+      {
+        "text": "No reservations and weekend waits are common, but sitting at the bar usually gets you seated faster. The upstairs back bar has a quieter, more relaxed vibe for lingering.",
+        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
+        "confidence": "medium"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Brunch served Saturday and Sunday, 11am-3pm (stated on official site).",
+        "source_url": "https://www.whiterabbitgastropub.com/readme",
+        "confidence": "high"
+      },
+      {
+        "text": "All-day Monday happy hour pricing (deals run all day Monday, not just an evening window).",
+        "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick-md/",
+        "confidence": "medium"
+      },
+      {
+        "text": "Pizza Flights: order Detroit-style pizza in groups of 3 slices to sample multiple styles or build your own. The Detroit-style pizza is the signature draw (award-winning per their own site).",
+        "source_url": "https://epicbend.com/white-rabbit-in-frederick/",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "willow-oaks-craft-cider-and-wine-burkittsville": {
+    "parking": {
+      "text": "Down a gravel farm lane. Trust the sign, not your phone: their own directions warn that GPS says 'you have arrived' at the bend in the road, so keep going until you see the Willow Oaks sign. On-site farm parking, no street/meter situation.",
+      "source_url": "https://willowoakscraftcider.com/visit/",
+      "confidence": "high",
+      "last_verified": "2026-06-15"
+    },
+    "insider": [
+      {
+        "text": "It is a working farm, not just a tasting room: cats, dogs, and cattle are around, and they also sell farm beef, produce, fresh herbs/plants, and local art, pottery, and jewelry.",
+        "source_url": "https://willowoakscraftcider.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Well-socialized leashed dogs are welcome in the garden and on the deck, and there are board games and cards across multiple seating areas (deck, patio, garden). Per Maryland law, no outside alcohol on site.",
+        "source_url": "https://willowoakscraftcider.com/visit/",
+        "confidence": "high",
+        "last_verified": "2026-06-15"
+      }
+    ],
+    "deals": [
+      {
+        "text": "Order online anytime for curbside pickup and local delivery via their Square store, even outside weekend tasting-room hours.",
+        "source_url": "https://willowoakscraftcider.com/visit/",
         "confidence": "high",
         "last_verified": "2026-06-15"
       }
