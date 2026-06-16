@@ -44,16 +44,36 @@ function placesByNorm(): Map<string, PlaceCardData[]> {
 function findByVenueName(name: string, eventGeom: EventWithMeta["geom"]): PlaceCardData | null {
   const k = normLoose(name);
   if (!k) return null;
+  // 1. Exact normalized name match within 800m (highest trust). Closest wins
+  //    when two places share a name across the county.
   const bucket = placesByNorm().get(k);
-  if (!bucket || bucket.length === 0) return null;
-  // Pick the closest match within 800m — keeps the photo honest when
-  // two places share a name across the county.
-  let best: { p: PlaceCardData; d: number } | null = null;
-  for (const p of bucket) {
-    const d = haversineMeters(eventGeom, p.geom);
-    if (d <= 800 && (!best || d < best.d)) best = { p, d };
+  if (bucket && bucket.length > 0) {
+    let best: { p: PlaceCardData; d: number } | null = null;
+    for (const p of bucket) {
+      const d = haversineMeters(eventGeom, p.geom);
+      if (d <= 800 && (!best || d < best.d)) best = { p, d };
+    }
+    if (best) return best.p;
   }
-  return best?.p ?? null;
+  // 2. Containment fallback. A feed's venue name is often a SHORT form of the
+  //    place's official name ("Sky Stage" vs "Frederick Arts Council Sky
+  //    Stage"), so the exact match above misses it and the card falls back to a
+  //    glyph. Accept a place whose normalized name contains the venue token (or
+  //    vice versa), guarded by a TIGHT 300m radius (the event is geocoded to
+  //    the venue, so this is effectively the same building) and a 5-char floor
+  //    on both sides so a stray "bar"/"hall" can't sweep in a wrong photo.
+  if (k.length >= 5) {
+    let best: { p: PlaceCardData; d: number } | null = null;
+    for (const p of clientPlaces()) {
+      const pk = normLoose(p.name);
+      if (pk.length < 5) continue;
+      if (!pk.includes(k) && !k.includes(pk)) continue;
+      const d = haversineMeters(eventGeom, p.geom);
+      if (d <= 300 && (!best || d < best.d)) best = { p, d };
+    }
+    if (best) return best.p;
+  }
+  return null;
 }
 
 export function withVenueThumbs(events: EventWithMeta[]): EventWithMeta[] {

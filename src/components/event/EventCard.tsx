@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import {
   Activity, Apple, Baby, Beer, Building2, CalendarDays, Church, Coffee,
   Heart, Landmark, Library, Music, Palette, ShoppingBag, Theater, Trees,
@@ -63,12 +65,11 @@ export default function EventCard({
    *   `tile`    — grid/rail card, date-led header + category band.
    *   `feature` — HERO: date-led editorial lead, one per surface.
    *
-   * Photo Policy (Phase 2): event cards are CALENDAR-NATIVE — no imported
-   * photography. The decision factors are when / where / what kind / why /
-   * (distance only when geo-confident). The old `hero_image` was usually a
-   * borrowed VENUE photo, not the event, so it's dropped; the date block +
-   * category mark carry the card. Photos return only for a future curated
-   * editorial feature. See docs/PHOTO_POLICY.md.
+   * Photo Policy (amended 2026-06-16): the glance / default card shows the
+   * venue's hero photo when the event has one (events borrow their venue's
+   * image), with the category-icon tile as the fallback. The date block still
+   * leads the text; the dense variants (utility / compact) stay photoless so
+   * the long tail reads as a calm list. See docs/PHOTO_POLICY.md.
    */
   variant?: "row" | "tile" | "feature" | "compact" | "glance" | "utility";
   /** Live right now — renders a small pulsing dot in the compact row so
@@ -529,21 +530,37 @@ export default function EventCard({
                 </div>
               )}
             </div>
-            {/* Trailing visual anchor — a small CENTERED category icon on
-                a tonal tile (category accent at 14% over the sunken paper).
-                No imported photo: the icon + tint carry the category, the
-                left accent rail anchors the row, the title leads. */}
-            <div
-              aria-hidden
-              className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[12px]"
-              style={{
-                background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
-                color: accent,
-                boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.06)",
-              }}
-            >
-              <CategoryIcon category={event.category} className="h-5 w-5" />
-            </div>
+            {/* Trailing visual anchor — the venue's photo when the event
+                carries one (events borrow their venue's hero), else a
+                centered category icon on a tonal tile. The left accent rail
+                still encodes the kind; the photo just gives the row a face. */}
+            {event.hero_image ? (
+              <div aria-hidden className="relative h-12 w-12 shrink-0 self-center overflow-hidden rounded-[12px]">
+                <Image
+                  src={event.hero_image}
+                  alt=""
+                  width={96}
+                  height={96}
+                  sizes="48px"
+                  placeholder="blur"
+                  blurDataURL={PAPER_CREAM_BLUR}
+                  className="h-full w-full object-cover"
+                />
+                <span className="absolute inset-0 rounded-[12px]" style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.10)" }} />
+              </div>
+            ) : (
+              <div
+                aria-hidden
+                className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[12px]"
+                style={{
+                  background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
+                  color: accent,
+                  boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.06)",
+                }}
+              >
+                <CategoryIcon category={event.category} className="h-5 w-5" />
+              </div>
+            )}
           </div>
         </Link>
       </article>
