@@ -114,7 +114,7 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       </span>
                     )}
                   </div>
-                  <p className="mt-2.5 line-clamp-3 font-serif text-[18px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+                  <p className="mt-2.5 line-clamp-2 font-serif text-[18px] font-semibold leading-snug tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
                     {d.offer}
                   </p>
                   {/* Specimen labels (the reference's DATE SIGHTED / LOCATION). */}
@@ -132,8 +132,11 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       </div>
                     )}
                   </div>
-                  {/* Field Notes the venue's own site buries — park + a tip. */}
-                  {(d.park || d.tip) && (
+                  {/* Field Notes the venue's own site buries — park + a tip.
+                      Only when the deck is fanned open: the stacked sliver stays
+                      lean (offer + when + where), and the extra intel fills the
+                      card's blank space once expanded. */}
+                  {!stacked && (d.park || d.tip) && (
                     <div className="mt-2.5 space-y-1">
                       {d.park && (
                         <p className="line-clamp-1 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>

@@ -43,21 +43,13 @@ const PIZZA = /pizza|pizzeria/i;
 const SWEET = /donut|doughnut|fudge|candy|chocolat|dessert|cupcake|pastr|bakery|sweet|cookie|ice ?cream|creamery/i;
 const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market/i;
 
+// Order = intent strength, not raw inventory. Food leads (the single most
+// universal "I want," ~210 places); then the going-out wants (Coffee, Drinks),
+// the treats (Sweets, Ice cream), Parks, then Live music pulled up next to the
+// outdoors/culture cluster (it's a distinctive county draw, not a basement
+// afterthought), then the errand + culture tail. Happy hour is prepended and
+// "More…" appended in CravingStrip, so this is the middle of that grid.
 export const CRAVINGS: Craving[] = [
-  {
-    key: "coffee",
-    label: "Coffee",
-    icon: "Coffee",
-    color: "var(--app-brand)",
-    match: (p) => p.category === "coffee",
-  },
-  {
-    key: "ice-cream",
-    label: "Ice cream",
-    icon: "IceCream",
-    color: "var(--app-cool)",
-    match: (p) => ICE_CREAM.test(p.name),
-  },
   {
     key: "food",
     label: "Food",
@@ -72,11 +64,11 @@ export const CRAVINGS: Craving[] = [
       PIZZA.test(p.name),
   },
   {
-    key: "sweets",
-    label: "Sweets",
-    icon: "Cookie",
-    color: "var(--app-brand-2)",
-    match: (p) => p.category === "bakery" || SWEET.test(p.name),
+    key: "coffee",
+    label: "Coffee",
+    icon: "Coffee",
+    color: "var(--app-brand)",
+    match: (p) => p.category === "coffee",
   },
   {
     key: "drinks",
@@ -84,6 +76,20 @@ export const CRAVINGS: Craving[] = [
     icon: "Beer",
     color: "var(--app-positive)",
     match: (p) => p.category === "bar" || p.category === "brewery",
+  },
+  {
+    key: "sweets",
+    label: "Sweets",
+    icon: "Cookie",
+    color: "var(--app-brand-2)",
+    match: (p) => p.category === "bakery" || SWEET.test(p.name),
+  },
+  {
+    key: "ice-cream",
+    label: "Ice cream",
+    icon: "IceCream",
+    color: "var(--app-cool)",
+    match: (p) => ICE_CREAM.test(p.name),
   },
   {
     key: "outside",
@@ -95,6 +101,20 @@ export const CRAVINGS: Craving[] = [
       p.category === "trail" ||
       p.category === "playground" ||
       p.category === "outdoors",
+  },
+  {
+    // The formal music halls + stages (Weinberg, Sky Stage, New Spire, the
+    // amphitheater). The brewery/bar live-music venues are categorized by
+    // what they sell, so they answer via Drinks + the events feed, not here
+    // — but "I want live music" deserves its own one-tap door given the
+    // county's stages. ~24 places in the `music` category.
+    key: "music",
+    label: "Live music",
+    icon: "Music",
+    color: "var(--app-accent)",
+    match: (p) =>
+      p.category === "music" ||
+      /\bamphitheat(er|re)|music hall|sky stage|bandshell\b/i.test(p.name),
   },
   {
     // ~299 places (shopping 225 + market 61 + book-store 13) — the biggest
@@ -129,20 +149,6 @@ export const CRAVINGS: Craving[] = [
       p.category === "gallery" ||
       p.category === "museum" ||
       p.category === "theater",
-  },
-  {
-    // The formal music halls + stages (Weinberg, Sky Stage, New Spire, the
-    // amphitheater). The brewery/bar live-music venues are categorized by
-    // what they sell, so they answer via Drinks + the events feed, not here
-    // — but "I want live music" deserves its own one-tap door given the
-    // county's stages. ~24 places in the `music` category.
-    key: "music",
-    label: "Live music",
-    icon: "Music",
-    color: "var(--app-accent)",
-    match: (p) =>
-      p.category === "music" ||
-      /\bamphitheat(er|re)|music hall|sky stage|bandshell\b/i.test(p.name),
   },
 ];
 
