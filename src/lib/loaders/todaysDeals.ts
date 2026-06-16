@@ -50,6 +50,9 @@ export type TodaysDeal = {
   slug: string;
   name: string;
   town?: string;
+  /** Place category — drives the happy-hour-vibe glyph (bar/brewery/winery/
+   *  restaurant), so a deal never wears a retail price-tag icon. */
+  category?: string;
   offer: string;
   /** The hours the deal runs ("5–9 PM", "All day"), parsed out of the offer
    *  text so the surface can show WHEN as its own distinct datum next to the
@@ -90,6 +93,33 @@ function extractHours(text: string): string | undefined {
   return undefined;
 }
 
+/** Strip a leading weekday prefix ("Tuesday: ..." -> "...") — the strip header
+ *  already states the day. "Taco Tuesday" / "Crabby Wednesday" keep theirs. */
+function trimDay(offer: string): string {
+  const t = offer.replace(/^\s*(sun|mon|tues?|wed(?:nes)?|thur?s?|fri|sat)[a-z]*\s*[:.\-–]\s*/i, "");
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
+/** Remove the hours from the offer text so the WHEN isn't shown twice (the
+ *  time runs in its own chip). Strips ranges, "all day", and anchored times,
+ *  then tidies the orphaned punctuation. Falls back to the input if stripping
+ *  leaves nothing. */
+function stripHours(offer: string): string {
+  const out = offer
+    .replace(/\b\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*[-–—]\s*(?:\d{1,2}(?::\d{2})?\s*(?:am|pm)|close)\b/gi, "")
+    .replace(/\ball day\b/gi, "")
+    .replace(/\b(?:at|from|starting at)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/gi, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s*,\s*,/g, ",")
+    .replace(/\s*,\s*\./g, ".")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([.,;)])/g, "$1")
+    .replace(/[(\s,;:–-]+$/g, "")
+    .replace(/^[\s,;:]+/, "")
+    .trim();
+  return out.length >= 4 ? out : offer.trim();
+}
+
 const OK: Record<string, number> = { high: 2, medium: 1 };
 
 /**
@@ -109,11 +139,16 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       if (!OK[conf] || !d.last_verified) continue;
       const days = daysInText(d.text || "");
       if (!days.has(dow)) continue; // no-day standing specials are not "today" news
-      const offer = (d.text || "").trim();
+      const raw = (d.text || "").trim();
+      const hours = extractHours(raw);
       const cand: TodaysDeal = {
         slug, name: place.name, town,
-        offer,
-        hours: extractHours(offer),
+        category: place.category,
+        // The offer leads with the WHAT; the day prefix + the hours are pulled
+        // out (header states the day, a chip states the time) so the headline
+        // isn't a redundant restatement.
+        offer: stripHours(trimDay(raw)),
+        hours,
         source_url: d.source_url, verified: verifiedLabel(d.last_verified), confidence: conf,
       };
       const prev = best.get(slug);

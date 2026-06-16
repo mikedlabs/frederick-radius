@@ -1,14 +1,14 @@
 import Link from "next/link";
-import { Tag, Clock3, MapPin } from "lucide-react";
+import { Martini, Beer, Wine, Utensils, Pizza, Coffee, Croissant, Clock3, MapPin, type LucideIcon } from "lucide-react";
 import { todaysDeals, EASTERN_WEEKDAY } from "@/lib/loaders/todaysDeals";
 
-/** Drop a redundant leading weekday ("Tuesday: $5 burgers" -> "$5 burgers")
- *  since the strip header already states the day. Only strips when the offer
- *  STARTS with the weekday, so "Taco Tuesday" / "Crabby Wednesday" keep theirs. */
-function trimDay(offer: string): string {
-  const t = offer.replace(/^\s*(sun|mon|tues?|wed(?:nes)?|thur?s?|fri|sat)[a-z]*\s*[:.\-–]\s*/i, "");
-  return t.charAt(0).toUpperCase() + t.slice(1);
-}
+/** A happy-hour-vibe glyph keyed to the place category — a drink or a plate,
+ *  never a retail price tag. Defaults to the cocktail glass (the going-out
+ *  read) so a deal reads as "worth heading out for," not "a coupon". */
+const DEAL_ICON: Record<string, LucideIcon> = {
+  bar: Martini, brewery: Beer, winery: Wine, pizza: Pizza, restaurant: Utensils, bakery: Croissant, coffee: Coffee,
+};
+const iconFor = (cat?: string): LucideIcon => DEAL_ICON[cat ?? ""] ?? Martini;
 
 /**
  * Today's Deals — a compact strip of the VERIFIED day-of-week specials
@@ -48,20 +48,22 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
         </div>
 
       <ul className="mt-1.5 px-1.5 pb-1.5">
-        {deals.map((d, i) => (
+        {deals.map((d, i) => {
+          const Icon = iconFor(d.category);
+          return (
           <li key={d.slug} className={i > 0 ? "border-t" : ""} style={i > 0 ? { borderColor: "color-mix(in srgb, var(--app-border) 60%, transparent)" } : undefined}>
             <Link
               href={`/places/${d.slug}`}
               className="tactile-interactive flex items-start gap-3 rounded-[var(--app-radius-md)] px-2 py-2.5 transition"
             >
-              {/* Icon-led, like the Field Notes card — a tinted tag well gives
-                  each deal a visual anchor instead of a wall of text. */}
+              {/* Icon-led — a happy-hour glyph (drink/plate by category) gives
+                  each deal a going-out anchor, not a retail price-tag read. */}
               <span
                 aria-hidden
                 className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
-                style={{ background: "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid))", color: "var(--app-brand)", boxShadow: "var(--app-edge)" }}
+                style={{ background: "color-mix(in srgb, var(--app-accent) 15%, var(--app-bg-elevated-solid))", color: "var(--app-accent)", boxShadow: "var(--app-edge)" }}
               >
-                <Tag className="h-[15px] w-[15px]" strokeWidth={2} />
+                <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
               </span>
               <span className="min-w-0 flex-1">
                 {/* Three distinct parts, each its own visual datum:
@@ -71,7 +73,7 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
                     Field-guide catalog grammar: the offer reads, the data
                     scans. */}
                 <span className="line-clamp-2 text-[14px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-                  {trimDay(d.offer)}
+                  {d.offer}
                 </span>
                 <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
                   {d.hours && (
@@ -93,7 +95,8 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
               </span>
             </Link>
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       <Link
