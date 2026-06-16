@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Tag } from "lucide-react";
 import { todaysDeals, EASTERN_WEEKDAY } from "@/lib/loaders/todaysDeals";
 
 /** Drop a redundant leading weekday ("Tuesday: $5 burgers" -> "$5 burgers")
@@ -47,28 +48,34 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
         </div>
 
       <ul className="mt-1.5 px-1.5 pb-1.5">
-        {deals.map((d) => (
-          <li key={d.slug}>
+        {deals.map((d, i) => (
+          <li key={d.slug} className={i > 0 ? "border-t" : ""} style={i > 0 ? { borderColor: "color-mix(in srgb, var(--app-border) 60%, transparent)" } : undefined}>
             <Link
               href={`/places/${d.slug}`}
-              className="tactile-interactive flex items-start gap-3 rounded-[var(--app-radius-md)] px-2 py-2 transition"
+              className="tactile-interactive flex items-start gap-3 rounded-[var(--app-radius-md)] px-2 py-2.5 transition"
             >
-              <span aria-hidden className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: "var(--app-brand)" }} />
+              {/* Icon-led, like the Field Notes card — a tinted tag well gives
+                  each deal a visual anchor instead of a wall of text. */}
+              <span
+                aria-hidden
+                className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full"
+                style={{ background: "color-mix(in srgb, var(--app-brand) 13%, var(--app-bg-elevated-solid))", color: "var(--app-brand)", boxShadow: "var(--app-edge)" }}
+              >
+                <Tag className="h-[15px] w-[15px]" strokeWidth={2} />
+              </span>
               <span className="min-w-0 flex-1">
-                {/* The OFFER leads — it's the data the user came for, so it
-                    gets the weight (ink, 14px medium); the venue + town are
-                    the supporting line beneath. */}
-                <span className="line-clamp-2 text-[14px] font-medium leading-snug" style={{ color: "var(--app-ink)" }}>
+                {/* The OFFER leads in ink; the venue + town are the mono
+                    supporting line, field-guide catalog style. */}
+                <span className="line-clamp-2 text-[14px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
                   {trimDay(d.offer)}
                 </span>
-                <span className="mt-1 flex items-baseline justify-between gap-2">
-                  <span className="truncate text-[12px] font-semibold uppercase tracking-[0.04em]" style={{ color: "var(--app-ink-2)" }}>
-                    {d.name}
-                  </span>
+                <span className="mt-1 flex items-baseline gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.06em]">
+                  <span className="truncate" style={{ color: "var(--app-ink-2)" }}>{d.name}</span>
                   {d.town && (
-                    <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
-                      {d.town}
-                    </span>
+                    <>
+                      <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+                      <span className="shrink-0" style={{ color: "var(--app-ink-3)" }}>{d.town}</span>
+                    </>
                   )}
                 </span>
               </span>
