@@ -14,8 +14,9 @@ import EventCard from "@/components/event/EventCard";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
-import { Bookmark, MapPin, Sparkles, Calendar, Building2 } from "lucide-react";
+import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route } from "lucide-react";
 import IconStamp from "@/components/ui/IconStamp";
+import ContourPlate from "@/components/ui/ContourPlate";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
 import { isOpenNow } from "@/lib/hours";
@@ -57,19 +58,6 @@ function decorateEvent(e: NonNullable<(typeof EVENT_BY_SLUG)[string]>) {
   };
 }
 
-/** Curated seeds for the empty state — six Frederick favorites that
- *  most visitors should know about. Picked by category breadth so the
- *  list shows the *shape* of the directory, not just food. Slugs match
- *  the canonical -town suffix form in places-client.json. */
-const EMPTY_SEEDS: Array<{ slug: string; reason: string }> = [
-  { slug: "monocacy-national-battlefield-frederick", reason: "The battle that saved Washington in 1864." },
-  { slug: "carroll-creek-linear-park-frederick", reason: "Downtown's water + art park." },
-  { slug: "olde-mother-brewing-frederick", reason: "Hometown brewery, year-round taproom." },
-  { slug: "schifferstadt-architectural-museum-frederick", reason: "The county's oldest house, still standing." },
-  { slug: "national-museum-civil-war-medicine-frederick", reason: "Small museum, big story." },
-  { slug: "sky-stage", reason: "Outdoor stage built inside a ruin." },
-];
-
 export default function SavedList() {
   const mounted = useMounted();
   const items = useSavedList();
@@ -89,7 +77,6 @@ export default function SavedList() {
     const set = new Set<string>();
     for (const i of items) if (i.type === "place") set.add(i.id);
     for (const s of recentSlugs) set.add(s);
-    for (const s of EMPTY_SEEDS) set.add(s.slug);
     const slugsToFetch = Array.from(set);
     return { slugsToFetch, slugsKey: slugsToFetch.join(",") };
   }, [items, recentSlugs]);
@@ -303,7 +290,7 @@ export default function SavedList() {
     );
   }
 
-  if (items.length === 0) return <EmptyState placesBySlug={placesBySlug} />;
+  if (items.length === 0) return <EmptyState />;
 
   // Cluster signal: if ≥3 places are in one town, suggest a route.
   const dominantTown = [...townTally.entries()]
@@ -596,19 +583,23 @@ function summarySentence(placeN: number, eventN: number, townN: number): string 
 }
 
 /**
- * EmptyState — the first impression when nothing's saved. We don't
- * leave the page bare; we treat it as a soft pitch for *what saving
- * is for* and prime the pump with six curated seeds the visitor can
- * tap to learn about. Each seed has a one-sentence "why" so the
- * empty page reads as editorial, not as a debug placeholder.
+ * EmptyState — a field-guide "blank journal page," not a bare list. It reads
+ * as the FIRST page of a guide you're about to fill: a contour-plate hero with
+ * the journal metaphor, the three things this page collects for you (places /
+ * events / routes — what saving is FOR, taught with engraved-glyph stamps),
+ * and four confident doorways to the surfaces that fill it. The old curated
+ * "Worth starting with" seed grid is gone (owner call) — the value is taught,
+ * not pre-stuffed, so the page sets itself apart from a generic favorites bin.
  */
-function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData> }) {
-  const seeds = EMPTY_SEEDS
-    .map((s) => ({ ...s, place: placesBySlug.get(s.slug) }))
-    .filter((s): s is typeof s & { place: PlaceCardData } => Boolean(s.place));
-
-  // Four confident doorways — the same lane language as /places, pointing
-  // at the surfaces that fill this page. A guided launchpad, not a paragraph.
+function EmptyState() {
+  // What this page keeps for you — the value, in the field-guide's own terms.
+  const KEEPS: { Icon: typeof Bookmark; color: string; title: string; desc: string }[] = [
+    { Icon: MapPin, color: "var(--app-brand)", title: "Places", desc: "The taproom, trail, or table you mean to get to." },
+    { Icon: Calendar, color: "var(--app-accent)", title: "Events", desc: "Shows and happenings worth the trip." },
+    { Icon: Route, color: "var(--app-cool)", title: "Routes", desc: "String saved stops into one good day out." },
+  ];
+  // Four confident doorways — the lane language from /places, pointing at the
+  // surfaces that fill this page. A guided launchpad, not a paragraph.
   const LANES: { href: string; label: string; Icon: typeof Bookmark; color: string }[] = [
     { href: "/guide", label: "Find", Icon: Sparkles, color: "var(--app-brand)" },
     { href: "/map", label: "Map", Icon: MapPin, color: "var(--app-cool)" },
@@ -617,64 +608,74 @@ function EmptyState({ placesBySlug }: { placesBySlug: Map<string, PlaceCardData>
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Tight inline hero — stamp + title + line on one row, not a stacked
-          block. Dense, content opens immediately. */}
-      <div className="flex items-center gap-3">
-        <IconStamp accent="var(--app-brand)" size="md">
-          <Bookmark aria-hidden />
-        </IconStamp>
-        <div className="min-w-0">
-          <h2 className="text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-            Nothing saved yet
+    <div className="space-y-5">
+      {/* Blank-journal hero — a field-guide page waiting to be filled. The
+          contour plate bleeds off the corner (the same specimen-plate mark the
+          page header uses); a stamp + serif line set the journal metaphor. */}
+      <section
+        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-5"
+        style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
+      >
+        <ContourPlate size={132} className="absolute -right-6 -top-6 opacity-70" />
+        <div className="relative max-w-[19rem] space-y-2.5">
+          <IconStamp accent="var(--app-brand)" size="md">
+            <Bookmark aria-hidden />
+          </IconStamp>
+          <h2 className="font-serif text-[22px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Your Frederick field guide, blank for now
           </h2>
-          <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-            Tap the bookmark on any place or event.
+          <p className="text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            Tap the bookmark on any place or event and it lives here, grouped by town and ready to turn into a plan.
           </p>
         </div>
-      </div>
+      </section>
 
-      {/* Guided doorways — four across in a row, Apple-Wallet style: compact
-          frosted, translucent quick-action cards (icon over a one-word label)
-          over the page bloom. */}
-      <ul className="grid grid-cols-4 gap-2">
-        {LANES.map(({ href, label, Icon, color }) => (
-          <li key={href}>
-            <Link
-              href={href}
-              className="tactile tactile-interactive flex flex-col items-center gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2.5 backdrop-blur-md"
-              style={{
-                background: "color-mix(in srgb, var(--app-bg-elevated) 66%, transparent)",
-                boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
-              }}
-            >
-              <IconStamp accent={color} size="sm">
-                <Icon aria-hidden />
-              </IconStamp>
-              <span className="text-[11px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
-                {label}
-              </span>
-            </Link>
+      {/* What you'll keep here — the value, three engraved-glyph rows. */}
+      <ul className="space-y-2">
+        {KEEPS.map(({ Icon, color, title, desc }) => (
+          <li
+            key={title}
+            className="flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5"
+            style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
+          >
+            <IconStamp accent={color} size="sm">
+              <Icon aria-hidden />
+            </IconStamp>
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{title}</p>
+              <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{desc}</p>
+            </div>
           </li>
         ))}
       </ul>
 
-      {seeds.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-[12px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-            Worth starting with
-          </h2>
-          {/* Two-up compact cells so more fit on screen — visual photo
-              tiles rather than stacked full-width rows. */}
-          <ul className="grid grid-cols-2 gap-2 md:grid-cols-3">
-            {seeds.map((s) => (
-              <li key={s.slug}>
-                <PlaceCard place={s.place} variant="grid" />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      {/* Start here — four doorways to the surfaces that fill this page. */}
+      <section className="space-y-2">
+        <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+          Start here
+        </p>
+        <ul className="grid grid-cols-4 gap-2">
+          {LANES.map(({ href, label, Icon, color }) => (
+            <li key={href}>
+              <Link
+                href={href}
+                className="tactile tactile-interactive flex flex-col items-center gap-1.5 rounded-[var(--app-radius-md)] px-1 py-2.5 backdrop-blur-md"
+                style={{
+                  background: "color-mix(in srgb, var(--app-bg-elevated) 66%, transparent)",
+                  boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-1)",
+                }}
+              >
+                <IconStamp accent={color} size="sm">
+                  <Icon aria-hidden />
+                </IconStamp>
+                <span className="text-[11px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                  {label}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
