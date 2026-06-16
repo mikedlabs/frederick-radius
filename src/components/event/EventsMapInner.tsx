@@ -127,11 +127,11 @@ export default function EventsMapInner({
               href={`/events/${active.slug}`}
               className="block max-w-[200px] px-1 py-0.5"
             >
-              <span className="block text-[13px] font-semibold leading-snug" style={{ color: "#0A0A0A" }}>
+              <span className="block text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink, #16140E)" }}>
                 {active.title}
               </span>
               {active.venue_name && (
-                <span className="mt-0.5 block text-[11px]" style={{ color: "#4A4A48" }}>
+                <span className="mt-0.5 block text-[11px]" style={{ color: "var(--app-ink-2, #4A4A48)" }}>
                   {active.venue_name}
                 </span>
               )}

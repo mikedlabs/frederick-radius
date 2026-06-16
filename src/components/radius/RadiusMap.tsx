@@ -859,8 +859,8 @@ export default function RadiusMap({
               <strong
                 style={{
                   fontSize: 12.5,
-                  color: "#1A1A1A",
-                  fontFamily: "var(--font-plex-serif)",
+                  color: "var(--app-ink, #1A1A1A)",
+                  fontFamily: "var(--font-display), ui-serif, Georgia, serif",
                 }}
               >
                 {hover.name}
@@ -932,8 +932,8 @@ export default function RadiusMap({
               <strong
                 style={{
                   fontSize: 13,
-                  color: "#1A1A1A",
-                  fontFamily: "var(--font-plex-serif)",
+                  color: "var(--app-ink, #1A1A1A)",
+                  fontFamily: "var(--font-display), ui-serif, Georgia, serif",
                   verticalAlign: "middle",
                 }}
               >
