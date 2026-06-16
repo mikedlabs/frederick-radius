@@ -7,7 +7,6 @@ import TodaysDeals from "@/components/today/TodaysDeals";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
 import LocationPrime from "@/components/today/LocationPrime";
-import NearbyNow from "@/components/today/NearbyNow";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
 // from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
 // header above the hero now carries the temporal anchor — weekday +
@@ -59,12 +58,11 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
  *   3. Answers lead   → anticipatory AnswerCards (tonight / weekend)
  *   4. CravingStrip   → "I want…" bar (LocationPrime consent pill on its
  *                        right) + cravings grid + a "Getting around" row
- *   5. TodaysDeals    → verified day-of-week specials (self-hides)
- *   6. NearbyNow      → geo-gated around-you (no second consent button)
- *   7. CivicAlerts    → worst-first heads-up (self-hides)
- *   8. TodayMoves     → the single confident "best move now"
- *   9. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
- *  10. The full briefing + More for today (collapsed)
+ *   5. TodaysDeals    → verified day-of-week specials as a Wallet deck (self-hides)
+ *   6. CivicAlerts    → worst-first heads-up (self-hides)
+ *   7. TodayMoves     → the single confident "best move now"
+ *   8. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
+ *   9. The full briefing + More for today (collapsed)
  *
  * What got cut in this pass:
  *   • RightNowStrip (On deck)    — overlapped the Upcoming events
@@ -455,12 +453,10 @@ export default async function HomePage({
         <TodaysDeals now={now} />
       </div>
 
-      {/* ── OPEN + HAPPENING NEAR YOU — demoted below the answers + craving:
-          it gates on a geolocation prompt, and friction must never sit above
-          a real answer. Its no-geo state is a calm one-action invite. */}
-      <div className="mt-3">
-        <NearbyNow />
-      </div>
+      {/* "What's happening around you" (NearbyNow) was removed from /today
+          (owner call): the craving grid + Today's Deals already answer "near
+          me now," and the around-you geo surface duplicated that. It still
+          lives on the map. */}
 
       {/* ── HEADS UP — high-signal interruption layer, only if needed ────
           "Before you make a plan, is there anything you need to know?"
