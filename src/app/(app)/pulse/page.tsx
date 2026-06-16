@@ -694,16 +694,6 @@ export default async function PulsePage({
         <div className="px-3 py-3">
           <ScannerTimeline />
         </div>
-        <a
-          href="https://twitter.com/FredScanner"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 px-4 pb-3 pt-1 text-[10px] uppercase tracking-wide"
-          style={{ color: "var(--app-ink-3)" }}
-        >
-          Source: @FredScanner
-          <ExternalLink className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
-        </a>
       </section>
 
       {/* Rivers moved INTO the dashboard as the cool-accent 7th tile — it's

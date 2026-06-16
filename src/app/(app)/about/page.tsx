@@ -314,7 +314,7 @@ export default async function AboutPage() {
           {/* The book — From Above, the photographer's storefront. */}
           <li>
             <a
-              href="http://www.miked.store"
+              href="https://www.miked.store"
               target="_blank"
               rel="noopener noreferrer"
               className="tactile tactile-interactive relative block aspect-[4/3] overflow-hidden rounded-[var(--app-radius-md)] border"
