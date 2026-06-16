@@ -30,7 +30,7 @@ export const MUNICIPALITIES: Municipality[] = [
     bbox: [-77.460, 39.385, -77.370, 39.450],
     description:
       "The county seat and largest city. Carroll Creek Linear Park, the Spires of Frederick, the Maryland breweries, and a downtown arts district that punches well above its weight.",
-    hero_blurb: "Spires, brick, water — and a downtown that walks.",
+    hero_blurb: "Spires, brick, water, and a downtown that walks.",
     fact: "The “City of Clustered Spires.”",
     est: 1745,
   },
@@ -57,7 +57,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "Gateway to Catoctin Mountain Park and Cunningham Falls. Two main streets, three diners, and one Presidential retreat just over the ridge.",
     hero_blurb: "The gateway town. Catoctin behind it, Maryland in front.",
-    fact: "Gateway to Catoctin — and Camp David.",
+    fact: "Gateway to Catoctin and Camp David.",
     est: 1751,
   },
   {
@@ -163,7 +163,7 @@ export const MUNICIPALITIES: Municipality[] = [
     description:
       "South Mountain village of just over 150 people. Best known beyond its size for a 1999 film that took its name; locals would rather you visit for the Gathland State Park overlooks.",
     hero_blurb: "South Mountain village, 153 strong.",
-    fact: "The “Blair Witch” town — go for Gathland.",
+    fact: "The “Blair Witch” town, go for Gathland.",
     est: 1824,
   },
   {
