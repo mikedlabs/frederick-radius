@@ -30,6 +30,26 @@ export type TodayAnswerInput = {
 
 const atVenue = (b: Best) => (b?.venue ? ` at ${b.venue}` : "");
 
+/**
+ * The evergreen lead when nothing is data-backed for the answer section
+ * (e.g. a quiet weekday morning with no tonight event). The answer-first
+ * promise must hold at 11am, not only at 6pm — an empty front door reads as
+ * "nothing here." This is honest by construction: no fabricated count or time,
+ * just the two always-true field-guide doors (the map of every place, and the
+ * full calendar). NOT a future-events look-ahead — /today stays today-first.
+ * Rendered ONLY when buildTodayAnswers yields no lead cards.
+ */
+export const TODAY_EXPLORE_FALLBACK: Answer = {
+  id: "explore",
+  status: "events",
+  statusLabel: "Explore",
+  title: "Find something worth the trip",
+  answer: "Browse Frederick County's places on the map, or see what's coming up on the calendar.",
+  sourceLabel: "Frederick Radius field guide",
+  primaryAction: { label: "Open the map", href: "/map?mode=browse" },
+  secondaryAction: { label: "See what's on", href: "/events" },
+};
+
 export function buildTodayAnswers(input: TodayAnswerInput): Answer[] {
   const out: Answer[] = [];
 
