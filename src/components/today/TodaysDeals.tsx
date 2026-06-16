@@ -23,23 +23,28 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
   const weekday = EASTERN_WEEKDAY(now);
 
   return (
-    <section
-      aria-label={`Verified deals for ${weekday}`}
-      className="overflow-hidden rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)]"
-      style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
-    >
-      <div className="flex items-center gap-2 px-3.5 pt-3">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand)" }}>
-          Today&rsquo;s deals
-        </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-          {weekday}
-        </span>
-        <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.08em]" style={{ color: "var(--app-positive)" }}>
-          verified
-        </span>
-      </div>
+    <div className="relative pt-[14px]">
+      {/* Folder tab — same card language as the event tiles. */}
+      <span
+        className="absolute left-3 top-0 z-10 rounded-t-[8px] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white"
+        style={{ background: "color-mix(in srgb, var(--app-brand) 82%, var(--app-ink))", boxShadow: "var(--app-edge)" }}
+      >
+        Today&rsquo;s deals
+      </span>
+      <section
+        aria-label={`Verified deals for ${weekday}`}
+        className="overflow-hidden rounded-[var(--app-radius-lg)] rounded-tl-none border bg-[var(--app-bg-elevated)]"
+        style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
+      >
+        <div className="flex items-center gap-2 px-3.5 pt-3">
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-2)" }}>
+            {weekday}
+          </span>
+          <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
+          <span className="font-mono text-[9.5px] uppercase tracking-[0.08em]" style={{ color: "var(--app-positive)" }}>
+            verified
+          </span>
+        </div>
 
       <ul className="mt-1.5 px-1.5 pb-1.5">
         {deals.map((d) => (
@@ -80,6 +85,7 @@ export default function TodaysDeals({ now, limit = 4 }: { now: Date; limit?: num
         Happy hours &amp; more
         <span aria-hidden>→</span>
       </Link>
-    </section>
+      </section>
+    </div>
   );
 }
