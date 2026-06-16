@@ -25,13 +25,20 @@ import { CRAVINGS } from "@/data/cravings";
  * /nearby with the craving preselected, so a person on the sidewalk goes
  * Today → tap "Ice cream" → nearest open one, in two taps.
  *
- * A GRID (not the old horizontal pill scroll) so every craving is visible at
- * once — the scroll hid "Drinks"/"Outside" off the right edge. Each tile is a
- * tactile paper well matching /nearby's RightNow picker (same vocabulary, one
- * visual voice), with a tinted icon well; the whole tile is the 44px+ target.
- * An 8th "Something else" tile routes to the full picker so a missing noun
- * never dead-ends. Server component (plain links) — costs nothing above the
- * fold.
+ * TWO labeled groups, not one flat 14-tile block. The findability audit
+ * (June 2026) found "I want… the bus" reads as a different instinct from
+ * "I want coffee," so the wants and the getting-around utilities are split:
+ *   • "I want…"        → cravings (Happy hour + the CRAVINGS set) + an escape
+ *                        hatch ("Something else") to the full picker.
+ *   • "Getting around" → Parking / MARC / Transit, their own eyebrow + row.
+ * Both stay one-tap in the same area (the utilities are real find-paths, not
+ * clutter) — the labels just make the hierarchy legible.
+ *
+ * A GRID (not the old horizontal pill scroll) so every tile is visible at
+ * once. Each tile is a tactile paper well matching /nearby's RightNow picker
+ * (same vocabulary, one visual voice), with a tinted icon well; the whole tile
+ * is the 44px+ target. Server component (plain links) — costs nothing above
+ * the fold.
  */
 const ICONS: Record<string, LucideIcon> = {
   Coffee,
@@ -54,6 +61,7 @@ const TILE_STYLE = {
 
 export default function CravingStrip() {
   return (
+    <div className="space-y-4">
     <section aria-labelledby="i-want-eyebrow" className="space-y-2">
       <div>
         <p id="i-want-eyebrow" className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
@@ -107,27 +115,6 @@ export default function CravingStrip() {
             </Link>
           );
         })}
-        {/* Getting-around utilities live in the same one-tap grid — "I want…
-            parking" / "the bus" is the same instinct as "I want coffee".
-            They were a separate link pair above the grid; folded in here. */}
-        <Link href="/parking" aria-label="Parking" className={TILE} style={TILE_STYLE}>
-          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
-            <ParkingCircle className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
-          </span>
-          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Parking</span>
-        </Link>
-        <Link href="/transit" aria-label="MARC train" className={TILE} style={TILE_STYLE}>
-          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
-            <Train className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
-          </span>
-          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>MARC</span>
-        </Link>
-        <Link href="/transit" aria-label="TransIT bus" className={TILE} style={TILE_STYLE}>
-          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
-            <Bus className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
-          </span>
-          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Transit</span>
-        </Link>
         {/* A missing noun routes to the full picker, never a dead end. */}
         <Link
           href="/nearby"
@@ -148,5 +135,35 @@ export default function CravingStrip() {
         </Link>
       </div>
     </section>
+
+    {/* ── GETTING AROUND — the same one-tap tiles, but their own eyebrow so
+        "I want… the bus" no longer reads as a craving. Three short
+        find-paths: where to park, the MARC train, the local TransIT bus. */}
+    <section aria-labelledby="getting-around-eyebrow" className="space-y-2">
+      <p id="getting-around-eyebrow" className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+        Getting around
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        <Link href="/parking" aria-label="Parking" className={TILE} style={TILE_STYLE}>
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
+            <ParkingCircle className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
+          </span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Parking</span>
+        </Link>
+        <Link href="/transit" aria-label="MARC train" className={TILE} style={TILE_STYLE}>
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
+            <Train className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
+          </span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>MARC</span>
+        </Link>
+        <Link href="/transit" aria-label="TransIT bus" className={TILE} style={TILE_STYLE}>
+          <span aria-hidden className="grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 14%, var(--app-bg-elevated-solid))" }}>
+            <Bus className="h-[18px] w-[18px]" strokeWidth={2} style={{ color: "var(--app-cool)" }} />
+          </span>
+          <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>Transit</span>
+        </Link>
+      </div>
+    </section>
+    </div>
   );
 }

@@ -56,7 +56,7 @@ const SECTION_CARD =
 
 export default function NearbyNow() {
   const mounted = useMounted();
-  const { state, request, clear } = useGeolocation();
+  const { state, clear } = useGeolocation();
 
   // Fetch the join from /api/nearby whenever the resolved position
   // changes. A small AbortController guard so a fast position swap
@@ -95,7 +95,13 @@ export default function NearbyNow() {
   // an effect, so a server/client mismatch is otherwise possible here.
   if (!mounted) return null;
 
-  // ── Opt-in prompt (idle / denied / unavailable / error) ──────────────
+  // ── Rest state (idle / loading / denied / unavailable) ───────────────
+  // The page has ONE location consent — the LocationPrime banner above the
+  // "I want" grid. This surface no longer carries a second "Use my location"
+  // button (the doubled ask was the page's most visible redundancy); it owns
+  // the same useGeolocation hook, so once consent is given above, the granted
+  // view below takes over automatically. Until then this reads as a calm
+  // pointer, not a competing primary action.
   if (state.status !== "granted") {
     const loading = state.status === "loading";
     const blocked =
@@ -127,36 +133,22 @@ export default function NearbyNow() {
               style={{ color: "var(--app-ink)" }}
             >
               {blocked
-                ? "Location is off"
-                : "What’s happening around you"}
+                ? "Showing across the county"
+                : loading
+                  ? "Finding what’s around you…"
+                  : "What’s happening around you"}
             </p>
             <p
               className="text-[11px] leading-snug"
               style={{ color: "var(--app-ink-3)" }}
             >
               {blocked
-                ? "Browsing the whole county. Enable location in your browser for a view centered on you."
-                : "County-wide — open places, live events, and civic context nearest to wherever you are."}
+                ? "Open places and live events countywide."
+                : loading
+                  ? "Centering on your location."
+                  : "Share your location above to center this on you — the open places and live events nearest you."}
             </p>
           </div>
-          {!blocked && (
-            <button
-              type="button"
-              onClick={() => {
-                haptic("light");
-                request();
-              }}
-              disabled={loading}
-              className="tap-press shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold transition disabled:opacity-60"
-              style={{
-                borderColor: "var(--app-border)",
-                background: "var(--app-brand)",
-                color: "#fff",
-              }}
-            >
-              {loading ? "Locating…" : "Use my location"}
-            </button>
-          )}
         </div>
       </section>
     );

@@ -4,13 +4,15 @@ import { Navigation } from "lucide-react";
 import { useGeolocation } from "@/hooks/useGeolocation";
 
 /**
- * LocationPrime — the contextual location opt-in, ABOVE the "I want" grid.
+ * LocationPrime — the ONE location opt-in, ABOVE the "I want" grid.
  *
- * The craving tiles answer "nearest open one," which needs the user's
- * location to be any good — so the consent has to come BEFORE the grid, not
- * buried below it. A calm one-line invite (never a wall): tap to share, and
- * it self-hides once granted (the around-you results below take over). Honors
- * the no-auto-prompt rule — geolocation only fires on an explicit tap.
+ * This is the page's single consent. Two surfaces below it want the same
+ * permission: the craving tiles ("nearest open one") and NearbyNow ("what's
+ * around you"). Both read the same useGeolocation hook, so one tap here lights
+ * up both — NearbyNow no longer carries its own button. The copy names BOTH
+ * payoffs so the single ask reads true. A calm one-line invite (never a wall),
+ * self-hides once granted. Honors the no-auto-prompt rule — geolocation only
+ * fires on an explicit tap.
  */
 export default function LocationPrime() {
   const { state, request } = useGeolocation();
@@ -38,7 +40,7 @@ export default function LocationPrime() {
         <span className="block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           {denied
             ? "Turn it on in your browser for nearest-open answers."
-            : "So “I want…” finds the nearest one open, not just any open."}
+            : "So we show the nearest one open and what’s happening around you."}
         </span>
       </span>
     </button>
