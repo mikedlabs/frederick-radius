@@ -12,6 +12,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import TownStrip from "@/components/municipality/TownStrip";
 import TownLocatorLine from "@/components/municipality/TownLocatorLine";
+import TownAlmanac from "@/components/municipality/TownAlmanac";
 import AerialBeat from "@/components/place/AerialBeat";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
 import LivingHere from "@/components/municipality/LivingHere";
@@ -222,6 +223,11 @@ export default async function MunicipalityPage(
       {/* 3 — Field-guide locator line: mono caps centroid coordinates,
           echoing the Saved header's plate mark. */}
       <TownLocatorLine centroid={m.centroid} type={m.type} />
+
+      {/* 3b — Cliff notes: the verified almanac (one-liner + FAQ + fun facts
+          + local insight). The informative town context at the top of the
+          page, so the reader knows what the town IS before the place reel. */}
+      <TownAlmanac slug={m.slug} townName={m.name} />
 
       {/* 4 — Worth your time: the LEAD answer. A glow-lead selected card,
           then a compact 2-up grid of cells, then a demoted "all places"
