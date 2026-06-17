@@ -378,28 +378,6 @@
       }
     ]
   },
-  "fountain-rock": {
-    "parking": {
-      "text": "Use the Church Street Garage (17 E Church St) - the closest garage to 124 N Market, accessible off the 100 block of N Market St right behind the restaurant. All downtown garages are $1/hour, open 24/7, with a $5 weekend/nightly max and free parking Sunday 8 AM-2 PM.",
-      "source_url": "https://www.cityoffrederickmd.gov/1342/Garage-Parking",
-      "confidence": "high",
-      "last_verified": "2026-06-15"
-    },
-    "insider": [
-      {
-        "text": "'Fountain Rock' is the management/corporate name; the public-facing venue at 124 N Market St is Brewer's Alley, Frederick's original brewpub (opened July 1996). 'Olde Fountain Rock' is also one of their house beers, so the name carries brand history.",
-        "source_url": "https://www.beermenus.com/beers/15533-brewer-s-alley-olde-fountain-rock",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Right on Market Street in the heart of downtown Frederick - a family-friendly brewpub anchor; later kitchen hours on Fri-Sat make it a solid late-bite stop after other downtown spots close.",
-        "source_url": "https://www.visitfrederick.org/listing/brewers-alley-restaurant/19/",
-        "confidence": "medium",
-        "last_verified": "2026-06-15"
-      }
-    ]
-  },
   "fratellis-italian-seafood-middletown": {
     "insider": [
       {
