@@ -1,41 +1,44 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bus, Navigation } from "lucide-react";
+import { Bus } from "lucide-react";
 
 /**
- * LiveTransitBoard — a Solari split-flap departure board for live buses.
+ * LiveTransitBoard — a live animated constellation of the county's buses.
  *
- * Real data, made eye-candy: every rolling bus from the Passio GTFS-realtime
- * feed (/api/transit/vehicles → {routeId, lat, lng, bearing}) on a station
- * departure board — route tag in its real color, the NEAREST NAMED STOP as a
- * split-flap destination that flips when the bus moves, and a heading arrow.
- * Not a map (they already plot on /map) and not an abstract count — where each
- * bus actually is, the way a train station tells you. Refreshed every 20s.
+ * The wow layer: every rolling bus from the Passio GTFS-realtime feed
+ * (/api/transit/vehicles → {routeId, lat, lng, bearing}) is a glowing,
+ * route-colored orb on a dark canvas that GLIDES to its new real position on
+ * each 20s refresh — you watch the system move. Pulse rings radiate from
+ * downtown; tap an orb to read which route it is and the stop it's nearest.
  *
- * Honest by construction: positions + headings are the feed's own; "near" the
- * nearest stop (a moving bus sits between stops), computed from the real
- * lat/lng. Route names/colors + the stop list come from the static GTFS,
- * passed by the server so its shapes never hit the client bundle.
+ * Not the /map (no tiles, not for navigation — an ambient "live pulse" piece),
+ * not a static list. Honest: real positions + headings; the motion between
+ * updates is a smooth tween of two real fixes, never an invented path. Route
+ * colors + the stop list come from the static GTFS, passed by the server so
+ * its shapes never hit the client bundle.
  */
 
-type LiveVehicle = { vehicleId?: string; routeId?: string; lat: number; lng: number; bearing?: number; timestamp?: number };
+type LiveVehicle = { vehicleId?: string; routeId?: string; lat: number; lng: number; bearing?: number };
 type RouteMeta = { id: string; short: string; name: string; color: string };
 type Stop = { name: string; lat: number; lng: number };
-type Placed = { key: string; tag: string; name: string; color: string; text: string; stop: string; bearing?: number };
+type Orb = { key: string; tag: string; name: string; color: string; x: number; y: number; bearing?: number; lat: number; lng: number };
+
+const VW = 320;
+const VH = 296;
+const PAD = 26;
+// Frames the active Frederick service area (where the buses actually run), so
+// the constellation fills the canvas and the glides are legible.
+const BBOX = [39.352, -77.485, 39.472, -77.355] as const; // s, w, n, e
 
 const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const;
 const compass = (deg?: number): string => (deg == null ? "" : COMPASS[Math.round((deg % 360) / 45) % 8]);
 
-// Readable tag text for a route color — GTFS route_text_color is unreliable
-// (white on the light routes). Pick dark/light from the color's luminance.
-function contrastText(hex: string): string {
-  const m = /^#?([\da-f]{6})$/i.exec(hex.trim());
-  if (!m) return "#16140E";
-  const n = parseInt(m[1], 16);
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.6 ? "#16140E" : "#FCFBF8";
+function project(lat: number, lng: number): { x: number; y: number } {
+  const [s, w, n, e] = BBOX;
+  const nx = Math.max(0, Math.min(1, (lng - w) / (e - w)));
+  const ny = Math.max(0, Math.min(1, (n - lat) / (n - s)));
+  return { x: PAD + nx * (VW - 2 * PAD), y: PAD + ny * (VH - 2 * PAD) };
 }
 
 function ago(seconds: number): string {
@@ -53,6 +56,16 @@ export default function LiveTransitBoard({
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
   const [at, setAt] = useState(0);
   const [now, setNow] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [calm, setCalm] = useState(false); // prefers-reduced-motion
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setCalm(mq.matches);
+    const onChange = () => setCalm(mq.matches);
+    mq.addEventListener?.("change", onChange);
+    return () => mq.removeEventListener?.("change", onChange);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -73,45 +86,40 @@ export default function LiveTransitBoard({
     load();
     const poll = setInterval(load, 20_000);
     const clock = setInterval(() => setNow(Date.now()), 1_000);
-    return () => {
-      alive = false;
-      clearInterval(poll);
-      clearInterval(clock);
-    };
+    return () => { alive = false; clearInterval(poll); clearInterval(clock); };
   }, []);
 
-  const placed = useMemo<Placed[]>(() => {
+  const orbs = useMemo<Orb[]>(() => {
     const byRoute = new Map(routes.map((r) => [r.id, r]));
-    const COS = Math.cos((39.41 * Math.PI) / 180); // de-skew lng for nearest-stop
-    const nearest = (lat: number, lng: number): string => {
-      let best = "", bestD = Infinity;
-      for (const s of stops) {
-        const dy = s.lat - lat;
-        const dx = (s.lng - lng) * COS;
-        const d = dy * dy + dx * dx;
-        if (d < bestD) { bestD = d; best = s.name; }
-      }
-      return best;
-    };
-    return vehicles
-      .map((v, i) => {
-        const m = v.routeId ? byRoute.get(v.routeId) : undefined;
-        const color = m?.color || "#9aa0a6";
-        return {
-          key: v.vehicleId ?? `${v.lat},${v.lng},${i}`,
-          tag: m?.short || (v.routeId ?? "·"),
-          name: m?.name ?? (v.routeId ? `Route ${v.routeId}` : "TransIT"),
-          color,
-          text: contrastText(color),
-          stop: stops.length ? nearest(v.lat, v.lng) : "",
-          bearing: v.bearing,
-        };
-      })
-      .sort((a, b) => a.tag.localeCompare(b.tag, undefined, { numeric: true }));
-  }, [vehicles, routes, stops]);
+    return vehicles.map((v, i) => {
+      const m = v.routeId ? byRoute.get(v.routeId) : undefined;
+      const { x, y } = project(v.lat, v.lng);
+      return {
+        key: v.vehicleId ?? `${v.routeId ?? "x"}-${i}`,
+        tag: m?.short || (v.routeId ?? "·"),
+        name: m?.name ?? (v.routeId ? `Route ${v.routeId}` : "TransIT bus"),
+        color: m?.color || "#9aa0a6",
+        x, y, bearing: v.bearing, lat: v.lat, lng: v.lng,
+      };
+    });
+  }, [vehicles, routes]);
+
+  const sel = orbs.find((o) => o.key === selected) ?? null;
+  const selStop = useMemo(() => {
+    if (!sel || !stops.length) return "";
+    const COS = Math.cos((39.41 * Math.PI) / 180);
+    let best = "", bestD = Infinity;
+    for (const s of stops) {
+      const dy = s.lat - sel.lat, dx = (s.lng - sel.lng) * COS;
+      const d = dy * dy + dx * dx;
+      if (d < bestD) { bestD = d; best = s.name; }
+    }
+    return best;
+  }, [sel, stops]);
 
   const secondsAgo = at ? Math.max(0, Math.floor((now - at) / 1000)) : 0;
-  const live = status === "ok" && placed.length > 0;
+  const liveCount = orbs.length;
+  const hub = project(39.4143, -77.4105); // downtown Frederick — the pulse origin
 
   return (
     <section aria-labelledby="transit-board-eyebrow" className="space-y-3">
@@ -123,80 +131,103 @@ export default function LiveTransitBoard({
         >
           <span
             aria-hidden
-            className={`inline-block h-2 w-2 rounded-full${live ? " pulse-dot" : ""}`}
-            style={{ background: placed.length > 0 ? "var(--app-positive)" : "var(--app-ink-3)" }}
+            className={`inline-block h-2 w-2 rounded-full${status === "ok" && liveCount > 0 && !calm ? " pulse-dot" : ""}`}
+            style={{ background: liveCount > 0 ? "var(--app-positive)" : "var(--app-ink-3)" }}
           />
           Buses, live
         </p>
         <p className="font-mono text-[10.5px] tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
           {status === "loading"
             ? "locating buses…"
-            : status === "error" && placed.length === 0
+            : status === "error" && liveCount === 0
               ? "feed momentarily down"
-              : `${placed.length} on the road · ${ago(secondsAgo)}`}
+              : `${liveCount} moving · ${ago(secondsAgo)}`}
         </p>
       </div>
 
-      {/* The board — a dark station panel; cream flaps, gold accents. */}
       <div
-        className="overflow-hidden rounded-[var(--app-radius-md)] p-1"
+        className="relative overflow-hidden rounded-[var(--app-radius-md)]"
         style={{
-          background: "linear-gradient(180deg, #211d14 0%, var(--app-ink) 70%)",
-          boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--app-accent) 30%, transparent), inset 0 0 0 1px rgba(0,0,0,0.5), var(--app-elev-1)",
+          background:
+            "radial-gradient(120% 90% at 50% 16%, rgba(192,135,31,0.16) 0%, transparent 58%), linear-gradient(180deg, #211d14 0%, var(--app-ink) 72%)",
+          boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--app-accent) 28%, transparent), inset 0 0 0 1px rgba(0,0,0,0.5), var(--app-elev-1)",
         }}
       >
-        {placed.length > 0 ? (
-          <ul style={{ perspective: "500px" }}>
-            {placed.map((p, i) => {
-              const dir = compass(p.bearing);
-              return (
-                <li
-                  key={p.key}
-                  className="flex items-center gap-2.5 px-2 py-2"
-                  style={{ borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.06)" }}
-                >
-                  {/* Route tag — its real GTFS color + text color. */}
-                  <span
-                    className="grid h-6 min-w-[28px] shrink-0 place-items-center rounded-[4px] px-1 font-mono text-[12px] font-bold tabular-nums"
-                    style={{ background: p.color, color: p.text }}
-                  >
-                    {p.tag}
-                  </span>
-                  {/* Destination flap — flips when the nearest stop changes. */}
-                  <span className="min-w-0 flex-1 leading-tight">
-                    <span
-                      key={p.stop}
-                      className="flap block truncate font-mono text-[12.5px] font-medium uppercase tracking-[0.02em]"
-                      style={{ color: "var(--app-bg)", animationDelay: `${Math.min(i, 12) * 45}ms` }}
-                    >
-                      {p.stop || p.name}
-                    </span>
-                  </span>
-                  {/* Heading — gold arrow rotated to the real bearing. */}
-                  {p.bearing != null && (
-                    <span
-                      className="flex w-9 shrink-0 items-center justify-end gap-1 font-mono text-[10px] tabular-nums"
-                      style={{ color: "var(--app-accent)" }}
-                    >
-                      <Navigation aria-hidden className="h-3 w-3" strokeWidth={2.5} style={{ transform: `rotate(${p.bearing}deg)` }} />
-                      {dir}
-                    </span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <div className="flex items-center justify-center gap-1.5 px-4 py-7 font-mono text-[12px] uppercase tracking-[0.08em]" style={{ color: "color-mix(in srgb, var(--app-bg) 70%, transparent)" }}>
+        <svg viewBox={`0 0 ${VW} ${VH}`} width="100%" role="img" aria-label={`Live map of ${liveCount} TransIT buses moving across Frederick`} style={{ display: "block" }}>
+          <defs>
+            <radialGradient id="tg-hub" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="var(--app-accent)" stopOpacity="0.85" />
+              <stop offset="100%" stopColor="var(--app-accent)" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* Pulse rings from downtown — the live "heartbeat". */}
+          {!calm && liveCount > 0 && [0, 1.4].map((delay, i) => (
+            <circle key={i} cx={hub.x} cy={hub.y} r="8" fill="none" stroke="var(--app-accent)" strokeWidth="1">
+              <animate attributeName="r" values="8;72" dur="2.8s" begin={`${delay}s`} repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.4;0" dur="2.8s" begin={`${delay}s`} repeatCount="indefinite" />
+            </circle>
+          ))}
+          <circle cx={hub.x} cy={hub.y} r="9" fill="url(#tg-hub)" />
+          <circle cx={hub.x} cy={hub.y} r="2.5" fill="var(--app-accent)" />
+
+          {/* Buses — glowing route-colored orbs that GLIDE to new positions. */}
+          {orbs.map((o) => {
+            const isSel = o.key === selected;
+            return (
+              <g
+                key={o.key}
+                style={{
+                  transform: `translate(${o.x}px, ${o.y}px)`,
+                  transition: calm ? "none" : "transform 1600ms cubic-bezier(0.4, 0, 0.2, 1)",
+                  cursor: "pointer",
+                  filter: `drop-shadow(0 0 5px ${o.color})`,
+                }}
+                onClick={() => setSelected((s) => (s === o.key ? null : o.key))}
+              >
+                <circle r="13" fill="transparent" />
+                {isSel && <circle r="9" fill="none" stroke={o.color} strokeWidth="1.5" opacity="0.9" />}
+                <circle r="6" fill={o.color} opacity="0.22" />
+                {o.bearing != null ? (
+                  <g style={{ transform: `rotate(${o.bearing}deg)` }}>
+                    <path d="M0,-5 L3.4,4 L0,1.8 L-3.4,4 Z" fill={o.color} stroke="var(--app-ink)" strokeWidth="0.5" />
+                  </g>
+                ) : (
+                  <circle r="3.2" fill={o.color} stroke="var(--app-ink)" strokeWidth="0.5" />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+
+        {/* Selected-bus caption — the data, on demand. */}
+        {sel && (
+          <div
+            className="absolute inset-x-2 bottom-2 flex items-center gap-2 rounded-[var(--app-radius-sm)] px-2.5 py-1.5"
+            style={{ background: "rgba(0,0,0,0.55)" }}
+          >
+            <span className="grid h-5 min-w-[24px] place-items-center rounded-[3px] px-1 font-mono text-[11px] font-bold" style={{ background: sel.color, color: "#16140E" }}>
+              {sel.tag}
+            </span>
+            <span className="min-w-0 flex-1 truncate font-mono text-[11px]" style={{ color: "var(--app-bg)" }}>
+              {selStop ? `near ${selStop}` : sel.name}
+            </span>
+            <span className="shrink-0 font-mono text-[10px]" style={{ color: "var(--app-accent)" }}>{compass(sel.bearing)}</span>
+          </div>
+        )}
+
+        {/* Empty / down state. */}
+        {liveCount === 0 && status !== "loading" && (
+          <div className="absolute inset-0 flex items-center justify-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.08em]" style={{ color: "color-mix(in srgb, var(--app-bg) 70%, transparent)" }}>
             <Bus className="h-4 w-4" strokeWidth={2} aria-hidden />
-            {status === "loading" ? "locating buses…" : status === "error" ? "live feed momentarily down" : "no buses running right now"}
+            {status === "error" ? "live feed momentarily down" : "no buses running right now"}
           </div>
         )}
       </div>
 
       <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-        Live bus positions from TransIT&rsquo;s GTFS-realtime feed, located by the
-        nearest stop and refreshed every 20 seconds. The county bus is free.
+        Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed every
+        20 seconds. Tap a bus for its route and nearest stop. The county bus is free.
       </p>
     </section>
   );
