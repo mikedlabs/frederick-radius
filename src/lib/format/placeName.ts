@@ -38,3 +38,28 @@ export function normalizePlaceName(raw: string): string {
   );
   return n;
 }
+
+/**
+ * Postal-city normalization for the raw `city` field.
+ *
+ * Some enriched records carry an EDITORIAL label in `city` ("Downtown
+ * Frederick") instead of the actual postal city. That label belongs on the
+ * municipality NAME (MUNICIPALITY_BY_SLUG["frederick"].name is "Downtown
+ * Frederick"), not on `city` — and it's factually wrong for the many
+ * City-of-Frederick places that aren't downtown (addresses on Buckeystown
+ * Pike, Spectrum Dr, W Patrick St, etc.). The postal city is "Frederick".
+ *
+ * Folding it here makes the `city` field consistent (it was split ~222
+ * "Downtown Frederick" / ~644 "Frederick") and honest, while every surface
+ * that wants the editorial label keeps reading it from the municipality name
+ * (todaysDeals / happy-hour both do), which is untouched. Runs in the loader
+ * BEFORE human patches, so a curated city override would still win.
+ */
+const CITY_FOLDS: Record<string, string> = {
+  "downtown frederick": "Frederick",
+};
+export function normalizeCity(raw: string): string {
+  if (!raw) return raw;
+  const t = raw.replace(/\s+/g, " ").trim();
+  return CITY_FOLDS[t.toLowerCase()] ?? t;
+}

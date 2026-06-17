@@ -23,7 +23,7 @@ import { RELIABLE_OPEN_WINDOWS, isLikelyOpenNow } from "@/data/reliable-open-win
 import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
-import { normalizePlaceName } from "@/lib/format/placeName";
+import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
 import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
@@ -298,6 +298,11 @@ const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
   // BEFORE patchRecord so a curated name override in places-overrides.json
   // always wins over the automatic transform.
   .map((p) => (p.name ? { ...p, name: normalizePlaceName(p.name) } : p))
+  // City-field hygiene: fold the editorial "Downtown Frederick" pseudo-city
+  // back to the postal city "Frederick" (the branding lives on the
+  // municipality name, not the raw city). BEFORE patchRecord so a curated
+  // city override would win. Lesson of the 222/644 city split (2026-06).
+  .map((p) => (p.city ? { ...p, city: normalizeCity(p.city) } : p))
   .map((p) => patchRecord(p, OV_PATCH))
   // Urbana geo-claim runs LAST so it composes with dedupe + overrides.
   .map(claimUrbana)
