@@ -1105,11 +1105,11 @@ export default function RadiusBuilder({
               <p className="truncate text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                 {minutes}-min {MODE_VERB[mode]} · {center.label}
               </p>
-              <p className="truncate text-[12px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-                {placesReady
-                  ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}`
-                  : "Finding places…"}
-              </p>
+              {!placesReady && (
+                <p className="truncate text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+                  Finding places…
+                </p>
+              )}
             </div>
             <span
               className="tactile tactile-interactive inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold"
@@ -1140,8 +1140,8 @@ export default function RadiusBuilder({
           >
             Within reach of {center.label}
           </h2>
-          <p className="mt-1 text-[13px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-            {placesReady ? `${displayedInside.length.toLocaleString()} ${displayedInside.length === 1 ? "place" : "places"}` : "Finding places"} · {minutes}-min {MODE_VERB[mode]}
+          <p className="mt-1 text-[13px]" style={{ color: "var(--app-ink-3)" }}>
+            {minutes}-min {MODE_VERB[mode]}
           </p>
         </div>
 
