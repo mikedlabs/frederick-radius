@@ -21,6 +21,34 @@ const eslintConfig = defineConfig([
     // might emit alongside the project tree.
     "**/.next/**",
   ]),
+  // No em dashes in user-facing copy. CLAUDE.md bans them and cleanFeedText
+  // strips them from FEED data, but it never sees hand-typed JSX/strings, so
+  // they kept leaking into toasts, errors, empty states, and editorial. A prior
+  // manual sweep did not hold; this gate makes it stick. Targets JSXText +
+  // string literals (NOT comments), in the consumer app only (the /pitch +
+  // marketing shell is a separate voice and is exempt). For a legitimate
+  // standalone em-dash "no data" glyph, disable per-line with a reason.
+  {
+    files: ["src/app/**/*.{ts,tsx}", "src/components/**/*.{ts,tsx}"],
+    ignores: ["src/app/pitch/**", "src/components/marketing/**"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "JSXText[value=/—/]",
+          message: "No em dashes in user-facing copy: use a comma, period, or colon (voice rule; cleanFeedText only cleans feed data, not hand-written JSX).",
+        },
+        {
+          selector: "Literal[value=/—/]",
+          message: "No em dashes in user-facing strings: use a comma, period, or colon.",
+        },
+        {
+          selector: "TemplateElement[value.cooked=/—/]",
+          message: "No em dashes in user-facing template strings: use a comma, period, or colon.",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

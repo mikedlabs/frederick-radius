@@ -39,16 +39,16 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
         const j = (await r.json().catch(() => ({}))) as { message?: string };
         setRes({
           configured: true,
-          answer: j.message ?? "Too many questions — give it a moment.",
+          answer: j.message ?? "Too many questions. Give it a moment.",
           sources: [],
         });
       } else if (!r.ok) {
-        setRes({ configured: true, answer: "Something went wrong — try again.", sources: [] });
+        setRes({ configured: true, answer: "Something went wrong. Try again.", sources: [] });
       } else {
         setRes((await r.json()) as AskResult);
       }
     } catch {
-      setRes({ configured: true, answer: "Something went wrong — try again.", sources: [] });
+      setRes({ configured: true, answer: "Something went wrong. Try again.", sources: [] });
     } finally {
       setLoading(false);
     }

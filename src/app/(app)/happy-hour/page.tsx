@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/happy-hour" },
   title: "Happy hour in Frederick County",
   description:
-    "What's on for happy hour around Frederick County right now — verified schedules confirmed at the source, with the deal, where to park, and the fine print locals know.",
+    "What's on for happy hour around Frederick County right now. Verified schedules confirmed at the source, with the deal, where to park, and the fine print locals know.",
 };
 
 export const revalidate = 600;

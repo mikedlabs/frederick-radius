@@ -63,6 +63,7 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
   let deltaShort: string;
   let deltaTitle: string;
   if (dMin === 0) {
+    // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose
     deltaShort = "—";
     deltaTitle = "Same length as yesterday";
   } else if (dMin > 0) {
@@ -145,7 +146,7 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
           <span
             className="inline-flex items-center gap-1 font-semibold tabular-nums"
             style={{ color: inSky ? "currentColor" : worst.category.color, opacity: inSky ? 1 : undefined }}
-            title={`AQI ${worst.aqi} ${worst.category.name} (${worst.parameter}) — observed in ${worst.reportingArea}`}
+            title={`AQI ${worst.aqi} ${worst.category.name} (${worst.parameter}), observed in ${worst.reportingArea}`}
           >
             <Wind className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
             AQI {worst.aqi}
@@ -160,7 +161,7 @@ export default async function AlmanacFooter({ inSky = false }: { inSky?: boolean
           <span
             className="inline-flex items-center gap-1 font-semibold"
             style={{ color: inSky ? "currentColor" : comfort.color, opacity: inSky ? 1 : undefined }}
-            title={`Dewpoint ${metar.dewpointF}°F at KFDK — ${comfort.label.toLowerCase()}`}
+            title={`Dewpoint ${metar.dewpointF}°F at KFDK, ${comfort.label.toLowerCase()}`}
           >
             <Droplets className="h-3 w-3 shrink-0" strokeWidth={2.25} aria-hidden />
             {comfort.label}

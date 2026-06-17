@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
   title: "Parks",
   description:
-    "Every park and open-space area in Frederick County — type, size, address, and who maintains it. Live from Frederick County GIS.",
+    "Every park and open-space area in Frederick County: type, size, address, and who maintains it. Live from Frederick County GIS.",
 };
 
 // Parks change rarely; the integration revalidates weekly.
@@ -83,7 +83,7 @@ export default async function ParksPage() {
           Parks
         </h1>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-          Every park and open-space area the county tracks — its type,
+          Every park and open-space area the county tracks: its type,
           size, and who maintains it. Tap one to see it on the map.
         </p>
       </header>

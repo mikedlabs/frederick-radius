@@ -60,7 +60,7 @@ export default function LivingHere({
       </div>
 
       <p className="px-0.5 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-        Civic answers for {townName} — sourced from the town, with freshness shown.
+        Civic answers for {townName}, sourced from the town, with freshness shown.
       </p>
     </section>
   );

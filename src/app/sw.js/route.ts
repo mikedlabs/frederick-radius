@@ -46,7 +46,7 @@ const SW_SOURCE = (version: string) => `/**
  * Safety-first by design: navigations are NETWORK-FIRST. The cache
  * and the offline page are only ever a fallback when the network
  * actually fails. A bad deploy or a stale cache can therefore never
- * trap a user on a broken page — the worst case offline is the
+ * trap a user on a broken page: the worst case offline is the
  * explicit /offline screen, and online always shows live content.
  *
  * CACHE_VERSION is the build's deployment id, embedded at response
@@ -158,7 +158,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 /* ─────────────────────────────────────────────────────
- * Web Push — opt-in notifications.
+ * Web Push: opt-in notifications.
  * ───────────────────────────────────────────────────── */
 self.addEventListener("push", (event) => {
   let payload = {};

@@ -6,7 +6,7 @@ import { getWeeklyPublicEventCountsByMunicipality } from "@/lib/guided/town-even
 
 export const metadata: Metadata = {
   title: "Explore towns",
-  description: "Pick a Frederick County town to start — real place counts and what's on this week.",
+  description: "Pick a Frederick County town to start. Real place counts and what's on this week.",
   alternates: { canonical: "/towns" },
 };
 
@@ -29,7 +29,7 @@ export default async function TownsPage() {
         </h1>
         <p className="text-[15px] leading-relaxed text-pretty" style={{ color: "var(--app-ink-2)" }}>
           The county&rsquo;s twelve municipalities, plus Urbana. Each card is a real
-          starting point — how much is worth your time there, and what&rsquo;s on this week.
+          starting point: how much is worth your time there, and what&rsquo;s on this week.
         </p>
       </header>
 

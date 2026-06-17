@@ -491,7 +491,7 @@ export default function RadiusMap({
             Map didn&rsquo;t load
           </p>
           <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-            Nearby places still work — the controls and list below are all here.
+            Nearby places still work. The controls and list below are all here.
           </p>
           {mapFailed && (
             <button

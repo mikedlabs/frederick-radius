@@ -48,7 +48,7 @@ export default function MunicipalEvents({
   return (
     <section className="space-y-3">
       <p className="text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-        Meetings, programs, and town schedules — the civic firehose, here
+        Meetings, programs, and town schedules. The civic firehose, here
         when you want it, out of the way when you don&rsquo;t.
       </p>
 
@@ -90,7 +90,7 @@ export default function MunicipalEvents({
 
       <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
         {filtered.length === 0
-          ? "No matches — try a different word or municipality."
+          ? "No matches. Try a different word or municipality."
           : `${filtered.length.toLocaleString()} programs${filtered.length > 50 ? " · showing first 50" : ""}`}
       </p>
 

@@ -146,7 +146,7 @@ export default function NearbyNow() {
                 ? "Open places and live events countywide."
                 : loading
                   ? "Centering on your location."
-                  : "Share your location above to center this on you — the open places and live events nearest you."}
+                  : "Share your location above to center this on you: the open places and live events nearest you."}
             </p>
           </div>
         </div>
@@ -197,7 +197,7 @@ export default function NearbyNow() {
       transition={{ type: "spring", stiffness: 320, damping: 30 }}
       className={SECTION_CARD}
       style={{ borderColor: "var(--app-border)" }}
-      aria-label={`Around you — ${ctx.label}`}
+      aria-label={`Around you: ${ctx.label}`}
     >
       {/* Header: resolved location + clear */}
       <div className="mb-3 flex items-center justify-between gap-3 px-1">

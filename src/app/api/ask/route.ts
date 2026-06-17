@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   // 15 questions/min per IP is generous for a human, fatal to a loop.
   if (await isRateLimited(req, "ask", 15, 60)) {
     return NextResponse.json(
-      { error: "rate_limited", message: "Too many questions — give it a moment." },
+      { error: "rate_limited", message: "Too many questions. Give it a moment." },
       { status: 429 },
     );
   }

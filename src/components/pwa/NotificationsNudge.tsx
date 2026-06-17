@@ -81,7 +81,7 @@ export default function NotificationsNudge() {
           style={{ color: "var(--app-ink-3)" }}
         >
           Civic alerts, road closures, and events at places you follow.
-          Off by default — pick only the topics you care about.
+          Off by default. Pick only the topics you care about.
         </p>
       </div>
       <Link

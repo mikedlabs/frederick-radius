@@ -60,7 +60,7 @@ export default async function LoginPage({
           style={{ color: "var(--app-ink-2)" }}
         >
           Your followed places stay in sync across your devices. We&apos;ll
-          email you a magic link — no password to remember.
+          email you a magic link. No password to remember.
         </p>
       </header>
 
@@ -70,7 +70,7 @@ export default async function LoginPage({
         className="text-center text-[12px] leading-relaxed"
         style={{ color: "var(--app-ink-3)" }}
       >
-        Frederick Radius works without an account too —{" "}
+        Frederick Radius works without an account too,{" "}
         <Link href="/my-radius" className="font-semibold underline-offset-2 hover:underline">
           keep browsing
         </Link>{" "}

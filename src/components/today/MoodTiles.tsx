@@ -77,7 +77,7 @@ export default function MoodTiles() {
             <li key={m.label}>
               <Link
                 href={m.href}
-                aria-label={`${m.label} — ${m.nudge}`}
+                aria-label={`${m.label}, ${m.nudge}`}
                 className={tileClass}
                 style={tileStyle}
               >

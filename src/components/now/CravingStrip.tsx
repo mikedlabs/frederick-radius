@@ -106,7 +106,7 @@ export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNod
             <Link
               key={c.key}
               href={`/nearby?c=${c.key}`}
-              aria-label={`${c.label} — nearest open`}
+              aria-label={`${c.label}: nearest open`}
               className={TILE}
               style={TILE_STYLE}
             >
@@ -128,7 +128,7 @@ export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNod
             and never dead-ends a want that isn't a tile. */}
         <Link
           href="/nearby"
-          aria-label="More — browse every category"
+          aria-label="More: browse every category"
           className={TILE}
           style={TILE_STYLE}
         >

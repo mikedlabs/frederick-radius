@@ -73,7 +73,7 @@ export default function InstallPrompt() {
             </p>
           ) : (
             <p className="mt-1 text-meta-lg leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Add it to your home screen — opens full-screen and works offline for saved places.
+              Add it to your home screen. Opens full-screen and works offline for saved places.
             </p>
           )}
           <div className="mt-2.5 flex items-center gap-3">

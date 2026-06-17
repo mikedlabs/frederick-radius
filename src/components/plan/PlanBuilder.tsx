@@ -627,8 +627,8 @@ export default function PlanBuilder({
               aria-hidden
             />
             <span>
-              Every stop is a real, operational place in Frederick County
-              — pulled from the directory, not invented. We respect your
+              Every stop is a real, operational place in Frederick County,
+              pulled from the directory, not invented. We respect your
               vibe + audience + time budget when stitching them together.
             </span>
           </p>
@@ -815,8 +815,8 @@ export default function PlanBuilder({
                 aria-hidden
               />
               <span>
-                Every stop is a real, operational place from our directory
-                — nothing invented. Open hours are best-known; confirm
+                Every stop is a real, operational place from our directory,
+                nothing invented. Open hours are best-known; confirm
                 before you go.
               </span>
             </p>

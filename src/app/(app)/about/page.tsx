@@ -36,21 +36,21 @@ type AboutIntent = {
 const ABOUT_INTENTS: AboutIntent[] = [
   {
     label: "Submit a place",
-    hint: "A spot we're missing — a cafe, a trail, a hidden gem",
+    hint: "A spot we're missing: a cafe, a trail, a hidden gem",
     icon: MapPin,
     accent: "var(--app-brand)",
     href: "/submit/place",
   },
   {
     label: "Submit an event",
-    hint: "Something happening — a market, a show, a fundraiser",
+    hint: "Something happening: a market, a show, a fundraiser",
     icon: CalendarPlus,
     accent: "var(--app-accent)",
     href: "/submit/event",
   },
   {
     label: "Send a correction",
-    hint: "Wrong hours, wrong phone, closed location — tell us",
+    hint: "Wrong hours, wrong phone, closed location. Tell us",
     icon: Pencil,
     accent: "var(--app-warning)",
     href: "mailto:miked@madproductions.io?subject=Frederick%20Radius%20correction",
@@ -73,7 +73,7 @@ const ABOUT_INTENTS: AboutIntent[] = [
   },
   {
     label: "Frederick history",
-    hint: "The essays — Civil War, Spires, the C&O, what built downtown",
+    hint: "The essays: Civil War, Spires, the C&O, what built downtown",
     icon: Scroll,
     accent: "var(--app-ink-2)",
     href: "/history",
@@ -106,7 +106,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about" },
   title: "About",
   description:
-    "Frederick County, organized around your day. What's open, what's happening, where, and how to get there — every town and community, one app.",
+    "Frederick County, organized around your day. What's open, what's happening, where, and how to get there, across every town and community, one app.",
 };
 
 export default async function AboutPage() {
@@ -168,7 +168,7 @@ export default async function AboutPage() {
           <span className="font-serif italic text-[18px]" style={{ color: "var(--app-ink)" }}>
             What&apos;s open, what&apos;s happening, where, and how to get there
           </span>
-          {" "}— across every town and community in Frederick County, Maryland. One app.
+          {" "}across every town and community in Frederick County, Maryland. One app.
         </p>
         <p>
           Built around five questions a real person actually asks:
@@ -179,7 +179,7 @@ export default async function AboutPage() {
           <em>How do I get there?</em>
         </p>
         <p>
-          Not a tourism brochure. Not a generic directory. Not a civic dashboard. A daily-use tool that turns this county&apos;s data into actual decisions — what to do, where to go, when to leave.
+          Not a tourism brochure. Not a generic directory. Not a civic dashboard. A daily-use tool that turns this county&apos;s data into actual decisions: what to do, where to go, when to leave.
         </p>
         <p>
           Made in Frederick, MD by{" "}
@@ -268,7 +268,7 @@ export default async function AboutPage() {
                 {isInternal ? (
                   <Link
                     href={intent.href}
-                    aria-label={`${intent.label} — ${intent.hint}`}
+                    aria-label={`${intent.label}: ${intent.hint}`}
                     className={className}
                     style={style}
                   >
@@ -279,7 +279,7 @@ export default async function AboutPage() {
                     href={intent.href}
                     target={intent.external ? "_blank" : undefined}
                     rel={intent.external ? "noopener noreferrer" : undefined}
-                    aria-label={`${intent.label} — ${intent.hint}`}
+                    aria-label={`${intent.label}: ${intent.hint}`}
                     className={className}
                     style={style}
                   >
@@ -523,7 +523,7 @@ export default async function AboutPage() {
                   className="mt-0.5 block text-[12px] leading-snug"
                   style={{ color: "var(--app-ink-3)" }}
                 >
-                  Editorial lists — date nights, rainy days, kid energy
+                  Editorial lists: date nights, rainy days, kid energy
                 </span>
               </span>
             </Link>

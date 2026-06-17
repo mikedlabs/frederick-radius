@@ -175,7 +175,7 @@ export default function HappyHourBrowser({ rows, today, nowMin }: { rows: HHRow[
               key={d}
               type="button"
               onClick={() => setDay(d)}
-              aria-label={`${DAY_FULL[d]} — ${n} happy hour${n === 1 ? "" : "s"}`}
+              aria-label={`${DAY_FULL[d]}: ${n} happy hour${n === 1 ? "" : "s"}`}
               aria-pressed={active}
               className="tactile-interactive flex flex-col items-center gap-1 rounded-[var(--app-radius-md)] py-2 transition"
               style={{

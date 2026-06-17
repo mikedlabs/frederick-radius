@@ -358,7 +358,7 @@ export default function PlaceCard({
                 <span className="line-clamp-2">&ldquo;{place.review_snippet}&rdquo;</span>
                 {place.review_author && (
                   <cite className="mt-0.5 block text-[11px] not-italic" style={{ color: "var(--app-ink-3)" }}>
-                    — {place.review_author}, Google
+                    {place.review_author}, Google
                   </cite>
                 )}
               </blockquote>

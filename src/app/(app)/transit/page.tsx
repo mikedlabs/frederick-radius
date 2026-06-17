@@ -42,7 +42,7 @@ const TRANSIT_INTENTS: TransitIntent[] = [
   },
   {
     label: "Plan a trip with the bus",
-    hint: "Google Maps with transit mode — drop in any Frederick address",
+    hint: "Google Maps with transit mode: drop in any Frederick address",
     icon: Navigation,
     accent: "var(--app-brand)",
     href: "https://www.google.com/maps/dir/?api=1&travelmode=transit&origin=Frederick%2C+MD",
@@ -50,7 +50,7 @@ const TRANSIT_INTENTS: TransitIntent[] = [
   },
   {
     label: "MARC to DC",
-    hint: "Brunswick line — Brunswick + Point of Rocks → Silver Spring + DC",
+    hint: "Brunswick line: Brunswick + Point of Rocks → Silver Spring + DC",
     icon: TrainFront,
     accent: "var(--app-accent)",
     href: "https://www.mta.maryland.gov/schedule/marc-brunswick",
@@ -58,7 +58,7 @@ const TRANSIT_INTENTS: TransitIntent[] = [
   },
   {
     label: "TransIT-plus (paratransit)",
-    hint: "Door-to-door rides for disabled riders — book 1+ business days ahead",
+    hint: "Door-to-door rides for disabled riders, book 1+ business days ahead",
     icon: Accessibility,
     accent: "var(--app-positive)",
     href: "https://frederickcountymd.gov/108/TransIT-Plus",
@@ -74,7 +74,7 @@ const TRANSIT_INTENTS: TransitIntent[] = [
   },
   {
     label: "Bike on the bus",
-    hint: "Every TransIT bus has a 2-bike front rack — first-come, no fee",
+    hint: "Every TransIT bus has a 2-bike front rack, first-come, no fee",
     icon: Bike,
     accent: "var(--app-cool)",
     href: COUNTY_TRANSIT_URL,
@@ -90,7 +90,7 @@ const TRANSIT_INTENTS: TransitIntent[] = [
   },
   {
     label: "Lost something on the bus",
-    hint: "Call the TransIT office — items held at the maintenance facility",
+    hint: "Call the TransIT office. Items held at the maintenance facility",
     icon: Search,
     accent: "var(--app-ink-2)",
     href: "/contacts",
@@ -112,7 +112,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/transit" },
   title: "Transit",
   description:
-    "Frederick County TransIT routes — the local bus network, where it runs, where it goes.",
+    "Frederick County TransIT routes: the local bus network, where it runs, where it goes.",
 };
 
 // Was weekly (route shapes change rarely). Lowered to 60s so the live
@@ -252,7 +252,7 @@ export default async function TransitPage() {
                   href={intent.href}
                   target={intent.external ? "_blank" : undefined}
                   rel={intent.external ? "noopener noreferrer" : undefined}
-                  aria-label={`${intent.label} — ${intent.hint}`}
+                  aria-label={`${intent.label}: ${intent.hint}`}
                   className="hover-lift flex h-full flex-col items-start gap-2 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition"
                   style={{
                     borderColor: "var(--app-border)",
@@ -445,7 +445,7 @@ export default async function TransitPage() {
           Route shapes and {stops.length > 0 ? `${stops.length} stops` : "stops"}{" "}
           come from Maryland Open Data (Frederick County TransIT). Live
           schedules and real-time vehicle positions need the county&apos;s
-          GTFS feed, which isn&apos;t published yet &mdash; when it is,
+          GTFS feed, which isn&apos;t published yet. When it is,
           a future phase will add next-departure times and bus icons
           to this map.
         </p>

@@ -101,7 +101,7 @@ export default function SubmitPlaceForm() {
         {pending ? "Submitting…" : "Submit for review"}
       </button>
       <p className="text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        Submissions are reviewed by hand. We&apos;ll verify against public sources before publishing — your email isn&apos;t shown publicly.
+        Submissions are reviewed by hand. We&apos;ll verify against public sources before publishing. Your email isn&apos;t shown publicly.
       </p>
     </form>
   );

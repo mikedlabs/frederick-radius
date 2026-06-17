@@ -38,9 +38,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/open-now" },
   title: "Open now",
   description:
-    "What's open right now across Frederick County — verified against live hours, ranked from your town.",
+    "What's open right now across Frederick County, verified against live hours, ranked from your town.",
   openGraph: { title: "Open now", description:
-    "What's open right now across Frederick County — verified against live hours, ranked from your town." },
+    "What's open right now across Frederick County, verified against live hours, ranked from your town." },
 };
 
 export default async function OpenNowPage() {
@@ -125,7 +125,7 @@ export default async function OpenNowPage() {
       ) : (
         <p className="text-[14px]" style={{ color: "var(--app-ink-2)" }}>
           Nothing is verified open at this hour. The likely-open list below is
-          built from places with reliable posted hours — check before you go.
+          built from places with reliable posted hours, so check before you go.
         </p>
       )}
 

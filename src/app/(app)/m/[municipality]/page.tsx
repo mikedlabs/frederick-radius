@@ -318,7 +318,7 @@ export default async function MunicipalityPage(
               style={{ borderColor: "var(--app-border)" }}
             >
               <p className="text-sm font-medium" style={{ color: "var(--app-ink-2)" }}>
-                Nothing on the calendar for {m.name} yet — it runs on word of mouth.
+                Nothing on the calendar for {m.name} yet. It runs on word of mouth.
               </p>
               <Link
                 href={`/submit/event?m=${m.slug}`}

@@ -148,7 +148,7 @@ export default async function CollectionPage({
           This collection is being updated. Check back soon.
         </p>
       ) : (
-        <ul className="space-y-3" aria-label={`${collection.title} — ${places.length} places`}>
+        <ul className="space-y-3" aria-label={`${collection.title}, ${places.length} places`}>
           {places.map((p) => (
             <li key={p.slug}>
               <PlaceCard place={p} />
