@@ -9,8 +9,6 @@
  */
 import Link from "next/link";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
-import type { DemoFoodTruck } from "@/data/food-trucks-demo";
-import type { DemoPointsPartner } from "@/data/radius-points-demo";
 import type { EventPin, SelectedOsm, SelectedPlace } from "./types";
 
 /** Compact event card shown inside a Mapbox Popup. */
@@ -73,87 +71,6 @@ export function EventPopup({ e }: { e: EventPin }) {
       >
         See event →
       </Link>
-    </div>
-  );
-}
-
-export function PointsPartnerPopup({ p }: { p: DemoPointsPartner }) {
-  return (
-    <div style={{ minWidth: 220, padding: 4 }}>
-      <p style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-        textTransform: "uppercase", color: "var(--app-accent, #C0871F)", marginBottom: 4,
-      }}>
-        Radius Points · Preview
-      </p>
-      <strong style={{ display: "block", fontSize: 15, color: "var(--app-ink, #1A1A1A)", fontFamily: "var(--font-display), ui-serif, Georgia, serif" }}>
-        {p.name}
-      </strong>
-      <p style={{ fontSize: 12, margin: "4px 0 8px", color: "var(--app-ink-2, #4A4A48)" }}>{p.kind}</p>
-      <div style={{
-        display: "flex", alignItems: "center", gap: 6, fontSize: 12,
-        color: "var(--app-accent, #C0871F)", background: "color-mix(in srgb, var(--app-accent) 16%, transparent)", borderRadius: 8,
-        padding: "6px 8px", marginBottom: 10,
-      }}>
-        <span aria-hidden>{"\u{2B50}"}</span>
-        {p.earnLine}
-      </div>
-      <button
-        type="button"
-        disabled
-        style={{
-          width: "100%", padding: "8px 10px", borderRadius: 8,
-          border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)",
-          color: "var(--app-ink-3)", fontSize: 12, fontWeight: 600, cursor: "not-allowed",
-        }}
-      >
-        Join Radius Points (coming soon)
-      </button>
-      <p style={{ fontSize: 10, color: "var(--app-ink-3, #9A9892)", margin: "6px 0 0", lineHeight: 1.4 }}>
-        Radius Points is a preview. There is no account, signup, or payment yet. These partners are sample data.
-      </p>
-    </div>
-  );
-}
-
-export function FoodTruckPopup({ t }: { t: DemoFoodTruck }) {
-  return (
-    <div style={{ minWidth: 220, padding: 4 }}>
-      <p style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-        textTransform: "uppercase", color: "var(--app-brand)", marginBottom: 4,
-      }}>
-        Food truck · Preview
-      </p>
-      <strong style={{ display: "block", fontSize: 15, color: "var(--app-ink, #1A1A1A)", fontFamily: "var(--font-display), ui-serif, Georgia, serif" }}>
-        {t.name}
-      </strong>
-      <p style={{ fontSize: 12, margin: "4px 0 8px", color: "var(--app-ink-2, #4A4A48)" }}>{t.cuisine}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 11, color: "var(--app-ink-3, #7A7975)", marginBottom: 8 }}>
-        <span>Parked at {t.spot}</span>
-        <span>Here until {t.hereUntil}</span>
-      </div>
-      <ul style={{ listStyle: "none", margin: "0 0 10px", padding: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-        {t.menu.map((m) => (
-          <li key={m} style={{ fontSize: 12, color: "var(--app-ink-2, #4A4A48)", display: "flex", gap: 6 }}>
-            <span aria-hidden style={{ color: "var(--app-brand)" }}>·</span>{m}
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        disabled
-        style={{
-          width: "100%", padding: "8px 10px", borderRadius: 8,
-          border: "1px solid var(--app-border)", background: "var(--app-bg-elevated)",
-          color: "var(--app-ink-3)", fontSize: 12, fontWeight: 600, cursor: "not-allowed",
-        }}
-      >
-        Order ahead (coming soon)
-      </button>
-      <p style={{ fontSize: 10, color: "var(--app-ink-3, #9A9892)", margin: "6px 0 0", lineHeight: 1.4 }}>
-        Order ahead is a preview and is not connected yet. These trucks are sample data.
-      </p>
     </div>
   );
 }

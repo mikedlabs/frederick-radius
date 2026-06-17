@@ -49,9 +49,6 @@ import { haptic } from "@/lib/haptics";
 import { applyFrederickPalette } from "./applyFrederickPalette";
 import { installCountySpotlight } from "./countySpotlight";
 import { installCategoryMarkers, bucketOf, BUCKET_COLOR } from "./categoryMarkers";
-import { DEMO_FOOD_TRUCKS, type DemoFoodTruck } from "@/data/food-trucks-demo";
-import { DEMO_POINTS_PARTNERS, type DemoPointsPartner } from "@/data/radius-points-demo";
-import { RADIUS_COIN } from "@/data/city-data-engine";
 // Aerial photo manifest — extracted from EXIF GPS by
 // scripts/build-aerial-manifest.mjs. 104 georeferenced drone shots
 // across the seasons folders. Powers the "Aerial photos" overlay,
@@ -161,10 +158,8 @@ import {
 } from "@/lib/overlays";
 import {
   EventPopup,
-  FoodTruckPopup,
   OsmPopup,
   PlacePopup,
-  PointsPartnerPopup,
 } from "./popups";
 import AppMapDeck from "./AppMapDeck";
 
@@ -299,9 +294,6 @@ export default function AppMap({
   // The category rail is heavy; collapsed by default so the in-map
   // deck stays a clean glass bar. "Filters" reveals it as a panel.
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [demo, setDemo] = useState<null | "food-truck" | "transit" | "rewards">(null);
-  const [truck, setTruck] = useState<DemoFoodTruck | null>(null);
-  const [pointsPlace, setPointsPlace] = useState<DemoPointsPartner | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<EventPin | null>(null);
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
@@ -420,13 +412,6 @@ export default function AppMap({
       essential: true,
     });
   }, [focus, places]);
-
-  // Demo beacons only exist while their demo is on. Closing or switching
-  // the demo clears any open card so it never lingers on another layer.
-  useEffect(() => {
-    if (demo !== "food-truck") setTruck(null);
-    if (demo !== "rewards") setPointsPlace(null);
-  }, [demo]);
 
   const filteredPlaces = useMemo(() => {
     let base = places;
@@ -1060,7 +1045,6 @@ export default function AppMap({
         savedCount={followedSlugs.size}
         showSavedOnly={showSavedOnly}
         setShowSavedOnly={setShowSavedOnly}
-        setDemo={setDemo}
       />
 
         {/* Pinpoint-first empty state — the control surface. With nothing
@@ -1188,82 +1172,6 @@ export default function AppMap({
             and never carried real signal. The category color band on
             each pin + the in-view drawer's place cards are the legend
             now. */}
-
-        {/* Demo preview for future updates */}
-        {demo && (
-          <>
-          {demo === "food-truck" && (
-            <style>{"@keyframes fr-ft-pulse{0%{transform:scale(.55);opacity:.5}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}"}</style>
-          )}
-          {demo === "rewards" && (
-            <style>{"@keyframes fr-rp-pulse{0%{transform:scale(.55);opacity:.5}70%{opacity:0}100%{transform:scale(2.4);opacity:0}}"}</style>
-          )}
-          <div
-            className="absolute inset-x-3 bottom-3 z-[var(--z-map-control)] rounded-[var(--app-radius-md)] border p-3.5 shadow-[var(--app-shadow-3)] backdrop-blur"
-            style={{ borderColor: "var(--app-border)", background: "rgba(255,255,255,0.96)" }}
-            role="status"
-          >
-            <div className="flex items-start gap-3">
-              <span aria-hidden className="text-2xl leading-none">
-                {demo === "food-truck" ? "\u{1F69A}" : demo === "rewards" ? "\u{2B50}" : "\u{1F68C}"}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 text-sm font-semibold" style={{ color: "var(--app-ink)" }}>
-                  {demo === "food-truck" ? "Food truck map" : demo === "rewards" ? "Radius Points" : "Live transit"}
-                  <span
-                    className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-                    style={{ background: "var(--app-accent)", color: "white" }}
-                  >
-                    Preview
-                  </span>
-                </p>
-                {demo === "rewards" ? (
-                  <div className="mt-1 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                    <p>
-                      Radius Points is a preview of a local rewards idea. This preview has no account, no signup, and no payment.
-                    </p>
-                    <div className="mt-1.5">
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[10px] font-bold"
-                        style={{ background: "#F2E3C0", color: "#7A5A12" }}
-                      >
-                        Sample balance 0 points
-                      </span>
-                    </div>
-                    <p className="mt-2 font-semibold" style={{ color: "var(--app-ink)" }}>Earn</p>
-                    <ul className="mt-0.5 space-y-0.5">
-                      {RADIUS_COIN.earnOpportunities.slice(0, 3).map((o) => (
-                        <li key={o.action} className="flex items-center justify-between gap-3">
-                          <span>{o.action}</span>
-                          <span style={{ color: "#B8860B", fontWeight: 600 }}>+{o.coins}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="mt-2">
-                      Points redeem at {RADIUS_COIN.redeemPartners} partner businesses across the county. Tap a points pin for a sample partner.
-                    </p>
-                  </div>
-                ) : (
-                  <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-                    {demo === "food-truck"
-                      ? "This preview shows sample trucks parked at real Frederick spots. The live version will show every truck's current location and today's menu. Tap a beacon for its menu and the order-ahead preview."
-                      : "Live now: turn on the Transit layer to watch real-time TransIT buses move on the map, route-colored and free. MARC train positions are next."}
-                  </p>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setDemo(null)}
-                aria-label="Dismiss preview"
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
-                style={{ color: "var(--app-ink-3)" }}
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-          </>
-        )}
 
         <Map
           ref={mapRef}
@@ -2098,79 +2006,6 @@ export default function AppMap({
             />
           </Source>
 
-          {/* Food-truck beacons — a labeled demo layer, on only while the
-              food-truck demo is selected. Each is a pulsing pin; tapping
-              one opens a card with the menu and the order-ahead preview. */}
-          {demo === "food-truck" &&
-            DEMO_FOOD_TRUCKS.map((t) => (
-              <Marker key={t.id} longitude={t.lng} latitude={t.lat} anchor="center">
-                <button
-                  type="button"
-                  onClick={(ev) => {
-                    ev.stopPropagation();
-                    haptic("light");
-                    setTruck(t);
-                  }}
-                  aria-label={`${t.name}, ${t.cuisine}, preview`}
-                  style={{
-                    position: "relative",
-                    display: "grid",
-                    placeItems: "center",
-                    width: 34,
-                    height: 34,
-                    padding: 0,
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      borderRadius: 9999,
-                      background: "var(--app-brand)",
-                      opacity: 0.5,
-                      animation: "fr-ft-pulse 2.2s ease-out infinite",
-                    }}
-                  />
-                  <span
-                    aria-hidden
-                    style={{
-                      position: "relative",
-                      display: "grid",
-                      placeItems: "center",
-                      width: 28,
-                      height: 28,
-                      borderRadius: 9999,
-                      background: "#fff",
-                      border: "1.5px solid var(--app-brand)",
-                      boxShadow: "var(--app-shadow-2)",
-                      fontSize: 15,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {"\u{1F69A}"}
-                  </span>
-                </button>
-              </Marker>
-            ))}
-
-          {truck && (
-            <Popup
-              longitude={truck.lng}
-              latitude={truck.lat}
-              anchor="bottom"
-              offset={22}
-              closeOnClick={true}
-              onClose={() => setTruck(null)}
-              maxWidth="280px"
-            >
-              <FoodTruckPopup t={truck} />
-            </Popup>
-          )}
-
           {/* Aerial photo popup — fires when the user taps a pin in
               the Aerial photos overlay. Shows the photo thumbnail at
               a generous size + the season tag + the capture date.
@@ -2234,81 +2069,6 @@ export default function AppMap({
                   )}
                 </div>
               </div>
-            </Popup>
-          )}
-
-          {/* Radius Points partner beacons — a labeled rewards-concept
-              demo layer, on only while the Radius Points demo is selected.
-              Each is a gold star pin; tapping one opens a sample partner
-              card with a non-functional join placeholder. No money or
-              accounts. */}
-          {demo === "rewards" &&
-            DEMO_POINTS_PARTNERS.map((p) => (
-              <Marker key={p.id} longitude={p.lng} latitude={p.lat} anchor="center">
-                <button
-                  type="button"
-                  onClick={(ev) => {
-                    ev.stopPropagation();
-                    haptic("light");
-                    setPointsPlace(p);
-                  }}
-                  aria-label={`${p.name}, Radius Points partner, preview`}
-                  style={{
-                    position: "relative",
-                    display: "grid",
-                    placeItems: "center",
-                    width: 34,
-                    height: 34,
-                    padding: 0,
-                    background: "transparent",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  <span
-                    aria-hidden
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      borderRadius: 9999,
-                      background: "#C99632",
-                      opacity: 0.5,
-                      animation: "fr-rp-pulse 2.2s ease-out infinite",
-                    }}
-                  />
-                  <span
-                    aria-hidden
-                    style={{
-                      position: "relative",
-                      display: "grid",
-                      placeItems: "center",
-                      width: 28,
-                      height: 28,
-                      borderRadius: 9999,
-                      background: "#fff",
-                      border: "1.5px solid #C99632",
-                      boxShadow: "var(--app-shadow-2)",
-                      fontSize: 15,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {"\u{2B50}"}
-                  </span>
-                </button>
-              </Marker>
-            ))}
-
-          {pointsPlace && (
-            <Popup
-              longitude={pointsPlace.lng}
-              latitude={pointsPlace.lat}
-              anchor="bottom"
-              offset={22}
-              closeOnClick={true}
-              onClose={() => setPointsPlace(null)}
-              maxWidth="280px"
-            >
-              <PointsPartnerPopup p={pointsPlace} />
             </Popup>
           )}
 
