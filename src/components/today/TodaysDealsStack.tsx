@@ -16,7 +16,7 @@ const iconFor = (cat?: string): LucideIcon => DEAL_ICON[cat ?? ""] ?? Martini;
  *  position, so the deck reads like a stack of varied Wallet cards rather than
  *  one repeated swatch. The glyph still tells you the kind of place; the color
  *  is just identity + variety. All dark enough to carry white pass text. */
-const PALETTE = ["#A03A22", "#2F5E50", "#6E2233", "#3F5680", "#8A5A1C", "#76305F"];
+const PALETTE = ["#E14328", "#2F5E50", "#6E2233", "#3F5680", "#8A5A1C", "#76305F"];
 const colorAt = (i: number): string => PALETTE[i % PALETTE.length];
 
 // Light overlap — each stacked pass shows its venue AND the offer (not just a

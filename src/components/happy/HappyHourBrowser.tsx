@@ -63,7 +63,7 @@ function PhotoFallback() {
 
 // A deterministic accent per town so each town reads as its own colored
 // "chapter" of the guide (same family the Saved page uses).
-const TOWN_ACCENTS = ["#A03A22", "#2F5470", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
+const TOWN_ACCENTS = ["#E14328", "#20506A", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
 function townAccent(s: string): string {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
