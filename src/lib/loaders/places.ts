@@ -298,11 +298,12 @@ const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
   // BEFORE patchRecord so a curated name override in places-overrides.json
   // always wins over the automatic transform.
   .map((p) => (p.name ? { ...p, name: normalizePlaceName(p.name) } : p))
-  // City-field hygiene: fold the editorial "Downtown Frederick" pseudo-city
-  // back to the postal city "Frederick" (the branding lives on the
-  // municipality name, not the raw city). BEFORE patchRecord so a curated
-  // city override would win. Lesson of the 222/644 city split (2026-06).
-  .map((p) => (p.city ? { ...p, city: normalizeCity(p.city) } : p))
+  // City-field hygiene: fold the editorial "Downtown Frederick" pseudo-city,
+  // repair case/spelling variants, and replace non-city junk ("MD", a county,
+  // a street address) with the municipality-derived postal city. BEFORE
+  // patchRecord so a curated city override would win. Lesson of the city-split
+  // + variant audit (2026-06).
+  .map((p) => (p.city ? { ...p, city: normalizeCity(p.city, p.municipality) } : p))
   .map((p) => patchRecord(p, OV_PATCH))
   // Urbana geo-claim runs LAST so it composes with dedupe + overrides.
   .map(claimUrbana)
