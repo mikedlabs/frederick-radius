@@ -69,6 +69,7 @@
 
   --app-brand: #E14328;           /* Signal vermilion — Frederick Radius brand deck (was brick #A03A22) */
   --app-brand-press: #B5300F;     /* pressed / extra-contrast signal for text-on-light */
+  --app-on-brand: #FCFBF8;        /* warm near-white text/icon on a brand/cool/spruce fill (was an undefined token falling through to #fff) */
   --app-brand-2: #16352B;         /* Spruce — deep county green (brand deck; was Catoctin #2E3B2C) */
   --app-accent: #C0871F;          /* Almanac gold (brand deck; was #C99632) */
   --app-cool: #20506A;            /* Slate — Carroll Creek / civic (brand deck; was #2F5470) */

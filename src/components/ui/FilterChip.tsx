@@ -30,9 +30,9 @@ export default function FilterChip({
       aria-pressed={active}
       className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition active:opacity-70"
       style={{
-        borderColor: active ? "var(--app-brand)" : "var(--app-border)",
-        background: active ? "var(--app-brand)" : "var(--app-bg-elevated)",
-        color: active ? "#fff" : "var(--app-ink-2)",
+        borderColor: active ? "var(--app-brand-press)" : "var(--app-border)",
+        background: active ? "var(--app-brand-press)" : "var(--app-bg-elevated)",
+        color: active ? "var(--app-on-brand)" : "var(--app-ink-2)",
       }}
     >
       {label}
