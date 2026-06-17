@@ -6,6 +6,7 @@ import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
 import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
+import LiveBuses from "@/components/map/LiveBuses";
 import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
 import { MARC_STATIONS } from "@/data/marc-stations";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -38,6 +39,9 @@ export default function TransitMap({
   shapes,
   stops = [],
   height = 380,
+  center,
+  zoom,
+  liveBuses = false,
 }: {
   shapes: LineFC;
   /** Real Frederick County TransIT stops (MD Open Data, 4zcx-89nc).
@@ -47,15 +51,20 @@ export default function TransitMap({
    *  I catch the bus" now has a visible answer. */
   stops?: TransitStop[];
   height?: number;
+  /** Initial center [lng, lat]; defaults to the county centroid. */
+  center?: [number, number];
+  /** Initial zoom; defaults to 9 (county-wide). */
+  zoom?: number;
+  /** Overlay live TransIT vehicle positions (LiveBuses). */
+  liveBuses?: boolean;
 }) {
   const initial = useMemo(() => {
-    const cx = (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
-    const cy = (FREDERICK_COUNTY_BBOX.south + FREDERICK_COUNTY_BBOX.north) / 2;
-    // Slightly tighter zoom than CountyOverview so downtown's dense
-    // route cluster reads cleanly from the start. The user can zoom
-    // back out to see the outer routes (Thurmont, Brunswick).
-    return { longitude: cx, latitude: cy, zoom: 9 };
-  }, []);
+    const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
+    const cy = center?.[1] ?? (FREDERICK_COUNTY_BBOX.south + FREDERICK_COUNTY_BBOX.north) / 2;
+    // Tighter than CountyOverview so downtown's dense route cluster reads
+    // cleanly from the start; the user can zoom out for the outer routes.
+    return { longitude: cx, latitude: cy, zoom: zoom ?? 9 };
+  }, [center, zoom]);
 
   // No routes means the upstream feed failed. Render a quiet empty
   // state instead of a blank map.
@@ -214,6 +223,10 @@ export default function TransitMap({
             }}
           />
         </Source>
+
+        {/* Real-time vehicle positions — route-colored badges that glide
+            between polls. Self-hides when the feed reports zero. */}
+        <LiveBuses show={liveBuses} />
       </Map>
 
       {/* Editorial badge — top-left. Tells the user what the painted

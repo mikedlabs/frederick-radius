@@ -48,7 +48,7 @@ import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
-import { getFrederickTransitRoutes } from "@/lib/integrations/transitFrederick";
+import { getFrederickTransitRoutes, getFrederickTransitRouteShapes, getFrederickTransitStops } from "@/lib/integrations/transitFrederick";
 import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
 import { publicPlaces } from "@/lib/loaders/places";
@@ -56,8 +56,7 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
-import LiveTransitBoard from "@/components/transit/LiveTransitBoard";
-import TRANSIT_DATA from "@/data/transit.json";
+import TransitMap from "@/components/transit/TransitMapClient";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
 import WeatherHero from "@/components/today/WeatherHero";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -163,7 +162,7 @@ export default async function PulsePage({
   // so one slow or failing upstream can't stall the ISR regeneration or blank
   // the board — each tile self-hides on an empty feed.
   const FEED_MS = 6000;
-  const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes, rivers, airports] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes, rivers, airports, transitShapes, transitStops] = await Promise.all([
     withTimeout(getChartIncidentsFrederick(), FEED_MS, []),
     withTimeout(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }),
     withTimeout(getFcpsAlerts(), FEED_MS, []),
@@ -180,6 +179,9 @@ export default async function PulsePage({
     withTimeout(getFrederickWaterSites(), FEED_MS, [] as WaterSite[]),
     // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
     withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
+    // TransIT route shapes + stops for the live bus map (weekly-cached).
+    withTimeout(getFrederickTransitRouteShapes(), FEED_MS, { type: "FeatureCollection" as const, features: [] }),
+    withTimeout(getFrederickTransitStops(), FEED_MS, []),
   ]);
 
   // ── "By the numbers" canon — pure / no fetch beyond the routes
@@ -646,16 +648,33 @@ export default async function PulsePage({
           below (no feed to count); News + Scanner too. */}
       <PulseDashboard tiles={pulseTiles} initialOpen={openParam} />
 
-      {/* ── Where the buses are — the live TransIT roster. Each rolling bus
-          located against its nearest named stop with its real heading, from
-          the GTFS-realtime feed, every 20s. Real positions in words (not a
-          map — they already plot on /map). Route names/colors + the stop list
-          come from the static GTFS, slimmed server-side so the shapes never
-          reach the client bundle. */}
-      <LiveTransitBoard
-        routes={TRANSIT_DATA.routes.map((r) => ({ id: r.id, short: r.short, name: r.name, color: r.color }))}
-        stops={TRANSIT_DATA.stops.map((s) => ({ name: s.name, lat: s.lat, lng: s.lng }))}
-      />
+      {/* ── Where the buses are — the live TransIT map. The route network +
+          stops on the real basemap, with live vehicle badges that glide
+          between polls. Tap a bus for its route + status. Code-split (mapbox
+          loads in its own chunk) so the page shell paints first. */}
+      <section aria-labelledby="transit-map-eyebrow" className="space-y-2.5">
+        <div className="flex items-center justify-between gap-3">
+          <p id="transit-map-eyebrow" className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+            <span aria-hidden className="pulse-dot inline-block h-2 w-2 rounded-full" style={{ background: "var(--app-positive)" }} />
+            Buses, live
+          </p>
+          <span className="font-mono text-[10.5px] tracking-[0.04em]" style={{ color: "var(--app-ink-3)" }}>
+            tap a bus · free
+          </span>
+        </div>
+        <TransitMap
+          shapes={transitShapes}
+          stops={transitStops}
+          height={300}
+          center={[-77.4105, 39.4143]}
+          zoom={11}
+          liveBuses
+        />
+        <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+          Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed
+          every 15 seconds, over the route network. The county bus is free.
+        </p>
+      </section>
 
       {/* ── Active sections only ──────────────────────────────── */}
       {/* Desktop multi-column: at lg+ the operational sections fall
