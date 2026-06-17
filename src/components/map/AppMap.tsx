@@ -339,6 +339,11 @@ export default function AppMap({
   // signed-in follows DB; the chip renders only when something is saved.
   const { slugs: followedSlugs } = useFollowedSlugs();
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  // Field-notes lens: pins narrowed to places that carry VERIFIED Field Notes
+  // (happy hour / deal / parking / insider) — the moat, browsable on the map.
+  // Like the saved lens, it's a deliberate selection that shows its set even
+  // with no category active.
+  const [fieldNotesOnly, setFieldNotesOnly] = useState(false);
 
   // On mode flip (user tapped the toggle, or geo suggestion landed):
   // reset every layer-toggle to the new mode's defaults. We deliberately
@@ -415,6 +420,9 @@ export default function AppMap({
 
   const filteredPlaces = useMemo(() => {
     let base = places;
+    // Field-notes lens narrows the base set first, so it intersects cleanly
+    // with both the saved lens and category chips below.
+    if (fieldNotesOnly) base = base.filter((p) => p.field_notes);
     // Saved-only lens: a deliberate selection, so it shows the whole
     // saved set even with no category active (it overrides the
     // pinpoint-first empty state); category chips still intersect.
@@ -422,6 +430,9 @@ export default function AppMap({
       base = base.filter((p) => followedSlugs.has(p.slug));
       if (activeCats.size === 0) return base;
     } else if (activeCats.size === 0) {
+      // The field-notes lens is also deliberate — show its whole set with no
+      // category active, the way the saved lens does.
+      if (fieldNotesOnly) return base;
       // Pinpoint-first: a clean map until the user adds a category. When a
       // server-side intent already pre-filtered `places` (pinpointDefault
       // false), empty activeCats still means "show the whole filtered set."
@@ -431,7 +442,10 @@ export default function AppMap({
       const cat = CATEGORY_BY_SLUG[p.category];
       return activeCats.has(p.category) || (cat?.parent && activeCats.has(cat.parent));
     });
-  }, [places, activeCats, pinpointDefault, showSavedOnly, followedSlugs]);
+  }, [places, activeCats, pinpointDefault, showSavedOnly, followedSlugs, fieldNotesOnly]);
+
+  // How many places carry Field Notes — drives the lens chip's count.
+  const fieldNotesCount = useMemo(() => places.filter((p) => p.field_notes).length, [places]);
 
   // Emit the curated places inside the current viewport (nearest-center
   // first) whenever the map settles — drives the synced results list.
@@ -1045,6 +1059,9 @@ export default function AppMap({
         savedCount={followedSlugs.size}
         showSavedOnly={showSavedOnly}
         setShowSavedOnly={setShowSavedOnly}
+        fieldNotesCount={fieldNotesCount}
+        fieldNotesOnly={fieldNotesOnly}
+        setFieldNotesOnly={setFieldNotesOnly}
       />
 
         {/* Pinpoint-first empty state — the control surface. With nothing

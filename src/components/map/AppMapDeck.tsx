@@ -1,6 +1,6 @@
 "use client";
 
-import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal, X, Clock } from "lucide-react";
+import { Search as SearchIcon, Navigation as NavIcon, SlidersHorizontal, X, Clock, NotebookPen } from "lucide-react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { CATEGORY_BY_SLUG, TOP_CATEGORIES } from "@/data/categories";
@@ -81,6 +81,12 @@ export type AppMapDeckProps = {
   savedCount: number;
   showSavedOnly: boolean;
   setShowSavedOnly: SetState<boolean>;
+
+  // Field-notes lens: filter pins to places with VERIFIED Field Notes (the
+  // moat) — happy hour, a deal, parking, or an insider tip.
+  fieldNotesCount: number;
+  fieldNotesOnly: boolean;
+  setFieldNotesOnly: SetState<boolean>;
 };
 
 /**
@@ -126,6 +132,9 @@ export default function AppMapDeck({
   savedCount,
   showSavedOnly,
   setShowSavedOnly,
+  fieldNotesCount,
+  fieldNotesOnly,
+  setFieldNotesOnly,
 }: AppMapDeckProps) {
   // Open-now state lives in the URL (?open=now), not in client state —
   // the server filters the place pool, so the deck just reads the
@@ -298,6 +307,7 @@ export default function AppMapDeck({
           showTrails ||
           showAerial ||
           showSavedOnly ||
+          fieldNotesOnly ||
           openNow) && (
           <ul
             className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -440,9 +450,28 @@ export default function AppMapDeck({
                 </button>
               </li>
             )}
+            {fieldNotesOnly && (
+              <li className="shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setFieldNotesOnly(false)}
+                  aria-label="Show all places (not just ones with Field Notes)"
+                  className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
+                  style={{
+                    background: "var(--app-brand)",
+                    color: "white",
+                    boxShadow: "var(--app-shadow-1)",
+                  }}
+                >
+                  <NotebookPen className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                  Field notes
+                  <X className="h-2.5 w-2.5" strokeWidth={2.5} aria-hidden />
+                </button>
+              </li>
+            )}
             {/* Clear-all escape hatch — only worth the row when there
                 are multiple filters to clear. */}
-            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) + (showSavedOnly ? 1 : 0) + (openNow ? 1 : 0) > 1 && (
+            {activeCats.size + activeAmenityGroupCount + (showCivic ? 1 : 0) + (showTransit ? 1 : 0) + (showTrails ? 1 : 0) + (showAerial ? 1 : 0) + (showSavedOnly ? 1 : 0) + (fieldNotesOnly ? 1 : 0) + (openNow ? 1 : 0) > 1 && (
               <li className="shrink-0">
                 <button
                   type="button"
@@ -454,6 +483,7 @@ export default function AppMapDeck({
                     setShowTrails(false);
                     setShowAerial(false);
                     setShowSavedOnly(false);
+                    setFieldNotesOnly(false);
                     if (openNow) router.push(clearOpenHref);
                   }}
                   className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur transition active:scale-[0.96]"
@@ -523,6 +553,26 @@ export default function AppMapDeck({
                 title="Show only the places you saved"
               >
                 Saved · {savedCount}
+              </button>
+            </li>
+          )}
+          {fieldNotesCount > 0 && (
+            <li>
+              <button
+                type="button"
+                onClick={() => setFieldNotesOnly((v) => !v)}
+                aria-pressed={fieldNotesOnly}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition active:scale-[0.96]"
+                style={{
+                  background: fieldNotesOnly ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                  color: fieldNotesOnly ? "white" : "var(--app-ink-2)",
+                  border: `1px solid ${fieldNotesOnly ? "var(--app-brand)" : "var(--app-border)"}`,
+                  boxShadow: fieldNotesOnly ? "var(--app-shadow-2)" : "var(--app-shadow-1)",
+                }}
+                title="Show only places with verified Field Notes: happy hour, a deal, parking, or an insider tip"
+              >
+                <NotebookPen className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+                Field notes · {fieldNotesCount}
               </button>
             </li>
           )}
