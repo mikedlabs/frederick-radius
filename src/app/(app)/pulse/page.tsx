@@ -623,7 +623,8 @@ export default async function PulsePage({
               degrades to a quiet "briefly unavailable" line on fetch fail —
               a calm page that errored on weather is worse than no glance. */}
           <div
-            className="border-t pt-3"
+            id="weather"
+            className="scroll-mt-20 border-t pt-3"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
           >
             <WeatherHero compact />
