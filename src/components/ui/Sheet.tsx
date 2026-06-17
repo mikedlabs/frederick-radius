@@ -22,7 +22,7 @@ export default function Sheet({
   subtitle,
   footer,
   children,
-  maxHeight = "85vh",
+  maxHeight = "85dvh",
 }: {
   open: boolean;
   onClose: () => void;
@@ -30,7 +30,7 @@ export default function Sheet({
   subtitle?: string;
   footer?: ReactNode;
   children: ReactNode;
-  /** Tallest the sheet panel can grow. Default 85vh leaves a glimpse
+  /** Tallest the sheet panel can grow. Default 85dvh leaves a glimpse
    *  of the page above so the user knows there's a scrim to tap. */
   maxHeight?: string;
 }) {

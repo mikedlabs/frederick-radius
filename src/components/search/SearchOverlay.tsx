@@ -270,7 +270,7 @@ export default function SearchOverlay({
 
       {/* Sheet */}
       <div
-        className="relative z-10 mx-4 mt-[10vh] w-full max-w-screen-sm overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+        className="relative z-10 mx-4 mt-[10dvh] w-full max-w-screen-sm overflow-hidden rounded-[var(--app-radius-xl)] border bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
         style={{ borderColor: "var(--app-border)" }}
       >
         {/* Input */}
@@ -310,7 +310,7 @@ export default function SearchOverlay({
         </div>
 
         {/* Results */}
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="max-h-[60dvh] overflow-y-auto">
           {/* Direct answer — "ask Frederick" routes a buried-gov question
               (recycling, permits, potholes, animal control…) straight to
               the right department + phone + source, ABOVE place results.
