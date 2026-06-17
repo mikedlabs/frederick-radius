@@ -452,7 +452,7 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
                     tone="brand"
                     size="sm"
                     active={!chosenSub || chosenSub === "all"}
-                    style={!chosenSub || chosenSub === "all" ? { background: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
+                    style={!chosenSub || chosenSub === "all" ? { backgroundColor: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
                     onClick={() => { haptic("light"); setStep(intentKey, null, "replace"); }}
                   >
                     All
@@ -465,7 +465,7 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
                         tone="brand"
                         size="sm"
                         active={isActive}
-                        style={isActive ? { background: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
+                        style={isActive ? { backgroundColor: intent.color, backgroundImage: "var(--app-gloss)", color: "#fff" } : undefined}
                         onClick={() => {
                           haptic("light");
                           track("find_sub", { intent: intent.key, sub: s.key });

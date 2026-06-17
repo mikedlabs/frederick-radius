@@ -36,7 +36,7 @@ const REVERSED = "var(--app-ink-inverse)";
 // Light overlap — each stacked record shows its colored filing band AND the
 // subject (not just a sliver), so the deals read at a glance; fanning open
 // reveals the ruled fields + the field notes.
-const OVERLAP = 64;
+const OVERLAP = 52;
 const SPRING = { type: "spring" as const, stiffness: 360, damping: 38, mass: 0.9 };
 
 /** A ruled form field — mono label, dotted leader, value right-aligned.
@@ -117,7 +117,7 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                 aria-label={`${d.name}: ${d.offer}`}
                 className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-md)]"
                 style={{
-                  background: paper,
+                  backgroundColor: paper,
                   backgroundImage: "var(--app-paper-light)",
                   border: `1.5px solid color-mix(in srgb, ${ink} 48%, var(--app-border))`,
                   boxShadow: "var(--app-elev-1), var(--app-hi)",
@@ -139,9 +139,9 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                 </div>
 
                 <div className="ml-[22px]">
-                  {/* Solid filing-ink header band — reversed-out class + file no. */}
+                  {/* Solid filing-ink header band — marks the card as a deal + file no. */}
                   <div className="flex items-center gap-2 px-3 py-[6px]" style={{ background: ink }}>
-                    <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.2em]" style={{ color: REVERSED }}>Field note</span>
+                    <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.2em]" style={{ color: REVERSED }}>Deal</span>
                     <span aria-hidden className="h-px flex-1" style={{ background: `color-mix(in srgb, ${REVERSED} 38%, transparent)` }} />
                     <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em]" style={{ color: REVERSED }}>No.&nbsp;{file}</span>
                   </div>
@@ -169,18 +169,20 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       </h3>
                     </div>
 
-                    {/* Ruled fields — WHEN (the actionable time) + WHERE. */}
+                    {/* THE DEAL — led prominently right under the venue so a
+                        glance (even in the stacked sliver) says WHAT you get,
+                        not just where. This is the card's headline. */}
+                    <p className="mt-2 line-clamp-3 text-[14px] font-medium leading-snug" style={{ color: "var(--app-ink)" }}>
+                      {d.offer}
+                    </p>
+
+                    {/* Supporting detail — WHEN (the actionable time) + WHERE. */}
                     {(d.hours || d.town) && (
                       <div className="mt-2.5 space-y-1.5">
                         {d.hours && <Field label="When" value={d.hours} valueColor="var(--app-brand-press)" ink={ink} />}
                         {d.town && <Field label="Where" value={d.town} valueColor="var(--app-ink-2)" ink={ink} />}
                       </div>
                     )}
-
-                    {/* The offer — the record's entry, a short supporting line. */}
-                    <p className="mt-2.5 line-clamp-2 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                      {d.offer}
-                    </p>
 
                     {/* Buried local intel — park + a tip — only when fanned open. */}
                     {!stacked && (d.park || d.tip) && (
