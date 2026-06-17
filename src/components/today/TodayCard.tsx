@@ -3,6 +3,7 @@ import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import { eventWhenLabel } from "@/lib/eventWhenLabel";
+import { isActivelyWet } from "@/lib/weather-verdict";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import LiveClock from "./LiveClock";
 
@@ -66,10 +67,12 @@ const GREETING: Record<Band, string> = {
 };
 
 /** A short, confident weather mood line — not cute, just human. */
-function moodLine(condition: string, temp: number | null): string {
+function moodLine(condition: string, temp: number | null, precipNow: number | null): string {
   const c = condition.toLowerCase();
   if (/thunder|storm/.test(c)) return "Storms around. Keep it indoors.";
-  if (/rain|shower|drizzle/.test(c)) return "Rain in play. Have a backup plan.";
+  // Only call it rain when it's actually likely now (>=50% PoP); a "Chance
+  // Rain Showers" forecast at 30% must not claim rain on a dry day.
+  if (isActivelyWet(condition, precipNow)) return "Rain in play. Have a backup plan.";
   if (/snow|sleet|ice|wintry/.test(c)) return "Wintry out. Bundle up.";
   if (/fog|mist|haze/.test(c)) return "Low and gray. Soft light for a walk.";
   if (temp != null && temp >= 88) return "Hot one. Chase the shade.";
@@ -126,7 +129,7 @@ export default async function TodayCard({
     if (tmrw.sunrise) sun = { label: "Sunrise", time: fmtTime(tmrw.sunrise)! };
   }
 
-  const mood = moodLine(condition, tempNow);
+  const mood = moodLine(condition, tempNow, cur?.probabilityOfPrecipitation ?? null);
 
   // Daytime by real sun times (the glyph's sun/moon depends on it).
   const isDay = st.sunrise && st.sunset ? now >= st.sunrise && now < st.sunset : true;

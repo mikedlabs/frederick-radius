@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import { getNwsForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday } from "@/lib/eventWhenLabel";
+import { isActivelyWet } from "@/lib/weather-verdict";
 
 /**
  * TodayMoves — the command center (Review #2's headline ask).
@@ -44,10 +45,14 @@ function bestMove(
   band: Band,
   condition: string,
   temp: number | null,
+  precipNow: number | null,
   tonightEvent: { slug: string; title: string; venue_name?: string | null } | null,
 ): Move {
   const c = condition.toLowerCase();
-  const wet = /rain|shower|drizzle|thunder|storm/.test(c);
+  // Storms always send people indoors; plain rain/showers only when it's
+  // ACTUALLY likely now (>=50% PoP), so a "Scattered Rain Showers" forecast
+  // at 30% never claims "Rain's in play" on a dry afternoon.
+  const wet = /thunder|t-?storm|severe/.test(c) || isActivelyWet(condition, precipNow);
   const cold = temp != null && temp <= 38;
   const hot = temp != null && temp >= 88;
 
@@ -131,7 +136,7 @@ export default async function TodayMoves({
   // must not headline a Monday evening. Otherwise fall through to the
   // weather/time-based move (which never claims a false "tonight").
   const eventTonight = tonightEvent && isEventToday(tonightEvent.starts_at, now) ? tonightEvent : null;
-  const move = bestMove(band, cur?.shortForecast ?? "", cur?.temperature ?? null, eventTonight);
+  const move = bestMove(band, cur?.shortForecast ?? "", cur?.temperature ?? null, cur?.probabilityOfPrecipitation ?? null, eventTonight);
   const PrimaryIcon = move.icon;
 
   return (
