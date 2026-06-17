@@ -82,38 +82,32 @@ function FieldTag({
     <Link
       href={href}
       aria-label={ariaLabel}
-      className="tactile-interactive relative flex items-center gap-2.5 overflow-hidden rounded-[var(--app-radius-sm)] px-2.5 py-2.5"
+      className="tactile-interactive relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] px-1 py-[7px] text-center"
       style={{
-        // Tinted field-card stock: each card washed in its OWN craving color
-        // over the paper, so the grid reads as a colorful mosaic of specimen
-        // cards, not a row of cream chips. The label stays dark ink (high
-        // contrast over the soft tint), so the color adds character without
-        // costing the glance-speed of the fast lane.
+        // Tinted field-card stock: each tile washed in its OWN craving color
+        // over the paper, so the compact 3-up grid reads as a colorful SHEET of
+        // specimen stamps. Dark-ink label stays high-contrast over the tint.
         backgroundColor: `color-mix(in srgb, ${ink} 12%, var(--app-bg-elevated-solid))`,
         backgroundImage: "var(--app-paper-light)",
         border: `1px solid color-mix(in srgb, ${ink} 26%, var(--app-border))`,
         boxShadow: "var(--app-elev-1), var(--app-hi)",
       }}
     >
-      {/* The engraved specimen glyph bled into the corner — a tonal watermark
-          (same trick the deal records use) so the fast lane reads as the
-          field guide; a touch more present now that the card is tinted. */}
-      <Icon aria-hidden className="pointer-events-none absolute -bottom-3 -right-2.5 h-[62px] w-[62px] rotate-[8deg]" strokeWidth={0.9} style={{ color: ink, opacity: 0.1 }} />
       {/* Struck filing-ink STAMP — the glyph reversed out of a solid color
-          plate, raised off the paper (inset sheen + soft cast shadow). This is
-          the visual hero: each craving wears its own colored stamp. */}
+          plate, raised off the paper (inset sheen + soft cast shadow). The
+          stamp is the hero of each little specimen tile. */}
       <span
         aria-hidden
-        className="relative grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
+        className="grid h-[27px] w-[27px] shrink-0 place-items-center rounded-[7px]"
         style={{
           background: ink,
           boxShadow: `inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent), 0 1.5px 3px -0.5px color-mix(in srgb, ${ink} 42%, transparent)`,
           color: "var(--app-on-brand)",
         }}
       >
-        <Icon className="h-[17px] w-[17px]" strokeWidth={2.25} />
+        <Icon className="h-[15px] w-[15px]" strokeWidth={2.25} />
       </span>
-      <span className="relative truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+      <span className="max-w-full truncate text-[11px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
         {label}
       </span>
     </Link>
@@ -150,7 +144,7 @@ export default function CravingStrip({
       {/* The "right now" contextual band (live music tonight, …) — a lighter
           layer than the grid; self-hides when nothing's on. */}
       {contextSlot}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
         {/* Meal occasion — the time-aware lead. Auto-selects the meal it is
             right now; opens the nearest spots OPEN for it (a clock fact, never
             a menu claim). The owner's "I want breakfast/brunch/lunch/dinner". */}
