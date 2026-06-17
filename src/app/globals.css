@@ -650,6 +650,25 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   .pop-in { animation: none; }
 }
 
+/* Split-flap (Solari board) flip — a destination-board flap settling into
+ * place. Used on the live transit board: keying the text by its value makes
+ * React remount the cell when a bus moves, replaying the flip. */
+@keyframes flap {
+  0%   { transform: rotateX(-88deg); opacity: 0; }
+  55%  { transform: rotateX(12deg);  opacity: 1; }
+  100% { transform: rotateX(0deg);   opacity: 1; }
+}
+.flap {
+  /* display comes from the element's own class (e.g. `block` for a
+   * truncating destination) so transforms apply without breaking layout. */
+  transform-origin: center top;
+  backface-visibility: hidden;
+  animation: flap 380ms cubic-bezier(0.3, 0.85, 0.35, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flap { animation: none; }
+}
+
 /* ─────────────────────────────────────────────────────
  * EXPRESSIVE MOTION LAYER (v3) — the "alive" feel.
  * The app had functional motion (press states, fades) but not
