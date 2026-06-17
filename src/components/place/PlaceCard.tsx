@@ -304,7 +304,7 @@ export default function PlaceCard({
       <article
         className="tactile tactile-e3 tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)]"
         style={{
-          background: "var(--app-bg-elevated-solid)",
+          backgroundColor: "var(--app-bg-elevated-solid)",
           backgroundImage: "var(--app-paper-light)",
         }}
       >
