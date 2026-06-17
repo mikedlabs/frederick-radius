@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { QUICK_INTENTS, findQuickAnswers } from "@/lib/answers/intents";
-import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
 
 describe("findQuickAnswers (extracted SearchOverlay logic, single source)", () => {
   it("matches a known phrase to its intent", () => {
@@ -23,30 +22,7 @@ describe("findQuickAnswers (extracted SearchOverlay logic, single source)", () =
   });
 });
 
-describe("buildTodayAnswers (honest, never fabricates)", () => {
-  it("omits empty windows and keeps only the transit anchor when there's no data", () => {
-    const a = buildTodayAnswers({
-      tonightCount: 0,
-      tonightBest: null,
-      parking: null,
-    });
-    expect(a.map((x) => x.id)).toEqual(["transit"]);
-  });
-
-  it("includes data-backed answers when present, capped at 5", () => {
-    const a = buildTodayAnswers({
-      tonightCount: 3,
-      tonightBest: { title: "Sky Stage", venue: "Carroll Creek", slug: "sky-stage" },
-      parking: { name: "Carroll Creek Parking Deck", slug: "carroll-creek-parking-garage-frederick" },
-    });
-    expect(a.length).toBeLessThanOrEqual(5);
-    // The open-now AND standalone weekend cards were retired; /today leads
-    // with the today-scoped "tonight" answer, and weekend lives only in the
-    // What's-on TimeToggle + a quiet tail link.
-    expect(a.some((x) => x.id === "open-now")).toBe(false);
-    expect(a.some((x) => x.id === "weekend")).toBe(false);
-    expect(a[0].id).toBe("tonight");
-    // Every answer must carry a primary action (one move).
-    expect(a.every((x) => x.primaryAction?.href)).toBe(true);
-  });
-});
+// buildTodayAnswers + its tests were removed on 2026-06-17: the /today
+// "answers lead" section it fed only ever rendered the "On tonight" card,
+// which duplicated the SkyHero's tonight teaser, so the card, the section,
+// and the loader were all retired together.
