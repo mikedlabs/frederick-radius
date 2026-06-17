@@ -1,4 +1,4 @@
-import { Clock3, Tag, Sparkles, ExternalLink } from "lucide-react";
+import { Clock3, Tag, Sparkles, Award, ExternalLink } from "lucide-react";
 import type { BusinessInfo } from "@/lib/loaders/businessInfo";
 import { freshnessLabel } from "@/lib/loaders/businessInfo";
 
@@ -18,10 +18,11 @@ import { freshnessLabel } from "@/lib/loaders/businessInfo";
  */
 export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null }) {
   if (!info) return null;
+  const knownFor = info.known_for?.trim();
   const happy = info.happy_hour?.trim();
   const specials = (info.specials ?? []).filter(Boolean);
   const notable = info.notable?.trim();
-  if (!happy && specials.length === 0 && !notable) return null;
+  if (!knownFor && !happy && specials.length === 0 && !notable) return null;
 
   const host = (() => {
     try {
@@ -47,6 +48,15 @@ export default function BusinessExtrasCard({ info }: { info: BusinessInfo | null
       </h3>
 
       <dl className="mt-3 space-y-2.5">
+        {/* What they're known for, straight from their own site — the most
+            on-point answer to "what do they offer?" Leads the card. */}
+        {knownFor && (
+          <Row
+            icon={<Award className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-brand-press)" }} />}
+            label="Known for"
+            value={knownFor}
+          />
+        )}
         {happy && (
           <Row
             icon={<Clock3 className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden style={{ color: "var(--app-positive)" }} />}
