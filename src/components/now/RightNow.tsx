@@ -10,7 +10,9 @@ import {
   Beer,
   Trees,
   ShoppingBag,
+  ShoppingCart,
   Palette,
+  Music,
   ArrowLeft,
   Navigation,
   type LucideIcon,
@@ -37,6 +39,10 @@ import { haptic } from "@/lib/haptics";
  * behind — we say so and offer the location button instead.
  */
 
+// Keyed by the `icon` strings in src/data/cravings.ts. Every craving icon must
+// have an entry here or the tile crashes ("Element type is invalid ... got
+// undefined"); the `?? Utensils` fallback at the lookup sites is the safety net
+// for any future craving whose icon lands here unmapped.
 const ICONS: Record<string, LucideIcon> = {
   Coffee,
   IceCream,
@@ -46,7 +52,9 @@ const ICONS: Record<string, LucideIcon> = {
   Beer,
   Trees,
   ShoppingBag,
+  ShoppingCart,
   Palette,
+  Music,
 };
 
 // ~80 m/min walking — same constant the reason chips use.
@@ -150,7 +158,7 @@ export default function RightNow({
 
         <ul className="grid grid-cols-2 gap-3">
           {CRAVINGS.map((c) => {
-            const Icon = ICONS[c.icon];
+            const Icon = ICONS[c.icon] ?? Utensils;
             return (
               <li key={c.key}>
                 <button
@@ -185,7 +193,7 @@ export default function RightNow({
   }
 
   // ── The answer (nearest open of the chosen craving) ──
-  const CravingIcon = ICONS[craving.icon];
+  const CravingIcon = ICONS[craving.icon] ?? Utensils;
   return (
     <div className="space-y-4">
       <header className="space-y-2">
