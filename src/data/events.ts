@@ -204,7 +204,7 @@ function aliveAtFiveSeason(): Event[] {
 export const EVENTS: Event[] = [
   {
     slug: "first-friday-june-2026-frederick",
-    title: "First Friday — June Art Walk",
+    title: "First Friday: June Art Walk",
     description:
       "Downtown Frederick's monthly evening street festival. Galleries open late, sidewalks programmed with music, restaurants spill onto the patios. The Delaplaine and dozens of N Market shops host the headline openings.",
     starts_at: iso(at(22, 17, 0)),
@@ -225,7 +225,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "carroll-creek-color-launch-2026",
-    title: "Color on the Creek — Opening Weekend",
+    title: "Color on the Creek: Opening Weekend",
     description:
       "The annual sailboat installation returns to Carroll Creek. 100+ illuminated mini sailboats designed by local artists and community groups float the linear park from June to September.",
     starts_at: iso(at(18, 18, 0)),
@@ -339,7 +339,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "weinberg-summer-concert-2026-05-16",
-    title: "Punch Brothers — Weinberg Center",
+    title: "Punch Brothers at the Weinberg Center",
     description:
       "Acoustic quintet led by Chris Thile in a single-night summer-tour stop at the Weinberg.",
     starts_at: iso(at(2, 20, 0)),
@@ -400,7 +400,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "catoctin-ranger-hike-2026-05-18",
-    title: "Catoctin Ranger Hike — Cunningham Falls",
+    title: "Catoctin Ranger Hike: Cunningham Falls",
     description:
       "Free 90-minute ranger-led hike to the 78-foot falls. Stroller- and dog-friendly for the first half; sturdy footwear for the rocky finish.",
     starts_at: iso(at(4, 10, 0)),
@@ -467,7 +467,7 @@ export const EVENTS: Event[] = [
   ...aliveAtFiveSeason(),
   {
     slug: "fourth-friday-may-2026-frederick",
-    title: "4th Friday Art Walk — Downtown",
+    title: "4th Friday Art Walk: Downtown",
     description:
       "Late-month gallery + studio walk through Downtown Frederick. Open studios at the Delaplaine, Sky Stage performances, shops open late on N Market and East Patrick.",
     starts_at: iso(at(8, 17, 0)),
@@ -508,7 +508,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "baker-park-summer-concert-2026-06-07",
-    title: "Sunday at the Bandshell — Summer Concert Series",
+    title: "Sunday at the Bandshell: Summer Concert Series",
     description:
       "Free Sunday-evening concerts at the Joseph D. Baker Park bandshell. Curated by the Frederick Concert Band. Bring a blanket, picnic dinner.",
     starts_at: iso(at(24, 19, 0)),
@@ -631,7 +631,7 @@ export const EVENTS: Event[] = [
   },
   {
     slug: "sky-stage-summer-residency-2026",
-    title: "Sky Stage — Open Mic Night",
+    title: "Sky Stage: Open Mic Night",
     description:
       "Open mic in the ruins-turned-art-installation at Sky Stage downtown. Sign up at 6:30, performances start at 7. Bring an instrument or read original work.",
     starts_at: iso(at(7, 18, 30)),

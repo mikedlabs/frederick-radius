@@ -1,14 +1,14 @@
 /**
- * Weather verdict — turns a forecast into advice.
+ * Weather verdict, turns a forecast into advice.
  *
  * The WeatherHero already reports the numbers (temp, wind, precip,
  * 7-day). What it lacked is the one thing this app exists for: what
  * the weather MEANS for going out tonight. This module produces a
- * single honest sentence — "Clear and mild, a patio evening" /
+ * single honest sentence, "Clear and mild, a patio evening" /
  * "Showers by 7, get out before then" / "Storms around, stay close
  * to cover."
  *
- * Pure + deterministic — no network, no clock of its own (now is
+ * Pure + deterministic, no network, no clock of its own (now is
  * passed in). Ordered so a dangerous read (storm, active rain) can
  * never be overwritten by a cheerful one.
  */
@@ -66,27 +66,27 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   const hour = easternHour(now);
   const evening = hour >= 17 || hour < 4;
 
-  // 1. Storms — the loudest read, always wins.
+  // 1. Storms, the loudest read, always wins.
   if (STORM.test(shortForecast)) {
-    return { line: "Storms around — stay close to cover.", tone: "rough" };
+    return { line: "Storms around, stay close to cover.", tone: "rough" };
   }
 
   // 2. Snow.
   if (SNOW.test(shortForecast)) {
-    return { line: "Snow out — slow roads, warm rooms.", tone: "mixed" };
+    return { line: "Snow out, slow roads, warm rooms.", tone: "mixed" };
   }
 
   // 3. Actively wet now (rain in the forecast + a real chance).
   if (WET.test(shortForecast) && precipNow >= 50) {
     return {
       line: evening
-        ? "Wet evening — pick somewhere with a roof."
-        : "Wet out — an indoor kind of day.",
+        ? "Wet evening, pick somewhere with a roof."
+        : "Wet out, an indoor kind of day.",
       tone: "rough",
     };
   }
 
-  // 4. Dry now, but rain is coming — find the first hour in the next
+  // 4. Dry now, but rain is coming, find the first hour in the next
   //    six that crosses a real chance, and name the time.
   const horizon = now.getTime() + 6 * 3_600_000;
   const rainHour = hourly.find((h) => {
@@ -101,17 +101,17 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   });
   if (rainHour) {
     return {
-      line: `Dry now — showers by ${hourLabel(rainHour.startTime)}, so get out before then.`,
+      line: `Dry now, showers by ${hourLabel(rainHour.startTime)}, so get out before then.`,
       tone: "mixed",
     };
   }
 
   // 5. Temperature extremes.
   if (temp <= 38) {
-    return { line: "Cold one — bundle up if you head out.", tone: "mixed" };
+    return { line: "Cold one, bundle up if you head out.", tone: "mixed" };
   }
   if (temp >= 89) {
-    return { line: "Hot out — chase shade and AC.", tone: "mixed" };
+    return { line: "Hot out, chase shade and AC.", tone: "mixed" };
   }
 
   // 6. The good days. Time-of-day framing turns a generic "nice out"
@@ -121,21 +121,21 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   if (clear) {
     return {
       line: evening
-        ? "Clear and easy — a patio kind of evening."
-        : "Clear out — a good day to be outside.",
+        ? "Clear and easy, a patio kind of evening."
+        : "Clear out, a good day to be outside.",
       tone: "good",
     };
   }
   if (cloudy) {
     return {
       line: evening
-        ? "Mild and grey — a comfortable evening to wander."
-        : "Soft and grey — an easy day to explore.",
+        ? "Mild and grey, a comfortable evening to wander."
+        : "Soft and grey, an easy day to explore.",
       tone: "good",
     };
   }
 
-  // 7. Fallback — honest and calm.
+  // 7. Fallback, honest and calm.
   return {
     line: evening ? "A fine evening to get out." : "A fine day to get out.",
     tone: "good",
@@ -143,9 +143,9 @@ export function weatherVerdict(input: VerdictInput): Verdict {
 }
 
 /**
- * nextWeatherChange — Mercury Weather's editorial-second-line move.
+ * nextWeatherChange, Mercury Weather's editorial-second-line move.
  *
- * The verdict is the mood ("Storms around — stay close to cover.").
+ * The verdict is the mood ("Storms around, stay close to cover.").
  * This one is the facts: the first thing in the forecast that's
  * actually going to change, named with a specific time. Examples:
  *
@@ -156,7 +156,7 @@ export function weatherVerdict(input: VerdictInput): Verdict {
  *   "Steady through evening"
  *
  * Returns null when nothing meaningful changes in the next 12 hours
- * (rare but possible — a flat shoulder day with no precip).
+ * (rare but possible, a flat shoulder day with no precip).
  *
  * Computed from the same hourly array the chart uses, so what the
  * user reads matches what they see on the curve.
@@ -195,7 +195,7 @@ export function nextWeatherChange({ hourly, now }: ChangeInput): string | null {
     }
   }
 
-  // First "clearing" event — currently wet/cloudy, dries out.
+  // First "clearing" event, currently wet/cloudy, dries out.
   if (WET.test(cur.shortForecast) || /cloud|overcast/i.test(cur.shortForecast)) {
     const clear = horizon.find((h) => /sunny|clear|fair/i.test(h.shortForecast));
     if (clear) {
@@ -203,7 +203,7 @@ export function nextWeatherChange({ hourly, now }: ChangeInput): string | null {
     }
   }
 
-  // First significant temp swing — ≥5°F off the current hour.
+  // First significant temp swing, ≥5°F off the current hour.
   // "Warming to X by hh" / "Cooling to X by hh".
   let extreme: { t: number; iso: string } | null = null;
   for (const h of horizon) {
@@ -217,7 +217,7 @@ export function nextWeatherChange({ hourly, now }: ChangeInput): string | null {
     return `${verb} to ${extreme.t}° by ${compactHour(extreme.iso)}`;
   }
 
-  // Nothing meaningful in 12h — name it as a calm shoulder.
+  // Nothing meaningful in 12h, name it as a calm shoulder.
   const hour = easternHour(now);
   if (hour >= 17 || hour < 4) return "Steady through evening";
   return "Steady through the day";

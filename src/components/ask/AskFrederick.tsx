@@ -113,7 +113,7 @@ export default function AskFrederick({ hideLabel = false }: { hideLabel?: boolea
               Only when there's genuinely nothing do we fall back to a hint. */}
           {res.configured === false && res.sources.length === 0 ? (
             <p className="text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-              The concierge is warming up. Meanwhile, try a category above, or ask for a place, a cuisine, or &ldquo;open now&rdquo;.
+              Ask Radius is warming up. Meanwhile, try a category above, or ask for a place, a cuisine, or &ldquo;open now&rdquo;.
             </p>
           ) : (
             <>
