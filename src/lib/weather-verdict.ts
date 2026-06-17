@@ -57,6 +57,22 @@ const STORM = /thunder|t-?storm|severe/i;
 const SNOW = /snow|sleet|flurr|wintry|ice/i;
 const WET = /\b(rain|showers?|drizzle)\b/i;
 
+/** Minimum current-hour precipitation probability to call it "actively wet".
+ *  NWS uses 50%+ for "likely"; below that is "chance"/"slight chance" and a
+ *  forecast string like "Scattered Rain Showers" must NOT claim it's raining. */
+const WET_NOW_THRESHOLD = 50;
+
+/**
+ * True when it is ACTUALLY wet right now: the current-hour forecast mentions
+ * rain AND precipitation is at least likely (>=50%). The shortForecast text
+ * alone over-claims — "Chance/Scattered Rain Showers" at 30% is dry on the
+ * ground. Shared so every "duck inside / rain's in play" surface stays honest.
+ * Storms are intentionally NOT gated here (callers warn on them regardless).
+ */
+export function isActivelyWet(shortForecast: string, precipNow: number | null | undefined): boolean {
+  return WET.test(shortForecast) && typeof precipNow === "number" && precipNow >= WET_NOW_THRESHOLD;
+}
+
 /**
  * Build the verdict. Checks the dangerous conditions first so a
  * cheerful line can never paper over a storm.
@@ -77,7 +93,7 @@ export function weatherVerdict(input: VerdictInput): Verdict {
   }
 
   // 3. Actively wet now (rain in the forecast + a real chance).
-  if (WET.test(shortForecast) && precipNow >= 50) {
+  if (isActivelyWet(shortForecast, precipNow)) {
     return {
       line: evening
         ? "Wet evening, pick somewhere with a roof."
