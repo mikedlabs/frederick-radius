@@ -196,6 +196,7 @@ export default function PlaceCard({
   // answer/feature lead. Override explicitly anywhere it's wanted.
   showSource = variant === "answer" || variant === "feature",
   noPhoto = false,
+  neutral = false,
 }: {
   place: PlaceCardData;
   compact?: boolean;
@@ -203,6 +204,11 @@ export default function PlaceCard({
   /** Show the source/trust badge. Defaults by variant (off in dense lists,
    *  on for the lead); the full trust tier still lives on the detail sheet. */
   showSource?: boolean;
+  /** Neutral mode (the /map in-view list): drop the editorial "why" reason
+   *  chips (Local favorite, Hidden gem, Top rated, Near {landmark}, walk time)
+   *  so the card just reflects the place — name, category, open/closed — with
+   *  no app-chosen verdicts. Open/closed still shows via PlaceStatus. */
+  neutral?: boolean;
   /** Force the typographic category mark instead of the photo thumbnail.
    *  The Map bottom-sheet uses this — map results are compact decision
    *  cards, not photo cards (the Map redesign brief). */
@@ -218,7 +224,10 @@ export default function PlaceCard({
   const openDetail = () => { haptic("light"); openSheet(place); };
   // "Known for" — the real descriptive blurb, or null for DFP filler.
   const kf = knownFor(place);
-  const reasons = placeReasons(place);
+  // Neutral mode drops the editorial "why" chips entirely (the /map list is a
+  // reflection of the map, not a ranked pick); open/closed still shows via the
+  // variant's PlaceStatus.
+  const reasons = neutral ? [] : placeReasons(place);
   // Where the card ALSO renders an explicit open indicator (the tile's
   // status dot, the feature/answer PlaceStatus line), the leading "Open"
   // reason chip just echoes it. Drop it there so the two visible chips
