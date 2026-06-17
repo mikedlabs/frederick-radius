@@ -1079,13 +1079,13 @@ export default function AppMap({
               >
                 Reload the map
               </button>
-              <a
+              <Link
                 href="/places"
                 className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
                 style={{ background: "var(--app-brand-press)" }}
               >
                 Browse all places
-              </a>
+              </Link>
             </div>
           </div>
         )}
