@@ -48,6 +48,7 @@ import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
+import { getCivicPressReleases, policeReleases, latestPoliceRelease } from "@/lib/integrations/civic-press";
 import { getFrederickTransitRoutes, getFrederickTransitRouteShapes, getFrederickTransitStops } from "@/lib/integrations/transitFrederick";
 import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
@@ -55,6 +56,7 @@ import { publicPlaces } from "@/lib/loaders/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
+import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import TransitMap from "@/components/transit/TransitMapClient";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
@@ -162,7 +164,7 @@ export default async function PulsePage({
   // so one slow or failing upstream can't stall the ISR regeneration or blank
   // the board — each tile self-hides on an empty feed.
   const FEED_MS = 6000;
-  const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes, rivers, airports, transitShapes, transitStops] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, transitStops] = await Promise.all([
     withTimeout(getChartIncidentsFrederick(), FEED_MS, []),
     withTimeout(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }),
     withTimeout(getFcpsAlerts(), FEED_MS, []),
@@ -173,6 +175,9 @@ export default async function PulsePage({
     withTimeout(getNwsAlerts(), FEED_MS, []),
     // Local headlines from Google News RSS — always-on city signal.
     withTimeout(getLocalHeadlines(), FEED_MS, []),
+    // Official City + County press releases (CivicPlus News Flash RSS). The
+    // police-lane items get the breaking strip up top + the blotter below.
+    withTimeout(getCivicPressReleases(), FEED_MS, []),
     // TransIT route count for the "by the numbers" grid (weekly-cached loader).
     withTimeout(getFrederickTransitRoutes(), FEED_MS, []),
     // USGS live gage height + streamflow for county rivers (latest reading only).
@@ -217,6 +222,14 @@ export default async function PulsePage({
   const activeAlerts = alerts.filter(
     (a) => !a.ends_at || Date.parse(a.ends_at) > nowMs,
   );
+
+  // Police-lane press releases. The freshest earns the breaking strip up top
+  // (only if recent enough); the rest form the standing blotter in the Police
+  // section, minus the featured one so the page never shows it twice.
+  const breakingPolice = latestPoliceRelease(press);
+  const blotter = policeReleases(press)
+    .filter((p) => p.url !== breakingPolice?.url)
+    .slice(0, 5);
 
   const totals = {
     alerts: activeAlerts.length,
@@ -642,6 +655,12 @@ export default async function PulsePage({
         </div>
       </header>
 
+      {/* ── Breaking: the latest police / public-safety press release from
+          the City or County, straight from their official .gov newsroom.
+          Rides above the dashboard because it's the most time-sensitive
+          civic signal a resident wants. Absent when there's no recent one. */}
+      {breakingPolice && <PoliceBreakingStrip item={breakingPolice} now={nowMs} />}
+
       {/* ── Status dashboard — each tile opens the feed's detail in a
           bottom-sheet "window"; no more scroll-to-section. Seven tiles now
           (the six operational feeds + Rivers). Police stays a quiet card
@@ -881,30 +900,46 @@ export default async function PulsePage({
             >
               <Siren className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </span>
-            Police calls for service
+            Police &amp; safety
           </h2>
         </header>
-        <div className="space-y-2.5 px-4 py-3">
-          <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-            Frederick PD publishes the prior day&apos;s calls for service
-            from its CAD system on an official map, updated daily. You
-            can browse it and subscribe to alerts for your area there.
-          </p>
-          <a
-            href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
-            style={{ background: "var(--app-cool)" }}
+        <div className="px-4 py-3">
+          {/* The running blotter — recent police press releases from the
+              City + County newsrooms, the one already featured up top
+              excluded. Self-hides when the feeds carry no police items. */}
+          {blotter.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                Recent releases
+              </p>
+              <PoliceBlotter items={blotter} now={nowMs} />
+            </div>
+          )}
+          <div
+            className={blotter.length > 0 ? "mt-3 space-y-2.5 border-t pt-3" : "space-y-2.5"}
+            style={blotter.length > 0 ? { borderColor: "var(--app-border)" } : undefined}
           >
-            Open the official CFS map
-            <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-          </a>
-          <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            Calls for service are not confirmed crimes. They reflect
-            requests for police response. Source: Frederick Police
-            Department via CommunityCrimeMap.
-          </p>
+            <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+              Frederick PD also publishes the prior day&apos;s calls for service
+              from its CAD system on an official map, updated daily. You
+              can browse it and subscribe to alerts for your area there.
+            </p>
+            <a
+              href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
+              style={{ background: "var(--app-cool)" }}
+            >
+              Open the official CFS map
+              <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+            </a>
+            <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+              Calls for service are not confirmed crimes. They reflect
+              requests for police response. Releases and the CFS map come
+              from the City of Frederick &amp; Frederick County.
+            </p>
+          </div>
         </div>
       </section>
 
