@@ -139,11 +139,13 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                 </div>
 
                 <div className="ml-[22px]">
-                  {/* Solid filing-ink header band — marks the card as a deal + file no. */}
-                  <div className="flex items-center gap-2 px-3 py-[6px]" style={{ background: ink }}>
-                    <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.2em]" style={{ color: REVERSED }}>Deal</span>
-                    <span aria-hidden className="h-px flex-1" style={{ background: `color-mix(in srgb, ${REVERSED} 38%, transparent)` }} />
-                    <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em]" style={{ color: REVERSED }}>No.&nbsp;{file}</span>
+                  {/* Solid filing-ink header band — the BUSINESS NAME reversed
+                      out, so a stack of overlapping cards reads as a row of
+                      labeled tabs (you see every venue at a glance). */}
+                  <div className="flex items-center gap-2 px-3 py-[7px]" style={{ background: ink }}>
+                    <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: REVERSED }} />
+                    <span className="min-w-0 flex-1 truncate font-serif text-[14px] font-semibold tracking-[-0.01em]" style={{ color: REVERSED }}>{d.name}</span>
+                    <span className="font-mono text-[8px] font-bold uppercase tracking-[0.12em]" style={{ color: `color-mix(in srgb, ${REVERSED} 72%, transparent)` }}>No.&nbsp;{file}</span>
                   </div>
 
                   <div className="relative px-3.5 pb-3.5 pt-2.5">
@@ -159,20 +161,10 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       style={{ opacity: 0.6 }}
                     />
 
-                    {/* Subject — the venue, serif, with its category specimen mark. */}
-                    <div className="flex items-start gap-2.5 pr-12">
-                      <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${ink} 14%, transparent)`, color: ink }}>
-                        <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
-                      </span>
-                      <h3 className="min-w-0 flex-1 font-serif text-[17.5px] font-semibold leading-[1.08] tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
-                        {d.name}
-                      </h3>
-                    </div>
-
-                    {/* THE DEAL — led prominently right under the venue so a
-                        glance (even in the stacked sliver) says WHAT you get,
-                        not just where. This is the card's headline. */}
-                    <p className="mt-2 line-clamp-3 text-[14px] font-medium leading-snug" style={{ color: "var(--app-ink)" }}>
+                    {/* THE DEAL — the headline. The venue now lives in the
+                        name band above, so the body leads straight with WHAT
+                        you get. pr to clear the wax seal. */}
+                    <p className="line-clamp-3 pr-12 text-[15px] font-medium leading-snug" style={{ color: "var(--app-ink)" }}>
                       {d.offer}
                     </p>
 
