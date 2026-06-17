@@ -159,7 +159,13 @@ export async function GET(req: NextRequest) {
   }
 
   const name = req.nextUrl.searchParams.get("name");
-  const w = Math.min(1600, Math.max(80, parseInt(req.nextUrl.searchParams.get("w") || "800", 10)));
+  // parseInt("abc") is NaN, and `|| "800"` only defends an empty/missing
+  // param — not a non-numeric one. Without the finite check a hand-crafted
+  // `?w=abc` propagates NaN into the Google photo URL (maxWidthPx=NaN, 400s)
+  // and the placeholder SVG (width="NaN"). Coerce any non-finite result
+  // back to the default. (App-generated URLs always pass a clean integer.)
+  const wRaw = parseInt(req.nextUrl.searchParams.get("w") || "800", 10);
+  const w = Math.min(1600, Math.max(80, Number.isFinite(wRaw) ? wRaw : 800));
   const rawSlug = req.nextUrl.searchParams.get("slug") || undefined;
   // Defense in depth: even though the loader-generated URLs always
   // contain a clean slug, we validate before using to look the place

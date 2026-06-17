@@ -29,6 +29,7 @@ import PlacePhotoGallery from "@/components/place/PlacePhotoGallery";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
 import PlaceAmenityIcons from "@/components/place/PlaceAmenityIcons";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
@@ -135,6 +136,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   if (!place) notFound();
 
   const cat = CATEGORY_BY_SLUG[place.category];
+  // Only treat the municipality as a linkable town when it resolves to a real
+  // /m/ slug. A handful of places sit in unincorporated areas (jefferson,
+  // ijamsville) that have no town page — without this guard their breadcrumb,
+  // "more in town" link, and BreadcrumbList JSON-LD all emit a 404 /m/ path
+  // with an empty/undefined name. When it's not a real town, drop the crumb.
+  const town = MUNICIPALITY_BY_SLUG[place.municipality];
   const desc = cleanCopy(place.name, place.description ?? place.short_blurb);
   const hoursConfirmed = place.hours_source
     ? `Hours from ${HOURS_SOURCE_LABEL[place.hours_source] ?? place.hours_source}, confirmed ${confirmedAgo(place.hours_updated_at) ?? "recently"}.`
@@ -197,8 +204,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
       <nav aria-label="Breadcrumb" className="text-xs">
         <ol className="flex items-center gap-1.5" style={{ color: "var(--app-ink-3)" }}>
           <li><Link href="/places" className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">Places</Link></li>
-          <li aria-hidden>·</li>
-          <li><Link href={`/m/${place.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{place.municipality_name}</Link></li>
+          {town && (
+            <>
+              <li aria-hidden>·</li>
+              <li><Link href={`/m/${place.municipality}`} className="inline-block px-1 py-3.5 -mx-1 -my-3.5 hover:underline">{town.name}</Link></li>
+            </>
+          )}
           {cat && (
             <>
               <li aria-hidden>·</li>
@@ -459,9 +470,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           {SOURCE_LABEL[place.source] ?? place.source}
         </p>
         <div className="flex flex-wrap gap-3 text-xs">
-          <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand-press)" }}>
-            More {cat?.name?.toLowerCase() ?? "places"} →
-          </Link>
+          {cat && (
+            <Link href={`/category/${place.category}`} style={{ color: "var(--app-brand-press)" }}>
+              More {cat.name.toLowerCase()} →
+            </Link>
+          )}
           <a
             href={`mailto:hello@frederickradius.app?subject=Correction for ${place.name}`}
             style={{ color: "var(--app-ink-3)" }}
@@ -488,7 +501,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           __html: JSON.stringify(
             breadcrumbJsonLd([
               { name: "Places", path: "/places" },
-              { name: place.municipality_name, path: `/m/${place.municipality}` },
+              ...(town ? [{ name: town.name, path: `/m/${place.municipality}` }] : []),
               ...(cat ? [{ name: cat.name, path: `/category/${place.category}` }] : []),
               { name: place.name, path: `/places/${place.slug}` },
             ]),
