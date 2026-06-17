@@ -500,12 +500,6 @@
         "source_url": "https://isabellas-tavern.com/menus/",
         "confidence": "high",
         "last_verified": "2026-06-15"
-      },
-      {
-        "text": "Same owners run the next-door Italian spot Pistarro's Ristorante Pizzeria Napoletana, an easy plan-B if Isabella's has a wait.",
-        "source_url": "https://isabellas-tavern.com",
-        "confidence": "high",
-        "last_verified": "2026-06-15"
       }
     ],
     "deals": [
@@ -1229,7 +1223,7 @@
     },
     "insider": [
       {
-        "text": "Specializes in traditional Naples-style wood-fired pizza; the Margherita is the signature pie. Same owners run the sister spot Isabella's Taverna & Tapas Bar.",
+        "text": "Specializes in traditional Naples-style wood-fired pizza; the Margherita is the signature pie.",
         "source_url": "https://pistarro.com/",
         "confidence": "high",
         "last_verified": "2026-06-15"
