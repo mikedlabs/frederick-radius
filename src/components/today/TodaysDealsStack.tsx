@@ -167,11 +167,11 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
       </div>
 
       <Link
-        href="/happy-hour"
+        href="/deals"
         className="tap-44 flex items-center justify-between px-0.5 pt-0.5 text-[12px] font-semibold"
         style={{ color: "var(--app-brand)" }}
       >
-        Happy hours &amp; more
+        Every deal, by day
         <span aria-hidden>→</span>
       </Link>
     </section>

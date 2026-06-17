@@ -15,6 +15,7 @@ import {
   SquareParking,
   Route,
   Wine,
+  Tag,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -69,6 +70,7 @@ type Item = {
 // purpose: this is the reason to open the app, not a utility afterthought.
 const LOCAL_INTEL: Item[] = [
   { href: "/happy-hour", label: "Happy hour", description: "Verified happy hours across the county, by day", icon: Wine, color: "var(--app-brand)" },
+  { href: "/deals", label: "Deals", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
 ];
 
 const GETTING_AROUND: Item[] = [

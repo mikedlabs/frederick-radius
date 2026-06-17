@@ -177,3 +177,62 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
     )
     .slice(0, limit);
 }
+
+/** One verified deal, shaped for the day-aware /deals almanac browser. */
+export type DealRow = {
+  slug: string;
+  name: string;
+  town?: string;
+  category?: string;
+  photo?: string;
+  /** The offer, with the leading weekday prefix and the hours stripped out. */
+  offer: string;
+  /** Parsed run-time ("5–9 PM", "All day"), or undefined when none is stated. */
+  hours?: string;
+  /** Weekday indices (0=Sun) named in the deal text. Empty = a standing
+   *  special with no fixed day — shown honestly on its own shelf, never
+   *  pinned to a day it doesn't claim. */
+  days: number[];
+  source_url?: string;
+  verified: string | null;
+  confidence: string;
+};
+
+/**
+ * EVERY verified deal on file, shaped for the /deals browser. Unlike
+ * todaysDeals (best-one-per-venue, today-only), this keeps each deal as its
+ * own row so the almanac can show every day's specials across the week. Same
+ * honesty gate: only confidence-backed, last_verified deals whose place is
+ * still in the dataset. Sorted downtown-first, then confidence, then name.
+ */
+export function allDeals(): DealRow[] {
+  const rows: DealRow[] = [];
+  for (const [slug, entry] of Object.entries(NOTES)) {
+    if (!entry.deals?.length) continue;
+    const place = clientPlaceBySlug(slug);
+    if (!place) continue; // folded/removed in the dedup sweep — never surface
+    const town = place.municipality ? MUNICIPALITY_BY_SLUG[place.municipality]?.name : undefined;
+    for (const d of entry.deals) {
+      const conf = (d.confidence ?? "").toLowerCase();
+      if (!OK[conf] || !d.last_verified) continue;
+      const raw = (d.text || "").trim();
+      rows.push({
+        slug,
+        name: place.name,
+        town,
+        category: place.category,
+        photo: place.google_photo_url,
+        offer: stripHours(trimDay(raw)),
+        hours: extractHours(raw),
+        days: [...daysInText(raw)].sort((a, b) => a - b),
+        source_url: d.source_url,
+        verified: verifiedLabel(d.last_verified),
+        confidence: conf,
+      });
+    }
+  }
+  return rows.sort(
+    (a, b) =>
+      OK[b.confidence] - OK[a.confidence] || a.name.localeCompare(b.name),
+  );
+}
