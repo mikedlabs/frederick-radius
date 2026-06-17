@@ -111,7 +111,7 @@ export default function PlaceSheet({ place, onClose }: Props) {
             dragElastic={{ top: 0, bottom: 0.55 }}
             onDragEnd={handleDragEnd}
             style={{ y }}
-            className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col overflow-hidden rounded-t-[24px] border-t bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
+            className="absolute inset-x-0 bottom-0 flex max-h-[85dvh] flex-col overflow-hidden rounded-t-[24px] border-t bg-[var(--app-bg-elevated)] shadow-[var(--app-shadow-3)]"
           >
             <PlaceSheetContent place={place} onClose={() => setOpen(false)} />
           </motion.div>
@@ -210,7 +210,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
       </div>
 
       {/* Scrollable content. The outer motion.div is flex-col with
-       *  max-h-[85vh] + overflow-hidden, so this inner panel is
+       *  max-h-[85dvh] + overflow-hidden, so this inner panel is
        *  flex-1 + min-h-0 — that's the standard flex idiom for
        *  letting a child be the actual scroll region. Before this,
        *  the inner had `overflow-y-auto` but no height constraint,

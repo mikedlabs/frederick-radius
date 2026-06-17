@@ -62,7 +62,7 @@ export default function BottomDrawer({
           style={{ background: "rgba(10, 8, 4, 0.45)" }}
         />
         <Drawer.Content
-          className="fixed bottom-0 left-0 right-0 z-[var(--z-overlay)] mt-24 flex max-h-[90vh] flex-col rounded-t-[24px] border-t outline-none"
+          className="fixed bottom-0 left-0 right-0 z-[var(--z-overlay)] mt-24 flex max-h-[90dvh] flex-col rounded-t-[24px] border-t outline-none"
           style={{
             background: "var(--app-bg-elevated)",
             borderColor: "var(--app-border)",
