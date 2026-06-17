@@ -10,11 +10,6 @@ import { AMENITY_GROUPS, CHIP_GLYPH } from "./constants";
 import type { CivicPin, MapLineFC } from "./types";
 import { OVERLAYS, type OverlayKey } from "@/lib/overlays";
 
-// Preview-only demo layers (Food Trucks / Radius Points / Live Transit)
-// render sample data, not real coverage. OFF in production; set
-// NEXT_PUBLIC_RADIUS_DEMO_LAYERS=1 to enable locally.
-const SHOW_DEMO_LAYERS = process.env.NEXT_PUBLIC_RADIUS_DEMO_LAYERS === "1";
-
 type SetState<T> = (updater: T | ((prev: T) => T)) => void;
 
 /**
@@ -86,9 +81,6 @@ export type AppMapDeckProps = {
   savedCount: number;
   showSavedOnly: boolean;
   setShowSavedOnly: SetState<boolean>;
-
-  // Preview-only demo layers (gated by SHOW_DEMO_LAYERS).
-  setDemo: SetState<null | "food-truck" | "transit" | "rewards">;
 };
 
 /**
@@ -134,7 +126,6 @@ export default function AppMapDeck({
   savedCount,
   showSavedOnly,
   setShowSavedOnly,
-  setDemo,
 }: AppMapDeckProps) {
   // Open-now state lives in the URL (?open=now), not in client state —
   // the server filters the place pool, so the deck just reads the
@@ -769,47 +760,6 @@ export default function AppMapDeck({
               </li>
             );
           })}
-            </ul>
-          </section>
-        )}
-
-        {/* Preview-only demo layers — OFF in production (gated by
-            NEXT_PUBLIC_RADIUS_DEMO_LAYERS=1). Rendered as its own
-            "Coming soon" cluster so the demo chips don't visually
-            ride in the live Categories/Overlays rows. */}
-        {SHOW_DEMO_LAYERS && (
-          <section className="space-y-2">
-            <h3 className="eyebrow px-1" style={{ color: "var(--app-ink-3)" }}>
-              Coming soon
-            </h3>
-            <ul className="flex flex-wrap items-center gap-2 py-0.5">
-              {[
-                { key: "food-truck" as const, glyph: "\u{1F69A}", label: "Food Trucks" },
-                { key: "rewards" as const, glyph: "\u{2B50}", label: "Radius Points" },
-                { key: "transit" as const, glyph: "\u{1F68C}", label: "Live Transit" },
-              ].map((d) => (
-                <li key={d.key}>
-                  <button
-                    type="button"
-                    onClick={() => setDemo(d.key)}
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition active:scale-[0.96]"
-                    style={{
-                      background: "var(--app-bg-elevated)",
-                      color: "var(--app-ink-3)",
-                      border: "1px dashed var(--app-border)",
-                    }}
-                  >
-                    <span aria-hidden style={{ fontSize: 13, lineHeight: 1 }}>{d.glyph}</span>
-                    {d.label}
-                    <span
-                      className="rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-                      style={{ background: "var(--app-accent)", color: "white" }}
-                    >
-                      Soon
-                    </span>
-                  </button>
-                </li>
-              ))}
             </ul>
           </section>
         )}
