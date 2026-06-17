@@ -2,22 +2,26 @@ import type { OpenStatus } from "@/lib/hours";
 import { formatHoursLine } from "@/lib/hours";
 
 export default function OpenClosedDot({ status, withLabel = true }: { status: OpenStatus; withLabel?: boolean }) {
-  const color =
+  const hue =
     status.state === "open" ? "var(--app-positive)" :
     status.state === "closing-soon" ? "var(--app-warning)" :
     status.state === "closed" ? "var(--app-ink-3)" :
     status.state === "unverified" ? "var(--app-cool)" :
     "var(--app-ink-3)";
+  // The hue always rides the (decorative) dot; the label text uses the hue
+  // EXCEPT closing-soon, whose amber fails AA on cream as small text — there
+  // the dot stays amber and the label drops to ink-2.
+  const textColor = status.state === "closing-soon" ? "var(--app-ink-2)" : hue;
   return (
     <span
       className="inline-flex items-center gap-1.5 text-xs font-medium"
-      style={{ color }}
+      style={{ color: textColor }}
       {...(!withLabel ? { role: "img", "aria-label": formatHoursLine(status) } : {})}
     >
       <span
         aria-hidden
         className="inline-block h-1.5 w-1.5 rounded-full"
-        style={{ background: color }}
+        style={{ background: hue }}
       />
       {withLabel && <span>{formatHoursLine(status)}</span>}
     </span>

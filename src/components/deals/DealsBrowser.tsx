@@ -69,7 +69,7 @@ function RowCard({ r, accent, hideTown }: { r: DealRow; accent?: string; hideTow
         {/* WHEN (accent mono, when stated) + the FULL offer — no truncation. */}
         <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink)" }}>
           {r.hours && (
-            <span className="font-mono font-semibold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-accent)" }}>{r.hours} · </span>
+            <span className="font-mono font-semibold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-ink-2)" }}>{r.hours} · </span>
           )}
           {r.offer}
         </p>
