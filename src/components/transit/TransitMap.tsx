@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Map, { Source, Layer } from "react-map-gl/mapbox";
 import { FREDERICK_COUNTY_BBOX } from "@/lib/geo";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
@@ -9,7 +9,22 @@ import { applyFrederickPalette } from "@/components/map/applyFrederickPalette";
 import LiveBuses from "@/components/map/LiveBuses";
 import type { LineFC, TransitStop } from "@/lib/integrations/transitFrederick";
 import { MARC_STATIONS } from "@/data/marc-stations";
+import TRANSIT from "@/data/transit.json";
 import "mapbox-gl/dist/mapbox-gl.css";
+
+type TRoute = { id: string; short: string; name: string; color: string };
+const ROUTES = TRANSIT.routes as TRoute[];
+const SHAPES = TRANSIT.shapes as Record<string, number[][]>;
+
+/** Dark or light, whichever reads on the route color (GTFS text colors are
+ *  unreliable — white on the light routes). */
+function readableOn(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return "#16140E";
+  const n = parseInt(m[1], 16);
+  const lum = (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.6 ? "#16140E" : "#FFFFFF";
+}
 
 /**
  * TransitMap — Carroll-Creek-slate route lines drawn on the same
@@ -42,6 +57,7 @@ export default function TransitMap({
   center,
   zoom,
   liveBuses = false,
+  highlightRoutes = false,
 }: {
   shapes: LineFC;
   /** Real Frederick County TransIT stops (MD Open Data, 4zcx-89nc).
@@ -57,6 +73,9 @@ export default function TransitMap({
   zoom?: number;
   /** Overlay live TransIT vehicle positions (LiveBuses). */
   liveBuses?: boolean;
+  /** Show the route-highlighter chip strip: tap a route to draw its path in
+   *  its color and dim the other buses. */
+  highlightRoutes?: boolean;
 }) {
   const initial = useMemo(() => {
     const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
@@ -65,6 +84,21 @@ export default function TransitMap({
     // cleanly from the start; the user can zoom out for the outer routes.
     return { longitude: cx, latitude: cy, zoom: zoom ?? 9 };
   }, [center, zoom]);
+
+  // Route highlighter: the selected route id (null = show all). The selected
+  // route's path is drawn from the GTFS shapes (transit.json), keyed by route.
+  const [route, setRoute] = useState<string | null>(null);
+  const selMeta = route ? ROUTES.find((r) => r.id === route) : null;
+  const selLine = useMemo(() => {
+    if (!route) return null;
+    const pts = SHAPES[route];
+    if (!pts || pts.length < 2) return null;
+    return {
+      type: "Feature" as const,
+      geometry: { type: "LineString" as const, coordinates: pts.map(([lat, lng]) => [lng, lat]) },
+      properties: {},
+    };
+  }, [route]);
 
   // No routes means the upstream feed failed. Render a quiet empty
   // state instead of a blank map.
@@ -80,10 +114,54 @@ export default function TransitMap({
   }
 
   return (
-    <div
-      className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
-      style={{ borderColor: "var(--app-border)", height }}
-    >
+    <div className="space-y-2">
+      {highlightRoutes && (
+        <div
+          className="flex gap-1.5 overflow-x-auto pb-0.5"
+          role="group"
+          aria-label="Highlight a route"
+          style={{ scrollbarWidth: "none" }}
+        >
+          <button
+            type="button"
+            onClick={() => setRoute(null)}
+            aria-pressed={route === null}
+            className="tap-44 shrink-0 rounded-full border px-3 py-1.5 text-[12px] font-semibold"
+            style={{
+              borderColor: "var(--app-border)",
+              background: route === null ? "var(--app-ink)" : "var(--app-bg-elevated)",
+              color: route === null ? "var(--app-bg)" : "var(--app-ink-2)",
+            }}
+          >
+            All routes
+          </button>
+          {ROUTES.map((r) => {
+            const on = route === r.id;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setRoute(on ? null : r.id)}
+                aria-pressed={on}
+                aria-label={`Highlight ${r.name}`}
+                className="tap-44 shrink-0 rounded-full px-2.5 py-1.5 font-mono text-[12px] font-bold tabular-nums transition"
+                style={{
+                  background: r.color,
+                  color: readableOn(r.color),
+                  boxShadow: on ? "0 0 0 2px var(--app-ink)" : "none",
+                  opacity: route && !on ? 0.5 : 1,
+                }}
+              >
+                {r.short}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div
+        className="relative overflow-hidden rounded-[var(--app-radius-lg)] border"
+        style={{ borderColor: "var(--app-border)", height }}
+      >
       <Map
         mapboxAccessToken={MAPBOX_TOKEN}
         mapStyle={STYLE_URL}
@@ -137,6 +215,25 @@ export default function TransitMap({
             }}
           />
         </Source>
+
+        {/* Route highlighter — the selected route's path, drawn bold in its
+            own color (with a white halo) on top of the slate network. */}
+        {selLine && selMeta && (
+          <Source id="transit-route-highlight" type="geojson" data={selLine}>
+            <Layer
+              id="transit-route-highlight-halo"
+              type="line"
+              paint={{ "line-color": "#ffffff", "line-width": 8, "line-opacity": 0.75, "line-blur": 0.4 }}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+            />
+            <Layer
+              id="transit-route-highlight-line"
+              type="line"
+              paint={{ "line-color": selMeta.color, "line-width": 5, "line-opacity": 0.95 }}
+              layout={{ "line-cap": "round", "line-join": "round" }}
+            />
+          </Source>
+        )}
 
         {/* Stops — only rendered when the upstream feed returned a
             non-empty list. Drawn AFTER the route lines so the dots
@@ -226,7 +323,7 @@ export default function TransitMap({
 
         {/* Real-time vehicle positions — route-colored badges that glide
             between polls. Self-hides when the feed reports zero. */}
-        <LiveBuses show={liveBuses} />
+        <LiveBuses show={liveBuses} highlightRouteId={route ?? undefined} />
       </Map>
 
       {/* Editorial badge — top-left. Tells the user what the painted
@@ -242,6 +339,7 @@ export default function TransitMap({
         TransIT Frederick · {shapes.features.length} routes
         {stops.length > 0 && ` · ${stops.length} stops`}
       </span>
+      </div>
     </div>
   );
 }

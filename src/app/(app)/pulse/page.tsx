@@ -669,10 +669,12 @@ export default async function PulsePage({
           center={[-77.4105, 39.4143]}
           zoom={11}
           liveBuses
+          highlightRoutes
         />
         <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed
-          every 15 seconds, over the route network. The county bus is free.
+          every 15 seconds. Tap a route to trace its path and follow just its
+          buses. The county bus is free.
         </p>
       </section>
 
