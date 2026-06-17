@@ -137,6 +137,19 @@ function groupByRiver(sites: WaterSite[]): Array<{ river: string; sites: WaterSi
     .sort((a, b) => b.sites.length - a.sites.length);
 }
 
+/**
+ * Race a feed against a fallback: resolves to the feed's value, or the
+ * fallback if the feed rejects OR is slower than `ms`. Bounds the ~10-feed
+ * fanout so one slow/failing upstream can't stall the (ISR) regeneration or
+ * blank the dashboard — each tile self-hides on an empty feed.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    Promise.resolve(p).catch(() => fallback),
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+  ]);
+}
+
 export default async function PulsePage({
   searchParams,
 }: {
@@ -145,31 +158,27 @@ export default async function PulsePage({
   // ?open=<tileKey> opens that feed's window on arrival (e.g. tapped from
   // /today's LivePulse, which deep-links /pulse?open=traffic).
   const { open: openParam } = await searchParams;
+  // Every feed is raced against a 6s timeout + an empty fallback (withTimeout),
+  // so one slow or failing upstream can't stall the ISR regeneration or blank
+  // the board — each tile self-hides on an empty feed.
+  const FEED_MS = 6000;
   const [incidents, outages, fcps, fixit, safety, alerts, news, transitRoutes, rivers, airports] = await Promise.all([
-    getChartIncidentsFrederick(),
-    getFrederickOutages(),
-    getFcpsAlerts(),
-    getFixItIssues(15),
-    getPulsePointIncidents(),
-    // NWS active alerts for Frederick County, MD. When something's
-    // up (severe storm, flood, heat advisory) this is the most
-    // actionable feed in the dashboard and rides at the top.
-    getNwsAlerts().catch(() => []),
-    // Local headlines from Google News RSS — always-on city signal
-    // even when the operational feeds are quiet.
-    getLocalHeadlines().catch(() => []),
-    // TransIT route count for the "by the numbers" canon grid below.
-    // Same Socrata feed /transit uses; the loader caches weekly.
-    getFrederickTransitRoutes().catch(() => []),
-    // USGS live gage height + streamflow for county rivers — the only
-    // live county feed that wasn't in the dashboard grid. Latest reading
-    // only (the loader never synthesizes a flood "stage"); degrades to []
-    // so a USGS hiccup never blocks the page.
-    getFrederickWaterSites().catch(() => [] as WaterSite[]),
-    // FAA status for the three airports the county flies out of (BWI / Dulles
-    // / Reagan) — "on time" unless the national delay feed lists them. [] on a
-    // feed hiccup so it never blocks the page and the tile self-hides.
-    getAreaAirportStatus().catch(() => [] as AirportStatus[]),
+    withTimeout(getChartIncidentsFrederick(), FEED_MS, []),
+    withTimeout(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }),
+    withTimeout(getFcpsAlerts(), FEED_MS, []),
+    withTimeout(getFixItIssues(15), FEED_MS, []),
+    withTimeout(getPulsePointIncidents(), FEED_MS, []),
+    // NWS active alerts for Frederick County, MD. When something's up (severe
+    // storm, flood, heat advisory) this rides at the top of the board.
+    withTimeout(getNwsAlerts(), FEED_MS, []),
+    // Local headlines from Google News RSS — always-on city signal.
+    withTimeout(getLocalHeadlines(), FEED_MS, []),
+    // TransIT route count for the "by the numbers" grid (weekly-cached loader).
+    withTimeout(getFrederickTransitRoutes(), FEED_MS, []),
+    // USGS live gage height + streamflow for county rivers (latest reading only).
+    withTimeout(getFrederickWaterSites(), FEED_MS, [] as WaterSite[]),
+    // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
+    withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
   ]);
 
   // ── "By the numbers" canon — pure / no fetch beyond the routes

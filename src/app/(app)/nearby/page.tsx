@@ -43,8 +43,13 @@ export default async function NowPage({
 }) {
   const { c } = await searchParams;
   const places = publicPlaces()
-    .map((p) => decoratePlace(p))
+    // Filter to craving-eligible FIRST (the matcher only reads category + name,
+    // both on the raw Place), then decorate only that subset instead of
+    // decorating all ~1,700 places and discarding most. A per-request CPU cut
+    // with zero behavior or freshness change — open-now stays computed live,
+    // which is the whole point of this page, so we deliberately do NOT cache it.
     .filter((p) => isCravingPlace(p))
+    .map((p) => decoratePlace(p))
     .map(slim);
 
   return <RightNow places={places} initialCraving={c ?? null} />;
