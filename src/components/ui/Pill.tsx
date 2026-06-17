@@ -29,18 +29,20 @@ import { haptic } from "@/lib/haptics";
 
 type Tone = "brand" | "cool" | "ink" | "prominent";
 
+// Light-text fills use --app-brand-press (the AA-safe darker vermilion): white
+// on plain --app-brand is only 4.17:1 (fails AA for the small pill label).
 const ACTIVE_BG: Record<Tone, string> = {
-  brand: "var(--app-brand)",
+  brand: "var(--app-brand-press)",
   cool: "var(--app-cool)",
   ink: "var(--app-ink)",
   prominent:
-    "linear-gradient(135deg, var(--app-brand), color-mix(in srgb, var(--app-brand) 60%, var(--app-cool)))",
+    "linear-gradient(135deg, var(--app-brand-press), color-mix(in srgb, var(--app-brand-press) 60%, var(--app-cool)))",
 };
 const ACTIVE_FG: Record<Tone, string> = {
-  brand: "#fff",
-  cool: "#fff",
+  brand: "var(--app-on-brand)",
+  cool: "var(--app-on-brand)",
   ink: "var(--app-bg)",
-  prominent: "#fff",
+  prominent: "var(--app-on-brand)",
 };
 
 type PillProps = {
