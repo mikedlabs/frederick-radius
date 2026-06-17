@@ -145,7 +145,7 @@ export default function CravingStrip({
         {/* Meal occasion — the time-aware lead. Auto-selects the meal it is
             right now; opens the nearest spots OPEN for it (a clock fact, never
             a menu claim). The owner's "I want breakfast/brunch/lunch/dinner". */}
-        <FieldTag href={`/nearby?c=${meal.key}`} label={meal.label} ariaLabel={`${meal.label}: nearest open now`} icon={ICONS[meal.icon] ?? Utensils} ink={meal.color} />
+        <FieldTag href={meal.href ?? `/nearby?c=${meal.key}`} label={meal.label} ariaLabel={meal.href ? `${meal.label}: verified spots` : `${meal.label}: nearest open now`} icon={ICONS[meal.icon] ?? Utensils} ink={meal.color} />
         {/* Happy hour — the most-asked-for local intent.
             Points at the /happy-hour view powered by the Field Notes layer. */}
         <FieldTag href="/happy-hour" label="Happy hour" ariaLabel="Happy hour" icon={Martini} ink="var(--app-accent)" />

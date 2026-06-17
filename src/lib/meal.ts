@@ -37,6 +37,9 @@ export type Meal = {
   cats: string[];
   /** Also catch pizza-by-name — most pizzerias land in `restaurant`. */
   pizza: boolean;
+  /** Optional destination override. Brunch points at the VERIFIED /brunch
+   *  list (the moat) rather than the open-now /nearby heuristic. */
+  href?: string;
 };
 
 const PIZZA_RE = /\b(pizza|pizzeria)\b/i;
@@ -49,7 +52,7 @@ const PIZZA_RE = /\b(pizza|pizzeria)\b/i;
 // bar in the set — at 11pm a bar kitchen is a real "late bite" answer.
 export const MEALS: Record<MealKey, Meal> = {
   breakfast: { key: "breakfast", label: "Breakfast",  phrase: "for breakfast",   icon: "Sunrise",         color: "var(--app-brand-press)", cats: ["restaurant", "coffee", "bakery", "food-truck"], pizza: false },
-  brunch:    { key: "brunch",    label: "Brunch",     phrase: "for brunch",      icon: "Croissant",       color: "var(--app-brand-press)", cats: ["restaurant", "coffee", "bakery", "food-truck"], pizza: false },
+  brunch:    { key: "brunch",    label: "Brunch",     phrase: "for brunch",      icon: "Croissant",       color: "var(--app-brand-press)", cats: ["restaurant", "coffee", "bakery", "food-truck"], pizza: false, href: "/brunch" },
   lunch:     { key: "lunch",     label: "Lunch",      phrase: "for lunch",       icon: "Sandwich",        color: "var(--app-brand-press)", cats: ["restaurant", "pizza", "food-truck", "bakery"], pizza: true },
   dinner:    { key: "dinner",    label: "Dinner",     phrase: "for dinner",      icon: "UtensilsCrossed", color: "var(--app-brand-press)", cats: ["restaurant", "pizza", "food-truck"], pizza: true },
   late:      { key: "late",      label: "Late night", phrase: "for a late bite", icon: "Moon",            color: "var(--app-brand-press)", cats: ["restaurant", "pizza", "food-truck", "bar"], pizza: true },
