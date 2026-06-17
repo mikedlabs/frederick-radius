@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { classifyCivicPress } from "@/lib/integrations/civic-press";
+import { classifyCivicPress, advisoryReleases, type CivicPressItem } from "@/lib/integrations/civic-press";
+
+const item = (over: Partial<CivicPressItem>): CivicPressItem => ({
+  title: "x", url: "https://x", source: "City of Frederick", sourceShort: "City",
+  publishedAt: new Date().toISOString(), lane: "advisory", ...over,
+});
+const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
 
 // Real titles pulled from the City + County CivicPlus News Flash feeds.
 // The classifier is the load-bearing logic for the /pulse breaking strip:
@@ -55,5 +61,26 @@ describe("classifyCivicPress lanes", () => {
       // "Reopens" carries no closure/advisory keyword, so it should not alarm.
       expect(classifyCivicPress("New Design Road Reopens")).toBe("civic");
     });
+  });
+});
+
+describe("advisoryReleases", () => {
+  it("keeps only the advisory lane, newest first within the window", () => {
+    const items: CivicPressItem[] = [
+      item({ url: "https://a", lane: "advisory", publishedAt: daysAgo(2) }),
+      item({ url: "https://b", lane: "police", publishedAt: daysAgo(1) }),
+      item({ url: "https://c", lane: "advisory", publishedAt: daysAgo(10) }),
+      item({ url: "https://d", lane: "civic", publishedAt: daysAgo(1) }),
+    ];
+    const out = advisoryReleases(items);
+    expect(out.map((i) => i.url)).toEqual(["https://a", "https://c"]);
+  });
+
+  it("drops advisories older than the window (road work goes stale)", () => {
+    const items: CivicPressItem[] = [
+      item({ url: "https://fresh", publishedAt: daysAgo(5) }),
+      item({ url: "https://stale", publishedAt: daysAgo(45) }),
+    ];
+    expect(advisoryReleases(items, 30).map((i) => i.url)).toEqual(["https://fresh"]);
   });
 });

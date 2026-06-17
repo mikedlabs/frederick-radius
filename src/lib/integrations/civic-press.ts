@@ -175,3 +175,14 @@ export function latestPoliceRelease(
   const age = Date.now() - +new Date(latest.publishedAt);
   return age <= maxAgeDays * DAY_MS ? latest : null;
 }
+
+/**
+ * Recent advisory-lane releases (traffic / road closure / boil-water /
+ * emergency), newest first. Road work persists for weeks, so the default
+ * window is wider than police; each item still shows its post date so the
+ * reader judges currency, and links to the source for the real dates.
+ */
+export function advisoryReleases(items: CivicPressItem[], maxAgeDays = 30): CivicPressItem[] {
+  const cutoff = Date.now() - maxAgeDays * DAY_MS;
+  return items.filter((i) => i.lane === "advisory" && +new Date(i.publishedAt) >= cutoff);
+}

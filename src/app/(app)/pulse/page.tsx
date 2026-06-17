@@ -48,7 +48,7 @@ import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
-import { getCivicPressReleases, policeReleases, latestPoliceRelease } from "@/lib/integrations/civic-press";
+import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getFrederickTransitRoutes, getFrederickTransitRouteShapes, getFrederickTransitStops } from "@/lib/integrations/transitFrederick";
 import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
@@ -56,7 +56,7 @@ import { publicPlaces } from "@/lib/loaders/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
-import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
+import { PoliceBreakingStrip, PoliceBlotter, AdvisoryCard } from "@/components/pulse/CivicPress";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import TransitMap from "@/components/transit/TransitMapClient";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
@@ -230,6 +230,9 @@ export default async function PulsePage({
   const blotter = policeReleases(press)
     .filter((p) => p.url !== breakingPolice?.url)
     .slice(0, 5);
+  // Planned road work / closures / emergency advisories (distinct from the
+  // live MDOT traffic tile). Self-hides when the feeds carry none recent.
+  const advisories = advisoryReleases(press).slice(0, 6);
 
   const totals = {
     alerts: activeAlerts.length,
@@ -942,6 +945,12 @@ export default async function PulsePage({
           </div>
         </div>
       </section>
+
+      {/* Road work & closures — the civic-press advisory lane (planned City/
+          County closures + road work), a quiet standing card below Police.
+          Self-hides when there's nothing recent. Distinct from the live MDOT
+          traffic tile (accidents now) in the dashboard above. */}
+      <AdvisoryCard items={advisories} now={nowMs} />
 
       {/* By the numbers — county canon + live directory counts. Collapsed
           by DEFAULT: on a live-status page this is the largest block and pure
