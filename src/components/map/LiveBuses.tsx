@@ -51,7 +51,7 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 type Pos = { lng: number; lat: number; bearing?: number };
 
-export default function LiveBuses({ show }: { show: boolean }) {
+export default function LiveBuses({ show, highlightRouteId }: { show: boolean; highlightRouteId?: string }) {
   const [vehicles, setVehicles] = useState<LiveVehicle[]>([]);
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
@@ -131,7 +131,7 @@ export default function LiveBuses({ show }: { show: boolean }) {
               type="button"
               onClick={(e) => { e.stopPropagation(); haptic("light"); setSelected(v.vehicleId); }}
               aria-label={`TransIT ${route?.name ?? "bus"}, moving now`}
-              style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both" }}
+              style={{ position: "relative", display: "grid", placeItems: "center", width: 44, height: 44, background: "transparent", border: "none", padding: 0, cursor: "pointer", animation: reduced ? undefined : "fr-bus-in 260ms ease-out both", opacity: highlightRouteId && v.routeId !== highlightRouteId ? 0.28 : 1, transition: "opacity 300ms ease" }}
             >
               {p.bearing != null && (
                 <span
