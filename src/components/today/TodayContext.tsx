@@ -60,8 +60,8 @@ export default function TodayContext() {
       )}
       {homeMuni && golden && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
       {golden && (
-        <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-accent)" }}>
-          <Sun className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden />
+        <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
+          <Sun className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-accent)" }} />
           {golden}
         </span>
       )}

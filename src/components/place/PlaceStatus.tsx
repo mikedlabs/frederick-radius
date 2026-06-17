@@ -46,12 +46,16 @@ export default function PlaceStatus({
         ? "var(--app-warning)"
         : "var(--app-ink-3)"; // closed
 
+  // Closing-soon amber fails AA as small text on cream; keep the hue on the
+  // dot, drop the label to ink-2. Open/closed tones already pass.
+  const textColor = status.state === "closing-soon" ? "var(--app-ink-2)" : tone;
+
   const label = formatHoursLine(status);
 
   return (
     <span
       className={`inline-flex items-center gap-1.5 text-[12px] font-medium ${className}`}
-      style={{ color: tone }}
+      style={{ color: textColor }}
     >
       <span
         aria-hidden

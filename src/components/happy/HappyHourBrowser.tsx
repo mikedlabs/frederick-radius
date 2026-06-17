@@ -107,7 +107,7 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
         {/* WHEN (accent mono) + the FULL deal — no truncation; the specifics
             are the whole point. */}
         <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          <span className="font-mono font-semibold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-accent)" }}>{when}</span>
+          <span className="font-mono font-semibold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-ink-2)" }}>{when}</span>
           {r.deal && <span> · <span style={{ color: "var(--app-ink)" }}>{r.deal}</span></span>}
         </p>
       </div>
