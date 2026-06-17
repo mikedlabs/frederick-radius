@@ -12,6 +12,11 @@ import {
   Palette,
   Music,
   Martini,
+  Sunrise,
+  Croissant,
+  Sandwich,
+  UtensilsCrossed,
+  Moon,
   ParkingCircle,
   Train,
   Bus,
@@ -19,6 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CRAVINGS } from "@/data/cravings";
+import { currentMeal } from "@/lib/meal";
 
 /**
  * CravingStrip — the fast lane on Today.
@@ -48,6 +54,12 @@ const ICONS: Record<string, LucideIcon> = {
   ShoppingCart,
   Palette,
   Music,
+  // Meal-occasion glyphs (the time-aware lead tile).
+  Sunrise,
+  Croissant,
+  Sandwich,
+  UtensilsCrossed,
+  Moon,
 };
 
 /** A single field tag — paper + grain, an ink top tab rule, a square ruled
@@ -100,6 +112,12 @@ function FieldTag({
 }
 
 export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNode }) {
+  // The meal occasion happening right now (Frederick clock). The tile
+  // auto-relabels Breakfast → Lunch → Dinner (weekend Brunch, late-night
+  // after 10pm), so a person only ever sees the meal that's actually on, and
+  // the /nearby answer it opens is framed honestly as "open for [meal] now"
+  // — never "serves [meal]", which we hold no data to claim.
+  const meal = currentMeal();
   return (
     <div className="space-y-4">
     <section aria-labelledby="i-want-eyebrow" className="space-y-2">
@@ -113,7 +131,11 @@ export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNod
         {locationSlot}
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {/* Happy hour — the most-asked-for local intent. Leads the grid.
+        {/* Meal occasion — the time-aware lead. Auto-selects the meal it is
+            right now; opens the nearest spots OPEN for it (a clock fact, never
+            a menu claim). The owner's "I want breakfast/brunch/lunch/dinner". */}
+        <FieldTag href={`/nearby?c=${meal.key}`} label={meal.label} ariaLabel={`${meal.label}: nearest open now`} icon={ICONS[meal.icon] ?? Utensils} ink={meal.color} />
+        {/* Happy hour — the most-asked-for local intent.
             Points at the /happy-hour view powered by the Field Notes layer. */}
         <FieldTag href="/happy-hour" label="Happy hour" ariaLabel="Happy hour" icon={Martini} ink="var(--app-accent)" />
         {CRAVINGS.map((c) => (
