@@ -33,10 +33,13 @@ describe("rankInView", () => {
     ]);
   });
 
-  it("breaks open-vs-open ties by feature_score (quality lead)", () => {
-    const a = place("a", { open: true, feature_score: 0.3, distance_m: 100 });
-    const b = place("b", { open: true, feature_score: 0.8, distance_m: 800 });
-    expect([a, b].sort(rankInView).map((p) => p.slug)).toEqual(["b", "a"]);
+  it("breaks open-vs-open ties by distance, NOT quality (neutral, no verdict)", () => {
+    // The editorial feature_score tier was removed: the in-view list reflects
+    // the map, it does not pick "best" places. A higher-scored place does NOT
+    // jump ahead of a nearer one.
+    const nearLowScore = place("near", { open: true, feature_score: 0.3, distance_m: 100 });
+    const farHighScore = place("far", { open: true, feature_score: 0.8, distance_m: 800 });
+    expect([farHighScore, nearLowScore].sort(rankInView).map((p) => p.slug)).toEqual(["near", "far"]);
   });
 
   it("breaks remaining ties by distance (nearest wins)", () => {

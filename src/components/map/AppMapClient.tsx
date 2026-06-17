@@ -185,11 +185,11 @@ export default function AppMapClient({
 
   // Already decorated server-side; attach the viewport-relative distance
   // (pure, no loader/JSON in the client bundle; measured from `origin` so
-  // the card distances match the list's sort home), then RANK by
-  // usefulness so the list reads "best in this view," not "first thing the
-  // map handed back." Order: open-now wins (a closed gem helps no one
-  // right now), then editorial/quality lead (feature_score), then nearest.
-  // Pure + deterministic, so the desktop pane and mobile drawer agree.
+  // the card distances match the list's sort home), then order NEUTRALLY —
+  // the list reflects what's on the map, it does NOT pick "best" picks. Order:
+  // open-now first (a closed place helps no one right now), then nearest. No
+  // editorial/quality (feature_score) tier. Pure + deterministic, so the
+  // desktop pane and mobile drawer agree.
   const results = useMemo(
     () =>
       inView
@@ -311,9 +311,7 @@ export default function AppMapClient({
             className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
           >
-            Showing Downtown Frederick. As you pan or zoom, places in
-            view list here — coffee, restaurants, parks, civic
-            buildings, the whole county.
+            No places in this view.
           </p>
         ) : (
           <ul className="space-y-2">
@@ -322,7 +320,7 @@ export default function AppMapClient({
                 key={p.slug}
                 onClickCapture={() => setFocus((f) => ({ slug: p.slug, n: (f?.n ?? 0) + 1 }))}
               >
-                <PlaceCard place={p} />
+                <PlaceCard place={p} neutral />
               </li>
             ))}
           </ul>
@@ -333,24 +331,18 @@ export default function AppMapClient({
 }
 
 /**
- * Rank comparator for the in-view places list ("Best in this view").
- * Three tiers, each breaking ties for the next:
- *   1. Open now beats closed — a closed place is no help to someone
- *      standing here right now, however good it is.
- *   2. Higher feature_score beats lower — the editorial/quality signal,
- *      so the leads are places worth the trip, not arbitrary rows.
- *   3. Nearer beats farther — among equally-open, equally-good places,
- *      closest wins.
- * Pure + total, so both presentations sort identically. Exported for
- * unit tests.
+ * Sort comparator for the in-view places list. NEUTRAL by design — it is a
+ * reflection of what's on the map, NOT a "best in view" ranking. There is no
+ * editorial/quality (feature_score) tier, so the app never picks winners. Two
+ * factual tiers:
+ *   1. Open now beats closed — a closed place is no help to someone here now.
+ *   2. Nearer beats farther.
+ * Pure + total, so both presentations sort identically. Exported for tests.
  */
 export function rankInView(a: PlaceCardData, b: PlaceCardData): number {
   const ao = isOpenNow(a.open_status) ? 1 : 0;
   const bo = isOpenNow(b.open_status) ? 1 : 0;
   if (ao !== bo) return bo - ao;
-  const af = a.feature_score ?? 0;
-  const bf = b.feature_score ?? 0;
-  if (af !== bf) return bf - af;
   return (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity);
 }
 
@@ -479,16 +471,16 @@ function InViewList({
           className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          Pan or zoom to scan this area. Places list here; tap any to open details.
+          No places in this view.
         </li>
       ) : (
         <>
           {/* Search-first drawer: lead with the PLACES in view — what the
               reader is actually looking at — and let them pick. No promoted
-              event and no "best" verdict on top. The list is still sorted
-              open-now → quality → nearest so the useful ones float up, but
-              it's never framed as the app's opinion. Events + amenities follow
-              BELOW as quiet context, never above what they came to see. */}
+              event, no verdicts, no app opinion. The list is a neutral
+              reflection of the map, ordered only open-now → nearest. Events +
+              amenities follow BELOW as quiet context, never above what they
+              came to see. */}
           <li>
             <p
               className="mb-0.5 mt-0.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.12em]"
@@ -500,7 +492,7 @@ function InViewList({
           </li>
           {visiblePlaces.map((p) => (
             <li key={p.slug} onClickCapture={() => onPick(p.slug)}>
-              <PlaceCard place={p} />
+              <PlaceCard place={p} neutral />
             </li>
           ))}
           {(hiddenCount > 0 || showAll) && results.length > CAP && (
