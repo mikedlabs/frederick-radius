@@ -18,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/open-now`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${BASE}/live-music`, lastModified: now, changeFrequency: "hourly", priority: 0.7 },
     // Field Notes moat content surfaces — verified, self-canonical, indexable.
     { url: `${BASE}/happy-hour`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/deals`, lastModified: now, changeFrequency: "daily", priority: 0.8 },

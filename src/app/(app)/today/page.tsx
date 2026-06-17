@@ -37,8 +37,10 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // decorative divider between weather/discovery and action; the
 // reorder makes the divider unnecessary.
 
-import { eventsLive, type EventWithMeta } from "@/lib/loaders/events";
+import { eventsLive, eventDateBlock, type EventWithMeta } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
+import { liveMusicTonight, tonightWindow } from "@/lib/events/live-music";
+import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import { easternWallToUtcISO } from "@/lib/tz";
@@ -217,9 +219,10 @@ function eventsForMode(mode: TodayTimeMode, now: Date, pool: EventWithMeta[]) {
     // PM matinee is technically "tonight" by clock, but a user who
     // taps "Tonight" at 4:05 PM expects evening plans, not late
     // afternoon — the chip should match the intent, not the clock.
+    // Shared with the /tonight page (and the live-music band) so the "tonight"
+    // window can never drift between surfaces.
     title = "Tonight";
-    startMs = Math.max(nowMs, Date.parse(easternDayAt(et, 0, 17, 0)));
-    endMs = Date.parse(easternDayAt(et, 1, 2, 30));
+    ({ startMs, endMs } = tonightWindow(now));
   } else if (mode === "tomorrow") {
     // Eastern: the whole of tomorrow, 00:00 → 23:59.
     title = "Tomorrow";
@@ -268,6 +271,22 @@ export default async function HomePage({
   // 13, because /today counted curated seeds only).
   const { publicEvents } = await assembleUnifiedEvents(now);
   const featuredEvent = pickFeaturedEvent(now, publicEvents);
+
+  // Live music on stage TONIGHT — the wedge answer (who's playing, not where
+  // the stages are). Feeds the contextual "right now" band above the I-want
+  // grid; self-hides when nothing's on. The soonest show rides as a quiet
+  // sub-label ("7:00 PM · Olde Mother"), never a count headline.
+  const liveTonight = liveMusicTonight(publicEvents, now);
+  const soonestShow = liveTonight[0];
+  const soonestLabel = soonestShow
+    ? (() => {
+        const t = eventDateBlock(soonestShow).time;
+        const full = `${t} · ${soonestShow.venue_name}`;
+        // Fall back to just the time when the venue name would overflow the
+        // pill — never a fabricated label, just a shorter true one.
+        return full.length <= 28 ? full : t;
+      })()
+    : undefined;
   // Pre-compute per-mode counts so the chip strip shows "Tonight · 3"
   // without forcing a click into an empty surface — AND so the default
   // mode picker below can land on a window that actually has events.
@@ -387,7 +406,14 @@ export default async function HomePage({
           location consent now rides on the right of the "I want…" bar (one row,
           opposite the prompt) instead of a separate banner above it. */}
       <div className="mt-4">
-        <CravingStrip locationSlot={<LocationPrime />} />
+        <CravingStrip
+          locationSlot={<LocationPrime />}
+          contextSlot={
+            <RightNowBand
+              liveTonight={{ count: liveTonight.length, soonest: soonestLabel }}
+            />
+          }
+        />
       </div>
 
       {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
