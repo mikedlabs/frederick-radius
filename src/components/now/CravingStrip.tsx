@@ -84,15 +84,21 @@ function FieldTag({
       aria-label={ariaLabel}
       className="tactile-interactive relative flex items-center gap-2.5 overflow-hidden rounded-[var(--app-radius-sm)] px-2.5 py-2.5"
       style={{
-        backgroundColor: "var(--app-bg-elevated-solid)",
+        // Tinted field-card stock: each card washed in its OWN craving color
+        // over the paper, so the grid reads as a colorful mosaic of specimen
+        // cards, not a row of cream chips. The label stays dark ink (high
+        // contrast over the soft tint), so the color adds character without
+        // costing the glance-speed of the fast lane.
+        backgroundColor: `color-mix(in srgb, ${ink} 12%, var(--app-bg-elevated-solid))`,
         backgroundImage: "var(--app-paper-light)",
-        border: "1px solid var(--app-border)",
+        border: `1px solid color-mix(in srgb, ${ink} 26%, var(--app-border))`,
         boxShadow: "var(--app-elev-1), var(--app-hi)",
       }}
     >
-      {/* Faint engraved specimen glyph bled into the corner — the same texture
-          trick the deal records use, so the fast lane reads as the field guide. */}
-      <Icon aria-hidden className="pointer-events-none absolute -bottom-3 -right-2 h-[58px] w-[58px] rotate-[8deg]" strokeWidth={0.9} style={{ color: ink, opacity: 0.07 }} />
+      {/* The engraved specimen glyph bled into the corner — a tonal watermark
+          (same trick the deal records use) so the fast lane reads as the
+          field guide; a touch more present now that the card is tinted. */}
+      <Icon aria-hidden className="pointer-events-none absolute -bottom-3 -right-2.5 h-[62px] w-[62px] rotate-[8deg]" strokeWidth={0.9} style={{ color: ink, opacity: 0.1 }} />
       {/* Struck filing-ink STAMP — the glyph reversed out of a solid color
           plate, raised off the paper (inset sheen + soft cast shadow). This is
           the visual hero: each craving wears its own colored stamp. */}
