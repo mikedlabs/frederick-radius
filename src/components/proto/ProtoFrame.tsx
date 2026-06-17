@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const LINKS = [
+  { href: "/proto/today", label: "Today (real data)" },
   { href: "/proto/week", label: "Peelable week" },
   { href: "/proto/bigtype", label: "Big type" },
   { href: "/proto/folders", label: "Folder tabs" },
