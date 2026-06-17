@@ -160,8 +160,11 @@ export default function CravingStrip({
           />
         ))}
         {/* The escape hatch to the full directory — "More…" never dead-ends a
-            want that isn't a tile. */}
-        <FieldTag href="/nearby" label="More…" ariaLabel="More: browse every category" icon={MoreHorizontal} ink="var(--app-ink-3)" />
+            want that isn't a tile. Points at /places (the real directory: every
+            category, town, and the map) — NOT /nearby, which is the location-
+            gated, food-and-drink-only "right now" view and can't browse the
+            rest of the guide. */}
+        <FieldTag href="/places" label="More…" ariaLabel="More: browse the full directory" icon={MoreHorizontal} ink="var(--app-ink-3)" />
       </div>
     </section>
 
