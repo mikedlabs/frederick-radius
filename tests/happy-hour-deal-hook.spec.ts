@@ -19,11 +19,17 @@ describe("dealHook", () => {
     expect(dealHook("Daily $7 house spirits and $1 off other drinks.")).toBe("$1 OFF");
   });
 
-  it("falls back to the cheapest named price as 'FROM $X'", () => {
+  it("uses the cheapest named price, with 'FROM' only for a real range", () => {
+    // 2+ distinct prices => a range => "FROM $min"
     expect(dealHook("$3 beers, $6 specialty drinks, discounted wine bottles.")).toBe("FROM $3");
     expect(dealHook("$5 16oz drafts, $6 margaritas and crushes, plus apps.")).toBe("FROM $5");
     expect(dealHook("$3.50 domestics, $4.25 house cocktails, $5 house wine.")).toBe("FROM $3.50");
     expect(dealHook("At the bar: brews $4.50, drafts $5.50, house wine $5.")).toBe("FROM $4.50");
+    // a single price => the bare figure, NOT a misleading "FROM"
+    expect(dealHook("$17 BBQ rib dinner.")).toBe("$17");
+    expect(dealHook("$8 Smoked Bourbon Old Fashioneds on Wednesdays.")).toBe("$8");
+    // single price but the text says "from" => keep "FROM"
+    expect(dealHook("Pints from $5.")).toBe("FROM $5");
   });
 
   it("returns null when there is no number to stand behind", () => {
@@ -41,12 +47,12 @@ describe("dealHook", () => {
     expect(dealHook("$0.99 wings and $1 oysters at the bar.")).toBeNull();
     expect(dealHook("$1 sliders during the game.")).toBeNull();
     // ...but a real $2+ drink anchor still reads as FROM.
-    expect(dealHook("$2 drafts all afternoon.")).toBe("FROM $2");
+    expect(dealHook("$2 drafts all afternoon.")).toBe("$2");
   });
 
   it("formats money cleanly (no trailing .00, keeps cents)", () => {
     expect(dealHook("$10 off bottles")).toBe("$10 OFF");
     expect(dealHook("Pints from $5.00")).toBe("FROM $5");
-    expect(dealHook("$2.50 drafts")).toBe("FROM $2.50");
+    expect(dealHook("$2.50 drafts")).toBe("$2.50");
   });
 });
