@@ -13,6 +13,11 @@ import {
   ShoppingCart,
   Palette,
   Music,
+  Sunrise,
+  Croissant,
+  Sandwich,
+  UtensilsCrossed,
+  Moon,
   ArrowLeft,
   Navigation,
   type LucideIcon,
@@ -21,6 +26,7 @@ import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import { CRAVINGS, CRAVING_BY_KEY } from "@/data/cravings";
+import { mealForKey, matchMeal, isMealKey } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
 import { isOpenNow } from "@/lib/hours";
@@ -56,6 +62,12 @@ const ICONS: Record<string, LucideIcon> = {
   ShoppingCart,
   Palette,
   Music,
+  // Meal-occasion glyphs (the time-aware lead from the /today I-want strip).
+  Sunrise,
+  Croissant,
+  Sandwich,
+  UtensilsCrossed,
+  Moon,
 };
 
 // ~80 m/min walking — same constant the reason chips use.
@@ -85,7 +97,9 @@ export default function RightNow({
 }) {
   const { state, request } = useGeolocation();
   const [cravingKey, setCravingKey] = useState<string | null>(
-    initialCraving && CRAVING_BY_KEY[initialCraving] ? initialCraving : null,
+    initialCraving && (CRAVING_BY_KEY[initialCraving] || isMealKey(initialCraving))
+      ? initialCraving
+      : null,
   );
 
   // Arriving straight to an answer from a Today craving tile (?c=coffee skips
@@ -96,7 +110,11 @@ export default function RightNow({
   const askedOnArrival = useRef(false);
   useEffect(() => {
     if (askedOnArrival.current) return;
-    if (initialCraving && CRAVING_BY_KEY[initialCraving] && state.status === "idle") {
+    if (
+      initialCraving &&
+      (CRAVING_BY_KEY[initialCraving] || isMealKey(initialCraving)) &&
+      state.status === "idle"
+    ) {
       askedOnArrival.current = true;
       request();
     }
@@ -107,12 +125,21 @@ export default function RightNow({
     ? { lng: state.position.lng, lat: state.position.lat }
     : FREDERICK_CENTER;
 
-  const craving = cravingKey ? CRAVING_BY_KEY[cravingKey] : null;
+  // The selection is either a noun craving or a time-aware meal occasion
+  // (breakfast/lunch/dinner/brunch/late, arrived at via the /today meal tile).
+  // Both expose {key,label,color,icon}; the meal carries an honest framing
+  // phrase and matches by category gate rather than a craving predicate.
+  const meal = cravingKey ? mealForKey(cravingKey) : null;
+  const craving = cravingKey && !meal ? CRAVING_BY_KEY[cravingKey] : null;
+  const active = meal ?? craving;
 
   const results = useMemo(() => {
-    if (!craving) return [];
+    const m = cravingKey ? mealForKey(cravingKey) : null;
+    const c = cravingKey && !m ? CRAVING_BY_KEY[cravingKey] : null;
+    const matchFn = m ? (p: PlaceCardData) => matchMeal(m, p) : c ? c.match : null;
+    if (!matchFn) return [];
     return places
-      .filter((p) => craving.match(p))
+      .filter((p) => matchFn(p))
       .map((p) => {
         const dist = haversineMeters(origin, p.geom);
         return { p, dist, open: isOpenNow(p.open_status) };
@@ -125,7 +152,7 @@ export default function RightNow({
       // Attach distance for the card ONLY when we have a real fix — never
       // print a distance measured from a place the user isn't standing at.
       .map(({ p, dist }) => ({ ...p, distance_m: hasFix ? dist : undefined }));
-  }, [craving, places, origin, hasFix]);
+  }, [cravingKey, places, origin, hasFix]);
 
   const openCount = useMemo(
     () => results.filter((p) => isOpenNow(p.open_status)).length,
@@ -142,7 +169,7 @@ export default function RightNow({
   }
 
   // ── Craving picker (the front door) ──
-  if (!craving) {
+  if (!active) {
     return (
       <div className="space-y-5">
         <header className="space-y-1.5">
@@ -193,8 +220,8 @@ export default function RightNow({
     );
   }
 
-  // ── The answer (nearest open of the chosen craving) ──
-  const CravingIcon = ICONS[craving.icon] ?? Utensils;
+  // ── The answer (nearest open of the chosen craving / meal occasion) ──
+  const ActiveIcon = ICONS[active.icon] ?? Utensils;
   return (
     <div className="space-y-4">
       <header className="space-y-2">
@@ -213,21 +240,27 @@ export default function RightNow({
           <span
             aria-hidden
             className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--app-radius-md)]"
-            style={{ background: `color-mix(in srgb, ${craving.color} 14%, var(--app-bg-elevated-solid))` }}
+            style={{ background: `color-mix(in srgb, ${active.color} 14%, var(--app-bg-elevated-solid))` }}
           >
-            <CravingIcon className="h-5 w-5" strokeWidth={2} style={{ color: craving.color }} />
+            <ActiveIcon className="h-5 w-5" strokeWidth={2} style={{ color: active.color }} />
           </span>
           <div>
             <h1
               className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {craving.label} near {hasFix ? "you" : "Downtown"}
+              {active.label} near {hasFix ? "you" : "Downtown"}
             </h1>
+            {/* Meals frame the count on the CLOCK fact ("open for dinner now")
+                — never a service claim. Nouns keep the plain "open now". */}
             <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
-              {openCount > 0
-                ? `${openCount} open now · nearest first`
-                : "Nearest first"}
+              {meal
+                ? openCount > 0
+                  ? `${openCount} open ${meal.phrase} right now · nearest first`
+                  : `Nothing open ${meal.phrase} right now · nearest first`
+                : openCount > 0
+                  ? `${openCount} open now · nearest first`
+                  : "Nearest first"}
             </p>
           </div>
         </div>
@@ -257,7 +290,9 @@ export default function RightNow({
           className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
         >
-          Nothing for {craving.label.toLowerCase()} {hasFix ? "near you" : "in range"} right now.
+          {meal
+            ? `Nothing open ${meal.phrase} near you right now.`
+            : `Nothing for ${active.label.toLowerCase()} ${hasFix ? "near you" : "in range"} right now.`}
         </p>
       ) : (
         <ul className="space-y-2">
