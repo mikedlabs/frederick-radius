@@ -44,10 +44,6 @@ import { isEventToday } from "@/lib/eventWhenLabel";
 import { easternWallToUtcISO } from "@/lib/tz";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
-import { AnswerCard } from "@/components/answer";
-import { buildTodayAnswers } from "@/lib/answers/defaultTodayAnswers";
-import { PARKING_GARAGES } from "@/data/parking-garages";
 
 /**
  * Now — the daily briefing.
@@ -56,16 +52,20 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
  *
  *   1. SkyHero        → time-of-day sky + date/clock + tonight teaser
  *   2. TodayContext   → slim salutation + golden-hour cue (self-hides)
- *   3. Answers lead   → anticipatory AnswerCards (tonight / weekend)
- *   4. CravingStrip   → "I want…" bar (LocationPrime consent pill on its
+ *   3. CravingStrip   → "I want…" bar (LocationPrime consent pill on its
  *                        right) + cravings grid + a "Getting around" row
- *   5. TodaysDeals    → verified day-of-week specials as a Wallet deck (self-hides)
- *   6. CivicAlerts    → worst-first heads-up (self-hides)
- *   7. TodayMoves     → the single confident "best move now"
- *   8. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
- *   9. The full briefing + More for today (collapsed)
+ *   4. TodaysDeals    → verified day-of-week specials as a Wallet deck (self-hides)
+ *   5. CivicAlerts    → worst-first heads-up (self-hides)
+ *   6. TodayMoves     → the single confident "best move now"
+ *   7. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
+ *   8. The full briefing + More for today (collapsed)
  *
  * What got cut in this pass:
+ *   • Answers lead (AnswerCards) — the section only ever rendered the
+ *                                  "On tonight" card (open-now + weekend
+ *                                  answers were already removed); the
+ *                                  tonight teaser already lives in the
+ *                                  SkyHero, so the duplicate card went.
  *   • RightNowStrip (On deck)    — overlapped the Upcoming events
  *                                  section and TimeToggle below
  *   • PrimaryActionCard (Plan)   — overlapped MoreSheet's Plan tool
@@ -306,32 +306,6 @@ export default async function HomePage({
     ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
     : sliceItems;
 
-  // ── Answer-first lead (UX_REDO Build 1): build 3 to 5 anticipatory
-  //    answers from the real data this page already computed. Honest by
-  //    construction — empty windows drop out, nothing is fabricated.
-  const tonightBest = eventsForMode("tonight", now, publicEvents).items[0] ?? null;
-  const parkingDefault =
-    PARKING_GARAGES.find((g) => g.slug === "carroll-creek-parking-garage-frederick") ??
-    PARKING_GARAGES[0] ??
-    null;
-  const todayAnswers = buildTodayAnswers({
-    tonightCount: counts.tonight ?? 0,
-    tonightBest: tonightBest
-      ? { title: tonightBest.title, venue: tonightBest.venue_name ?? null, slug: tonightBest.slug }
-      : null,
-    parking: parkingDefault ? { name: parkingDefault.name, slug: parkingDefault.slug } : null,
-    // The featured event already heroes TodayMoves + the "What's on"
-    // section, so the tonight card drops the duplicate name (count + door).
-    featuredSlug: featuredEvent?.slug ?? null,
-  });
-
-  // The day's ANSWERS lead (open now, tonight, weekend). Parking + transit
-  // are no longer separate answer links here — they live as one-tap tiles in
-  // the "I want…" grid (CravingStrip). When nothing is data-backed for the
-  // next 24 hours the section self-hides — /today is a today-scoped briefing,
-  // so an evergreen "explore the whole field guide" card has no place here.
-  const leadAnswers = todayAnswers.filter((a) => a.status !== "parking" && a.status !== "transit").slice(0, 3);
-
   // When the active slice is empty, nudge to a DIFFERENT slice that
   // actually has events — never back to the same (empty) one, which is
   // what the old hardcoded "see the weekend" link did when Weekend
@@ -399,50 +373,13 @@ export default async function HomePage({
         <TodayContext />
       </div>
 
-      {/* ── ANSWER-FIRST LEAD (UX_REDO Build 1) ─────────────────────────
-          The ask + 3 to 5 anticipatory answer cards are the front door.
-          North Star: "Answer my question in one move. Don't make me dig."
-          The quick-intent chips were removed from TodayAsk — they
-          duplicated these answer cards — and the box's "Ask Radius" eyebrow
-          is hidden under the headline, so the first answer clears the fold. */}
-      <section className="mt-3 space-y-3" aria-label="Today's answers">
-        {/* Ask Radius removed (Phase 4 verdict: the feature was dark on
-            production, and a visible feature that does not work is the
-            worst element on a site). The omnibox in the header carries
-            search; this section now leads with the answers themselves. */}
-        {leadAnswers.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {leadAnswers.map((a, i) => (
-              <AnswerCard
-                key={a.id}
-                answer={a}
-                featured={i === 0}
-                plate={
-                  // Only a TODAY-scoped lead earns the full-bleed photo hero.
-                  // (The old positional `i === 0` gate let a non-today card —
-                  //  e.g. "This weekend" on a quiet Monday — inherit the Ken
-                  //  Burns plate on a page titled "what's worth your time
-                  //  right now." The weekend card is gone now; this keeps the
-                  //  plate honest for any future answer too.)
-                  i === 0 && a.status === "tonight" ? (
-                    <SeasonalPhoto
-                      season="auto"
-                      alt=""
-                      kenBurns
-                      sizes="(max-width: 720px) 100vw, 720px"
-                      className="absolute inset-0"
-                    />
-                  ) : undefined
-                }
-              />
-            ))}
-          </div>
-        )}
-        {/* Parking + MARC/transit are NOT answer links here — they live as
-            one-tap tiles in the "Getting around" row below the cravings. The
-            weekend look-ahead lives in the What's-on "Weekend" toggle, not a
-            stray link here (removed: it cluttered the answer lead). */}
-      </section>
+      {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
+          The lead "answers" section only ever rendered the single "On
+          tonight" card (the open-now and weekend answers were retired
+          earlier, and parking/transit live as CravingStrip tiles). That
+          tonight card duplicated the SkyHero's own tonight teaser, so the
+          whole section + its buildTodayAnswers scaffolding came out. /today
+          now leads straight into the CravingStrip fast lane below. */}
 
       {/* ── RIGHT NOW — the fast lane. "I want ___ right now" one-tap craving
           tiles into the nearest open one, plus a labeled "Getting around" row
