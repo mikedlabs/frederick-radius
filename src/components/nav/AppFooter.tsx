@@ -20,6 +20,7 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: "/towns", label: "Towns" },
   { href: "/places", label: "All places" },
   { href: "/events", label: "Events" },
+  { href: "/happy-hour", label: "Happy hour" },
 ];
 
 export default function AppFooter() {

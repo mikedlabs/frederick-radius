@@ -14,6 +14,7 @@ import {
   Activity,
   SquareParking,
   Route,
+  Wine,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -63,6 +64,13 @@ type Item = {
 // into three labeled, scannable clusters (Getting around / Outdoors /
 // Around the county) so the eye can jump to the right neighborhood
 // first. Nothing removed — every tile is still a live, indexable route.
+// Local intel — the verified-curated layer that's the app's real moat
+// (happy hours today, and Deals once /deals ships). Leads the sheet on
+// purpose: this is the reason to open the app, not a utility afterthought.
+const LOCAL_INTEL: Item[] = [
+  { href: "/happy-hour", label: "Happy hour", description: "Verified happy hours across the county, by day", icon: Wine, color: "var(--app-brand)" },
+];
+
 const GETTING_AROUND: Item[] = [
   { href: "/parking",   label: "Parking",   description: "Downtown garages, rates, and event-day closures",     icon: SquareParking, color: "var(--app-ink-2)" },
   { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus,           color: "var(--app-cool)" },
@@ -119,6 +127,7 @@ export default function MoreSheet({
             "Useful" wall you had to read end-to-end. APP closes out the
             sheet so About, Trust, Settings stay reachable. */}
 
+        <IconCluster heading="Local intel" items={LOCAL_INTEL} onClose={close} columns={3} />
         <IconCluster heading="Getting around" items={GETTING_AROUND} onClose={close} columns={3} />
         <IconCluster heading="Outdoors" items={OUTDOORS} onClose={close} columns={3} />
         <IconCluster heading="Around the county" items={AROUND_COUNTY} onClose={close} columns={3} />
