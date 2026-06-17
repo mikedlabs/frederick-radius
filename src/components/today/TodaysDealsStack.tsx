@@ -66,16 +66,16 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
   const wk = weekday.slice(0, 3).toUpperCase();
 
   return (
-    <section aria-label={`Verified tips for ${weekday}`} className="space-y-2.5">
+    <section aria-label={`Verified intel for ${weekday}`} className="space-y-2.5">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
-        aria-label={expanded ? "Collapse the tips deck" : "Fan out the tips deck"}
+        aria-label={expanded ? "Collapse the intel deck" : "Fan out the intel deck"}
         className="tap-44 flex w-full items-center gap-2 px-0.5"
       >
         <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand)" }}>
-          Today&rsquo;s tips
+          Today&rsquo;s intel
         </span>
         <span className="font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>{weekday}</span>
         <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
@@ -207,7 +207,7 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
         className="tap-44 flex items-center justify-between px-0.5 pt-0.5 text-[12px] font-semibold"
         style={{ color: "var(--app-brand)" }}
       >
-        Every tip, by day
+        All intel, by day
         <span aria-hidden>→</span>
       </Link>
     </section>
