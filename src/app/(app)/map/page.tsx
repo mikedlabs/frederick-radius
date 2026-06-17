@@ -244,9 +244,13 @@ export default async function MapPage({
     sub?: string;
     t?: string;
     open?: string;
-    /** `radius` (default — Radius-first map per the May 2026 brand
-     *  review) or `browse` (classic intent + time chips, no
-     *  isochrone). When unset, defaults to radius. */
+    /** `browse` (DEFAULT — the clean full-map surface: intent + time
+     *  chips, no isochrone, no bottom sheet) or `radius` (the guided
+     *  "Nearby" tool: isochrone + the within-reach control sheet). The
+     *  May 2026 brand review made radius the default ("soul of the
+     *  map"), but the owner's repeated direction is the map IS the page:
+     *  land clean, no bottom panel narrating places. Radius stays a
+     *  deliberate opt-in via the "Nearby" pill. When unset, browse. */
     mode?: string;
   }>;
 }) {
@@ -256,7 +260,7 @@ export default async function MapPage({
   // event feeds when we're going to render RadiusBuilder.
   const earlyParams = await searchParams;
   const mode: "radius" | "browse" =
-    earlyParams.mode === "browse" ? "browse" : "radius";
+    earlyParams.mode === "radius" ? "radius" : "browse";
 
   if (mode === "radius") {
     // Radius mode: minimal SSR payload (just amenities) — RadiusBuilder
