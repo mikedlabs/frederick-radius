@@ -1,68 +1,42 @@
 import Link from "next/link";
-import { Zap, MoonStar, CalendarRange, CalendarDays, Clock } from "lucide-react";
-import Pill from "@/components/ui/Pill";
+import { Clock } from "lucide-react";
 
 /**
- * MapTimeChips — temporal control for the event layer on /map. The
- * brief's "time is a first-class dimension" lives here: a single chip
- * row lets users pivot the map between Now, Tonight, This Weekend, and
- * the full Upcoming list. Mode lives in the ?t= search param so the
- * view is shareable.
+ * The "Open now" place filter for /map. Toggles ?open=now, collapsing the place
+ * pool to spots currently open (or closing soon).
  *
- * Renders just below MapIntentChips. The two chip strips together act
- * as a "what kind?" + "when?" filter pair the brief calls out as the
- * core differentiator vs. a generic POI map.
+ * This used to also render a Now / Tonight / Weekend / Upcoming event time-mode
+ * chip row. Those were removed per the owner: an assume-the-intent preset row
+ * reads as the app telling users what to do — the same reason the map's intent
+ * quick-picks were cut. Events still render in the map's default ?t= window
+ * (chosen server-side by what's actually happening); the map just no longer
+ * fronts a "when?" chooser. "Open now" stays because it's a factual place
+ * filter the user explicitly drives, not an assumed intent.
  *
- * The "Open now" pill at the end is a sibling control for the PLACE
- * layer, not the event layer — toggles ?open=now and collapses the
- * place pool to spots currently open (or closing soon). Visually
- * separated by a hairline so it doesn't read as a 5th event mode.
+ * TimeMode is still exported + the ?t= param still drives the event layer
+ * server-side; only the chip UI is gone.
  */
 
 export type TimeMode = "now" | "tonight" | "weekend" | "all";
-
-const CHIPS: Array<{
-  key: TimeMode;
-  label: string;
-  Icon: typeof Zap;
-}> = [
-  { key: "now", label: "Now", Icon: Zap },
-  { key: "tonight", label: "Tonight", Icon: MoonStar },
-  { key: "weekend", label: "Weekend", Icon: CalendarRange },
-  { key: "all", label: "Upcoming", Icon: CalendarDays },
-];
 
 export default function MapTimeChips({
   active,
   intent,
   sub,
-  counts,
   openNow,
   openNowCount,
 }: {
+  /** Current ?t= window — preserved when toggling ?open=now. */
   active: TimeMode;
-  /** Pass the current ?intent= through so chip taps preserve it. */
+  /** Pass the current ?intent= through so the toggle preserves it. */
   intent?: string;
-  /** Pass the current ?sub= through so chip taps preserve it. */
+  /** Pass the current ?sub= through so the toggle preserves it. */
   sub?: string;
-  /** Per-mode event count so a user sees "Tonight · 3" instead of
-   *  tapping into an empty map. */
-  counts?: Partial<Record<TimeMode, number>>;
   /** Whether the ?open=now place filter is active. */
   openNow?: boolean;
-  /** Count of currently-open places in the active intent/sub pool.
-   *  Surfaced next to the toggle so the user sees the impact before
-   *  they tap. */
+  /** Count of currently-open places, shown next to the toggle. */
   openNowCount?: number;
 }) {
-  const hrefFor = (mode: TimeMode): string => {
-    const qs = new URLSearchParams();
-    if (intent) qs.set("intent", intent);
-    if (sub) qs.set("sub", sub);
-    qs.set("t", mode);
-    if (openNow) qs.set("open", "now");
-    return `/map?${qs.toString()}`;
-  };
   const openHref = (): string => {
     const qs = new URLSearchParams();
     if (intent) qs.set("intent", intent);
@@ -73,72 +47,40 @@ export default function MapTimeChips({
     return `/map?${qs.toString()}`;
   };
 
-  // No outer absolute wrapper anymore — MapIntentChips renders this
-  // strip inside its own space-y-2 stack, so the layout flows
-  // naturally regardless of which rows above it are visible (active
-  // banner, sub-intents, etc.). The earlier `top: calc(...+56px)`
-  // hardcode assumed exactly ONE chip row above; once the banner/sub
-  // rows joined the picture, it overlapped the intent chips strip.
   return (
-    <div
-      className="pointer-events-auto mx-auto flex w-full max-w-[680px] gap-1.5 overflow-x-auto rounded-full p-1 backdrop-blur [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      style={{
-        background: "color-mix(in srgb, var(--app-bg-elevated) 80%, transparent)",
-        boxShadow: "var(--app-shadow-1)",
-      }}
-      aria-label="Filter map by time"
-    >
-        {CHIPS.map(({ key, label, Icon }) => (
-          <Pill
-            key={key}
-            tone="ink"
-            size="sm"
-            bare
-            icon={<Icon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
-            href={hrefFor(key)}
-            active={key === active}
-            count={counts?.[key]}
+    <div className="pointer-events-auto flex justify-center">
+      <Link
+        href={openHref()}
+        aria-pressed={openNow ? "true" : "false"}
+        aria-label={openNow ? "Show all places" : "Show only places open now"}
+        className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tracking-tight backdrop-blur transition active:scale-[0.97]"
+        style={{
+          background: openNow
+            ? "var(--app-positive)"
+            : "color-mix(in srgb, var(--app-bg-elevated) 82%, transparent)",
+          color: openNow ? "#fff" : "var(--app-positive)",
+          border: openNow
+            ? "1px solid var(--app-positive)"
+            : "1px solid color-mix(in srgb, var(--app-positive) 35%, transparent)",
+          boxShadow: "var(--app-shadow-1)",
+        }}
+      >
+        <Clock className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+        Open now
+        {typeof openNowCount === "number" && (
+          <span
+            className="ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-bold tabular-nums"
+            style={{
+              background: openNow
+                ? "rgba(255,255,255,0.25)"
+                : "color-mix(in srgb, var(--app-positive) 12%, transparent)",
+              color: openNow ? "#fff" : "var(--app-positive)",
+            }}
           >
-            {label}
-          </Pill>
-        ))}
-        {/* Hairline + Open-now pill — visually separated so it doesn't
-            read as a 5th event time mode. Different control surface
-            (places, not events); same row because both are temporal. */}
-        <span
-          aria-hidden
-          className="mx-0.5 my-1 w-px shrink-0 self-stretch"
-          style={{ background: "color-mix(in srgb, var(--app-ink) 12%, transparent)" }}
-        />
-        <Link
-          href={openHref()}
-          aria-pressed={openNow ? "true" : "false"}
-          aria-label={openNow ? "Show all places" : "Show only places open now"}
-          className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
-          style={{
-            background: openNow ? "var(--app-positive)" : "transparent",
-            color: openNow ? "#fff" : "var(--app-positive)",
-            border: openNow
-              ? "1px solid var(--app-positive)"
-              : "1px solid color-mix(in srgb, var(--app-positive) 35%, transparent)",
-          }}
-        >
-          <Clock className="h-3 w-3" strokeWidth={2.5} aria-hidden />
-          Open now
-          {typeof openNowCount === "number" && (
-            <span
-              className="ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-bold tabular-nums"
-              style={{
-                background: openNow
-                  ? "rgba(255,255,255,0.25)"
-                  : "color-mix(in srgb, var(--app-positive) 12%, transparent)",
-                color: openNow ? "#fff" : "var(--app-positive)",
-              }}
-            >
-              {openNowCount}
-            </span>
-          )}
-        </Link>
+            {openNowCount}
+          </span>
+        )}
+      </Link>
     </div>
   );
 }

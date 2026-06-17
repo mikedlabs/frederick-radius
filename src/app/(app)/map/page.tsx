@@ -577,7 +577,6 @@ async function BrowseMapArea({
               active={timeMode}
               intent={intent?.key}
               sub={activeSub?.key}
-              counts={counts}
               openNow={openNow}
               openNowCount={openNowCount}
             />
