@@ -17,6 +17,7 @@ import {
   Navigation,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import { CRAVINGS, CRAVING_BY_KEY } from "@/data/cravings";
@@ -197,15 +198,17 @@ export default function RightNow({
   return (
     <div className="space-y-4">
       <header className="space-y-2">
-        <button
-          type="button"
-          onClick={() => setCravingKey(null)}
+        {/* The cravings live on /today now (the "I want…" grid), so the
+            answer's back affordance returns there rather than swapping to a
+            duplicate on-page picker. */}
+        <Link
+          href="/today"
           className="tactile-interactive -ml-1 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[13px] font-semibold"
           style={{ color: "var(--app-ink-3)" }}
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          Something else
-        </button>
+          Back to Today
+        </Link>
         <div className="flex items-center gap-2.5">
           <span
             aria-hidden
