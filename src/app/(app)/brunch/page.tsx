@@ -1,0 +1,131 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Croissant, ExternalLink, Clock } from "lucide-react";
+import { brunchSpots, type BrunchSpot } from "@/lib/loaders/brunch";
+import PageBloom from "@/components/ui/PageBloom";
+import FieldStamp from "@/components/ui/FieldStamp";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/brunch" },
+  title: "Brunch in Frederick County",
+  description:
+    "Where to get brunch around Frederick County: a verified list of every spot with a real weekend brunch, confirmed at the source, with the days and hours.",
+};
+
+export const revalidate = 3600;
+
+/**
+ * /brunch — the verified brunch layer of the Field Notes moat. Every spot is
+ * agent-researched and confirmed at the VENUE'S OWN source (a real brunch
+ * service + days/hours), grouped by town. Links to the place page when the
+ * venue is in the directory. A wrong brunch is worse than none.
+ */
+export default function BrunchPage() {
+  const spots = brunchSpots();
+  const byTown = spots.reduce<Record<string, BrunchSpot[]>>((acc, s) => {
+    (acc[s.town] ??= []).push(s);
+    return acc;
+  }, {});
+  const towns = Object.keys(byTown).sort((a, b) => byTown[b].length - byTown[a].length || a.localeCompare(b));
+
+  return (
+    <div className="relative space-y-5">
+      <PageBloom variant="warm-cool" />
+
+      <header className="pt-0.5">
+        <div aria-hidden className="h-px" style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }} />
+        <div className="flex items-center justify-between py-2.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>Frederick County</span>
+          <span className="font-mono text-[10.5px] tabular-nums tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
+            {spots.length} spot{spots.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2.5 font-serif text-[30px] font-semibold leading-[0.98] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
+              <Croissant className="h-7 w-7 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-accent)" }} aria-hidden />
+              Brunch
+            </h1>
+            <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              Every spot in the county with a real brunch, confirmed at the source.
+              Verified means we checked the venue&rsquo;s own menu, not a listing.
+            </p>
+            <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-accent)" }} />
+          </div>
+          <FieldStamp id="brunch" top="VERIFIED AT SOURCE" bottom="FIELD NOTES" size={80} className="mt-0.5" />
+        </div>
+      </header>
+
+      {spots.length === 0 ? (
+        <p className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-[13px]" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}>
+          No brunch spots on file yet. They&rsquo;re coming.
+        </p>
+      ) : (
+        <div className="space-y-6">
+          {towns.map((town) => (
+            <section key={town} className="space-y-2">
+              <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                {town}
+                <span className="ml-1.5 font-normal tabular-nums" style={{ color: "var(--app-ink-3)" }}>· {byTown[town].length}</span>
+              </h2>
+              <ul className="space-y-2">
+                {byTown[town].map((s) => {
+                  const Title = (
+                    <span className="font-serif text-[16px] font-semibold leading-tight tracking-tight" style={{ color: "var(--app-ink)" }}>
+                      {s.name}
+                    </span>
+                  );
+                  return (
+                    <li
+                      key={`${s.name}-${s.town}`}
+                      className="rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3.5"
+                      style={{ borderColor: "var(--app-border)" }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        {s.slug ? (
+                          <Link href={`/places/${s.slug}`} className="hover:underline">{Title}</Link>
+                        ) : (
+                          Title
+                        )}
+                        {s.confidence === "high" && (
+                          <span
+                            className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.1em]"
+                            style={{ background: "color-mix(in srgb, var(--app-positive) 14%, transparent)", color: "var(--app-positive)" }}
+                          >
+                            Verified
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[12px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+                        <Clock className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-accent)" }} />
+                        {s.days} · {s.hours}
+                      </p>
+                      {s.note && (
+                        <p className="mt-1 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>{s.note}</p>
+                      )}
+                      <a
+                        href={s.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-[11px]"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        Source
+                        <ExternalLink className="h-3 w-3" strokeWidth={2} aria-hidden />
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+
+      <p className="px-1 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+        Hours change. Each spot links to its source so you can double-check before you go. Spot something wrong?{" "}
+        <Link href="/submit/event" className="underline" style={{ color: "var(--app-cool)" }}>Tell us</Link>.
+      </p>
+    </div>
+  );
+}
