@@ -4,6 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = { robots: { index: false, follow: false }, title: "Design prototypes" };
 
 const PROTOS = [
+  { href: "/proto/today", title: "Today, color-blocked (real data)", blurb: "Direction #2 on the live today data: deals, happy hour, tonight, overhead. What the front door could be." },
   { href: "/proto/week", title: "Peelable field-folder week", blurb: "Days as colored folders you pull open to reveal what's on. The Peek interaction in our material." },
   { href: "/proto/bigtype", title: "Big type + color blocks", blurb: "Type-as-hierarchy. Giant masthead + bold filing-ink section blocks." },
   { href: "/proto/folders", title: "Tabbed manila folders", blurb: "Sections as file-folder tabs + a numbered field-guide table of contents." },
