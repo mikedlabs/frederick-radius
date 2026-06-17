@@ -670,6 +670,7 @@ export default async function PulsePage({
           zoom={11}
           liveBuses
           highlightRoutes
+          hideBadge
         />
         <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed

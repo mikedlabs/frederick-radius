@@ -58,6 +58,7 @@ export default function TransitMap({
   zoom,
   liveBuses = false,
   highlightRoutes = false,
+  hideBadge = false,
 }: {
   shapes: LineFC;
   /** Real Frederick County TransIT stops (MD Open Data, 4zcx-89nc).
@@ -76,6 +77,9 @@ export default function TransitMap({
   /** Show the route-highlighter chip strip: tap a route to draw its path in
    *  its color and dim the other buses. */
   highlightRoutes?: boolean;
+  /** Hide the in-map "TransIT · N routes" pill (when a section header already
+   *  labels the map, e.g. /pulse — keeps the top clear for bus badges). */
+  hideBadge?: boolean;
 }) {
   const initial = useMemo(() => {
     const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
@@ -330,15 +334,17 @@ export default function TransitMap({
           lines represent without competing with the Mapbox attribution
           in the bottom corner. Count is route + stop when both are
           present, route-only when stops failed to load. */}
-      <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
-        <span
-          aria-hidden
-          className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{ background: "var(--app-cool)" }}
-        />
-        TransIT Frederick · {shapes.features.length} routes
-        {stops.length > 0 && ` · ${stops.length} stops`}
-      </span>
+      {!hideBadge && (
+        <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
+          <span
+            aria-hidden
+            className="inline-block h-1.5 w-1.5 rounded-full"
+            style={{ background: "var(--app-cool)" }}
+          />
+          TransIT Frederick · {shapes.features.length} routes
+          {stops.length > 0 && ` · ${stops.length} stops`}
+        </span>
+      )}
       </div>
     </div>
   );

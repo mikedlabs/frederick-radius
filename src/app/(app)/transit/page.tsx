@@ -311,7 +311,7 @@ export default async function TransitPage() {
         <NextTrainBoard />
       </Suspense>
 
-      <TransitMap shapes={shapes} stops={stops} />
+      <TransitMap shapes={shapes} stops={stops} liveBuses highlightRoutes />
 
       {/* Freshness disclosure — surfaces the upstream "rowsUpdatedAt"
           timestamp from Socrata so the user can judge whether what
