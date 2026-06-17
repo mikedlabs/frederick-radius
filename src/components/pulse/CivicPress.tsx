@@ -1,4 +1,4 @@
-import { Siren, ArrowUpRight } from "lucide-react";
+import { Siren, ArrowUpRight, Construction } from "lucide-react";
 import type { CivicPressItem } from "@/lib/integrations/civic-press";
 
 /**
@@ -117,5 +117,62 @@ export function PoliceBlotter({ items, now }: { items: CivicPressItem[]; now: nu
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Road work & closures — the advisory lane (planned City/County road work,
+ * lane/road closures, boil-water and emergency notices). A standing "heads
+ * up" card; absent when the feeds carry no recent advisories. Honest: it
+ * shows each release's post date (road work spans weeks, so currency is the
+ * reader's call) and links to the source for the real dates. Distinct from
+ * the live MDOT traffic tile, which is accidents happening right now.
+ */
+export function AdvisoryCard({ items, now }: { items: CivicPressItem[]; now: number }) {
+  if (items.length === 0) return null;
+  return (
+    <section
+      id="advisories"
+      className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
+      style={{
+        borderTopColor: "var(--app-border)",
+        borderRightColor: "var(--app-border)",
+        borderBottomColor: "var(--app-border)",
+        background: "var(--app-bg-elevated)",
+        borderLeftWidth: 3,
+        borderLeftColor: "var(--app-cool)",
+      }}
+    >
+      <header className="flex items-center gap-3 border-b px-4 py-2.5" style={{ borderColor: "var(--app-border)" }}>
+        <h2 className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full" style={{ background: "color-mix(in srgb, var(--app-cool) 10%, transparent)", color: "var(--app-cool)" }}>
+            <Construction className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          </span>
+          Road work &amp; closures
+        </h2>
+      </header>
+      <div className="px-4 py-1">
+        <ul className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
+          {items.map((item) => (
+            <li key={item.url}>
+              <a href={item.url} target="_blank" rel="noopener noreferrer" className="tactile-interactive group flex items-start gap-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13.5px] font-medium leading-snug" style={{ color: "var(--app-ink)" }}>{item.title}</p>
+                  <p className="mt-1 flex items-center gap-2 font-mono text-[10.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                    <SourceTag item={item} />
+                    <span aria-hidden>·</span>
+                    <span>{since(now, item.publishedAt)}</span>
+                  </p>
+                </div>
+                <ArrowUpRight className="mt-0.5 h-3.5 w-3.5 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" strokeWidth={2} aria-hidden style={{ color: "var(--app-ink-3)" }} />
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p className="py-2.5 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+          Planned closures and road work from the City of Frederick &amp; Frederick County. Open each for the dates and detour details.
+        </p>
+      </div>
+    </section>
   );
 }
