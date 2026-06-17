@@ -1,0 +1,32 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+export const metadata: Metadata = { robots: { index: false, follow: false }, title: "Design prototypes" };
+
+const PROTOS = [
+  { href: "/proto/week", title: "Peelable field-folder week", blurb: "Days as colored folders you pull open to reveal what's on. The Peek interaction in our material." },
+  { href: "/proto/bigtype", title: "Big type + color blocks", blurb: "Type-as-hierarchy. Giant masthead + bold filing-ink section blocks." },
+  { href: "/proto/folders", title: "Tabbed manila folders", blurb: "Sections as file-folder tabs + a numbered field-guide table of contents." },
+];
+
+export default function ProtoIndex() {
+  return (
+    <div className="space-y-5">
+      <header>
+        <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "var(--app-brand-press)" }}>Prototypes · not live</p>
+        <h1 className="mt-0.5 font-serif text-[28px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>Thinking differently</h1>
+        <p className="mt-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>Three takes on the same idea: the app as a tactile, layered field guide, not a scroll of cards.</p>
+      </header>
+      <ul className="space-y-2.5">
+        {PROTOS.map((p) => (
+          <li key={p.href}>
+            <Link href={p.href} className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-lg)] border p-4" style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi)" }}>
+              <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>{p.title}</h2>
+              <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{p.blurb}</p>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
