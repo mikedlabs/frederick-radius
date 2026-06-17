@@ -82,29 +82,32 @@ function FieldTag({
     <Link
       href={href}
       aria-label={ariaLabel}
-      className="tactile-interactive relative flex items-center gap-2 overflow-hidden rounded-[var(--app-radius-sm)] px-2.5 pb-2.5 pt-3"
+      className="tactile-interactive relative flex items-center gap-2.5 overflow-hidden rounded-[var(--app-radius-sm)] px-2.5 py-2.5"
       style={{
         backgroundColor: "var(--app-bg-elevated-solid)",
         backgroundImage: "var(--app-paper-light)",
-        border: `1px solid color-mix(in srgb, ${ink} 30%, var(--app-border))`,
+        border: "1px solid var(--app-border)",
         boxShadow: "var(--app-elev-1), var(--app-hi)",
       }}
     >
-      {/* Filing-ink top tab rule — the mini of the deal records' header band. */}
-      <span aria-hidden className="absolute inset-x-0 top-0 h-[2.5px]" style={{ background: ink }} />
-      {/* Square ruled specimen plate — the engraved glyph in its own frame. */}
+      {/* Faint engraved specimen glyph bled into the corner — the same texture
+          trick the deal records use, so the fast lane reads as the field guide. */}
+      <Icon aria-hidden className="pointer-events-none absolute -bottom-3 -right-2 h-[58px] w-[58px] rotate-[8deg]" strokeWidth={0.9} style={{ color: ink, opacity: 0.07 }} />
+      {/* Struck filing-ink STAMP — the glyph reversed out of a solid color
+          plate, raised off the paper (inset sheen + soft cast shadow). This is
+          the visual hero: each craving wears its own colored stamp. */}
       <span
         aria-hidden
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-[6px]"
+        className="relative grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
         style={{
-          background: `color-mix(in srgb, ${ink} 12%, var(--app-bg-elevated-solid))`,
-          boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${ink} 32%, transparent)`,
-          color: ink,
+          background: ink,
+          boxShadow: `inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent), 0 1.5px 3px -0.5px color-mix(in srgb, ${ink} 42%, transparent)`,
+          color: "var(--app-on-brand)",
         }}
       >
-        <Icon className="h-[16px] w-[16px]" strokeWidth={2} />
+        <Icon className="h-[17px] w-[17px]" strokeWidth={2.25} />
       </span>
-      <span className="truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
+      <span className="relative truncate text-[13px] font-semibold" style={{ color: "var(--app-ink)" }}>
         {label}
       </span>
     </Link>
