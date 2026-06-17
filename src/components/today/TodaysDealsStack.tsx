@@ -39,8 +39,8 @@ const REVERSED = "var(--app-ink-inverse)";
 // collapsed deck reads as a tidy stack of tabs you fan open, not a tall run of
 // full cards. STACK_MAX is the clipped height when stacked; OVERLAP tucks each
 // tab under the previous (peek = STACK_MAX - OVERLAP ≈ the band height).
-const STACK_MAX = 92;
-const OVERLAP = 50;
+const STACK_MAX = 40;
+const OVERLAP = 8;
 const SPRING = { type: "spring" as const, stiffness: 360, damping: 38, mass: 0.9 };
 
 /** A ruled form field — mono label, dotted leader, value right-aligned.
