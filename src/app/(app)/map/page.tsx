@@ -336,16 +336,12 @@ export default async function MapPage({
       >
         <BrowseMapArea params={earlyParams} />
       </Suspense>
-      {/* The mode toggle floats over the map as a control, anchored just
-          above the peek sheet (AppMapClient heights.peek = 100px) — the same
-          way radius mode floats its copy over the collapsed map. It used to
-          sit in normal flow BELOW the map, which read as an orphaned pill
-          stranded in the dead band between the sheet and the floating nav
-          ("the bottom map UI doesn't look fixed"). Now the map is the
-          grounded bottom element and the toggle is map chrome. */}
+      {/* The mode toggle floats over the map as a control near the bottom
+          edge (the in-view drawer it used to sit above was removed). Radius
+          mode floats its copy the same way. */}
       <div
         className="pointer-events-none absolute inset-x-0 z-[var(--z-map-control)] flex justify-center px-3 lg:justify-end lg:px-4"
-        style={{ bottom: "calc(100px + env(safe-area-inset-bottom, 0px) + 12px)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
       >
         <div className="pointer-events-auto">
           <MapModeToggle mode="browse" />
@@ -551,10 +547,7 @@ async function BrowseMapArea({
           events={events}
           fullBleed
           // Arriving via a category tile (?intent=…): center on the
-          // user's known location, measure/sort the list from there,
-          // and open the results drawer so the filtered list is the
-          // first thing they see.
-          autoOpenList={Boolean(intent)}
+          // user's known location and measure from there.
           recenterToKnownLocation={Boolean(intent)}
           // Show the county by default — never an empty map. The curated
           // places ride a CLUSTERED source, so "all ~1,700" reads as a
