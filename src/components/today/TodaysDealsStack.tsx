@@ -15,44 +15,31 @@ const iconFor = (cat?: string): LucideIcon => DEAL_ICON[cat ?? ""] ?? Martini;
 
 /**
  * Vintage field-guide aesthetic (owner ref: explorer record cards + merit
- * stamps). Each deal is an OFFICIAL FIELD RECORD on aged paper:
- *   - alternating cream / kraft stock so a stack reads as varied papers
- *   - a "filing ink" double rule + corner registration ticks per card
- *   - a mono file number, ruled WHEN / WHERE fields with leader dots
- *   - the venue as the serif "subject", and the verified wax seal struck
- *     in the corner (FieldStamp) — the moat, certified.
- * Colors are disciplined: paper + one filing ink (spruce / slate) + the
- * vermilion stamp. No rainbow passes; the variety is in the paper + ink.
+ * stamps), pushed bold. Each deal is a COLOR-CODED FIELD RECORD on aged paper:
+ *   - one of four filing inks per card (spruce / slate / vermilion / black),
+ *     struck through the whole card so a stack reads as color-tabbed files
+ *   - a SOLID filing-ink header band with reversed-out type + a file number
+ *   - a rotated left filing spine ("FIELD NOTES"), the record-card signature
+ *   - the venue as the serif "subject", ruled WHEN / WHERE fields w/ leaders
+ *   - a big wax seal struck in the corner (FieldStamp) — the moat, certified.
+ * Disciplined: paper + the card's single ink. The boldness is the color
+ * block + the spine + the seal, not a rainbow of swatches.
  */
+const INK = ["var(--app-brand-2)", "var(--app-cool)", "var(--app-brand-press)", "var(--app-ink)"];
 const PAPER = ["var(--app-bg-elevated-solid)", "color-mix(in srgb, var(--app-bg-sunken) 42%, var(--app-bg-elevated-solid))"];
-const INK = ["var(--app-brand-2)", "var(--app-cool)"];
-const paperAt = (i: number): string => PAPER[i % PAPER.length];
-// Offset the ink from the paper so cream/kraft pair with spruce/slate in
-// alternating combinations (cream+spruce, kraft+slate, …).
-const inkAt = (i: number): string => INK[(i + 1) % INK.length];
+const inkAt = (i: number): string => INK[i % INK.length];
+// Offset the paper from the ink so each card is a distinct paper+ink combo.
+const paperAt = (i: number): string => PAPER[(i + 1) % PAPER.length];
+/** Reversed-out type on the solid header band (paper-on-dark token). */
+const REVERSED = "var(--app-ink-inverse)";
 
-// Light overlap — each stacked record shows its filing header AND subject
-// (not just a sliver), so the deals are readable at a glance; fanning open
+// Light overlap — each stacked record shows its colored filing band AND the
+// subject (not just a sliver), so the deals read at a glance; fanning open
 // reveals the ruled fields + the field notes.
-const OVERLAP = 62;
+const OVERLAP = 64;
 const SPRING = { type: "spring" as const, stiffness: 360, damping: 38, mass: 0.9 };
 
-/** Four L-shaped registration ticks — the printing-press corner marks that
- *  make the card read as a struck record, not a UI panel. */
-function CornerTicks({ color }: { color: string }) {
-  const base = "pointer-events-none absolute h-2 w-2";
-  const c = `color-mix(in srgb, ${color} 55%, transparent)`;
-  return (
-    <>
-      <span aria-hidden className={`${base} left-1.5 top-1.5`} style={{ borderTop: `1px solid ${c}`, borderLeft: `1px solid ${c}` }} />
-      <span aria-hidden className={`${base} right-1.5 top-1.5`} style={{ borderTop: `1px solid ${c}`, borderRight: `1px solid ${c}` }} />
-      <span aria-hidden className={`${base} bottom-1.5 left-1.5`} style={{ borderBottom: `1px solid ${c}`, borderLeft: `1px solid ${c}` }} />
-      <span aria-hidden className={`${base} bottom-1.5 right-1.5`} style={{ borderBottom: `1px solid ${c}`, borderRight: `1px solid ${c}` }} />
-    </>
-  );
-}
-
-/** A ruled form field — mono label, dotted leader, the value right-aligned.
+/** A ruled form field — mono label, dotted leader, value right-aligned.
  *  Evokes the explorer record card's DATE SIGHTED / LOCATION rows. */
 function Field({ label, value, valueColor, ink }: { label: string; value: string; valueColor: string; ink: string }) {
   return (
@@ -60,7 +47,7 @@ function Field({ label, value, valueColor, ink }: { label: string; value: string
       <span className="shrink-0 font-mono text-[8.5px] font-semibold uppercase tracking-[0.16em]" style={{ color: `color-mix(in srgb, ${ink} 75%, var(--app-ink-3))` }}>
         {label}
       </span>
-      <span aria-hidden className="min-w-[10px] flex-1 self-center" style={{ borderBottom: `1px dotted color-mix(in srgb, ${ink} 38%, transparent)` }} />
+      <span aria-hidden className="min-w-[10px] flex-1 self-center" style={{ borderBottom: `1px dotted color-mix(in srgb, ${ink} 40%, transparent)` }} />
       <span className="min-w-0 truncate text-right font-mono text-[12px] font-bold tabular-nums tracking-[0.01em]" style={{ color: valueColor }}>
         {value}
       </span>
@@ -69,9 +56,9 @@ function Field({ label, value, valueColor, ink }: { label: string; value: string
 }
 
 /**
- * Today's Deals as a fanned stack of FIELD RECORD CARDS. By default they
- * overlap in a recessed paper pocket (each filing header peeking); the header
- * chevron fans them open with a spring. Each record taps through to its place.
+ * Today's Deals as a fanned stack of color-tabbed FIELD RECORD CARDS. By
+ * default they overlap in a recessed paper pocket (each colored band peeking);
+ * the header chevron fans them open with a spring. Each taps through.
  */
 export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal[]; weekday: string }) {
   const [expanded, setExpanded] = useState(false);
@@ -102,8 +89,7 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
       </button>
 
       {/* Card-holder POCKET — when stacked the records sit in a recessed paper
-          slot (inset shadow + a thin highlight lip), like cards tucked in a
-          field folder; it relaxes to transparent when fanned open. */}
+          slot, like color-tabbed cards in a field folder; transparent when fanned. */}
       <div
         className="transition-all duration-300"
         style={
@@ -129,89 +115,91 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
               <Link
                 href={`/places/${d.slug}`}
                 aria-label={`${d.name}: ${d.offer}`}
-                className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-md)] px-4 pb-3.5 pt-2.5"
+                className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-md)]"
                 style={{
                   background: paper,
                   backgroundImage: "var(--app-paper-light)",
-                  // Filing-ink double rule: outer line, a paper gap, then a
-                  // faint inner rule — the record-card frame from the ref.
-                  border: `1px solid color-mix(in srgb, ${ink} 42%, var(--app-border))`,
-                  boxShadow: `inset 0 0 0 3px ${paper}, inset 0 0 0 4px color-mix(in srgb, ${ink} 22%, transparent), var(--app-elev-1), var(--app-hi)`,
+                  border: `1.5px solid color-mix(in srgb, ${ink} 48%, var(--app-border))`,
+                  boxShadow: "var(--app-elev-1), var(--app-hi)",
                   color: "var(--app-ink)",
                 }}
               >
-                <CornerTicks color={ink} />
-                {/* Engraved specimen glyph, faint in the corner (the field-guide
-                    plate behind the record). */}
-                <Icon aria-hidden className="pointer-events-none absolute -bottom-6 -right-4 h-[124px] w-[124px] rotate-[8deg]" strokeWidth={0.9} style={{ color: ink, opacity: 0.08 }} />
+                {/* Faint engraved specimen plate behind the record. */}
+                <Icon aria-hidden className="pointer-events-none absolute -bottom-6 -right-4 h-[128px] w-[128px] rotate-[8deg]" strokeWidth={0.9} style={{ color: ink, opacity: 0.08 }} />
 
-                {/* Verified wax seal — struck in the top-right corner. */}
-                <FieldStamp
-                  id={`deal-${d.slug}`}
-                  top="VERIFIED"
-                  bottom="AT SOURCE"
-                  size={46}
-                  tone="var(--app-brand)"
-                  rotate={-8}
-                  className="absolute right-1.5 top-1"
-                  style={{ opacity: 0.62 }}
-                />
+                {/* Left filing spine — rotated mono label, the record-card signature. */}
+                <div
+                  aria-hidden
+                  className="absolute inset-y-0 left-0 flex w-[22px] items-center justify-center"
+                  style={{ background: `color-mix(in srgb, ${ink} 9%, transparent)`, borderRight: `1px solid color-mix(in srgb, ${ink} 30%, transparent)` }}
+                >
+                  <span className="font-mono text-[7.5px] font-semibold uppercase tracking-[0.22em] [writing-mode:vertical-rl] rotate-180" style={{ color: `color-mix(in srgb, ${ink} 78%, var(--app-ink-3))` }}>
+                    Frederick&nbsp;Radius
+                  </span>
+                </div>
 
-                <div className="relative">
-                  {/* Filing header — the record class + a file number (number in
-                      vermilion, like the ref's red individual-file code). */}
-                  <div className="flex items-center gap-1.5 pr-12">
-                    <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.18em]" style={{ color: `color-mix(in srgb, ${ink} 80%, var(--app-ink-3))` }}>
-                      Field note
-                    </span>
-                    <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-                    <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                      No.&nbsp;<span style={{ color: "var(--app-brand-press)" }}>{file}</span>
-                    </span>
+                <div className="ml-[22px]">
+                  {/* Solid filing-ink header band — reversed-out class + file no. */}
+                  <div className="flex items-center gap-2 px-3 py-[6px]" style={{ background: ink }}>
+                    <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.2em]" style={{ color: REVERSED }}>Field note</span>
+                    <span aria-hidden className="h-px flex-1" style={{ background: `color-mix(in srgb, ${REVERSED} 38%, transparent)` }} />
+                    <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.12em]" style={{ color: REVERSED }}>No.&nbsp;{file}</span>
                   </div>
 
-                  {/* Subject — the venue, set in the serif display, with its
-                      category specimen mark. */}
-                  <div className="mt-1.5 flex items-start gap-2.5 pr-10">
-                    <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${ink} 13%, transparent)`, color: ink }}>
-                      <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
-                    </span>
-                    <h3 className="min-w-0 flex-1 font-serif text-[17px] font-semibold leading-[1.08] tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
-                      {d.name}
-                    </h3>
+                  <div className="relative px-3.5 pb-3.5 pt-2.5">
+                    {/* Verified wax seal — struck big in the corner, scattered angle. */}
+                    <FieldStamp
+                      id={`deal-${d.slug}`}
+                      top="VERIFIED"
+                      bottom="AT SOURCE"
+                      size={54}
+                      tone={ink}
+                      rotate={i % 2 ? -9 : 7}
+                      className="absolute -top-0.5 right-0"
+                      style={{ opacity: 0.6 }}
+                    />
+
+                    {/* Subject — the venue, serif, with its category specimen mark. */}
+                    <div className="flex items-start gap-2.5 pr-12">
+                      <span aria-hidden className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${ink} 14%, transparent)`, color: ink }}>
+                        <Icon className="h-[15px] w-[15px]" strokeWidth={2} />
+                      </span>
+                      <h3 className="min-w-0 flex-1 font-serif text-[17.5px] font-semibold leading-[1.08] tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+                        {d.name}
+                      </h3>
+                    </div>
+
+                    {/* Ruled fields — WHEN (the actionable time) + WHERE. */}
+                    {(d.hours || d.town) && (
+                      <div className="mt-2.5 space-y-1.5">
+                        {d.hours && <Field label="When" value={d.hours} valueColor="var(--app-brand-press)" ink={ink} />}
+                        {d.town && <Field label="Where" value={d.town} valueColor="var(--app-ink-2)" ink={ink} />}
+                      </div>
+                    )}
+
+                    {/* The offer — the record's entry, a short supporting line. */}
+                    <p className="mt-2.5 line-clamp-2 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                      {d.offer}
+                    </p>
+
+                    {/* Buried local intel — park + a tip — only when fanned open. */}
+                    {!stacked && (d.park || d.tip) && (
+                      <div className="mt-3 space-y-1.5 border-t pt-2.5" style={{ borderColor: `color-mix(in srgb, ${ink} 24%, transparent)` }}>
+                        {d.park && (
+                          <p className="line-clamp-1 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                            <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: `color-mix(in srgb, ${ink} 75%, var(--app-ink-3))` }}>Park&nbsp;&nbsp;</span>
+                            {d.park}
+                          </p>
+                        )}
+                        {d.tip && (
+                          <p className="line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                            <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: `color-mix(in srgb, ${ink} 75%, var(--app-ink-3))` }}>Tip&nbsp;&nbsp;</span>
+                            {d.tip}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-
-                  {/* Ruled fields — WHEN (the actionable time) + WHERE. */}
-                  {(d.hours || d.town) && (
-                    <div className="mt-2.5 space-y-1.5">
-                      {d.hours && <Field label="When" value={d.hours} valueColor="var(--app-brand-press)" ink={ink} />}
-                      {d.town && <Field label="Where" value={d.town} valueColor="var(--app-ink-2)" ink={ink} />}
-                    </div>
-                  )}
-
-                  {/* The offer — the record's entry, a short supporting line. */}
-                  <p className="mt-2.5 line-clamp-2 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                    {d.offer}
-                  </p>
-
-                  {/* Field Notes the venue's own site buries — park + a tip.
-                      Only when fanned open: the stacked sliver stays lean. */}
-                  {!stacked && (d.park || d.tip) && (
-                    <div className="mt-3 space-y-1.5 border-t pt-2.5" style={{ borderColor: `color-mix(in srgb, ${ink} 22%, transparent)` }}>
-                      {d.park && (
-                        <p className="line-clamp-1 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                          <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: `color-mix(in srgb, ${ink} 75%, var(--app-ink-3))` }}>Park&nbsp;&nbsp;</span>
-                          {d.park}
-                        </p>
-                      )}
-                      {d.tip && (
-                        <p className="line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                          <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: `color-mix(in srgb, ${ink} 75%, var(--app-ink-3))` }}>Tip&nbsp;&nbsp;</span>
-                          {d.tip}
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
               </Link>
             </motion.li>
