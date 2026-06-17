@@ -653,7 +653,7 @@ export default async function PulsePage({
           come from the static GTFS, slimmed server-side so the shapes never
           reach the client bundle. */}
       <LiveTransitBoard
-        routes={TRANSIT_DATA.routes.map((r) => ({ id: r.id, name: r.name, color: r.color }))}
+        routes={TRANSIT_DATA.routes.map((r) => ({ id: r.id, short: r.short, name: r.name, color: r.color }))}
         stops={TRANSIT_DATA.stops.map((s) => ({ name: s.name, lat: s.lat, lng: s.lng }))}
       />
 
