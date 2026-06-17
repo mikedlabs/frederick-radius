@@ -34,10 +34,13 @@ const paperAt = (i: number): string => PAPER[(i + 1) % PAPER.length];
 /** Reversed-out type on the solid header band (paper-on-dark token). */
 const REVERSED = "var(--app-ink-inverse)";
 
-// Light overlap — each stacked record shows its colored filing band AND the
-// subject (not just a sliver), so the deals read at a glance; fanning open
-// reveals the ruled fields + the field notes.
-const OVERLAP = 52;
+// Stacked, each record is CLIPPED to a compact filing tab — its colored band
+// (name + the deal) plus a thin sliver — and tucked under the next, so the
+// collapsed deck reads as a tidy stack of tabs you fan open, not a tall run of
+// full cards. STACK_MAX is the clipped height when stacked; OVERLAP tucks each
+// tab under the previous (peek = STACK_MAX - OVERLAP ≈ the band height).
+const STACK_MAX = 92;
+const OVERLAP = 50;
 const SPRING = { type: "spring" as const, stiffness: 360, damping: 38, mass: 0.9 };
 
 /** A ruled form field — mono label, dotted leader, value right-aligned.
@@ -114,9 +117,9 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
             <motion.li
               key={d.slug}
               initial={false}
-              animate={{ marginTop: i === 0 ? 0 : stacked ? -OVERLAP : 14 }}
+              animate={{ marginTop: i === 0 ? 0 : stacked ? -OVERLAP : 14, maxHeight: stacked ? STACK_MAX : 1400 }}
               transition={SPRING}
-              style={{ position: "relative", zIndex: i }}
+              style={{ position: "relative", zIndex: i, overflow: "hidden" }}
             >
               <Link
                 href={`/places/${d.slug}`}
