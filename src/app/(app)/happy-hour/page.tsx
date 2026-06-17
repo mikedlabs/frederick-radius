@@ -7,7 +7,8 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { parseHappyHour } from "@/lib/happyHour";
 import PageBloom from "@/components/ui/PageBloom";
 import FieldStamp from "@/components/ui/FieldStamp";
-import HappyHourBrowser, { type HHRow } from "@/components/happy/HappyHourBrowser";
+import HappyHourGuide from "@/components/happy/HappyHourGuide";
+import { type HHRow } from "@/components/happy/HappyHourBrowser";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/happy-hour" },
@@ -28,13 +29,16 @@ function easternNowParts(now: Date): { day: number; min: number } {
   return { day: wd[get("weekday")] ?? 0, min: (Number(get("hour")) % 24) * 60 + Number(get("minute")) };
 }
 
+/** A Date as Eastern minutes-since-midnight (for the golden-hour gauge). */
 /**
  * /happy-hour — the Field Notes flagship. Every spot is agent-VERIFIED at the
- * source (the moat). The page hands the verified set to an interactive
- * day-aware browser (HappyHourBrowser): a 7-day almanac strip shows how many
- * happy hours run each day, and tapping a day reveals that day's spots with
- * what's ON NOW led as photo cards. Server side just shapes the data + parses
- * each schedule into day/time windows; it never claims a false "on now".
+ * source (the moat). The page hands the verified set to HappyHourGuide ("The
+ * Last Pour"): a live city-magazine bar guide that opens on a "Pour of the
+ * Moment" cover (the most time-sensitive on-now spot, its deal amount set huge
+ * in gold) then a leader-dotted priced index of the county (venue name … gold
+ * hook). A "Now / All week" toggle flips to the day-by-day planner. Server
+ * side shapes the data and parses each schedule into day/time windows; it
+ * never claims a false "on now".
  */
 export default function HappyHourPage() {
   const now = new Date();
@@ -65,10 +69,6 @@ export default function HappyHourPage() {
   // dropped (stale-name / duplicate problems). Everything here is confirmed at
   // the source; the Field Notes pipeline grows it.
 
-  const onNowCount = rows.filter((r) =>
-    r.windows.some((w) => w.days.includes(today) && nowMin >= w.start && nowMin < w.end),
-  ).length;
-
   return (
     <div className="relative space-y-5">
       <PageBloom variant="warm-cool" />
@@ -86,11 +86,7 @@ export default function HappyHourPage() {
               Happy hour
             </h1>
             <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              {onNowCount > 0 ? (
-                <><span className="font-semibold" style={{ color: "var(--app-brand-press)" }}>{onNowCount} on right now.</span>{" "}Pick a day to see the deal, where to park, and what locals know. Verified means confirmed at the source.</>
-              ) : (
-                <>Pick a day to see the deal, where to park, and what locals know. Verified means confirmed at the source.</>
-              )}
+              The deal, where to park, and what locals know. Verified means confirmed at the source.
             </p>
             <div aria-hidden className="mt-2.5 h-[3px] w-[42px] rounded-full" style={{ background: "var(--app-accent)" }} />
           </div>
@@ -103,7 +99,7 @@ export default function HappyHourPage() {
           No happy hours on file yet. They&rsquo;re coming.
         </p>
       ) : (
-        <HappyHourBrowser rows={rows} today={today} nowMin={nowMin} />
+        <HappyHourGuide rows={rows} today={today} nowMin={nowMin} />
       )}
 
       <p className="px-1 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
