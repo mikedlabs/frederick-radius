@@ -35,6 +35,7 @@ const slim = publicPlaces().map((p) => {
     first_seen_at?: unknown;
     hours_source?: unknown;
     hours_updated_at?: unknown;
+    open_status?: unknown;
   };
   // Keep google_photo_url (the single hero); drop the heavy arrays /
   // detail-only text the Search & Saved cards never render.
@@ -49,6 +50,12 @@ const slim = publicPlaces().map((p) => {
   // (Audited 2026-06-17; grepped every clientPlaces/clientPlaceBySlug
   // consumer + every place-card component.) Note last_verified_at is NOT
   // dropped — PlaceSheet's FreshnessChip reads it from the slim record.
+  //
+  // open_status is ALSO dropped: it's a build-time open/closed snapshot that
+  // the client loader (places-client.ts `withLiveStatus`) unconditionally
+  // RECOMPUTES from the compact `hours` on every read, so the baked value is
+  // never read — it only bloated the bundle and churned the diff on every
+  // rebuild. The compact `hours` it recomputes from is kept.
   const {
     google_photos: _gp,
     google_hours: _gh,
@@ -61,10 +68,11 @@ const slim = publicPlaces().map((p) => {
     first_seen_at: _fsa,
     hours_source: _hs,
     hours_updated_at: _hua,
+    open_status: _os,
     ...rest
   } = d;
   void _gp; void _gh; void _rs; void _ra;
-  void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _hua;
+  void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _hua; void _os;
   return rest;
 });
 
