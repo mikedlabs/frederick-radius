@@ -57,6 +57,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import LiveTransitBoard from "@/components/transit/LiveTransitBoard";
+import TRANSIT_DATA from "@/data/transit.json";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
 import WeatherHero from "@/components/today/WeatherHero";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -645,11 +646,16 @@ export default async function PulsePage({
           below (no feed to count); News + Scanner too. */}
       <PulseDashboard tiles={pulseTiles} initialOpen={openParam} />
 
-      {/* ── What's moving — the live TransIT system board. The flat "N buses
-          moving" pill, made visual: real bus positions + headings on a county
-          map, refreshed every 20s. The live, free layer Google's transit tab
-          can't match here. */}
-      <LiveTransitBoard />
+      {/* ── What's moving — the live TransIT system, BY ROUTE. The flat "N
+          buses moving" pill, made visual: a colored equalizer of which routes
+          are rolling right now (real per-route counts, refreshed every 20s).
+          Not a map (the buses already live on /map) — a different lens on the
+          live, free layer Google's transit tab can't match here. Route
+          names + colors from the static GTFS, slimmed server-side so the
+          shapes never reach the client bundle. */}
+      <LiveTransitBoard
+        routes={TRANSIT_DATA.routes.map((r) => ({ id: r.id, name: r.name, color: r.color }))}
+      />
 
       {/* ── Active sections only ──────────────────────────────── */}
       {/* Desktop multi-column: at lg+ the operational sections fall
