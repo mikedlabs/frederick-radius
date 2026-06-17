@@ -646,15 +646,15 @@ export default async function PulsePage({
           below (no feed to count); News + Scanner too. */}
       <PulseDashboard tiles={pulseTiles} initialOpen={openParam} />
 
-      {/* ── What's moving — the live TransIT system, BY ROUTE. The flat "N
-          buses moving" pill, made visual: a colored equalizer of which routes
-          are rolling right now (real per-route counts, refreshed every 20s).
-          Not a map (the buses already live on /map) — a different lens on the
-          live, free layer Google's transit tab can't match here. Route
-          names + colors from the static GTFS, slimmed server-side so the
-          shapes never reach the client bundle. */}
+      {/* ── Where the buses are — the live TransIT roster. Each rolling bus
+          located against its nearest named stop with its real heading, from
+          the GTFS-realtime feed, every 20s. Real positions in words (not a
+          map — they already plot on /map). Route names/colors + the stop list
+          come from the static GTFS, slimmed server-side so the shapes never
+          reach the client bundle. */}
       <LiveTransitBoard
         routes={TRANSIT_DATA.routes.map((r) => ({ id: r.id, name: r.name, color: r.color }))}
+        stops={TRANSIT_DATA.stops.map((s) => ({ name: s.name, lat: s.lat, lng: s.lng }))}
       />
 
       {/* ── Active sections only ──────────────────────────────── */}
