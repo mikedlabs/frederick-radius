@@ -322,7 +322,7 @@ export default async function MapPage({
   // stream in via Suspense, so the page no longer blocks first paint on
   // the slowest upstream AND the Mapbox JS downloads during that fetch.
   return (
-    <div className="-mx-4 -mt-4 lg:ml-0">
+    <div className="relative -mx-4 -mt-4 lg:ml-0">
       <h1 className="sr-only">Frederick County map</h1>
       <Suspense
         fallback={
@@ -336,18 +336,34 @@ export default async function MapPage({
       >
         <BrowseMapArea params={earlyParams} />
       </Suspense>
-      <div className="flex justify-end px-3 py-2 sm:px-4">
-        <MapModeToggle mode="browse" />
+      {/* The mode toggle floats over the map as a control, anchored just
+          above the peek sheet (AppMapClient heights.peek = 100px) — the same
+          way radius mode floats its copy over the collapsed map. It used to
+          sit in normal flow BELOW the map, which read as an orphaned pill
+          stranded in the dead band between the sheet and the floating nav
+          ("the bottom map UI doesn't look fixed"). Now the map is the
+          grounded bottom element and the toggle is map chrome. */}
+      <div
+        className="pointer-events-none absolute inset-x-0 z-[var(--z-map-control)] flex justify-center px-3 lg:justify-end lg:px-4"
+        style={{ bottom: "calc(100px + env(safe-area-inset-bottom, 0px) + 12px)" }}
+      >
+        <div className="pointer-events-auto">
+          <MapModeToggle mode="browse" />
+        </div>
       </div>
     </div>
   );
 }
 
 // Reserve the floating bottom nav (~84px incl. its lift) + bottom
-// safe-area so the map + mode-toggle never slide under the nav
-// (audit: "sticky bottom nav overlays content").
+// safe-area so the map never slides under the nav (audit: "sticky bottom
+// nav overlays content"). The mode toggle now FLOATS over the map (a map
+// control above the peek sheet) instead of sitting in flow below it, so
+// the ~48px strip that used to be reserved for that in-flow pill is
+// reclaimed — the map extends down to meet the nav's breathing room
+// instead of leaving a dead cream band ("the bottom UI doesn't look fixed").
 const BROWSE_MAP_HEIGHT =
-  "calc(100dvh - 56px - 48px - 48px - 84px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))";
+  "calc(100dvh - 56px - 48px - 84px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))";
 
 /** The heavy half of browse mode — ~10 upstream feeds + the map render.
  *  Split into its own async component so the page shell can stream
