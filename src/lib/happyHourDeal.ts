@@ -1,65 +1,107 @@
 /**
- * dealHook — pull the headline discount out of a verified happy-hour deal
- * string, so a surface can show the AMOUNT OFF as a hero token beside the
- * venue name ("50% OFF", "$2 OFF", "FROM $5") instead of burying it in prose.
+ * splitDeal / dealHook — read a verified deal string into a headline HOOK
+ * (the amount off, shown as a hero) and the REST (what you actually get).
  *
- * Honest by construction: it only ever reports a number that is literally in
- * the deal text. When there is no clean number ("Food and drink specials"),
- * it returns null and the caller shows a plain "Specials" — we never invent a
- * discount. Pure + deterministic; the full deal text still renders in full
- * underneath (the specifics are the moat).
+ * The hook is the punchy figure: "50% OFF", "$2 OFF", "$8", "FROM $5". The
+ * rest is the offer with that figure removed, so a surface can show the price
+ * ONCE on a band/chip and the description in the body (the menu "price + item"
+ * pattern) instead of printing the same number twice.
  *
- * Priority, strongest hook first:
- *   1. a percentage / half-off  -> "50% OFF" (the punchiest, most legible)
+ * Honest by construction: it only reports a number literally in the text; when
+ * there is none ("Food and drink specials") the hook is null and the rest is
+ * the full offer. Pure + deterministic.
+ *
+ * Hook priority, strongest first:
+ *   1. a percentage / half-off  -> "50% OFF"
  *   2. a dollar discount        -> "$5 OFF"  (largest off wins)
- *   3. a concrete low price     -> "FROM $3" (the cheapest price named)
- *   4. nothing numeric          -> null      (caller renders "Specials")
+ *   3. a concrete price (>= $2) -> "$8" (single) or "FROM $5" (a real range)
+ *   4. nothing numeric          -> null
  */
 
-/** Format a numeric string as a clean price: drop a trailing .00, keep .50. */
-function money(raw: string): string {
+/** Format a number/numeric-string as a clean price: $5 (whole), $2.50 (cents). */
+function money(raw: string | number): string {
   const n = Number(raw);
   if (!Number.isFinite(n)) return `$${raw}`;
-  // Whole dollars drop the cents ($5, not $5.00); real cents stay ($2.50).
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
 }
 
-const PERCENT_RE = /(\d{1,3})\s*%\s*off/gi;
-const HALF_RE = /\bhalf[-\s]?(?:off|price)\b|\b1\/2\s*(?:price|off)\b/i;
-const DOLLAR_OFF_RE = /\$\s*(\d+(?:\.\d{1,2})?)\s*off/gi;
-const DOLLAR_PRICE_RE = /\$\s*(\d+(?:\.\d{1,2})?)/g;
+const PERCENT_G = /(\d{1,3})\s*%\s*off/gi;
+const PERCENT_1 = /\d{1,3}\s*%\s*off/i;
+const HALF_1 = /\bhalf[-\s]?(?:off|price)\b|\b1\/2\s*(?:price|off)\b/i;
+const DOLLAR_OFF_G = /\$\s*(\d+(?:\.\d{1,2})?)\s*off/gi;
+const DOLLAR_OFF_1 = /\$\s*\d+(?:\.\d{1,2})?\s*off/i;
+const DOLLAR_PRICE_G = /\$\s*(\d+(?:\.\d{1,2})?)/g;
+const RANGE_WORD = /\b(from|starting|starts? at|as low as)\b/i;
 
-export function dealHook(deal: string | null | undefined): string | null {
-  const t = (deal ?? "").trim();
-  if (!t) return null;
+function firstMatch(re: RegExp, t: string): { text: string; index: number } | null {
+  const m = re.exec(t);
+  return m ? { text: m[0], index: m.index } : null;
+}
 
-  // 1. Percentage / half off — take the biggest percentage mentioned.
+/** Tidy the leftover after a figure is removed: collapse space, drop an orphan
+ *  leading conjunction/punctuation, sentence-case the start. */
+function tidy(s: string): string {
+  let r = s.replace(/\s+/g, " ").trim();
+  r = r.replace(/^[\s:,;.–—-]+/, "").trim();
+  r = r.replace(/^(and|or|on|plus|with)\b\s*/i, "").trim();
+  r = r.replace(/\s+([,;.])/g, "$1");
+  if (r) r = r.charAt(0).toUpperCase() + r.slice(1);
+  return r;
+}
+
+export type DealParts = { hook: string | null; rest: string };
+
+export function splitDeal(deal: string | null | undefined): DealParts {
+  const t = (deal ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return { hook: null, rest: "" };
+
+  let hook: string | null = null;
+  let strip: { text: string; index: number } | null = null;
+
+  // 1. percentage / half off (the punchiest).
   let pct = 0;
-  for (const m of t.matchAll(PERCENT_RE)) pct = Math.max(pct, Number(m[1]));
-  if (HALF_RE.test(t)) pct = Math.max(pct, 50);
-  if (pct > 0) return `${pct}% OFF`;
-
-  // 2. Dollar discount — biggest "$X off" wins (most enticing).
-  let off = 0;
-  for (const m of t.matchAll(DOLLAR_OFF_RE)) off = Math.max(off, Number(m[1]));
-  if (off > 0) return `${money(String(off))} OFF`;
-
-  // 3. A concrete price point. Collect the named prices, floored at $2 so a
-  //    99-cent wing or $1 oyster (a food side, not the headline) never becomes
-  //    the hook. The cheapest is the figure; "FROM" is added only when it's
-  //    genuinely a range — 2+ distinct prices, or the text itself says "from"
-  //    — so a single "$17 rib dinner" reads "$17", not a misleading "FROM $17".
-  const prices = new Set<number>();
-  for (const m of t.matchAll(DOLLAR_PRICE_RE)) {
-    const n = Number(m[1]);
-    if (n >= 2) prices.add(n);
+  for (const m of t.matchAll(PERCENT_G)) pct = Math.max(pct, Number(m[1]));
+  const half = HALF_1.exec(t);
+  if (half) pct = Math.max(pct, 50);
+  if (pct > 0) {
+    hook = `${pct}% OFF`;
+    const cands = [firstMatch(PERCENT_1, t), half ? { text: half[0], index: half.index } : null]
+      .filter((x): x is { text: string; index: number } => x !== null)
+      .sort((a, b) => a.index - b.index);
+    strip = cands[0] ?? null;
+  } else {
+    // 2. dollar discount — biggest "$X off".
+    let off = 0;
+    for (const m of t.matchAll(DOLLAR_OFF_G)) off = Math.max(off, Number(m[1]));
+    if (off > 0) {
+      hook = `${money(off)} OFF`;
+      strip = firstMatch(DOLLAR_OFF_1, t);
+    } else {
+      // 3. a concrete price point (floored at $2 so a 99-cent side never leads).
+      const prices = new Set<number>();
+      for (const m of t.matchAll(DOLLAR_PRICE_G)) {
+        const n = Number(m[1]);
+        if (n >= 2) prices.add(n);
+      }
+      if (prices.size > 0) {
+        const min = Math.min(...prices);
+        const ranged = prices.size > 1 || RANGE_WORD.test(t);
+        hook = ranged ? `FROM ${money(min)}` : money(min);
+        // Strip the cheapest price token (the figure the hook shows).
+        strip = firstMatch(new RegExp(`\\$\\s*${String(min).replace(".", "\\.")}(?!\\d)`), t);
+      }
+    }
   }
-  if (prices.size > 0) {
-    const min = Math.min(...prices);
-    const ranged = prices.size > 1 || /\b(from|starting|starts? at|as low as)\b/i.test(t);
-    return ranged ? `FROM ${money(String(min))}` : money(String(min));
-  }
 
-  // 4. No number we can stand behind.
-  return null;
+  if (!hook) return { hook: null, rest: t };
+  let rest = strip ? t.slice(0, strip.index) + t.slice(strip.index + strip.text.length) : t;
+  rest = tidy(rest);
+  // If stripping gutted the description, keep the full offer rather than a stub.
+  if (rest.length < 3) rest = t;
+  return { hook, rest };
+}
+
+/** Just the headline hook (the amount off), or null. */
+export function dealHook(deal: string | null | undefined): string | null {
+  return splitDeal(deal).hook;
 }
