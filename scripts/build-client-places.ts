@@ -28,17 +28,43 @@ const slim = publicPlaces().map((p) => {
     google_hours?: unknown;
     review_snippet?: unknown;
     review_author?: unknown;
+    source_url?: unknown;
+    license?: unknown;
+    source_id?: unknown;
+    confidence?: unknown;
+    first_seen_at?: unknown;
+    hours_source?: unknown;
+    hours_updated_at?: unknown;
   };
   // Keep google_photo_url (the single hero); drop the heavy arrays /
   // detail-only text the Search & Saved cards never render.
+  //
+  // Also drop the provenance + hours-metadata block. These seven fields
+  // are re-DERIVED at render time on the place-detail page (which uses
+  // the full @/lib/loaders/places loader, not this slim bundle) by
+  // stampPlaceProvenance / applyEnrichment — no client place surface
+  // (map, search, ⌘K, Saved, funnel, radius, the by-slugs hydration)
+  // reads them off a slim record. Dropping them here trims ~465 KB raw /
+  // ~28 KB gzip off the bundle AND off every /api/places/by-slugs payload.
+  // (Audited 2026-06-17; grepped every clientPlaces/clientPlaceBySlug
+  // consumer + every place-card component.) Note last_verified_at is NOT
+  // dropped — PlaceSheet's FreshnessChip reads it from the slim record.
   const {
     google_photos: _gp,
     google_hours: _gh,
     review_snippet: _rs,
     review_author: _ra,
+    source_url: _su,
+    license: _lic,
+    source_id: _sid,
+    confidence: _conf,
+    first_seen_at: _fsa,
+    hours_source: _hs,
+    hours_updated_at: _hua,
     ...rest
   } = d;
   void _gp; void _gh; void _rs; void _ra;
+  void _su; void _lic; void _sid; void _conf; void _fsa; void _hs; void _hua;
   return rest;
 });
 
