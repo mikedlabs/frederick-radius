@@ -173,7 +173,7 @@ export default function AmenitiesPage() {
                     <span
                       className="inline-flex h-7 w-7 items-center justify-center rounded-full"
                       style={{
-                        background: "var(--app-surface-2, rgba(168,70,44,0.08))",
+                        background: "var(--app-brand-tint-6)",
                         color: "var(--app-brand)",
                       }}
                       aria-hidden
