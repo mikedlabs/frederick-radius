@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Settings, Mail } from "lucide-react";
 import SavedList from "@/components/saved/SavedList";
+import RadiusPointsCard from "@/components/saved/RadiusPointsCard";
 import NotificationsNudge from "@/components/pwa/NotificationsNudge";
 import PageBloom from "@/components/ui/PageBloom";
 import { getServerUser } from "@/lib/auth";
@@ -61,6 +62,10 @@ export default async function MyRadiusPage() {
           a standalone RecentlyViewedRail here — that double-rendered the
           section, with two headers and two Clear buttons on every visit. */}
       <SavedList />
+
+      {/* Radius Points placeholder — below the saved content (saved value
+          first). Honest "coming soon" marker for the contributions layer. */}
+      <RadiusPointsCard />
 
       {/* Anonymous-only sign-in CTA, demoted BELOW the saved content
           (June-9 review §15: a Saved page must open on saved value, not
