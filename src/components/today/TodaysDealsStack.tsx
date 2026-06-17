@@ -5,7 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Martini, Beer, Wine, Utensils, Pizza, Coffee, Croissant, ChevronDown, type LucideIcon } from "lucide-react";
 import type { TodaysDeal } from "@/lib/loaders/todaysDeals";
-import { dealHook } from "@/lib/happyHourDeal";
+import { splitDeal } from "@/lib/happyHourDeal";
 import FieldStamp from "@/components/ui/FieldStamp";
 
 /** Happy-hour-vibe glyph keyed to category — a drink or a plate, never a tag. */
@@ -105,10 +105,11 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
           const ink = inkAt(i);
           const paper = paperAt(i);
           const file = `${wk}·${String(i + 1).padStart(2, "0")}`;
-          // The deal headline pulled from the offer text ("50% OFF", "$8"),
-          // struck on the colored filing band as the glanceable hook. Falls
-          // back to the file number when the offer carries no clean figure.
-          const hook = dealHook(d.offer);
+          // Split the offer into the headline hook ("50% OFF", "$8") and the
+          // rest (what you get). The hook is struck on the colored band; the
+          // body shows the rest, so the figure is never printed twice. Falls
+          // back to the file number + full offer when there's no clean figure.
+          const { hook, rest } = splitDeal(d.offer);
           return (
             <motion.li
               key={d.slug}
@@ -180,11 +181,12 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       style={{ opacity: 0.6 }}
                     />
 
-                    {/* THE DEAL in full — the band shows the hook, the body
-                        carries the whole offer (no clamp), set a touch larger
-                        and airier so the card reads premium. pr clears the seal. */}
+                    {/* WHAT YOU GET — the band shows the deal figure, so the
+                        body carries the rest (the figure stripped out, no
+                        double), set a touch larger and airier so the card
+                        reads premium. pr clears the seal. */}
                     <p className="pr-12 text-[15.5px] font-medium leading-relaxed" style={{ color: "var(--app-ink)" }}>
-                      {d.offer}
+                      {rest}
                     </p>
 
                     {/* Supporting detail — WHEN (the actionable time) + WHERE. */}

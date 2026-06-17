@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dealHook } from "@/lib/happyHourDeal";
+import { dealHook, splitDeal } from "@/lib/happyHourDeal";
 
 // The deal hook is the AMOUNT OFF shown as a hero beside the venue name. It
 // must only ever surface a number that is literally in the verified deal text
@@ -54,5 +54,41 @@ describe("dealHook", () => {
     expect(dealHook("$10 off bottles")).toBe("$10 OFF");
     expect(dealHook("Pints from $5.00")).toBe("FROM $5");
     expect(dealHook("$2.50 drafts")).toBe("$2.50");
+  });
+});
+
+describe("splitDeal", () => {
+  it("strips the hook's figure from the body so it's never shown twice", () => {
+    expect(splitDeal("$8 Smoked Bourbon Old Fashioneds on Wednesdays."))
+      .toEqual({ hook: "$8", rest: "Smoked Bourbon Old Fashioneds on Wednesdays." });
+    expect(splitDeal("$17 BBQ rib dinner."))
+      .toEqual({ hook: "$17", rest: "BBQ rib dinner." });
+  });
+
+  it("removes a mid-sentence percentage, not just a leading one", () => {
+    expect(splitDeal("Wine Wednesday: 15% off all bottles of wine."))
+      .toEqual({ hook: "15% OFF", rest: "Wine Wednesday: all bottles of wine." });
+  });
+
+  it("handles half-price phrasing and sentence-cases the remainder", () => {
+    expect(splitDeal("1/2 price wine by the bottle, every Wednesday."))
+      .toEqual({ hook: "50% OFF", rest: "Wine by the bottle, every Wednesday." });
+  });
+
+  it("leaves non-hook figures in the body (only the shown figure is stripped)", () => {
+    // hook is the percentage; the unrelated "$4" price stays in the rest.
+    const { hook, rest } = splitDeal("Tue $4 craft pints and 25% off crab legs.");
+    expect(hook).toBe("25% OFF");
+    expect(rest).toContain("$4 craft pints");
+    expect(rest).not.toContain("25%");
+  });
+
+  it("returns the full offer when there's no figure", () => {
+    expect(splitDeal("Food and drink specials at the bar."))
+      .toEqual({ hook: null, rest: "Food and drink specials at the bar." });
+  });
+
+  it("keeps the full offer rather than a stub if stripping guts it", () => {
+    expect(splitDeal("$5").rest).toBe("$5");
   });
 });
