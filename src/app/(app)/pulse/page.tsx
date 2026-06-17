@@ -56,7 +56,7 @@ import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
-import LiveTransitPill from "@/components/transit/LiveTransitPill";
+import LiveTransitBoard from "@/components/transit/LiveTransitBoard";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
 import WeatherHero from "@/components/today/WeatherHero";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -636,8 +636,6 @@ export default async function PulsePage({
             <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
             Refreshed {nowClock()} · auto-updates every couple of minutes
           </p>
-          {/* Live "what's moving" — TransIT buses on the road right now. */}
-          <div className="pt-1.5"><LiveTransitPill /></div>
         </div>
       </header>
 
@@ -646,6 +644,12 @@ export default async function PulsePage({
           (the six operational feeds + Rivers). Police stays a quiet card
           below (no feed to count); News + Scanner too. */}
       <PulseDashboard tiles={pulseTiles} initialOpen={openParam} />
+
+      {/* ── What's moving — the live TransIT system board. The flat "N buses
+          moving" pill, made visual: real bus positions + headings on a county
+          map, refreshed every 20s. The live, free layer Google's transit tab
+          can't match here. */}
+      <LiveTransitBoard />
 
       {/* ── Active sections only ──────────────────────────────── */}
       {/* Desktop multi-column: at lg+ the operational sections fall
