@@ -48,14 +48,44 @@ describe("normalizeCity", () => {
     expect(normalizeCity("  Downtown   Frederick ")).toBe("Frederick");
   });
 
-  it("leaves real cities untouched", () => {
+  it("repairs case variants of known cities", () => {
+    expect(normalizeCity("woodsboro")).toBe("Woodsboro");
+    expect(normalizeCity("urbana")).toBe("Urbana");
+    expect(normalizeCity("walkersville")).toBe("Walkersville");
+    expect(normalizeCity("thurmont")).toBe("Thurmont");
+  });
+
+  it("fixes abbreviations and misspellings", () => {
+    expect(normalizeCity("Mt Airy")).toBe("Mount Airy");
+    expect(normalizeCity("Mt. Airy")).toBe("Mount Airy");
+    expect(normalizeCity("Fredrick")).toBe("Frederick");
+  });
+
+  it("replaces non-city junk with the municipality-derived postal city", () => {
+    expect(normalizeCity("MD", "middletown")).toBe("Middletown");
+    expect(normalizeCity("Frederick County", "jefferson")).toBe("Jefferson");
+    expect(normalizeCity("315", "frederick")).toBe("Frederick");
+    expect(normalizeCity("129 W Patrick St", "frederick")).toBe("Frederick");
+    expect(normalizeCity("Frederick County", "ijamsville")).toBe("Ijamsville");
+    // "frederick" muni -> postal "Frederick", NOT the editorial "Downtown Frederick".
+    expect(normalizeCity("MD", "frederick")).toBe("Frederick");
+  });
+
+  it("leaves junk alone when there's no municipality to fall back on", () => {
+    expect(normalizeCity("MD")).toBe("MD");
+    expect(normalizeCity("315")).toBe("315");
+  });
+
+  it("leaves real cities (incl. unlisted localities) untouched", () => {
     expect(normalizeCity("Frederick")).toBe("Frederick");
-    expect(normalizeCity("Thurmont")).toBe("Thurmont");
     expect(normalizeCity("Mount Airy")).toBe("Mount Airy");
+    expect(normalizeCity("New Market")).toBe("New Market");
+    expect(normalizeCity("Rosemont", "rosemont")).toBe("Rosemont");
     expect(normalizeCity("")).toBe("");
   });
 
   it("is idempotent", () => {
     expect(normalizeCity(normalizeCity("Downtown Frederick"))).toBe("Frederick");
+    expect(normalizeCity(normalizeCity("woodsboro"))).toBe("Woodsboro");
   });
 });

@@ -42,24 +42,62 @@ export function normalizePlaceName(raw: string): string {
 /**
  * Postal-city normalization for the raw `city` field.
  *
- * Some enriched records carry an EDITORIAL label in `city` ("Downtown
- * Frederick") instead of the actual postal city. That label belongs on the
- * municipality NAME (MUNICIPALITY_BY_SLUG["frederick"].name is "Downtown
- * Frederick"), not on `city` — and it's factually wrong for the many
- * City-of-Frederick places that aren't downtown (addresses on Buckeystown
- * Pike, Spectrum Dr, W Patrick St, etc.). The postal city is "Frederick".
+ * Enrichment leaves three classes of mess in `city`, which fragment any
+ * by-city grouping and read as sloppy:
+ *   1. an EDITORIAL label ("Downtown Frederick") that belongs on the
+ *      municipality NAME, not the postal city, and is wrong for the many
+ *      City-of-Frederick places that aren't downtown — postal city is
+ *      "Frederick";
+ *   2. case + spelling variants ("woodsboro", "urbana", "Mt Airy",
+ *      "Fredrick");
+ *   3. non-city junk ("MD", "Frederick County", "315", "129 W Patrick St").
  *
- * Folding it here makes the `city` field consistent (it was split ~222
- * "Downtown Frederick" / ~644 "Frederick") and honest, while every surface
- * that wants the editorial label keeps reading it from the municipality name
- * (todaysDeals / happy-hour both do), which is untouched. Runs in the loader
- * BEFORE human patches, so a curated city override would still win.
+ * This repairs all three at the loader boundary so `city` is the consistent
+ * postal city. Surfaces that want the editorial label still read it from the
+ * municipality name (todaysDeals / happy-hour do), which is untouched. Runs
+ * BEFORE human patches, so a curated city override would win.
  */
+
+// The postal cities in/around Frederick County (12 municipalities + Urbana),
+// used to repair case variants back to canonical Title Case.
+const CANONICAL_CITIES = [
+  "Frederick", "Thurmont", "Brunswick", "New Market", "Walkersville", "Middletown",
+  "Mount Airy", "Emmitsburg", "Myersville", "Woodsboro", "Burkittsville", "Urbana",
+];
+const CANON_BY_LC = new Map(CANONICAL_CITIES.map((c) => [c.toLowerCase(), c]));
+
+// Editorial / abbreviation / misspelling folds (keyed lowercased), tried first.
 const CITY_FOLDS: Record<string, string> = {
   "downtown frederick": "Frederick",
+  "fredrick": "Frederick",
+  "mt airy": "Mount Airy",
+  "mt. airy": "Mount Airy",
 };
-export function normalizeCity(raw: string): string {
+
+// Values that are never a city — a bare state code, a county, or anything that
+// starts with a number (a bare number or a street address). When we see one,
+// the place's municipality is the reliable source.
+function looksLikeJunkCity(t: string): boolean {
+  return /^[A-Z]{2}$/.test(t) || /\bcounty\b/i.test(t) || /^\d/.test(t);
+}
+
+// The municipality slug IS the postal city (Title-cased) for every town,
+// including "frederick" -> "Frederick" (the editorial "Downtown Frederick"
+// lives on the NAME, not here). "new-market" -> "New Market".
+function cityFromMunicipality(slug: string): string {
+  return slug
+    .split("-")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
+export function normalizeCity(raw: string, municipalitySlug?: string): string {
   if (!raw) return raw;
   const t = raw.replace(/\s+/g, " ").trim();
-  return CITY_FOLDS[t.toLowerCase()] ?? t;
+  const lc = t.toLowerCase();
+  if (CITY_FOLDS[lc]) return CITY_FOLDS[lc];
+  const canon = CANON_BY_LC.get(lc);
+  if (canon) return canon;
+  if (municipalitySlug && looksLikeJunkCity(t)) return cityFromMunicipality(municipalitySlug);
+  return t;
 }
