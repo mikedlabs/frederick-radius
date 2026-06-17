@@ -128,19 +128,19 @@ async function weatherFragment(): Promise<string | null> {
   // Monocacy, Baker Park are the recurring proper nouns. Each
   // fragment is short enough to glue to the rest of the briefing
   // with " · " on a phone line.
-  if (isRaining) return "raining now — duck into a Market Street cafe";
+  if (isRaining) return "raining now, the Market Street cafes are cozy";
   if (hoursToRain !== null && hoursToRain <= 2) {
-    return `rain in ~${hoursToRain}h — finish on Market Street before it lands`;
+    return `rain in ~${hoursToRain}h, Market Street stays dry under the awnings`;
   }
   // Muggy heuristic: warm + cloudy/overcast/hazy in summer.
   if (temp >= 78 && /cloud|overcast|haze|fog|humid/i.test(cond)) {
-    return "muggy — Carroll Creek's shaded paths help by 4";
+    return "muggy, Carroll Creek's shaded paths help by 4";
   }
   if (temp <= 45 && /clear|sunny|fair/i.test(cond)) {
-    return "cold and clear — Catoctin trails will be photographer-quiet";
+    return "cold and clear, Catoctin trails will be photographer-quiet";
   }
   if (temp >= 60 && temp <= 80 && /clear|sunny|fair|partly/i.test(cond)) {
-    return "patio weather — Carroll Creek's full of it";
+    return "patio weather, Carroll Creek's full of it";
   }
   return null;
 }

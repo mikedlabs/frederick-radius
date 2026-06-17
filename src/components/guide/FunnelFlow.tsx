@@ -561,23 +561,18 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
                 initial={reduce ? false : "hidden"}
                 animate="show"
               >
-                {/* Best match — one strong lead. The accent tick + a soft
-                    colored glow beneath the card make it read as CHOSEN, not
-                    just the first row of a list. */}
+                {/* The lead — the top of the current sort, shown as a fuller
+                    card. No "best" verdict and no chosen-glow: it's the first
+                    of an honest ranked list, not the app's pick. */}
                 <motion.section variants={reduce ? undefined : tileItem}>
-                  <SectionLabel accent={resultColor}>Best match</SectionLabel>
-                  <div
-                    className="rounded-[var(--app-radius-lg)]"
-                    style={{ boxShadow: `0 16px 36px -20px color-mix(in srgb, ${resultColor} 60%, transparent)` }}
-                  >
-                    <AnswerLead place={results[0]} />
-                  </div>
+                  <SectionLabel>Worth your time</SectionLabel>
+                  <AnswerLead place={results[0]} />
                 </motion.section>
 
-                {/* Also good — a few supporting picks. */}
+                {/* The rest of the ranked list. */}
                 {results.length > 1 && (
                   <motion.section variants={reduce ? undefined : tileItem}>
-                    <SectionLabel>Also good</SectionLabel>
+                    <SectionLabel>More options</SectionLabel>
                     <ul className="space-y-3">
                       {results.slice(1, 4).map((p) => (
                         <li key={p.slug}>
@@ -612,11 +607,11 @@ export default function FunnelFlow({ liveShows = [], hideHeader = false }: { liv
                   style={{ color: "var(--app-ink-3)" }}
                 >
                   {sort === "nearest"
-                    ? "Closest first. Tap any for hours, photos & reviews."
+                    ? "Closest first."
                     : sort === "rated"
-                      ? "Highest-rated first (enough reviews to be real). Tap any for hours, photos & reviews."
+                      ? "Highest-rated first (enough reviews to be real)."
                       : geo.status === "granted"
-                        ? "Ranked by what's both nearby & well-loved. Tap any for hours, photos & reviews."
+                        ? "Ranked by what's both nearby & well-loved."
                         : "Sorted by rating. Turn on location to sort by distance."}
                 </motion.p>
               </motion.div>
@@ -681,7 +676,7 @@ function Grid({ children }: { children: ReactNode }) {
   );
 }
 
-// A calm result-section heading — Best match / Also good / Keep looking.
+// A calm result-section heading — Worth your time / More options / Keep looking.
 // Deliberately NOT a tiny uppercase eyebrow; a confident sans label with an
 // optional count, so results read as curated blocks, not one long list. An
 // `accent` renders a colored tick (used on Best match) so the lead reads as
