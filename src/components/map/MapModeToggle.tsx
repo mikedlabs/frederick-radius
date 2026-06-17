@@ -6,10 +6,12 @@ import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 /**
  * MapModeToggle — the Nearby / Whole county pill at the top of /map.
  *
- * Radius mode is the default (the "soul of the map" per the May 2026
- * brand review). Browse stays available for the user who knows what
- * they're looking for AND doesn't want a fixed center — same map
- * data, no isochrone overlay, classic intent + time chips.
+ * Browse (Whole county) is the default landing — the clean full-map
+ * surface, no isochrone, no bottom sheet (the owner's "the map IS the
+ * page" direction). Radius ("Nearby") stays a deliberate opt-in: the
+ * guided within-reach tool with its isochrone + control sheet. The May
+ * 2026 brand review had made radius the default ("soul of the map");
+ * this flips the landing to the clean map while keeping both modes.
  *
  * The labels are TASK language, not architecture: "Radius | Browse"
  * named our two internal modes and made the user decode them. "Nearby"
