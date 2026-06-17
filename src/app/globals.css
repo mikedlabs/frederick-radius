@@ -83,6 +83,7 @@
      content card. The new red is unambiguously stop-sign / alarm. */
   --app-danger: #B4231E;
   --app-info: #2F5470;
+  --app-civic: #7E2C6F;           /* official / government provenance mark (SourceBadge "Official"); AA on cream */
 
   /* OPEN-STATE SEMANTIC SET (Premium Overhaul, identity pillar). Open is
      a state, not an alert, so closed is a muted neutral, never red. The
