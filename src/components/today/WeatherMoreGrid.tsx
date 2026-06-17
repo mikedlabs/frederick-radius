@@ -151,6 +151,7 @@ export default async function WeatherMoreGrid() {
           eyebrowIcon={<WindIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
         >
           <p className="font-serif text-[22px] font-semibold leading-none tabular-nums">
+            {/* eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose */}
             {windSpeedText || (metar?.windSpeedKts != null ? `${metar.windSpeedKts} kt` : "—")}
           </p>
           <p className="mt-1 text-[11px] uppercase tracking-wide opacity-70">

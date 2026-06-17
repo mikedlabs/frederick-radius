@@ -7,7 +7,7 @@ import MonthGrid from "@/components/event/MonthGrid";
 export const metadata: Metadata = {
   alternates: { canonical: "/events/calendar" },
   title: "Events Calendar",
-  description: "Every Frederick County event — municipal, live feeds, and hand-picked — on one calendar.",
+  description: "Every Frederick County event on one calendar: municipal, live feeds, and hand-picked.",
 };
 
 export const revalidate = 1800;
@@ -52,7 +52,7 @@ export default async function CalendarPage({
           </Link>
         </div>
         <p className="text-xs" style={{ color: "var(--app-ink-3)" }}>
-          Municipal calendars, live partner feeds, and hand-picked events — combined. Tap any day.
+          Municipal calendars, live partner feeds, and hand-picked events, combined. Tap any day.
         </p>
       </header>
 

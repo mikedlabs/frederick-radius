@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Terms",
   description:
-    "Terms of use for Frederick Radius — covers acceptable use, copyright, anti-scraping, and the contact path for licensing requests.",
+    "Terms of use for Frederick Radius: covers acceptable use, copyright, anti-scraping, and the contact path for licensing requests.",
 };
 
 /**
@@ -61,7 +61,7 @@ export default function TermsPage() {
               <strong>Don&rsquo;t scrape the site or its APIs.</strong> The
               curated place / event / amenity data took real work to clean and
               verify. If you need bulk access for a legitimate project, email
-              and ask — we&rsquo;re probably willing to share with attribution
+              and ask, we&rsquo;re probably willing to share with attribution
               and rate limits.
             </li>
             <li>
@@ -111,7 +111,7 @@ export default function TermsPage() {
           </h2>
           <p>
             We work hard to keep place and event data current, but information
-            does drift — businesses close, hours change, events get rescheduled.
+            does drift: businesses close, hours change, events get rescheduled.
             Always confirm time-sensitive details directly with the place or
             event organizer before showing up. If something is wrong,{" "}
             <Link
@@ -121,7 +121,7 @@ export default function TermsPage() {
             >
               tell us
             </Link>{" "}
-            — corrections land in the next data refresh.
+            and corrections land in the next data refresh.
           </p>
         </div>
 

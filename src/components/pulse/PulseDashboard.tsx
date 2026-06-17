@@ -85,7 +85,7 @@ export default function PulseDashboard({
   return (
     <>
       <section
-        aria-label="County status — tap any tile for detail"
+        aria-label="County status: tap any tile for detail"
         className="grid grid-cols-2 gap-2.5 sm:grid-cols-3"
       >
         {tiles.map((t) => {

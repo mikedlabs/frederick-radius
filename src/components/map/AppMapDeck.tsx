@@ -790,7 +790,7 @@ export default function AppMapDeck({
                     }}
                     aria-pressed={soon ? undefined : on}
                     disabled={soon}
-                    title={soon ? `${g.label} — coming soon` : undefined}
+                    title={soon ? `${g.label}: coming soon` : undefined}
                     className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition active:scale-[0.96] disabled:cursor-default"
                     style={{
                       background: on ? "var(--app-cool)" : "var(--app-bg-elevated)",
@@ -821,7 +821,7 @@ export default function AppMapDeck({
             )}
           </ul>
             <p className="px-1 pt-1 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-              Pick what you need — it appears on the map and folds into your Radius results.
+              Pick what you need. It appears on the map and folds into your Radius results.
             </p>
           </div>
         )}

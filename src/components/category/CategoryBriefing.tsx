@@ -52,7 +52,7 @@ export default function CategoryBriefing({
           className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[12px]"
           style={{ color: "var(--app-ink-3)" }}
         >
-          <span>Using Downtown Frederick as the default — set your town for nearby results.</span>
+          <span>Using Downtown Frederick as the default. Set your town for nearby results.</span>
           <SetTownInline municipalities={municipalities} />
         </div>
       )}

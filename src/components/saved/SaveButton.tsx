@@ -85,7 +85,7 @@ export default function SaveButton({
           // instead of the routine acknowledgement, plus a longer
           // dwell so the user has time to read what just happened.
           toast.success("Your saved list starts here", {
-            description: "Save places you care about — find them all under Saved.",
+            description: "Save places you care about. Find them all under Saved.",
             duration: 5000,
             action: { label: "Undo", onClick: () => toggle() },
           });

@@ -115,7 +115,7 @@ export default async function DataHealth() {
         <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
           {dark === 0
             ? "Every keyed feed has its API key configured."
-            : "Dark feeds fail soft to empty — nothing breaks, but those layers stay blank until the key is set in the Vercel project env."}
+            : "Dark feeds fail soft to empty, nothing breaks, but those layers stay blank until the key is set in the Vercel project env."}
         </p>
 
         <div className="mt-3 space-y-2">

@@ -5,7 +5,7 @@ import RightNow from "@/components/now/RightNow";
 
 export const metadata: Metadata = {
   title: "Right now",
-  description: "Tap what you want — coffee, ice cream, food — and get the nearest one that's open.",
+  description: "Tap what you want: coffee, ice cream, food. Get the nearest one that's open.",
 };
 
 // open_status is time-sensitive: a cached page would say "open" after close.

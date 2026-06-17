@@ -46,7 +46,7 @@ export default async function WorthALook() {
                   href={`/places/${p.slug}`}
                   className="tactile tactile-interactive group relative flex h-full w-[152px] flex-col gap-2 overflow-hidden rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3"
                   style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
-                  aria-label={`${p.name} — ${cat?.name ?? p.category}`}
+                  aria-label={`${p.name}, ${cat?.name ?? p.category}`}
                 >
                   {/* Category color band — thin top edge so the eye can
                       sort the rail by type without reading. */}

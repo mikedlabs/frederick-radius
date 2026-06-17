@@ -144,7 +144,7 @@ export default function RightNow({
             What do you want right now?
           </h1>
           <p className="text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-            Tap it — we&rsquo;ll find the nearest one that&rsquo;s open.
+            Tap it. We&rsquo;ll find the nearest one that&rsquo;s open.
           </p>
         </header>
 
@@ -235,7 +235,7 @@ export default function RightNow({
           <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
           <span className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             {state.status === "denied" || state.status === "unavailable"
-              ? "Showing Downtown Frederick — turn on location for what's nearest to you."
+              ? "Showing Downtown Frederick. Turn on location for what's nearest to you."
               : "Use my location to see what's nearest to where you're standing."}
           </span>
         </button>

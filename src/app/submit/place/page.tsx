@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   // via metadata.title.template — including it here would double-suffix
   // ("Submit a place · Frederick Radius · Frederick Radius").
   title: "Submit a place",
-  description: "Know a Frederick County place we're missing? Send it our way — we'll verify and add it.",
+  description: "Know a Frederick County place we're missing? Send it our way. We'll verify and add it.",
 };
 
 export default function SubmitPlacePage() {

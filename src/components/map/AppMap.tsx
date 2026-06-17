@@ -1068,7 +1068,7 @@ export default function AppMap({
               The map is temporarily unavailable
             </p>
             <p className="max-w-xs text-xs leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Every place in the county is still listed below — the map view will return shortly.
+              Every place in the county is still listed below. The map view will return shortly.
             </p>
             <button
               type="button"

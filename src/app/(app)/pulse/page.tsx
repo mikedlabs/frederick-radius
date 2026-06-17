@@ -81,7 +81,7 @@ export const metadata: Metadata = {
   // promoted back into nav.
   robots: { index: false, follow: true },
   title: "Live Pulse",
-  description: "Live traffic, power, school, and 311 status across Frederick County — one screen instead of four government websites.",
+  description: "Live traffic, power, school, and 311 status across Frederick County: one screen instead of four government websites.",
 };
 
 export const revalidate = 120;
@@ -235,7 +235,7 @@ export default async function PulsePage({
       : `${totalActive} situations across the county`;
   const heroSub = allClear
     ? "No weather alerts, traffic, outages, or school alerts right now."
-    : "Weather alerts, traffic, power, schools, fire & rescue — combined from six county and state feeds.";
+    : "Weather alerts, traffic, power, schools, fire & rescue, combined from six county and state feeds.";
 
   const pct =
     outages.total_served > 0
@@ -488,7 +488,8 @@ export default async function PulsePage({
                           ? `${s.gageHeightFt.toFixed(2)} ft`
                           : s.streamflowCfs != null
                             ? `${s.streamflowCfs.toLocaleString()} ft³/s`
-                            : "—"}
+                            : // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose
+                              "—"}
                         {s.observedAt && (
                           <span className="ml-1.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
                             {timeAgo(s.observedAt)}
@@ -853,7 +854,7 @@ export default async function PulsePage({
             <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           </a>
           <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-            Calls for service are not confirmed crimes — they reflect
+            Calls for service are not confirmed crimes. They reflect
             requests for police response. Source: Frederick Police
             Department via CommunityCrimeMap.
           </p>
@@ -923,7 +924,12 @@ export default async function PulsePage({
           />
           <CanonTile
             icon={Bus}
-            value={routesCount > 0 ? routesCount.toLocaleString() : "—"}
+            value={
+              routesCount > 0
+                ? routesCount.toLocaleString()
+                : // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose
+                  "—"
+            }
             label="TransIT routes"
             note="County bus network, every variation"
             accent="var(--app-cool)"
@@ -959,7 +965,7 @@ export default async function PulsePage({
         }}
       >
         <p className="leading-relaxed">
-          Informational only — not a substitute for 911 or official
+          Informational only, not a substitute for 911 or official
           emergency broadcasts.
         </p>
         <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">

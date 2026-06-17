@@ -99,7 +99,7 @@ export default function StayDeepLinks({
             className="mt-1 text-[13px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
-            Tap a platform — search opens pre-filtered to {townName}, Maryland.
+            Tap a platform. Search opens pre-filtered to {townName}, Maryland.
             We don&apos;t take a cut (yet); these are clean search links.
           </p>
         </div>
@@ -148,7 +148,7 @@ export default function StayDeepLinks({
         style={{ color: "var(--app-ink-3)" }}
       >
         A hand-picked &ldquo;Where to stay in {townName}&rdquo; list is in
-        the works — local B&amp;Bs, downtown rentals, the spots that don&apos;t
+        the works: local B&amp;Bs, downtown rentals, the spots that don&apos;t
         always surface on the big platforms.
       </p>
     </section>

@@ -180,6 +180,7 @@ export default async function WeeklyForecast() {
                 className="text-right text-[13px] font-semibold tabular-nums"
                 style={{ color: "var(--app-ink-3)" }}
               >
+                {/* eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose */}
                 {d.lo != null ? `${d.lo}°` : "—"}
               </span>
 
@@ -220,6 +221,7 @@ export default async function WeeklyForecast() {
                 className="text-right text-[13px] font-semibold tabular-nums"
                 style={{ color: "var(--app-ink)" }}
               >
+                {/* eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose */}
                 {d.hi != null ? `${d.hi}°` : "—"}
               </span>
 

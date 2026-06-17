@@ -73,7 +73,7 @@ export default function CostTransparency() {
             className="mt-1 text-[13px] leading-relaxed"
             style={{ color: "var(--app-ink-2)" }}
           >
-            Frederick Radius runs on a handful of services — most of
+            Frederick Radius runs on a handful of services, most of
             them on free tiers right now. The honest numbers, updated
             when bills land:
           </p>
@@ -190,7 +190,7 @@ export default function CostTransparency() {
               <strong style={{ color: "var(--app-ink)" }}>
                 ${formatThousands(buildLow)}k–${formatThousands(buildHigh)}k
               </strong>
-              . It was donated to the project — Frederick Radius
+              . It was donated to the project. Frederick Radius
               doesn&apos;t take ad revenue or investor money.
             </p>
           </div>
@@ -246,7 +246,7 @@ export default function CostTransparency() {
         >
           Hours are owner-estimated, not pulled from a time tracker.
           Rates reflect 2026 mid-Atlantic agency norms. The donated-
-          labor framing is intentional — this number is here so you
+          labor framing is intentional: this number is here so you
           can see real work went in, not to suggest debt.
         </p>
       </div>

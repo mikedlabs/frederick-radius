@@ -123,7 +123,7 @@ export default function MyRadiusButton({
         onMouseLeave={() => setHover(false)}
         disabled={busy}
         aria-pressed={true}
-        aria-label={`Saved — tap to remove ${name}`}
+        aria-label={`Saved. Tap to remove ${name}`}
         className="tactile tactile-interactive inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold transition active:scale-[0.96] disabled:opacity-60"
         style={{
           borderColor: showRemove ? "var(--app-danger)" : "var(--app-border)",

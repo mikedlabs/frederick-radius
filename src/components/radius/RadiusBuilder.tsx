@@ -791,14 +791,14 @@ export default function RadiusBuilder({
           aria-busy={geoStatus === "loading" || undefined}
           aria-label={
             geoStatus === "denied"
-              ? "Location blocked — enable in browser settings"
+              ? "Location blocked. Enable in browser settings."
               : myLoc
                 ? "Using your location"
                 : "Center on your location"
           }
           title={
             geoStatus === "denied"
-              ? "Location blocked — enable in browser settings"
+              ? "Location blocked. Enable in browser settings."
               : myLoc
                 ? "Using your location"
                 : "Center on your location"
@@ -946,7 +946,7 @@ export default function RadiusBuilder({
                 You&rsquo;re about {distMi} mi outside Frederick County.
               </p>
               <p className="mt-0.5 text-[12px]" style={{ color: "var(--app-ink-2)" }}>
-                The whole app is built for the county. Closest town from you is {hit.municipality.name} &mdash; want to center there?
+                The whole app is built for the county. Closest town from you is {hit.municipality.name}. Want to center there?
               </p>
               <button
                 type="button"

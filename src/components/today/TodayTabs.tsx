@@ -143,7 +143,7 @@ export default function TodayTabs({
       ) : (
         <span>{todayEvents.length} in the next 24 hours</span>
       ),
-      empty: "Nothing on tonight's calendar yet. Open the planner — we'll build one from what's open and what's near you.",
+      empty: "Nothing on tonight's calendar yet. Open the planner. We'll build one from what's open and what's near you.",
       content: tonight.length === 0 ? null : (
         <ul className="space-y-2">
           {tonight.map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}
@@ -159,7 +159,7 @@ export default function TodayTabs({
       href: "/events",
       hrefLabel: "All events",
       meta: <span>Friday evening through Sunday</span>,
-      empty: "Nothing booked for the weekend yet. Most Frederick events post late — check back Thursday, or try tonight.",
+      empty: "Nothing booked for the weekend yet. Most Frederick events post late. Check back Thursday, or try tonight.",
       content: weekendEvents.length === 0 ? null : (
         <ul className="space-y-2">
           {weekendEvents.slice(0, 6).map((e) => <li key={`${e.slug}-${e.starts_at}`}><EventCard event={e} /></li>)}

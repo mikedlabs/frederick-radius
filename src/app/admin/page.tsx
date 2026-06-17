@@ -63,7 +63,7 @@ export default function AdminHome() {
           Data sources
         </h2>
         <ul className="space-y-1.5">
-          <SourceRow label="Supabase Postgres (recommended)" wired={hasDb} setupDoc="TOOLS.md" purpose="DB + auth + storage + realtime + pgvector. Switch from Neon — see TOOLS.md." />
+          <SourceRow label="Supabase Postgres (recommended)" wired={hasDb} setupDoc="TOOLS.md" purpose="DB + auth + storage + realtime + pgvector. Switch from Neon. See TOOLS.md." />
           <SourceRow label="Google Places API" wired={hasGooglePlaces} setupDoc="GOOGLE_PLACES_API.md" purpose="Authoritative operational status, hours, ratings, photos." />
           <SourceRow label="Yelp Fusion" wired={hasYelp} setupDoc="SETUP_KEYS.md" purpose="Backup hours + reviews enrichment." />
           <SourceRow label="AirNow AQI" wired={hasAirnow} setupDoc="SETUP_KEYS.md" purpose="Real-time air-quality badge on Today." />
@@ -89,7 +89,7 @@ export default function AdminHome() {
 
       <section className="mt-7 space-y-2">
         <h2 className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-          Curated places — operational status
+          Curated places: operational status
         </h2>
         <ul className="space-y-1">
           {PLACES.map((p) => (

@@ -215,7 +215,7 @@ export default function WelcomeFlow() {
                 Yes, I live here
               </span>
               <span className="block text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-                Resident view — familiar names, no orientation copy
+                Resident view: familiar names, no orientation copy
               </span>
             </span>
             <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />
@@ -245,7 +245,7 @@ export default function WelcomeFlow() {
                 Just visiting
               </span>
               <span className="block text-[13px]" style={{ color: "var(--app-ink-3)" }}>
-                Visitor view — context-rich, a little more orientation
+                Visitor view: context-rich, a little more orientation
               </span>
             </span>
             <ArrowRight className="h-4 w-4 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-ink-3)" }} aria-hidden />

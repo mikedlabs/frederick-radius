@@ -106,6 +106,7 @@ export default function SortDropdown<K extends string = string>({
         <span className="hidden sm:inline" style={{ color: "var(--app-ink-3)" }}>
           {label}:
         </span>
+        {/* eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose */}
         <span>{current?.label ?? "—"}</span>
         <ChevronDown
           className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`}
