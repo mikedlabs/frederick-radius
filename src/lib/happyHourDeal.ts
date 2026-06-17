@@ -44,12 +44,21 @@ export function dealHook(deal: string | null | undefined): string | null {
   for (const m of t.matchAll(DOLLAR_OFF_RE)) off = Math.max(off, Number(m[1]));
   if (off > 0) return `${money(String(off))} OFF`;
 
-  // 3. A concrete price point — the cheapest named DRINK-anchor price reads as
-  //    the hook. Floor at $2 so a 99-cent wing or $1 oyster (a food side, not
-  //    the headline pour) never becomes a misleading "FROM $0.99".
-  let min = Infinity;
-  for (const m of t.matchAll(DOLLAR_PRICE_RE)) min = Math.min(min, Number(m[1]));
-  if (Number.isFinite(min) && min >= 2) return `FROM ${money(String(min))}`;
+  // 3. A concrete price point. Collect the named prices, floored at $2 so a
+  //    99-cent wing or $1 oyster (a food side, not the headline) never becomes
+  //    the hook. The cheapest is the figure; "FROM" is added only when it's
+  //    genuinely a range — 2+ distinct prices, or the text itself says "from"
+  //    — so a single "$17 rib dinner" reads "$17", not a misleading "FROM $17".
+  const prices = new Set<number>();
+  for (const m of t.matchAll(DOLLAR_PRICE_RE)) {
+    const n = Number(m[1]);
+    if (n >= 2) prices.add(n);
+  }
+  if (prices.size > 0) {
+    const min = Math.min(...prices);
+    const ranged = prices.size > 1 || /\b(from|starting|starts? at|as low as)\b/i.test(t);
+    return ranged ? `FROM ${money(String(min))}` : money(String(min));
+  }
 
   // 4. No number we can stand behind.
   return null;

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Martini, Beer, Wine, Utensils, Pizza, Coffee, Croissant, ChevronDown, type LucideIcon } from "lucide-react";
 import type { TodaysDeal } from "@/lib/loaders/todaysDeals";
+import { dealHook } from "@/lib/happyHourDeal";
 import FieldStamp from "@/components/ui/FieldStamp";
 
 /** Happy-hour-vibe glyph keyed to category — a drink or a plate, never a tag. */
@@ -104,6 +105,10 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
           const ink = inkAt(i);
           const paper = paperAt(i);
           const file = `${wk}·${String(i + 1).padStart(2, "0")}`;
+          // The deal headline pulled from the offer text ("50% OFF", "$8"),
+          // struck on the colored filing band as the glanceable hook. Falls
+          // back to the file number when the offer carries no clean figure.
+          const hook = dealHook(d.offer);
           return (
             <motion.li
               key={d.slug}
@@ -140,12 +145,26 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
 
                 <div className="ml-[22px]">
                   {/* Solid filing-ink header band — the BUSINESS NAME reversed
-                      out, so a stack of overlapping cards reads as a row of
-                      labeled tabs (you see every venue at a glance). */}
-                  <div className="flex items-center gap-2 px-3 py-[7px]" style={{ background: ink }}>
+                      out (a stack of overlapping cards reads as a row of
+                      labeled tabs) with THE DEAL struck on the band as a
+                      reversed hook pill. A soft top-sheen gradient gives the
+                      tab depth. */}
+                  <div
+                    className="flex items-center gap-2 px-3 py-2"
+                    style={{ background: `linear-gradient(176deg, color-mix(in srgb, ${ink} 86%, #fff) 0%, ${ink} 64%)` }}
+                  >
                     <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: REVERSED }} />
-                    <span className="min-w-0 flex-1 truncate font-serif text-[14px] font-semibold tracking-[-0.01em]" style={{ color: REVERSED }}>{d.name}</span>
-                    <span className="font-mono text-[8px] font-bold uppercase tracking-[0.12em]" style={{ color: `color-mix(in srgb, ${REVERSED} 72%, transparent)` }}>No.&nbsp;{file}</span>
+                    <span className="min-w-0 flex-1 truncate font-serif text-[14.5px] font-semibold tracking-[-0.01em]" style={{ color: REVERSED }}>{d.name}</span>
+                    {hook ? (
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.03em] tabular-nums"
+                        style={{ background: "color-mix(in srgb, #fff 20%, transparent)", color: REVERSED, boxShadow: "inset 0 0 0 1px color-mix(in srgb, #fff 28%, transparent)" }}
+                      >
+                        {hook}
+                      </span>
+                    ) : (
+                      <span className="shrink-0 font-mono text-[8px] font-bold uppercase tracking-[0.12em]" style={{ color: `color-mix(in srgb, ${REVERSED} 72%, transparent)` }}>No.&nbsp;{file}</span>
+                    )}
                   </div>
 
                   <div className="relative px-3.5 pb-3.5 pt-2.5">
@@ -161,10 +180,10 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       style={{ opacity: 0.6 }}
                     />
 
-                    {/* THE DEAL — the headline. The venue now lives in the
-                        name band above, so the body leads straight with WHAT
-                        you get. pr to clear the wax seal. */}
-                    <p className="line-clamp-3 pr-12 text-[15px] font-medium leading-snug" style={{ color: "var(--app-ink)" }}>
+                    {/* THE DEAL in full — the band shows the hook, the body
+                        carries the whole offer (no clamp), set a touch larger
+                        and airier so the card reads premium. pr clears the seal. */}
+                    <p className="pr-12 text-[15.5px] font-medium leading-relaxed" style={{ color: "var(--app-ink)" }}>
                       {d.offer}
                     </p>
 
@@ -176,17 +195,20 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       </div>
                     )}
 
-                    {/* Buried local intel — park + a tip — only when fanned open. */}
+                    {/* The local intel — where to park + an insider tip — shown
+                        in FULL when the deck is fanned (the moat is the
+                        specifics, so no truncation). A ruled divider sets it
+                        apart as the "field notes" footer of the record. */}
                     {!stacked && (d.park || d.tip) && (
-                      <div className="mt-3 space-y-1.5 border-t pt-2.5" style={{ borderColor: `color-mix(in srgb, ${ink} 24%, transparent)` }}>
+                      <div className="mt-3 space-y-2 border-t pt-2.5" style={{ borderColor: `color-mix(in srgb, ${ink} 24%, transparent)` }}>
                         {d.park && (
-                          <p className="line-clamp-1 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                          <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                             <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: `color-mix(in srgb, ${ink} 75%, var(--app-ink-3))` }}>Park&nbsp;&nbsp;</span>
                             {d.park}
                           </p>
                         )}
                         {d.tip && (
-                          <p className="line-clamp-2 text-[11.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                          <p className="text-[12px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
                             <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[0.14em]" style={{ color: `color-mix(in srgb, ${ink} 75%, var(--app-ink-3))` }}>Tip&nbsp;&nbsp;</span>
                             {d.tip}
                           </p>
