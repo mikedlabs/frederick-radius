@@ -111,7 +111,15 @@ function FieldTag({
   );
 }
 
-export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNode }) {
+export default function CravingStrip({
+  locationSlot,
+  contextSlot,
+}: {
+  locationSlot?: ReactNode;
+  /** The thin "right now" contextual band (RightNowBand) — rides between the
+   *  "I want…" bar and the grid, self-hides when nothing's on. */
+  contextSlot?: ReactNode;
+}) {
   // The meal occasion happening right now (Frederick clock). The tile
   // auto-relabels Breakfast → Lunch → Dinner (weekend Brunch, late-night
   // after 10pm), so a person only ever sees the meal that's actually on, and
@@ -130,6 +138,9 @@ export default function CravingStrip({ locationSlot }: { locationSlot?: ReactNod
         </p>
         {locationSlot}
       </div>
+      {/* The "right now" contextual band (live music tonight, …) — a lighter
+          layer than the grid; self-hides when nothing's on. */}
+      {contextSlot}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {/* Meal occasion — the time-aware lead. Auto-selects the meal it is
             right now; opens the nearest spots OPEN for it (a clock fact, never
