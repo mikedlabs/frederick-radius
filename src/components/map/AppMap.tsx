@@ -778,7 +778,7 @@ export default function AppMap({
     const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates as [number, number];
     let next: { lng: number; lat: number; label: string; sub?: string } | null = null;
     if (f.layer.id === "clusters" || f.layer.id === "curated-clusters") {
-      next = { lng, lat, label: "A cluster of places", sub: "Zoom in to see them" };
+      next = { lng, lat, label: "A cluster of places" };
     } else if (f.layer.id === "curated-icons" || f.layer.id === "curated-hit") {
       const p = places.find((x) => x.slug === props.slug);
       if (p) next = { lng, lat, label: p.name, sub: CATEGORY_BY_SLUG[p.category]?.name };

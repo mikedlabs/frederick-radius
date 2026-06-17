@@ -37,8 +37,9 @@ function bandFor(h: number): Band {
 
 type Move = { eyebrow: string; title: string; sub: string; href: string; icon: LucideIcon };
 
-/** The single best move, by conditions then time-of-day. Confident,
- *  not cute — each one is a real thing to go do right now. */
+/** The single suggested move, by conditions then time-of-day. Calm,
+ *  not cute — each one is a real thing worth doing right now, framed as
+ *  a suggestion ("Right now" / "Tonight"), never an app verdict. */
 function bestMove(
   band: Band,
   condition: string,
@@ -53,7 +54,7 @@ function bestMove(
   // Bad weather wins over everything — send people somewhere dry/warm.
   if (wet) {
     return {
-      eyebrow: "Best move now",
+      eyebrow: "Right now",
       title: "Duck inside somewhere good",
       sub: "Rain's in play. A museum, a long coffee, a bookshop.",
       href: "/category/coffee",
@@ -62,7 +63,7 @@ function bestMove(
   }
   if (cold) {
     return {
-      eyebrow: "Best move now",
+      eyebrow: "Right now",
       title: "Warm up downtown",
       sub: "Cold out. Coffee, a cozy lunch, somewhere with a fire.",
       href: "/category/coffee",
@@ -72,7 +73,7 @@ function bestMove(
   // Evening: lead with tonight's headline event if there is one.
   if ((band === "evening" || band === "late") && tonightEvent) {
     return {
-      eyebrow: "Best move tonight",
+      eyebrow: "Tonight",
       title: tonightEvent.title,
       sub: tonightEvent.venue_name ? `Tonight at ${tonightEvent.venue_name}` : "Happening tonight nearby",
       href: `/events/${tonightEvent.slug}`,
@@ -81,7 +82,7 @@ function bestMove(
   }
   if (band === "evening" || band === "late") {
     return {
-      eyebrow: "Best move now",
+      eyebrow: "Right now",
       title: "Dinner & a walk downtown",
       sub: "Eat on Market Street, then stroll Carroll Creek.",
       href: "/category/eat",
@@ -90,7 +91,7 @@ function bestMove(
   }
   if (hot) {
     return {
-      eyebrow: "Best move now",
+      eyebrow: "Right now",
       title: "Chase the shade",
       sub: "Hot one. A creekside walk, a patio, somewhere cool.",
       href: "/map?mode=radius",
@@ -99,7 +100,7 @@ function bestMove(
   }
   if (band === "morning") {
     return {
-      eyebrow: "Best move now",
+      eyebrow: "Right now",
       title: "Coffee, then Carroll Creek",
       sub: "Good light for it. Grab a cup and walk the creek.",
       href: "/category/coffee",
@@ -108,7 +109,7 @@ function bestMove(
   }
   // Midday / afternoon, fair weather.
   return {
-    eyebrow: "Best move now",
+    eyebrow: "Right now",
     title: "Get outside while it's nice",
     sub: "Patio weather. A walk, a park, lunch out.",
     href: "/map?mode=radius",
