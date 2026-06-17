@@ -24,6 +24,7 @@ import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName } from "@/lib/format/placeName";
+import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
@@ -413,6 +414,11 @@ export type PlaceCardData = Place & PlaceEnriched & {
   distance_m?: number;
   /** "verified" = Google hours confirm open. "likely" = curated window. */
   open_confidence?: "verified" | "likely";
+  /** Has a VERIFIED Field Notes entry (happy hour / deal / parking / insider
+   *  tip) confirmed at the source. The moat. Precomputed in decoratePlace so
+   *  cards, popups, and the map filter read one flag without bundling
+   *  field-notes.json into the client. */
+  field_notes?: boolean;
 };
 
 /**
@@ -611,6 +617,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     // on, only from hours verified inside the freshness window.
     open_status: getOpenStatus(hours, { verified: mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) }, now),
     distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
+    field_notes: hasFieldNotes(p.slug),
   };
 }
 

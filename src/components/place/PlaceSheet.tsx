@@ -15,6 +15,7 @@ import GoogleHours from "./GoogleHours";
 import SaveButton from "@/components/saved/SaveButton";
 import ShareButton from "./ShareButton";
 import SourceBadge from "./SourceBadge";
+import FieldNotesCard from "./FieldNotesCard";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
@@ -391,6 +392,16 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
             <FreshnessChip iso={place.last_verified_at} />
           </div>
+
+        {/* The moat, surfaced where the tap lands: this place's VERIFIED Field
+            Notes (happy hour / deal / parking / insider), led high in the sheet
+            so the reason-to-open isn't buried on the detail page. Gated by the
+            precomputed flag so most places render nothing and leave no gap. */}
+        {place.field_notes && (
+          <div className="mt-4">
+            <FieldNotesCard slug={place.slug} />
+          </div>
+        )}
 
         {/* City of Frederick parcel context (zoning / land use / schools /
             election district) was removed from the discovery sheet — it read
