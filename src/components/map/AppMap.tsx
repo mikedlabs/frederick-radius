@@ -1068,16 +1068,25 @@ export default function AppMap({
               The map is temporarily unavailable
             </p>
             <p className="max-w-xs text-xs leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-              Every place in the county is still listed below. The map view will return shortly.
+              It should be back shortly. Reload, or browse every place in the county by list.
             </p>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="mt-1 rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
-            >
-              Reload the map
-            </button>
+            <div className="mt-1 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors hover:bg-[var(--app-bg-sunken)]"
+                style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
+              >
+                Reload the map
+              </button>
+              <a
+                href="/places"
+                className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-white"
+                style={{ background: "var(--app-brand-press)" }}
+              >
+                Browse all places
+              </a>
+            </div>
           </div>
         )}
         {geoMsg && (
