@@ -80,7 +80,11 @@ export default function CollapsibleDashSection({
       id={id}
       className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
       style={{
-        borderColor: "var(--app-border)",
+        // Explicit side colors (not the borderColor shorthand) so the left
+        // accent longhand below doesn't trip React's shorthand/longhand warn.
+        borderTopColor: "var(--app-border)",
+        borderRightColor: "var(--app-border)",
+        borderBottomColor: "var(--app-border)",
         background: "var(--app-bg-elevated)",
         borderLeftWidth: 3,
         borderLeftColor: accent,

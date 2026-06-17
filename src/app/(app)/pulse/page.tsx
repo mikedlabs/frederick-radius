@@ -39,7 +39,7 @@ import Link from "next/link";
 import {
   Siren,
   ExternalLink, MapPin, Clock, ChevronRight,
-  Newspaper, Radio,
+  Radio,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
@@ -679,7 +679,11 @@ export default async function PulsePage({
         id="scanner"
         className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
         style={{
-          borderColor: "var(--app-border)",
+          // Explicit side colors (not the borderColor shorthand) so the left
+          // accent longhand below doesn't trip React's shorthand/longhand warn.
+          borderTopColor: "var(--app-border)",
+          borderRightColor: "var(--app-border)",
+          borderBottomColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
           borderLeftWidth: 3,
           borderLeftColor: "var(--app-cool)",
@@ -728,93 +732,90 @@ export default async function PulsePage({
           RSS for Frederick County + the four named towns. Each row
           links out; rendering quiet headline text + source +
           published-ago meta. */}
-      {news.length > 0 && (
+      {news.length > 0 && (() => {
+        // Broadsheet treatment: a lead story set large in serif, then a tight
+        // ruled column of the rest. Typography carries the "newspaper" feel.
+        const [lead, ...rest] = news.slice(0, 6);
+        const dateline = new Intl.DateTimeFormat("en-US", {
+          timeZone: "America/New_York",
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        }).format(new Date(nowMs));
+        return (
         <section
           id="news"
           className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-          style={{
-            borderColor: "var(--app-border)",
-            background: "var(--app-bg-elevated)",
-            borderLeftWidth: 3,
-            borderLeftColor: "var(--app-ink-2)",
-          }}
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
         >
-          <header
-            className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
-            style={{ borderColor: "var(--app-border)" }}
-          >
-            <h2
-              className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
-              style={{ color: "var(--app-ink)" }}
-            >
-              <span
-                aria-hidden
-                className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-                style={{
-                  background: "color-mix(in srgb, var(--app-ink-2) 10%, transparent)",
-                  color: "var(--app-ink-2)",
-                }}
-              >
-                <Newspaper className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
+          {/* Nameplate — a masthead double-rule, serif title, mono dateline. */}
+          <div className="px-4 pt-3.5 sm:px-5">
+            <div aria-hidden className="h-px" style={{ background: "var(--app-ink)" }} />
+            <div className="flex items-baseline justify-between gap-3 pt-2">
+              <h2 className="font-serif text-[21px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+                In the news
+              </h2>
+              <span className="font-mono text-[10px] uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
+                Frederick · {dateline}
               </span>
-              In the news
-            </h2>
-            <span
-              className="rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums"
-              style={{
-                background: "color-mix(in srgb, var(--app-ink-2) 10%, transparent)",
-                color: "var(--app-ink-2)",
-              }}
-            >
-              {Math.min(news.length, 6)}
-            </span>
-          </header>
-          <ul className="divide-y px-1" style={{ borderColor: "var(--app-border)" }}>
-            {news.slice(0, 6).map((h) => (
-              <li key={h.url}>
-                <a
-                  href={h.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-3 rounded-[var(--app-radius-md)] px-3 py-2.5 transition hover:bg-[var(--app-bg-sunken)]"
+            </div>
+            <div aria-hidden className="mt-2 h-px" style={{ background: "color-mix(in srgb, var(--app-ink) 28%, transparent)" }} />
+          </div>
+
+          {/* Lead story — set larger in serif, the broadsheet lead. */}
+          <a
+            href={lead.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block px-4 py-3 transition hover:bg-[var(--app-bg-sunken)] sm:px-5"
+          >
+            <h3 className="font-serif text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+              {lead.title}
+            </h3>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
+              {lead.source} · {timeAgo(lead.published_at)}
+            </p>
+          </a>
+
+          {/* The column — secondary stories as a tight ruled run. */}
+          {rest.length > 0 && (
+            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+              {rest.map((h) => (
+                <li
+                  key={h.url}
+                  className="border-b last:border-b-0"
+                  style={{ borderColor: "color-mix(in srgb, var(--app-border) 65%, transparent)" }}
                 >
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className="block text-[13px] font-semibold leading-snug"
-                      style={{ color: "var(--app-ink)" }}
-                    >
-                      {h.title}
-                    </span>
-                    <span
-                      className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]"
-                      style={{ color: "var(--app-ink-3)" }}
-                    >
-                      <span className="font-semibold">{h.source}</span>
-                      <span>·</span>
-                      <span className="inline-flex items-center gap-1 tabular-nums">
-                        <Clock className="h-2.5 w-2.5" strokeWidth={2} aria-hidden />
-                        {timeAgo(h.published_at)}
+                  <a
+                    href={h.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start justify-between gap-3 px-4 py-2.5 transition hover:bg-[var(--app-bg-sunken)] sm:px-5"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+                        {h.title}
+                      </span>
+                      <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
+                        {h.source} · {timeAgo(h.published_at)}
                       </span>
                     </span>
-                  </span>
-                  <ExternalLink
-                    aria-hidden
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0"
-                    strokeWidth={2}
-                    style={{ color: "var(--app-ink-3)" }}
-                  />
-                </a>
-              </li>
-            ))}
-          </ul>
+                    <ExternalLink aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+
           <p
-            className="px-4 pb-3 pt-2 text-[10px] uppercase tracking-wide"
-            style={{ color: "var(--app-ink-3)" }}
+            className="px-4 py-2.5 font-mono text-[9.5px] uppercase tracking-[0.14em] sm:px-5"
+            style={{ color: "var(--app-ink-3)", borderTop: "1px solid var(--app-border)" }}
           >
-            Source: Google News · Frederick County
+            Wire: Google News · Frederick County
           </p>
         </section>
-      )}
+        );
+      })()}
       </div>{/* /active-sections grid */}
 
       {/* The all-clear verdict lives ONCE, in the hero ("All clear across
@@ -830,7 +831,11 @@ export default async function PulsePage({
         id="police"
         className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
         style={{
-          borderColor: "var(--app-border)",
+          // Explicit side colors (not the borderColor shorthand) so the left
+          // accent longhand below doesn't trip React's shorthand/longhand warn.
+          borderTopColor: "var(--app-border)",
+          borderRightColor: "var(--app-border)",
+          borderBottomColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",
           borderLeftWidth: 3,
           borderLeftColor: "var(--app-cool)",
