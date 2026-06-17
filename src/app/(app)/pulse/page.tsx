@@ -588,7 +588,7 @@ export default async function PulsePage({
             opacity: allClear ? 0.6 : 1,
           }}
         />
-        <div className="space-y-2.5 px-4 py-5 sm:px-5">
+        <div className="space-y-2.5 px-4 py-4 sm:px-5">
           <p
             className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]"
             style={{ color: "var(--app-ink-3)" }}
@@ -604,7 +604,7 @@ export default async function PulsePage({
             <PulseFreshness renderedAt={nowMs} />
           </p>
           <h1
-            className="font-serif text-[30px] font-semibold leading-[1.05] tracking-tight"
+            className="font-serif text-[26px] font-semibold leading-[1.08] tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
             {heroLine}

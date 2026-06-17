@@ -86,7 +86,7 @@ export default function PulseDashboard({
     <>
       <section
         aria-label="County status: tap any tile for detail"
-        className="grid grid-cols-2 gap-2.5 sm:grid-cols-3"
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
       >
         {tiles.map((t) => {
           const Icon = ICONS[t.iconName] ?? AlertTriangle;
@@ -97,12 +97,15 @@ export default function PulseDashboard({
               onClick={() => setOpen(t.key)}
               aria-haspopup="dialog"
               aria-label={`${t.label}: ${t.countLabel}. Tap for detail.`}
-              className="tactile tactile-interactive relative flex flex-col items-start gap-1.5 overflow-hidden rounded-[var(--app-radius-md)] p-3 text-left"
+              // Compact horizontal status card — icon BESIDE the text (not
+              // stacked above it), so a clear tile is ~2 tight lines instead of
+              // a ~110px block. The dashboard packs twice the status per screen
+              // and reads as a status board, not a wall of chunky cards.
+              // Active tiles still assert (warmer tint + accent band + peek);
+              // clear tiles recede into the sunken paper — the heat-map glance
+              // is preserved, just denser.
+              className="tactile tactile-interactive relative flex items-start gap-2 overflow-hidden rounded-[var(--app-radius-md)] p-2.5 pr-6 text-left"
               style={{
-                // Active tiles assert (warmer tint + full accent band +
-                // chevron + peek); clear tiles recede into the sunken paper
-                // with no band — so a calm screen reads honestly calm and a
-                // busy one reads as a heat-map at a glance.
                 background: t.active
                   ? `color-mix(in srgb, ${t.accent} 12%, var(--app-bg-elevated))`
                   : "var(--app-bg-sunken)",
@@ -116,39 +119,41 @@ export default function PulseDashboard({
               />
               <ChevronRight
                 aria-hidden
-                className="absolute right-2.5 top-2.5 h-3.5 w-3.5"
-                style={{ color: t.active ? t.accent : "var(--app-ink-3)", opacity: t.active ? 0.8 : 0.4 }}
+                className="absolute right-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+                style={{ color: t.active ? t.accent : "var(--app-ink-3)", opacity: t.active ? 0.8 : 0.35 }}
               />
               <span
                 aria-hidden
-                className="grid h-8 w-8 place-items-center rounded-full"
+                className="mt-px grid h-7 w-7 shrink-0 place-items-center rounded-full"
                 style={{
                   background: `color-mix(in srgb, ${t.accent} 14%, transparent)`,
                   color: t.accent,
                 }}
               >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+                <Icon className="h-4 w-4" strokeWidth={2} />
               </span>
-              <span
-                className="text-[13px] font-semibold leading-tight"
-                style={{ color: "var(--app-ink)" }}
-              >
-                {t.label}
-              </span>
-              <span
-                className="font-mono text-[11px] tabular-nums"
-                style={{ color: t.active ? t.accent : "var(--app-ink-3)" }}
-              >
-                {t.countLabel}
-              </span>
-              {t.peek && (
+              <span className="flex min-w-0 flex-col">
                 <span
-                  className="line-clamp-1 text-[11px] leading-snug"
-                  style={{ color: "var(--app-ink-2)" }}
+                  className="truncate text-[13px] font-semibold leading-tight"
+                  style={{ color: "var(--app-ink)" }}
                 >
-                  {t.peek}
+                  {t.label}
                 </span>
-              )}
+                <span
+                  className="font-mono text-[11px] leading-tight tabular-nums"
+                  style={{ color: t.active ? t.accent : "var(--app-ink-3)" }}
+                >
+                  {t.countLabel}
+                </span>
+                {t.peek && (
+                  <span
+                    className="line-clamp-1 pt-0.5 text-[11px] leading-snug"
+                    style={{ color: "var(--app-ink-2)" }}
+                  >
+                    {t.peek}
+                  </span>
+                )}
+              </span>
             </button>
           );
         })}
