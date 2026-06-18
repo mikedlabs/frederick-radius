@@ -58,6 +58,18 @@ const ICE_CREAM = /ice ?cream|creamery|gelato|scoop|frozen custard|froyo|frozen 
 const PIZZA = /pizza|pizzeria/i;
 const SWEET = /donut|doughnut|fudge|candy|chocolat|dessert|cupcake|pastr|bakery|sweet|cookie|ice ?cream|creamery/i;
 const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market|costco|megamart|mega ?mart/i;
+// Family fun is matched by ACTIVITY name, not the `family` category — that
+// category is a junk bucket (mostly schools, daycares, PTAs, a driving school,
+// art studios). We want the genuinely-fun outings: arcades, escape rooms,
+// bowling, mini golf, the zoo, the science lab, skate parks. Scanned across ALL
+// categories so a fun spot miscategorized elsewhere (a skatepark filed under
+// "park") still surfaces.
+const FAMILY_FUN =
+  /\b(arcade|pinball|escape room|escape this|mini ?golf|miniature golf|bowling|lanes\b|zoo|wildlife preserve|aquarium|trampoline|go.?kart|go.?cart|laser ?tag|skating|skate ?park|roller ?rink|ice ?rink|adventure park|fun ?(center|land|zone)|amusement|water ?park|carousel|science (center|lab)|discovery (center|museum)|children.?s museum|paintball|axe ?throwing|putt|raceway|speedway)\b/i;
+// Exclude the schooling/childcare/admin noise the `family` bucket is full of —
+// "Escape This" is fun, "Gregs Driving School" is not.
+const FAMILY_FUN_JUNK =
+  /\b(school|elementary|middle|high school|academy|universit|college|early learning|daycare|day care|preschool|pre-?k|\bpta\b|admission|montessori|children.?s center|learning center|recovery|church|ministry|driving)\b/i;
 
 // Order = intent strength, not raw inventory. Food leads (the single most
 // universal "I want," ~210 places); then the going-out wants (Coffee, Drinks),
@@ -198,14 +210,15 @@ export const CRAVINGS: Craving[] = [
     ],
   },
   {
-    // ~39 places in the `family` category (kid-friendly attractions: mini golf,
-    // trampoline + play spaces, farms, arcades, the science/discovery stops).
-    // Parents are a core audience and this had NO one-tap door before.
+    // Genuinely fun family outings, matched by activity name (NOT the `family`
+    // category, which is a junk bucket of schools/daycares/studios): the
+    // arcades, escape rooms, bowling alleys, mini golf, the zoo, the science
+    // lab, skate parks. ~9 verified spots — honest fun beats 39 schools.
     key: "family",
     label: "Family fun",
     icon: "FerrisWheel",
     color: "var(--app-cool)",
-    match: (p) => p.category === "family",
+    match: (p) => FAMILY_FUN.test(p.name) && !FAMILY_FUN_JUNK.test(p.name),
   },
 ];
 
