@@ -152,7 +152,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           Policy), never a place's Google photo. Mirrors the /m town hero
           so the page leads with the county itself; eyebrow + serif title
           + blurb overlay a dark gradient. */}
-      <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
+      <header className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative h-44 w-full sm:h-56">
           <SeasonalPhoto
             season="auto"

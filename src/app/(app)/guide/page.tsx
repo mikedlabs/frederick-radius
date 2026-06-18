@@ -35,7 +35,7 @@ export default function GuidePage() {
           question overlaid in Fraunces. Everything below it is the input
           and the six needs. Photography policy: this is our own seasonal
           county photography, never a place's Google photo. */}
-      <header className="relative -mx-4 -mt-4 mb-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
+      <header className="relative mb-4 overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative h-44 w-full sm:h-56 lg:h-64">
           <SeasonalPhoto
             season="auto"

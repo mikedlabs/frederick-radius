@@ -122,7 +122,7 @@ export default async function AboutPage() {
           daily rotation. Frames "the pocket compass for Frederick
           County" line with a real sense of place before the pitch. */}
       <div
-        className="relative -mx-4 overflow-hidden rounded-[var(--app-radius-lg)] sm:mx-0"
+        className="relative overflow-hidden rounded-[var(--app-radius-lg)]"
         style={{ aspectRatio: "16/9" }}
       >
         <SeasonalPhoto

@@ -50,7 +50,7 @@ export default async function PlanPage({
       <PageBloom variant="warm-cool" />
 
       {!shared && (
-        <header className="relative -mx-4 mb-5 overflow-hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)]">
+        <header className="relative mb-5 overflow-hidden rounded-[var(--app-radius-lg)]">
           {/* Hardcoded Frederick photo — sets the mood before any UI
               loads. Was a SeasonalPhoto auto-rotation, but the daily
               pick was landing on a Nymeo Field (Frederick Keys
