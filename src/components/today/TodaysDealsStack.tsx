@@ -1,32 +1,23 @@
 import Link from "next/link";
+import { BadgeCheck } from "lucide-react";
 import type { TodaysDeal } from "@/lib/loaders/todaysDeals";
 import { splitDeal } from "@/lib/happyHourDeal";
 
 /**
- * Today's Intel — the verified day-of-week specials as a leader-dotted PRICED
- * INDEX, in the exact "Last Pour" voice of /happy-hour so the two surfaces
- * rhyme as one field guide.
- *
- * Each deal is a single index ROW (not a colored card): the venue set in serif,
- * a real dotted leader, and the deal HOOK ("$10 OFF", "25% OFF") struck flush
- * right in gold mono. A quiet second line carries the substance — what you get,
- * with the town/when as a mono tail — because unlike a happy hour (where
- * "venue + on now" is enough), a deal's value IS the specifics, so we keep
- * them. Typography + the leader rule carry the hierarchy; no boxes, no colored
- * stock, no per-row glyph. Up to 12 rows show; "All intel, by day" carries the
- * rest. Server component (plain Links).
- *
- * Replaces the earlier 2-column color-tabbed card grid (owner: make it look
- * like the happy-hour page, "maybe it's better as single lines").
+ * Today's Intel — the verified day-of-week specials kept as a FIELD LEDGER: a
+ * paper page with faint ruled baselines, a sober day-stamp in the corner, and
+ * the gold figures running down a right-aligned amount column you scan top to
+ * bottom. It keeps the /happy-hour priced-index DNA (serif venue · dotted
+ * leader · gold-mono figure) but reframes it as a hand-kept almanac page rather
+ * than a flat list — the "clever" device does real work (the ruled grid forces
+ * the amount column) and stays calm field-guide, not a SaaS card or a novelty
+ * receipt. A single "verified at source" line closes the page. Server
+ * component (plain Links).
  */
 const MAX_ROWS = 12;
 
-/** One priced-index row: VENUE ········· $HOOK, then the gist + where/when. */
+/** One ledger line: VENUE ········· $HOOK on the rule, then the gist + when/where. */
 function IntelRow({ deal: d }: { deal: TodaysDeal }) {
-  // Split the offer into the headline hook ("$10 OFF", "25% OFF") and the rest
-  // (what you actually get), so the figure leads in gold and the substance
-  // carries the subline. `rest` falls back to the full offer when there's no
-  // extractable figure (then the hook reads the honest "Specials").
   const { hook, rest } = splitDeal(d.offer);
   const meta = [d.hours, d.town].filter(Boolean).join("  ·  ");
 
@@ -34,13 +25,14 @@ function IntelRow({ deal: d }: { deal: TodaysDeal }) {
     <Link
       href={`/places/${d.slug}`}
       aria-label={`${d.name}: ${d.offer}`}
-      className="tactile-interactive group block py-2"
+      className="tactile-interactive group flex min-h-[52px] flex-col justify-center"
     >
-      {/* The leader row — identical grammar to /happy-hour's PricedRow. */}
+      {/* The ledger line — serif venue, dotted leader, gold figure in the
+          right-aligned amount column. */}
       <div className="flex items-baseline gap-1.5">
         <span
           className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]"
-          style={{ color: "var(--app-ink)", maxWidth: "60%" }}
+          style={{ color: "var(--app-ink)", maxWidth: "58%" }}
         >
           {d.name}
         </span>
@@ -50,23 +42,21 @@ function IntelRow({ deal: d }: { deal: TodaysDeal }) {
           style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }}
         />
         <span
-          className="shrink-0 font-mono text-[14px] font-bold tabular-nums tracking-[0.01em]"
-          style={{ color: hook ? "var(--app-accent-press)" : "var(--app-ink-3)" }}
+          className="shrink-0 text-right font-mono text-[14px] font-bold tabular-nums tracking-[0.01em]"
+          style={{ minWidth: "58px", color: hook ? "var(--app-accent-press)" : "var(--app-ink-3)" }}
         >
           {hook ?? "Specials"}
         </span>
       </div>
 
-      {/* The substance (what you get) + a quiet mono where/when tail. */}
+      {/* The substance + a quiet mono where/when tail (single line so it sits
+          cleanly on the rule). */}
       <div className="mt-0.5 flex items-baseline gap-2">
         <span className="min-w-0 flex-1 truncate text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
           {rest || d.offer}
         </span>
         {meta && (
-          <span
-            className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
+          <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
             {meta}
           </span>
         )}
@@ -75,33 +65,85 @@ function IntelRow({ deal: d }: { deal: TodaysDeal }) {
   );
 }
 
-export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal[]; weekday: string }) {
+export default function TodaysDealsStack({
+  deals,
+  weekday,
+  dayAbbr,
+  dayNum,
+}: {
+  deals: TodaysDeal[];
+  weekday: string;
+  dayAbbr: string;
+  dayNum: string;
+}) {
   const shown = deals.slice(0, MAX_ROWS);
 
   return (
-    <section aria-label={`Verified intel for ${weekday}`} className="space-y-1.5">
-      <div className="flex items-center gap-2 px-0.5">
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand)" }}>
-          Today&rsquo;s intel
-        </span>
-        <span className="font-mono text-[11px] uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>{weekday}</span>
-        <span aria-hidden className="h-px flex-1" style={{ background: "var(--app-border)" }} />
-        <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{deals.length}</span>
-      </div>
+    <section aria-label={`Verified intel for ${weekday}`} className="space-y-2">
+      {/* The ledger page — warm paper stock + grain + tactile depth. */}
+      <div
+        className="relative overflow-hidden rounded-[var(--app-radius-md)] px-3.5 py-3"
+        style={{
+          backgroundColor: "var(--app-bg-elevated-solid)",
+          backgroundImage: "var(--app-paper-light)",
+          boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
+        }}
+      >
+        {/* Header: the masthead + a sober day-stamp tab in the corner. */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand)" }}>
+              Today&rsquo;s intel
+            </p>
+            <p className="mt-0.5 font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {deals.length} verified special{deals.length === 1 ? "" : "s"}
+            </p>
+          </div>
+          {/* Day-stamp — opaque so it sits cleanly over the ruled page. */}
+          <span
+            className="flex shrink-0 flex-col items-center rounded-[var(--app-radius-sm)] px-2.5 py-1"
+            style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi)" }}
+          >
+            <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-2)" }}>
+              {dayAbbr}
+            </span>
+            <span aria-hidden className="my-1 h-px w-full" style={{ background: "color-mix(in srgb, var(--app-ink) 18%, transparent)" }} />
+            <span className="font-serif text-[18px] font-semibold leading-none tabular-nums" style={{ color: "var(--app-ink)" }}>
+              {dayNum}
+            </span>
+          </span>
+        </div>
 
-      {/* A leader-dotted index — hairline dividers, no boxes (the /happy-hour
-          IndexSection grammar). */}
-      <ul className="divide-y px-0.5" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
-        {shown.map((d) => (
-          <li key={d.slug}>
-            <IntelRow deal={d} />
-          </li>
-        ))}
-      </ul>
+        {/* The ruled ledger — faint baselines every row; the rows sit on them. */}
+        <ul
+          className="mt-2"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(to bottom, transparent 0px, transparent 51px, color-mix(in srgb, var(--app-ink) 8%, transparent) 51px, color-mix(in srgb, var(--app-ink) 8%, transparent) 52px)",
+          }}
+        >
+          {shown.map((d) => (
+            <li key={d.slug}>
+              <IntelRow deal={d} />
+            </li>
+          ))}
+        </ul>
+
+        {/* The page's sign-off — one quiet verified line, no boxed stamp. */}
+        <div
+          className="mt-2 flex items-center gap-1.5 border-t border-dashed pt-2"
+          style={{ borderColor: "color-mix(in srgb, var(--app-ink) 22%, transparent)" }}
+        >
+          <BadgeCheck className="h-3 w-3 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-brand-2)" }}>
+            Verified at source
+          </span>
+        </div>
+      </div>
 
       <Link
         href="/deals"
-        className="tap-44 flex items-center justify-between px-0.5 pt-0.5 text-[12px] font-semibold"
+        className="tap-44 flex items-center justify-between px-0.5 text-[12px] font-semibold"
         style={{ color: "var(--app-brand)" }}
       >
         All intel, by day
