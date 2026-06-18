@@ -45,17 +45,10 @@ function easternParts(now: Date): { day: number; min: number } {
   return { day: wd[get("weekday")] ?? 0, min: (Number(get("hour")) % 24) * 60 + Number(get("minute")) };
 }
 
-/** The denomination size — a short punch ("$5") strikes big, a long hook
- *  ("FROM $3.50", "$1 OYSTERS") stays in a smaller bucket so it never wraps or
- *  dwarfs the serif venue within the ~290px card. */
-function hookFontSize(hook: string | null): string {
-  if (!hook) return "18px"; // "Specials"
-  const n = hook.length;
-  if (n <= 4) return "32px";
-  if (n <= 6) return "27px";
-  if (n <= 9) return "22px";
-  return "18px";
-}
+/** ONE uniform denomination size on every card — the deck reads even (the
+ *  owner's "all the same font sizes"); 24px mono fits the longest hook
+ *  ("FROM $3.50", "$1 OYSTERS") within the ~290px card without wrapping. */
+const DENOM_SIZE = "24px";
 
 function fmtMin(m: number): string {
   if (m >= 1440) return "close";
@@ -201,8 +194,8 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                 className="mt-0.5 font-mono font-bold leading-none tracking-[-0.01em]"
                 style={
                   pour.hook
-                    ? { fontSize: hookFontSize(pour.hook), color: "var(--app-accent-press)", textShadow: RAISED }
-                    : { fontSize: "18px", color: "var(--app-ink-2)" }
+                    ? { fontSize: DENOM_SIZE, color: "var(--app-accent-press)", textShadow: RAISED }
+                    : { fontSize: DENOM_SIZE, color: "var(--app-ink-2)" }
                 }
               >
                 {pour.hook ?? "Specials"}
