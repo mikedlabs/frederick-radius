@@ -10,18 +10,17 @@ import { splitDeal } from "@/lib/happyHourDeal";
  * HappyHourWallet — the happy hours ON NOW, on /today, as a stack of cards
  * tucked in a wallet.
  *
- * Owner asks, in order: "inside card slots in a wallet where they overlap
- * nicely" -> "more visual" -> "make sure the cards are readable. make them
- * look like gift cards with raised numbers." So each live pour is now a calm
- * GIFT-CARD on warm paper stock (not a dark photo): the venue in serif ink, a
- * live status pill, and the deal HOOK struck as a RAISED (embossed) gold number
- * — a top-light / bottom-shade text-shadow so the figure reads as pressed up
- * out of the card stock, the way digits are embossed on a real gift card. The
- * cards still overlap like a wallet (each back card peeks its top band; the
- * most urgent pour sits full + lifted at the front), but they're opaque paper,
- * so they occlude cleanly and the text is dark-on-cream (no scrim, AA by
- * default). The dark full-bleed photo treatment was retired here — photos fight
- * the calm field guide and the legibility depended on heavy ink scrims.
+ * Owner arc: "wallet where they overlap nicely" -> "more visual" -> "gift cards
+ * with raised numbers" -> "more style AND cleaner." So each live pour is now a
+ * DENOMINATION gift card: a top brand stripe (urgency, not a per-venue
+ * rainbow), a small EMV-chip motif as the one made-object flourish, the deal
+ * HOOK struck as a big RAISED gold denomination (top-light/bottom-shade emboss,
+ * like a figure pressed into card stock), the venue as the "cardholder" line,
+ * and the status reduced to quiet mono text. Subtraction over chrome: gone are
+ * the left rail, both filled status pills, and the circular verified badge.
+ * The cards still overlap like a wallet (each back card peeks its top band, the
+ * most urgent pour sits full + lifted at the front) and stay opaque paper so
+ * they occlude cleanly and read dark-on-cream (AA by default).
  *
  * Honest + self-hiding: drawn from the verified Field Notes moat, filtered to
  * windows that include right now (Eastern). Server component.
@@ -46,13 +45,14 @@ function easternParts(now: Date): { day: number; min: number } {
   return { day: wd[get("weekday")] ?? 0, min: (Number(get("hour")) % 24) * 60 + Number(get("minute")) };
 }
 
-/** Scale the gold hook to its length so a short punch ("$5") reads big while a
- *  long one ("FROM $3.50", "$1 OYSTERS") stays proportionate and never dwarfs
- *  the venue name. */
+/** The denomination size — a short punch ("$5") strikes big, a long hook
+ *  ("FROM $3.50", "$1 OYSTERS") stays in a smaller bucket so it never wraps or
+ *  dwarfs the serif venue within the ~290px card. */
 function hookFontSize(hook: string | null): string {
-  if (!hook) return "19px"; // "Specials"
+  if (!hook) return "18px"; // "Specials"
   const n = hook.length;
-  if (n <= 5) return "28px";
+  if (n <= 4) return "32px";
+  if (n <= 6) return "27px";
   if (n <= 9) return "22px";
   return "18px";
 }
@@ -64,6 +64,25 @@ function fmtMin(m: number): string {
   const mer = h24 >= 12 ? "PM" : "AM";
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return mm === 0 ? `${h12} ${mer}` : `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
+}
+
+/** The EMV-chip motif — the one gift-card "tell." A small warm-gold foil pad
+ *  (pressed via edge + highlight) holding the classic contact grid. */
+function Chip() {
+  return (
+    <span
+      aria-hidden
+      className="grid shrink-0 place-items-center rounded-[4px]"
+      style={{ width: "26px", height: "18px", background: "color-mix(in srgb, var(--app-accent) 22%, var(--app-bg-elevated-solid))", boxShadow: "var(--app-edge), var(--app-hi)" }}
+    >
+      <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="color-mix(in srgb, var(--app-accent-press) 55%, transparent)" strokeWidth="1">
+        <rect x="0.5" y="0.5" width="15" height="10" rx="1.5" />
+        <line x1="0.5" y1="5.5" x2="15.5" y2="5.5" />
+        <line x1="5.5" y1="0.5" x2="5.5" y2="10.5" />
+        <line x1="10.5" y1="0.5" x2="10.5" y2="10.5" />
+      </svg>
+    </span>
+  );
 }
 
 type LivePour = {
@@ -127,14 +146,14 @@ export default function HappyHourWallet({ now }: { now: Date }) {
         </Link>
       </div>
 
-      {/* The wallet. Gift-card stock overlaps upward; each card peeks its top
-          band (town · venue · raised number), the front (last) card sits full +
-          lifted, revealing the specials + verified seal. */}
+      {/* The wallet — denomination gift cards overlapping upward; each peeks its
+          chip + town + status + venue + the big embossed figure, the front
+          (last) card sits full + lifted, revealing the specials + verified. */}
       <div>
         {shown.map((pour, i) => {
           const front = i === shown.length - 1;
           const tab = pour.lastCall
-            ? `Last call · till ${fmtMin(pour.endsAt)}`
+            ? `Last call · ${fmtMin(pour.endsAt)}`
             : pour.endsAt >= 1440 ? "On now · till close" : `On now · till ${fmtMin(pour.endsAt)}`;
           return (
             <Link
@@ -145,12 +164,9 @@ export default function HappyHourWallet({ now }: { now: Date }) {
               style={{
                 height: CARD_H,
                 marginTop: i === 0 ? 0 : -OVERLAP,
-                paddingTop: "12px",
+                paddingTop: "13px",
                 paddingBottom: "12px",
                 zIndex: i + 1,
-                // Opaque warm card stock + grain — the cards overlap, so each
-                // must fully occlude the one behind it (paper-light is a
-                // gradient, applied as its own layer, never nested).
                 backgroundColor: "var(--app-bg-elevated-solid)",
                 backgroundImage: "var(--app-paper-light)",
                 boxShadow: front
@@ -158,39 +174,41 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                   : "var(--app-elev-1), var(--app-hi), var(--app-edge)",
               }}
             >
-              {/* Left rail — vermilion at last call, spruce otherwise. */}
-              <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: pour.lastCall ? "var(--app-brand)" : "var(--app-brand-2)" }} />
+              {/* Brand stripe — the gift-card top edge; urgency, never gold,
+                  never per-venue (clipped to the rounded-top by overflow-hidden). */}
+              <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: pour.lastCall ? "var(--app-brand)" : "var(--app-brand-2)" }} />
 
-              {/* Top band (always visible, even when peeking): town + status. */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
+              {/* Row A: EMV chip · town · status (quiet mono, no pill). */}
+              <div className="flex items-center gap-2">
+                <Chip />
+                <span className="min-w-0 flex-1 truncate font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
                   {pour.town ?? "Frederick County"}
                 </span>
-                {pour.lastCall ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.06em]" style={{ background: "var(--app-brand)", color: "var(--app-on-brand)" }}>
-                    <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: "var(--app-on-brand)" }} />
-                    {tab}
-                  </span>
-                ) : (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.06em]" style={{ background: "color-mix(in srgb, var(--app-accent) 16%, transparent)", color: "var(--app-accent-press)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-accent) 32%, transparent)" }}>
-                    <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: "var(--app-accent-press)" }} />
-                    {tab}
-                  </span>
-                )}
+                <span
+                  className="inline-flex shrink-0 items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-[0.06em] tabular-nums"
+                  style={{ color: pour.lastCall ? "var(--app-brand-press)" : "var(--app-ink-3)" }}
+                >
+                  <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: pour.lastCall ? "var(--app-brand)" : "var(--app-brand-2)" }} />
+                  {tab}
+                </span>
               </div>
 
-              {/* Venue name + the RAISED gold number (the gift-card emboss). */}
-              <h3 className="mt-1 truncate font-serif text-[18px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+              {/* Cardholder line = venue, then the big raised gold denomination. */}
+              <h3 className="mt-1.5 truncate font-serif text-[17px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
                 {pour.name}
               </h3>
               <p
                 className="mt-0.5 font-mono font-bold leading-none tracking-[-0.01em]"
-                style={{ fontSize: hookFontSize(pour.hook), color: "var(--app-accent-press)", textShadow: RAISED }}
+                style={
+                  pour.hook
+                    ? { fontSize: hookFontSize(pour.hook), color: "var(--app-accent-press)", textShadow: RAISED }
+                    : { fontSize: "18px", color: "var(--app-ink-2)" }
+                }
               >
                 {pour.hook ?? "Specials"}
               </p>
 
-              {/* Front card only: the verified specials + a stamped seal. */}
+              {/* Front card only: the verified specials + a flat foil seal line. */}
               {front && (
                 <>
                   {pour.specials && (
@@ -200,13 +218,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                   )}
                   {pour.verified && (
                     <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-                      <span
-                        aria-hidden
-                        className="grid h-[18px] w-[18px] place-items-center rounded-full"
-                        style={{ background: "color-mix(in srgb, var(--app-brand-2) 12%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-brand-2) 30%, transparent)" }}
-                      >
-                        <BadgeCheck className="h-3 w-3" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} />
-                      </span>
+                      <BadgeCheck className="h-3 w-3 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
                       {pour.verified}
                     </p>
                   )}
