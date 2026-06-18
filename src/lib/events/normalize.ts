@@ -59,6 +59,15 @@ export function splitPresenter(raw: string): { presenter?: string; title: string
  */
 export function cleanTitle(raw: string, opts: { year?: number } = {}): string {
   let t = cleanFeedText(raw);
+  // Strip a sponsor/presenter clause a feed appended INTO the event name
+  // ("Summerfest Family Theatre sponsored by Acme Dental & Smile Ortho |
+  // Rainbow Rock Band"). The clause runs from "sponsored/presented/brought
+  // to you by" up to the next pipe or the end — funder metadata, never the
+  // event's name. Conservative: it fires only on that explicit phrasing.
+  t = t.replace(/\s*(?:sponsored|presented|brought\s+to\s+you)\s+by\s+[^|]*/i, " ");
+  // Tidy a pipe the strip (or the feed) left dangling at an edge or doubled,
+  // so a remaining "Series | Act" double bill reads as one clean line.
+  t = t.replace(/\s*\|\s*\|\s*/g, " | ").replace(/^\s*\|\s*|\s*\|\s*$/g, "");
   t = t.replace(/([A-Za-z])-(?=[A-Z0-9])/g, "$1 ");
   // Strip a trailing 4-digit year, but not when a preposition precedes
   // it ("...patients in 2025" keeps the year, "Octoberfest 2026" drops

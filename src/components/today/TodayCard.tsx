@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { Ticket, ChevronRight } from "lucide-react";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import { eventWhenLabel } from "@/lib/eventWhenLabel";
-import { isActivelyWet } from "@/lib/weather-verdict";
+import { isActivelyWet, mentionsWet } from "@/lib/weather-verdict";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import LiveClock from "./LiveClock";
 
@@ -70,9 +71,16 @@ const GREETING: Record<Band, string> = {
 function moodLine(condition: string, temp: number | null, precipNow: number | null): string {
   const c = condition.toLowerCase();
   if (/thunder|storm/.test(c)) return "Storms around. Keep it indoors.";
-  // Only call it rain when it's actually likely now (>=50% PoP); a "Chance
-  // Rain Showers" forecast at 30% must not claim rain on a dry day.
-  if (isActivelyWet(condition, precipNow)) return "Rain in play. Have a backup plan.";
+  // Rain comes BEFORE the fair-weather lines so the words can never
+  // contradict the sky glyph: any rain-text condition (the same signal that
+  // draws the rain cloud) yields a rain line, never "Patio weather." The PoP
+  // only decides HOW wet — likely (>=50%) reads as a washout, a lower chance
+  // as spotty showers.
+  if (mentionsWet(condition)) {
+    return isActivelyWet(condition, precipNow)
+      ? "Rain in play. Have a backup plan."
+      : "Showers around. Keep a roof handy.";
+  }
   if (/snow|sleet|ice|wintry/.test(c)) return "Wintry out. Bundle up.";
   if (/fog|mist|haze/.test(c)) return "Low and gray. Soft light for a walk.";
   if (temp != null && temp >= 88) return "Hot one. Chase the shade.";
@@ -191,17 +199,41 @@ export default async function TodayCard({
         )
       )}
 
+      {/* Tonight's headline event — a compact, framed "what's on" row instead
+          of a long underlined run-on sentence on the gradient. The when-label
+          is a mono eyebrow; the title sits on ONE truncated line so a
+          firehose feed title (sponsors, double bills) never blows the hero up
+          to three wrapped lines. The whole row is the tap target. */}
       {tonightEvent && (
-        <p className="mt-1 text-body opacity-80">
-          {eventWhenLabel(tonightEvent.starts_at, now, band === "evening" || band === "late")}:{" "}
-          <Link
-            href={`/events/${tonightEvent.slug}`}
-            className="font-semibold underline decoration-[1.5px] underline-offset-2"
+        <Link
+          href={`/events/${tonightEvent.slug}`}
+          className="tactile-interactive group mt-3 flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-2.5 py-2"
+          style={{
+            background: "color-mix(in srgb, currentColor 9%, transparent)",
+            boxShadow: "inset 0 0 0 1px color-mix(in srgb, currentColor 15%, transparent)",
+          }}
+        >
+          <span
+            aria-hidden
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full"
+            style={{ background: "color-mix(in srgb, currentColor 16%, transparent)" }}
           >
-            {tonightEvent.title}
-          </Link>
-          {tonightEvent.venue_name ? ` at ${tonightEvent.venue_name}` : ""}
-        </p>
+            <Ticket className="h-3.5 w-3.5" strokeWidth={2} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-meta font-semibold uppercase tracking-[0.14em] opacity-65">
+              {eventWhenLabel(tonightEvent.starts_at, now, band === "evening" || band === "late")}
+            </span>
+            <span className="block truncate text-body font-semibold leading-snug">
+              {tonightEvent.title}
+            </span>
+          </span>
+          <ChevronRight
+            aria-hidden
+            className="h-4 w-4 shrink-0 opacity-45 transition-transform group-hover:translate-x-0.5"
+            strokeWidth={2}
+          />
+        </Link>
       )}
 
     </section>
