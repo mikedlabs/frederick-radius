@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
 import TodaysDeals from "@/components/today/TodaysDeals";
-import HappyHourNow from "@/components/today/HappyHourNow";
+import HappyHourWallet from "@/components/today/HappyHourWallet";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
 import LocationPrime from "@/components/today/LocationPrime";
@@ -274,9 +274,11 @@ export default async function HomePage() {
       </div>
 
       {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
-          Field Notes moat; self-hides when none are in-window. */}
+          Field Notes moat, as a wallet of overlapping "Last Pour" cards (the
+          deal hook welded to the venue in gold); self-hides when none are
+          in-window. */}
       <div className="mt-4">
-        <HappyHourNow now={now} />
+        <HappyHourWallet now={now} />
       </div>
 
       {/* ── TODAY'S DEALS — the verified, day-of-week-aware specials running
