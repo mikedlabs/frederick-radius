@@ -283,7 +283,7 @@ const SHOP_HOME_RE =
 const SHOP_GIFT_RE = /\b(gift|souvenir|candle|stationery)\b/i;
 const SHOP_JEWELRY_RE = /\b(jewel|jeweler|goldsmith|diamond|gem)\b/i;
 const SHOP_GROCERY_RE =
-  /\b(grocery|grocer|supermarket|deli|butcher|cheese|spice|chocolate|candy|seafood|vinegar|oil|popcorn|provisions|emporium|creamery|weis|safeway|jubilee|organic market|co-?op|h mart|foods?)\b/i;
+  /\b(grocery|grocer|supermarket|deli|butcher|cheese|spice|chocolate|candy|seafood|vinegar|oil|popcorn|provisions|emporium|creamery|weis|safeway|giant|wegmans|aldi|lidl|costco|mega ?mart|jubilee|organic market|co-?op|h mart|foods?)\b/i;
 const isShopFashion = (p: PlaceCardData): boolean =>
   (p.subcategories ?? []).includes("clothes") ||
   (p.subcategories ?? []).includes("boutique") ||

@@ -63,25 +63,31 @@ const ICONS: Record<string, LucideIcon> = {
   Moon,
 };
 
-/** A single field tag — paper + grain, an ink top tab rule, a square ruled
- *  specimen plate for the glyph, a hairline ink frame. The `ink` is the
- *  item's specimen color; everything on the tag keys off it. */
+/** A single catalog tile — one uniform sheet of field-guide paper, an engraved
+ *  ink glyph, a tiny mono specimen index. `accent` is honored ONLY when `lead`
+ *  is set (the live-intel tiles: the meal + Happy hour); every other tile is
+ *  calm near-monochrome ink, so the grid reads as one printed page, not a
+ *  rainbow of app-launcher chips. */
 function FieldTag({
   href,
   label,
   ariaLabel,
   icon: Icon,
-  ink,
+  accent = "var(--app-ink-2)",
+  index,
+  lead = false,
 }: {
   href: string;
   label: ReactNode;
   ariaLabel: string;
   icon: LucideIcon;
-  ink: string;
+  accent?: string;
+  index?: string;
+  lead?: boolean;
 }) {
   return (
-    <Link href={href} aria-label={ariaLabel} className={craveTileClass} style={craveTileStyle(ink)}>
-      <CraveTileInner icon={Icon} label={label} ink={ink} />
+    <Link href={href} aria-label={ariaLabel} className={craveTileClass} style={craveTileStyle(accent, lead)}>
+      <CraveTileInner icon={Icon} label={label} accent={accent} index={index} lead={lead} />
     </Link>
   );
 }
@@ -116,28 +122,48 @@ export default function CravingStrip({
       {/* The "right now" contextual band (live music tonight, …) — a lighter
           layer than the grid; self-hides when nothing's on. */}
       {contextSlot}
+      {/* The catalog grid. A continuous mono specimen index (01, 02, …) runs
+          across the tiles so it reads as one printed page of a field guide.
+          The two LIVE-INTEL leads (the meal occasion + Happy hour) are the
+          only tiles that take the accent — everything else is calm ink. */}
       <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
         {/* Meal occasion — the time-aware lead. Auto-selects the meal it is
             right now; opens the nearest spots OPEN for it (a clock fact, never
             a menu claim). The owner's "I want breakfast/brunch/lunch/dinner". */}
-        <FieldTag href={meal.href ?? `/nearby?c=${meal.key}`} label={meal.label} ariaLabel={meal.href ? `${meal.label}: verified spots` : `${meal.label}: nearest open now`} icon={ICONS[meal.icon] ?? Utensils} ink={meal.color} />
+        <FieldTag
+          href={meal.href ?? `/nearby?c=${meal.key}`}
+          label={meal.label}
+          ariaLabel={meal.href ? `${meal.label}: verified spots` : `${meal.label}: nearest open now`}
+          icon={ICONS[meal.icon] ?? Utensils}
+          accent="var(--app-brand)"
+          index="01"
+          lead
+        />
         {/* Happy hour — the most-asked-for local intent.
             Points at the /happy-hour view powered by the Field Notes layer. */}
-        <FieldTag href="/happy-hour" label="Happy hour" ariaLabel="Happy hour" icon={Martini} ink="var(--app-accent)" />
-        {CRAVINGS.map((c) => (
+        <FieldTag
+          href="/happy-hour"
+          label="Happy hour"
+          ariaLabel="Happy hour"
+          icon={Martini}
+          accent="var(--app-accent)"
+          index="02"
+          lead
+        />
+        {CRAVINGS.map((c, i) => (
           <FieldTag
             key={c.key}
             href={`/nearby?c=${c.key}`}
             label={c.label}
             ariaLabel={`${c.label}: nearest open`}
             icon={ICONS[c.icon] ?? Utensils}
-            ink={c.color}
+            index={String(i + 3).padStart(2, "0")}
           />
         ))}
         {/* "More…" opens the field-guide MORE drawer (the same one the header
             ••• button opens) — the full menu of every surface, the natural
             home for a want that isn't a tile. */}
-        <MoreSheetTile ink="var(--app-ink-3)" />
+        <MoreSheetTile index={String(CRAVINGS.length + 3).padStart(2, "0")} />
       </div>
     </section>
 
@@ -150,9 +176,9 @@ export default function CravingStrip({
         Getting around
       </p>
       <div className="grid grid-cols-3 gap-2">
-        <FieldTag href="/parking" label="Parking" ariaLabel="Parking" icon={ParkingCircle} ink="var(--app-cool)" />
-        <FieldTag href="/transit" label="MARC" ariaLabel="MARC train" icon={Train} ink="var(--app-cool)" />
-        <FieldTag href="/transit" label="Transit" ariaLabel="TransIT bus" icon={Bus} ink="var(--app-cool)" />
+        <FieldTag href="/parking" label="Parking" ariaLabel="Parking" icon={ParkingCircle} index="G1" />
+        <FieldTag href="/transit" label="MARC" ariaLabel="MARC train" icon={Train} index="G2" />
+        <FieldTag href="/transit" label="Transit" ariaLabel="TransIT bus" icon={Bus} index="G3" />
       </div>
     </section>
     </div>
