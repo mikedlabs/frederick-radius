@@ -238,7 +238,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
               action, not an icon pair crowding the title. Sharing
               stays in the footer ShareButton. */}
           <div className="min-w-0">
-            <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
+            <h1 className="display-2 breathe-in" style={{ color: "var(--app-ink)" }}>
               {place.name}
             </h1>
             <p className="mt-1 text-sm" style={{ color: "var(--app-ink-3)" }}>
