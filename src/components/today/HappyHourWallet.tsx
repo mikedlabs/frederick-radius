@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import { Martini, BadgeCheck } from "lucide-react";
 import { placesWithFieldHappyHour, fieldNotesFor, verifiedLabel } from "@/lib/loaders/fieldNotes";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -10,22 +12,26 @@ import { splitDeal } from "@/lib/happyHourDeal";
  * tucked in a wallet.
  *
  * Owner ask: "all the happy hours designed like the Shuckin Shack… inside card
- * slots in a wallet where they overlap nicely." So each live pour is a high-end
- * paper card in the /happy-hour "Last Pour" voice — a left gold rail welding
- * the deal HOOK (set big in gold mono) to the serif venue name, the verified
- * specials beneath, a live "till X" tab — and the cards overlap vertically like
- * loyalty cards in Apple Wallet: every card peeks its top (town · venue · hook ·
- * status), and the most urgent pour (last call, then ending soonest) sits FULL
- * and lifted at the front. Tap any card to that place; "All pours" opens the
- * full guide.
+ * slots in a wallet where they overlap nicely" + "make the cards a better design
+ * and more visual." So each live pour is now the /happy-hour "Last Pour" COVER
+ * shrunk into a wallet card: a full-bleed venue PHOTO under an ink scrim, the
+ * serif venue name reversed out, the deal HOOK set big in bright gold, a live
+ * status pill, and (on the open front card) the verified specials + a stamped
+ * verified seal. The cards overlap vertically like loyalty cards in Apple
+ * Wallet: every back card peeks its top band (town · venue · hook · status),
+ * and the most urgent pour (last call, then ending soonest) sits FULL + lifted
+ * at the front. Tap any card to that place; "All pours" opens the full guide.
  *
- * Honest + self-hiding: drawn straight from the verified Field Notes moat,
- * filtered to windows that include right now (Eastern). Renders nothing when
- * none are live (mornings, late night), so it only ever shows a real, current
- * happy hour. Server component.
+ * Direction picked by a 4-way design panel ("The Pour Stack") + grafts: the
+ * status-pill placement and the wax-seal verified mark. Honest + self-hiding:
+ * drawn from the verified Field Notes moat, filtered to windows that include
+ * right now (Eastern); renders nothing in the morning / late night. Server
+ * component.
  */
 
 const PEEK_CAP = 5; // featured (full) + up to 4 peeking behind it
+const CARD_H = 168; // px — every card shares this geometry so peeks line up
+const OVERLAP = 80; // px pulled up → ~88px peek = the whole top band
 
 /** Eastern {day 0-6, minutes-since-midnight} for the supplied instant. */
 function easternParts(now: Date): { day: number; min: number } {
@@ -46,10 +52,24 @@ function fmtMin(m: number): string {
   return mm === 0 ? `${h12} ${mer}` : `${h12}:${String(mm).padStart(2, "0")} ${mer}`;
 }
 
+/** The Cover's photo-less fallback: a warm spruce-to-gold wash + a Martini. */
+function PhotoFallback() {
+  return (
+    <div
+      aria-hidden
+      className="grid h-full w-full place-items-center"
+      style={{ background: "linear-gradient(150deg, color-mix(in srgb, var(--app-accent) 30%, var(--app-brand-2)) 0%, var(--app-brand-2) 72%)" }}
+    >
+      <Martini className="h-9 w-9" strokeWidth={1.5} style={{ color: "color-mix(in srgb, var(--app-accent) 60%, var(--app-on-brand))" }} />
+    </div>
+  );
+}
+
 type LivePour = {
   slug: string;
   name: string;
   town?: string;
+  photo?: string;
   hook: string | null;
   specials: string;
   verified?: string;
@@ -73,6 +93,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
       slug: v.slug,
       name: p.name,
       town: p.municipality ? (MUNICIPALITY_BY_SLUG[p.municipality]?.name ?? undefined) : undefined,
+      photo: p.google_photo_url,
       hook,
       specials: v.happy_hour.details || "",
       verified: fn?.happy_hour ? (verifiedLabel(v.happy_hour.last_verified) ?? undefined) : undefined,
@@ -107,13 +128,12 @@ export default function HappyHourWallet({ now }: { now: Date }) {
         </Link>
       </div>
 
-      {/* The wallet. Cards overlap upward; each peeks its top strip, the front
-          (last) card sits full + lifted. */}
+      {/* The wallet. Photo cards overlap upward; each peeks its top band, the
+          front (last) card sits full + lifted, revealing the bottom band. */}
       <div>
         {shown.map((pour, i) => {
           const front = i === shown.length - 1;
           const back = !front;
-          const accent = pour.lastCall ? "var(--app-brand)" : "var(--app-accent)";
           const tab = pour.lastCall
             ? `Last call · till ${fmtMin(pour.endsAt)}`
             : pour.endsAt >= 1440 ? "On now · till close" : `On now · till ${fmtMin(pour.endsAt)}`;
@@ -122,65 +142,87 @@ export default function HappyHourWallet({ now }: { now: Date }) {
               key={pour.slug}
               href={`/places/${pour.slug}`}
               aria-label={`${pour.name}${pour.hook ? `: ${pour.hook}` : ""}. Happy hour ${tab.toLowerCase()}`}
-              className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-md)] pl-4 pr-3.5"
+              className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-md)]"
               style={{
-                // Overlap every card after the first so each back card peeks
-                // exactly its header (town · status · venue · gold hook), the
-                // specials tucked behind the card in front — like cards in a
-                // wallet. The specials block reserves a uniform 2 lines, so
-                // back-card heights match and the peeks line up; the front
-                // card is unclipped and shows the full pour.
-                marginTop: i === 0 ? 0 : "-52px",
-                paddingTop: "11px",
-                paddingBottom: "12px",
+                height: CARD_H,
+                marginTop: i === 0 ? 0 : -OVERLAP,
                 zIndex: i + 1,
-                // SOLID paper base — the cards overlap, so each must fully
-                // occlude the one behind (the translucent --app-bg-elevated
-                // would let the back card's text bleed through). The grain
-                // rides as a separate image layer (--app-paper-light is itself
-                // a gradient, so it can't be nested inside another one).
-                backgroundColor: "var(--app-bg-elevated-solid)",
-                backgroundImage: "var(--app-paper-light)",
-                boxShadow: front
-                  ? "var(--app-elev-2), var(--app-hi), var(--app-edge)"
-                  : "var(--app-elev-1), var(--app-hi), var(--app-edge)",
+                // Opaque spruce plate UNDER the photo so the card occludes the
+                // one behind it from frame one (before the image paints / behind
+                // any alpha) — the wallet's occlusion guarantee.
+                backgroundColor: "var(--app-brand-2)",
+                boxShadow: front ? "var(--app-elev-2), var(--app-hi)" : "var(--app-elev-1)",
               }}
             >
-              {/* Left rail — the deal welded to the venue, the moat's signature. */}
-              <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: accent }} />
-              {/* A whisper of the accent recedes the back cards behind the front. */}
-              {back && <span aria-hidden className="absolute inset-0" style={{ background: "color-mix(in srgb, var(--app-ink) 4%, transparent)" }} />}
+              {/* Layer 0 — the venue photo (or the Cover's gradient fallback). */}
+              {pour.photo ? (
+                <Image src={pour.photo} alt="" fill sizes="(max-width: 640px) 100vw, 520px" className="object-cover" />
+              ) : (
+                <PhotoFallback />
+              )}
 
-              {/* Peek strip: town + live status tab. */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
-                  {pour.town ?? "Frederick County"}
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[10px] font-bold uppercase tracking-[0.06em]" style={{ color: pour.lastCall ? "var(--app-brand-press)" : "var(--app-accent-press)" }}>
-                  <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: accent }} />
-                  {tab}
-                </span>
+              {/* Layer 1 — two scrims: a TOP band for the always-visible peek
+                  header, a BOTTOM plate for the front card's detail. Load-bearing
+                  for AA; never lighten. */}
+              <div
+                aria-hidden
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(to bottom, color-mix(in srgb, var(--app-ink) 82%, transparent) 0%, color-mix(in srgb, var(--app-ink) 46%, transparent) 30%, transparent 56%), linear-gradient(to top, color-mix(in srgb, var(--app-ink) 90%, transparent) 0%, color-mix(in srgb, var(--app-ink) 55%, transparent) 30%, transparent 60%)",
+                }}
+              />
+              {/* Recede the back cards so the front pops (photos are busier than
+                  paper, so this is deeper than a paper stack would need). */}
+              {back && <div aria-hidden className="absolute inset-0" style={{ background: "color-mix(in srgb, var(--app-ink) 22%, transparent)" }} />}
+
+              {/* Layer 2 — TOP BAND (always visible, even when peeking). */}
+              <div className="absolute inset-x-0 top-0 p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "color-mix(in srgb, var(--app-accent) 55%, var(--app-on-brand))" }}>
+                    {pour.town ?? "Frederick County"}
+                  </span>
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.06em]"
+                    style={{ background: pour.lastCall ? "var(--app-brand)" : "var(--app-accent-press)", color: "var(--app-on-brand)" }}
+                  >
+                    <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: "var(--app-on-brand)" }} />
+                    {tab}
+                  </span>
+                </div>
+                <h3 className="mt-1 truncate font-serif text-[19px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-on-brand)" }}>
+                  {pour.name}
+                </h3>
+                <p
+                  className="mt-0.5 font-mono font-bold leading-none tracking-[-0.01em]"
+                  style={{ fontSize: pour.hook ? "28px" : "19px", color: "color-mix(in srgb, var(--app-accent) 70%, var(--app-on-brand))" }}
+                >
+                  {pour.hook ?? "Specials"}
+                </p>
               </div>
 
-              {/* Venue + the gold hook hero. */}
-              <h3 className="mt-1 truncate font-serif text-[19px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
-                {pour.name}
-              </h3>
-              <p className="mt-0.5 font-mono font-bold leading-none tracking-[-0.01em]" style={{ fontSize: pour.hook ? "27px" : "20px", color: "var(--app-accent-press)" }}>
-                {pour.hook ?? "Specials"}
-              </p>
-
-              {/* The verified specifics (the moat) — reserved at 2 lines so the
-                  peeks above stay uniform. */}
-              {pour.specials && (
-                <p className="mt-1.5 font-serif text-[13px] italic leading-snug" style={{ color: "var(--app-ink-2)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: "2.7em" }}>
-                  {pour.specials}
-                </p>
-              )}
-              {front && pour.verified && (
-                <p className="mt-1 font-mono text-[9.5px] uppercase tracking-[0.1em]" style={{ color: "var(--app-ink-3)" }}>
-                  {pour.verified}
-                </p>
+              {/* Layer 3 — BOTTOM BAND (front card only): the verified specials
+                  + a stamped verified seal. */}
+              {front && (
+                <div className="absolute inset-x-0 bottom-0 p-3.5">
+                  {pour.specials && (
+                    <p className="line-clamp-2 max-w-prose font-serif text-[13px] italic leading-snug" style={{ color: "color-mix(in srgb, var(--app-on-brand) 92%, transparent)" }}>
+                      &ldquo;{pour.specials}&rdquo;
+                    </p>
+                  )}
+                  {pour.verified && (
+                    <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[9.5px] uppercase tracking-[0.1em]" style={{ color: "color-mix(in srgb, var(--app-on-brand) 64%, transparent)" }}>
+                      <span
+                        aria-hidden
+                        className="grid h-[18px] w-[18px] place-items-center rounded-full"
+                        style={{ background: "color-mix(in srgb, var(--app-on-brand) 20%, transparent)", boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-on-brand) 38%, transparent)" }}
+                      >
+                        <BadgeCheck className="h-3 w-3" strokeWidth={2} style={{ color: "var(--app-on-brand)" }} />
+                      </span>
+                      {pour.verified}
+                    </p>
+                  )}
+                </div>
               )}
             </Link>
           );
