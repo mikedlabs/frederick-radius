@@ -243,7 +243,7 @@ export default async function HomePage() {
           Your field guide to Frederick County.
         </p>
         <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          From Downtown Frederick to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
+          From Downtown to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
         </p>
       </div>
 
