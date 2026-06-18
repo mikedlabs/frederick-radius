@@ -49,6 +49,9 @@
     "wastlers-barber-shop"
   ],
   "patch": {
+    "visitation-hotel": {
+      "short_blurb": "Boutique hotel in a restored downtown landmark that began as a monastery, then a school, now home to the Voltaggio brothers' Wye Oak Tavern."
+    },
     "alice-mccormick-acupuncture": {
       "category": "wellness"
     },
