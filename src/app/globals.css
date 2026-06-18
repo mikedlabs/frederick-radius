@@ -929,6 +929,38 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
 }
 
 /* ─────────────────────────────────────────────────────
+ * Alert pulse — a slow, soft accent ring that breathes
+ * INSIDE an active alert tile on /pulse, so a glance reads
+ * "this is live" without a flashy blink. Inset rather than
+ * an outward halo because the tiles are overflow-hidden,
+ * and it carries the tile's tactile shadow tokens so the
+ * elevation is preserved while only the ring breathes. The
+ * ring color is driven by --alert-pulse (set inline to the
+ * tile's accent), so one class serves the danger + warning
+ * tones. ~3.6s, faint, reduced-motion off.
+ * ───────────────────────────────────────────────────── */
+.alert-pulse {
+  --alert-pulse: var(--app-danger);
+  animation: alert-pulse-ring 3.6s ease-in-out infinite;
+}
+@keyframes alert-pulse-ring {
+  0%,
+  100% {
+    box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi),
+      inset 0 0 0 1.5px color-mix(in srgb, var(--alert-pulse) 12%, transparent);
+  }
+  50% {
+    box-shadow: var(--app-elev-1), var(--app-edge), var(--app-hi),
+      inset 0 0 0 1.5px color-mix(in srgb, var(--alert-pulse) 50%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alert-pulse {
+    animation: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────
  * Save micro-interaction — a quick overshoot pop on the
  * bookmark glyph + a one-shot radiating ring. The button
  * mounts the .save-ring only for ~520ms after a fresh
