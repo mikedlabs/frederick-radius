@@ -484,6 +484,14 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           >
             Report incorrect info
           </a>
+          {/* Owner front door — deep-links a claim with the slug pre-attached;
+              the claim -> manage -> post -> push flow is already built. */}
+          <Link
+            href={`/business/claim?place=${place.slug}`}
+            style={{ color: "var(--app-ink-3)" }}
+          >
+            Claim this business
+          </Link>
           <ShareButton
             title={place.name}
             text={safeBlurb(place)}

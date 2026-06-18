@@ -619,6 +619,20 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
               Tell us
             </a>
           </span>
+          <span aria-hidden>·</span>
+          {/* Owner front door — the claim->manage->post->push flow is fully
+              built but was undiscoverable; this quiet valve (same register as
+              "Tell us") deep-links a claim with the slug pre-attached. */}
+          <span>
+            Run this business?{" "}
+            <Link
+              href={`/business/claim?place=${place.slug}`}
+              className="underline"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Claim it
+            </Link>
+          </span>
         </p>
         </div>
       </div>
