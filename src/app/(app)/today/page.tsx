@@ -174,12 +174,16 @@ export default async function HomePage() {
   // soonest first. No time-mode toggle, no tomorrow/weekend — just today's
   // events, nothing else. The unified set already spans city + county; the
   // utility filter keeps council-hearing-type admin rows out of the headline.
-  const todaysEvents = publicEvents
-    .filter((e) => isEventToday(e.starts_at, now) && !isUtilityEvent(e))
-    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
-    .slice(0, 12);
-  // Lead with the big feature card only when the featured event is one of
-  // today's (pickFeaturedEvent already windows to the near term).
+  // EVERYTHING happening in the city or county TODAY, soonest first — no cap,
+  // nothing dropped. The draws (concerts, markets, shows) lead as cards; the
+  // civic/utility business (meetings, hearings) still shows, just as a quiet
+  // "Also today" list so it's present without burying the draws.
+  const todayAll = publicEvents
+    .filter((e) => isEventToday(e.starts_at, now))
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  const todaysEvents = todayAll.filter((e) => !isUtilityEvent(e));
+  const todaysCivic = todayAll.filter((e) => isUtilityEvent(e));
+  // Lead with the big feature card only when the featured event is one of today's.
   const showHero = Boolean(featuredEvent && todaysEvents.some((e) => e.slug === featuredEvent.slug));
   const upcomingRest = showHero
     ? todaysEvents.filter((e) => e.slug !== featuredEvent!.slug)
@@ -314,7 +318,7 @@ export default async function HomePage() {
           cta="See all"
           eyebrow="What's on"
         >
-          {showHero || upcomingRest.length > 0 ? (
+          {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 ? (
             <div className="space-y-3">
               {showHero && featuredEvent && (
                 <EventCard event={featuredEvent} variant="feature" />
@@ -328,6 +332,22 @@ export default async function HomePage() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+              {/* Civic / municipal business happening today — present but quiet,
+                  as muted one-line rows so it never competes with the draws. */}
+              {todaysCivic.length > 0 && (
+                <div className="space-y-1">
+                  <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                    Also today
+                  </p>
+                  <ul>
+                    {todaysCivic.map((e) => (
+                      <li key={`${e.slug}-${e.starts_at}`}>
+                        <EventCard event={e} variant="utility" />
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>
