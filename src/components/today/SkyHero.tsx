@@ -222,7 +222,7 @@ export default async function SkyHero({
 
   return (
     <section
-      className={`sky-hero -mx-4 -mt-4 px-4 pb-3 pt-4 sm:rounded-b-[var(--app-radius-xl)] ${
+      className={`sky-hero overflow-hidden rounded-[var(--app-radius-lg)] px-4 py-4 ${
         fill === "medium"
           ? "flex min-h-[55svh] flex-col lg:!min-h-0 lg:block"
           : fill

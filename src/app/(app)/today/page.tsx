@@ -206,11 +206,12 @@ export default async function HomePage() {
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
       {/* ── WEATHER HERO — the time-of-day gradient sky + today's weather +
-          tonight's event LEADS the page (owner call: it's the most beautiful,
-          most-glanceable opener). Moved up from the collapsed "full briefing";
-          the detailed hourly / 7-day / almanac forecast still lives there.
-          SkyHero's own -mx-4 -mt-4 bleeds it flush under the header for a
-          full-bleed sky; the soft downward shadow floats it over the page. */}
+          tonight's event LEADS the page. Now a COMPACT, CONTAINED card (owner
+          call: "all cards within the main part" + "one header with the weather
+          more compact") — the sky is a rounded card within the column rather
+          than a full-bleed band, with a tighter weather row inside; the soft
+          downward shadow floats it over the page. The detailed hourly / 7-day
+          / almanac forecast still lives in the collapsed "full briefing". */}
       <SkyHero className="relative z-10 shadow-[0_12px_28px_-16px_rgba(22,20,14,0.22)]">
         <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
           <TodayCard

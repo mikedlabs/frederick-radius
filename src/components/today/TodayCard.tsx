@@ -161,42 +161,31 @@ export default async function TodayCard({
         <span suppressHydrationWarning>{dateStr}</span>
         <LiveClock className="font-mono tabular-nums" />
       </div>
-      <div className="mt-1.5 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          {/* The hook — greeting + a confident weather mood, in the display
-              face. This is the 3-second "I get it" line. */}
-          <h2 className="font-serif text-[24px] font-semibold leading-tight tracking-tight sm:text-[28px]">
-            {GREETING[band]} {mood}
-          </h2>
-        </div>
-        {/* The animated weather glyph — the atmospheric visual the hero used
-            to carry. CSS-only (no JS), sized as the hero icon, riding on the
-            sky gradient. */}
-        {variant && (
-          <AnimatedSkyGlyph variant={variant} size={60} className="-mt-1 shrink-0 opacity-95" />
-        )}
-      </div>
+      {/* The hook — greeting + a confident weather mood, in the display face.
+          The 3-second "I get it" line, now a tighter lead above one compact
+          weather row (was a 28px headline stacked over a 64px number). */}
+      <h2 className="mt-1.5 font-serif text-[18px] font-semibold leading-snug tracking-tight sm:text-[20px]">
+        {GREETING[band]} {mood}
+      </h2>
 
-      {/* The dramatic temperature — thin display serif, the iOS-weather
-          register the old hero had. Pairs the big "now" with the small
-          high/sunset stats so the number reads first. */}
-      {tempNow != null ? (
-        <div className="mt-1.5 flex items-end gap-3">
-          <span className="font-serif text-[56px] font-light leading-[0.85] tracking-tight tabular-nums sm:text-[64px]">
-            {tempNow}&deg;
-          </span>
+      {/* One compact weather row: the animated glyph + the temperature + the
+          high/sunset stats, side by side, so the header stays short. */}
+      {(variant || tempNow != null || stats.length > 0) && (
+        <div className="mt-2 flex items-center gap-3">
+          {variant && (
+            <AnimatedSkyGlyph variant={variant} size={44} className="shrink-0 opacity-95" />
+          )}
+          {tempNow != null && (
+            <span className="font-serif text-[40px] font-light leading-none tracking-tight tabular-nums sm:text-[44px]">
+              {tempNow}&deg;
+            </span>
+          )}
           {stats.length > 0 && (
-            <span className="pb-1.5 text-body font-medium tabular-nums opacity-90">
+            <span className="text-[12.5px] font-medium leading-snug tabular-nums opacity-90">
               {stats.join("  ·  ")}
             </span>
           )}
         </div>
-      ) : (
-        stats.length > 0 && (
-          <p className="mt-1.5 text-body font-medium tabular-nums opacity-90">
-            {stats.join("  ·  ")}
-          </p>
-        )
       )}
 
       {/* Tonight's headline event — a compact, framed "what's on" row instead
