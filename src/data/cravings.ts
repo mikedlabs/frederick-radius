@@ -43,7 +43,8 @@ export type Craving = {
     | "Palette"
     | "Music"
     | "FerrisWheel"
-    | "Wine";
+    | "Wine"
+    | "BedDouble";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -250,6 +251,16 @@ export const CRAVINGS: Craving[] = [
     match: (p) =>
       Boolean(p.subcategories?.includes("family-fun")) ||
       (FAMILY_FUN.test(p.name) && !FAMILY_FUN_JUNK.test(p.name)),
+  },
+  {
+    // Lodging — the county's hotels, inns, and B&Bs (37 places). For a
+    // visitor deciding where to stay the night, or a local booking a room
+    // for out-of-town guests.
+    key: "stay",
+    label: "Stay",
+    icon: "BedDouble",
+    color: "var(--app-cool)",
+    match: (p) => p.category === "lodging",
   },
 ];
 
