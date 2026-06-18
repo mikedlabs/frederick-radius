@@ -10,16 +10,16 @@ import { craveTileClass, craveTileStyle, CraveTileInner } from "./craveTile";
  * Fires a window event the TopBar listens for, so the drawer's open-state
  * stays owned by the TopBar and this stays a dumb trigger.
  */
-export default function MoreSheetTile({ index }: { index?: string }) {
+export default function MoreSheetTile({ ink = "var(--app-ink-3)" }: { ink?: string }) {
   return (
     <button
       type="button"
       aria-label="More: open the field guide menu"
       className={craveTileClass}
-      style={craveTileStyle("var(--app-ink-2)")}
+      style={craveTileStyle(ink)}
       onClick={() => window.dispatchEvent(new Event("fr:open-more"))}
     >
-      <CraveTileInner icon={MoreHorizontal} label="More…" accent="var(--app-ink-2)" index={index} />
+      <CraveTileInner icon={MoreHorizontal} label="More…" ink={ink} />
     </button>
   );
 }
