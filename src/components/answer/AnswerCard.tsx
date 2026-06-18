@@ -15,12 +15,12 @@ import type { Answer, AnswerStatus } from "@/lib/answers/types";
 
 const STATUS_META: Record<AnswerStatus, { label: string; fg: string; bg: string }> = {
   "open-now": { label: "Open now", fg: "var(--app-positive)", bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)" },
-  tonight: { label: "Tonight", fg: "var(--app-accent)", bg: "color-mix(in srgb, var(--app-accent) 20%, transparent)" },
+  tonight: { label: "Tonight", fg: "var(--app-accent-press)", bg: "color-mix(in srgb, var(--app-accent) 20%, transparent)" },
   weekend: { label: "Weekend", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 20%, transparent)" },
   transit: { label: "Transit", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 18%, transparent)" },
   parking: { label: "Parking", fg: "var(--app-ink-2)", bg: "color-mix(in srgb, var(--app-ink) 12%, transparent)" },
   civic: { label: "Civic", fg: "var(--app-cool)", bg: "color-mix(in srgb, var(--app-cool) 18%, transparent)" },
-  events: { label: "Events", fg: "var(--app-accent)", bg: "color-mix(in srgb, var(--app-accent) 18%, transparent)" },
+  events: { label: "Events", fg: "var(--app-accent-press)", bg: "color-mix(in srgb, var(--app-accent) 18%, transparent)" },
   free: { label: "Free", fg: "var(--app-positive)", bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)" },
 };
 

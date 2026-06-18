@@ -355,7 +355,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             <OpenClosedDot status={place.open_status} />
             {place.google_rating !== undefined && (
               <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
-                <span style={{ color: "var(--app-accent)" }}>★</span>
+                <span style={{ color: "var(--app-accent-press)" }}>★</span>
                 <span className="font-mono tabular-nums">{place.google_rating.toFixed(1)}</span>
                 {place.google_rating_count ? (
                   <span className="font-mono tabular-nums" style={{ color: "var(--app-ink-3)" }}>({place.google_rating_count.toLocaleString()})</span>

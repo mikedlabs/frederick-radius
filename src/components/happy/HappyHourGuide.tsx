@@ -192,7 +192,7 @@ function PricedRow({ it, nowMin }: { it: Item; nowMin: number }) {
         {live && <span aria-hidden className="live-dot mb-0.5 h-1.5 w-1.5 shrink-0 self-center rounded-full" style={{ background: "var(--app-brand)" }} />}
         <span className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "62%" }}>{it.r.name}</span>
         <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
-        <span className="shrink-0 font-mono text-[14px] font-bold tabular-nums tracking-[0.01em]" style={{ color: it.hook ? "var(--app-accent)" : "var(--app-ink-3)" }}>
+        <span className="shrink-0 font-mono text-[14px] font-bold tabular-nums tracking-[0.01em]" style={{ color: it.hook ? "var(--app-accent-press)" : "var(--app-ink-3)" }}>
           {it.hook ?? "Specials"}
         </span>
       </div>
@@ -333,7 +333,7 @@ export default function HappyHourGuide({
                         <div className="flex items-baseline gap-1.5">
                           <span className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "62%" }}>{r.name}</span>
                           <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
-                          <span className="shrink-0 font-mono text-[14px] font-bold tracking-[0.01em]" style={{ color: hook ? "var(--app-accent)" : "var(--app-ink-3)" }}>{hook ?? "Specials"}</span>
+                          <span className="shrink-0 font-mono text-[14px] font-bold tracking-[0.01em]" style={{ color: hook ? "var(--app-accent-press)" : "var(--app-ink-3)" }}>{hook ?? "Specials"}</span>
                         </div>
                         <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{r.schedule}{r.town ? ` · ${r.town}` : ""}</p>
                       </Link>
