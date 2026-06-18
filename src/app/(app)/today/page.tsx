@@ -231,10 +231,21 @@ export default async function HomePage() {
         </Suspense>
       </SkyHero>
 
+      {/* Identity line — ONE calm line, so a first-timer knows what this is
+          before the "I want…" grid, without a mission-statement block that
+          nags returning users every morning. Lands the field-guide idea + the
+          three value props + "near you, right now" (the Radius hook). */}
+      <p className="mt-3 px-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        <span className="font-serif text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          Your field guide to Frederick County.
+        </span>{" "}
+        What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time near you, right now.
+      </p>
+
       {/* Salutation + golden-hour cue. The date / day / time itself now lives
           in the SkyHero header above; this slim line carries only the
           contextual extras and self-hides when there's neither. */}
-      <div className="mt-2.5">
+      <div className="mt-2">
         <TodayContext />
       </div>
 
