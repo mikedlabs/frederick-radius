@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted } from "@/hooks/useSaved";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
 import { useAllNotes, type PlaceNote } from "@/hooks/useNotes";
+import { useBeenList } from "@/hooks/useBeenHere";
 // A2.8: SavedList no longer static-imports clientPlaceBySlug, so
 // /saved's client bundle no longer ships places-client.json (~2MB).
 // Place data is hydrated via /api/places/by-slugs on mount.
@@ -69,6 +70,10 @@ export default function SavedList() {
   const clearRecent = useClearRecentPlaces();
   // The user's own margin notes ("great patio, ask for Maria") keyed by slug.
   const notes = useAllNotes();
+  // Places the user tapped "Been here" on (the visited list). Same per-device
+  // localStorage + useSyncExternalStore store as notes/saved, so toggling on a
+  // place page updates the Visited section here live.
+  const beenSlugs = useBeenList();
 
   // Union of every slug this component might need: saved bookmarks,
   // recently viewed, and the empty-state seeds. We hand the whole set
@@ -82,9 +87,12 @@ export default function SavedList() {
     // Noted places too — a note can exist on a place the user never bookmarked,
     // and its card must still resolve for the Notes section.
     for (const s of Object.keys(notes)) set.add(s);
+    // Visited places too — "been here" can be set on a place that was never
+    // saved or noted, and its card must still resolve for the Visited section.
+    for (const s of beenSlugs) set.add(s);
     const slugsToFetch = Array.from(set);
     return { slugsToFetch, slugsKey: slugsToFetch.join(",") };
-  }, [items, recentSlugs, notes]);
+  }, [items, recentSlugs, notes, beenSlugs]);
 
   // null = not yet fetched (or pre-mount); empty Map = fetched with no
   // matches. Distinguishing the two lets the render gate show a
@@ -172,6 +180,17 @@ export default function SavedList() {
       .filter((x): x is { place: PlaceCardData; note: PlaceNote } => Boolean(x.place))
       .sort((a, b) => (b.note.updated_at || "").localeCompare(a.note.updated_at || ""));
   }, [notes, placesBySlug]);
+
+  // Places the user has marked "been here." Resolves each visited slug against
+  // the hydrated map; un-deduped from Saved/Notes on purpose — "I saved it",
+  // "I noted it", and "I've been" are distinct, so a place can honestly appear
+  // in more than one section.
+  const visitedPlaces = useMemo<PlaceCardData[]>(() => {
+    if (!placesBySlug) return [];
+    return beenSlugs
+      .map((slug) => placesBySlug.get(slug))
+      .filter((p): p is PlaceCardData => Boolean(p));
+  }, [beenSlugs, placesBySlug]);
 
   const { places, events, byCategory, byTown, townTally } = useMemo(() => {
     if (!placesBySlug) {
@@ -306,10 +325,10 @@ export default function SavedList() {
     );
   }
 
-  // Notes alone are enough to skip the blank-journal empty state — a user can
-  // annotate a place without bookmarking it. (placesBySlug is resolved by here,
-  // so notedPlaces is final — no empty-state flash.)
-  if (items.length === 0 && notedPlaces.length === 0) return <EmptyState />;
+  // Notes OR visited places alone are enough to skip the blank-journal empty
+  // state — a user can annotate or mark "been here" without bookmarking.
+  // (placesBySlug is resolved by here, so both lists are final — no flash.)
+  if (items.length === 0 && notedPlaces.length === 0 && visitedPlaces.length === 0) return <EmptyState />;
 
   // Cluster signal: if ≥3 places are in one town, suggest a route.
   const dominantTown = [...townTally.entries()]
@@ -555,6 +574,37 @@ export default function SavedList() {
                 >
                   {note.text}
                 </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Visited — places the user tapped "Been here" on, from the place page.
+          Same calm slate accent as the toggle; a plain noun header to sit
+          alongside Places / Your notes / Events. */}
+      {visitedPlaces.length > 0 && (
+        <section aria-label="Visited" className="space-y-2">
+          <header className="flex items-baseline gap-2.5">
+            <span
+              aria-hidden
+              className="block h-[3px] w-7 rounded-full"
+              style={{ background: "var(--app-cool)" }}
+            />
+            <h2
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-cool)" }}
+            >
+              Visited
+            </h2>
+            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {visitedPlaces.length}
+            </span>
+          </header>
+          <ul className="space-y-2.5">
+            {visitedPlaces.map((place) => (
+              <li key={place.slug}>
+                <PlaceCard place={place} />
               </li>
             ))}
           </ul>
