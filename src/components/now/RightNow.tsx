@@ -27,6 +27,7 @@ import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import { CRAVINGS, CRAVING_BY_KEY } from "@/data/cravings";
+import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
 import { mealForKey, matchMeal, isMealKey } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { FREDERICK_CENTER, haversineMeters } from "@/lib/geo";
@@ -80,6 +81,10 @@ const WALK_M_PER_MIN = 80;
 // coffee?" looked incomplete. 16 surfaces effectively every in-town option
 // while staying bounded; still sorted open-first then nearest.
 const RESULT_LIMIT = 16;
+
+// Cuisine slugs that have their OWN I-want tab (Coffee, Drinks, Sweets), so the
+// Food cuisine chips stay food-focused instead of echoing the other tabs.
+const FOOD_FACET_EXCLUDE = new Set(["coffee", "bar", "brewery", "dessert"]);
 
 function walkLabel(distance_m: number): string {
   const mins = Math.max(1, Math.round(distance_m / WALK_M_PER_MIN));
@@ -139,23 +144,50 @@ export default function RightNow({
   const meal = cravingKey ? mealForKey(cravingKey) : null;
   const craving = cravingKey && !meal ? CRAVING_BY_KEY[cravingKey] : null;
   const active = meal ?? craving;
-  // The narrowest active noun for copy: the chosen facet ("pizza") if one is
-  // set, else the craving/meal label ("food").
-  const activeNoun = (
-    craving?.facets?.find((f) => f.key === facetKey)?.label ?? active?.label ?? ""
-  ).toLowerCase();
 
-  // Every place matching the craving (+ active sub-facet), sorted open-first
-  // then nearest. Not yet limited or open-filtered — `matched` is the basis
-  // for both the honest open count and the displayed list.
-  const matched = useMemo(() => {
+  // Every place matching the craving/meal with NO facet yet — the basis for
+  // the facet chips (which cuisines are actually nearby) and the open count.
+  const cravingMatchedAll = useMemo(() => {
     const m = cravingKey ? mealForKey(cravingKey) : null;
     const c = cravingKey && !m ? CRAVING_BY_KEY[cravingKey] : null;
     const matchFn = m ? (p: PlaceCardData) => matchMeal(m, p) : c ? c.match : null;
-    if (!matchFn) return [];
-    const facet = c && facetKey ? c.facets?.find((f) => f.key === facetKey) : null;
-    return places
-      .filter((p) => matchFn(p) && (!facet || facet.match(p)))
+    return matchFn ? places.filter(matchFn) : [];
+  }, [cravingKey, places]);
+
+  // The sub-filter chips. For a cuisine craving (Food) they're DERIVED from the
+  // cuisines actually present in the matched set — top by count, county-wide —
+  // so you can narrow to Mexican / Asian / BBQ / Seafood / etc. Otherwise the
+  // craving's fixed facets (Drinks → Breweries/Bars, …). Meals get none.
+  const facetDefs = useMemo<{ key: string; label: string }[]>(() => {
+    if (craving?.cuisineFacets) {
+      const counts = new Map<string, number>();
+      for (const p of cravingMatchedAll) for (const slug of cuisinesOf(p)) counts.set(slug, (counts.get(slug) ?? 0) + 1);
+      return [...counts.entries()]
+        // Skip cuisines that have their OWN I-want tab (Coffee, Drinks, Sweets)
+        // so the Food chips stay food-focused, and one-offs so they're meaningful.
+        .filter(([slug, n]) => n >= 2 && !FOOD_FACET_EXCLUDE.has(slug))
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([slug]) => ({ key: slug, label: cuisineLabel(slug) }));
+    }
+    return (craving?.facets ?? []).map((f) => ({ key: f.key, label: f.label }));
+  }, [craving, cravingMatchedAll]);
+
+  // The narrowest active noun for copy: the chosen facet ("pizza") if set, else
+  // the craving/meal label ("food").
+  const activeNoun = (facetDefs.find((f) => f.key === facetKey)?.label ?? active?.label ?? "").toLowerCase();
+
+  // matched = the craving set narrowed by the active facet, sorted open-first
+  // then nearest. The basis for the open count and the displayed list.
+  const matched = useMemo(() => {
+    const passFacet = (p: PlaceCardData): boolean => {
+      if (!facetKey) return true;
+      if (craving?.cuisineFacets) return cuisinesOf(p).includes(facetKey);
+      const f = craving?.facets?.find((x) => x.key === facetKey);
+      return f ? f.match(p) : true;
+    };
+    return cravingMatchedAll
+      .filter(passFacet)
       .map((p) => {
         const dist = haversineMeters(origin, p.geom);
         return { p, dist, open: isOpenNow(p.open_status) };
@@ -164,7 +196,7 @@ export default function RightNow({
         if (a.open !== b.open) return a.open ? -1 : 1; // open first
         return a.dist - b.dist; // then nearest
       });
-  }, [cravingKey, facetKey, places, origin]);
+  }, [cravingMatchedAll, craving, facetKey, origin]);
 
   const openCount = useMemo(() => matched.filter((m) => m.open).length, [matched]);
 
@@ -313,10 +345,10 @@ export default function RightNow({
             />
             Open now
           </button>
-          {craving?.facets && (
+          {craving && facetDefs.length > 0 && (
             <>
               <FacetChip label="All" active={facetKey === null} color={craving.color} onClick={() => setFacetKey(null)} />
-              {craving.facets.map((f) => (
+              {facetDefs.map((f) => (
                 <FacetChip
                   key={f.key}
                   label={f.label}

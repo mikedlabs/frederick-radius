@@ -49,6 +49,11 @@ export type Craving = {
   match: (p: CravingMatchable) => boolean;
   /** Optional sub-filters surfaced as chips on the results page. */
   facets?: CravingFacet[];
+  /** When true, the results page derives its sub-filter chips DYNAMICALLY from
+   *  the cuisines actually present in the matched set (Mexican, Asian, BBQ,
+   *  Seafood, …) instead of a fixed `facets` list — so Food can be narrowed by
+   *  what's really nearby. Mutually exclusive with `facets`. */
+  cuisineFacets?: boolean;
 };
 
 // Brand names with no descriptor (Dairy Queen / DQ) are matched explicitly —
@@ -90,11 +95,10 @@ export const CRAVINGS: Craving[] = [
       p.category === "food-truck" ||
       p.category === "pizza" ||
       PIZZA.test(p.name),
-    facets: [
-      { key: "restaurant", label: "Sit-down", match: (p) => p.category === "restaurant" },
-      { key: "pizza", label: "Pizza", match: (p) => p.category === "pizza" || PIZZA.test(p.name) },
-      { key: "food-truck", label: "Food trucks", match: (p) => p.category === "food-truck" },
-    ],
+    // Food narrows by CUISINE, derived from what's actually nearby (Mexican,
+    // Asian, BBQ, Seafood, Pizza, Burgers, …) — far richer than a fixed
+    // sit-down/pizza/truck split, and it pulls from the whole county.
+    cuisineFacets: true,
   },
   {
     key: "coffee",
