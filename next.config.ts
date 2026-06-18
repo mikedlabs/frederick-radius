@@ -212,6 +212,12 @@ const nextConfig: NextConfig = {
       // remains permanently redirected so bookmarks + iOS Share Sheet
       // saves don't 404.
       { source: "/saved", destination: "/my-radius", permanent: true },
+      // /guide (the old discovery funnel) is retired — PR #624 dropped its
+      // tab on the thesis that /today's craving strip + global search now
+      // cover the find-what-you-want intent, and the page is now removed.
+      // 308 to /today so the indexed URL's equity + every bookmark / push /
+      // search-result link resolves instead of 404ing.
+      { source: "/guide", destination: "/today", permanent: true },
       // Submit/business hub paths 404'd (only the leaf routes existed),
       // which reads as broken to community submitters + business owners
       // (external audit ship-blocker #2). Point the bare paths at the

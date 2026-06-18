@@ -45,12 +45,12 @@ export default function AppError({
           Try again
         </button>
         <Link
-          href="/guide"
+          href="/today"
           className="tactile tactile-interactive inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-[13px] font-semibold"
           style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
         >
           <Compass className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          Back to the guide
+          Back to Today
         </Link>
       </div>
     </div>

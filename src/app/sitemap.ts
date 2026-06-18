@@ -9,12 +9,11 @@ const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   // Only canonical, indexable, 200-status URLs (T2). The root "/" 307s to
-  // /today (the answer surface is now the home entry), and /now + /radius
-  // 308-redirect — listing a redirect in the sitemap is the bug, so they're
-  // gone. /today is priority 1; /guide (the funnel) stays a strong entry.
+  // /today (the answer surface is now the home entry), and /now + /radius +
+  // /guide 308-redirect — listing a redirect in the sitemap is the bug, so
+  // they're gone. /today is priority 1.
   const top: MetadataRoute.Sitemap = [
     { url: `${BASE}/today`, lastModified: now, changeFrequency: "hourly", priority: 1 },
-    { url: `${BASE}/guide`, lastModified: now, changeFrequency: "daily", priority: 0.9 },
     { url: `${BASE}/map`, lastModified: now, changeFrequency: "daily", priority: 0.8 },
     { url: `${BASE}/events`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${BASE}/open-now`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
@@ -31,7 +30,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/places`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/amenities`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/contacts`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
-    // Dropped: "/" (307→/guide), "/now" (308→/today), "/radius" (308→
+    // Dropped: "/now" (308→/today), "/radius" (308→
     // /map?mode=radius) — never list a redirect. /pulse, /parks, /trails
     // are noindex; /my-radius is user-state; /submit, /welcome, /settings,
     // /business, /pitch, /from-above now carry robots:{index:false}.

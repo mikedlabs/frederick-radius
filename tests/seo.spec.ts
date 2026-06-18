@@ -13,12 +13,11 @@ describe("sitemap (T2) — only canonical, indexable, non-redirecting URLs", () 
     expect(urls.some((u) => /\/$/.test(u))).toBe(false); // no bare-root "…/"
   });
 
-  it("includes /today (the home), the /guide browse funnel, and main content routes", () => {
-    // /guide lost its primary-nav tab but stays in the sitemap — it's still
-    // a real indexable page (browse-by-town / hidden gems / live downtown).
-    expect(urls.some((u) => u.endsWith("/guide"))).toBe(true);
+  it("includes /today (the home) + main content routes, and excludes the retired /guide", () => {
     expect(urls.some((u) => u.endsWith("/today"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/collections"))).toBe(true);
+    // /guide was retired (308 -> /today); never list a redirecting URL.
+    expect(urls.some((u) => u.endsWith("/guide"))).toBe(false);
   });
 
   it("includes town + category + event detail pages", () => {
