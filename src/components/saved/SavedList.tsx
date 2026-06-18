@@ -4,6 +4,7 @@ import { stampEventProvenance } from "@/lib/provenance";
 import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted } from "@/hooks/useSaved";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
+import { useAllNotes, type PlaceNote } from "@/hooks/useNotes";
 // A2.8: SavedList no longer static-imports clientPlaceBySlug, so
 // /saved's client bundle no longer ships places-client.json (~2MB).
 // Place data is hydrated via /api/places/by-slugs on mount.
@@ -66,6 +67,8 @@ export default function SavedList() {
   // section never duplicates a card the user has already bookmarked.
   const recentSlugs = useRecentPlaces();
   const clearRecent = useClearRecentPlaces();
+  // The user's own margin notes ("great patio, ask for Maria") keyed by slug.
+  const notes = useAllNotes();
 
   // Union of every slug this component might need: saved bookmarks,
   // recently viewed, and the empty-state seeds. We hand the whole set
@@ -76,9 +79,12 @@ export default function SavedList() {
     const set = new Set<string>();
     for (const i of items) if (i.type === "place") set.add(i.id);
     for (const s of recentSlugs) set.add(s);
+    // Noted places too — a note can exist on a place the user never bookmarked,
+    // and its card must still resolve for the Notes section.
+    for (const s of Object.keys(notes)) set.add(s);
     const slugsToFetch = Array.from(set);
     return { slugsToFetch, slugsKey: slugsToFetch.join(",") };
-  }, [items, recentSlugs]);
+  }, [items, recentSlugs, notes]);
 
   // null = not yet fetched (or pre-mount); empty Map = fetched with no
   // matches. Distinguishing the two lets the render gate show a
@@ -155,6 +161,17 @@ export default function SavedList() {
       /* ignore */
     }
   }, []);
+
+  // Places the user has written a margin note on, freshest note first. Resolves
+  // each note's slug against the hydrated place map; a note whose place didn't
+  // resolve is simply skipped (never a broken card).
+  const notedPlaces = useMemo<Array<{ place: PlaceCardData; note: PlaceNote }>>(() => {
+    if (!placesBySlug) return [];
+    return Object.entries(notes)
+      .map(([slug, note]) => ({ place: placesBySlug.get(slug), note }))
+      .filter((x): x is { place: PlaceCardData; note: PlaceNote } => Boolean(x.place))
+      .sort((a, b) => (b.note.updated_at || "").localeCompare(a.note.updated_at || ""));
+  }, [notes, placesBySlug]);
 
   const { places, events, byCategory, byTown, townTally } = useMemo(() => {
     if (!placesBySlug) {
@@ -289,7 +306,10 @@ export default function SavedList() {
     );
   }
 
-  if (items.length === 0) return <EmptyState />;
+  // Notes alone are enough to skip the blank-journal empty state — a user can
+  // annotate a place without bookmarking it. (placesBySlug is resolved by here,
+  // so notedPlaces is final — no empty-state flash.)
+  if (items.length === 0 && notedPlaces.length === 0) return <EmptyState />;
 
   // Cluster signal: if ≥3 places are in one town, suggest a route.
   const dominantTown = [...townTally.entries()]
@@ -501,6 +521,43 @@ export default function SavedList() {
               ))}
             </ul>
           )}
+        </section>
+      )}
+
+      {/* Your notes — the user's own margin notes on places. A naturalist's
+          jottings ("great patio, ask for Maria"), shown under each place as an
+          accent-ruled note. Distinct from the verified Field Notes moat. */}
+      {notedPlaces.length > 0 && (
+        <section aria-label="Your notes" className="space-y-2">
+          <header className="flex items-baseline gap-2.5">
+            <span
+              aria-hidden
+              className="block h-[3px] w-7 rounded-full"
+              style={{ background: "var(--app-accent)" }}
+            />
+            <h2
+              className="text-[11px] font-bold uppercase tracking-[0.12em]"
+              style={{ color: "var(--app-accent-press)" }}
+            >
+              Your notes
+            </h2>
+            <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {notedPlaces.length}
+            </span>
+          </header>
+          <ul className="space-y-2.5">
+            {notedPlaces.map(({ place, note }) => (
+              <li key={place.slug} className="space-y-1">
+                <PlaceCard place={place} />
+                <p
+                  className="ml-3 border-l-2 pl-2.5 font-serif text-[13px] italic leading-snug"
+                  style={{ borderColor: "var(--app-accent)", color: "var(--app-ink-2)" }}
+                >
+                  {note.text}
+                </p>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 
