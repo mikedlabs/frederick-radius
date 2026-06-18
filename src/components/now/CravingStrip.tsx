@@ -23,8 +23,12 @@ import {
   Bus,
   type LucideIcon,
 } from "lucide-react";
-import { CRAVINGS } from "@/data/cravings";
+import { CRAVINGS, orderCravingsForMoment } from "@/data/cravings";
 import { currentMeal } from "@/lib/meal";
+import { easternParts } from "@/lib/tz";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { mentionsWet } from "@/lib/weather-verdict";
+import { FREDERICK_CENTER } from "@/lib/geo";
 import { craveTileClass, craveTileStyle, CraveTileInner } from "./craveTile";
 import MoreSheetTile from "./MoreSheetTile";
 
@@ -90,7 +94,7 @@ function FieldTag({
   );
 }
 
-export default function CravingStrip({
+export default async function CravingStrip({
   locationSlot,
   contextSlot,
 }: {
@@ -105,6 +109,19 @@ export default function CravingStrip({
   // the /nearby answer it opens is framed honestly as "open for [meal] now"
   // — never "serves [meal]", which we hold no data to claim.
   const meal = currentMeal();
+
+  // Order the craving tiles for THIS moment — the same instinct the meal tile
+  // follows, applied to the whole grid: coffee leads in the morning, drinks +
+  // live music in the evening, Parks/Family fun on a weekend; when it's wet,
+  // indoor wants rise and Parks sinks. Clock is server-side (no fetch); the
+  // forecast is the same cached NWS call the hero uses, so `wet` is ~free and
+  // degrades to false on any hiccup (time-only ordering still works).
+  const { hour, weekday } = easternParts(new Date());
+  const weekend = weekday === 0 || weekday === 6;
+  const cur = (await getNwsForecast(FREDERICK_CENTER).catch(() => null))?.hourly?.[0] ?? null;
+  const wet = cur ? mentionsWet(cur.shortForecast) || /thunder|storm/i.test(cur.shortForecast) : false;
+  const cravings = orderCravingsForMoment(CRAVINGS, { hour, weekend, wet });
+
   return (
     <div className="space-y-4">
     <section aria-labelledby="i-want-eyebrow" className="space-y-2">
@@ -138,7 +155,7 @@ export default function CravingStrip({
         {/* Happy hour — the most-asked-for local intent.
             Points at the /happy-hour view powered by the Field Notes layer. */}
         <FieldTag href="/happy-hour" label="Happy hour" ariaLabel="Happy hour" icon={Martini} ink="var(--app-accent)" />
-        {CRAVINGS.map((c) => (
+        {cravings.map((c) => (
           <FieldTag
             key={c.key}
             href={`/nearby?c=${c.key}`}
