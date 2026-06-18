@@ -230,15 +230,21 @@ export const CRAVINGS: Craving[] = [
     ],
   },
   {
-    // Genuinely fun family outings, matched by activity name (NOT the `family`
-    // category, which is a junk bucket of schools/daycares/studios): the
-    // arcades, escape rooms, bowling alleys, mini golf, the zoo, the science
-    // lab, skate parks. ~9 verified spots — honest fun beats 39 schools.
+    // Genuinely fun family outings — comprehensive across the county, surfaced
+    // two ways: (1) the curated `family-fun` subcategory TAG (the verified
+    // venues we add — trampoline parks, climbing, the ice rink, fun centers,
+    // the petting farm, escape rooms, pottery studios, skate parks…); (2) an
+    // activity-NAME match (arcades, bowling, mini golf, the zoo, the science
+    // lab). NOT the raw `family` category (a junk bucket of schools/daycares)
+    // and NOT every `playground` row (the data has generic "Playground" OSM
+    // dots) — both are filtered out, so the tab stays real fun, not noise.
     key: "family",
     label: "Family fun",
     icon: "FerrisWheel",
     color: "var(--app-cool)",
-    match: (p) => FAMILY_FUN.test(p.name) && !FAMILY_FUN_JUNK.test(p.name),
+    match: (p) =>
+      Boolean(p.subcategories?.includes("family-fun")) ||
+      (FAMILY_FUN.test(p.name) && !FAMILY_FUN_JUNK.test(p.name)),
   },
 ];
 
