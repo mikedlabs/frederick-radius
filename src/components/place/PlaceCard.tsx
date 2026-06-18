@@ -14,7 +14,7 @@ import { knownFor } from "@/lib/cuisine";
 import { Star } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import SourceBadge from "./SourceBadge";
-import FieldNoteTag from "./FieldNoteTag";
+import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
 import { ReasonChipRow, type ReasonTone } from "@/components/ui/ReasonChip";
 import { placeReasons, type PlaceReasonChip } from "@/lib/place-reasons";
 
@@ -277,7 +277,7 @@ export default function PlaceCard({
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
-                {place.field_notes && <FieldNoteTag />}
+                {place.deal_hook ? <DealHookTag label={place.deal_hook} /> : place.field_notes ? <FieldNoteTag /> : null}
                 {nonOpenReasons.length > 0 ? (
                   <StatusChipRow reasons={nonOpenReasons} />
                 ) : (
@@ -424,7 +424,7 @@ export default function PlaceCard({
                 <>{place.known_for?.[0] ? " · " : ""}{formatDistance(place.distance_m)}</>
               )}
             </p>
-            {place.field_notes && <FieldNoteTag compact />}
+            {place.deal_hook ? <DealHookTag label={place.deal_hook} compact /> : place.field_notes ? <FieldNoteTag compact /> : null}
             {nonOpenReasons.length > 0 ? (
               <ReasonChipRow reasons={nonOpenReasons.slice(0, 2)} className="pt-0.5" />
             ) : (
@@ -469,7 +469,7 @@ export default function PlaceCard({
                 {cat?.name ?? place.category}
                 {place.distance_m !== undefined && <> · {formatDistance(place.distance_m)}</>}
               </p>
-              {place.field_notes && <FieldNoteTag compact />}
+              {place.deal_hook ? <DealHookTag label={place.deal_hook} compact /> : place.field_notes ? <FieldNoteTag compact /> : null}
               {reasons.length > 0 ? (
                 <ReasonChipRow reasons={reasons.slice(0, 2)} className="pt-0.5" />
               ) : (
@@ -523,7 +523,7 @@ export default function PlaceCard({
           {cat?.name ?? place.category}
           {kf && <> · {kf}</>}
         </p>
-        {place.field_notes && <FieldNoteTag className="mt-1.5" />}
+        {place.deal_hook ? <DealHookTag label={place.deal_hook} className="mt-1.5" /> : place.field_notes ? <FieldNoteTag className="mt-1.5" /> : null}
         {!compact && (
           rowReasons.length > 0 ? (
             <StatusChipRow reasons={rowReasons} className="mt-1.5" />

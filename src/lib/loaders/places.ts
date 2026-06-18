@@ -24,7 +24,8 @@ import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
-import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
+import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import { dealHook } from "@/lib/happyHourDeal";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
@@ -425,6 +426,12 @@ export type PlaceCardData = Place & PlaceEnriched & {
    *  cards, popups, and the map filter read one flag without bundling
    *  field-notes.json into the client. */
   field_notes?: boolean;
+  /** The deal HOOK to show on the card ("25% OFF", "$1", "Happy hour") when
+   *  this venue has a verified STANDING happy-hour figure. Derived from the
+   *  happy-hour details only (never a day-specific deal), so a static card can
+   *  never claim "today's" special on the wrong day. Precomputed server-side so
+   *  field-notes.json stays off the client. */
+  deal_hook?: string;
 };
 
 /**
@@ -624,6 +631,10 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     open_status: getOpenStatus(hours, { verified: mayAssertOpenState(hoursVerified, hoursVerifiedAt, now) }, now),
     distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
     field_notes: hasFieldNotes(p.slug),
+    // Standing happy-hour figure only (e.g. "25% OFF") — never a day-specific
+    // deal, so a static card can't lie about "today." Undefined when there's
+    // no numeric hook; the card then keeps the generic Field-notes tag.
+    deal_hook: dealHook(fieldNotesFor(p.slug)?.happy_hour?.details) ?? undefined,
   };
 }
 
