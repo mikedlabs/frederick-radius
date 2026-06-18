@@ -2,6 +2,9 @@ import Image from "next/image";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
+import { currentSkyPalette } from "@/components/today/SkyHero";
+import { nextSunHint } from "@/lib/sun";
+import { FREDERICK_CENTER } from "@/lib/geo";
 
 type Props = {
   slug: string;
@@ -51,6 +54,16 @@ export default function PlaceHero({
   const src = photoSrc ?? resolved?.src ?? null;
   const alt = photoSrc ? name : resolved?.alt ?? "";
 
+  // The Living Frame (hero + real photo only): a soft time-of-day wash echoing
+  // the SkyHero, plus a warm corner glow during golden hour, both computed
+  // server-side. Deliberately subtle (a low-alpha soft-light wash), so a
+  // slightly-stale ISR render reads as atmosphere, never a claimed clock.
+  const livingFrame = size === "hero" && Boolean(src);
+  const now = new Date();
+  const sky = livingFrame ? currentSkyPalette(now) : null;
+  const golden =
+    livingFrame && nextSunHint(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng)?.label === "Golden hour now";
+
   return (
     <div
       // The detail-page hero is clamped to ~half the viewport height so a
@@ -98,9 +111,33 @@ export default function PlaceHero({
           sizes={size === "hero" ? "(max-width: 720px) 100vw, 720px" : "(max-width: 720px) 50vw, 360px"}
           placeholder="blur"
           blurDataURL={PAPER_CREAM_BLUR}
-          className="absolute inset-0 h-full w-full object-cover"
+          className={`absolute inset-0 h-full w-full object-cover${size === "hero" ? " ken-burns" : ""}`}
           style={size === "hero" ? { viewTransitionName: `place-photo-${slug}` } : undefined}
         />
+      )}
+
+      {/* The Living Frame wash — a soft time-of-day tint (soft-light, low alpha
+          so the photo dominates) + a warm corner glow at golden hour. Sits
+          above the photo, below the bottom-darken + pill. Decorative only. */}
+      {sky && (
+        <>
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", inset: 0, mixBlendMode: "soft-light",
+              background: `linear-gradient(165deg, color-mix(in srgb, ${sky.top} 24%, transparent) 0%, transparent 46%, color-mix(in srgb, ${sky.bottom} 32%, transparent) 100%)`,
+            }}
+          />
+          {golden && (
+            <div
+              aria-hidden
+              style={{
+                position: "absolute", inset: 0,
+                background: "radial-gradient(120% 80% at 85% 8%, color-mix(in srgb, var(--app-brand) 16%, transparent) 0%, transparent 60%)",
+              }}
+            />
+          )}
+        </>
       )}
 
       {/* Designed field-guide plate — the deliberate hero for a place with
