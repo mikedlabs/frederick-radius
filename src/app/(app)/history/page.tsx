@@ -74,7 +74,7 @@ export default async function HistoryPage() {
           word. The serif "A place with stories." overlay sits on
           top of a soft dark gradient at the bottom so it stays
           readable on any rotation pick. */}
-      <header className="relative -mx-4 overflow-hidden sm:mx-0 sm:rounded-[var(--app-radius-lg)]">
+      <header className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative h-56 w-full sm:h-64" aria-hidden>
           <SeasonalPhoto
             season="auto"

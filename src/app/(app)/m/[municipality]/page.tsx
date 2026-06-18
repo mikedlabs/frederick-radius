@@ -170,7 +170,7 @@ export default async function MunicipalityPage(
           own seasonal county photography, never a random place's Google
           photo. The overlay leads with a quiet {type} tag, the name, and
           ONE blurb — the pop./est. metadata lead is gone. */}
-      <header className="relative -mx-4 -mt-4 overflow-hidden sm:mx-0 sm:mt-0 sm:rounded-[var(--app-radius-lg)]">
+      <header className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-72">
           <SeasonalPhoto
             season="auto"
