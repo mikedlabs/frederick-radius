@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   Siren,
   Construction,
@@ -90,6 +90,12 @@ export default function PulseDashboard({
       >
         {tiles.map((t) => {
           const Icon = ICONS[t.iconName] ?? AlertTriangle;
+          // Breathe a soft accent ring on a genuinely-active ALERT tile so a
+          // glance reads "this is live." Gated to the danger + warning tones
+          // (weather/fire/power/traffic/schools) — the ambient cool tiles
+          // (311, rivers) never pulse, so the board stays calm when nothing
+          // urgent is on. The ring color rides on --alert-pulse below.
+          const pulse = t.active && /danger|warning/.test(t.accent);
           return (
             <button
               key={t.key}
@@ -104,12 +110,13 @@ export default function PulseDashboard({
               // Active tiles still assert (warmer tint + accent band + peek);
               // clear tiles recede into the sunken paper — the heat-map glance
               // is preserved, just denser.
-              className="tactile tactile-interactive relative flex items-start gap-2 overflow-hidden rounded-[var(--app-radius-md)] p-2.5 pr-6 text-left"
+              className={`tactile tactile-interactive relative flex items-start gap-2 overflow-hidden rounded-[var(--app-radius-md)] p-2.5 pr-6 text-left${pulse ? " alert-pulse" : ""}`}
               style={{
                 background: t.active
                   ? `color-mix(in srgb, ${t.accent} 12%, var(--app-bg-elevated))`
                   : "var(--app-bg-sunken)",
                 boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+                ...(pulse ? ({ "--alert-pulse": t.accent } as CSSProperties) : {}),
               }}
             >
               <span

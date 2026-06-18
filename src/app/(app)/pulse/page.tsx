@@ -49,7 +49,7 @@ import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
-import { getFrederickTransitRoutes, getFrederickTransitRouteShapes, getFrederickTransitStops } from "@/lib/integrations/transitFrederick";
+import { getFrederickTransitRoutes, getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
 import { publicPlaces } from "@/lib/loaders/places";
@@ -164,7 +164,7 @@ export default async function PulsePage({
   // so one slow or failing upstream can't stall the ISR regeneration or blank
   // the board — each tile self-hides on an empty feed.
   const FEED_MS = 6000;
-  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, transitStops] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes] = await Promise.all([
     withTimeout(getChartIncidentsFrederick(), FEED_MS, []),
     withTimeout(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }),
     withTimeout(getFcpsAlerts(), FEED_MS, []),
@@ -186,7 +186,6 @@ export default async function PulsePage({
     withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
     // TransIT route shapes + stops for the live bus map (weekly-cached).
     withTimeout(getFrederickTransitRouteShapes(), FEED_MS, { type: "FeatureCollection" as const, features: [] }),
-    withTimeout(getFrederickTransitStops(), FEED_MS, []),
   ]);
 
   // ── "By the numbers" canon — pure / no fetch beyond the routes
@@ -686,7 +685,6 @@ export default async function PulsePage({
         </div>
         <TransitMap
           shapes={transitShapes}
-          stops={transitStops}
           height={300}
           center={[-77.4105, 39.4143]}
           zoom={11}
