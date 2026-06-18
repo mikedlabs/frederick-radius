@@ -74,6 +74,19 @@ export function isActivelyWet(shortForecast: string, precipNow: number | null | 
 }
 
 /**
+ * True when the current-hour forecast TEXT mentions rain at all (rain,
+ * showers, drizzle) — regardless of probability. This is the exact signal
+ * the sky glyph keys on (iconForShortForecast → CloudRain), so any surface
+ * that pairs words with the glyph can gate on this and the two never
+ * contradict each other (a rain cloud over "Patio weather."). Use the
+ * stricter isActivelyWet to decide how WET to call it; use this to decide
+ * whether rain is in the picture at all.
+ */
+export function mentionsWet(shortForecast: string): boolean {
+  return WET.test(shortForecast);
+}
+
+/**
  * Build the verdict. Checks the dangerous conditions first so a
  * cheerful line can never paper over a storm.
  */

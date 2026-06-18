@@ -2,10 +2,33 @@ import { describe, it, expect } from "vitest";
 import {
   cleanDescription,
   cleanVenueName,
+  cleanTitle,
   dedupeSentences,
   clampDescription,
   isOfficialsRoster,
 } from "./normalize";
+
+describe("cleanTitle sponsor strip", () => {
+  it("strips a 'sponsored by …' clause up to a pipe, keeping the double bill", () => {
+    expect(
+      cleanTitle(
+        "Summerfest Family Theatre sponsored by Pediatric Dental Center of Frederick & Smile Frederick Orthodontics | Rainbow Rock Band",
+      ),
+    ).toBe("Summerfest Family Theatre | Rainbow Rock Band");
+  });
+
+  it("strips a trailing 'presented by …' clause", () => {
+    expect(cleanTitle("Jazz on the Creek presented by Acme Bank")).toBe("Jazz on the Creek");
+  });
+
+  it("leaves an ordinary title untouched", () => {
+    expect(cleanTitle("Alive @ Five at Carroll Creek")).toBe("Alive @ Five at Carroll Creek");
+  });
+
+  it("does not mistake prose 'by' for a sponsor clause", () => {
+    expect(cleanTitle("Painting by Candlelight")).toBe("Painting by Candlelight");
+  });
+});
 
 describe("dedupeSentences", () => {
   it("drops an exactly repeated paragraph (the techfrederick case)", () => {
