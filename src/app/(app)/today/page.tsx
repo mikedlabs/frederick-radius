@@ -20,7 +20,6 @@ import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
-import TimeToggle, { isTodayTimeMode, type TodayTimeMode } from "@/components/today/TimeToggle";
 import HourlyForecast from "@/components/today/HourlyForecast";
 import HourlyDisclosure from "@/components/today/HourlyDisclosure";
 import HourlySummary from "@/components/today/HourlySummary";
@@ -36,13 +35,12 @@ import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // decorative divider between weather/discovery and action; the
 // reorder makes the divider unnecessary.
 
-import { eventsLive, eventDateBlock, type EventWithMeta } from "@/lib/loaders/events";
+import { eventDateBlock, type EventWithMeta } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
-import { liveMusicTonight, tonightWindow } from "@/lib/events/live-music";
+import { liveMusicTonight } from "@/lib/events/live-music";
 import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { isEventToday } from "@/lib/eventWhenLabel";
-import { easternWallToUtcISO } from "@/lib/tz";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 
@@ -57,7 +55,7 @@ import FreshnessGuard from "@/components/today/FreshnessGuard";
  *                        right) + cravings grid + a "Getting around" row
  *   4. TodaysDeals    → verified day-of-week specials as a Wallet deck (self-hides)
  *   5. CivicAlerts    → worst-first heads-up (self-hides)
- *   6. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
+ *   6. What's on      → every public event in the city/county TODAY (no toggle)
  *   7. The full briefing + More for today (collapsed)
  *
  * (The generated "best move now" card was removed 2026-06-18: /today is a place
@@ -138,118 +136,6 @@ function pickFeaturedEvent(now: Date, pool: EventWithMeta[]) {
   );
 }
 
-/**
- * Eastern-time calendar parts of an instant. The whole app's clock is
- * America/New_York; building windows with server-local Date.setHours
- * was the bug behind "tonight is 1pm" — on a UTC server setHours(16)
- * is 16:00Z, which is ~noon Eastern, so afternoon events leaked into
- * the Tonight slice.
- */
-function easternParts(d: Date): { year: number; month: number; day: number; hour: number; weekday: number } {
-  const f = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", hour12: false, weekday: "short",
-  });
-  const p = Object.fromEntries(f.formatToParts(d).map((x) => [x.type, x.value]));
-  const WD: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  return {
-    year: Number(p.year),
-    month: Number(p.month),
-    day: Number(p.day),
-    hour: Number(p.hour) % 24,
-    weekday: WD[p.weekday as string] ?? 0,
-  };
-}
-
-/** A UTC ISO `offsetDays` from `base`, at the given Eastern wall time. */
-function easternDayAt(base: { year: number; month: number; day: number }, offsetDays: number, hour: number, minute = 0): string {
-  // Walk the calendar day by constructing a UTC date and re-reading
-  // it — avoids month/year rollover math.
-  const walked = new Date(Date.UTC(base.year, base.month - 1, base.day + offsetDays, 12));
-  return easternWallToUtcISO(
-    walked.getUTCFullYear(),
-    walked.getUTCMonth() + 1,
-    walked.getUTCDate(),
-    hour,
-    minute,
-  );
-}
-
-// Resolve a temporal mode to a per-mode event window. Each mode has
-// its own headline so the Upcoming section reads as the answer to a
-// specific question, not as a generic feed. All boundaries are
-// computed in America/New_York so a UTC production server agrees with
-// a Frederick user about what "tonight" means.
-function eventsForMode(mode: TodayTimeMode, now: Date, pool: EventWithMeta[]) {
-  const nowMs = now.getTime();
-  const et = easternParts(now);
-
-  if (mode === "now") {
-    // Live right now OR starting in the next 90 minutes — from the SAME
-    // unified pool /events renders (curated + live feeds). eventsLive(now)
-    // stays in the union for its curated all-day handling; slug-dedupe
-    // collapses the overlap.
-    const inProgress = pool.filter((e) => {
-      const s = Date.parse(e.starts_at);
-      const en = e.ends_at ? Date.parse(e.ends_at) : NaN;
-      return s <= nowMs && Number.isFinite(en) && nowMs <= en;
-    });
-    const inNext90 = pool.filter((e) => {
-      const ms = new Date(e.starts_at).getTime() - nowMs;
-      return ms >= 0 && ms <= 90 * 60_000;
-    });
-    const seen = new Set<string>();
-    // Same draw/utility rule as /events (lib/event-kind): a council
-    // hearing is never a "what's happening now" headline answer here.
-    return {
-      title: "Happening now",
-      items: [...eventsLive(now), ...inProgress, ...inNext90].filter(
-        (e) => !isUtilityEvent(e) && (seen.has(e.slug) ? false : (seen.add(e.slug), true)),
-      ),
-    };
-  }
-
-  let title: string;
-  let startMs: number;
-  let endMs: number;
-  if (mode === "tonight") {
-    // Eastern: today 17:00 → tomorrow 02:30. Clamped to now so a
-    // late-night visit doesn't list events that already started.
-    //
-    // Bumped from 16:00 to 17:00 in the stranger-clarity pass: a 4:15
-    // PM matinee is technically "tonight" by clock, but a user who
-    // taps "Tonight" at 4:05 PM expects evening plans, not late
-    // afternoon — the chip should match the intent, not the clock.
-    // Shared with the /tonight page (and the live-music band) so the "tonight"
-    // window can never drift between surfaces.
-    title = "Tonight";
-    ({ startMs, endMs } = tonightWindow(now));
-  } else if (mode === "tomorrow") {
-    // Eastern: the whole of tomorrow, 00:00 → 23:59.
-    title = "Tomorrow";
-    startMs = Date.parse(easternDayAt(et, 1, 0, 0));
-    endMs = Date.parse(easternDayAt(et, 2, 0, 0)) - 1;
-  } else {
-    // Weekend: upcoming Fri 17:00 → Mon 00:00, all Eastern. If today
-    // already is the weekend, the window is the current one.
-    title = "This weekend";
-    const daysToFri = (5 - et.weekday + 7) % 7;
-    startMs = Date.parse(easternDayAt(et, daysToFri, 17, 0));
-    endMs = Date.parse(easternDayAt(et, daysToFri + 3, 0, 0));
-  }
-  return {
-    title,
-    // The pool is already venue-thumb-decorated by the shared loader.
-    items: pool.filter((e) => {
-      const ms = Date.parse(e.starts_at);
-      // Time window AND draw-only: utility/civic business is reachable on
-      // /events, not surfaced as a Today answer (shared event-kind rule).
-      return Number.isFinite(ms) && ms >= startMs && ms <= endMs && !isUtilityEvent(e);
-    }),
-  };
-}
-
 // /today is time-sensitive, but force-dynamic made every visit pay the
 // external-feed fanout (a ~7-10s cold load — the sims caught it). Instead:
 // ISR every 5 minutes, so the page serves cached + fast while the event
@@ -259,12 +145,7 @@ function eventsForMode(mode: TodayTimeMode, now: Date, pool: EventWithMeta[]) {
 // the live client clock fixes that without the per-request cost.)
 export const revalidate = 300;
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ t?: string }>;
-}) {
-  const { t } = await searchParams;
+export default async function HomePage() {
   const now = new Date();
 
   // ONE unified public event set — the same shared loader /events
@@ -289,61 +170,20 @@ export default async function HomePage({
         time: eventDateBlock(soonestShow).time,
       }
     : undefined;
-  // Pre-compute per-mode counts so the chip strip shows "Tonight · 3"
-  // without forcing a click into an empty surface — AND so the default
-  // mode picker below can land on a window that actually has events.
-  const counts: Partial<Record<TodayTimeMode, number>> = {};
-  for (const m of ["now", "tonight", "tomorrow", "weekend"] as const) {
-    counts[m] = eventsForMode(m, now, publicEvents).items.length;
-  }
-  // Default mode: previously hard-wired to "now" which is empty most
-  // of the day. Now we pick the first populated window in priority
-  // order Now → Tonight → Tomorrow → Weekend. The user can still tap
-  // any chip; this just stops the page from opening on an empty list
-  // when something is happening one chip over.
-  function pickDefaultMode(): TodayTimeMode {
-    if ((counts.now ?? 0) > 0) return "now";
-    if ((counts.tonight ?? 0) > 0) return "tonight";
-    if ((counts.tomorrow ?? 0) > 0) return "tomorrow";
-    return "weekend";
-  }
-  const mode: TodayTimeMode = isTodayTimeMode(t) ? t : pickDefaultMode();
-  // Per-mode event window — title + items both come from one helper
-  // so chip and rendered section never disagree.
-  const slice = eventsForMode(mode, now, publicEvents);
-  // Filter out the featured event so it doesn't appear twice in the
-  // shelf below the hero. Only show the featured hero when the active
-  // slice actually contains it.
-  const sliceItems = slice.items.slice(0, 7);
-  // Only LEAD with the big feature card when the featured event is actually
-  // TODAY / tonight — /today must never headline a big card for a tomorrow
-  // (or later) event. Otherwise the lead event just rides along as a tile.
-  const showHero = Boolean(
-    featuredEvent &&
-      sliceItems.some((e) => e.slug === featuredEvent.slug) &&
-      isEventToday(featuredEvent.starts_at, now),
-  );
+  // What's on = every PUBLIC event happening in the city or county TODAY,
+  // soonest first. No time-mode toggle, no tomorrow/weekend — just today's
+  // events, nothing else. The unified set already spans city + county; the
+  // utility filter keeps council-hearing-type admin rows out of the headline.
+  const todaysEvents = publicEvents
+    .filter((e) => isEventToday(e.starts_at, now) && !isUtilityEvent(e))
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .slice(0, 12);
+  // Lead with the big feature card only when the featured event is one of
+  // today's (pickFeaturedEvent already windows to the near term).
+  const showHero = Boolean(featuredEvent && todaysEvents.some((e) => e.slug === featuredEvent.slug));
   const upcomingRest = showHero
-    ? sliceItems.filter((e) => e.slug !== featuredEvent!.slug)
-    : sliceItems;
-
-  // When the active slice is empty, nudge to a DIFFERENT slice that
-  // actually has events — never back to the same (empty) one, which is
-  // what the old hardcoded "see the weekend" link did when Weekend
-  // itself was empty. Falls back to the full /events page if nothing is
-  // on the calendar in any near-term slice.
-  const SLICE_LABEL: Record<TodayTimeMode, string> = {
-    now: "happening now",
-    tonight: "tonight",
-    tomorrow: "tomorrow",
-    weekend: "this weekend",
-  };
-  // Only suggest the OTHER today window (now/tonight) when the active one is
-  // empty — tomorrow/weekend are off /today now, so anything beyond points to
-  // the full /events browser instead.
-  const fallbackSlice = (["now", "tonight"] as const).find(
-    (m) => m !== mode && (counts[m] ?? 0) > 0,
-  );
+    ? todaysEvents.filter((e) => e.slug !== featuredEvent!.slug)
+    : todaysEvents;
 
   return (
     <div className="relative">
@@ -462,17 +302,14 @@ export default async function HomePage({
           has an answer — no saves or none open means no box. */}
       <FromYourSaved />
 
-      {/* ── WHAT'S ON (today / tonight / weekend) ────────────────────────
-          Lifted OUT of the collapsed briefing's column to a TOP-LEVEL slot,
-          right after the best move. Events are the heart of "what should I
-          do today?", so they're a guided answer here — not buried under the
-          weather. The When? toggle drives the window; the full weather stack
-          and the rest stay collapsed below. */}
+      {/* ── WHAT'S ON — every public event in the city or county TODAY ───
+          Scoped to today, nothing else: no time-mode toggle, no tomorrow /
+          weekend. Just the day's events, soonest first; the rest of the
+          calendar is one tap away via "See all". */}
       <section className="mt-4 space-y-3" aria-label="What's on">
-        <TimeToggle active={mode} counts={counts} />
         <DismissibleSection
           id="upcoming"
-          title={slice.title}
+          title="Today"
           href="/events"
           cta="See all"
           eyebrow="What's on"
@@ -499,16 +336,10 @@ export default async function HomePage({
               className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
               style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
             >
-              Nothing on the calendar for {slice.title.toLowerCase()}.{" "}
-              {fallbackSlice ? (
-                <Link href={`/today?t=${fallbackSlice}`} className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
-                  See what&rsquo;s {SLICE_LABEL[fallbackSlice]}
-                </Link>
-              ) : (
-                <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
-                  Browse all events
-                </Link>
-              )}
+              Nothing on the calendar today.{" "}
+              <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+                Browse all events
+              </Link>
               .
             </p>
           )}
