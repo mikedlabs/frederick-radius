@@ -38,12 +38,14 @@ const paperAt = (i: number): string => PAPER[(i + 1) % PAPER.length];
 /** Reversed-out type on the solid header band (paper-on-dark token). */
 const REVERSED = "var(--app-ink-inverse)";
 
-// Stacked, each record is CLIPPED to a compact filing tab — its colored band
-// (name + the deal) plus a thin sliver — and tucked under the next, so the
-// collapsed deck reads as a tidy stack of tabs you fan open, not a tall run of
-// full cards. STACK_MAX is the clipped height when stacked; OVERLAP tucks each
-// tab under the previous (peek = STACK_MAX - OVERLAP ≈ the band height).
-const STACK_MAX = 40;
+// Stacked, each record is CLIPPED to a compact filing card — its colored band
+// (venue + the deal hook) PLUS the deal's first line — and tucked under the
+// next, so the collapsed deck reads as a tidy stack you can scan all at once:
+// every card's venue + hook + deal gist visible together, without the tall
+// fanned view. Fan open to add the When/Where facts + the Local-notes intel.
+// STACK_MAX is the clipped height when stacked; OVERLAP tucks each card under
+// the previous (peek = STACK_MAX - OVERLAP ≈ band + one deal line).
+const STACK_MAX = 72;
 const OVERLAP = 8;
 const SPRING = { type: "spring" as const, stiffness: 360, damping: 38, mass: 0.9 };
 
@@ -139,27 +141,29 @@ function DealCard({ deal: d, idx, wk, stacked, Icon }: { deal: TodaysDeal; idx: 
             )}
           </div>
 
-          <div className="relative px-3.5 pt-2.5" style={{ paddingBottom: hasNotes ? 6 : 14 }}>
-            {/* Verified wax seal — struck big in the corner, scattered angle. */}
+          <div className="relative px-3.5 pt-2" style={{ paddingBottom: hasNotes ? 4 : 12 }}>
+            {/* Verified wax seal — struck in the corner, scattered angle. */}
             <FieldStamp
               id={`deal-${d.slug}`}
               top="VERIFIED"
               bottom="AT SOURCE"
-              size={54}
+              size={46}
               tone={ink}
               rotate={idx % 2 ? -9 : 7}
               className="absolute -top-0.5 right-0"
               style={{ opacity: 0.6 }}
             />
 
-            {/* WHAT YOU GET — the deal, figure stripped (it's on the band). */}
-            <p className="pr-12 text-[15.5px] font-medium leading-relaxed" style={{ color: "var(--app-ink)" }}>
+            {/* WHAT YOU GET — the deal, figure stripped (it's on the band).
+                Clamped to its gist so the stack stays dense and more records
+                show at once; the full text lives on the place page. */}
+            <p className="line-clamp-2 pr-11 text-[14.5px] font-medium leading-snug" style={{ color: "var(--app-ink)" }}>
               {rest}
             </p>
 
             {/* The quick facts that stay always-on: WHEN + WHERE. */}
             {(d.hours || d.town) && (
-              <div className="mt-2.5 space-y-1.5">
+              <div className="mt-2 space-y-1">
                 {d.hours && <Field label="When" value={d.hours} valueColor="var(--app-brand-press)" ink={ink} />}
                 {d.town && <Field label="Where" value={d.town} valueColor="var(--app-ink-2)" ink={ink} />}
               </div>
@@ -247,7 +251,7 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
               <motion.li
                 key={d.slug}
                 initial={false}
-                animate={{ marginTop: i === 0 ? 0 : stacked ? -OVERLAP : 14, maxHeight: stacked ? STACK_MAX : 1400 }}
+                animate={{ marginTop: i === 0 ? 0 : stacked ? -OVERLAP : 7, maxHeight: stacked ? STACK_MAX : 1400 }}
                 transition={SPRING}
                 style={{ position: "relative", zIndex: i, overflow: "hidden" }}
               >
