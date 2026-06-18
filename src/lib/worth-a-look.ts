@@ -42,6 +42,38 @@ export function easternDayKey(now: Date = new Date()): string {
 }
 
 /**
+ * Pick `count` DISTINCT items from `pool`, starting at `start` and walking by
+ * `stride` for day-to-day variety, then topping up with a stride-1 walk so the
+ * result is ALWAYS `count` distinct. The strided walk alone revisits an index
+ * whenever `stride` shares a factor with `pool.length` (e.g. stride 7 on a pool
+ * of 14/28/35) — which put the same place in the rail twice and threw a React
+ * "two children with the same key" error. Pure + generic so it unit-tests
+ * without the loader/cache.
+ */
+export function rotatePickDistinct<T extends { slug: string }>(
+  pool: T[],
+  start: number,
+  count: number,
+  stride: number,
+): T[] {
+  if (pool.length === 0) return [];
+  const out: T[] = [];
+  const seen = new Set<string>();
+  const push = (p: T | undefined) => {
+    if (p && !seen.has(p.slug)) {
+      seen.add(p.slug);
+      out.push(p);
+    }
+  };
+  // Primary: the strided rotation (variety).
+  for (let i = 0; i < count; i++) push(pool[(start + i * stride) % pool.length]);
+  // Fill: a stride-1 walk visits every index, so this always reaches `count`
+  // distinct items as long as the pool holds that many.
+  for (let i = 0; out.length < count && i < pool.length; i++) push(pool[(start + i) % pool.length]);
+  return out;
+}
+
+/**
  * Pull the rotating six. Deterministic per day: same six all day,
  * different six tomorrow. The pool is filtered to photo-backed,
  * photogenic-category places that are operational; sort by feature
@@ -87,7 +119,7 @@ export const getWorthALookToday = unstable_cache(
     // don't share five out of six picks — gives a more varied
     // day-to-day read.
     const STRIDE = 7;
-    return Array.from({ length: 6 }, (_, i) => pool[(start + i * STRIDE) % pool.length]);
+    return rotatePickDistinct(pool, start, 6, STRIDE);
   },
   // Cache key includes the current deployment hash so any data
   // change (e.g. places-photos.json gaining downloaded Blob URLs)
