@@ -657,7 +657,7 @@ function EmptyState() {
   // Four confident doorways — the lane language from /places, pointing at the
   // surfaces that fill this page. A guided launchpad, not a paragraph.
   const LANES: { href: string; label: string; Icon: typeof Bookmark; color: string }[] = [
-    { href: "/guide", label: "Find", Icon: Sparkles, color: "var(--app-brand)" },
+    { href: "/today", label: "Find", Icon: Sparkles, color: "var(--app-brand)" },
     { href: "/map", label: "Map", Icon: MapPin, color: "var(--app-cool)" },
     { href: "/events", label: "Events", Icon: Calendar, color: "#C99632" },
     { href: "/towns", label: "Towns", Icon: Building2, color: "#7E2C6F" },

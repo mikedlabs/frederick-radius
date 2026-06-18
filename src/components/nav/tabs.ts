@@ -21,10 +21,9 @@ import {
  * The /guide browse funnel ("Find" / formerly "Ask" / "Guide") was DROPPED
  * from the primary nav: /today's craving strip + the global header search
  * now cover the find-what-you-want intent, so a fifth tab for it was a
- * redundant front door. /guide the PAGE stays alive (kept in the sitemap,
- * reachable via search results + deep links) for its unique browse-by-town /
- * hidden-gems / live-downtown content and its SEO value — it just no longer
- * earns a tab. Visiting it reads as a deep page (TopBar Back, no tab lit).
+ * redundant front door. The PAGE has since been retired entirely — /guide
+ * now 308-redirects to /today (next.config) — since /today fully inherited
+ * the find-what-you-want intent.
  *
  * Today leads the nav: the UI survey found the temporal / ambient-live-data
  * layer is the single biggest daily-return driver for residents. Secondary
@@ -53,7 +52,7 @@ export const TABS: readonly Tab[] = [
  * highlights the right home. Place-browse + town + collection routes
  * read as the "Map" (explore places) context — index 1 now that Today
  * leads at index 0 and the Find tab is gone. Anything not listed returns
- * -1 → no tab highlighted (correct for /guide, /settings, /about, /parks,
+ * -1 → no tab highlighted (correct for /settings, /about, /parks,
  * a place detail, etc.).
  */
 const SECTION_PREFIXES: ReadonlyArray<readonly [string, number]> = [
