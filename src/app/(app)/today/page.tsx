@@ -278,14 +278,14 @@ export default async function HomePage({
   // sub-label ("7:00 PM · Olde Mother"), never a count headline.
   const liveTonight = liveMusicTonight(publicEvents, now);
   const soonestShow = liveTonight[0];
-  const soonestLabel = soonestShow
-    ? (() => {
-        const t = eventDateBlock(soonestShow).time;
-        const full = `${t} · ${soonestShow.venue_name}`;
-        // Fall back to just the time when the venue name would overflow the
-        // pill — never a fabricated label, just a shorter true one.
-        return full.length <= 28 ? full : t;
-      })()
+  // The soonest show, as structured parts so the band can say WHAT it is (act +
+  // venue + time), not just a time. RightNowBand owns the formatting + truncation.
+  const soonest = soonestShow
+    ? {
+        title: soonestShow.title,
+        venue: soonestShow.venue_name ?? null,
+        time: eventDateBlock(soonestShow).time,
+      }
     : undefined;
   // Pre-compute per-mode counts so the chip strip shows "Tonight · 3"
   // without forcing a click into an empty surface — AND so the default
@@ -410,7 +410,7 @@ export default async function HomePage({
           locationSlot={<LocationPrime />}
           contextSlot={
             <RightNowBand
-              liveTonight={{ count: liveTonight.length, soonest: soonestLabel }}
+              liveTonight={{ count: liveTonight.length, soonest }}
             />
           }
         />
