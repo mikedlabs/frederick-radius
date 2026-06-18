@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
-import TodayMoves from "@/components/today/TodayMoves";
 import TodaysDeals from "@/components/today/TodaysDeals";
 import HappyHourNow from "@/components/today/HappyHourNow";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
@@ -58,9 +57,12 @@ import FreshnessGuard from "@/components/today/FreshnessGuard";
  *                        right) + cravings grid + a "Getting around" row
  *   4. TodaysDeals    → verified day-of-week specials as a Wallet deck (self-hides)
  *   5. CivicAlerts    → worst-first heads-up (self-hides)
- *   6. TodayMoves     → the single confident "best move now"
- *   7. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
- *   8. The full briefing + More for today (collapsed)
+ *   6. What's on      → TimeToggle Now/Tonight/Tomorrow/Weekend + event tiles
+ *   7. The full briefing + More for today (collapsed)
+ *
+ * (The generated "best move now" card was removed 2026-06-18: /today is a place
+ *  to FIND what you need, not a suggestion engine that tells you an idea you
+ *  may already have. Finding, not telling.)
  *
  * What got cut in this pass:
  *   • Answers lead (AnswerCards) — the section only ever rendered the
@@ -446,30 +448,12 @@ export default async function HomePage({
         </div>
       </Suspense>
 
-      {/* ── BEST MOVE NOW ───────────────────────────────────────────────
-          The single confident, weather- and time-aware answer to "what's
-          the move right now?", lifted OUT of the collapsed briefing so it
-          leads. (The generated "afternoon plan"/MoveStack that used to sit
-          here was removed 2026-06-15: it picked stops by editorial score +
-          proximity, NOT by being open, and ended by telling you to "check
-          hours before you go" — the opposite of a today answer. TodayMoves'
-          own sub-line already serves the "make an outing of it" instinct.) */}
-      <section className="mt-4" aria-label="Your next move">
-        <Suspense fallback={<Skeleton.Block height={170} round="var(--app-radius-lg)" />}>
-          <TodayMoves
-            tonightEvent={
-              featuredEvent
-                ? {
-                    slug: featuredEvent.slug,
-                    title: featuredEvent.title,
-                    venue_name: featuredEvent.venue_name ?? null,
-                    starts_at: featuredEvent.starts_at,
-                  }
-                : null
-            }
-          />
-        </Suspense>
-      </section>
+      {/* The generated "best move now" card (TodayMoves) was removed
+          2026-06-18: /today is a place to FIND, not a suggestion engine. A
+          rule-based "here's the move" tells the user an idea they may already
+          have; the fast-lane I-want grid, the live moat (happy hours/deals),
+          tonight's event in the hero, and What's-on below already let them
+          find their own answer. Finding, not telling. */}
 
       {/* ── FROM YOUR SAVED ──────────────────────────────────────────────
           The save → resurface loop closes HERE: saved places that are

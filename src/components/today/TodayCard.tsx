@@ -67,29 +67,29 @@ const GREETING: Record<Band, string> = {
   late: "Late tonight.",
 };
 
-/** A short, confident weather mood line — not cute, just human. */
+/** A short weather read — DESCRIBES the conditions, never instructs ("Storms
+ *  around," not "Keep it indoors"). Finding-not-telling: a calm local states
+ *  what it's doing outside and lets the reader decide. */
 function moodLine(condition: string, temp: number | null, precipNow: number | null): string {
   const c = condition.toLowerCase();
-  if (/thunder|storm/.test(c)) return "Storms around. Keep it indoors.";
+  if (/thunder|storm/.test(c)) return "Storms moving through.";
   // Rain comes BEFORE the fair-weather lines so the words can never
   // contradict the sky glyph: any rain-text condition (the same signal that
   // draws the rain cloud) yields a rain line, never "Patio weather." The PoP
   // only decides HOW wet — likely (>=50%) reads as a washout, a lower chance
   // as spotty showers.
   if (mentionsWet(condition)) {
-    return isActivelyWet(condition, precipNow)
-      ? "Rain in play. Have a backup plan."
-      : "Showers around. Keep a roof handy.";
+    return isActivelyWet(condition, precipNow) ? "Rain in play right now." : "Spotty showers around.";
   }
-  if (/snow|sleet|ice|wintry/.test(c)) return "Wintry out. Bundle up.";
-  if (/fog|mist|haze/.test(c)) return "Low and gray. Soft light for a walk.";
-  if (temp != null && temp >= 88) return "Hot one. Chase the shade.";
-  if (temp != null && temp <= 38) return "Cold and clear. Layers today.";
+  if (/snow|sleet|ice|wintry/.test(c)) return "Wintry out there.";
+  if (/fog|mist|haze/.test(c)) return "Low and gray.";
+  if (temp != null && temp >= 88) return "A hot one out there.";
+  if (temp != null && temp <= 38) return "Cold and clear.";
   if (/cloud|overcast/.test(c)) return "Soft, gray light over the county.";
   if (temp != null && temp >= 60 && temp <= 84) return "Patio weather.";
   // Time-neutral fallback that never repeats a word with the greeting
   // ("Good morning. A good day…" doubled "good").
-  return "Made for getting out.";
+  return "Clear and easy out.";
 }
 
 function fmtTime(d: Date | null): string | null {
