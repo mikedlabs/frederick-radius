@@ -76,6 +76,14 @@ export default function TopBar() {
     setMoreOpen(false);
   }, [pathname]);
 
+  // Let any surface open the More drawer (the /today "I want… More…" tile
+  // fires this) without owning its state — the TopBar stays the single owner.
+  useEffect(() => {
+    const open = () => setMoreOpen(true);
+    window.addEventListener("fr:open-more", open);
+    return () => window.removeEventListener("fr:open-more", open);
+  }, []);
+
   // Cmd-K / Ctrl-K opens search globally
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
