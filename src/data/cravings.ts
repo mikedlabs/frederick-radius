@@ -15,6 +15,16 @@ export type CravingMatchable = {
   subcategories?: string[];
 };
 
+/** A sub-filter within a craving's results — "find more specific things"
+ *  (Food → Pizza / Food trucks, Parks → Trails / Playgrounds). Each narrows
+ *  the already-matched set; the chip row only renders when a craving defines
+ *  them, so single-answer cravings (Coffee, Grocery) stay clean. */
+export type CravingFacet = {
+  key: string;
+  label: string;
+  match: (p: CravingMatchable) => boolean;
+};
+
 export type Craving = {
   key: string;
   /** Verb-free noun the way a person says it walking down the street. */
@@ -31,11 +41,14 @@ export type Craving = {
     | "ShoppingBag"
     | "ShoppingCart"
     | "Palette"
-    | "Music";
+    | "Music"
+    | "FerrisWheel";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
   match: (p: CravingMatchable) => boolean;
+  /** Optional sub-filters surfaced as chips on the results page. */
+  facets?: CravingFacet[];
 };
 
 // Brand names with no descriptor (Dairy Queen / DQ) are matched explicitly —
@@ -65,6 +78,11 @@ export const CRAVINGS: Craving[] = [
       p.category === "food-truck" ||
       p.category === "pizza" ||
       PIZZA.test(p.name),
+    facets: [
+      { key: "restaurant", label: "Sit-down", match: (p) => p.category === "restaurant" },
+      { key: "pizza", label: "Pizza", match: (p) => p.category === "pizza" || PIZZA.test(p.name) },
+      { key: "food-truck", label: "Food trucks", match: (p) => p.category === "food-truck" },
+    ],
   },
   {
     key: "coffee",
@@ -79,6 +97,10 @@ export const CRAVINGS: Craving[] = [
     icon: "Beer",
     color: "var(--app-positive)",
     match: (p) => p.category === "bar" || p.category === "brewery",
+    facets: [
+      { key: "brewery", label: "Breweries", match: (p) => p.category === "brewery" },
+      { key: "bar", label: "Bars", match: (p) => p.category === "bar" },
+    ],
   },
   {
     key: "sweets",
@@ -111,6 +133,11 @@ export const CRAVINGS: Craving[] = [
       p.category === "trail" ||
       p.category === "playground" ||
       p.category === "outdoors",
+    facets: [
+      { key: "park", label: "Parks", match: (p) => p.category === "park" },
+      { key: "trail", label: "Trails", match: (p) => p.category === "trail" || p.category === "outdoors" },
+      { key: "playground", label: "Playgrounds", match: (p) => p.category === "playground" },
+    ],
   },
   {
     // The formal music halls + stages (Weinberg, Sky Stage, New Spire, the
@@ -138,6 +165,11 @@ export const CRAVINGS: Craving[] = [
       p.category === "shopping" ||
       p.category === "market" ||
       p.category === "book-store",
+    facets: [
+      { key: "shopping", label: "Shops", match: (p) => p.category === "shopping" },
+      { key: "market", label: "Markets", match: (p) => p.category === "market" },
+      { key: "book-store", label: "Books", match: (p) => p.category === "book-store" },
+    ],
   },
   {
     // Grocery stores by name (Common Market, Weis, Safeway, MOM's, Food
@@ -159,6 +191,21 @@ export const CRAVINGS: Craving[] = [
       p.category === "gallery" ||
       p.category === "museum" ||
       p.category === "theater",
+    facets: [
+      { key: "gallery", label: "Galleries", match: (p) => p.category === "gallery" },
+      { key: "museum", label: "Museums", match: (p) => p.category === "museum" },
+      { key: "theater", label: "Theaters", match: (p) => p.category === "theater" },
+    ],
+  },
+  {
+    // ~39 places in the `family` category (kid-friendly attractions: mini golf,
+    // trampoline + play spaces, farms, arcades, the science/discovery stops).
+    // Parents are a core audience and this had NO one-tap door before.
+    key: "family",
+    label: "Family fun",
+    icon: "FerrisWheel",
+    color: "var(--app-cool)",
+    match: (p) => p.category === "family",
   },
 ];
 

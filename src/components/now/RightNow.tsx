@@ -13,6 +13,7 @@ import {
   ShoppingCart,
   Palette,
   Music,
+  FerrisWheel,
   Sunrise,
   Croissant,
   Sandwich,
@@ -62,6 +63,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShoppingCart,
   Palette,
   Music,
+  FerrisWheel,
   // Meal-occasion glyphs (the time-aware lead from the /today I-want strip).
   Sunrise,
   Croissant,
@@ -101,6 +103,11 @@ export default function RightNow({
       ? initialCraving
       : null,
   );
+  // Sub-filters on the results page ("find more specific things"): a facet
+  // narrows within the craving (Food → Pizza), and Open now hides closed —
+  // ON by default so the page leads with what you can actually walk into.
+  const [facetKey, setFacetKey] = useState<string | null>(null);
+  const [openOnly, setOpenOnly] = useState(true);
 
   // Arriving straight to an answer from a Today craving tile (?c=coffee skips
   // the picker) should still ask for location, exactly like tapping a craving
@@ -132,14 +139,23 @@ export default function RightNow({
   const meal = cravingKey ? mealForKey(cravingKey) : null;
   const craving = cravingKey && !meal ? CRAVING_BY_KEY[cravingKey] : null;
   const active = meal ?? craving;
+  // The narrowest active noun for copy: the chosen facet ("pizza") if one is
+  // set, else the craving/meal label ("food").
+  const activeNoun = (
+    craving?.facets?.find((f) => f.key === facetKey)?.label ?? active?.label ?? ""
+  ).toLowerCase();
 
-  const results = useMemo(() => {
+  // Every place matching the craving (+ active sub-facet), sorted open-first
+  // then nearest. Not yet limited or open-filtered — `matched` is the basis
+  // for both the honest open count and the displayed list.
+  const matched = useMemo(() => {
     const m = cravingKey ? mealForKey(cravingKey) : null;
     const c = cravingKey && !m ? CRAVING_BY_KEY[cravingKey] : null;
     const matchFn = m ? (p: PlaceCardData) => matchMeal(m, p) : c ? c.match : null;
     if (!matchFn) return [];
+    const facet = c && facetKey ? c.facets?.find((f) => f.key === facetKey) : null;
     return places
-      .filter((p) => matchFn(p))
+      .filter((p) => matchFn(p) && (!facet || facet.match(p)))
       .map((p) => {
         const dist = haversineMeters(origin, p.geom);
         return { p, dist, open: isOpenNow(p.open_status) };
@@ -147,21 +163,26 @@ export default function RightNow({
       .sort((a, b) => {
         if (a.open !== b.open) return a.open ? -1 : 1; // open first
         return a.dist - b.dist; // then nearest
-      })
-      .slice(0, RESULT_LIMIT)
-      // Attach distance for the card ONLY when we have a real fix — never
-      // print a distance measured from a place the user isn't standing at.
-      .map(({ p, dist }) => ({ ...p, distance_m: hasFix ? dist : undefined }));
-  }, [cravingKey, places, origin, hasFix]);
+      });
+  }, [cravingKey, facetKey, places, origin]);
 
-  const openCount = useMemo(
-    () => results.filter((p) => isOpenNow(p.open_status)).length,
-    [results],
-  );
+  const openCount = useMemo(() => matched.filter((m) => m.open).length, [matched]);
+
+  const results = useMemo(() => {
+    const list = openOnly ? matched.filter((m) => m.open) : matched;
+    return (
+      list
+        .slice(0, RESULT_LIMIT)
+        // Attach distance for the card ONLY when we have a real fix — never
+        // print a distance measured from a place the user isn't standing at.
+        .map(({ p, dist }) => ({ ...p, distance_m: hasFix ? dist : undefined }))
+    );
+  }, [matched, openOnly, hasFix]);
 
   function pick(key: string) {
     haptic("light"); // the tap should feel like a tap
     setCravingKey(key);
+    setFacetKey(null); // a fresh craving starts unfiltered
     // First craving with no location yet → ask, so the answer can be
     // "nearest to YOU" rather than nearest to downtown. One prompt, then
     // it's cached for the session.
@@ -264,6 +285,49 @@ export default function RightNow({
             </p>
           </div>
         </div>
+
+        {/* Find more specific things: an Open-now toggle (on by default) plus
+            the craving's sub-facet chips (Food → Pizza / Food trucks, …). The
+            facet row only appears when the craving defines facets, so single-
+            answer cravings (Coffee, Grocery) stay clean. */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <button
+            type="button"
+            onClick={() => setOpenOnly((v) => !v)}
+            aria-pressed={openOnly}
+            className="tactile-interactive inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
+            style={
+              openOnly
+                ? {
+                    background: "color-mix(in srgb, var(--app-positive) 16%, transparent)",
+                    color: "var(--app-positive)",
+                    boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-positive) 32%, transparent)",
+                  }
+                : { background: "var(--app-bg-elevated)", color: "var(--app-ink-3)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
+            }
+          >
+            <span
+              aria-hidden
+              className="inline-block h-[6px] w-[6px] rounded-full"
+              style={{ background: openOnly ? "var(--app-positive)" : "var(--app-ink-3)" }}
+            />
+            Open now
+          </button>
+          {craving?.facets && (
+            <>
+              <FacetChip label="All" active={facetKey === null} color={craving.color} onClick={() => setFacetKey(null)} />
+              {craving.facets.map((f) => (
+                <FacetChip
+                  key={f.key}
+                  label={f.label}
+                  active={facetKey === f.key}
+                  color={craving.color}
+                  onClick={() => setFacetKey(f.key)}
+                />
+              ))}
+            </>
+          )}
+        </div>
       </header>
 
       {/* Location trust: only when we DON'T have a fix. With one we silently
@@ -286,14 +350,30 @@ export default function RightNow({
       )}
 
       {results.length === 0 ? (
-        <p
-          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center text-sm"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        <div
+          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-10 text-center"
+          style={{ borderColor: "var(--app-border)" }}
         >
-          {meal
-            ? `Nothing open ${meal.phrase} near you right now.`
-            : `Nothing for ${active.label.toLowerCase()} ${hasFix ? "near you" : "in range"} right now.`}
-        </p>
+          <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>
+            {openOnly && matched.length > 0
+              ? `Nothing open right now for ${activeNoun}.`
+              : meal
+                ? `Nothing open ${meal.phrase} near you right now.`
+                : `Nothing for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
+          </p>
+          {/* When Open-now hid everything but closed matches exist, offer them
+              rather than dead-ending — "on by default, with a way to see all." */}
+          {openOnly && matched.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setOpenOnly(false)}
+              className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+              style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+            >
+              Show all {matched.length}, including closed
+            </button>
+          )}
+        </div>
       ) : (
         <ul className="space-y-2">
           {results.map((p) => (
@@ -310,5 +390,39 @@ export default function RightNow({
         </ul>
       )}
     </div>
+  );
+}
+
+/** A sub-facet pill on the results page. Active = a wash of the craving's own
+ *  ink with an ink label; inactive = a quiet outline. Pure + presentational. */
+function FacetChip({
+  label,
+  active,
+  color,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  color: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className="tactile-interactive rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
+      style={
+        active
+          ? {
+              background: `color-mix(in srgb, ${color} 15%, transparent)`,
+              color: "var(--app-ink)",
+              boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 34%, transparent)`,
+            }
+          : { background: "var(--app-bg-elevated)", color: "var(--app-ink-3)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
+      }
+    >
+      {label}
+    </button>
   );
 }

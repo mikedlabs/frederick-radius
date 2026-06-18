@@ -17,6 +17,7 @@ import {
   Sandwich,
   UtensilsCrossed,
   Moon,
+  FerrisWheel,
   ParkingCircle,
   Train,
   Bus,
@@ -55,6 +56,7 @@ const ICONS: Record<string, LucideIcon> = {
   ShoppingCart,
   Palette,
   Music,
+  FerrisWheel,
   // Meal-occasion glyphs (the time-aware lead tile).
   Sunrise,
   Croissant,
