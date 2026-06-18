@@ -369,7 +369,7 @@ export default function ParkingPage() {
               style={{
                 background:
                   "color-mix(in srgb, var(--app-accent) 14%, transparent)",
-                color: "var(--app-accent)",
+                color: "var(--app-accent-press)",
               }}
             >
               <Clock className="h-4 w-4" strokeWidth={2.25} aria-hidden />
@@ -592,7 +592,7 @@ export default function ParkingPage() {
               style={{
                 background:
                   "color-mix(in srgb, var(--app-accent) 14%, transparent)",
-                color: "var(--app-accent)",
+                color: "var(--app-accent-press)",
               }}
             >
               <Trash2 className="h-5 w-5" strokeWidth={2} aria-hidden />

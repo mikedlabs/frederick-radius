@@ -45,7 +45,7 @@ const TONE_TOKENS: Record<ReasonTone, { color: string; bg: string; dot?: boolean
     bg: "color-mix(in srgb, var(--app-positive) 18%, transparent)",
   },
   rated: {
-    color: "var(--app-accent)",
+    color: "var(--app-accent-press)",
     bg: "color-mix(in srgb, var(--app-accent) 20%, transparent)",
   },
   neutral: {

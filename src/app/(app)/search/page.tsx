@@ -72,7 +72,7 @@ function displayFor(hit: SearchHit): Display {
         href: `/category/${hit.category.slug}`,
         title: hit.category.name,
         subtitle: hit.category.blurb,
-        badge: { label: "Category", color: "var(--app-accent)" },
+        badge: { label: "Category", color: "var(--app-accent-press)" },
         Icon: Tag,
       };
   }

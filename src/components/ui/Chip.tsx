@@ -25,7 +25,7 @@ const TONE: Record<Tone, string> = {
   positive: "var(--app-positive, #1E6B3A)",
   warning: "var(--app-warning)",
   danger: "var(--app-danger)",
-  accent: "var(--app-accent)",
+  accent: "var(--app-accent-press)", // text-safe gold (the tone color is the chip's TEXT; gold base fails AA)
 };
 
 export function Chip({
