@@ -226,6 +226,49 @@ export const CRAVING_BY_KEY: Record<string, Craving> = Object.fromEntries(
   CRAVINGS.map((c) => [c.key, c]),
 );
 
+export type Moment = {
+  /** Eastern-clock hour, 0–23. */
+  hour: number;
+  weekend: boolean;
+  /** Rain/storm in the current-hour forecast — pulls indoor wants up, Parks down. */
+  wet: boolean;
+};
+
+/**
+ * Reorder the cravings for the moment, so the fast lane LEADS with what a
+ * person most likely wants right now — the same instinct the meal tile already
+ * follows, applied to the whole grid. Coffee in the morning, drinks + live
+ * music in the evening, Parks/Family fun/Art on a weekend; when it's wet,
+ * indoor wants rise and Parks sinks. A pure, deterministic re-sort of the SAME
+ * set (nothing added or hidden) — the base intent order from CRAVINGS breaks
+ * ties via a stable sort, so a quiet hour still reads as the canonical grid.
+ */
+export function orderCravingsForMoment(cravings: Craving[], { hour, weekend, wet }: Moment): Craving[] {
+  const morning = hour >= 5 && hour < 11;
+  const midday = hour >= 11 && hour < 16;
+  const evening = hour >= 16 && hour < 22;
+  const late = hour >= 22 || hour < 5;
+  const boost = (key: string): number => {
+    let b = 0;
+    if (morning && (key === "coffee" || key === "sweets")) b += 3;
+    if (midday && key === "food") b += 3;
+    if (midday && key === "coffee") b += 1;
+    if (evening && (key === "drinks" || key === "music")) b += 3;
+    if (evening && (key === "food" || key === "ice-cream")) b += 1;
+    if (late && (key === "drinks" || key === "food")) b += 2;
+    if (weekend && (key === "outside" || key === "family" || key === "art" || key === "music")) b += 2;
+    if (wet) {
+      if (key === "outside") b -= 4;
+      if (["coffee", "food", "art", "family", "sweets", "drinks"].includes(key)) b += 2;
+    }
+    return b;
+  };
+  return cravings
+    .map((c, i) => ({ c, i, b: boost(c.key) }))
+    .sort((x, y) => y.b - x.b || x.i - y.i)
+    .map((x) => x.c);
+}
+
 /** True if a place is eligible for ANY craving — used server-side to slim
  *  the /now payload to just the craving-answering places. */
 export function isCravingPlace(p: CravingMatchable): boolean {
