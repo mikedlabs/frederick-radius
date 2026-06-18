@@ -14,6 +14,7 @@ import {
   Palette,
   Music,
   FerrisWheel,
+  Wine,
   Sunrise,
   Croissant,
   Sandwich,
@@ -65,6 +66,7 @@ const ICONS: Record<string, LucideIcon> = {
   Palette,
   Music,
   FerrisWheel,
+  Wine,
   // Meal-occasion glyphs (the time-aware lead from the /today I-want strip).
   Sunrise,
   Croissant,
