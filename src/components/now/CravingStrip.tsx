@@ -20,11 +20,12 @@ import {
   ParkingCircle,
   Train,
   Bus,
-  MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
 import { CRAVINGS } from "@/data/cravings";
 import { currentMeal } from "@/lib/meal";
+import { craveTileClass, craveTileStyle, CraveTileInner } from "./craveTile";
+import MoreSheetTile from "./MoreSheetTile";
 
 /**
  * CravingStrip — the fast lane on Today.
@@ -79,37 +80,8 @@ function FieldTag({
   ink: string;
 }) {
   return (
-    <Link
-      href={href}
-      aria-label={ariaLabel}
-      className="tactile-interactive relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-[var(--app-radius-sm)] px-1 py-[7px] text-center"
-      style={{
-        // Tinted field-card stock: each tile washed in its OWN craving color
-        // over the paper, so the compact 3-up grid reads as a colorful SHEET of
-        // specimen stamps. Dark-ink label stays high-contrast over the tint.
-        backgroundColor: `color-mix(in srgb, ${ink} 12%, var(--app-bg-elevated-solid))`,
-        backgroundImage: "var(--app-paper-light)",
-        border: `1px solid color-mix(in srgb, ${ink} 26%, var(--app-border))`,
-        boxShadow: "var(--app-elev-1), var(--app-hi)",
-      }}
-    >
-      {/* Struck filing-ink STAMP — the glyph reversed out of a solid color
-          plate, raised off the paper (inset sheen + soft cast shadow). The
-          stamp is the hero of each little specimen tile. */}
-      <span
-        aria-hidden
-        className="grid h-[27px] w-[27px] shrink-0 place-items-center rounded-[7px]"
-        style={{
-          background: ink,
-          boxShadow: `inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent), 0 1.5px 3px -0.5px color-mix(in srgb, ${ink} 42%, transparent)`,
-          color: "var(--app-on-brand)",
-        }}
-      >
-        <Icon className="h-[15px] w-[15px]" strokeWidth={2.25} />
-      </span>
-      <span className="max-w-full truncate text-[11px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-        {label}
-      </span>
+    <Link href={href} aria-label={ariaLabel} className={craveTileClass} style={craveTileStyle(ink)}>
+      <CraveTileInner icon={Icon} label={label} ink={ink} />
     </Link>
   );
 }
@@ -162,12 +134,10 @@ export default function CravingStrip({
             ink={c.color}
           />
         ))}
-        {/* The escape hatch to the full directory — "More…" never dead-ends a
-            want that isn't a tile. Points at /places (the real directory: every
-            category, town, and the map) — NOT /nearby, which is the location-
-            gated, food-and-drink-only "right now" view and can't browse the
-            rest of the guide. */}
-        <FieldTag href="/places" label="More…" ariaLabel="More: browse the full directory" icon={MoreHorizontal} ink="var(--app-ink-3)" />
+        {/* "More…" opens the field-guide MORE drawer (the same one the header
+            ••• button opens) — the full menu of every surface, the natural
+            home for a want that isn't a tile. */}
+        <MoreSheetTile ink="var(--app-ink-3)" />
       </div>
     </section>
 
