@@ -38,6 +38,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Siren,
+  ShieldCheck,
   ExternalLink, MapPin, Clock, ChevronRight,
   Radio,
 } from "lucide-react";
@@ -588,13 +589,20 @@ export default async function PulsePage({
           so the page itself signals "something is up" before the user
           reads the headline. Calm states keep the standard paper-cream
           look so the page doesn't yell at users on quiet days. */}
+      {/* The masthead is a CONTAINED tactile card (no longer an edge-to-edge
+          band on mobile) so it sits "within the main part" like every other
+          card on the page. It signals state: a sage shield + calm paper when
+          all-clear, a danger siren + a faint danger wash + a slow breathing
+          ring (the shared .alert-pulse) when something is live, so a glance
+          reads the county's status before the headline does. */}
       <header
-        className="relative -mx-4 overflow-hidden border-b sm:mx-0 sm:rounded-[var(--app-radius-lg)] sm:border"
+        className={`tactile relative overflow-hidden rounded-[var(--app-radius-lg)]${allClear ? "" : " alert-pulse"}`}
         style={{
-          borderColor: "var(--app-border)",
-          background: allClear
-            ? "var(--app-bg-elevated)"
-            : "linear-gradient(155deg, color-mix(in srgb, var(--app-danger) 7%, var(--app-bg-elevated)) 0%, var(--app-bg-elevated) 70%)",
+          backgroundColor: "var(--app-bg-elevated-solid)",
+          backgroundImage: allClear
+            ? "var(--app-paper-light)"
+            : "var(--app-paper-light), linear-gradient(155deg, color-mix(in srgb, var(--app-danger) 9%, transparent) 0%, transparent 68%)",
+          boxShadow: "var(--app-elev-2), var(--app-hi), var(--app-edge)",
         }}
       >
         {/* Top accent bar — sage when all clear, danger when active. */}
@@ -606,40 +614,54 @@ export default async function PulsePage({
             opacity: allClear ? 0.6 : 1,
           }}
         />
-        <div className="space-y-2.5 px-4 py-4 sm:px-5">
-          <p
-            className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
+        <div className="space-y-3 px-4 py-4 sm:px-5">
+          {/* Masthead row: the Live Pulse nameplate (left) + freshness (right),
+              split so neither wraps awkwardly. */}
+          <div className="flex items-center justify-between gap-3">
+            <span
+              className="inline-flex items-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em]"
+              style={{ color: "var(--app-ink-2)" }}
+            >
+              <span
+                aria-hidden
+                className="pulse-dot inline-block h-2 w-2 rounded-full"
+                style={{ background: allClear ? "var(--app-positive)" : "var(--app-danger)" }}
+              />
+              Live Pulse
+            </span>
+            <span className="shrink-0 font-mono text-[10.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
+              <PulseFreshness renderedAt={nowMs} />
+            </span>
+          </div>
+
+          {/* Status hero: a state glyph anchors the headline + sub. */}
+          <div className="flex items-start gap-3">
             <span
               aria-hidden
-              className="pulse-dot inline-block h-2 w-2 rounded-full"
+              className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full"
               style={{
-                background: allClear ? "var(--app-positive)" : "var(--app-danger)",
+                background: `color-mix(in srgb, ${allClear ? "var(--app-positive)" : "var(--app-danger)"} 14%, transparent)`,
+                color: allClear ? "var(--app-positive)" : "var(--app-danger)",
               }}
-            />
-            Live Pulse · Frederick County
-            <PulseFreshness renderedAt={nowMs} />
-          </p>
-          <h1
-            className="font-serif text-[26px] font-semibold leading-[1.08] tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            {heroLine}
-          </h1>
-          <p
-            className="text-[14px] leading-relaxed"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            {heroSub}
-          </p>
-          {/* Live conditions — what the sky is actually DOING right now.
-              /pulse is named for the live read but, before this, only ever
-              showed a weather-ALERTS count; on a calm day the page never
-              told you it was 72° and clear. Reuses /today's compact
-              WeatherHero (the underlying NWS fetch is Next-deduped) and
-              degrades to a quiet "briefly unavailable" line on fetch fail —
-              a calm page that errored on weather is worse than no glance. */}
+            >
+              {allClear ? <ShieldCheck className="h-5 w-5" strokeWidth={2} /> : <Siren className="h-5 w-5" strokeWidth={2} />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <h1
+                className="font-serif text-[24px] font-semibold leading-[1.1] tracking-tight"
+                style={{ color: "var(--app-ink)" }}
+              >
+                {heroLine}
+              </h1>
+              <p className="mt-1 text-[13.5px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
+                {heroSub}
+              </p>
+            </div>
+          </div>
+
+          {/* Live conditions — what the sky is actually DOING right now, under
+              a quiet "right now" rule. Reuses /today's compact WeatherHero
+              (the NWS fetch is Next-deduped); degrades to a quiet line on fail. */}
           <div
             id="weather"
             className="scroll-mt-20 border-t pt-3"
@@ -648,7 +670,7 @@ export default async function PulsePage({
             <WeatherHero compact />
           </div>
           <p
-            className="flex items-center gap-1.5 pt-0.5 text-[11px] tabular-nums"
+            className="flex items-center gap-1.5 text-[11px] tabular-nums"
             style={{ color: "var(--app-ink-3)" }}
           >
             <Clock className="h-3 w-3" strokeWidth={2} aria-hidden />
