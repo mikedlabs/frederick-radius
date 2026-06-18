@@ -363,6 +363,11 @@ export default function EventCard({
             boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
           }}
         >
+          {/* Faint engraved category glyph — paper texture + a distinct
+              printed-calendar identity, the way the intel records carry one. */}
+          <span aria-hidden className="pointer-events-none absolute -bottom-4 -right-3" style={{ color: accent, opacity: 0.06 }}>
+            <CategoryIcon category={event.category} className="h-[88px] w-[88px] rotate-[8deg]" strokeWidth={0.9} />
+          </span>
           <div
             aria-hidden
             className="flex shrink-0 flex-col items-center justify-center self-start rounded-[var(--app-radius-sm)] px-2 py-1 leading-none"
@@ -435,10 +440,11 @@ export default function EventCard({
         className="tactile tactile-interactive group relative rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3.5 py-3"
         style={{
           borderColor: "var(--app-border)",
-          // Faint left-edge accent in the category color so a stack
-          // of cards reads as "different kinds of events" at a
-          // glance without adding the visual weight of a chip.
-          boxShadow: `inset 3px 0 0 ${accent}`,
+          // Faint left-edge accent in the category color so a stack of cards
+          // reads as "different kinds of events" at a glance — COMPOSED WITH
+          // the pressed-paper depth (edge + top highlight + soft elevation),
+          // which a bare `inset 3px 0` used to clobber, leaving the card flat.
+          boxShadow: `inset 3px 0 0 ${accent}, var(--app-edge), var(--app-hi), var(--app-elev-1)`,
         }}
       >
         <Link
@@ -551,11 +557,15 @@ export default function EventCard({
             ) : (
               <div
                 aria-hidden
-                className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[12px]"
+                className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[14px]"
                 style={{
-                  background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-sunken))`,
+                  // The category glyph as a pressed-paper SEAL (the IconStamp
+                  // recipe): tint over elevated paper, glyph in the accent, a
+                  // hairline edge + top highlight + a warm accent-tinted lift —
+                  // not a flat tinted circle.
+                  background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated))`,
                   color: accent,
-                  boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.06)",
+                  boxShadow: `var(--app-edge), var(--app-hi), 0 6px 14px -8px color-mix(in srgb, ${accent} 34%, transparent)`,
                 }}
               >
                 <CategoryIcon category={event.category} className="h-5 w-5" />
