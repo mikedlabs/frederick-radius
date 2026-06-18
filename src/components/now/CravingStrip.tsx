@@ -12,6 +12,7 @@ import {
   Palette,
   Music,
   Martini,
+  Wine,
   Sunrise,
   Croissant,
   Sandwich,
@@ -61,6 +62,7 @@ const ICONS: Record<string, LucideIcon> = {
   Palette,
   Music,
   FerrisWheel,
+  Wine,
   // Meal-occasion glyphs (the time-aware lead tile).
   Sunrise,
   Croissant,

@@ -42,7 +42,8 @@ export type Craving = {
     | "ShoppingCart"
     | "Palette"
     | "Music"
-    | "FerrisWheel";
+    | "FerrisWheel"
+    | "Wine";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -75,6 +76,10 @@ const FAMILY_FUN =
 // "Escape This" is fun, "Gregs Driving School" is not.
 const FAMILY_FUN_JUNK =
   /\b(school|elementary|middle|high school|academy|universit|college|early learning|daycare|day care|preschool|pre-?k|\bpta\b|admission|montessori|children.?s center|learning center|recovery|church|ministry|driving)\b/i;
+// Wineries / vineyards / cideries / meaderies — matched by PRODUCTION terms
+// (the county's ~15 are filed under "brewery"), NOT bare "wine" which would
+// catch wine shops, wine bars, and beer-&-wine convenience stores.
+const WINERY = /\b(winery|wineries|vineyard|vineyards|winecellars|cider|cidery|meadery)\b/i;
 
 // Order = intent strength, not raw inventory. Food leads (the single most
 // universal "I want," ~210 places); then the going-out wants (Coffee, Drinks),
@@ -117,6 +122,17 @@ export const CRAVINGS: Craving[] = [
       { key: "brewery", label: "Breweries", match: (p) => p.category === "brewery" },
       { key: "bar", label: "Bars", match: (p) => p.category === "bar" },
     ],
+  },
+  {
+    // Frederick is wine country — ~15 wineries / vineyards / cideries + a
+    // meadery, filed under "brewery" in the data, matched here by name so they
+    // get their own one-tap door (Linganore, Black Ankle, Loew, Elk Run,
+    // Springfield Manor, Catoctin Breeze, Orchid Cellar, Willow Oaks Cider…).
+    key: "wineries",
+    label: "Wineries",
+    icon: "Wine",
+    color: "var(--app-brand-press)",
+    match: (p) => WINERY.test(p.name),
   },
   {
     key: "sweets",
@@ -260,7 +276,7 @@ export function orderCravingsForMoment(cravings: Craving[], { hour, weekend, wet
     if (evening && (key === "drinks" || key === "music")) b += 3;
     if (evening && (key === "food" || key === "ice-cream")) b += 1;
     if (late && (key === "drinks" || key === "food")) b += 2;
-    if (weekend && (key === "outside" || key === "family" || key === "art" || key === "music")) b += 2;
+    if (weekend && (key === "outside" || key === "family" || key === "art" || key === "music" || key === "wineries")) b += 2;
     if (wet) {
       if (key === "outside") b -= 4;
       if (["coffee", "food", "art", "family", "sweets", "drinks"].includes(key)) b += 2;
