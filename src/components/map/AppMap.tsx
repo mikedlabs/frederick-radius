@@ -289,7 +289,10 @@ export default function AppMap({
   // geolocation, instead of the "Near me" button silently doing nothing.
   const [geoMsg, setGeoMsg] = useState<string | null>(null);
   const [osmError, setOsmError] = useState<string | null>(null);
-  const [amenityGroups, setAmenityGroups] = useState<Set<string>>(() => new Set(initialDefaults.amenityGroups));
+  // Cold open is CLEAN: no layers pre-selected (matching the empty-categories
+  // decision above) so the map opens as the live town, not a wall of pins. The
+  // mode toggle still applies its curated layers when the user picks a mode.
+  const [amenityGroups, setAmenityGroups] = useState<Set<string>>(() => new Set());
   const [amenityOpen, setAmenityOpen] = useState(false);
   // The category rail is heavy; collapsed by default so the in-map
   // deck stays a clean glass bar. "Filters" reveals it as a panel.
@@ -298,8 +301,8 @@ export default function AppMap({
   const [q, setQ] = useState("");
   const [userLoc, setUserLoc] = useState<LngLat | null>(null);
   const [locating, setLocating] = useState(false);
-  const [showCivic, setShowCivic] = useState(initialDefaults.civic);
-  const [showTrails, setShowTrails] = useState(initialDefaults.lineLayers.includes("trails"));
+  const [showCivic, setShowCivic] = useState(false);
+  const [showTrails, setShowTrails] = useState(false);
   const [showTransit, setShowTransit] = useState(initialDefaults.lineLayers.includes("transit"));
   // Aerial photo overlay — the Frederick Radius moat. Off by default
   // since 104 pins is a lot to render until the user opts in. Tapping
@@ -350,22 +353,12 @@ export default function AppMap({
   // do NOT preserve the prior session's manual toggles — the brief calls
   // out predictability over preservation. The first-render guard uses
   // a ref so the initial useState seeding above is not double-applied.
-  const isFirstModeSync = useRef(true);
-  useEffect(() => {
-    if (isFirstModeSync.current) {
-      isFirstModeSync.current = false;
-      return;
-    }
-    const d = defaultsFor(mode);
-    // setActiveCats(new Set(d.categories)) was removed — same reason
-    // as the empty initial useState above. The intent chip strip is
-    // the primary filter; mode no longer pre-seeds a category subset
-    // that would silently hide intent-filtered results.
-    setAmenityGroups(new Set(d.amenityGroups));
-    setShowTrails(d.lineLayers.includes("trails"));
-    setShowTransit(d.lineLayers.includes("transit"));
-    setShowCivic(d.civic);
-  }, [mode]);
+  // Mode no longer pre-seeds MAP LAYERS — neither on open nor on switch. The
+  // map opens clean (no layers selected) and the user opts into every layer;
+  // a post-mount mode hydration used to re-apply the visitor defaults
+  // (restroom + trails) and re-clutter the clean open. Mode still scopes the
+  // events + closures (via defaultsFor in mode-scope), just not the layer set.
+  // (Categories were already removed from this sync for the same reason.)
 
   useEffect(() => {
     if (osmFromProps) {
@@ -1311,10 +1304,13 @@ export default function AppMap({
               }}
             />
           </Source>
-          {/* Live TransIT vehicles — real GTFS-realtime positions, on with
-              the route lines. Eases between polls; honest empty when the
-              feed reports no buses (evenings/weekends run sparse). */}
-          <LiveBuses show={showTransit} />
+          {/* Live TransIT vehicles — real GTFS-realtime positions, ALWAYS on
+              (decoupled from the transit route-line toggle) so the map opens as
+              a living town with the buses moving, even with no layers selected.
+              Eases between polls; honest empty when the feed reports no buses
+              (evenings/weekends run sparse). The transit toggle adds the route
+              LINES under them. */}
+          <LiveBuses show />
           <Source id="trail-lines" type="geojson" data={(showTrails ? trailLines : EMPTY_LINE_FC) as unknown as GeoJSON.FeatureCollection}>
             <Layer
               id="trail-line"
