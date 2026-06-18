@@ -43,6 +43,17 @@ function easternParts(now: Date): { day: number; min: number } {
   return { day: wd[get("weekday")] ?? 0, min: (Number(get("hour")) % 24) * 60 + Number(get("minute")) };
 }
 
+/** Scale the gold hook to its length so a short punch ("$5") reads big while a
+ *  long one ("FROM $3.50", "$1 OYSTERS") stays proportionate and never dwarfs
+ *  the venue name. */
+function hookFontSize(hook: string | null): string {
+  if (!hook) return "19px"; // "Specials"
+  const n = hook.length;
+  if (n <= 5) return "28px";
+  if (n <= 9) return "22px";
+  return "18px";
+}
+
 function fmtMin(m: number): string {
   if (m >= 1440) return "close";
   const h24 = Math.floor(m / 60);
@@ -195,7 +206,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                 </h3>
                 <p
                   className="mt-0.5 font-mono font-bold leading-none tracking-[-0.01em]"
-                  style={{ fontSize: pour.hook ? "28px" : "19px", color: "color-mix(in srgb, var(--app-accent) 70%, var(--app-on-brand))" }}
+                  style={{ fontSize: hookFontSize(pour.hook), color: "color-mix(in srgb, var(--app-accent) 70%, var(--app-on-brand))" }}
                 >
                   {pour.hook ?? "Specials"}
                 </p>
