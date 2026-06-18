@@ -15,6 +15,7 @@ import {
   SquareParking,
   Route,
   Wine,
+  Croissant,
   Tag,
   Plane,
 } from "lucide-react";
@@ -71,6 +72,7 @@ type Item = {
 // purpose: this is the reason to open the app, not a utility afterthought.
 const LOCAL_INTEL: Item[] = [
   { href: "/happy-hour", label: "Happy hour", description: "Verified happy hours across the county, by day", icon: Wine, color: "var(--app-brand)" },
+  { href: "/brunch", label: "Brunch", description: "Every spot with a real weekend brunch, confirmed at the source", icon: Croissant, color: "var(--app-brand)" },
   { href: "/deals", label: "Deals", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
 ];
 
