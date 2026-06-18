@@ -62,7 +62,6 @@ export type Craving = {
 // word-boundary token are added.
 const ICE_CREAM = /ice ?cream|creamery|gelato|scoop|frozen custard|froyo|frozen yogurt|soft serve|dairy ?queen|\bdq\b/i;
 const PIZZA = /pizza|pizzeria/i;
-const SWEET = /donut|doughnut|fudge|candy|chocolat|dessert|cupcake|pastr|bakery|sweet|cookie|ice ?cream|creamery/i;
 const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom.?s organic|wegmans|harris teeter|common market|costco|megamart|mega ?mart/i;
 // Family fun is matched by ACTIVITY name, not the `family` category — that
 // category is a junk bucket (mostly schools, daycares, PTAs, a driving school,
@@ -135,11 +134,17 @@ export const CRAVINGS: Craving[] = [
     match: (p) => WINERY.test(p.name),
   },
   {
-    key: "sweets",
-    label: "Sweets",
-    icon: "Cookie",
+    // Beer breweries — the county's taprooms (Brewer's Alley, Monocacy,
+    // Attaboy, Rockwell, Olde Mother, Smoketown, Milkhouse, Sandbox…). Filed
+    // under the "brewery" category in the data; we exclude the WINERY name
+    // matches because cideries / vineyards / meaderies also live under
+    // "brewery" but have their own Wineries tile. A dedicated one-tap door
+    // distinct from the broad "Drinks" tile (which still spans bars + brewery).
+    key: "breweries",
+    label: "Breweries",
+    icon: "Beer",
     color: "var(--app-brand-2)",
-    match: (p) => p.category === "bakery" || SWEET.test(p.name),
+    match: (p) => p.category === "brewery" && !WINERY.test(p.name),
   },
   {
     key: "ice-cream",
@@ -276,16 +281,16 @@ export function orderCravingsForMoment(cravings: Craving[], { hour, weekend, wet
   const late = hour >= 22 || hour < 5;
   const boost = (key: string): number => {
     let b = 0;
-    if (morning && (key === "coffee" || key === "sweets")) b += 3;
+    if (morning && key === "coffee") b += 3;
     if (midday && key === "food") b += 3;
     if (midday && key === "coffee") b += 1;
-    if (evening && (key === "drinks" || key === "music")) b += 3;
+    if (evening && (key === "drinks" || key === "breweries" || key === "music")) b += 3;
     if (evening && (key === "food" || key === "ice-cream")) b += 1;
     if (late && (key === "drinks" || key === "food")) b += 2;
     if (weekend && (key === "outside" || key === "family" || key === "art" || key === "music" || key === "wineries")) b += 2;
     if (wet) {
       if (key === "outside") b -= 4;
-      if (["coffee", "food", "art", "family", "sweets", "drinks"].includes(key)) b += 2;
+      if (["coffee", "food", "art", "family", "breweries", "drinks"].includes(key)) b += 2;
     }
     return b;
   };
