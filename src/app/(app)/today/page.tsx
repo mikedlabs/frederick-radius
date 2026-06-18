@@ -231,16 +231,21 @@ export default async function HomePage() {
         </Suspense>
       </SkyHero>
 
-      {/* Identity line — ONE calm line, so a first-timer knows what this is
-          before the "I want…" grid, without a mission-statement block that
-          nags returning users every morning. Lands the field-guide idea + the
-          three value props + "near you, right now" (the Radius hook). */}
-      <p className="mt-3 px-0.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-        <span className="font-serif text-[14px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+      {/* Identity headline — the field-guide positioning, given a confident
+          serif headline + a subtext that spans the county (Downtown Frederick
+          to the towns) and names what the guide covers. Sits below the weather
+          masthead, so it reads as the supporting positioning, not a competing
+          title. (Owner-chosen over a "smarter way to decide" framing, which
+          would have the app telling you what to do rather than helping you
+          find it.) */}
+      <div className="mt-3 px-0.5">
+        <p className="font-serif text-[19px] font-semibold leading-[1.15] tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
           Your field guide to Frederick County.
-        </span>{" "}
-        What&rsquo;s open, what&rsquo;s on, and what&rsquo;s worth your time near you, right now.
-      </p>
+        </p>
+        <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          From Downtown Frederick to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
+        </p>
+      </div>
 
       {/* Salutation + golden-hour cue. The date / day / time itself now lives
           in the SkyHero header above; this slim line carries only the
