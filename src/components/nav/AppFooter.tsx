@@ -22,7 +22,7 @@ const LINKS: Array<{ href: string; label: string }> = [
   { href: "/events", label: "Events" },
   { href: "/happy-hour", label: "Happy hour" },
   { href: "/brunch", label: "Brunch" },
-  { href: "/deals", label: "Deals" },
+  { href: "/deals", label: "Intel" },
 ];
 
 export default function AppFooter() {

@@ -8,7 +8,7 @@ import DealsBrowser from "@/components/deals/DealsBrowser";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/deals" },
-  title: "Deals & daily specials in Frederick County",
+  title: "Intel: verified daily specials in Frederick County",
   description:
     "Verified daily specials around Frederick County: taco Tuesdays, wing nights, crab feasts, and the deals locals plan their week around. Confirmed at the source, day by day.",
 };
@@ -45,13 +45,13 @@ export default function DealsPage() {
         <div aria-hidden className="h-px" style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }} />
         <div className="flex items-center justify-between py-2.5">
           <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>Frederick County</span>
-          <span className="font-mono text-[10.5px] tabular-nums tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>{rows.length} deal{rows.length === 1 ? "" : "s"}</span>
+          <span className="font-mono text-[10.5px] tabular-nums tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>{rows.length} special{rows.length === 1 ? "" : "s"}</span>
         </div>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="flex items-center gap-2.5 font-serif text-[30px] font-semibold leading-[0.98] tracking-[-0.02em]" style={{ color: "var(--app-ink)" }}>
               <Tag className="h-7 w-7 shrink-0" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-              Deals
+              Intel
             </h1>
             <p className="mt-2 max-w-prose text-[13px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
               {todayCount > 0 ? (
