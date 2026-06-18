@@ -124,12 +124,17 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
               <Link
                 href={`/places/${d.slug}`}
                 aria-label={`${d.name}: ${d.offer}`}
-                className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-md)]"
+                className="tactile-interactive relative block overflow-hidden rounded-[var(--app-radius-lg)]"
                 style={{
-                  backgroundColor: paper,
+                  // Premium colored STOCK: the body is faintly washed in the
+                  // card's own filing-ink over the paper, so the fanned stack
+                  // reads as a rich set of colored records, not cream forms.
+                  backgroundColor: `color-mix(in srgb, ${ink} 6%, ${paper})`,
                   backgroundImage: "var(--app-paper-light)",
-                  border: `1.5px solid color-mix(in srgb, ${ink} 48%, var(--app-border))`,
-                  boxShadow: "var(--app-elev-1), var(--app-hi)",
+                  border: `1px solid color-mix(in srgb, ${ink} 34%, var(--app-border))`,
+                  // Layered float: the crisp edge + highlight, plus a soft,
+                  // ink-tinted ambient shadow so each record lifts off the page.
+                  boxShadow: "var(--app-elev-1), var(--app-hi), 0 10px 26px -14px color-mix(in srgb, var(--app-ink) 30%, transparent)",
                   color: "var(--app-ink)",
                 }}
               >
@@ -155,7 +160,12 @@ export default function TodaysDealsStack({ deals, weekday }: { deals: TodaysDeal
                       tab depth. */}
                   <div
                     className="flex items-center gap-2 px-3 py-2"
-                    style={{ background: `linear-gradient(176deg, color-mix(in srgb, ${ink} 86%, #fff) 0%, ${ink} 64%)` }}
+                    style={{
+                      background: `linear-gradient(176deg, color-mix(in srgb, ${ink} 84%, #fff) 0%, ${ink} 62%)`,
+                      // Letterpress: a hairline top sheen, and a fine dark line
+                      // under the band that seats it onto the paper below.
+                      boxShadow: "inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent), 0 1px 0 color-mix(in srgb, var(--app-ink) 16%, transparent)",
+                    }}
                   >
                     <Icon aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} style={{ color: REVERSED }} />
                     <span className="min-w-0 flex-1 truncate font-serif text-[14.5px] font-semibold tracking-[-0.01em]" style={{ color: REVERSED }}>{d.name}</span>
