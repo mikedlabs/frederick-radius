@@ -11,18 +11,12 @@ import TodaysDealsStack from "@/components/today/TodaysDealsStack";
 export default function TodaysDeals({ now, limit = 6 }: { now: Date; limit?: number }) {
   const deals = todaysDeals(now, limit);
   if (deals.length === 0) return null;
-  // The ledger day-stamp ("THU / 18") — derived Eastern here, never in render,
-  // so it can't drift from EASTERN_WEEKDAY's timezone.
-  const stampParts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/New_York", weekday: "short", day: "numeric",
-  }).formatToParts(now);
-  const sp = (t: string) => stampParts.find((p) => p.type === t)?.value ?? "";
+  // The almanac date numeral — derived Eastern here, never in render, so it
+  // can't drift from EASTERN_WEEKDAY's timezone.
+  const dayNum = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", day: "numeric",
+  }).format(now);
   return (
-    <TodaysDealsStack
-      deals={deals}
-      weekday={EASTERN_WEEKDAY(now)}
-      dayAbbr={sp("weekday")}
-      dayNum={sp("day")}
-    />
+    <TodaysDealsStack deals={deals} weekday={EASTERN_WEEKDAY(now)} dayNum={dayNum} />
   );
 }
