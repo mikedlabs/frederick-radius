@@ -125,18 +125,20 @@ export default async function CravingStrip({
   return (
     <div className="space-y-4">
     <section aria-labelledby="i-want-eyebrow" className="space-y-2">
-      {/* One bar: the "I want…" prompt on the left, the location consent pill
-          on the right — opposite ends of a single row, not two stacked spots.
-          The pill self-hides once granted, leaving the prompt alone. */}
+      {/* "I want…" is the page's primary action, so it reads as a confident
+          serif lead (not a footnote eyebrow) — the contrast with the quiet
+          "Getting around" eyebrow below signals where you start. The location
+          consent pill sits at the opposite end and self-hides once granted. */}
       <div className="flex min-h-[34px] items-center justify-between gap-3">
-        <p id="i-want-eyebrow" className="eyebrow" style={{ color: "var(--app-ink-3)" }}>
+        <h2
+          id="i-want-eyebrow"
+          className="font-serif text-[18px] font-semibold leading-none tracking-tight"
+          style={{ color: "var(--app-ink)" }}
+        >
           I want…
-        </p>
+        </h2>
         {locationSlot}
       </div>
-      {/* The "right now" contextual band (live music tonight, …) — a lighter
-          layer than the grid; self-hides when nothing's on. */}
-      {contextSlot}
       {/* The pressed-seal grid. Every tile is one calm field-guide seal; the
           item's own ink lives in the seal + leader rule so the sheet reads as a
           set, not a rainbow. The two LIVE-INTEL leads (the meal occasion +
@@ -170,6 +172,10 @@ export default async function CravingStrip({
             home for a want that isn't a tile. */}
         <MoreSheetTile ink="var(--app-ink-3)" />
       </div>
+      {/* The "right now" contextual band (live music tonight, …) follows the
+          universal nouns: the fast lane leads, the time-specific live answer is
+          supporting context beneath it. Self-hides when nothing's on. */}
+      {contextSlot}
     </section>
 
     {/* ── GETTING AROUND — the same field tags, their own eyebrow so "I want…
