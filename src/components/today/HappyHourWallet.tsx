@@ -63,6 +63,43 @@ type LivePour = {
   lastCall: boolean;
 };
 
+type NextPour = { slug: string; name: string; hook: string | null; label: string };
+
+/**
+ * The soonest verified pour starting AFTER now (Eastern), across every venue.
+ * Powers the "between rounds" state so the wedge surfaces the next happy hour
+ * instead of vanishing in the gaps (evenings, mornings, the dead hour before a
+ * late-night window). Self-hides only when nothing is scheduled at all.
+ */
+function nextPour(now: Date): NextPour | null {
+  const { day, min } = easternParts(now);
+  let best: { mins: number; slug: string; dayOffset: number; start: number; details: string } | null = null;
+  for (const v of placesWithFieldHappyHour()) {
+    for (const w of parseHappyHour(v.happy_hour.schedule)) {
+      for (const d of w.days) {
+        let dayOffset = (d - day + 7) % 7;
+        if (dayOffset === 0 && w.start <= min) dayOffset = 7; // already started today → next week
+        const mins = dayOffset * 1440 + w.start - min;
+        if (mins <= 0) continue;
+        if (!best || mins < best.mins) {
+          best = { mins, slug: v.slug, dayOffset, start: w.start, details: v.happy_hour.details ?? "" };
+        }
+      }
+    }
+  }
+  if (!best) return null;
+  const p = clientPlaceBySlug(best.slug);
+  if (!p) return null;
+  const time = fmtMin(best.start);
+  const label =
+    best.dayOffset === 0
+      ? `Opens ${time}`
+      : best.dayOffset === 1
+        ? `Opens tomorrow ${time}`
+        : `Opens ${new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(new Date(now.getTime() + best.dayOffset * 86_400_000))} ${time}`;
+  return { slug: best.slug, name: p.name, hook: splitDeal(best.details).hook, label };
+}
+
 export default function HappyHourWallet({ now }: { now: Date }) {
   const { day, min } = easternParts(now);
 
@@ -86,7 +123,50 @@ export default function HappyHourWallet({ now }: { now: Date }) {
       lastCall: live.end < 1440 && live.end - min <= 30,
     });
   }
-  if (pours.length === 0) return null;
+  if (pours.length === 0) {
+    // Between rounds: surface the NEXT verified pour rather than vanish, so the
+    // wedge stays present + useful. Returns null only if nothing is scheduled.
+    const next = nextPour(now);
+    if (!next) return null;
+    return (
+      <section aria-labelledby="hh-wallet-eyebrow" className="space-y-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="hh-wallet-eyebrow" className="font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-2)" }}>
+            Happy hour
+          </h2>
+          <Link href="/happy-hour" className="tap-44 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-accent-press)" }}>
+            All pours →
+          </Link>
+        </div>
+        <Link
+          href={`/places/${next.slug}`}
+          aria-label={`No happy hour on right now. Next: ${next.name}, ${next.label.toLowerCase()}`}
+          className="tactile-interactive flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] p-2.5"
+          style={{
+            backgroundColor: "var(--app-bg-elevated-solid)",
+            backgroundImage: "var(--app-paper-light)",
+            boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
+          }}
+        >
+          <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-[var(--app-radius-sm)]" style={{ background: "color-mix(in srgb, var(--app-brand-2) 12%, var(--app-bg-sunken))" }}>
+            <Martini className="h-5 w-5" strokeWidth={1.5} style={{ color: "var(--app-brand-2)" }} aria-hidden />
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+              Between rounds
+            </p>
+            <h3 className="truncate font-serif text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+              {next.name}
+            </h3>
+            <p className="truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+              <span className="font-mono font-bold uppercase tracking-[0.06em]" style={{ color: "var(--app-accent-press)" }}>{next.label}</span>
+              {next.hook && <span>{"  ·  "}{next.hook}</span>}
+            </p>
+          </div>
+        </Link>
+      </section>
+    );
+  }
 
   // Most urgent first (last call, then ending soonest) — it's a list now, so
   // the top card is the one to act on.
