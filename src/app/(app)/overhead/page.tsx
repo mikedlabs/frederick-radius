@@ -7,14 +7,14 @@ export const metadata: Metadata = {
   alternates: { canonical: "/overhead" },
   title: "Overhead: planes over Frederick right now",
   description:
-    "A live airspace radar for Frederick County. Every aircraft transmitting within ~60 miles, plotted by bearing and altitude, with the planes you could actually look up and spot.",
+    "A live map of the planes over Frederick County. Every aircraft transmitting within ~60 miles, plotted at its real position with its route, altitude, and speed.",
 };
 
 /**
- * /overhead — the live "what's flying over Frederick" radar. A field-guide
- * instrument: Frederick at the center, range rings, aircraft plotted from the
- * free airplanes.live ADS-B feed. Client component polls; the page is just the
- * masthead + a frame.
+ * /overhead — the live "what's flying over Frederick" map. Aircraft from the
+ * free airplanes.live ADS-B feed plotted at their true positions on the
+ * Frederick-palette Mapbox base, each with its route (hexdb) + altitude + speed.
+ * Client component polls; the page is just the masthead + a frame.
  */
 export default function OverheadPage() {
   return (
