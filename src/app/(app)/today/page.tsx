@@ -27,6 +27,7 @@ import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
+import HolidayNote from "@/components/today/HolidayNote";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
 import FromYourSaved from "@/components/today/FromYourSaved";
@@ -246,6 +247,13 @@ export default async function HomePage() {
         <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
           From Downtown to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
         </p>
+      </div>
+
+      {/* Federal-holiday note — names the day + its closure implication
+          (banks, post offices, government offices). Self-hides on an ordinary
+          day. Civic context before a plan, not a celebration banner. */}
+      <div className="mt-3">
+        <HolidayNote now={now} />
       </div>
 
       {/* Salutation + golden-hour cue. The date / day / time itself now lives
