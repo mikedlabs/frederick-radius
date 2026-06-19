@@ -15,6 +15,7 @@ import {
   Music,
   FerrisWheel,
   Wine,
+  BedDouble,
   Sunrise,
   Croissant,
   Sandwich,
@@ -67,6 +68,7 @@ const ICONS: Record<string, LucideIcon> = {
   Music,
   FerrisWheel,
   Wine,
+  BedDouble,
   // Meal-occasion glyphs (the time-aware lead from the /today I-want strip).
   Sunrise,
   Croissant,
@@ -192,7 +194,11 @@ export default function RightNow({
       .filter(passFacet)
       .map((p) => {
         const dist = haversineMeters(origin, p.geom);
-        return { p, dist, open: isOpenNow(p.open_status) };
+        // Always-available cravings (lodging) count as open regardless of
+        // verified hours — a hotel you can book any night must never be hidden
+        // by the open-now gate just because its front-desk hours aren't posted.
+        const open = Boolean(craving?.alwaysOpen) || isOpenNow(p.open_status);
+        return { p, dist, open };
       })
       .sort((a, b) => {
         if (a.open !== b.open) return a.open ? -1 : 1; // open first
@@ -313,9 +319,11 @@ export default function RightNow({
                 ? openCount > 0
                   ? `${openCount} open ${meal.phrase} right now · nearest first`
                   : `Nothing open ${meal.phrase} right now · nearest first`
-                : openCount > 0
-                  ? `${openCount} open now · nearest first`
-                  : "Nearest first"}
+                : craving?.alwaysOpen
+                  ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · nearest first`
+                  : openCount > 0
+                    ? `${openCount} open now · nearest first`
+                    : "Nearest first"}
             </p>
           </div>
         </div>
@@ -325,6 +333,9 @@ export default function RightNow({
             facet row only appears when the craving defines facets, so single-
             answer cravings (Coffee, Grocery) stay clean. */}
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+          {/* Open-now toggle — hidden for always-available cravings (lodging),
+              where "open now" is meaningless and every place always passes. */}
+          {!craving?.alwaysOpen && (
           <button
             type="button"
             onClick={() => setOpenOnly((v) => !v)}
@@ -347,6 +358,7 @@ export default function RightNow({
             />
             Open now
           </button>
+          )}
           {craving && facetDefs.length > 0 && (
             <>
               <FacetChip label="All" active={facetKey === null} color={craving.color} onClick={() => setFacetKey(null)} />
