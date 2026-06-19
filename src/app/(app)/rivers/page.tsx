@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Waves, Droplets, ExternalLink, Clock, MapPin } from "lucide-react";
 import { getFrederickWaterSitesWithHistory, type WaterSite } from "@/lib/integrations/usgsWater";
+import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
 import PageBloom from "@/components/ui/PageBloom";
 import MetricCard from "@/components/live-data/MetricCard";
+import FloodGauge from "@/components/live-data/FloodGauge";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/rivers" },
@@ -157,8 +159,10 @@ export default async function RiversPage() {
         </div>
       </header>
 
-      {/* Honesty note — what this dashboard does NOT do. USGS-only
-          readings; no flood stage / status (that's NWS AHPS work). */}
+      {/* Honesty note — where the flood stages come from + their limits.
+          Six county gauges are NWS forecast points (we compare the live
+          USGS reading to NWS's own thresholds); the rest show reading +
+          trend only. Crest forecasts + official warnings stay with NWS. */}
       <aside
         className="rounded-[var(--app-radius-md)] border px-4 py-3 text-[12px] leading-relaxed"
         style={{
@@ -168,11 +172,13 @@ export default async function RiversPage() {
         }}
       >
         <strong className="font-semibold" style={{ color: "var(--app-ink)" }}>
-          Just the numbers.
+          Flood stages are the NWS&rsquo;s own.
         </strong>{" "}
-        We show the USGS reading and its 24-hour trend. We don&rsquo;t
-        compute flood stages. Those need per-site NWS thresholds, and
-        making them up would be unsafe.{" "}
+        For the six county gauges that are National Weather Service forecast
+        points, we compare the live USGS reading to the NWS flood thresholds
+        (action, flood, moderate, major) and label where it stands. The other
+        gauges show the reading and 24-hour trend only. Crest forecasts and
+        official watch / warning calls remain{" "}
         <a
           href="https://water.weather.gov/ahps/region.php?state=md"
           target="_blank"
@@ -180,9 +186,9 @@ export default async function RiversPage() {
           className="font-semibold underline-offset-2 hover:underline"
           style={{ color: "var(--app-cool)" }}
         >
-          NWS flood forecasts for Maryland
-        </a>{" "}
-        carry the official watch / warning calls.
+          NWS&rsquo;s
+        </a>
+        .
       </aside>
 
       {sites.length === 0 ? (
@@ -214,12 +220,19 @@ export default async function RiversPage() {
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {list.map((site) => {
                 const dir = trendDirection(site.gageHistory) ?? trendDirection(site.streamflowHistory);
-                // Tone the status pill — "rising" reads as warning on
-                // a water page; falling = good; steady = neutral.
-                const tone =
+                const flood = classifyFlood(site.gageHeightFt, site.floodStages);
+                // The status pill leads with the SAFETY signal: when a gauge is
+                // at or above NWS action stage, that flood category IS the pill
+                // (warning/danger). Otherwise the 24h trend rides there — on a
+                // water page, "rising" is the thing to watch.
+                const trendTone =
                   dir === "rising" ? "warning" : dir === "falling" ? "good" : "neutral";
-                const statusLabel =
+                const trendLabel =
                   dir === "rising" ? "Rising" : dir === "falling" ? "Falling" : dir === "steady" ? "Steady" : "Live";
+                const status: { label: string; tone: "neutral" | "good" | "warning" | "danger" } =
+                  flood && flood.key !== "normal"
+                    ? { label: flood.label, tone: flood.tone }
+                    : { label: trendLabel, tone: trendTone };
 
                 // Headline reading: prefer gage height (most intuitive),
                 // fall back to streamflow if a gauge only reports flow.
@@ -253,7 +266,7 @@ export default async function RiversPage() {
                       trend={trend}
                       accent="var(--app-cool)"
                       trendStroke="var(--app-cool)"
-                      status={{ label: statusLabel, tone }}
+                      status={status}
                       meta={
                         <>
                           <Clock className="mr-1 inline h-2.5 w-2.5" strokeWidth={2} aria-hidden />
@@ -267,15 +280,30 @@ export default async function RiversPage() {
                         </>
                       }
                       footer={
-                        <span
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold"
-                          style={{ color: "var(--app-cool)" }}
-                        >
-                          <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
-                          Open USGS gauge
-                        </span>
+                        <div className="space-y-2.5">
+                          {/* The range-anchored flood gauge — only for NWS
+                              forecast points (others have no thresholds). */}
+                          {flood && site.floodStages && site.gageHeightFt != null && (
+                            <FloodGauge
+                              current={site.gageHeightFt}
+                              stages={site.floodStages}
+                              category={flood}
+                            />
+                          )}
+                          <span
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold"
+                            style={{ color: "var(--app-cool)" }}
+                          >
+                            <ExternalLink className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                            {site.floodStages ? "Open NWS forecast" : "Open USGS gauge"}
+                          </span>
+                        </div>
                       }
-                      href={`https://waterdata.usgs.gov/monitoring-location/${site.id}/`}
+                      href={
+                        site.floodStages
+                          ? nwsGaugeUrl(site.floodStages.nws)
+                          : `https://waterdata.usgs.gov/monitoring-location/${site.id}/`
+                      }
                     />
                   </li>
                 );
