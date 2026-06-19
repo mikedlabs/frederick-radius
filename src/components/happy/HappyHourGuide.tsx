@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Martini } from "lucide-react";
 import HappyHourBrowser, { type HHRow } from "./HappyHourBrowser";
-import { dealHook } from "@/lib/happyHourDeal";
+import { dealHook, splitDeal } from "@/lib/happyHourDeal";
 
 /**
  * HappyHourGuide — "The Last Pour", /happy-hour as a live city-magazine bar
@@ -186,16 +186,28 @@ function PricedRow({ it, nowMin }: { it: Item; nowMin: number }) {
       : it.kind === "later"
         ? `opens ${fmtMin(it.startsAt!)} · ${untilLabel(it.startsAt! - nowMin)}`
         : `${DAY_ABBR[it.day!]} ${fmtMin(it.startsAt!)}`;
+  // The deal SUBJECT (the offer with the figure removed) — so the priced
+  // figure on the right never reads as "$5 of an unknown thing." When the
+  // figure is the whole deal (no subject in the source), this is empty.
+  // Show the offer detail under the row UNLESS it would just repeat the
+  // right-hand figure label — so a "$5" row reads "$5 · house margaritas" and a
+  // figure-less "Specials" row still says what the specials actually are.
+  const { rest } = splitDeal(it.r.deal);
+  const subject = rest && rest.toLowerCase() !== (it.hook ?? "Specials").toLowerCase() ? rest : "";
   return (
-    <Link href={`/places/${it.r.slug}`} aria-label={`${it.r.name}${it.hook ? `: ${it.hook}` : ""}`} className="tactile-interactive group block py-1.5">
+    <Link href={`/places/${it.r.slug}`} aria-label={`${it.r.name}${it.r.deal ? `: ${it.r.deal}` : ""}`} className="tactile-interactive group block py-1.5">
       <div className="flex items-baseline gap-1.5">
         {live && <span aria-hidden className="live-dot mb-0.5 h-1.5 w-1.5 shrink-0 self-center rounded-full" style={{ background: "var(--app-brand)" }} />}
-        <span className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "62%" }}>{it.r.name}</span>
+        <span className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "58%" }}>{it.r.name}</span>
         <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
         <span className="shrink-0 font-mono text-[14px] font-bold tabular-nums tracking-[0.01em]" style={{ color: it.hook ? "var(--app-accent-press)" : "var(--app-ink-3)" }}>
           {it.hook ?? "Specials"}
         </span>
       </div>
+      {/* What the deal is ON — the line that turns "$5" into "$5 · house margaritas". */}
+      {subject && (
+        <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{subject}</p>
+      )}
       <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
         <span style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>{sub}</span>
         {it.r.town && <><span aria-hidden>·</span><span className="truncate">{it.r.town}</span></>}
