@@ -49,9 +49,11 @@ function PhotoFallback({ category }: { category?: string }) {
 }
 
 function IntelCard({ deal: d }: { deal: TodaysDeal }) {
-  const { hook, rest } = splitDeal(d.offer);
-  const dealText = hook ? rest : d.offer;
-  const body = hook && dealText ? dealText.charAt(0).toLowerCase() + dealText.slice(1) : dealText;
+  // Show the FULL offer (never the figure-stripped remainder) so the deal always
+  // reads as a complete statement — "Half-price appetizers", "$8 personal pizza" —
+  // and the struck gold figure beside it can never read as "X off an unknown thing".
+  const { hook } = splitDeal(d.offer);
+  const body = d.offer ? d.offer.charAt(0).toUpperCase() + d.offer.slice(1) : d.offer;
   const fig = hook ? denom(hook) : null;
   const meta = [d.hours, d.town].filter(Boolean).join("  ·  ");
 
