@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { getLandmarkPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
+import CategoryIcon from "@/components/place/CategoryIcon";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { currentSkyPalette } from "@/components/today/SkyHero";
 import { nextSunHint } from "@/lib/sun";
@@ -16,14 +17,6 @@ type Props = {
   priority?: boolean;
   /** Real Google photo (proxied, key-safe). Wins over generic stock. */
   photoSrc?: string;
-};
-
-const GLYPH: Record<string, string> = {
-  coffee: "☕", restaurant: "🍽", brewery: "🍺", bar: "🍸", bakery: "🥐",
-  pizza: "🍕", park: "🌳", trail: "⛰", museum: "🏛", gallery: "🎨",
-  theater: "🎭", music: "🎵", library: "📚", market: "🛒", antiques: "🪑",
-  yoga: "🧘", lodging: "🏨", parking: "🅿️", "book-store": "📖",
-  "public-safety": "🚒", government: "🏛", playground: "🛝",
 };
 
 /**
@@ -48,7 +41,6 @@ export default function PlaceHero({
   const color = cat?.color ?? "#A03A22";
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
-  const glyph = GLYPH[category] ?? "📍";
   const resolved = resolvePhotoSrc(slug, width);
   // Real Google photo of the actual business beats a landmark photo.
   const src = photoSrc ?? resolved?.src ?? null;
@@ -147,19 +139,27 @@ export default function PlaceHero({
           below the hero and carries it, so a name on the plate too would be
           a duplicate title (the same reason the photo hero has no overlay). */}
       {!src && (
-        <div className="absolute inset-0 grid place-items-center">
+        <div className="fg-plate absolute inset-0 grid place-items-center">
+          {/* The engraved category glyph, pressed into a tactile seal — the
+              field-guide specimen mark, drawn in the category's ink (woodcut
+              vector via CategoryIcon, never an emoji). The .fg-plate corner
+              registration ticks frame the hero like a printed plate. */}
           <span
             aria-hidden
-            className="grid place-items-center rounded-full"
+            className="grid place-items-center rounded-[var(--app-radius-md)]"
             style={{
-              width: size === "hero" ? 92 : 48,
-              height: size === "hero" ? 92 : 48,
-              background: `color-mix(in srgb, ${color} 18%, white)`,
-              boxShadow: `0 1px 0 rgba(255,255,255,0.6) inset, 0 0 0 1px color-mix(in srgb, ${color} 22%, transparent)`,
-              fontSize: size === "hero" ? 42 : 24,
+              width: size === "hero" ? 96 : 52,
+              height: size === "hero" ? 96 : 52,
+              background: `color-mix(in srgb, ${color} 13%, var(--app-bg-elevated-solid))`,
+              boxShadow: "0 1px 0 rgba(255,255,255,0.6) inset, var(--app-edge)",
+              color,
             }}
           >
-            {glyph}
+            <CategoryIcon
+              slug={category}
+              className={size === "hero" ? "h-12 w-12" : "h-7 w-7"}
+              strokeWidth={1.25}
+            />
           </span>
         </div>
       )}
@@ -176,10 +176,10 @@ export default function PlaceHero({
         />
       )}
 
-      {/* Category pill + glyph */}
+      {/* Category pill — engraved glyph + label (woodcut vector, no emoji) */}
       <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider shadow-[var(--app-shadow-1)] backdrop-blur"
            style={{ color }}>
-        <span aria-hidden>{glyph}</span> {cat?.name ?? category}
+        <CategoryIcon slug={category} className="h-3.5 w-3.5" strokeWidth={1.75} /> {cat?.name ?? category}
       </div>
 
       {/* No name overlay on a PHOTO hero: the place's <h1> + address sit on
