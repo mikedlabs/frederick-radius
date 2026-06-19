@@ -6,6 +6,10 @@
       "schedule": "0 9 * * *"
     },
     {
+      "path": "/api/ingest/fcpl",
+      "schedule": "15 9 * * *"
+    },
+    {
       "path": "/api/cron/notify-civic-alerts",
       "schedule": "*/30 * * * *"
     },
