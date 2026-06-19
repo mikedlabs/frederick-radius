@@ -1,5 +1,5 @@
 import {
-  Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building,
+  Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building, Car,
   CalendarDays, Church, Coffee, Cookie, DoorOpen, Droplets, GraduationCap,
   Hammer, Heart, HeartPulse, Hotel, Image as ImageIcon, Lamp, Landmark,
   Library, Mountain, Music, Palette, ParkingCircle, PawPrint, Pill,
@@ -32,7 +32,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
  */
 
 const ICONS: Record<string, typeof Coffee> = {
-  Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building,
+  Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building, Car,
   CalendarDays, Church, Coffee, Cookie, DoorOpen, Droplets, GraduationCap,
   Hammer, Heart, HeartPulse, Hotel, ImageIcon, Lamp, Landmark, Library,
   Mountain, Music, Palette, ParkingCircle, PawPrint, Pill, Pizza, Recycle,

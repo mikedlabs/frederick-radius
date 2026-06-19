@@ -68,6 +68,7 @@ export const CATEGORIES: Category[] = [
   { slug: "services", name: "Services", icon: "Wrench", color: "#4A4A48", display_order: 80, blurb: "Pharmacy, hardware, post, and other practical needs." },
   { slug: "pharmacy", name: "Pharmacies", parent: "services", icon: "Pill", color: "#1E6B3A", display_order: 81, blurb: "Independent and chain pharmacies." },
   { slug: "hardware", name: "Hardware", parent: "services", icon: "Hammer", color: "#4A4A48", display_order: 82, blurb: "Hardware, lumber, and home supply." },
+  { slug: "car-care", name: "Car Care", parent: "services", icon: "Car", color: "#4A4A48", display_order: 83, blurb: "Car washes, quick-lube and oil changes, and auto repair." },
 
   { slug: "lodging", name: "Lodging", icon: "Hotel", color: "#5B1E55", display_order: 90, blurb: "Hotels, B&Bs, and farm stays." },
 

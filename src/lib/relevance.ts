@@ -193,6 +193,7 @@ export const NON_DESTINATION_CATEGORIES: ReadonlySet<string> = new Set([
   "wellness",
   "yoga",
   "services",
+  "car-care",
   "civic",
   "government",
   "public-safety",

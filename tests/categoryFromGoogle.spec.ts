@@ -46,7 +46,9 @@ describe("categoryFromPrimaryType", () => {
     expect(categoryFromPrimaryType("association_or_organization")).toBe("civic");
     // Practical → services
     expect(categoryFromPrimaryType("bank")).toBe("services");
-    expect(categoryFromPrimaryType("car_repair")).toBe("services");
+    // Auto care → car-care (its own browse-only subcategory of services)
+    expect(categoryFromPrimaryType("car_repair")).toBe("car-care");
+    expect(categoryFromPrimaryType("car_wash")).toBe("car-care");
     // Retail → shopping
     expect(categoryFromPrimaryType("liquor_store")).toBe("shopping");
     expect(categoryFromPrimaryType("convenience_store")).toBe("shopping");

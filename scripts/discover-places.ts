@@ -32,6 +32,10 @@ const CATEGORIES = [
   "art gallery", "live music venue", "theater", "park", "trail",
   "playground", "library", "bookstore", "antique store", "yoga studio",
   "gym", "hotel", "garden", "place of worship",
+  // Everyday-utility car care (browse-only, down-ranked via the
+  // `car-care` category) — added on request. Repair shops already slip
+  // in as `car_repair`; these terms pull washes and quick-lube too.
+  "car wash", "oil change",
 ];
 
 const PRICE_TEXT_SEARCH_PRO = 32.0 / 1000; // USD/request, lean mask

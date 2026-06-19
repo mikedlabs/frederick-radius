@@ -1,5 +1,5 @@
 import {
-  Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building, Church,
+  Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building, Car, Church,
   Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart, HeartPulse, Hotel,
   ImageIcon, Lamp, Landmark, Library, Mountain, Music, Palette, ParkingCircle,
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,
@@ -20,7 +20,7 @@ import { GLYPHS } from "@/components/glyphs";
  * long-tail icon names degrade to MapPin, never a broken glyph.
  */
 const MAP: Record<string, LucideIcon> = {
-  Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building, Church,
+  Activity, Apple, Armchair, Baby, Beer, Bike, BookOpen, Building, Car, Church,
   Coffee, Cookie, DoorOpen, Droplets, Hammer, Heart, HeartPulse, Hotel,
   ImageIcon, Lamp, Landmark, Library, Mountain, Music, Palette, ParkingCircle,
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,

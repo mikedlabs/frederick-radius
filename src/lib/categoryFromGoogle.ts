@@ -158,8 +158,8 @@ const MAP: Record<string, string> = {
   community_center: "civic",
   // Practical → services
   bank: "services",
-  car_repair: "services",
-  car_wash: "services",
+  car_repair: "car-care",
+  car_wash: "car-care",
   laundry: "services",
   // Retail → shopping
   liquor_store: "shopping",
