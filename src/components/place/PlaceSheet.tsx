@@ -415,23 +415,36 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             className="mt-3 inline-flex items-center gap-3 rounded-full border px-3 py-1.5 text-xs font-medium"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
-            {/* A walk leg only reads as advice when walking is plausible.
-                "498 min walk" (the 2026-06 audit's example) is a data
-                readout, not a recommendation; past 35 minutes the drive
-                leg carries the message alone. */}
-            {travel.walkMin != null && travel.walkMin <= 35 && (
+            {travel.walkMin === 0 ? (
+              /* The place sits AT the downtown anchor — walk rounds to 0, so
+                 "0 min walk · 3 min drive from downtown" reads as nonsense
+                 (and a drive time from the place TO itself is pointless). State
+                 where it is instead. */
               <span className="inline-flex items-center gap-1">
-                <Footprints className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
-                <span className="font-mono tabular-nums">{travel.walkMin}</span> min walk
+                <MapPin className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+                In downtown Frederick
               </span>
+            ) : (
+              <>
+                {/* A walk leg only reads as advice when walking is plausible:
+                    skip the degenerate 0 (handled above), and past 35 minutes
+                    the drive leg carries the message alone ("498 min walk" is a
+                    data readout, not a recommendation — the 2026-06 audit). */}
+                {travel.walkMin != null && travel.walkMin >= 1 && travel.walkMin <= 35 && (
+                  <span className="inline-flex items-center gap-1">
+                    <Footprints className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-cool)" }} aria-hidden />
+                    <span className="font-mono tabular-nums">{travel.walkMin}</span> min walk
+                  </span>
+                )}
+                {travel.driveMin != null && (
+                  <span className="inline-flex items-center gap-1">
+                    <Car className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
+                    <span className="font-mono tabular-nums">{travel.driveMin}</span> min drive
+                  </span>
+                )}
+                <span style={{ color: "var(--app-ink-3)" }}>from downtown</span>
+              </>
             )}
-            {travel.driveMin != null && (
-              <span className="inline-flex items-center gap-1">
-                <Car className="h-3.5 w-3.5" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
-                <span className="font-mono tabular-nums">{travel.driveMin}</span> min drive
-              </span>
-            )}
-            <span style={{ color: "var(--app-ink-3)" }}>from downtown</span>
           </div>
         )}
 
