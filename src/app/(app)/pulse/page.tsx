@@ -50,7 +50,7 @@ import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
-import { getCuratedAdvisories } from "@/lib/integrations/civicAlerts";
+import { getActiveAdvisories } from "@/lib/integrations/civicAlerts";
 import { getFrederickTransitRoutes, getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
@@ -235,7 +235,7 @@ export default async function PulsePage({
   // live MDOT traffic tile). Curated, hyper-local notices (the water-main
   // class the state/weather feeds never carry) lead, then the City/County
   // press-release advisories. Self-hides when both are empty.
-  const advisories = [...getCuratedAdvisories(nowMs), ...advisoryReleases(press)].slice(0, 6);
+  const advisories = [...(await getActiveAdvisories(nowMs)), ...advisoryReleases(press)].slice(0, 6);
 
   const totals = {
     alerts: activeAlerts.length,

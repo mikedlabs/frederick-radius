@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { getCuratedAdvisories, type CuratedAlert } from "@/lib/integrations/civicAlerts";
+import {
+  getCuratedAdvisories,
+  parseCivicAlertBody,
+  type CuratedAlert,
+} from "@/lib/integrations/civicAlerts";
 
 const base: CuratedAlert = {
   id: "x",
@@ -34,5 +38,37 @@ describe("getCuratedAdvisories", () => {
     const newer = { ...base, id: "new", startsAt: "2026-06-21T00:00:00-04:00", url: "https://example.gov/#new" };
     const out = getCuratedAdvisories(at("2026-06-22T12:00:00-04:00"), [older, newer]);
     expect(out.map((a) => a.url)).toEqual(["https://example.gov/#new", "https://example.gov/#old"]);
+  });
+});
+
+describe("parseCivicAlertBody", () => {
+  const now = at("2026-06-19T12:00:00-04:00");
+  const future = "2026-06-26T12:00:00-04:00";
+
+  it("accepts a valid body and normalizes defaults", () => {
+    const r = parseCivicAlertBody({ title: "Water main on N Market.", expiresAt: future }, now);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.value.severity).toBe("advisory");
+      expect(r.value.source).toBe("City of Frederick");
+      expect(r.value.ends_at.toISOString()).toBe(new Date(future).toISOString());
+    }
+  });
+
+  it("requires a title and a FUTURE expiry", () => {
+    expect(parseCivicAlertBody({ expiresAt: future }, now)).toMatchObject({ ok: false, error: "title-required" });
+    expect(parseCivicAlertBody({ title: "Valid title here" }, now)).toMatchObject({ ok: false, error: "expiresAt-required" });
+    expect(
+      parseCivicAlertBody({ title: "Valid title here", expiresAt: "2026-06-01T00:00:00-04:00" }, now),
+    ).toMatchObject({ ok: false, error: "expiresAt-must-be-future" });
+  });
+
+  it("rejects a non-http url and clamps an unknown severity to advisory", () => {
+    expect(parseCivicAlertBody({ title: "Valid title", expiresAt: future, url: "javascript:alert(1)" }, now)).toMatchObject({
+      ok: false,
+      error: "url-invalid",
+    });
+    const r = parseCivicAlertBody({ title: "Valid title", expiresAt: future, severity: "bogus" }, now);
+    expect(r.ok && r.value.severity).toBe("advisory");
   });
 });
