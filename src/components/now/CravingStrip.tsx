@@ -85,17 +85,20 @@ function FieldTag({
   label,
   ariaLabel,
   icon: Icon,
+  glyphName,
   ink,
 }: {
   href: string;
   label: ReactNode;
   ariaLabel: string;
   icon: LucideIcon;
+  /** Icon name; a bespoke engraved woodcut renders for it when one exists. */
+  glyphName?: string;
   ink: string;
 }) {
   return (
     <Link href={href} aria-label={ariaLabel} className={craveTileClass} style={craveTileStyle(ink)}>
-      <CraveTileInner icon={Icon} label={label} ink={ink} />
+      <CraveTileInner icon={Icon} glyphName={glyphName} label={label} ink={ink} />
     </Link>
   );
 }
@@ -158,16 +161,17 @@ export default async function CravingStrip({
           label={meal.label}
           ariaLabel={meal.href ? `${meal.label}: verified spots` : `${meal.label}: nearest open now`}
           icon={ICONS[meal.icon] ?? Utensils}
+          glyphName={meal.icon}
           ink={meal.color}
         />
         {/* Happy hour — the most-asked-for local intent.
             Points at the /happy-hour view powered by the Field Notes layer. */}
-        <FieldTag href="/happy-hour" label="Happy hour" ariaLabel="Happy hour" icon={Martini} ink="var(--app-accent)" />
+        <FieldTag href="/happy-hour" label="Happy hour" ariaLabel="Happy hour" icon={Martini} glyphName="Martini" ink="var(--app-accent)" />
         {/* Brunch — the verified /brunch moat surface as its own persistent
             want (a curated set, not a /nearby category). Suppressed when the
             meal tile is ALREADY Brunch (weekend mornings) so it never doubles. */}
         {meal.key !== "brunch" && (
-          <FieldTag href="/brunch" label="Brunch" ariaLabel="Brunch: verified spots" icon={Croissant} ink="var(--app-brand-press)" />
+          <FieldTag href="/brunch" label="Brunch" ariaLabel="Brunch: verified spots" icon={Croissant} glyphName="Croissant" ink="var(--app-brand-press)" />
         )}
         {cravings.map((c) => (
           <FieldTag
@@ -176,6 +180,7 @@ export default async function CravingStrip({
             label={c.label}
             ariaLabel={`${c.label}: nearest open`}
             icon={ICONS[c.icon] ?? Utensils}
+            glyphName={c.icon}
             ink={c.color}
           />
         ))}
@@ -199,9 +204,9 @@ export default async function CravingStrip({
         Getting around
       </p>
       <div className="grid grid-cols-3 gap-2">
-        <FieldTag href="/parking" label="Parking" ariaLabel="Parking" icon={ParkingCircle} ink="var(--app-cool)" />
-        <FieldTag href="/transit" label="MARC" ariaLabel="MARC train" icon={Train} ink="var(--app-cool)" />
-        <FieldTag href="/transit" label="Transit" ariaLabel="TransIT bus" icon={Bus} ink="var(--app-cool)" />
+        <FieldTag href="/parking" label="Parking" ariaLabel="Parking" icon={ParkingCircle} glyphName="ParkingCircle" ink="var(--app-cool)" />
+        <FieldTag href="/transit" label="MARC" ariaLabel="MARC train" icon={Train} glyphName="Train" ink="var(--app-cool)" />
+        <FieldTag href="/transit" label="Transit" ariaLabel="TransIT bus" icon={Bus} glyphName="Bus" ink="var(--app-cool)" />
       </div>
     </section>
     </div>
