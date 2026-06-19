@@ -8,9 +8,9 @@ import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
 import LocationPrime from "@/components/today/LocationPrime";
 // AdaptiveGreeting (serif headline like "Sun for now") was removed
-// from the SkyHero pre-launch. The slimmer DateLine + NowDayStrip
-// header above the hero now carries the temporal anchor — weekday +
-// time + week strip — without a second editorial verdict on top of
+// from the SkyHero pre-launch. The temporal anchor (weekday + a live
+// clock) now lives in TodayCard inside the SkyHero — without a second
+// editorial verdict on top of
 // the WeatherHero's own conditions line. AdaptiveGreeting still
 // lives at src/components/today/AdaptiveGreeting.tsx if we want to
 // surface it elsewhere later.
@@ -139,8 +139,8 @@ function pickFeaturedEvent(now: Date, pool: EventWithMeta[]) {
 // /today is time-sensitive, but force-dynamic made every visit pay the
 // external-feed fanout (a ~7-10s cold load — the sims caught it). Instead:
 // ISR every 5 minutes, so the page serves cached + fast while the event
-// groupings stay fresh-enough, and the *visible* clock + date are handled
-// live, client-side, by <DateLine/>. (The original bug was pure-static
+// groupings stay fresh-enough, and the *visible* clock is handled live,
+// client-side, by LiveClock inside TodayCard. (The original bug was pure-static
 // with NO revalidate — a frozen build-time date; a short revalidate plus
 // the live client clock fixes that without the per-request cost.)
 export const revalidate = 300;
@@ -191,7 +191,7 @@ export default async function HomePage() {
 
   return (
     <div className="relative">
-      {/* Document-outline anchor. The visible "Sunday June 14" DateLine is an
+      {/* Document-outline anchor. The visible weekday/date in TodayCard is an
           editorial orientation line, not the page title, so the page carried
           no <h1>; this sr-only heading gives screen readers + crawlers a clean
           single top-level heading without changing the layout. */}
@@ -411,16 +411,6 @@ export default async function HomePage() {
             at the top, per the premium-refresh direction) and sits in
             the left column at lg+. ───────────────────────────────── */}
         <div className="space-y-4">
-
-      {/* DateLine + BriefingLine + NowDayStrip — the slim header
-          that replaces the old AdaptiveGreeting block. Sits ABOVE
-          SkyHero on the page background (paper-cream) so it reads
-          as page metadata, not as a competing editorial line
-          stacked on top of the weather. The BriefingLine answers
-          "so what should I do?" in one sentence (rule-based
-          synthesis of time-of-day, open places, and the next
-          notable event) — the centerpiece of the data → decisions
-          shift the review called for. */}
       {/* The sky-tinted weather hero (SkyHero + TodayCard) moved to the TOP
           of the page (owner call). This briefing column now holds the
           DETAILED forecast — the hourly / 7-day / more-details panel + the
