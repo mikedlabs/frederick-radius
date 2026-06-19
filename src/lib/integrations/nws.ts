@@ -12,6 +12,10 @@ export type NwsHourly = {
   windSpeed: string;
   windDirection: string;
   probabilityOfPrecipitation?: number;
+  /** Relative humidity %, present on hourly periods. */
+  relativeHumidity?: number;
+  /** Dewpoint in CELSIUS (NWS native unit), present on hourly periods. */
+  dewpointC?: number;
   icon: string;
   /** Daily periods carry these; hourly periods leave them undefined. */
   name?: string;
@@ -51,6 +55,8 @@ type ForecastResp = {
       detailedForecast?: string;
       icon: string;
       probabilityOfPrecipitation?: { value: number | null };
+      relativeHumidity?: { value: number | null };
+      dewpoint?: { value: number | null };
     }>;
   };
 };
@@ -88,6 +94,8 @@ export async function getNwsForecast(point: LngLat): Promise<NwsForecast | null>
     windSpeed: p.windSpeed,
     windDirection: p.windDirection,
     probabilityOfPrecipitation: p.probabilityOfPrecipitation?.value ?? undefined,
+    relativeHumidity: p.relativeHumidity?.value ?? undefined,
+    dewpointC: p.dewpoint?.value ?? undefined,
     icon: p.icon,
     name: p.name,
     isDaytime: p.isDaytime,
