@@ -5,6 +5,7 @@ import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { parseHappyHour, type HHWindow } from "@/lib/happyHour";
+import { dealQuality } from "@/lib/happyHourDeal";
 import DealLines from "@/components/happy/DealLines";
 
 /**
@@ -167,13 +168,11 @@ export default function HappyHourWallet({ now }: { now: Date }) {
     );
   }
 
-  // Most urgent first (last call, then ending soonest) — it's a list now, so
-  // the top card is the one to act on.
-  pours.sort((a, b) => {
-    const ua = (a.lastCall ? 1e6 : 0) + (1440 - a.endsAt);
-    const ub = (b.lastCall ? 1e6 : 0) + (1440 - b.endsAt);
-    return ub - ua;
-  });
+  // Deal QUALITY leads (a clear figure beats a vague "specials" entry no matter
+  // how soon it ends), then last-call urgency, then ending soonest. So the top
+  // card is always a clear, actionable deal, never a figureless one.
+  const score = (p: LivePour) => dealQuality(p.deal) * 1e6 + (p.lastCall ? 1e5 : 0) + (1440 - p.endsAt);
+  pours.sort((a, b) => score(b) - score(a));
   const shown = pours.slice(0, SHOW_CAP);
   const overflow = pours.length - shown.length;
   const n = pours.length;
@@ -263,7 +262,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                   {/* The deal: each discount on its own line, figure glued to
                       what it's for (never a bare number). */}
                   {pour.deal ? (
-                    <DealLines deal={pour.deal} max={2} className="space-y-0.5 text-[12.5px]" />
+                    <DealLines deal={pour.deal} max={2} vague={dealQuality(pour.deal) === 0} className="space-y-0.5 text-[12.5px]" />
                   ) : (
                     <p className="text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>Specials</p>
                   )}
