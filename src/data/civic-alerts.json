@@ -1,0 +1,13 @@
+{
+  "note": "Curated civic advisories — the hyper-local road work / closures / emergency notices the live feeds (MDOT CHART = state highways, City press RSS) miss. Each renders in Pulse's 'Road work & closures' card alongside the press-release advisories, and self-expires by window (no stale alert ever ships). startsAt/expiresAt are ISO-8601 with offset. Keep this short; it is a human channel, not a feed.",
+  "alerts": [
+    {
+      "id": "nmarket-5th-6th-watermain-2026-06",
+      "title": "Emergency water-main repair on N Market St between 5th and 6th. Expect lane closures and detours.",
+      "source": "City of Frederick",
+      "url": "https://www.cityoffrederickmd.gov/CivicAlerts.aspx#nmarket-5th-6th-watermain",
+      "startsAt": "2026-06-19T00:00:00-04:00",
+      "expiresAt": "2026-06-26T23:59:59-04:00"
+    }
+  ]
+}
