@@ -25,7 +25,7 @@ import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
 import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
-import { dealHook } from "@/lib/happyHourDeal";
+import { dealHook, figureCount } from "@/lib/happyHourDeal";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
 const DEDUP = DEDUP_RAW as Record<string, DedupEntry>;
@@ -632,9 +632,12 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     distance_m: origin ? haversineMeters(origin, enriched.geom) : undefined,
     field_notes: hasFieldNotes(p.slug),
     // Standing happy-hour figure only (e.g. "25% OFF") — never a day-specific
-    // deal, so a static card can't lie about "today." Undefined when there's
-    // no numeric hook; the card then keeps the generic Field-notes tag.
-    deal_hook: dealHook(fieldNotesFor(p.slug)?.happy_hour?.details) ?? undefined,
+    // deal, so a static card can't lie about "today." Only when the deal names a
+    // SINGLE figure: a lone "$1 OFF" pulled from a multi-part deal would strand
+    // its subject and mislead. Undefined otherwise; the card keeps the generic tag.
+    deal_hook: figureCount(fieldNotesFor(p.slug)?.happy_hour?.details) === 1
+      ? (dealHook(fieldNotesFor(p.slug)?.happy_hour?.details) ?? undefined)
+      : undefined,
   };
 }
 

@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { BadgeCheck, Tag } from "lucide-react";
 import type { TodaysDeal } from "@/lib/loaders/todaysDeals";
-import { splitDeal } from "@/lib/happyHourDeal";
+import { splitDeal, figureCount } from "@/lib/happyHourDeal";
+import DealLines from "@/components/happy/DealLines";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
@@ -49,12 +50,14 @@ function PhotoFallback({ category }: { category?: string }) {
 }
 
 function IntelCard({ deal: d }: { deal: TodaysDeal }) {
-  // Show the FULL offer (never the figure-stripped remainder) so the deal always
-  // reads as a complete statement — "Half-price appetizers", "$8 personal pizza" —
-  // and the struck gold figure beside it can never read as "X off an unknown thing".
+  // The struck gold denomination is only honest when the deal names exactly ONE
+  // figure (then "$8" + "personal pizza" reads cleanly). For a multi-part deal a
+  // single struck number would strand its subject, so we drop the figure and
+  // render the offer as clause lines instead (each figure glued to its item).
   const { hook } = splitDeal(d.offer);
+  const single = figureCount(d.offer) === 1 && Boolean(hook);
+  const fig = single && hook ? denom(hook) : null;
   const body = d.offer ? d.offer.charAt(0).toUpperCase() + d.offer.slice(1) : d.offer;
-  const fig = hook ? denom(hook) : null;
   const meta = [d.hours, d.town].filter(Boolean).join("  ·  ");
 
   return (
@@ -85,9 +88,13 @@ function IntelCard({ deal: d }: { deal: TodaysDeal }) {
         <h3 className="truncate font-serif text-[15px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
           {d.name}
         </h3>
-        <p className="line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          {body}
-        </p>
+        {fig ? (
+          <p className="line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+            {body}
+          </p>
+        ) : (
+          <DealLines deal={d.offer} max={2} className="space-y-0.5 text-[12.5px]" />
+        )}
         {meta && (
           <p className="truncate font-mono text-[9.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
             {meta}

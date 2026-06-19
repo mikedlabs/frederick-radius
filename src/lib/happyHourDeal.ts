@@ -105,3 +105,65 @@ export function splitDeal(deal: string | null | undefined): DealParts {
 export function dealHook(deal: string | null | undefined): string | null {
   return splitDeal(deal).hook;
 }
+
+/** How many distinct money figures the deal names ("$6-$7" counts 2). Used to
+ *  tell a SINGLE-discount deal (where a hero figure reads cleanly) from a
+ *  multi-part one (where ripping out one figure strands its subject). */
+export function figureCount(deal: string | null | undefined): number {
+  const m = (deal ?? "").match(/\d{1,3}\s*%|\$\s*\d+(?:\.\d{1,2})?|\bhalf[-\s]?(?:off|price)\b/gi);
+  return m ? m.length : 0;
+}
+
+// A money figure anywhere in a clause: "$5", "$2.50", "$5 off", "50% off",
+// "25%", "half-price". Used to emphasize the figure inside its own phrase.
+const FIGURE_TOKEN = /\$\s*\d+(?:\.\d{1,2})?(?:\s*off)?|\d{1,3}\s*%(?:\s*off)?|\bhalf[-\s]?(?:off|price)\b/gi;
+
+/** Split the figures out of a clause WITHOUT reordering, so it can render with
+ *  each figure emphasized in place: "$4 craft pints" -> [{figure:"$4"}, " craft pints"].
+ *  Pure; preserves the original word order (never strands a subject). */
+export function emphasizeFigures(clause: string): Array<{ text: string; figure: boolean }> {
+  const out: Array<{ text: string; figure: boolean }> = [];
+  let last = 0;
+  const re = new RegExp(FIGURE_TOKEN.source, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(clause)) !== null) {
+    if (m.index > last) out.push({ text: clause.slice(last, m.index), figure: false });
+    out.push({ text: m[0].replace(/\s+/g, " "), figure: true });
+    last = m.index + m[0].length;
+  }
+  if (last < clause.length) out.push({ text: clause.slice(last), figure: false });
+  return out.length ? out : [{ text: clause, figure: false }];
+}
+
+/**
+ * dealClauses — split a verified deal into clean, self-contained clauses, each
+ * keeping its OWN figure glued to what it's for. This is the Roasthouse model
+ * ("50% off all wings", "$2 off full-pour drafts") applied to every deal: never
+ * a figure divorced from its subject, never a sentence truncated mid-word.
+ *
+ * "Tue $4 craft pints and 25% off crab legs, Thu $1 oysters"
+ *   -> ["Tue $4 craft pints", "25% off crab legs", "Thu $1 oysters"]
+ *
+ * Splits on list/sentence separators, and on " and "/" plus " ONLY when the next
+ * clause starts a new figure (so "draft and wine", "fish and chips" stay whole).
+ * Pure + deterministic.
+ */
+export function dealClauses(deal: string | null | undefined): string[] {
+  const t = (deal ?? "").replace(/\s+/g, " ").trim();
+  if (!t) return [];
+  const FIG_AHEAD = String.raw`(?=\$\s*\d|\d{1,3}\s*%|half[-\s]?(?:off|price))`;
+  const SEP = new RegExp(
+    String.raw`\s*[;,]\s*|\.\s+(?=[A-Z$0-9])|\s+(?:and|plus|&)\s+${FIG_AHEAD}`,
+    "i",
+  );
+  const out: string[] = [];
+  for (let p of t.split(SEP)) {
+    p = p
+      .replace(/^[\s:,;.–—-]+/, "")
+      .replace(/[\s.,;]+$/, "")
+      .replace(/^(?:and|or|plus|with|&)\s+/i, "")
+      .trim();
+    if (p.length >= 2) out.push(p.charAt(0).toUpperCase() + p.slice(1));
+  }
+  return out.length ? out : [t];
+}

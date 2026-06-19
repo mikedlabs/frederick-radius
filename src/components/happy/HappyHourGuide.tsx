@@ -5,7 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Martini } from "lucide-react";
 import HappyHourBrowser, { type HHRow } from "./HappyHourBrowser";
-import { dealHook, splitDeal } from "@/lib/happyHourDeal";
+import { dealHook } from "@/lib/happyHourDeal";
+import DealLines from "@/components/happy/DealLines";
 
 /**
  * HappyHourGuide — "The Last Pour", /happy-hour as a live city-magazine bar
@@ -160,17 +161,15 @@ function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
         {tab.label}
       </span>
 
-      {/* Cover plate, bottom. */}
+      {/* Cover plate, bottom — venue, then the deal as a clean menu of clauses
+          (each figure glued to what it's for), never one giant ripped-out number. */}
       <div className="absolute inset-x-0 bottom-0 p-4">
         {it.r.town && <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "color-mix(in srgb, var(--app-accent) 60%, #fff)" }}>{it.r.town}</p>}
         <h2 className="mt-0.5 font-serif text-[26px] font-semibold leading-[1.02] tracking-[-0.01em] text-white">{it.r.name}</h2>
-        <p className="mt-1 font-mono font-bold leading-none tracking-[-0.01em]" style={{ fontSize: it.hook ? "44px" : "26px", color: "color-mix(in srgb, var(--app-accent) 72%, #fff)" }}>
-          {it.hook ?? "Specials"}
-        </p>
-        {it.r.deal && (
-          <p className="mt-2 line-clamp-2 max-w-prose font-serif text-[13.5px] italic leading-snug" style={{ color: "rgba(255,255,255,0.92)" }}>
-            &ldquo;{it.r.deal}&rdquo;
-          </p>
+        {it.r.deal ? (
+          <DealLines deal={it.r.deal} max={3} tone="onPhoto" className="mt-2 max-w-prose space-y-1 text-[15px] font-medium" />
+        ) : (
+          <p className="mt-2 font-serif text-[20px] font-semibold" style={{ color: "color-mix(in srgb, var(--app-accent) 72%, #fff)" }}>Specials</p>
         )}
       </div>
     </Link>
@@ -186,32 +185,25 @@ function PricedRow({ it, nowMin }: { it: Item; nowMin: number }) {
       : it.kind === "later"
         ? `opens ${fmtMin(it.startsAt!)} · ${untilLabel(it.startsAt! - nowMin)}`
         : `${DAY_ABBR[it.day!]} ${fmtMin(it.startsAt!)}`;
-  // The deal SUBJECT (the offer with the figure removed) — so the priced
-  // figure on the right never reads as "$5 of an unknown thing." When the
-  // figure is the whole deal (no subject in the source), this is empty.
-  // Show the offer detail under the row UNLESS it would just repeat the
-  // right-hand figure label — so a "$5" row reads "$5 · house margaritas" and a
-  // figure-less "Specials" row still says what the specials actually are.
-  const { rest } = splitDeal(it.r.deal);
-  const subject = rest && rest.toLowerCase() !== (it.hook ?? "Specials").toLowerCase() ? rest : "";
   return (
     <Link href={`/places/${it.r.slug}`} aria-label={`${it.r.name}${it.r.deal ? `: ${it.r.deal}` : ""}`} className="tactile-interactive group block py-1.5">
+      {/* Venue ········· when. Leader-dots to the TIMING (never a single ripped-out
+          figure) — the figures live in the deal lines below, each glued to its item. */}
       <div className="flex items-baseline gap-1.5">
         {live && <span aria-hidden className="live-dot mb-0.5 h-1.5 w-1.5 shrink-0 self-center rounded-full" style={{ background: "var(--app-brand)" }} />}
-        <span className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "58%" }}>{it.r.name}</span>
+        <span className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "62%" }}>{it.r.name}</span>
         <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
-        <span className="shrink-0 font-mono text-[14px] font-bold tabular-nums tracking-[0.01em]" style={{ color: it.hook ? "var(--app-accent-press)" : "var(--app-ink-3)" }}>
-          {it.hook ?? "Specials"}
-        </span>
+        <span className="shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.04em]" style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>{sub}</span>
       </div>
-      {/* What the deal is ON — the line that turns "$5" into "$5 · house margaritas". */}
-      {subject && (
-        <p className="mt-0.5 truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>{subject}</p>
+      {/* The deal — each discount on its own line, figure glued to what it's for. */}
+      {it.r.deal ? (
+        <DealLines deal={it.r.deal} max={2} className="mt-1 space-y-0.5 text-[12.5px]" />
+      ) : (
+        <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>Specials</p>
       )}
-      <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
-        <span style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>{sub}</span>
-        {it.r.town && <><span aria-hidden>·</span><span className="truncate">{it.r.town}</span></>}
-      </p>
+      {it.r.town && (
+        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{it.r.town}</p>
+      )}
     </Link>
   );
 }
@@ -337,21 +329,19 @@ export default function HappyHourGuide({
                 <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{varies.length}</span>
               </div>
               <ul className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--app-border) 70%, transparent)" }}>
-                {varies.map((r) => {
-                  const hook = dealHook(r.deal);
-                  return (
-                    <li key={r.slug}>
-                      <Link href={`/places/${r.slug}`} aria-label={`${r.name}${hook ? `: ${hook}` : ""}`} className="tactile-interactive block py-1.5">
-                        <div className="flex items-baseline gap-1.5">
-                          <span className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "62%" }}>{r.name}</span>
-                          <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
-                          <span className="shrink-0 font-mono text-[14px] font-bold tracking-[0.01em]" style={{ color: hook ? "var(--app-accent-press)" : "var(--app-ink-3)" }}>{hook ?? "Specials"}</span>
-                        </div>
-                        <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{r.schedule}{r.town ? ` · ${r.town}` : ""}</p>
-                      </Link>
-                    </li>
-                  );
-                })}
+                {varies.map((r) => (
+                  <li key={r.slug}>
+                    <Link href={`/places/${r.slug}`} aria-label={`${r.name}${r.deal ? `: ${r.deal}` : ""}`} className="tactile-interactive block py-1.5">
+                      <span className="block truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{r.name}</span>
+                      {r.deal ? (
+                        <DealLines deal={r.deal} max={2} className="mt-1 space-y-0.5 text-[12.5px]" />
+                      ) : (
+                        <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>Specials</p>
+                      )}
+                      <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{r.schedule}{r.town ? ` · ${r.town}` : ""}</p>
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </section>
           )}

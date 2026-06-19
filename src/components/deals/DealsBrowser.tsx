@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Tag } from "lucide-react";
 import type { DealRow } from "@/lib/loaders/todaysDeals";
+import DealLines from "@/components/happy/DealLines";
 
 /**
  * DealsBrowser — the interactive, day-aware reveal for /deals. Sibling to
@@ -66,13 +67,12 @@ function RowCard({ r, accent, hideTown }: { r: DealRow; accent?: string; hideTow
             <span aria-label="verified" title="verified at the source" className="shrink-0 font-mono text-[11px] font-bold leading-none" style={{ color: "var(--app-positive)" }}>✓</span>
           ) : null}
         </div>
-        {/* WHEN (accent mono, when stated) + the FULL offer — no truncation. */}
-        <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink)" }}>
-          {r.hours && (
-            <span className="font-mono font-semibold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-ink-2)" }}>{r.hours} · </span>
-          )}
-          {r.offer}
-        </p>
+        {/* WHEN (accent mono, when stated), then the offer as clean clause lines
+            — each figure glued to what it's for, never one bare number. */}
+        {r.hours && (
+          <p className="mt-0.5 font-mono text-[11.5px] font-semibold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-ink-2)" }}>{r.hours}</p>
+        )}
+        <DealLines deal={r.offer} max={4} className="mt-0.5 space-y-0.5 text-[12.5px]" />
       </div>
     </article>
   );
