@@ -5,7 +5,7 @@
  */
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classifyDescription } from "../src/lib/copy-quality";
+import { classifyDescription, isPlaceholderBlurb } from "../src/lib/copy-quality";
 import { PLACES } from "../src/data/places";
 import SCORES from "../src/data/copy-scores.json" with { type: "json" };
 
@@ -17,6 +17,22 @@ test("STYLE.md scraped patterns are caught", () => {
   assert.equal(classifyDescription("Spot", "BEST CRAB CAKES!! 🦀 COME HUNGRY"), "scraped");
   assert.equal(classifyDescription("Y", "Cozy."), "scraped"); // too short
   console.log("6 scraped fixtures caught");
+});
+
+test("generated '<Category> in <Town>.' filler is caught, real prose is not", () => {
+  // The leaking ≥25-char stubs (shorter ones already fail the length gate).
+  assert.equal(isPlaceholderBlurb("Coffee in Downtown Frederick."), true);
+  assert.equal(isPlaceholderBlurb("Bakeries in Downtown Frederick."), true);
+  assert.equal(isPlaceholderBlurb("Lodging in Frederick County."), true);
+  assert.equal(classifyDescription("Tierra y Taza", "Coffee in Downtown Frederick."), "scraped");
+  // Real prose that merely ends "... in <place>." must NOT be swept.
+  assert.equal(isPlaceholderBlurb("Live music in a converted firehouse downtown."), false);
+  assert.equal(isPlaceholderBlurb("Wood-fired pizza and natural wine in an old bank building."), false);
+  assert.equal(
+    classifyDescription("Sky Stage", "An open-air art installation and performance space in a former building shell."),
+    "auto_clean",
+  );
+  console.log("placeholder filler caught, real prose preserved");
 });
 
 test("clean prose passes, reviewed and empty handled", () => {

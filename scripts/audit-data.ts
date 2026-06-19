@@ -10,6 +10,7 @@ import { publicPlaces, decoratePlace } from "@/lib/loaders/places";
 import { PLACES } from "@/data/places";
 import { isNonDiscoverable } from "@/lib/relevance";
 import { categoryFromPrimaryType } from "@/lib/categoryFromGoogle";
+import { isPlaceholderBlurb } from "@/lib/copy-quality";
 import { haversineMeters } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import ENRICH from "@/data/places-enrichment.json" with { type: "json" };
@@ -98,8 +99,9 @@ function main() {
   // 6. REQUIRED FIELDS
   const missing = pub.filter((p) => !p.name?.trim() || !p.short_blurb?.trim() || !p.category);
 
-  // 7. BLURBS — placeholder "<Cat> in <Town>." vs real
-  const placeholder = dec.filter((p) => /^[\w &/'-]+ in [\w .'-]+\.$/.test(p.short_blurb || "")).length;
+  // 7. BLURBS — placeholder "<Cat> in <Town>." vs real (shared detector, so
+  // this count and the render-time suppression in knownFor/cleanCopy agree).
+  const placeholder = dec.filter((p) => isPlaceholderBlurb(p.short_blurb)).length;
 
   // 8. ENRICHMENT integrity
   const slugs = new Set(PLACES.map((p) => p.slug));

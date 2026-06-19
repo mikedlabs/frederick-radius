@@ -28,6 +28,30 @@ const PHONE = /\(\d{3}\)\s*\d{3}[-.\s]?\d{4}|\b\d{3}[-.\s]\d{3}[-.\s]\d{4}\b/;
 const CONTACT = /\b(feel free to|reach out|contact us|call us|give us a call|email us|book (?:now|online)|find us on|follow us|dm us)\b/i;
 const LINK = /https?:\/\/|www\.\S|\S+@\S+\.\w/i;
 
+// The discovery/ingest backfill writes a generic "<Category> in <Town>."
+// stub when a place has no real description ("Coffee in Downtown
+// Frederick."). It reads as a sentence but says nothing the card's category
+// + town line doesn't already, so STYLE.md treats it as scraped: an honest
+// blank beats a padded non-answer. Anchored to the known Frederick County
+// place names (the only locations the stub generator emits) so real prose
+// that merely ends "... in <somewhere>." is never swept.
+const PLACEHOLDER_TOWNS =
+  "Downtown Frederick|Frederick County|Frederick|Brunswick|Thurmont|Middletown|" +
+  "Walkersville|Emmitsburg|New Market|Mount Airy|Myersville|Woodsboro|" +
+  "Burkittsville|Rosemont|Urbana|Ijamsville|Jefferson";
+const PLACEHOLDER_BLURB = new RegExp(
+  `^[A-Z][A-Za-z&'/ -]{1,40}? in (?:${PLACEHOLDER_TOWNS})\\.$`,
+);
+
+/**
+ * True for the generated "<Category> in <Town>." filler stub. Exported so
+ * the data audit and the render-time gates (knownFor, the detail page's
+ * cleanCopy) share ONE definition and never drift.
+ */
+export function isPlaceholderBlurb(blurb: string | undefined | null): boolean {
+  return PLACEHOLDER_BLURB.test((blurb ?? "").trim());
+}
+
 /** Classify a place description against the STYLE.md scraped patterns. */
 export function classifyDescription(
   name: string,
@@ -37,6 +61,7 @@ export function classifyDescription(
   if (reviewed) return "reviewed";
   const t = (description ?? "").trim();
   if (!t || t.length < 25) return t ? "scraped" : "none";
+  if (isPlaceholderBlurb(t)) return "scraped"; // "<Category> in <Town>." stub
 
   const nm = (name ?? "").trim().toLowerCase();
   const head = t.toLowerCase().slice(0, Math.max(8, Math.min(14, nm.length)));
