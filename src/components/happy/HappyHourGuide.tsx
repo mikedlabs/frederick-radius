@@ -203,22 +203,21 @@ function PricedRow({ it, nowMin }: { it: Item; nowMin: number }) {
         : `${DAY_ABBR[it.day!]} ${fmtMin(it.startsAt!)}`;
   return (
     <Link href={`/places/${it.r.slug}`} aria-label={`${it.r.name}${it.r.deal ? `: ${it.r.deal}` : ""}`} className="tactile-interactive group block py-1.5">
-      {/* Venue ········· when. Leader-dots to the TIMING (never a single ripped-out
-          figure) — the figures live in the deal lines below, each glued to its item. */}
+      {/* Venue · town ········· when. Leader-dots to the TIMING; town rides the
+          same line to keep each venue to two compact lines so more fit at once. */}
       <div className="flex items-baseline gap-1.5">
         {live && <span aria-hidden className="live-dot mb-0.5 h-1.5 w-1.5 shrink-0 self-center rounded-full" style={{ background: "var(--app-brand)" }} />}
-        <span className="shrink-0 truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "62%" }}>{it.r.name}</span>
+        <span className="shrink truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "55%" }}>{it.r.name}</span>
+        {it.r.town && <span className="shrink-0 truncate font-mono text-[9.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{it.r.town}</span>}
         <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
         <span className="shrink-0 font-mono text-[11px] font-bold uppercase tracking-[0.04em]" style={{ color: live ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>{sub}</span>
       </div>
-      {/* The deal — each discount on its own line, figure glued to what it's for. */}
+      {/* The deal — figures flow inline (glued to each item), clamped to keep the
+          row compact. The full deal is on the place page. */}
       {it.r.deal ? (
-        <DealLines deal={it.r.deal} max={3} vague={figureCount(it.r.deal) === 0} className="mt-1 space-y-0.5 text-[12.5px]" />
+        <DealLines deal={it.r.deal} max={4} layout="inline" vague={figureCount(it.r.deal) === 0} className="mt-0.5 line-clamp-2 text-[12.5px]" />
       ) : (
-        <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>Specials</p>
-      )}
-      {it.r.town && (
-        <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{it.r.town}</p>
+        <p className="mt-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>Specials</p>
       )}
     </Link>
   );
@@ -351,13 +350,16 @@ export default function HappyHourGuide({
                 {varies.map((r) => (
                   <li key={r.slug}>
                     <Link href={`/places/${r.slug}`} aria-label={`${r.name}${r.deal ? `: ${r.deal}` : ""}`} className="tactile-interactive block py-1.5">
-                      <span className="block truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{r.name}</span>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="shrink truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)", maxWidth: "60%" }}>{r.name}</span>
+                        <span aria-hidden className="mb-1 flex-1 self-end" style={{ borderBottom: "2px dotted color-mix(in srgb, var(--app-ink) 26%, transparent)" }} />
+                        <span className="shrink-0 truncate font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{r.schedule}{r.town ? ` · ${r.town}` : ""}</span>
+                      </div>
                       {r.deal ? (
-                        <DealLines deal={r.deal} max={3} vague={figureCount(r.deal) === 0} className="mt-1 space-y-0.5 text-[12.5px]" />
+                        <DealLines deal={r.deal} max={4} layout="inline" vague={figureCount(r.deal) === 0} className="mt-0.5 line-clamp-2 text-[12.5px]" />
                       ) : (
-                        <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>Specials</p>
+                        <p className="mt-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>Specials</p>
                       )}
-                      <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>{r.schedule}{r.town ? ` · ${r.town}` : ""}</p>
                     </Link>
                   </li>
                 ))}

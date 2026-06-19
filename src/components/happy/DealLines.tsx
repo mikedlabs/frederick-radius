@@ -24,6 +24,7 @@ export default function DealLines({
   max = 3,
   tone = "ink",
   vague = false,
+  layout = "stacked",
   className = "",
 }: {
   deal: string | null | undefined;
@@ -32,6 +33,10 @@ export default function DealLines({
   tone?: "ink" | "onPhoto";
   /** The deal names no figure — render as one muted "specials vary" line. */
   vague?: boolean;
+  /** "stacked" = one clause per line (hero/intel). "inline" = clauses flow on a
+   *  wrapping line separated by " · " (the dense list — half the height, same
+   *  clarity since each figure stays glued to its item). */
+  layout?: "stacked" | "inline";
   className?: string;
 }) {
   const clauses = dealClauses(deal);
@@ -50,19 +55,37 @@ export default function DealLines({
     );
   }
 
+  const renderClause = (clause: string) =>
+    emphasizeFigures(clause).map((part, j) =>
+      part.figure ? (
+        <span key={j} className="font-mono font-bold tabular-nums" style={{ color: figColor }}>
+          {part.text}
+        </span>
+      ) : (
+        <span key={j}>{part.text}</span>
+      ),
+    );
+
+  // Dense list: clauses flow inline, separated by a muted dot, clamped to keep
+  // each venue compact so more fit on screen at once.
+  if (layout === "inline") {
+    return (
+      <p className={`leading-snug ${className}`} style={{ color: subColor }}>
+        {clauses.slice(0, max).map((clause, i) => (
+          <span key={i}>
+            {i > 0 && <span aria-hidden style={{ color: vagueColor }}>{"  ·  "}</span>}
+            {renderClause(clause)}
+          </span>
+        ))}
+      </p>
+    );
+  }
+
   return (
     <ul className={className} style={{ color: subColor }}>
       {clauses.slice(0, max).map((clause, i) => (
         <li key={i} className="leading-snug">
-          {emphasizeFigures(clause).map((part, j) =>
-            part.figure ? (
-              <span key={j} className="font-mono font-bold tabular-nums" style={{ color: figColor }}>
-                {part.text}
-              </span>
-            ) : (
-              <span key={j}>{part.text}</span>
-            ),
-          )}
+          {renderClause(clause)}
         </li>
       ))}
     </ul>
