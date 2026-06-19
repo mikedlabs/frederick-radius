@@ -17,7 +17,8 @@
     "tenth-wards-wedding-event-venue": "tenth-ward-distilling-company",
     "moms-kitchen-thurmont": "thurmont-kountry-kitchen-thurmont",
     "food-lion-bakery-thurmont": "food-lion-thurmont",
-    "safeway-bakery-middletown": "safeway-middletown"
+    "safeway-bakery-middletown": "safeway-middletown",
+    "enforme-interactive": "celerate"
   },
   "remove": [
     "cyclefit-frederick",
@@ -28,7 +29,8 @@
     "frederick-county-public-schools",
     "ms-caitlins-school",
     "square-corner",
-    "olives-italian"
+    "olives-italian",
+    "downtown-hotel-at-carroll-creek"
   ],
   "keepApart": [
     "clarity-psychotherapy",
@@ -46,7 +48,9 @@
     "the-healing-temple",
     "the-inkery",
     "united-states-postal-service-66",
-    "wastlers-barber-shop"
+    "wastlers-barber-shop",
+    "rockwell-brewery-frederick",
+    "rockwell-brewery-frederick-2"
   ],
   "patch": {
     "visitation-hotel": {
@@ -317,6 +321,18 @@
     },
     "frederick-childrens-chorus": {
       "category": "music"
+    },
+    "true-standard-distilling": {
+      "category": "brewery"
+    },
+    "pj-gilligan-dry-goods-mercantile-co-burkittsville": {
+      "category": "shopping"
+    },
+    "celerate": {
+      "category": "services"
+    },
+    "cm3-solutions": {
+      "category": "services"
     }
   }
 }
