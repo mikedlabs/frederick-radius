@@ -1,111 +1,118 @@
 import Link from "next/link";
-import { BadgeCheck } from "lucide-react";
+import Image from "next/image";
+import { BadgeCheck, Tag } from "lucide-react";
 import type { TodaysDeal } from "@/lib/loaders/todaysDeals";
 import { splitDeal } from "@/lib/happyHourDeal";
-import IconStamp from "@/components/ui/IconStamp";
 import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 /**
- * Today's Intel — the verified day-of-week specials as a LETTERPRESS MENU.
- *
- * High-end the way the brand defines it: restraint executed as material craft,
- * not chrome. Opaque card stock + paper grain, raised one notch above the photo
- * wallet above it (elev-2) so the imageless plate still reads as the anchor; an
- * editorial masthead with a big serif date struck by a gold foil bar; ONE hero
- * special (a gold category seal + larger serif deal) set off by a debossed rule;
- * then a refined, small-caps supporting index; closed by an embossed wax seal.
- * Typography + depth + foil do the work — no boxes, no badges. Server component.
+ * Today's Intel — the verified day-of-week specials as rich, photo-forward
+ * cards with an EMBOSSED GOLD DENOMINATION (the "$10 / $4 / $1" struck like a
+ * gift-card figure). The card face carries the venue's real photo, the deal in
+ * serif, and the day/town/hours in mono; the denomination is the foil-gold
+ * star. Shares the photo-card language of the Happy-Hour wallet above it (so
+ * the moat surfaces read as one set) and adds the struck figure on top, so
+ * Intel is the richer of the two, not the plainer. Server component.
  */
 const MAX_ROWS = 12;
 
-/**
- * One menu line. The hero (first) row is the focal special — a gold category
- * seal, larger serif, a stronger debossed break above it. Supporting rows are
- * the quiet index — smaller serif, small-caps venue label, soft hairline rule.
- * Deal-first either way: the offer leads (figure popped in gold), venue + town
- * + hours follow as attribution.
- */
-function IntelRow({ deal: d, hero = false }: { deal: TodaysDeal; hero?: boolean }) {
-  const { hook, rest } = splitDeal(d.offer);
-  // With a gold figure, the body recedes a half-step beneath it; with none, the
-  // offer carries the deal at full weight.
-  const tail = hook ? rest : d.offer;
-  const body = hook && tail ? tail.charAt(0).toLowerCase() + tail.slice(1) : tail;
-  const bodyColor = hook
-    ? hero ? "var(--app-ink-2)" : "var(--app-ink-3)"
-    : hero ? "var(--app-ink)" : "var(--app-ink-2)";
-  const meta = [d.hours, d.town].filter(Boolean).join("  ·  ");
-  const cat = d.category ? CATEGORY_BY_SLUG[d.category] : undefined;
+/** Split a deal hook ("$10 OFF", "25% OFF", "FROM $5", "$4") into the big
+ *  struck figure and a small qualifier for the embossed denomination. */
+function denom(hook: string): { figure: string; label: string } {
+  const m = hook.match(/\$\s?\d+(?:\.\d{1,2})?|\d{1,3}\s?%/);
+  if (!m) return { figure: hook, label: "" };
+  return {
+    figure: m[0].replace(/\s+/g, ""),
+    label: hook.replace(m[0], "").replace(/[^a-zA-Z%]/g, " ").trim().toLowerCase(),
+  };
+}
 
-  // The hero gets a stronger ink rule (the "break before the special"); the
-  // supporting rows get the soft debossed hairline.
-  const borderTop = hero
-    ? "1px solid color-mix(in srgb, var(--app-ink) 20%, transparent)"
-    : "1px solid color-mix(in srgb, var(--app-border) 45%, transparent)";
+/** The photo-less fallback: a tinted plate with the category glyph in gold. */
+function PhotoFallback({ category }: { category?: string }) {
+  return (
+    <div
+      aria-hidden
+      className="grid h-full w-full place-items-center"
+      style={{
+        background: "linear-gradient(150deg, color-mix(in srgb, var(--app-accent) 32%, var(--app-brand-2)) 0%, var(--app-brand-2) 78%)",
+        color: "color-mix(in srgb, var(--app-accent) 55%, var(--app-on-brand))",
+      }}
+    >
+      {category && CATEGORY_BY_SLUG[category] ? (
+        <CategoryIcon slug={category} className="h-5 w-5" />
+      ) : (
+        <Tag className="h-5 w-5" strokeWidth={1.6} />
+      )}
+    </div>
+  );
+}
+
+function IntelCard({ deal: d }: { deal: TodaysDeal }) {
+  const { hook, rest } = splitDeal(d.offer);
+  const dealText = hook ? rest : d.offer;
+  const body = hook && dealText ? dealText.charAt(0).toLowerCase() + dealText.slice(1) : dealText;
+  const fig = hook ? denom(hook) : null;
+  const meta = [d.hours, d.town].filter(Boolean).join("  ·  ");
 
   return (
     <Link
       href={`/places/${d.slug}`}
       aria-label={`${d.name}: ${d.offer}`}
-      className={`tactile-interactive group flex items-start gap-3 ${hero ? "py-4" : "py-3"}`}
-      style={{ borderTop }}
+      className="tactile-interactive flex items-stretch gap-3 overflow-hidden rounded-[var(--app-radius-md)] p-2.5"
+      style={{
+        backgroundColor: "var(--app-bg-elevated-solid)",
+        backgroundImage: "var(--app-paper-light)",
+        boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
+      }}
     >
-      {/* The one engraved anchor — hero only, gold seal. Omitted when the
-          category has no glyph (a lone generic pin reads cheaper than none). */}
-      {hero && cat && (
-        <span className="mt-0.5 shrink-0">
-          <IconStamp size="sm" accent="var(--app-accent)">
-            <CategoryIcon slug={d.category!} />
-          </IconStamp>
-        </span>
-      )}
-
-      <div className="min-w-0 flex-1">
-        {/* The deal — figure in foil gold, body in serif, clamped (long deals
-            never wall-of-text; the full text is one tap away). */}
-        <p
-          className={`font-serif font-semibold leading-snug tracking-tight ${
-            hero ? "line-clamp-3 text-[17px]" : "line-clamp-2 text-[15px]"
-          }`}
-        >
-          {hook && (
-            <span
-              className={`font-mono font-bold tabular-nums tracking-[0.01em] ${hero ? "text-[15px]" : "text-[14px]"}`}
-              style={{ color: "var(--app-accent-press)" }}
-            >
-              {hook}
-            </span>
-          )}
-          {hook ? " " : ""}
-          <span style={{ color: bodyColor }}>{body}</span>
-        </p>
-
-        {/* Attribution: hero venue set as a serif title; supporting venues as a
-            small-caps whisper. Hours/town in quiet mono. */}
-        <p className={`flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 ${hero ? "mt-1.5" : "mt-1"}`}>
-          {hero ? (
-            <span className="font-serif text-[13.5px] font-semibold" style={{ color: "var(--app-ink)" }}>
-              {d.name}
-            </span>
-          ) : (
-            <span
-              className="max-w-full truncate text-[12px] font-semibold uppercase tracking-[0.04em]"
-              style={{ color: "var(--app-ink-2)" }}
-            >
-              {d.name}
-            </span>
-          )}
-          {meta && (
-            <span
-              className={`shrink-0 font-mono uppercase ${hero ? "text-[10px] tracking-[0.07em]" : "text-[9.5px] tracking-[0.06em]"}`}
-              style={{ color: "var(--app-ink-3)" }}
-            >
-              {meta}
-            </span>
-          )}
-        </p>
+      {/* Venue photo (or a designed plate). */}
+      <div
+        className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]"
+        style={{ backgroundColor: "var(--app-brand-2)" }}
+      >
+        {d.photo ? (
+          <Image src={d.photo} alt="" fill sizes="64px" className="object-cover" />
+        ) : (
+          <PhotoFallback category={d.category} />
+        )}
       </div>
+
+      {/* The deal — venue, the offer, the when/where. */}
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+        <h3 className="truncate font-serif text-[15px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+          {d.name}
+        </h3>
+        <p className="line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+          {body}
+        </p>
+        {meta && (
+          <p className="truncate font-mono text-[9.5px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
+            {meta}
+          </p>
+        )}
+      </div>
+
+      {/* The struck gold denomination — the foil figure (AA-safe gold), raised
+          with a top highlight. Only when the deal carries a figure. */}
+      {fig && (
+        <div
+          className="flex shrink-0 flex-col items-center justify-center self-stretch pl-3"
+          style={{ borderLeft: "1px solid color-mix(in srgb, var(--app-ink) 10%, transparent)" }}
+        >
+          <span
+            className="font-serif font-bold leading-none tabular-nums"
+            style={{ fontSize: 28, color: "var(--app-accent-press)", textShadow: "0 1px 0 rgba(255,255,255,0.7)" }}
+          >
+            {fig.figure}
+          </span>
+          {fig.label && (
+            <span className="mt-1 font-mono text-[8px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-accent-press)" }}>
+              {fig.label}
+            </span>
+          )}
+        </div>
+      )}
     </Link>
   );
 }
@@ -113,99 +120,47 @@ function IntelRow({ deal: d, hero = false }: { deal: TodaysDeal; hero?: boolean 
 export default function TodaysDealsStack({
   deals,
   weekday,
-  dayNum,
 }: {
   deals: TodaysDeal[];
   weekday: string;
-  dayNum: string;
+  /** dayNum is still accepted by the caller; the rich-card masthead leads with
+   *  the weekday instead of a giant numeral, so it's intentionally unused. */
+  dayNum?: string;
 }) {
   const shown = deals.slice(0, MAX_ROWS);
 
   return (
     <section aria-label={`Verified intel for ${weekday}`} className="space-y-2">
-      {/* The plate — opaque card stock + paper grain, raised a notch (elev-2) so
-          the imageless ledger out-depths the photo wallet above it. */}
-      <div
-        className="relative overflow-hidden rounded-[var(--app-radius-lg)] px-5 pb-4 pt-4"
-        style={{
-          backgroundColor: "var(--app-bg-elevated-solid)",
-          backgroundImage: "var(--app-paper-light)",
-          boxShadow: "var(--app-elev-2), var(--app-hi), var(--app-edge)",
-        }}
-      >
-        {/* Masthead — eyebrow + serif weekday on the left, a commanding date
-            numeral struck by a gold foil bar on the right. */}
-        <div className="flex items-end justify-between gap-4">
-          <div className="min-w-0">
-            <p className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--app-accent-press)" }}>
-              Today&rsquo;s Intel
-            </p>
-            <p
-              className="mt-1 font-serif text-[26px] font-semibold leading-none tracking-tight max-[359px]:text-[22px]"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {weekday}
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <p
-              className="font-serif text-[40px] font-semibold leading-none tabular-nums tracking-tight max-[359px]:text-[34px]"
-              style={{ color: "var(--app-ink)" }}
-            >
-              {dayNum}
-            </p>
-            {/* Struck gold foil bar — an honest, display-reliable foil stamp
-                under the numeral (never a CSS bevel). */}
-            <span aria-hidden className="ml-auto mt-1 block h-[2px] w-7 rounded-full" style={{ background: "var(--app-accent)" }} />
-            <p className="mt-1.5 font-mono text-[9px] uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-              {deals.length} verified
-            </p>
-          </div>
-        </div>
-
-        {/* Struck ornament between masthead and menu. */}
-        <div aria-hidden className="mb-1 mt-3.5 flex items-center gap-2.5">
-          <span className="h-px flex-1" style={{ background: "color-mix(in srgb, var(--app-ink) 14%, transparent)" }} />
-          <span className="h-[5px] w-[5px] rotate-45" style={{ background: "var(--app-accent)" }} />
-          <span className="h-px flex-1" style={{ background: "color-mix(in srgb, var(--app-ink) 14%, transparent)" }} />
-        </div>
-
-        {/* The menu — a hero special, then the refined index. */}
-        {shown.length === 0 ? (
-          <p className="py-4 text-center font-serif text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-            No verified intel today.
-          </p>
-        ) : (
-          <ul>
-            {shown.map((d, i) => (
-              <li key={d.slug}>
-                <IntelRow deal={d} hero={i === 0} />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* Embossed wax seal sign-off. */}
-        <div
-          className="mt-4 flex flex-col items-center gap-1.5 pt-3.5"
-          style={{ borderTop: "1px solid color-mix(in srgb, var(--app-border) 40%, transparent)" }}
-        >
-          <span
-            aria-hidden
-            className="grid h-7 w-7 place-items-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand-2) 12%, var(--app-bg-elevated-solid))",
-              boxShadow: "var(--app-edge), var(--app-hi)",
-              color: "var(--app-brand-2)",
-            }}
-          >
-            <BadgeCheck className="h-3.5 w-3.5" strokeWidth={2} />
+      {/* Slim masthead — the cards are the visual interest now. */}
+      <div className="flex items-baseline justify-between gap-3 px-0.5">
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--app-accent-press)" }}>
+            Today&rsquo;s Intel
           </span>
-          <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--app-brand-2)" }}>
-            Verified at the source
+          <span className="font-serif text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            {weekday}
           </span>
         </div>
+        <span className="flex items-center gap-1 font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-2)" }}>
+          <BadgeCheck className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
+          {deals.length} verified
+        </span>
       </div>
+
+      {/* The deck of struck-denomination cards. */}
+      {shown.length === 0 ? (
+        <p className="px-0.5 py-2 font-serif text-[14px]" style={{ color: "var(--app-ink-3)" }}>
+          No verified intel today.
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {shown.map((d) => (
+            <li key={d.slug}>
+              <IntelCard deal={d} />
+            </li>
+          ))}
+        </ul>
+      )}
 
       <Link
         href="/deals"
