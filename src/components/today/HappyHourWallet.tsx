@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Star, BadgeCheck, Martini } from "lucide-react";
+import { Star, Martini } from "lucide-react";
 import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -180,14 +180,22 @@ export default function HappyHourWallet({ now }: { now: Date }) {
   const n = pours.length;
 
   return (
-    <section aria-labelledby="hh-wallet-eyebrow" className="space-y-2">
-      {/* Eyebrow: a live dot + the count, with the door to the full guide. */}
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 id="hh-wallet-eyebrow" className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-2)" }}>
-          <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-          Happy hour now
-          <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>{n}</span>
-        </h2>
+    <section aria-labelledby="hh-wallet-eyebrow" className="space-y-2.5">
+      {/* LIVE masthead — this is the most time-urgent thing on the page, so it
+          leads with a confident serif title + a pulsing vermilion ON-NOW line.
+          A deliberately different identity from Today's Intel's calm spruce
+          verified-seal dossier below: vermilion live language = "act before it
+          ends," so the "now" section reads as the priority. */}
+      <div className="flex items-end justify-between gap-3 px-0.5">
+        <div className="min-w-0">
+          <h2 id="hh-wallet-eyebrow" className="font-serif text-[19px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Happy hour
+          </h2>
+          <p className="mt-1.5 flex items-center gap-1.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-press)" }}>
+            <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
+            On now · {n} {n === 1 ? "pour" : "pours"} pouring
+          </p>
+        </div>
         <Link href="/happy-hour" className="tap-44 shrink-0 font-mono text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-accent-press)" }}>
           All pours →
         </Link>
@@ -205,28 +213,40 @@ export default function HappyHourWallet({ now }: { now: Date }) {
               <Link
                 href={`/places/${pour.slug}`}
                 aria-label={`${pour.name}${pour.hook ? `: ${pour.hook}` : ""}. Happy hour ${tab.toLowerCase()}`}
-                className="tactile-interactive flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] p-2.5"
+                className="tactile-interactive relative flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] py-2.5 pl-3 pr-2.5"
                 style={{
                   backgroundColor: "var(--app-bg-elevated-solid)",
                   backgroundImage: "var(--app-paper-light)",
                   boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
                 }}
               >
+                {/* Vermilion live edge — the at-a-glance "this is happening now"
+                    cue that sets the live board apart from the Intel dossier. */}
+                <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: pour.lastCall ? "var(--app-brand-press)" : "var(--app-brand)" }} />
+
                 {/* Photo thumbnail — text stays on paper beside it (readable). */}
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]" style={{ backgroundColor: "var(--app-brand-2)" }}>
+                <div className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]" style={{ backgroundColor: "var(--app-brand-2)" }}>
                   {pour.photo ? (
-                    <Image src={pour.photo} alt="" fill sizes="64px" className="object-cover" />
+                    <Image src={pour.photo} alt="" fill sizes="72px" className="object-cover" />
                   ) : (
                     <PhotoFallback />
                   )}
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  {/* Venue + rating. */}
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  {/* Live timing leads — the urgent fact ("till 7 PM"), in
+                      vermilion, as a small badge so it reads before the deal. */}
                   <div className="flex items-baseline justify-between gap-2">
-                    <h3 className="min-w-0 flex-1 truncate font-serif text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
-                      {pour.name}
-                    </h3>
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.08em]"
+                      style={{
+                        background: `color-mix(in srgb, ${pour.lastCall ? "var(--app-brand-press)" : "var(--app-brand)"} 12%, transparent)`,
+                        color: pour.lastCall ? "var(--app-brand-press)" : "var(--app-brand-press)",
+                      }}
+                    >
+                      <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: "currentColor" }} />
+                      {tab}
+                    </span>
                     {pour.rating != null && (
                       <span className="inline-flex shrink-0 items-center gap-0.5 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                         <Star className="h-3 w-3" strokeWidth={0} fill="var(--app-accent-press)" aria-hidden />
@@ -235,16 +255,16 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                     )}
                   </div>
 
-                  {/* The deal: gold hook + what you actually get. */}
-                  <p className="truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                  {/* Venue. */}
+                  <h3 className="truncate font-serif text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+                    {pour.name}
+                  </h3>
+
+                  {/* The deal: gold hook + what you actually get (full, not cut). */}
+                  <p className="line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
                     <span className="font-mono font-bold" style={{ color: "var(--app-accent-press)" }}>{pour.hook ?? "Specials"}</span>
                     {pour.rest && pour.rest !== pour.hook && <span>{"  ·  "}{pour.rest}</span>}
-                  </p>
-
-                  {/* Verified status line: when it runs till + the town. */}
-                  <p className="flex items-center gap-1.5 truncate font-mono text-[10px] font-semibold uppercase tracking-[0.06em]" style={{ color: pour.lastCall ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
-                    <BadgeCheck className="h-3 w-3 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand-2)" }} aria-hidden />
-                    <span className="truncate">{tab}{pour.town ? `  ·  ${pour.town}` : ""}</span>
+                    {pour.town ? <span style={{ color: "var(--app-ink-3)" }}>{"  ·  "}{pour.town}</span> : null}
                   </p>
                 </div>
               </Link>
