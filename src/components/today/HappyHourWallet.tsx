@@ -5,7 +5,7 @@ import { placesWithFieldHappyHour } from "@/lib/loaders/fieldNotes";
 import { clientPlaceBySlug } from "@/lib/loaders/places-client";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { parseHappyHour, type HHWindow } from "@/lib/happyHour";
-import { splitDeal } from "@/lib/happyHourDeal";
+import DealLines from "@/components/happy/DealLines";
 
 /**
  * HappyHourWallet — the happy hours ON NOW, on /today.
@@ -57,8 +57,7 @@ type LivePour = {
   town?: string;
   photo?: string;
   rating?: number;
-  hook: string | null;
-  rest: string;
+  deal: string;
   endsAt: number; // Eastern minutes; 1440 = close
   lastCall: boolean;
 };
@@ -112,15 +111,13 @@ export default function HappyHourWallet({ now }: { now: Date }) {
     if (!live) continue;
     const p = clientPlaceBySlug(v.slug);
     if (!p) continue;
-    const { hook, rest } = splitDeal(v.happy_hour.details);
     pours.push({
       slug: v.slug,
       name: p.name,
       town: p.municipality ? (MUNICIPALITY_BY_SLUG[p.municipality]?.name ?? undefined) : undefined,
       photo: p.google_photo_url,
       rating: p.google_rating,
-      hook,
-      rest: rest || v.happy_hour.details || "",
+      deal: v.happy_hour.details || "",
       endsAt: live.end,
       lastCall: live.end < 1440 && live.end - min <= 30,
     });
@@ -214,7 +211,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
             <li key={pour.slug}>
               <Link
                 href={`/places/${pour.slug}`}
-                aria-label={`${pour.name}${pour.hook ? `: ${pour.hook}` : ""}. Happy hour ${tab.toLowerCase()}`}
+                aria-label={`${pour.name}${pour.deal ? `: ${pour.deal}` : ""}. Happy hour ${tab.toLowerCase()}`}
                 className="tactile-interactive relative flex items-center gap-3 overflow-hidden rounded-[var(--app-radius-md)] py-2.5 pl-3 pr-2.5"
                 style={{
                   backgroundColor: "var(--app-bg-elevated-solid)",
@@ -257,17 +254,19 @@ export default function HappyHourWallet({ now }: { now: Date }) {
                     )}
                   </div>
 
-                  {/* Venue. */}
+                  {/* Venue + town. */}
                   <h3 className="truncate font-serif text-[16px] font-semibold leading-tight tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
                     {pour.name}
+                    {pour.town ? <span className="font-sans text-[12px] font-normal" style={{ color: "var(--app-ink-3)" }}>{"  ·  "}{pour.town}</span> : null}
                   </h3>
 
-                  {/* The deal: gold hook + what you actually get (full, not cut). */}
-                  <p className="line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                    <span className="font-mono font-bold" style={{ color: "var(--app-accent-press)" }}>{pour.hook ?? "Specials"}</span>
-                    {pour.rest && pour.rest !== pour.hook && <span>{"  ·  "}{pour.rest}</span>}
-                    {pour.town ? <span style={{ color: "var(--app-ink-3)" }}>{"  ·  "}{pour.town}</span> : null}
-                  </p>
+                  {/* The deal: each discount on its own line, figure glued to
+                      what it's for (never a bare number). */}
+                  {pour.deal ? (
+                    <DealLines deal={pour.deal} max={2} className="space-y-0.5 text-[12.5px]" />
+                  ) : (
+                    <p className="text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>Specials</p>
+                  )}
                 </div>
               </Link>
             </li>
