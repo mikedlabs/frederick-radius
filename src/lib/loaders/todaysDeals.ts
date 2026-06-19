@@ -97,6 +97,9 @@ export type TodaysDeal = {
   /** Place category — drives the happy-hour-vibe glyph (bar/brewery/winery/
    *  restaurant), so a deal never wears a retail price-tag icon. */
   category?: string;
+  /** The venue's real (proxied, key-safe) Google photo, for the rich card
+   *  face. Undefined when none — the surface draws a designed plate instead. */
+  photo?: string;
   offer: string;
   /** The hours the deal runs ("5–9 PM", "All day"), parsed out of the offer
    *  text so the surface can show WHEN as its own distinct datum next to the
@@ -205,6 +208,7 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
         slug, name: place.name, town,
         downtown: place.municipality === "frederick",
         category: place.category,
+        photo: place.google_photo_url,
         // The offer leads with the WHAT; the day prefix + the hours are pulled
         // out (header states the day, a chip states the time) so the headline
         // isn't a redundant restatement.
