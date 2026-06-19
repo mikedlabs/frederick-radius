@@ -38,6 +38,47 @@ function daysInText(t: string): Set<number> {
   return out;
 }
 
+/**
+ * Does this text actually describe an OFFER (a price, a discount, a special) —
+ * versus a venue description or an activity that merely names a weekday? "Today's
+ * Intel" is verified SPECIALS, so a row that reads "Live music Thursday" or
+ * "Football-season bar" is intel for Events, not a deal, and is dropped here so
+ * every row genuinely answers "what's the deal".
+ */
+const OFFER_RE =
+  /\$\s*\d|\d\s*%|%\s*off|\bhalf\b|1\/2|\boff\b|\bfree\b|\bspecials?\b|\bdeals?\b|\bbogo\b|\b2[\s-]?for\b|\bdiscount\b|\bayce\b|all[-\s]?you[-\s]?can[-\s]?eat|happy\s*hour|prix[\s-]?fixe|bottomless/i;
+function readsAsOffer(t: string): boolean {
+  return OFFER_RE.test(t);
+}
+
+/**
+ * Isolate TODAY's part of a multi-day deal. Many deals bundle a week of
+ * specials in one string ("...Tuesday $4 pints; Wednesday crab discount;
+ * Thursday $1 oysters"); showing the whole thing buries today's offer and can
+ * surface another day's price. When the text names two-plus weekdays, split it
+ * into clauses and keep only the ones naming today. Single-day / no-day text is
+ * returned whole. Falls back to the full text if today can't be isolated.
+ */
+function todayClause(raw: string, dow: number): string {
+  if (daysInText(raw).size < 2) return raw;
+  const parts = raw.split(/;|\.\s+/).map((s) => s.trim()).filter(Boolean);
+  const todays = parts.filter((p) => daysInText(p).has(dow));
+  return todays.length ? todays.join("; ") : raw;
+}
+
+/**
+ * Drop trade-only clauses (a staff / industry / employee discount) so the
+ * headline figure is a deal the PUBLIC can use, not a perk for restaurant
+ * workers. Customer-facing discounts (military, student, etc.) stay. Falls back
+ * to the input if stripping would gut it.
+ */
+function publicOffer(text: string): string {
+  const parts = text.split(/;|\.\s+/).map((s) => s.trim()).filter(Boolean);
+  const kept = parts.filter((p) => !/\b(staff|industry|employee)\b/i.test(p));
+  const out = kept.join("; ").trim();
+  return out.length >= 4 ? out : text;
+}
+
 function easternDow(now: Date): number {
   const wd = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(now);
   return { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[wd] ?? 0;
@@ -100,10 +141,16 @@ function extractHours(text: string): string | undefined {
   return undefined;
 }
 
-/** Strip a leading weekday prefix ("Tuesday: ..." -> "...") — the strip header
- *  already states the day. "Taco Tuesday" / "Crabby Wednesday" keep theirs. */
+/** Strip a leading weekday marker ("Tuesday: ...", "Thursday all day: ...",
+ *  "Thursday Oyster Thursday ..." -> "Oyster Thursday ...") — the strip header
+ *  already states the day, so a leading repeat is noise. Handles a trailing
+ *  "all day" between the weekday and its separator, and a bare weekday followed
+ *  by more text (no separator). A mid-phrase "Taco Tuesday" keeps its day. */
 function trimDay(offer: string): string {
-  const t = offer.replace(/^\s*(sun|mon|tues?|wed(?:nes)?|thur?s?|fri|sat)[a-z]*\s*[:.\-–]\s*/i, "");
+  const t = offer.replace(
+    /^\s*(?:sun(?:day)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nes|nesday)?|thur?(?:s|sday)?|fri(?:day)?|sat(?:urday)?)\b(?:\s+all\s+day)?(?:\s*[:.\-–]\s*|\s+)/i,
+    "",
+  );
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
@@ -147,7 +194,12 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
       const days = daysInText(d.text || "");
       if (!days.has(dow)) continue; // no-day standing specials are not "today" news
       const raw = (d.text || "").trim();
-      const hours = extractHours(raw);
+      // Narrow a multi-day string to today's clause, then keep it only if it
+      // actually reads as an offer — so a row never shows another day's price or
+      // a non-deal ("Live music Thursday") in a list titled "verified specials".
+      const today = publicOffer(todayClause(raw, dow));
+      if (!readsAsOffer(today)) continue;
+      const hours = extractHours(today);
       const fn = fieldNotesFor(slug);
       const cand: TodaysDeal = {
         slug, name: place.name, town,
@@ -156,7 +208,7 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
         // The offer leads with the WHAT; the day prefix + the hours are pulled
         // out (header states the day, a chip states the time) so the headline
         // isn't a redundant restatement.
-        offer: stripHours(trimDay(raw)),
+        offer: stripHours(trimDay(today)),
         hours,
         park: fn?.parking?.text,
         tip: fn?.insider?.[0]?.text,
