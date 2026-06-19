@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Map, { Marker, Popup } from "react-map-gl/mapbox";
 import { MAPBOX_TOKEN } from "@/lib/mapbox";
 import { STYLE_URL } from "@/components/map/constants";
@@ -33,6 +34,7 @@ type Plane = {
   dst: number | null;
   emergency: string | null;
   route?: { from: { iata: string; name: string } | null; to: { iata: string; name: string } | null } | null;
+  photo?: { thumb: string; link: string; by: string } | null;
 };
 
 function band(alt: number | null): string {
@@ -122,6 +124,24 @@ export default function OverheadMap({
             maxWidth="240px"
           >
             <div className="space-y-1 px-0.5 py-0.5" style={{ fontFamily: "var(--font-sans)" }}>
+              {/* A real spotter photo of the airframe (planespotters), linking
+                  to the photo page with the photographer credit. */}
+              {open.photo && (
+                <a
+                  href={open.photo.link || undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative mb-1.5 block h-[118px] w-full overflow-hidden rounded-[var(--app-radius-sm)]"
+                  style={{ background: "var(--app-bg-sunken)" }}
+                >
+                  <Image src={open.photo.thumb} alt={`${open.flight || open.type || "Aircraft"} photo`} fill sizes="220px" className="object-cover" />
+                  {open.photo.by && (
+                    <span className="absolute bottom-0 right-0 rounded-tl bg-black/55 px-1 py-0.5 text-[8px] font-medium text-white">
+                      © {open.photo.by}
+                    </span>
+                  )}
+                </a>
+              )}
               <p className="font-serif text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
                 {open.flight || open.type || open.hex.toUpperCase()}
                 {open.desc && <span className="font-sans text-[11px] font-normal" style={{ color: "var(--app-ink-3)" }}>{`  ·  ${open.desc}`}</span>}

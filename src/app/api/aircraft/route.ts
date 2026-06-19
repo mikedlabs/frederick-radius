@@ -26,6 +26,8 @@ const FALLBACK = `https://opendata.adsb.fi/api/v2/lat/${LAT}/lon/${LON}/dist/${R
 export type AirportRef = { iata: string; name: string };
 /** Where a flight is coming from + going, when the callsign has a known route. */
 export type Route = { from: AirportRef | null; to: AirportRef | null };
+/** A spotter photo of the airframe (planespotters.net, by ICAO hex). */
+export type AircraftPhoto = { thumb: string; link: string; by: string };
 
 export type Aircraft = {
   hex: string;
@@ -52,6 +54,8 @@ export type Aircraft = {
   /** Origin → destination, resolved from the callsign via hexdb (null when the
    *  flight has no published route, e.g. most private/GA traffic). */
   route?: Route | null;
+  /** A spotter photo of the airframe (planespotters.net), null when none. */
+  photo?: AircraftPhoto | null;
 };
 
 type RawAc = {
@@ -136,28 +140,65 @@ async function lookupAirport(icao: string): Promise<AirportRef | null> {
   return v;
 }
 
-// Enrich the nearest callsigned flights with their route. Whole-batch budget so
-// a slow/down hexdb never holds the aircraft response hostage; late-resolving
-// routes still land on the cached objects for the next read in the TTL window.
-async function enrichRoutes(list: Aircraft[]): Promise<void> {
-  // Airline callsigns (3 letters + digits, e.g. AAL1609) carry published routes;
-  // GA registrations (N-numbers) don't, so spend the budget on the airliners
-  // first — near Frederick the NEAREST traffic is mostly GA, while the routed
-  // airliners ride the higher DC/BWI streams further out.
+// Spotter photos (planespotters.net), keyed by the airframe's ICAO hex. Static
+// per airframe, so cached for the process lifetime. planespotters REQUIRES a
+// contact in the User-Agent or it 403s.
+const PHOTO_UA = "frederick-radius/1.0 (+https://frederickradius.app; miked@madproductions.io)";
+const photoCache = new Map<string, AircraftPhoto | null>();
+
+async function lookupPhoto(hex: string): Promise<AircraftPhoto | null> {
+  if (!hex) return null;
+  if (photoCache.has(hex)) return photoCache.get(hex)!;
+  let v: AircraftPhoto | null = null;
+  try {
+    const res = await fetch(`https://api.planespotters.net/pub/photos/hex/${encodeURIComponent(hex)}`, {
+      headers: { "User-Agent": PHOTO_UA, Accept: "application/json" },
+      signal: AbortSignal.timeout(2500),
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const d = (await res.json()) as { photos?: Array<{ thumbnail_large?: { src?: string }; thumbnail?: { src?: string }; link?: string; photographer?: string }> };
+      const p = d.photos?.[0];
+      const src = p?.thumbnail_large?.src ?? p?.thumbnail?.src;
+      if (src) v = { thumb: src, link: p?.link ?? "", by: p?.photographer ?? "" };
+    }
+  } catch {
+    // leave null
+  }
+  photoCache.set(hex, v);
+  return v;
+}
+
+// Enrich the displayed flights with their route + a photo. Whole-batch budget so
+// a slow/down upstream never holds the aircraft response hostage; late-resolving
+// data still lands on the cached objects for the next read in the TTL window.
+async function enrich(list: Aircraft[]): Promise<void> {
+  // Routes: airline callsigns (AAL1609) carry published routes; GA registrations
+  // (N-numbers) don't, so spend that budget on airliners first — near Frederick
+  // the NEAREST traffic is mostly GA while the routed airliners ride higher.
   const isAirline = (cs: string) => /^[A-Z]{3}\d/.test(cs);
-  const targets = list
+  const routeTargets = list
     .filter((a) => a.flight)
     .sort((a, b) => (isAirline(b.flight!) ? 1 : 0) - (isAirline(a.flight!) ? 1 : 0))
     .slice(0, 14);
-  const work = Promise.allSettled(
-    targets.map(async (a) => {
+  // Photos: every airframe (GA included) can have one, so target the NEAREST —
+  // the planes that fill the specimen list + the closest map markers.
+  const photoTargets = list.slice(0, 14);
+
+  const routeWork = Promise.allSettled(
+    routeTargets.map(async (a) => {
       const r = await lookupRoute(a.flight!);
       if (!r) { a.route = null; return; }
       const [from, to] = await Promise.all([lookupAirport(r.orig), lookupAirport(r.dest)]);
       a.route = { from, to };
     }),
   );
-  await Promise.race([work, new Promise<void>((res) => setTimeout(res, 4500))]);
+  const photoWork = Promise.allSettled(photoTargets.map(async (a) => { a.photo = await lookupPhoto(a.hex); }));
+
+  await Promise.race([
+    Promise.all([routeWork, photoWork]),
+    new Promise<void>((res) => setTimeout(res, 5000)),
+  ]);
 }
 
 async function fetchFrom(url: string): Promise<Aircraft[]> {
@@ -183,7 +224,7 @@ export async function GET() {
     } catch {
       data = await fetchFrom(FALLBACK);
     }
-    await enrichRoutes(data);
+    await enrich(data);
     cache = { at: now, data };
     return NextResponse.json({ aircraft: data, at: now, source: "airplanes.live" });
   } catch {
