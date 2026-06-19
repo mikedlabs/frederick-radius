@@ -56,6 +56,11 @@ export type Craving = {
    *  Seafood, …) instead of a fixed `facets` list — so Food can be narrowed by
    *  what's really nearby. Mutually exclusive with `facets`. */
   cuisineFacets?: boolean;
+  /** This category is always AVAILABLE (e.g. lodging) — "open now" doesn't
+   *  apply, so the open-now gate must never hide it. Without this, a hotel
+   *  with no verified front-desk hours (open_status unknown) gets filtered
+   *  out of the open-only Stay view entirely. */
+  alwaysOpen?: boolean;
 };
 
 // Brand names with no descriptor (Dairy Queen / DQ) are matched explicitly —
@@ -261,6 +266,11 @@ export const CRAVINGS: Craving[] = [
     icon: "BedDouble",
     color: "var(--app-cool)",
     match: (p) => p.category === "lodging",
+    // A hotel/inn is always available to book — "open now" is the wrong gate,
+    // and most lodging carries no verified front-desk hours. Treat lodging as
+    // always available so a no-hours hotel (e.g. the Visitation Hotel) is never
+    // hidden from the open-only Stay view.
+    alwaysOpen: true,
   },
 ];
 
