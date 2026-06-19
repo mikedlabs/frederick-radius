@@ -587,7 +587,14 @@
         "confidence": "medium",
         "last_verified": "2026-06-15"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Wed-Sat 3-5 PM & all day Sunday (Tap House)",
+      "details": "$2 off draft beer, $1 off bottles and cans, $2 off wine by the glass, $3.75 rail drinks, $4.75 select spirits.",
+      "source_url": "https://www.jojosrestauranttaphouse.com/event/tap-house-happy-hour/",
+      "confidence": "medium",
+      "last_verified": "2026-06-19"
+    }
   },
   "linganore-winecellars-mount-airy": {
     "parking": {
@@ -2148,6 +2155,42 @@
       "source_url": "https://www.theorchardrestaurant.com/contact-us",
       "last_verified": "2026-06-16",
       "confidence": "high"
+    }
+  },
+  "bentztown": {
+    "happy_hour": {
+      "schedule": "Sun-Fri 3-6 PM (plus half-price wine bottles all day Thursday)",
+      "details": "50% off draft and can beer, house wine, house liquor, and specialty cocktails; smoked wings $6.50, parmesan fries $4.50, hushpuppies $6.",
+      "source_url": "https://bentztown.com/menu/",
+      "confidence": "high",
+      "last_verified": "2026-06-19"
+    }
+  },
+  "fireoak-culinary-tavern-frederick": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-6 PM (bar & lounge)",
+      "details": "$2 Blue Point oysters, $4-$5 domestic drafts, $7 house wine, $7-$9 mixed drinks, plus discounted appetizers (tavern burger, pulled-chicken tacos, burrata toast).",
+      "source_url": "https://www.fireandoak.com/menu/happy-hour/",
+      "confidence": "high",
+      "last_verified": "2026-06-19"
+    }
+  },
+  "7th-sister": {
+    "happy_hour": {
+      "schedule": "Thu-Fri 4-6 PM (bar & patio)",
+      "details": "Half-price cocktails, $5 off wine by the glass, $2 oysters; crab dip $14, sliders $12, wings & poutine $14.",
+      "source_url": "https://www.7thsister.com/happy-hour/",
+      "confidence": "high",
+      "last_verified": "2026-06-19"
+    }
+  },
+  "mount-airy-inn-mount-airy": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-7 PM; Thursdays the Bacon Happy Hour",
+      "details": "$2 off all drafts and wine by the glass; $2 off calamari, pretzel treasures, and wings. Thursdays: two free pieces of bacon with every draft beer.",
+      "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick/",
+      "confidence": "medium",
+      "last_verified": "2026-06-19"
     }
   }
 }
