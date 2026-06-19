@@ -44,7 +44,8 @@ export type Craving = {
     | "Music"
     | "FerrisWheel"
     | "Wine"
-    | "BedDouble";
+    | "BedDouble"
+    | "Sparkles";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -85,6 +86,17 @@ const FAMILY_FUN_JUNK =
 // (the county's ~15 are filed under "brewery"), NOT bare "wine" which would
 // catch wine shops, wine bars, and beer-&-wine convenience stores.
 const WINERY = /\b(winery|wineries|vineyard|vineyards|winecellars|cider|cidery|meadery)\b/i;
+// Wellness DESTINATIONS — yoga, spa, massage, fitness, the self-care set — NOT
+// the medical/clinical practices the "wellness" category is bloated with (it
+// holds ~150 dialysis/sleep/dental/psychotherapy/MD entries). Matched by name
+// across categories (a yoga studio filed under "yoga" or a salon-spa under
+// "services" still surfaces), then the CLINICAL gate strips out the medical
+// practices that merely share a "wellness/holistic/therapy" word. Tested
+// against the live dataset: yields ~84 genuine destinations, zero clinics.
+const WELLNESS =
+  /\b(yoga|pilates|barre|day ?spa|med ?spa|medspa|spa\b|massage|bodywork|crossfit|cross ?fit|gym\b|fitness|spin studio|cyclebar|cycle bar|sauna|cryo|float (spa|center|therapy|studio|tank)|aesthetic|esthetic|skincare|skin care|tanning|reiki|acupunctur|chiropract|martial arts|taekwondo|jiu.?jitsu|karate|kickbox|dance (studio|academy|center|company)|wellness|holistic|meditation|sound bath|kettlebell)\b/i;
+const WELLNESS_CLINICAL =
+  /\b(physician|dentist|dental|orthodont|endodont|psychiatr|psycholog|psychotherap|counsel|behavioral|physical therap|occupational therap|speech therap|dialysis|sleep (disorder|center|medicine)|cancer|oncolog|primary care|urgent care|hospital|surgery|surgical|rehab|addiction|recovery center|nurse practitioner|crnp|family medicine|internal medicine|pediatric|cardiolog|dermatolog|nephrolog|neurolog|urolog|radiolog|imaging center|infusion|diagnostic|medical (center|group|associates|clinic)|health (system|partners|services)|veterinar|nursing|hospice|family nurse)/i;
 
 // Order = intent strength, not raw inventory. Food leads (the single most
 // universal "I want," ~210 places); then the going-out wants (Coffee, Drinks),
@@ -256,6 +268,17 @@ export const CRAVINGS: Craving[] = [
     match: (p) =>
       Boolean(p.subcategories?.includes("family-fun")) ||
       (FAMILY_FUN.test(p.name) && !FAMILY_FUN_JUNK.test(p.name)),
+  },
+  {
+    // Wellness DESTINATIONS — yoga, spa, massage, fitness, martial arts, the
+    // self-care set. Matched by name across categories with the clinical gate,
+    // so a tap never surfaces a dialysis center, dentist, or psychotherapy
+    // practice from the over-broad "wellness" category bucket.
+    key: "wellness",
+    label: "Wellness",
+    icon: "Sparkles",
+    color: "var(--app-brand-2)",
+    match: (p) => WELLNESS.test(p.name) && !WELLNESS_CLINICAL.test(p.name),
   },
   {
     // Lodging — the county's hotels, inns, and B&Bs (37 places). For a

@@ -16,6 +16,7 @@ import {
   FerrisWheel,
   Wine,
   BedDouble,
+  Sparkles,
   Sunrise,
   Croissant,
   Sandwich,
@@ -69,6 +70,7 @@ const ICONS: Record<string, LucideIcon> = {
   FerrisWheel,
   Wine,
   BedDouble,
+  Sparkles,
   // Meal-occasion glyphs (the time-aware lead from the /today I-want strip).
   Sunrise,
   Croissant,
