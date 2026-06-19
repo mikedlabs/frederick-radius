@@ -14,15 +14,17 @@ import Link from "next/link";
  * Server component, zero client JS. Deliberately whisper-quiet: hairline
  * top border, text-xs, ink-3 — the page's content keeps the stage.
  */
+// STRUCTURAL wayfinding only (about / trust / browse). The moat content
+// surfaces (Happy hour, Brunch, Intel/deals) deliberately do NOT live here —
+// they read as out-of-place next to "About / Towns / All places" in a sitewide
+// footer, and each is already a primary tile or link on /today, so they keep
+// their internal links from the home page.
 const LINKS: Array<{ href: string; label: string }> = [
   { href: "/about", label: "About" },
   { href: "/trust", label: "Trust & sources" },
   { href: "/towns", label: "Towns" },
   { href: "/places", label: "All places" },
   { href: "/events", label: "Events" },
-  { href: "/happy-hour", label: "Happy hour" },
-  { href: "/brunch", label: "Brunch" },
-  { href: "/deals", label: "Intel" },
 ];
 
 export default function AppFooter() {
