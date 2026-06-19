@@ -15,9 +15,20 @@ import { splitDeal } from "@/lib/happyHourDeal";
  */
 const MAX_ROWS = 12;
 
-/** One menu line: serif venue · dotted leader · gold figure, then the gist. */
+/**
+ * One menu line, DEAL-FIRST: the offer is the headline (so you read WHAT you get
+ * before where), with the figure popped in gold; the venue + town + hours run
+ * underneath as quiet attribution. Reads top-down as "$10 off all bottles of
+ * wine — Monocacy Crossing · Urbana", which answers "what's the deal" at a
+ * glance far better than a venue name trailing a dotted leader to "Specials".
+ */
 function IntelRow({ deal: d }: { deal: TodaysDeal }) {
   const { hook, rest } = splitDeal(d.offer);
+  // After the gold figure leads, the remainder carries the deal; with no figure,
+  // the whole offer is the deal. Lowercase the remainder's first letter so
+  // "$10 OFF all bottles…" reads as one phrase, not two sentences.
+  const tail = hook ? rest : d.offer;
+  const body = hook && tail ? tail.charAt(0).toLowerCase() + tail.slice(1) : tail;
   const meta = [d.hours, d.town].filter(Boolean).join("  ·  ");
 
   return (
@@ -26,37 +37,26 @@ function IntelRow({ deal: d }: { deal: TodaysDeal }) {
       aria-label={`${d.name}: ${d.offer}`}
       className="tactile-interactive group block py-2.5"
     >
-      <div className="flex items-baseline gap-2">
-        <span
-          className="shrink-0 truncate font-serif text-[16px] font-semibold leading-tight tracking-[-0.01em]"
-          style={{ color: "var(--app-ink)", maxWidth: "58%" }}
-        >
-          {d.name}
-        </span>
-        <span
-          aria-hidden
-          className="mb-1 flex-1 self-end"
-          style={{ borderBottom: "1.5px dotted color-mix(in srgb, var(--app-ink) 22%, transparent)" }}
-        />
-        <span
-          className="shrink-0 text-right font-mono text-[14px] font-bold tabular-nums tracking-[0.01em]"
-          style={{ minWidth: "56px", color: hook ? "var(--app-accent-press)" : "var(--app-ink-3)" }}
-        >
-          {hook ?? "Specials"}
-        </span>
-      </div>
-      {(rest || meta) && (
-        <div className="mt-1 flex items-baseline gap-2">
-          <span className="min-w-0 flex-1 truncate text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-            {rest || d.offer}
+      {/* The deal itself — the WHAT, in serif, up to two lines, never truncated
+          mid-word. The figure (if any) leads in mono gold so it still pops. */}
+      <p className="line-clamp-2 font-serif text-[15.5px] leading-snug" style={{ color: "var(--app-ink)" }}>
+        {hook && (
+          <span className="font-mono text-[14px] font-bold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-accent-press)" }}>
+            {hook}
           </span>
-          {meta && (
-            <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
-              {meta}
-            </span>
-          )}
-        </div>
-      )}
+        )}
+        {hook && body ? " " : ""}
+        {body}
+      </p>
+      {/* Attribution: the venue (legible) + when/where (quiet mono). */}
+      <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className="text-[12.5px] font-semibold" style={{ color: "var(--app-ink-2)" }}>{d.name}</span>
+        {meta && (
+          <span className="font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: "var(--app-ink-3)" }}>
+            {meta}
+          </span>
+        )}
+      </p>
     </Link>
   );
 }
