@@ -40,9 +40,9 @@ function PhotoFallback({ category }: { category?: string }) {
       }}
     >
       {category && CATEGORY_BY_SLUG[category] ? (
-        <CategoryIcon slug={category} className="h-5 w-5" />
+        <CategoryIcon slug={category} className="h-7 w-7" />
       ) : (
-        <Tag className="h-5 w-5" strokeWidth={1.6} />
+        <Tag className="h-7 w-7" strokeWidth={1.6} />
       )}
     </div>
   );
@@ -59,20 +59,20 @@ function IntelCard({ deal: d }: { deal: TodaysDeal }) {
     <Link
       href={`/places/${d.slug}`}
       aria-label={`${d.name}: ${d.offer}`}
-      className="tactile-interactive flex items-stretch gap-3 overflow-hidden rounded-[var(--app-radius-md)] p-2.5"
+      className="tactile-interactive flex items-stretch gap-3.5 overflow-hidden rounded-[var(--app-radius-md)] p-3"
       style={{
         backgroundColor: "var(--app-bg-elevated-solid)",
         backgroundImage: "var(--app-paper-light)",
         boxShadow: "var(--app-elev-1), var(--app-hi), var(--app-edge)",
       }}
     >
-      {/* Venue photo (or a designed plate). */}
+      {/* Venue photo (or a designed plate) — larger for presence. */}
       <div
-        className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]"
+        className="relative h-[76px] w-[76px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]"
         style={{ backgroundColor: "var(--app-brand-2)" }}
       >
         {d.photo ? (
-          <Image src={d.photo} alt="" fill sizes="64px" className="object-cover" />
+          <Image src={d.photo} alt="" fill sizes="76px" className="object-cover" />
         ) : (
           <PhotoFallback category={d.category} />
         )}
@@ -130,21 +130,34 @@ export default function TodaysDealsStack({
   const shown = deals.slice(0, MAX_ROWS);
 
   return (
-    <section aria-label={`Verified intel for ${weekday}`} className="space-y-2">
-      {/* Slim masthead — the cards are the visual interest now. */}
-      <div className="flex items-baseline justify-between gap-3 px-0.5">
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: "var(--app-accent-press)" }}>
-            Today&rsquo;s Intel
+    <section aria-label={`Verified intel for ${weekday}`} className="space-y-3">
+      {/* Dossier masthead — a pressed VERIFIED seal (the moat's trust anchor),
+          the serif section title, and a mono dateline carrying the weekday +
+          count, closed with the field-guide hairline rule. Reads as a filed
+          report, not a loose list header. */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-3 px-0.5">
+          <span
+            aria-hidden
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+            style={{
+              background: "color-mix(in srgb, var(--app-brand-2) 15%, var(--app-bg-elevated))",
+              boxShadow: "var(--app-edge), var(--app-hi)",
+              color: "var(--app-brand-2)",
+            }}
+          >
+            <BadgeCheck className="h-[22px] w-[22px]" strokeWidth={2} />
           </span>
-          <span className="font-serif text-[15px] font-semibold" style={{ color: "var(--app-ink)" }}>
-            {weekday}
-          </span>
+          <div className="min-w-0">
+            <h2 className="font-serif text-[19px] font-semibold leading-none tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+              Today&rsquo;s Intel
+            </h2>
+            <p className="fg-eyebrow mt-1.5">
+              {weekday} · {deals.length} verified {deals.length === 1 ? "special" : "specials"}
+            </p>
+          </div>
         </div>
-        <span className="flex items-center gap-1 font-mono text-[9px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-brand-2)" }}>
-          <BadgeCheck className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-          {deals.length} verified
-        </span>
+        <div className="fg-rule" aria-hidden />
       </div>
 
       {/* The deck of struck-denomination cards. */}
