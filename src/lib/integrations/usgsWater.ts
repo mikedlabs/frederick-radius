@@ -19,8 +19,13 @@
  *    USGS site code and merge gage height + streamflow into one site.
  *  - USGS encodes "no reading" as the variable's noDataValue (e.g.
  *    -999999); those are dropped, never shown as a real level.
+ *  - Flood STAGE context (added 2026-06): six county gauges are NWS
+ *    forecast points with official flood thresholds (see floodStage.ts).
+ *    We attach those static, sourced thresholds so a surface can classify
+ *    the live reading against them — still NWS's classification, not ours.
  */
 import { resolveMunicipality } from "@/lib/connect";
+import { FLOOD_STAGES, type FloodStages } from "@/lib/integrations/floodStage";
 
 const ENDPOINT =
   "https://waterservices.usgs.gov/nwis/iv/?format=json" +
@@ -52,6 +57,8 @@ export type WaterSite = {
    *  reports every ~15 min, so a 24h window has ~96 readings. */
   gageHistory?: Reading[];
   streamflowHistory?: Reading[];
+  /** NWS flood thresholds, present only for NWS forecast-point gauges. */
+  floodStages?: FloodStages;
   municipality: string;
   lng: number;
   lat: number;
@@ -144,6 +151,7 @@ export function normalizeWaterSites(raw: unknown): WaterSite[] {
         id: code,
         name,
         river: riverOf(name),
+        floodStages: FLOOD_STAGES[code],
         municipality: resolveMunicipality({ lng, lat }).municipality.slug,
         lng,
         lat,
@@ -263,6 +271,7 @@ export function normalizeWaterSitesWithHistory(raw: unknown): WaterSite[] {
         id: code,
         name,
         river: riverOf(name),
+        floodStages: FLOOD_STAGES[code],
         municipality: resolveMunicipality({ lng, lat }).municipality.slug,
         lng,
         lat,
