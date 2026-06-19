@@ -157,23 +157,17 @@ const FEEDS: FeedSpec[] = [
     // catch-all.
     default_category: "community",
   },
-  {
-    // FCPL — Frederick County Public Libraries, all 8 branches. The single
-    // biggest county-wide content add: ~150-200 verified kids/family/class/
-    // all-ages programs. Self-hosted Drupal lc_calendar iCal (fetch-verified
-    // live). Each VEVENT carries a full street address, so inferMunicipality
-    // tags Brunswick/Thurmont/Emmitsburg/etc. branch events to the right town
-    // — which also fills the gap-town hole (those towns have no feed of their
-    // own). Default window is ~1 week; widen with &adjust_range=1 if thin.
-    source: "fcpl",
-    source_label: "Frederick County Public Libraries",
-    url: "https://frederick.librarycalendar.com/events/feed/ical?_wrapper_format=lc_calendar_feed&ongoing_events=hide",
-    format: "ical",
-    default_venue: "Frederick County Public Libraries",
-    default_geom: { lng: -77.4109, lat: 39.4143 },
-    default_municipality: "frederick",
-    default_category: "community",
-  },
+  // FCPL — Frederick County Public Libraries (8 branches) is NOT live-fetched:
+  // its lc_calendar iCal is unbounded (measured 1,736 VEVENTs / 1.3MB / 16-23s,
+  // and the adjust_range/current_date params do NOT narrow it), so it blows the
+  // 8s FEED_FETCH_TIMEOUT 100% of the time — it timed out on every render and
+  // delivered nothing (the "~200 events" estimate that wired it in was wrong; I
+  // didn't measure the response time). The library is still the #1 county-wide
+  // content target, but it belongs on the DAILY CRON-INGEST path (like DFP via
+  // /api/ingest/all — no per-request timeout), parsing the lc_calendar JSON
+  // (frederick.librarycalendar.com/events/feed/json) into the ingested store.
+  // That's the follow-up; live-fetching it here was a false promise. The "fcpl"
+  // source key is kept (above) so the cron path can reuse it.
   {
     // City of Frederick — official all-calendar (CivicPlus RSS, fetch-verified).
     // Biggest civic + rec volume for the city itself.
