@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Marker, Popup } from "react-map-gl/mapbox";
-import TRANSIT from "@/data/transit.json";
+// Routes-only slice (~1.4KB): the overlay needs just the id->color/label
+// lookup, not the 76KB of stops + shapes geometry in transit.json. Keeping
+// that geometry out of this always-mounted overlay keeps it off the /map
+// and /my-radius client bundles (the full file stays on the /transit page).
+import TRANSIT_ROUTES from "@/data/transit-routes.json";
 import { haptic } from "@/lib/haptics";
 
 /**
@@ -29,7 +33,7 @@ type LiveVehicle = {
 type TransitRoute = { id: string; short: string; name: string; color: string; text: string };
 
 const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
-  (TRANSIT.routes as TransitRoute[]).map((r) => [r.id, r]),
+  (TRANSIT_ROUTES as TransitRoute[]).map((r) => [r.id, r]),
 );
 
 const POLL_MS = 15_000;

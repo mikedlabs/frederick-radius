@@ -15,6 +15,7 @@ import { execSync } from "node:child_process";
 const GTFS_URL = "https://passio3.com/frederick/passioTransit/gtfs/google_transit.zip";
 const TMP = "/tmp/fr-gtfs";
 const OUT = new URL("../src/data/transit.json", import.meta.url).pathname;
+const OUT_ROUTES = new URL("../src/data/transit-routes.json", import.meta.url).pathname;
 
 function splitCsvLine(line: string): string[] {
   const out: string[] = []; let cur = "", q = false;
@@ -81,6 +82,11 @@ async function main() {
     generatedAt: new Date().toISOString().slice(0, 10), routes, stops, shapes,
   };
   writeFileSync(OUT, JSON.stringify(out));
+  // Slim routes-only slice for the map's LiveBuses overlay: it needs only
+  // the id->color/label lookup (~1.4KB), so shipping it the full 76KB file
+  // (stops + shapes geometry) would bloat the /map and /my-radius client
+  // bundles. The full transit.json stays for the /transit page (lazy).
+  writeFileSync(OUT_ROUTES, JSON.stringify(routes));
   rmSync(TMP, { recursive: true, force: true });
   console.log(`  transit.json: ${routes.length} routes · ${stops.length} stops · ${Object.keys(shapes).length} shapes`);
 }
