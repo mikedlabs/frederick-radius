@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useSavedList, useToggleSave, useIsSaved } from "@/hooks/useSaved";
+import { businessTopic } from "@/lib/push-topics";
 
 /**
  * useFollows — auth-aware follow state for places.
@@ -209,6 +210,43 @@ export function useIsFollowed(slug: string): boolean {
   return slugs.has(slug);
 }
 
+/**
+ * Mirror a place follow into the DEVICE's push topics, so a claimed business
+ * can later reach the people who followed it via the `biz:<slug>` channel
+ * (push-topics.ts). push_subscriptions is device-keyed (no user_id), so the
+ * server-side follow write can't find the subscription — this runs client-side
+ * against the device's own subscription through the existing /api/push/topics
+ * merge endpoint.
+ *
+ * Consent is respected automatically: if this device has no push subscription
+ * (the user never granted notifications), getSubscription() is null and we do
+ * nothing — we never call subscribe(), so no permission prompt is forced. We
+ * subscribe on EVERY follow (not just already-claimed places): the claim can
+ * happen after the follow, and the publish side is what gates on a verified
+ * owner, so an unclaimed `biz:<slug>` simply never fires. Best-effort and
+ * fire-and-forget — a failed topic sync must never affect the follow itself.
+ */
+async function syncFollowPushTopic(slug: string, follow: boolean): Promise<void> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return; // no notification consent on this device → nothing to wire
+    const topic = businessTopic(slug);
+    await fetch("/api/push/topics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(
+        follow
+          ? { endpoint: sub.endpoint, add: [topic] }
+          : { endpoint: sub.endpoint, remove: [topic] },
+      ),
+    });
+  } catch {
+    /* best-effort side channel; never surface or block the follow */
+  }
+}
+
 /** Toggle a follow for a place. Returns the new state (true = followed). */
 export function useToggleFollow(slug: string, source?: string) {
   const localToggle = useToggleSave("place", slug);
@@ -236,6 +274,9 @@ export function useToggleFollow(slug: string, source?: string) {
     })
       .then((r) => {
         if (!r.ok) throw new Error("follow write failed");
+        // Only mirror the push topic once the follow actually persisted, so a
+        // reverted (failed) follow never leaves a dangling biz:<slug> topic.
+        void syncFollowPushTopic(slug, !wasFollowed);
       })
       .catch(() => {
         // Revert to pre-toggle membership against the LATEST store
