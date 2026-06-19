@@ -20,6 +20,7 @@
     "safeway-bakery-middletown": "safeway-middletown"
   },
   "remove": [
+    "welcome-to-the-rusty-rose-restored-farmhouse-feel-in-the-hea-jefferson",
     "cyclefit-frederick",
     "manoushe",
     "south-market-creamery-frederick",
@@ -49,6 +50,13 @@
     "wastlers-barber-shop"
   ],
   "patch": {
+    "catoctin-creek-aqueduct-co-canal-jefferson": {
+      "name": "Catoctin Creek Aqueduct",
+      "municipality": "brunswick"
+    },
+    "ledo-pizza-ijamsville": {
+      "municipality": "new-market"
+    },
     "visitation-hotel": {
       "short_blurb": "Boutique hotel in a restored downtown landmark that began as a monastery, then a school, now home to the Voltaggio brothers' Wye Oak Tavern."
     },

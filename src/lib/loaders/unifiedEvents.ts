@@ -114,7 +114,8 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 // key), matching revalidate, so within a window every render is a HIT and the
 // page is fast even though it renders dynamically. The pages still window the
 // set against the REAL now (eventsForMode), so "tonight/weekend" stay exact.
-// Bump "unified-events-v1" if the assembled shape changes (CLAUDE.md rule).
+// Bump the cache key below (now "unified-events-v2") if the assembled shape
+// changes — the unstable_cache entry persists across deploys (CLAUDE.md rule).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
   ["unified-events-v2"],

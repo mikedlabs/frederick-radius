@@ -31,6 +31,13 @@ describe("patchRecord", () => {
     expect(out).toEqual({ slug: "x", name: "New", category: "cafe", short_blurb: "b" });
     expect(p.name).toBe("Old"); // input not mutated
   });
+
+  it("corrects municipality to a canonical slug", () => {
+    const p = { slug: "ledo-pizza-ijamsville", name: "Ledo Pizza", municipality: "ijamsville" };
+    const out = patchRecord(p, { "ledo-pizza-ijamsville": { municipality: "new-market" } });
+    expect(out).toEqual({ slug: "ledo-pizza-ijamsville", name: "Ledo Pizza", municipality: "new-market" });
+    expect(p.municipality).toBe("ijamsville"); // input not mutated
+  });
 });
 
 describe("levenshtein (bounded)", () => {

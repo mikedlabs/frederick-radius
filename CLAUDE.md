@@ -6,11 +6,15 @@ Google Places. Production: https://frederickradius.app
 
 ## Design system — this is the truth, not older specs
 
-Earlier documents referenced Fraunces and a "Creek blue" palette. The
-SHIPPED brand deck (see `src/app/globals.css` tokens) is:
+Earlier documents referenced a "Creek blue" palette. The SHIPPED brand
+deck (see `src/app/layout.tsx` for the loaded faces and
+`src/app/globals.css` tokens) is:
 
-- **Type:** Newsreader (serif display), Public Sans (UI), JetBrains Mono
-  (data details: coordinates, counts). `font-serif` = Newsreader.
+- **Type:** Fraunces (serif display, `--font-display`), Inter (UI sans,
+  `--font-sans`), JetBrains Mono (data details: coordinates, counts,
+  `--font-mono`). `font-serif` resolves to Fraunces. The "Premium Overhaul
+  Phase 1" type pass replaced the earlier Newsreader/Public Sans spec —
+  `layout.tsx` is the source of truth, not this paragraph's history.
 - **Palette tokens (always use `var(--app-*)`, never raw hex in app UI):**
   paper cream ground `--app-bg #EEE6D4`, ink `--app-ink #16140E`,
   Signal vermilion `--app-brand #E14328`, Spruce green `--app-brand-2`.
