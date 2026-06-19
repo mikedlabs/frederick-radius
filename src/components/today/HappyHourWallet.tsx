@@ -63,7 +63,7 @@ type LivePour = {
   lastCall: boolean;
 };
 
-type NextPour = { slug: string; name: string; hook: string | null; label: string };
+type NextPour = { slug: string; name: string; deal: string; label: string };
 
 /**
  * The soonest verified pour starting AFTER now (Eastern), across every venue.
@@ -97,7 +97,9 @@ function nextPour(now: Date): NextPour | null {
       : best.dayOffset === 1
         ? `Opens tomorrow ${time}`
         : `Opens ${new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(new Date(now.getTime() + best.dayOffset * 86_400_000))} ${time}`;
-  return { slug: best.slug, name: p.name, hook: splitDeal(best.details).hook, label };
+  // The full deal (subject + figure), not a bare hook — so the teaser reads
+  // "Opens 5 PM · 50% off all wine bottles", never "Opens 5 PM · 50% OFF".
+  return { slug: best.slug, name: p.name, deal: best.details, label };
 }
 
 export default function HappyHourWallet({ now }: { now: Date }) {
@@ -160,7 +162,7 @@ export default function HappyHourWallet({ now }: { now: Date }) {
             </h3>
             <p className="truncate text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
               <span className="font-mono font-bold uppercase tracking-[0.06em]" style={{ color: "var(--app-accent-press)" }}>{next.label}</span>
-              {next.hook && <span>{"  ·  "}{next.hook}</span>}
+              {next.deal && <span>{"  ·  "}{next.deal}</span>}
             </p>
           </div>
         </Link>
