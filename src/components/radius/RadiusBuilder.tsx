@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { Footprints, Bike, Car, MapPin, ChevronDown, ChevronUp, Locate, X, Compass } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
-import RadiusMap from "./RadiusMap";
 import RadiusPresets from "./RadiusPresets";
 import MapControlSheet, { SNAP_COLLAPSED, SNAP_HALF } from "./MapControlSheet";
 import { resolveMunicipality } from "@/lib/location";
@@ -63,6 +63,44 @@ const POI_PRESETS: Preset[] = [
   { slug: "catoctin", label: "Catoctin trailhead", lng: -77.4505, lat: 39.6361, kind: "poi" },
 ];
 const PRESETS: Preset[] = [...MUNI_PRESETS, ...POI_PRESETS];
+
+// Lazy-load the Mapbox map, exactly as AppMapClient does for the fast-mode
+// AppMap. /map statically pulls in BOTH AppMapClient and this builder, so a
+// static RadiusMap import dragged the whole mapbox-gl + react-map-gl stack
+// into the shared /map bundle even for fast-mode visitors who never open
+// guided discovery. Behind next/dynamic it's a separate chunk that streams
+// in (with a map-shaped skeleton) only when this view actually renders.
+const RadiusMap = dynamic(() => import("./RadiusMap"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="relative grid h-full w-full place-items-center overflow-hidden rounded-[var(--app-radius-lg)] border"
+      style={{
+        borderColor: "var(--app-border)",
+        background:
+          "radial-gradient(120% 90% at 50% 35%, color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-sunken)) 0%, var(--app-bg-sunken) 70%)",
+      }}
+      aria-busy="true"
+      aria-label="Loading the map"
+    >
+      <div className="flex animate-pulse flex-col items-center gap-2">
+        <span
+          aria-hidden
+          className="grid h-11 w-11 place-items-center rounded-full"
+          style={{
+            background: "color-mix(in srgb, var(--app-cool) 18%, var(--app-bg-elevated))",
+            color: "var(--app-cool)",
+          }}
+        >
+          <MapPin className="h-5 w-5" strokeWidth={2} />
+        </span>
+        <p className="text-[12px] font-medium" style={{ color: "var(--app-ink-3)" }}>
+          Bringing up the map
+        </p>
+      </div>
+    </div>
+  ),
+});
 
 const MODES: { mode: TravelMode; label: string; icon: typeof Footprints }[] = [
   { mode: "walk", label: "Walk", icon: Footprints },
