@@ -153,7 +153,11 @@ export default async function TodayCard({
   ].filter(Boolean);
 
   return (
-    <section aria-label="Today in Frederick" style={{ color: "currentColor" }}>
+    <section aria-label="Today in Frederick" className="stagger-children" style={{ color: "currentColor" }}>
+      {/* The masthead assembles like a published front-endsheet: the dateline,
+          the greeting+mood headline, the weather row, and tonight's event rise
+          in on load via .stagger-children (one-shot breathe-in; reduced-motion
+          renders them static). */}
       {/* Header row — the page's date / day / time, built into the hero
           itself (no separate band below). Date is server-rendered; the clock
           ticks client-side. */}

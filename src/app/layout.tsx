@@ -123,6 +123,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Seasonal token spine — coarse (changes 4x/year, so baking at build/ISR is
+  // fine; a deploy happens far more often than a solstice). Sets the accent
+  // TONE and a shadow-tint hue the app-wide seasonal wash (PR3) reads from.
+  // spring -> green, summer -> gold, autumn -> sienna, winter -> slate.
+  const seasonMonth = new Date().getMonth();
+  const season =
+    seasonMonth >= 2 && seasonMonth <= 4 ? "spring"
+    : seasonMonth >= 5 && seasonMonth <= 7 ? "summer"
+    : seasonMonth >= 8 && seasonMonth <= 10 ? "autumn"
+    : "winter";
+  const seasonAccent =
+    season === "spring" ? "var(--app-positive)"
+    : season === "summer" ? "var(--app-accent)"
+    : season === "autumn" ? "var(--app-warning)"
+    : "var(--app-cool)";
   return (
     // suppressHydrationWarning on <html> + <body> is the Next.js-
     // recommended fix for the "Hydration failed because the server
@@ -134,7 +149,12 @@ export default function RootLayout({
     // disable hydration checking for the rest of the tree, so a real
     // SSR/client mismatch inside one of our components still surfaces.
     // Ref: https://nextjs.org/docs/messages/react-hydration-error
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      data-season={season}
+      style={{ "--season-accent": seasonAccent, "--season-depth": seasonAccent } as React.CSSProperties}
+    >
       <head>
         {/* Preconnect to the Vercel Blob CDN where the downloaded
             place photos live. A blank preconnect lets the browser
