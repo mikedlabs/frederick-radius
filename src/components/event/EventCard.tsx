@@ -252,81 +252,90 @@ export default function EventCard({
     );
   }
 
-  // Feature variant — the editorial lead card for a horizon group. A
-  // date-led typographic hero: a big calendar block anchors it, the serif
-  // title leads, "why it matters" gives the editorial reason. No photo —
-  // the event is the calendar entry, not a borrowed venue shot.
+  // Feature variant — the editorial lead card for a horizon group, now a
+  // PHOTO-LED hero: the event borrows its venue's photo (≈85% of the live set
+  // carry one), filling a 3:2 face with the title/when overlaid in white over a
+  // legibility scrim. The ~15% with no photo get a designed engraved-glyph
+  // plate (never a blank box, never a saturated per-category fill) and render
+  // their text in INK. This is the one above-fold image, so it carries
+  // priority; everything else lazy-loads.
   if (variant === "feature") {
     const reasons = eventReasons(event);
+    const onPhoto = Boolean(event.hero_image);
+    const titleColor = onPhoto ? "#fff" : "var(--app-ink)";
+    const subColor = onPhoto ? "rgba(255,255,255,0.92)" : "var(--app-ink-2)";
+    const eyebrowColor = onPhoto ? "color-mix(in srgb, " + accent + " 45%, #fff)" : accent;
+    const capColor = onPhoto ? "rgba(255,255,255,0.82)" : "var(--app-ink-2)";
     return (
       <article
-        className="tactile tactile-feature tactile-interactive group relative overflow-hidden rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)]"
-        style={{ boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
+        className="tactile tactile-feature tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)]"
+        style={{ backgroundColor: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
       >
-        <div aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent }} />
-        <div className="flex items-start gap-3.5 p-4">
-          {/* Calendar date block — the editorial anchor. */}
-          <div
+        {/* The face — the venue photo, or a designed engraved-glyph plate. */}
+        {onPhoto ? (
+          <>
+            <Image
+              src={event.hero_image!}
+              alt=""
+              fill
+              priority
+              sizes="(max-width: 640px) 100vw, 720px"
+              placeholder="blur"
+              blurDataURL={PAPER_CREAM_BLUR}
+              className="ken-burns object-cover"
+            />
+            <span aria-hidden className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.80) 2%, rgba(0,0,0,0.30) 40%, transparent 68%)" }} />
+          </>
+        ) : (
+          <span
             aria-hidden
-            className="flex shrink-0 flex-col items-center justify-center rounded-[var(--app-radius-md)] px-3 py-2 leading-none"
-            style={{
-              minWidth: 60,
-              background: `color-mix(in srgb, ${accent} 12%, var(--app-bg-sunken))`,
-              boxShadow: "var(--app-edge), inset 0 1px 0 rgba(255,255,255,0.45)",
-            }}
+            className="absolute inset-0 grid place-items-center"
+            style={{ background: `radial-gradient(120% 100% at 30% 18%, color-mix(in srgb, ${accent} 22%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`, color: accent }}
           >
-            <span className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: accent }}>{date.month}</span>
-            <span className="font-serif text-[27px] font-semibold" style={{ color: "var(--app-ink)" }}>{date.day}</span>
-            <span className="text-[10px] font-medium uppercase" style={{ color: "var(--app-ink-3)" }}>{date.weekday}</span>
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: accent }}>{categoryLabel}</span>
-              {statusText && (
-                <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
-              )}
-              {event.distance_m !== undefined && (
-                <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>{formatDistance(event.distance_m)}</span>
-              )}
-            </div>
-            <Link
-              href={`/events/${event.slug}`}
-              className={`mt-0.5 block font-serif text-[19px] font-semibold leading-tight tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
-              style={{ color: "var(--app-ink)" }}
-            >
-              <span className="absolute inset-0" aria-hidden />
-              {event.title}
-            </Link>
-            {/* WHEN — the temporal token in mono (design-system thesis). */}
-            <p className="mt-1 truncate text-[13px]" style={{ color: "var(--app-ink-2)" }}>
-              {date.time && <span className="font-mono tabular-nums">{date.time}</span>}
-              {date.time && event.venue_name ? " · " : ""}
-              {event.venue_name}
+            <CategoryIcon category={event.category} className="h-24 w-24 opacity-50" />
+          </span>
+        )}
+        <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: onPhoto ? 0.9 : 1 }} />
+
+        {/* Top row — category eyebrow + live status + distance. */}
+        <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-4 pt-3.5">
+          <span className="truncate text-[10px] font-bold uppercase tracking-[0.1em]" style={{ color: eyebrowColor, textShadow: onPhoto ? "0 1px 3px rgba(0,0,0,0.5)" : "none" }}>{categoryLabel}</span>
+          {statusText && (
+            <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.1em] text-white" style={{ background: statusBg }}>{statusText}</span>
+          )}
+          {event.distance_m !== undefined && (
+            <span className="ml-auto shrink-0 font-mono text-[11px] tabular-nums" style={{ color: onPhoto ? "rgba(255,255,255,0.85)" : "var(--app-ink-3)", textShadow: onPhoto ? "0 1px 3px rgba(0,0,0,0.5)" : "none" }}>{formatDistance(event.distance_m)}</span>
+          )}
+        </div>
+
+        {/* Bottom plate — title, when, "in their words", reasons. */}
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <Link
+            href={`/events/${event.slug}`}
+            className={`block font-serif text-[21px] font-semibold leading-[1.08] tracking-tight outline-none focus-visible:underline line-clamp-2 ${isCancelled ? "line-through opacity-70" : ""}`}
+            style={{ color: titleColor }}
+          >
+            <span className="absolute inset-0" aria-hidden />
+            {event.title}
+          </Link>
+          <p className="mt-1 truncate text-[13px]" style={{ color: subColor }}>
+            {date.weekday && <span className="font-mono tabular-nums">{date.weekday} {date.month} {date.day}</span>}
+            {date.time && <span className="font-mono tabular-nums">{" · "}{date.time}</span>}
+            {event.venue_name ? ` · ${event.venue_name}` : ""}
+          </p>
+          {whyItMatters && (
+            <p className="mt-1 line-clamp-1 text-[12.5px] leading-snug" style={{ color: capColor }}>
+              {whyItMatters}
             </p>
-            {/* "In their words" — one honest line lifted from the event's own
-                description, never fabricated. A plain caption, not editorial
-                serif-italic: it is the source's sentence, not the guide's. */}
-            {whyItMatters && (
-              <div className="mt-1.5">
-                <span className="text-[9.5px] font-semibold uppercase tracking-[0.08em]" style={{ color: "var(--app-ink-3)" }}>
-                  In their words
-                </span>
-                <p className="line-clamp-2 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-                  {whyItMatters}
-                </p>
-              </div>
-            )}
+          )}
+          {(reasons.length > 0 || event.is_free) && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {reasons.length > 0 ? (
-                <ReasonChipRow reasons={reasons} />
-              ) : (
-                <>
-                  {event.is_free && <span className="text-[11px] font-semibold" style={{ color: "var(--app-positive)" }}>Free</span>}
-                  {event.price_text && !event.is_free && <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>{event.price_text}</span>}
-                </>
+              {event.is_free && (
+                <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em]" style={{ background: onPhoto ? "rgba(255,255,255,0.92)" : "color-mix(in srgb, var(--app-positive) 14%, transparent)", color: "var(--app-positive)" }}>Free</span>
               )}
+              {!onPhoto && reasons.length > 0 && <ReasonChipRow reasons={reasons} />}
             </div>
-          </div>
+          )}
         </div>
       </article>
     );
