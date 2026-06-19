@@ -4,6 +4,7 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
 import { currentSkyPalette } from "@/components/today/SkyHero";
 import AnimatedSkyGlyph from "@/components/today/AnimatedSkyGlyph";
+import CollapsibleSection from "@/components/ui/CollapsibleSection";
 
 /**
  * PulseWeatherPanel — the weather built INTO the /pulse dashboard as a tall,
@@ -265,31 +266,40 @@ export default async function PulseWeatherPanel() {
           />
         </div>
 
-        {/* hourly curve */}
-        <div className="space-y-1">
-          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-            Next 12 hours
-          </p>
-          <HourlyCurve hours={forecast.hourly} />
+        {/* MORE DETAIL — the deeper forecast (hourly curve, sun, 7-day) is
+            revealed on tap, so the card leads with current conditions and the
+            depth is one tap away (matching the dashboard tiles' reveal). */}
+        <div className="border-t pt-1" style={{ borderColor: "var(--app-border)" }}>
+          <CollapsibleSection title="Hourly & 7-day" storageKey="fr.pulse.weather.detail" defaultOpen={false}>
+            <div className="space-y-4 pt-1">
+              {/* hourly curve */}
+              <div className="space-y-1">
+                <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                  Next 12 hours
+                </p>
+                <HourlyCurve hours={forecast.hourly} />
+              </div>
+
+              {/* sun */}
+              {(sun.sunrise || sun.sunset) && (
+                <div className="flex items-center justify-between border-t pt-3 font-mono text-[11px] tabular-nums" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
+                  {sun.sunrise && <span className="uppercase tracking-[0.06em]">↑ Sunrise {fmtClock(sun.sunrise)}</span>}
+                  {sun.sunset && <span className="uppercase tracking-[0.06em]">Sunset {fmtClock(sun.sunset)} ↓</span>}
+                </div>
+              )}
+
+              {/* 7-day */}
+              {days.length > 0 && (
+                <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                    7-day outlook
+                  </p>
+                  <WeekStrip days={days} />
+                </div>
+              )}
+            </div>
+          </CollapsibleSection>
         </div>
-
-        {/* sun */}
-        {(sun.sunrise || sun.sunset) && (
-          <div className="flex items-center justify-between border-t pt-3 font-mono text-[11px] tabular-nums" style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}>
-            {sun.sunrise && <span className="uppercase tracking-[0.06em]">↑ Sunrise {fmtClock(sun.sunrise)}</span>}
-            {sun.sunset && <span className="uppercase tracking-[0.06em]">Sunset {fmtClock(sun.sunset)} ↓</span>}
-          </div>
-        )}
-
-        {/* 7-day */}
-        {days.length > 0 && (
-          <div className="space-y-2 border-t pt-3" style={{ borderColor: "var(--app-border)" }}>
-            <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-              7-day outlook
-            </p>
-            <WeekStrip days={days} />
-          </div>
-        )}
       </div>
     </section>
   );
