@@ -97,6 +97,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "res.cloudinary.com" },
+      // planespotters.net spotter-photo thumbnail CDN (/overhead aircraft photos)
+      { protocol: "https", hostname: "t.plnspttrs.net" },
       { protocol: "https", hostname: "commons.wikimedia.org" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
       // Google Places photo CDN. The app normally proxies these via

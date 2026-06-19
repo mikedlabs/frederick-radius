@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { Plane } from "lucide-react";
 
 /**
@@ -40,6 +41,7 @@ type Ac = {
   dir: number | null;
   emergency: string | null;
   route?: { from: { iata: string; name: string } | null; to: { iata: string; name: string } | null } | null;
+  photo?: { thumb: string; link: string; by: string } | null;
 };
 
 // Altitude bands → the marker color encoding (low traffic is what you'd actually
@@ -139,7 +141,9 @@ export default function PlanesOverhead() {
         Live ADS-B via{" "}
         <a href="https://airplanes.live" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--app-cool)" }}>airplanes.live</a>,
         routes via{" "}
-        <a href="https://hexdb.io" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--app-cool)" }}>hexdb.io</a>.
+        <a href="https://hexdb.io" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--app-cool)" }}>hexdb.io</a>,
+        photos via{" "}
+        <a href="https://www.planespotters.net" target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "var(--app-cool)" }}>planespotters.net</a>.
         Only aircraft that transmit appear, so small planes may be missing, and most private flights carry no published route. Frederick sits at the edge of the
         Washington Special Flight Rules Area, so some traffic holds or reroutes overhead, and the county is the
         home ground of aviation pioneer Glenn L. Martin.
@@ -165,9 +169,16 @@ function Specimen({ p, active, onSelect }: { p: Ac; active: boolean; onSelect: (
       }}
     >
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]" style={{ background: c }} />
-      <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c }}>
-        <Plane className="h-[18px] w-[18px]" strokeWidth={2} style={{ transform: `rotate(${(p.track ?? 0) - 45}deg)` }} />
-      </span>
+      {p.photo ? (
+        // A real spotter photo of the airframe (planespotters), when available.
+        <span className="relative h-12 w-[68px] shrink-0 overflow-hidden rounded-[var(--app-radius-sm)]" style={{ background: "var(--app-bg-sunken)" }}>
+          <Image src={p.photo.thumb} alt={`${title} aircraft`} fill sizes="68px" className="object-cover" />
+        </span>
+      ) : (
+        <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c }}>
+          <Plane className="h-[18px] w-[18px]" strokeWidth={2} style={{ transform: `rotate(${(p.track ?? 0) - 45}deg)` }} />
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="min-w-0 truncate font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
