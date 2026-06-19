@@ -61,7 +61,7 @@ import { PoliceBreakingStrip, PoliceBlotter, AdvisoryCard } from "@/components/p
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import TransitMap from "@/components/transit/TransitMapClient";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
-import WeatherHero from "@/components/today/WeatherHero";
+import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import {
   Users,
@@ -659,16 +659,8 @@ export default async function PulsePage({
             </div>
           </div>
 
-          {/* Live conditions — what the sky is actually DOING right now, under
-              a quiet "right now" rule. Reuses /today's compact WeatherHero
-              (the NWS fetch is Next-deduped); degrades to a quiet line on fail. */}
-          <div
-            id="weather"
-            className="scroll-mt-20 border-t pt-3"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          >
-            <WeatherHero compact />
-          </div>
+          {/* The live conditions now lead the dashboard as a full PulseWeatherPanel
+              (below) instead of a compact line buried in the header. */}
           <p
             className="flex items-center gap-1.5 text-[11px] tabular-nums"
             style={{ color: "var(--app-ink-3)" }}
@@ -684,6 +676,14 @@ export default async function PulsePage({
           Rides above the dashboard because it's the most time-sensitive
           civic signal a resident wants. Absent when there's no recent one. */}
       {breakingPolice && <PoliceBreakingStrip item={breakingPolice} now={nowMs} />}
+
+      {/* ── Weather, built into the dashboard — a tall, data-dense panel that
+          uses the vertical screen: a time-of-day sky header with the current
+          reading, a realtime stat grid (feels/humidity/wind/rain/dewpoint/AQI),
+          an hourly temperature curve, sun rise/set, and a 7-day range strip.
+          Leads the status board because "what's it doing out" is the most-asked
+          live question. Self-hides if the NWS feed is briefly down. */}
+      <PulseWeatherPanel />
 
       {/* ── Status dashboard — each tile opens the feed's detail in a
           bottom-sheet "window"; no more scroll-to-section. Seven tiles now
