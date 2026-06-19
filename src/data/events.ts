@@ -74,6 +74,7 @@ export type Event = {
     // names now. They were all hardcoded "manual" at that boundary,
     // which let a Ticketmaster row claim first party curated trust.
     | "hood" | "visit-frederick" | "weinberg" | "delaplaine"
+    | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks"
     | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "venue-extract";
   is_verified: boolean;
   /**

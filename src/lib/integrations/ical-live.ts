@@ -48,7 +48,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -156,6 +156,99 @@ const FEEDS: FeedSpec[] = [
     // entries; everything else falls through to the honest "community"
     // catch-all.
     default_category: "community",
+  },
+  {
+    // FCPL — Frederick County Public Libraries, all 8 branches. The single
+    // biggest county-wide content add: ~150-200 verified kids/family/class/
+    // all-ages programs. Self-hosted Drupal lc_calendar iCal (fetch-verified
+    // live). Each VEVENT carries a full street address, so inferMunicipality
+    // tags Brunswick/Thurmont/Emmitsburg/etc. branch events to the right town
+    // — which also fills the gap-town hole (those towns have no feed of their
+    // own). Default window is ~1 week; widen with &adjust_range=1 if thin.
+    source: "fcpl",
+    source_label: "Frederick County Public Libraries",
+    url: "https://frederick.librarycalendar.com/events/feed/ical?_wrapper_format=lc_calendar_feed&ongoing_events=hide",
+    format: "ical",
+    default_venue: "Frederick County Public Libraries",
+    default_geom: { lng: -77.4109, lat: 39.4143 },
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // City of Frederick — official all-calendar (CivicPlus RSS, fetch-verified).
+    // Biggest civic + rec volume for the city itself.
+    source: "city-frederick",
+    source_label: "City of Frederick",
+    url: "https://www.cityoffrederickmd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml",
+    format: "rss",
+    default_venue: "City of Frederick",
+    default_geom: { lng: -77.4109, lat: 39.4137 },
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // The Great Frederick Fair + year-round fairgrounds events (public Google
+    // Calendar iCal, fetch-verified). Single-DTSTART events parse; RRULE ones
+    // don't (parser limitation) — acceptable.
+    source: "fair",
+    source_label: "The Great Frederick Fair",
+    url: "https://calendar.google.com/calendar/ical/gffcal%40gmail.com/public/basic.ics",
+    format: "ical",
+    default_venue: "Frederick Fairgrounds",
+    default_geom: { lng: -77.3884, lat: 39.4186 },
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Mount Airy — town calendar (CivicPlus RSS, fetch-verified). Festival /
+    // community-rich gap-town win.
+    source: "mount-airy",
+    source_label: "Town of Mount Airy",
+    url: "https://www.mountairymd.gov/RSSFeed.aspx?ModID=58&CID=All-calendar.xml",
+    format: "rss",
+    default_venue: "Mount Airy",
+    default_geom: { lng: -77.1547, lat: 39.3762 },
+    default_municipality: "mount-airy",
+    default_category: "community",
+  },
+  {
+    // Thurmont — town calendar (CivicPlus RSS, fetch-verified). NOTE: the
+    // all-calendar mixes private pavilion rentals + trash/recycling notices in
+    // with public events; the assembly's isPublicEvent / isUtilityEvent noise
+    // gates must suppress those (verified after wiring).
+    source: "thurmont",
+    source_label: "Town of Thurmont",
+    url: "https://www.thurmont.com/RSSFeed.aspx?ModID=58&CID=All-calendar.xml",
+    format: "rss",
+    default_venue: "Thurmont",
+    default_geom: { lng: -77.4108, lat: 39.6237 },
+    default_municipality: "thurmont",
+    default_category: "community",
+  },
+  {
+    // Frederick County Parks & Recreation (recreater.com, CivicPlus RSS,
+    // fetch-verified). Ranger programs, rec classes, outdoor events; keyword
+    // inference tags hikes/trails -> outdoors.
+    source: "parks",
+    source_label: "Frederick County Parks & Recreation",
+    url: "https://www.recreater.com/RSSFeed.aspx?ModID=58&CID=All-calendar.xml",
+    format: "rss",
+    default_venue: "Frederick County Parks & Recreation",
+    default_geom: { lng: -77.4109, lat: 39.4143 },
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Delaplaine Arts Center (The Events Calendar / Tribe iCal, fetch-verified)
+    // — downtown arts classes + exhibits.
+    source: "delaplaine",
+    source_label: "Delaplaine Arts Center",
+    url: "https://delaplaine.org/events/?ical=1",
+    format: "ical",
+    default_venue: "Delaplaine Arts Center",
+    default_geom: { lng: -77.4118, lat: 39.4146 },
+    default_municipality: "frederick",
+    default_category: "gallery",
   },
   // NOTE on live-music venues (Tenth Ward, Monocacy, Bentztown, …):
   // their public Tribe iCal exports were evaluated here and rejected —
