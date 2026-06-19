@@ -161,6 +161,12 @@ export default async function CravingStrip({
         {/* Happy hour — the most-asked-for local intent.
             Points at the /happy-hour view powered by the Field Notes layer. */}
         <FieldTag href="/happy-hour" label="Happy hour" ariaLabel="Happy hour" icon={Martini} ink="var(--app-accent)" />
+        {/* Brunch — the verified /brunch moat surface as its own persistent
+            want (a curated set, not a /nearby category). Suppressed when the
+            meal tile is ALREADY Brunch (weekend mornings) so it never doubles. */}
+        {meal.key !== "brunch" && (
+          <FieldTag href="/brunch" label="Brunch" ariaLabel="Brunch: verified spots" icon={Croissant} ink="var(--app-brand-press)" />
+        )}
         {cravings.map((c) => (
           <FieldTag
             key={c.key}
