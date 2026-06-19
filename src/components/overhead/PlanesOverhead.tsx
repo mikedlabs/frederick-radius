@@ -25,6 +25,7 @@ type Ac = {
   dst: number | null;
   dir: number | null;
   emergency: string | null;
+  route?: { from: { iata: string; name: string } | null; to: { iata: string; name: string } | null } | null;
 };
 
 const MAX_NM = 60;
@@ -44,6 +45,8 @@ function band(alt: number | null): { color: string; label: string } {
 const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
 const compass = (deg: number | null): string => (deg == null ? "" : COMPASS[Math.round(((deg % 360) / 45)) % 8]);
 const fmtAlt = (a: number | null): string => (a == null ? "altitude n/a" : `${a.toLocaleString()} ft`);
+// ADS-B reports ground speed in knots; the UI shows mph (owner preference).
+const mph = (kt: number): number => Math.round(kt * 1.15078);
 
 function pos(dst: number | null, dir: number | null): { x: number; y: number } | null {
   if (dst == null || dir == null) return null;
@@ -220,9 +223,22 @@ function Specimen({ p, active, onSelect }: { p: Ac; active: boolean; onSelect: (
             <span className="shrink-0 font-mono text-[9px] font-bold uppercase tracking-[0.08em]" style={{ color: "var(--app-danger)" }}>{p.emergency}</span>
           )}
         </div>
+        {/* Where it's from and going — resolved from the callsign; only when
+            the flight has a published route (most airliners do, GA won't). */}
+        {p.route && (p.route.from || p.route.to) && (
+          <p
+            className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] font-semibold tabular-nums"
+            style={{ color: "var(--app-ink-2)" }}
+            title={`${p.route.from?.name ?? "Unknown origin"} → ${p.route.to?.name ?? "Unknown destination"}`}
+          >
+            <span>{p.route.from?.iata ?? "???"}</span>
+            <span aria-hidden style={{ color: "var(--app-ink-3)" }}>→</span>
+            <span>{p.route.to?.iata ?? "???"}</span>
+          </p>
+        )}
         <p className="mt-0.5 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
           {fmtAlt(p.alt)}
-          {p.gs != null && <span style={{ color: "var(--app-ink-3)" }}>{`  ·  ${p.gs} kt`}</span>}
+          {p.gs != null && <span style={{ color: "var(--app-ink-3)" }}>{`  ·  ${mph(p.gs)} mph`}</span>}
           {p.dst != null && p.dir != null && (
             <span style={{ color: "var(--app-ink-3)" }}>{`  ·  ${Math.round(p.dst)} nm ${compass(p.dir)}`}</span>
           )}
