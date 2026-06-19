@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dealClauses, figureCount, emphasizeFigures, splitDeal } from "./happyHourDeal";
+import { dealClauses, figureCount, emphasizeFigures, splitDeal, dealQuality } from "./happyHourDeal";
 
 describe("dealClauses — glue every figure to what it's for", () => {
   it("splits a multi-figure deal into self-contained clauses", () => {
@@ -72,6 +72,33 @@ describe("emphasizeFigures — figure highlighted in place, word order preserved
       { text: "8 wings for ", figure: false },
       { text: "$10", figure: true },
     ]);
+  });
+});
+
+describe("dealQuality — clarity tiers (the primary ranking key)", () => {
+  it("ranks a percentage off highest (tier 4)", () => {
+    expect(dealQuality("50% off all wings")).toBe(4);
+    expect(dealQuality("half-price appetizers")).toBe(4);
+  });
+  it("ranks a dollar discount below percent (tier 3)", () => {
+    expect(dealQuality("$5 off all scotch")).toBe(3);
+  });
+  it("ranks a concrete price (tier 2)", () => {
+    expect(dealQuality("$8 personal pizza")).toBe(2);
+    expect(dealQuality("$5 select beers, $7 cocktails")).toBe(2); // FROM $5
+  });
+  it("ranks a sub-hook figure (tier 1)", () => {
+    expect(dealQuality("Oysters $1 each")).toBe(1); // figure present, floored below a $2 hook
+  });
+  it("ranks a figureless/vague deal lowest (tier 0)", () => {
+    expect(dealQuality("Food and drink specials at the bar")).toBe(0);
+    expect(dealQuality("")).toBe(0);
+    expect(dealQuality(null)).toBe(0);
+  });
+  it("never lets a vague deal out-rank a figure-bearing one", () => {
+    expect(dealQuality("Restaurant-wide food and drink specials")).toBeLessThan(
+      dealQuality("$2 off beer"),
+    );
   });
 });
 

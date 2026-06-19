@@ -114,6 +114,26 @@ export function figureCount(deal: string | null | undefined): number {
   return m ? m.length : 0;
 }
 
+/**
+ * dealQuality — the ONE ranking signal for "how clear/compelling is this deal",
+ * used as the PRIMARY sort key on every happy-hour surface. A vague-at-source
+ * entry (no figure) must NEVER out-rank a figure-bearing one, so tier 0 sits
+ * below everything. Tiers, strongest first:
+ *   4  a percentage off ("50% OFF") — the punchiest
+ *   3  a dollar discount ("$5 OFF")
+ *   2  a concrete price ("$8", "FROM $5")
+ *   1  a figure is present but not a clean hook (e.g. a sub-$2 price)
+ *   0  figureless / vague at source ("food and drink specials")
+ */
+export function dealQuality(deal: string | null | undefined): number {
+  if (figureCount(deal) === 0) return 0;
+  const hook = dealHook(deal);
+  if (!hook) return 1;
+  if (hook.endsWith("% OFF")) return 4;
+  if (hook.includes(" OFF")) return 3;
+  return 2;
+}
+
 // A money figure anywhere in a clause: "$5", "$2.50", "$5 off", "50% off",
 // "25%", "half-price". Used to emphasize the figure inside its own phrase.
 const FIGURE_TOKEN = /\$\s*\d+(?:\.\d{1,2})?(?:\s*off)?|\d{1,3}\s*%(?:\s*off)?|\bhalf[-\s]?(?:off|price)\b/gi;

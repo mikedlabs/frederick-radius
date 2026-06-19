@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Martini } from "lucide-react";
 import HappyHourBrowser, { type HHRow } from "./HappyHourBrowser";
-import { dealHook } from "@/lib/happyHourDeal";
+import { dealHook, splitDeal, figureCount, dealQuality } from "@/lib/happyHourDeal";
 import DealLines from "@/components/happy/DealLines";
 
 /**
@@ -101,26 +101,24 @@ function classify(rows: HHRow[], day: number, nowMin: number) {
       }
     }
   }
-  live.sort((a, b) => Number(b.lastCall) - Number(a.lastCall) || (a.endsAt! - b.endsAt!));
-  later.sort((a, b) => a.startsAt! - b.startsAt!);
-  // Other: by day distance from today, then start time.
-  other.sort((a, b) => ((a.day! - day + 7) % 7) - ((b.day! - day + 7) % 7) || a.startsAt! - b.startsAt!);
+  // Deal QUALITY leads every section (clear figures above vague), then the
+  // section's own urgency tie-breaker — so a clear deal never sinks below a
+  // figureless "specials" entry just because the vague one ends sooner.
+  const q = (it: Item) => dealQuality(it.r.deal);
+  live.sort((a, b) => q(b) - q(a) || Number(b.lastCall) - Number(a.lastCall) || (a.endsAt! - b.endsAt!));
+  later.sort((a, b) => q(b) - q(a) || a.startsAt! - b.startsAt!);
+  // Other: quality, then day distance from today, then start time.
+  other.sort((a, b) => q(b) - q(a) || ((a.day! - day + 7) % 7) - ((b.day! - day + 7) % 7) || a.startsAt! - b.startsAt!);
 
   return { live, later, other, varies };
 }
 
-/** How strong/enticing a hook reads, for choosing the cover story. */
-function hookStrength(hook: string | null): number {
-  if (!hook) return 0;
-  if (hook.endsWith("% OFF")) return 300 + (parseInt(hook, 10) || 0); // "50% OFF" beats "25% OFF"
-  if (hook.includes(" OFF")) return 200; // "$5 OFF"
-  if (hook.startsWith("FROM")) return 100; // "FROM $3"
-  return 0; // "Specials"
-}
-/** Cover-worthiness: a photo is essential to the full-bleed, then last-call
- *  urgency, then the most enticing hook. */
+/** Cover-worthiness, DEAL QUALITY FIRST: a figure-bearing deal (tier >= 1)
+ *  always beats a vague one (tier 0) no matter how good its photo or how soon
+ *  it ends, so the hero never leads with "specials at the bar". Within a tier,
+ *  a photo carries the full-bleed, then last-call urgency. */
 function coverScore(it: Item): number {
-  return (it.r.photo ? 1000 : 0) + (it.lastCall ? 400 : 0) + hookStrength(it.hook);
+  return dealQuality(it.r.deal) * 1000 + (it.r.photo ? 100 : 0) + (it.lastCall ? 40 : 0);
 }
 
 function PhotoFallback({ big }: { big?: boolean }) {
@@ -161,16 +159,34 @@ function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
         {tab.label}
       </span>
 
-      {/* Cover plate, bottom — venue, then the deal as a clean menu of clauses
-          (each figure glued to what it's for), never one giant ripped-out number. */}
+      {/* Cover plate, bottom — venue, then the deal. A single clean discount
+          gets the big gold figure (the punch the hero needs); a multi-part deal
+          shows its clauses stacked (figure glued to each item, never one ripped
+          out); a vague-at-source entry shows a muted honest line. */}
       <div className="absolute inset-x-0 bottom-0 p-4">
         {it.r.town && <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: "color-mix(in srgb, var(--app-accent) 60%, #fff)" }}>{it.r.town}</p>}
         <h2 className="mt-0.5 font-serif text-[26px] font-semibold leading-[1.02] tracking-[-0.01em] text-white">{it.r.name}</h2>
-        {it.r.deal ? (
-          <DealLines deal={it.r.deal} max={3} tone="onPhoto" className="mt-2 max-w-prose space-y-1 text-[15px] font-medium" />
-        ) : (
-          <p className="mt-2 font-serif text-[20px] font-semibold" style={{ color: "color-mix(in srgb, var(--app-accent) 72%, #fff)" }}>Specials</p>
-        )}
+        {(() => {
+          const gold = "color-mix(in srgb, var(--app-accent) 72%, #fff)";
+          if (!it.r.deal) {
+            return <p className="mt-2 font-serif text-[20px] font-semibold" style={{ color: gold }}>Specials</p>;
+          }
+          const figs = figureCount(it.r.deal);
+          if (figs === 0) {
+            return <DealLines deal={it.r.deal} tone="onPhoto" vague className="mt-2 max-w-prose text-[14px]" />;
+          }
+          const { hook, rest } = splitDeal(it.r.deal);
+          if (figs === 1 && hook) {
+            const subject = rest && rest.toLowerCase() !== hook.toLowerCase() ? rest : "";
+            return (
+              <>
+                <p className="mt-1.5 font-serif font-bold leading-none tracking-[-0.01em]" style={{ fontSize: 40, color: gold }}>{hook}</p>
+                {subject && <p className="mt-1.5 max-w-prose text-[15px] font-medium leading-snug" style={{ color: "rgba(255,255,255,0.92)" }}>{subject}</p>}
+              </>
+            );
+          }
+          return <DealLines deal={it.r.deal} max={3} tone="onPhoto" className="mt-2 max-w-prose space-y-1 text-[15px] font-medium" />;
+        })()}
       </div>
     </Link>
   );
@@ -197,7 +213,7 @@ function PricedRow({ it, nowMin }: { it: Item; nowMin: number }) {
       </div>
       {/* The deal — each discount on its own line, figure glued to what it's for. */}
       {it.r.deal ? (
-        <DealLines deal={it.r.deal} max={2} className="mt-1 space-y-0.5 text-[12.5px]" />
+        <DealLines deal={it.r.deal} max={3} vague={figureCount(it.r.deal) === 0} className="mt-1 space-y-0.5 text-[12.5px]" />
       ) : (
         <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>Specials</p>
       )}
@@ -249,13 +265,16 @@ export default function HappyHourGuide({
 
   const { live, later, other, varies } = useMemo(() => classify(rows, day, nowMin), [rows, day, nowMin]);
 
-  // Cover = the best on-now pour to feature: a photo carries the full-bleed,
-  // then last-call urgency, then the most enticing hook (50% off beats $1 off),
-  // tie-broken by ending soonest. With nothing live, demote honestly to the
-  // next to open today, then the soonest this week. Never a faked "on now".
+  // Cover = the best on-now pour to feature, DEAL QUALITY FIRST: prefer a live
+  // pour with a real figure (Roasthouse "50% OFF"), ranked by coverScore then
+  // ending soonest. A vague "specials" entry is eligible only if literally
+  // nothing figure-bearing is live. With nothing live at all, demote honestly
+  // to the next to open today, then the soonest this week. Never a faked "now".
   const cover = useMemo(() => {
     if (live.length > 0) {
-      return [...live].sort((a, b) => coverScore(b) - coverScore(a) || (a.endsAt! - b.endsAt!))[0];
+      const byScore = (a: Item, b: Item) => coverScore(b) - coverScore(a) || (a.endsAt! - b.endsAt!);
+      const clearLive = live.filter((x) => dealQuality(x.r.deal) > 0);
+      return (clearLive.length > 0 ? [...clearLive] : [...live]).sort(byScore)[0];
     }
     return later[0] ?? other[0] ?? null;
   }, [live, later, other]);
@@ -334,7 +353,7 @@ export default function HappyHourGuide({
                     <Link href={`/places/${r.slug}`} aria-label={`${r.name}${r.deal ? `: ${r.deal}` : ""}`} className="tactile-interactive block py-1.5">
                       <span className="block truncate font-serif text-[15.5px] font-semibold tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>{r.name}</span>
                       {r.deal ? (
-                        <DealLines deal={r.deal} max={2} className="mt-1 space-y-0.5 text-[12.5px]" />
+                        <DealLines deal={r.deal} max={3} vague={figureCount(r.deal) === 0} className="mt-1 space-y-0.5 text-[12.5px]" />
                       ) : (
                         <p className="mt-1 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>Specials</p>
                       )}
