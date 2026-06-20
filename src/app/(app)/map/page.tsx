@@ -346,7 +346,7 @@ export default async function MapPage({
           overlap (they collided at +16px). lg pins it to the right gutter. */}
       <div
         className="pointer-events-none absolute inset-x-0 z-[var(--z-map-control)] flex justify-center px-3 lg:justify-end lg:px-4"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 84px)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + var(--app-bottomnav-reserve))" }}
       >
         <div className="pointer-events-auto">
           <MapModeToggle mode="browse" />
@@ -363,8 +363,9 @@ export default async function MapPage({
 // the ~48px strip that used to be reserved for that in-flow pill is
 // reclaimed — the map extends down to meet the nav's breathing room
 // instead of leaving a dead cream band ("the bottom UI doesn't look fixed").
-const BROWSE_MAP_HEIGHT =
-  "calc(100dvh - 56px - 48px - 84px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))";
+// One source of truth (globals.css :root) so the page + its loading skeleton
+// can never drift (that drift caused a visible canvas jump on tab-in).
+const BROWSE_MAP_HEIGHT = "var(--app-browse-map-height)";
 
 /** The heavy half of browse mode — ~10 upstream feeds + the map render.
  *  Split into its own async component so the page shell can stream
