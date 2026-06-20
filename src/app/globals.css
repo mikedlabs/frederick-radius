@@ -305,11 +305,26 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  /* Native-feel: no gray/blue flash on tap (the biggest "this is a website"
+     tell on Android), native UI (scrollbars/pickers) in the paper palette,
+     and no browser pull-to-refresh / bottom rubber-band on the document. */
+  -webkit-tap-highlight-color: transparent;
+  color-scheme: light;
+  overscroll-behavior-y: none;
 }
 
 body {
   background: var(--app-bg);
   color: var(--app-ink);
+}
+
+/* Controls feel native: no long-press callout menu and no text-selection on
+   tappable control primitives. Scoped to buttons + tactile controls, NOT bare
+   <a> — content/contact links keep the native copy/call long-press menu. */
+button, [role="button"], .tactile, .tactile-interactive, .tap-44 {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 /* Skip-link visibility */
