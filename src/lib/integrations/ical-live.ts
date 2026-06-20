@@ -48,7 +48,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -217,6 +217,22 @@ const FEEDS: FeedSpec[] = [
     default_venue: "Thurmont",
     default_geom: { lng: -77.4108, lat: 39.6237 },
     default_municipality: "thurmont",
+    default_category: "community",
+  },
+  {
+    // Heritage Frederick (the Historical Society of Frederick County, 24 E Church
+    // St) — its own Tribe iCal of history talks, walking tours, lectures, and
+    // exhibit openings: ~20 future events, fetch-verified (200, text/calendar,
+    // 0.2s, all at the downtown society building so the geo is honest). The
+    // history-talk / insider-tour layer no aggregator carries. Single-DTSTART
+    // events parse; RRULE ones don't (parser limit) — acceptable.
+    source: "heritage-frederick",
+    source_label: "Heritage Frederick",
+    url: "https://frederickhistory.org/events/?ical=1",
+    format: "ical",
+    default_venue: "Heritage Frederick",
+    default_geom: { lng: -77.4096, lat: 39.4146 },
+    default_municipality: "frederick",
     default_category: "community",
   },
   {

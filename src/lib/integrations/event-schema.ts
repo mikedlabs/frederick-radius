@@ -70,6 +70,10 @@ export const liveEventSchema = z
     municipality: z.string().min(2).max(40),
     category: z.string().max(40),
     organizer: z.string().max(120),
+    // MUST stay in sync with the FeedSpec source union in ical-live.ts. When it
+    // drifts, the parsed events from the missing sources fail validation and are
+    // SILENTLY DROPPED (city-frederick / fair / mount-airy / thurmont / parks
+    // were all being dropped here despite being wired feeds).
     source: z.enum([
       "dfp",
       "celebrate",
@@ -80,6 +84,15 @@ export const liveEventSchema = z
       "delaplaine",
       "ticketmaster",
       "bandsintown",
+      "seatgeek",
+      "eventbrite",
+      "fcpl",
+      "city-frederick",
+      "fair",
+      "mount-airy",
+      "thurmont",
+      "parks",
+      "heritage-frederick",
     ]),
     source_label: z.string().min(1).max(120),
     url: z.string().url(),
