@@ -48,7 +48,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys";
   source_label: string;
   url: string;
   is_free: boolean;
@@ -235,6 +235,39 @@ const FEEDS: FeedSpec[] = [
     default_municipality: "frederick",
     default_category: "community",
   },
+  {
+    // Monocacy Brewing (1781 N Market St) — its own Tribe iCal of taproom
+    // happenings: the free "Fridays at the Fountain" summer live-music series,
+    // food-truck nights, and beer releases. Fetch-verified (200, text/calendar,
+    // real future SUMMARY/DTSTART). First-party brewery live-music wedge content.
+    source: "monocacy",
+    source_label: "Monocacy Brewing",
+    url: "https://monocacybrewing.com/events/?ical=1",
+    format: "ical",
+    default_venue: "Monocacy Brewing",
+    default_geom: { lng: -77.4093, lat: 39.4447 },
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  {
+    // Maryland School for the Deaf (101 Clarke Pl) — Edlio iCal, fetch-verified
+    // (200, text/calendar, 105 VEVENTs with real 2026 dates). A Frederick-city
+    // institution on no other municipal feed; robots allows the events feed.
+    // Internal meetings lane to civic via classifyEvent; public events surface.
+    source: "msd",
+    source_label: "Maryland School for the Deaf",
+    url: "https://www.msd.edu/apps/events/ical/",
+    format: "ical",
+    default_venue: "Maryland School for the Deaf",
+    default_geom: { lng: -77.4180, lat: 39.4084 },
+    default_municipality: "frederick",
+    default_category: "community",
+  },
+  // Mount St. Mary's University (Emmitsburg, calendar.msmary.edu campus-activities
+  // .ics) is HELD: the calendar returns 200 to a plain curl but 403s the app's
+  // server fetch (bot-blocked), so it would log a 403 and contribute nothing on
+  // every render. The "mount-st-marys" source is kept in the enums for when a
+  // reachable feed (or a proxy/UA fix) is found. Would fill the Emmitsburg gap.
   {
     // Frederick County Parks & Recreation (recreater.com, CivicPlus RSS,
     // fetch-verified). Ranger programs, rec classes, outdoor events; keyword
