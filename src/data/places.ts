@@ -568,6 +568,28 @@ export const PLACES: Place[] = [
     updated_at: "2026-05-20",
   },
   {
+    // Net-new from the 2026-06-20 discovery sweep. Address geocoded (Nominatim).
+    // (Fire & Oak was also a sweep pick but already exists as
+    // fireoak-culinary-tavern-frederick — the slug variant my dedup grep missed.)
+    slug: "gravel-and-grind-frederick",
+    name: "Gravel & Grind",
+    category: "coffee",
+    subcategories: ["shopping"],
+    tags: ["coffee", "bike"],
+    short_blurb: "Part coffee bar, part bike shop on East 6th: pour-overs up front, gravel and road bikes in back. A cyclists' clubhouse.",
+    address: "15 E 6th St",
+    city: "Frederick",
+    state: "MD",
+    postal_code: "21701",
+    municipality: "frederick",
+    geom: { lng: -77.409599, lat: 39.421638 },
+    is_verified: true,
+    is_operational: "operational",
+    feature_score: 7,
+    source: "seed",
+    updated_at: "2026-06-20",
+  },
+  {
     slug: "new-market-plains-vineyards-new-market",
     name: "New Market Plains Vineyards",
     category: "brewery",
