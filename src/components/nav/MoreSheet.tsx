@@ -18,6 +18,7 @@ import {
   Croissant,
   Tag,
   Plane,
+  Landmark,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -95,6 +96,7 @@ const OUTDOORS: Item[] = [
 const AROUND_COUNTY: Item[] = [
   { href: "/pulse",     label: "County pulse", description: "Right now: traffic, power outages, school closings, 311", icon: Activity, color: "var(--app-brand)" },
   { href: "/overhead",  label: "Overhead", description: "Live radar of planes flying over the county right now", icon: Plane, color: "var(--app-cool)" },
+  { href: "/markers",   label: "Markers & landmarks", description: "Every roadside marker's inscription + the National Register sites", icon: Landmark, color: "#7A5C2E" },
   { href: "/plan",      label: "Plan a day", description: "Build a shareable Frederick day itinerary",           icon: Route,         color: "var(--app-brand-2)" },
   { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2,     color: "var(--app-ink-2)" },
 ];
