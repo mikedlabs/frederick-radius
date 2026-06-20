@@ -14,7 +14,11 @@
  * the loader wires in, plus the near-dupe DETECTOR the
  * `npm run data:review` tool uses to find the Summitra-class problems
  * for a human to approve. No data imports → isomorphic, testable.
+ * (The `Hours` import below is type-only, so it is erased at compile and
+ * keeps this module data-free.)
  */
+
+import type { Hours } from "@/data/places";
 
 export type PatchFields = {
   name?: string;
@@ -31,6 +35,12 @@ export type PatchFields = {
   clearGoogle?: boolean;
   /** Null the misattributed hero photo (it shows the OTHER business). */
   clearPhoto?: boolean;
+  /** Replace the derived (Google-parsed) weekly hours with a hand-verified
+   *  schedule. Patches win over the automated parser by design, so this is the
+   *  fix for a "PM entered as AM" close typo (e.g. a restaurant Google reports
+   *  as closing at 10:00). Provide the COMPLETE corrected week — it replaces
+   *  the whole `hours` object, not a single day. */
+  hours?: Hours;
 };
 
 export type Overrides = {
@@ -90,6 +100,10 @@ export function patchRecord<T extends { slug: string }>(
   if (x.category) (out as Record<string, unknown>).category = x.category;
   if (x.short_blurb) (out as Record<string, unknown>).short_blurb = x.short_blurb;
   if (x.municipality) (out as Record<string, unknown>).municipality = x.municipality;
+  // hours runs here (before applyEnrichment) so the loader's
+  // `p.hours ?? parseGoogleHours(...)` precedence picks the curated schedule
+  // over the typo'd Google parse — no change to applyEnrichment needed.
+  if (x.hours) (out as Record<string, unknown>).hours = x.hours;
   // clearGoogle / clearPhoto are applied in decoratePlace AFTER applyEnrichment
   // (which re-derives google_rating/photo from the raw enrichment, so nulling
   // them here would be clobbered).

@@ -7,17 +7,26 @@ import fieldNotes from "@/data/field-notes.json" with { type: "json" };
  * Data-health guard — locks the invariants the 2026-06-20 all-business audit
  * (workflow wwvolblmx) verified clean or fixed, so the next enrichment/scrape
  * re-run can't silently re-introduce a known bug class. Runs on every change to
- * places-client.json. NOT yet asserted here (known backlog, tracked separately):
- * the 50 phantom shared-Google-data groups, the 952 empty postal_codes, and the
- * 3 inverted-hours typos — add those once each is driven to zero.
+ * places-client.json.
+ *
+ * Backlog driven to zero and now asserted: the 952 malformed postal_codes (the
+ * 5-digit ZIP guard below; the 4 remaining empties are addresses with no ZIP)
+ * and the 3 inverted-hours "PM entered as AM" typos (the inverted-hours guard
+ * below, fixed via an hours patch in places-overrides.json). Still tracked
+ * separately, not yet a generic assertion: the phantom shared-Google-data
+ * groups (suppressed per-slug via the `clearGoogle` override).
  */
+
+type HoursWindow = { open: string; close: string };
 
 type Place = {
   slug: string;
+  category?: string;
   municipality?: string;
   state?: string;
   google_rating?: number;
   google_rating_count?: number;
+  hours?: Partial<Record<string, HoursWindow[]>>;
 };
 
 const PLACES = places as unknown as Place[];
@@ -62,6 +71,36 @@ describe("places-client data health", () => {
       return z !== "" && !/^\d{5}$/.test(z);
     });
     expect(bad.map((p) => p.slug)).toEqual([]);
+  });
+
+  // A same-day interval whose close precedes its open is a "PM entered as AM"
+  // typo (a restaurant Google reports as "closing" at 10:00). A close in the
+  // small hours (≤ 05:59) is the legitimate late-night / overnight case (a bar
+  // closing at 01:00), so it is excluded. Two genuine overnight operations are
+  // allowlisted: an emergency shelter (18:30–07:00) and an inn whose hours
+  // encode check-in/checkout (16:00–11:00), not a service window.
+  const OVERNIGHT_OK = new Set([
+    "alan-p-linton-jr-emergency-shelter",
+    "strawberry-inn-new-market",
+  ]);
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  it("has no inverted same-day hours (PM-as-AM typos)", () => {
+    const bad: string[] = [];
+    for (const p of PLACES) {
+      if (OVERNIGHT_OK.has(p.slug) || !p.hours) continue;
+      for (const [day, ivs] of Object.entries(p.hours)) {
+        for (const iv of ivs ?? []) {
+          if (!iv?.open || !iv?.close) continue;
+          const o = toMin(iv.open);
+          const c = toMin(iv.close);
+          if (c < o && c >= 6 * 60) bad.push(`${p.slug} ${day} ${iv.open}-${iv.close}`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
   });
 });
 

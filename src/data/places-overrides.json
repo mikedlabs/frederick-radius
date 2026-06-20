@@ -70,6 +70,9 @@
     "rockwell-brewery-frederick-2"
   ],
   "patch": {
+    "lima-soul-restaurant-frederick": { "hours": { "wed": [{ "open": "17:00", "close": "22:00" }], "thu": [{ "open": "17:00", "close": "22:00" }], "fri": [{ "open": "17:00", "close": "22:00" }], "sat": [{ "open": "12:00", "close": "22:00" }], "sun": [{ "open": "12:00", "close": "21:00" }] } },
+    "walkers-village-shopping-center-walkersville": { "hours": { "mon": [{ "open": "10:00", "close": "21:30" }], "tue": [{ "open": "10:00", "close": "21:30" }], "wed": [{ "open": "10:00", "close": "00:00" }], "thu": [{ "open": "10:00", "close": "00:00" }], "fri": [{ "open": "10:00", "close": "00:00" }], "sat": [{ "open": "10:00", "close": "21:30" }], "sun": [{ "open": "10:00", "close": "21:30" }] } },
+    "happiness-is-balance-frederick-md": { "hours": { "mon": [{ "open": "12:00", "close": "20:00" }], "tue": [{ "open": "12:00", "close": "20:00" }], "thu": [{ "open": "12:00", "close": "20:00" }], "fri": [{ "open": "12:00", "close": "20:00" }], "sat": [{ "open": "10:00", "close": "16:00" }] } },
     "community-bridge": { "clearGoogle": true },
     "immersion-active": { "clearGoogle": true },
     "hill-house-bed-and-breakfast": { "clearGoogle": true },
