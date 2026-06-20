@@ -146,7 +146,7 @@ function Cover({ it, bloom }: { it: Item; bloom?: boolean }) {
     <Link
       href={`/places/${it.r.slug}`}
       aria-label={`${it.r.name}${it.hook ? `: ${it.hook}` : ""}${it.r.deal ? `. ${it.r.deal}` : ""}`}
-      className={`tactile-interactive relative block aspect-[16/11] overflow-hidden rounded-[var(--app-radius-lg)]${bloom ? " pop-in" : ""}`}
+      className={`tactile-interactive relative block aspect-[16/9] overflow-hidden rounded-[var(--app-radius-lg)]${bloom ? " pop-in" : ""}`}
       style={{ boxShadow: "var(--app-elev-1), var(--app-hi)" }}
     >
       {it.r.photo ? <Image src={it.r.photo} alt="" fill sizes="(max-width: 640px) 100vw, 640px" className="object-cover" /> : <PhotoFallback big />}
@@ -299,18 +299,26 @@ export default function HappyHourGuide({
   }, [cover]);
 
   const liveCount = live.length;
+  const townCount = useMemo(() => new Set(rows.map((r) => r.town).filter(Boolean)).size, [rows]);
 
   return (
     <div className="space-y-4">
-      {/* Live status line + the Now / All week toggle. */}
+      {/* Completeness strip — answers "what's on now AND how complete is this?"
+          at a glance: the live count (vermilion), the verified total + town
+          reach, and the at-source seal. The toggle to the week planner sits
+          opposite. Counts are supporting detail, never the headline. */}
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <p className="flex items-center gap-2 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
-          <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: liveCount > 0 ? "var(--app-brand)" : "var(--app-ink-3)" }} />
-          {fmtMin(nowMin)}
-          <span aria-hidden>·</span>
-          <span aria-live="polite" style={{ color: "var(--app-ink-2)" }}>
-            {liveCount > 0 ? `${liveCount} pouring now` : later.length > 0 ? `next pour ${fmtMin(later[0].startsAt!)}` : "none on right now"}
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+          <span className="inline-flex items-center gap-1.5 font-bold" style={{ color: liveCount > 0 ? "var(--app-brand-press)" : "var(--app-ink-2)" }}>
+            <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: liveCount > 0 ? "var(--app-brand)" : "var(--app-ink-3)" }} />
+            <span aria-live="polite">{liveCount > 0 ? `${liveCount} on now` : later.length > 0 ? `next ${fmtMin(later[0].startsAt!)}` : "none on now"}</span>
           </span>
+          <span aria-hidden>·</span>
+          <span style={{ color: "var(--app-ink-2)" }}>{rows.length} verified</span>
+          <span aria-hidden>·</span>
+          <span style={{ color: "var(--app-ink-2)" }}>{townCount} {townCount === 1 ? "town" : "towns"}</span>
+          <span aria-hidden>·</span>
+          <span className="font-bold" style={{ color: "var(--app-positive)" }}>&#10003; at source</span>
         </p>
         <div role="tablist" aria-label="View" className="flex shrink-0 items-center gap-1 rounded-full p-0.5" style={{ background: "var(--app-bg-sunken)", boxShadow: "var(--app-edge)" }}>
           {(["now", "week"] as const).map((m) => (
@@ -333,7 +341,23 @@ export default function HappyHourGuide({
         <HappyHourBrowser rows={rows} today={day} nowMin={nowMin} />
       ) : (
         <div className="space-y-5">
-          {cover && <Cover it={cover} bloom={coverBloom} />}
+          {/* The "now" lead — framed by what's actually pouring this minute, so
+              the headline is the answer ("pouring now"), not just a photo. */}
+          {cover && (
+            <div className="space-y-2">
+              <p className="fg-eyebrow flex items-center gap-1.5">
+                {cover.kind === "live" ? (
+                  <>
+                    <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
+                    <span style={{ color: "var(--app-brand-press)" }}>Pouring now · {liveCount} {liveCount === 1 ? "spot" : "spots"}</span>
+                  </>
+                ) : (
+                  <span>{cover.kind === "later" ? "Next pour today" : "Next pour this week"}</span>
+                )}
+              </p>
+              <Cover it={cover} bloom={coverBloom} />
+            </div>
+          )}
 
           <IndexSection label="Also pouring now" count={liveRest.length} tone="var(--app-brand-press)" items={liveRest} nowMin={nowMin} />
           <IndexSection label="Opening later today" count={laterRest.length} tone="var(--app-accent)" items={laterRest} nowMin={nowMin} />
