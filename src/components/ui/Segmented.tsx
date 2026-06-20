@@ -28,7 +28,9 @@ export type SegmentItem<K extends string> = {
 };
 
 const SEG_BASE =
-  "inline-flex items-center justify-center gap-1.5 font-semibold transition active:scale-[0.96]";
+  // tap-44 extends the hit zone to >=44px even at the compact sm size (30px
+  // visual), so the map's Nearby/Whole-county toggle is reachable one-handed.
+  "tap-44 inline-flex items-center justify-center gap-1.5 font-semibold transition active:scale-[0.96]";
 const SEG_SIZE: Record<"sm" | "md", string> = {
   md: "min-h-[40px] px-3.5 py-2 text-[12px]",
   sm: "min-h-[30px] px-2.5 py-1 text-[11px]",
@@ -36,8 +38,10 @@ const SEG_SIZE: Record<"sm" | "md", string> = {
 
 function segStyle(active: boolean): CSSProperties {
   return {
-    background: active ? "var(--app-brand)" : "transparent",
-    color: active ? "#fff" : "var(--app-ink-2)",
+    // brand-press + on-brand (not white-on-brand) so the active segment passes
+    // AA contrast (white on --app-brand is only 4.17:1).
+    background: active ? "var(--app-brand-press)" : "transparent",
+    color: active ? "var(--app-on-brand)" : "var(--app-ink-2)",
   };
 }
 

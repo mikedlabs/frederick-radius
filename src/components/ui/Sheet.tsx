@@ -183,7 +183,7 @@ export default function Sheet({
                 type="button"
                 onClick={onClose}
                 aria-label="Close"
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
+                className="tap-44 grid h-8 w-8 shrink-0 place-items-center rounded-full transition-colors hover:bg-[var(--app-bg-sunken)]"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 <X className="h-4 w-4" strokeWidth={2} aria-hidden />
