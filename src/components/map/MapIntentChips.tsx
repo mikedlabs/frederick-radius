@@ -216,7 +216,7 @@ export default function MapIntentChips({
           <Link
             href={`/map?intent=${activeIntent.key}${openSuffix}`}
             aria-current={!activeSub ? "page" : undefined}
-            className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.97]"
+            className="tap-44 shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.97]"
             style={{
               background: !activeSub ? activeIntent.color : "transparent",
               color: !activeSub ? "#fff" : activeIntent.color,
@@ -238,7 +238,7 @@ export default function MapIntentChips({
                 key={sub.key}
                 href={`/map?intent=${activeIntent.key}&sub=${sub.key}${openSuffix}`}
                 aria-current={isActive ? "page" : undefined}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
+                className="tap-44 inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-tight transition active:scale-[0.97]"
                 style={{
                   background: isActive
                     ? activeIntent.color
