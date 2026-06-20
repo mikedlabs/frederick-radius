@@ -1,5 +1,18 @@
 {
   "fold": {
+    "the-cadillac-counselor": "brooks-behavioral-health-services-llc",
+    "frederick-eagles-club": "eagles-aeire-1067",
+    "frederick-performing-arts": "new-spire-arts",
+    "wash-dry-and-fold": "4th-street-laundromat",
+    "bell-tower-baker-park": "joseph-dill-baker-memorial-carillon-bell-tower",
+    "staley-field": "staley-park",
+    "the-goddess-group": "the-home-of-everything-frederick",
+    "wa-tolbard-heating-and-air-conditioning": "w-a-tolbard-heating-and-ac-llc",
+    "elks-w-all-saints-street": "mountain-city-lodge",
+    "redmans-club": "improved-order-of-redmens-chippewa-tribe-19",
+    "the-historical-society-of-frederick-county": "heritage-frederick",
+    "liberty-gas-station": "east-street-liberty",
+    "artomaticfrederick": "y-arts-center",
     "taco-daddy-cantina-tequila-bar": "agave-137-tequila-bar-and-kitchen",
     "summitra": "sumittra-thai-cuisine",
     "tagthe-artists-gallery": "tagthe-artists-gallery-frederick",
@@ -21,6 +34,10 @@
     "enforme-interactive": "celerate"
   },
   "remove": [
+    "drug-detox-frederick",
+    "addiction-rehab-frederick",
+    "freez-king",
+    "white-star-lunch-n-ette",
     "cyclefit-frederick",
     "manoushe",
     "south-market-creamery-frederick",
@@ -53,6 +70,19 @@
     "rockwell-brewery-frederick-2"
   ],
   "patch": {
+    "community-bridge": { "clearGoogle": true },
+    "immersion-active": { "clearGoogle": true },
+    "hill-house-bed-and-breakfast": { "clearGoogle": true },
+    "red-winged-blackbird-records": { "clearGoogle": true },
+    "the-healing-temple": { "clearGoogle": true },
+    "frederick-county-coalition-for-the-homeless": { "clearGoogle": true },
+    "new-hope-cafe": { "clearGoogle": true },
+    "hydro-designs": { "clearGoogle": true },
+    "the-inkery": { "clearGoogle": true },
+    "liberty-community-church-inc": { "clearGoogle": true, "clearPhoto": true },
+    "serenity-tearoom-fine-dining": { "clearGoogle": true, "clearPhoto": true },
+    "ananda-shala-yoga": { "clearGoogle": true },
+    "the-alley-wagon": { "clearGoogle": true },
     "post-office-4": { "category": "services" },
     "united-states-postal-service-66": { "category": "services" },
     "united-states-postal-service-woodsboro": { "category": "services" },
@@ -106,6 +136,7 @@
       "category": "wellness"
     },
     "drewskiithebarber": {
+      "clearGoogle": true,
       "category": "services"
     },
     "east-patrick-barbershop": {
@@ -157,6 +188,7 @@
       "category": "wellness"
     },
     "marianne-riley-psychotherapy": {
+      "clearGoogle": true,
       "category": "wellness"
     },
     "mcclellan-veterinary-clinic": {
@@ -175,6 +207,7 @@
       "category": "services"
     },
     "om-chakra-holistic-healing-and-massage-center": {
+      "clearGoogle": true,
       "category": "wellness"
     },
     "pain-management-massage-studio": {
@@ -224,10 +257,8 @@
       "category": "services"
     },
     "the-affiliated-barbershop": {
+      "clearGoogle": true,
       "category": "services"
-    },
-    "the-cadillac-counselor": {
-      "category": "wellness"
     },
     "the-space-between-psychotherapy-llc-for-telehealth": {
       "category": "wellness"
@@ -299,9 +330,6 @@
     "w-a-tolbard-heating-and-ac-llc": {
       "category": "services"
     },
-    "wa-tolbard-heating-and-air-conditioning": {
-      "category": "services"
-    },
     "sos-safe-ride": {
       "category": "services"
     },
@@ -339,6 +367,8 @@
       "category": "services"
     },
     "cm3-solutions": {
+      "clearGoogle": true,
+      "clearPhoto": true,
       "category": "services"
     }
   }
