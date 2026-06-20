@@ -41,6 +41,7 @@ import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { liveMusicTonight } from "@/lib/events/live-music";
 import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
+import { compareForLead, pickLeadEvent } from "@/lib/events/lead-rank";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -130,11 +131,11 @@ function pickFeaturedEvent(now: Date, pool: EventWithMeta[]) {
       !NON_PUBLIC_EVENT.test(e.title ?? "") &&
       Date.parse(e.starts_at) <= windowEnd,
   );
-  return (
-    upcoming.find((e) => Boolean(e.hero_image)) ??
-    upcoming[0] ??
-    null
-  );
+  // Lead-rank, not raw chronology: a photo-led draw, then any real draw, then a
+  // routine recurring program (storytime/class) last — so the cron-ingested
+  // library calendar (PR #894) can't put a 10am storytime in the hero ahead of
+  // tonight's carnival or concert.
+  return pickLeadEvent(upcoming);
 }
 
 // /today is time-sensitive, but force-dynamic made every visit pay the
@@ -182,7 +183,10 @@ export default async function HomePage() {
   const todayAll = publicEvents
     .filter((e) => isEventToday(e.starts_at, now))
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  const todaysEvents = todayAll.filter((e) => !isUtilityEvent(e));
+  // Draws lead, routine recurring programs (storytimes/classes) sink to the end
+  // of the rail — soonest-first within each tier (compareForLead). The civic
+  // tail stays chronological.
+  const todaysEvents = todayAll.filter((e) => !isUtilityEvent(e)).sort(compareForLead);
   const todaysCivic = todayAll.filter((e) => isUtilityEvent(e));
   // Lead with the big feature card only when the featured event is one of today's.
   const showHero = Boolean(featuredEvent && todaysEvents.some((e) => e.slug === featuredEvent.slug));
