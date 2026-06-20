@@ -102,7 +102,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    // "default" = dark status-bar text on the themed cream bar. "black-translucent"
+    // rendered WHITE text over the light paper ground, hiding the clock/battery.
+    statusBarStyle: "default",
     title: "Radius",
   },
 };
