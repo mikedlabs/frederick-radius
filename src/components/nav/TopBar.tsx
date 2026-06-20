@@ -133,7 +133,7 @@ export default function TopBar() {
               type="button"
               onClick={goBack}
               aria-label="Back"
-              className="-ml-1.5 inline-flex h-10 items-center gap-1 rounded-full pl-1 pr-2.5 font-semibold tracking-tight transition active:scale-[0.96]"
+              className="-ml-1.5 inline-flex h-11 items-center gap-1 rounded-full pl-1 pr-2.5 font-semibold tracking-tight transition active:scale-[0.96]"
               style={{ color: "var(--app-ink)" }}
             >
               <ChevronLeft className="h-6 w-6" strokeWidth={2.25} aria-hidden />
@@ -208,23 +208,25 @@ export default function TopBar() {
               so it has to be one tap from anywhere. LocationChip
               stays mobile-hidden because the search modal carries
               the same affordance. */}
-          {/* Live county pulse indicator — lights up when there's
-              an active NWS alert, school alert, traffic incident, or
-              significant power outage. Quiet by default so it never
-              competes with the rest of the header chrome. */}
+          {/* Right cluster reads left→right: where you are (LocationChip,
+              nearest search), what's happening (PulseIndicator), then the
+              catch-all field-guide drawer LAST — the conventional spot for an
+              overflow control. LocationChip is hidden on the narrowest phones
+              where the search bar needs the room (location is still settable
+              inside the search modal); it surfaces from sm: up. */}
+          <div className="hidden sm:block">
+            <LocationChip />
+          </div>
+
+          {/* Live county pulse — lights up on an active NWS/school alert,
+              traffic incident, or significant outage; quiet otherwise. */}
           <PulseIndicator />
 
-          {/* Settings lives in the More menu now (Premium Overhaul Phase 2:
-              the header carries the wordmark, the search, and one utility
-              control). The MoreSheet already lists Settings. */}
-
-          {/* "More" trigger — opens the Field Guide drawer (books,
-              History, Collections, Tools, Useful, App items). The
-              drawer USED to be a 5th bottom-nav tab; in the May 2026
-              IA cleanup it moved here. Smaller footprint, same
-              destinations reachable. The 4-tab BottomNav / SideRail
-              now own only the primary surfaces (Today / Map / Events
-              / My Radius). */}
+          {/* "More" opens the Field Guide drawer (History, Markers, Trails,
+              Rivers, Collections, Tools…). A visible label from sm: up so the
+              whole field guide behind it is discoverable, not buried under a
+              bare "⋯"; bordered like PulseIndicator for one consistent cluster.
+              tap-44 keeps the 44px target on the 36px-tall control. */}
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
@@ -232,18 +234,12 @@ export default function TopBar() {
             aria-expanded={moreOpen}
             aria-label="More"
             title="More"
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)] active:scale-95"
-            style={{ color: "var(--app-ink-3)" }}
+            className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
-            <MoreHorizontal className="h-[18px] w-[18px]" strokeWidth={2} aria-hidden />
+            <MoreHorizontal className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
+            <span className="hidden text-[14px] font-medium leading-none sm:inline">More</span>
           </button>
-
-          {/* LocationChip is hidden on the narrowest phones where the
-              search bar needs the room; surfaces from sm: up. The user
-              can still see/set location inside the search modal. */}
-          <div className="hidden sm:block">
-            <LocationChip />
-          </div>
         </div>
       </header>
 
