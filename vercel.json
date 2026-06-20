@@ -10,6 +10,10 @@
       "schedule": "15 9 * * *"
     },
     {
+      "path": "/api/ingest/fcvfra",
+      "schedule": "20 9 * * *"
+    },
+    {
       "path": "/api/cron/notify-civic-alerts",
       "schedule": "*/30 * * * *"
     },
