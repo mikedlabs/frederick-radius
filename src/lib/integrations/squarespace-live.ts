@@ -106,8 +106,16 @@ async function fetchVenue(
       }
       return [];
     }
-    const data = (await res.json()) as { upcoming?: SquarespaceItem[] };
-    const items = Array.isArray(data.upcoming) ? data.upcoming : [];
+    // Squarespace events collections expose future shows in `upcoming`; some
+    // (e.g. Rockwell Brewery) only populate the generic `items` array. Prefer
+    // `upcoming`, fall back to `items` — the date guard below filters either to
+    // the real upcoming window, so a stale/past item never leaks.
+    const data = (await res.json()) as { upcoming?: SquarespaceItem[]; items?: SquarespaceItem[] };
+    const items = Array.isArray(data.upcoming) && data.upcoming.length
+      ? data.upcoming
+      : Array.isArray(data.items)
+        ? data.items
+        : [];
     const out: VenueEvent[] = [];
     for (const item of items) {
       const title = (item.title ?? "").trim();

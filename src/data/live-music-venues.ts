@@ -76,6 +76,11 @@ export const LIVE_MUSIC_VENUES: LiveMusicVenue[] = [
   // a clean structured JSON (`?format=json` → `upcoming[]`), so the lineup
   // ingests at runtime (squarespace-live.ts) and stays fresh on its own.
   { slug: "the-banyan-frederick",               squarespace: "https://www.thebanyanmd.com/livemusic", scheduleNote: "Live music most Fri & Sat, 9 PM" },
+  // Breweries with their lineup on a Squarespace events page (?format=json),
+  // fetch-verified 2026-06-20. Steinhardt exposes `upcoming[]`; Rockwell only
+  // `items[]` (the parser handles both). All shows are at the venue itself.
+  { slug: "steinhardt-brewing-company-frederick", squarespace: "https://www.steinhardtbrewing.com/live-music-events", scheduleNote: "Live music, jazz jam & comedy on Carroll Creek" },
+  { slug: "rockwell-brewery-frederick",           squarespace: "https://www.rockwellbrewery.com/events", scheduleNote: "Busy live-music calendar at the Riverside taproom" },
 
   // ── Wineries / farm breweries (weekend live music, seasonal) ──
   { slug: "linganore-winecellars-mount-airy",   scheduleNote: "Wine & music festivals (Mission Tix)" },
