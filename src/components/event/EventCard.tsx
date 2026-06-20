@@ -1,11 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
-import {
-  Activity, Apple, Baby, Beer, Building2, CalendarDays, Church, Coffee,
-  Heart, Landmark, Library, Music, Palette, ShoppingBag, Theater, Trees,
-  Users, Utensils, Vote, type LucideIcon,
-} from "lucide-react";
+import CategoryIcon from "@/components/place/CategoryIcon";
+import IconStamp from "@/components/ui/IconStamp";
 import type { EventWithMeta } from "@/lib/loaders/events";
 import { eventDateBlock } from "@/lib/loaders/events";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
@@ -19,33 +16,10 @@ import { eventTrust } from "@/lib/trust";
 import { formatDistance } from "@/lib/geo";
 import { statusLabel } from "@/lib/event-status";
 
-// Small Lucide icon for the no-photo glance / utility tile. A focused
-// subset of the category taxonomy's icon names (the ones that actually
-// appear on event surfaces) → component, so a photo-less row gets a
-// real, centered category glyph on a tonal tile instead of the cropped
-// 64px CategoryGraphic that read as a broken image. Anything unmapped
-// resolves to a calendar mark — honest and never broken.
-const CATEGORY_ICON: Record<string, LucideIcon> = {
-  Activity, Apple, Baby, Beer, Building2, Church, Coffee, Heart, Landmark,
-  Library, Music, Palette, ShoppingBag, Theater, Trees, Users, Utensils,
-  Vote,
-};
-/** Module-scope render component (NOT a render-time alias — that resets
- *  state and trips react-hooks/static-components). Resolves the
- *  category's Lucide glyph and renders it; unmapped → calendar mark. */
-function CategoryIcon({
-  category,
-  className,
-  strokeWidth = 1.75,
-}: {
-  category: string;
-  className?: string;
-  strokeWidth?: number;
-}) {
-  const name = CATEGORY_BY_SLUG[category]?.icon;
-  const Glyph = (name && CATEGORY_ICON[name]) || CalendarDays;
-  return <Glyph className={className} strokeWidth={strokeWidth} />;
-}
+// Event cards use the SHARED CategoryIcon seam (place/CategoryIcon): it resolves
+// the bespoke engraved woodcut glyph for a category first, then a Lucide vector,
+// so an event card gets the same hand-drawn field-guide mark a place card does
+// instead of a generic Lucide icon. (Replaced the local Lucide-only map.)
 
 export default function EventCard({
   event,
@@ -122,7 +96,7 @@ export default function EventCard({
             color: accent,
           }}
         >
-          <CategoryIcon category={event.category} className="h-3.5 w-3.5" strokeWidth={2} />
+          <CategoryIcon slug={event.category} className="h-3.5 w-3.5" strokeWidth={2} />
         </span>
         <Link
           href={`/events/${event.slug}`}
@@ -292,7 +266,7 @@ export default function EventCard({
             className="absolute inset-0 grid place-items-center"
             style={{ background: `radial-gradient(120% 100% at 30% 18%, color-mix(in srgb, ${accent} 22%, var(--app-bg-elevated-solid)), var(--app-bg-elevated-solid))`, color: accent }}
           >
-            <CategoryIcon category={event.category} className="h-24 w-24 opacity-50" />
+            <CategoryIcon slug={event.category} className="h-24 w-24 opacity-50" />
           </span>
         )}
         <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: accent, opacity: onPhoto ? 0.9 : 1 }} />
@@ -375,7 +349,7 @@ export default function EventCard({
           {/* Faint engraved category glyph — paper texture + a distinct
               printed-calendar identity, the way the intel records carry one. */}
           <span aria-hidden className="pointer-events-none absolute -bottom-4 -right-3" style={{ color: accent, opacity: 0.06 }}>
-            <CategoryIcon category={event.category} className="h-[88px] w-[88px] rotate-[8deg]" strokeWidth={0.9} />
+            <CategoryIcon slug={event.category} className="h-[88px] w-[88px] rotate-[8deg]" strokeWidth={0.9} />
           </span>
           <div
             aria-hidden
@@ -514,6 +488,12 @@ export default function EventCard({
                     · {statusText}
                   </span>
                 )}
+                {/* Recurrence legibility: a weekly bingo or storytime reads as a
+                    repeating series, not a one-off. Derived from the real
+                    collapsed cadence, never asserted. */}
+                {event.is_recurring && event.recurrence_text && (
+                  <span style={{ color: "var(--app-ink-3)" }}>· {event.recurrence_text}</span>
+                )}
               </p>
               {/* Venue line — small, calm, single-line truncate. */}
               {event.venue_name && (
@@ -564,21 +544,13 @@ export default function EventCard({
                 <span className="absolute inset-0 rounded-[12px]" style={{ boxShadow: "inset 0 0 0 1px rgba(20,20,18,0.10)" }} />
               </div>
             ) : (
-              <div
-                aria-hidden
-                className="grid h-12 w-12 shrink-0 self-center place-items-center rounded-[14px]"
-                style={{
-                  // The category glyph as a pressed-paper SEAL (the IconStamp
-                  // recipe): tint over elevated paper, glyph in the accent, a
-                  // hairline edge + top highlight + a warm accent-tinted lift —
-                  // not a flat tinted circle.
-                  background: `color-mix(in srgb, ${accent} 14%, var(--app-bg-elevated))`,
-                  color: accent,
-                  boxShadow: `var(--app-edge), var(--app-hi), 0 6px 14px -8px color-mix(in srgb, ${accent} 34%, transparent)`,
-                }}
-              >
-                <CategoryIcon category={event.category} className="h-5 w-5" />
-              </div>
+              // The category glyph as a real pressed-paper SEAL — the canonical
+              // IconStamp (tint over elevated paper, engraved glyph in the
+              // accent, hairline edge + top highlight + warm accent lift),
+              // replacing the hand-built tile so event cards match place/Saved.
+              <IconStamp accent={accent} size="lg" className="shrink-0 self-center">
+                <CategoryIcon slug={event.category} />
+              </IconStamp>
             )}
           </div>
         </Link>
