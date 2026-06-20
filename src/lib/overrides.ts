@@ -24,6 +24,13 @@ export type PatchFields = {
    *  unincorporated communities Jefferson, Ijamsville, etc. have no town page,
    *  so a place tagged with them silently drops from every municipality filter). */
   municipality?: string;
+  /** Null the MISATTRIBUTED Google rating + review count: this slug was enriched
+   *  with another (co-located/same-address) business's Google listing, so its
+   *  rating belongs to a different business. Verified per-place by web check
+   *  (2026-06-20 phantom-ratings sweep). */
+  clearGoogle?: boolean;
+  /** Null the misattributed hero photo (it shows the OTHER business). */
+  clearPhoto?: boolean;
 };
 
 export type Overrides = {
@@ -83,6 +90,9 @@ export function patchRecord<T extends { slug: string }>(
   if (x.category) (out as Record<string, unknown>).category = x.category;
   if (x.short_blurb) (out as Record<string, unknown>).short_blurb = x.short_blurb;
   if (x.municipality) (out as Record<string, unknown>).municipality = x.municipality;
+  // clearGoogle / clearPhoto are applied in decoratePlace AFTER applyEnrichment
+  // (which re-derives google_rating/photo from the raw enrichment, so nulling
+  // them here would be clobbered).
   return out;
 }
 

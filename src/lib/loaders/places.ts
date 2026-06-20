@@ -605,6 +605,21 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     enriched.google_photo_url = undefined;
     enriched.google_photos = [];
   }
+  // Misattributed Google data: this slug was enriched with a co-located / same-
+  // address OTHER business's Google listing, so its rating belongs to a
+  // different business (verified per-place, 2026-06-20 phantom-ratings sweep).
+  // Null the borrowed rating/count, and the hero photo when it shows the other
+  // business ("no photo > wrong photo"), so reviews stay with who earned them.
+  const ovClear = OV_PATCH?.[p.slug];
+  if (ovClear?.clearGoogle) {
+    enriched.google_rating = undefined;
+    enriched.google_rating_count = undefined;
+    enriched.local_favorite = false;
+  }
+  if (ovClear?.clearPhoto) {
+    enriched.google_photo_url = undefined;
+    enriched.google_photos = [];
+  }
   // Hours provenance, Phase 1 precedence: Google enrichment, then a
   // curated manual schedule. OSM hours apply to the map's OSM layer,
   // not the static place records, so they are not stamped here.
