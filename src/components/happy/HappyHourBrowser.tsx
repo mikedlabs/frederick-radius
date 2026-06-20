@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Martini } from "lucide-react";
+import DealLines from "@/components/happy/DealLines";
+import { figureCount } from "@/lib/happyHourDeal";
 
 /**
  * HappyHourBrowser — the interactive, day-aware reveal for /happy-hour.
@@ -96,20 +98,21 @@ function RowCard({ r, when, live, endsAt, accent, hideTown }: { r: HHRow; when: 
             {!hideTown && r.town && <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>{`  ·  ${r.town}`}</span>}
           </h3>
           {live ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.06em] text-white" style={{ background: "var(--app-brand)" }}>
-              <span aria-hidden className="live-dot h-1 w-1 rounded-full bg-white" />
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.06em]" style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}>
+              <span aria-hidden className="live-dot h-1 w-1 rounded-full" style={{ background: "var(--app-on-brand)" }} />
               {endsAt && endsAt < 1440 ? `till ${fmtMin(endsAt)}` : "on now"}
             </span>
           ) : r.verified ? (
             <span aria-label="verified" title="verified at the source" className="shrink-0 font-mono text-[11px] font-bold leading-none" style={{ color: "var(--app-positive)" }}>✓</span>
           ) : null}
         </div>
-        {/* WHEN (accent mono) + the FULL deal — no truncation; the specifics
-            are the whole point. */}
-        <p className="mt-0.5 text-[12.5px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
-          <span className="font-mono font-semibold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-ink-2)" }}>{when}</span>
-          {r.deal && <span> · <span style={{ color: "var(--app-ink)" }}>{r.deal}</span></span>}
-        </p>
+        {/* WHEN (accent mono), then the deal as clean clauses (each figure
+            glued to its item; runs through DealLines so separators normalize
+            and no raw em dash leaks into user copy). */}
+        <p className="mt-0.5 font-mono text-[11.5px] font-semibold tabular-nums tracking-[0.01em]" style={{ color: "var(--app-ink-2)" }}>{when}</p>
+        {r.deal && (
+          <DealLines deal={r.deal} layout="inline" max={4} vague={figureCount(r.deal) === 0} className="mt-0.5 line-clamp-2 text-[12.5px]" />
+        )}
       </div>
     </article>
   );
@@ -179,14 +182,14 @@ export default function HappyHourBrowser({ rows, today, nowMin }: { rows: HHRow[
               aria-pressed={active}
               className="tactile-interactive flex flex-col items-center gap-1 rounded-[var(--app-radius-md)] py-2 transition"
               style={{
-                background: active ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                background: active ? "var(--app-brand-press)" : "var(--app-bg-elevated)",
                 boxShadow: active ? "var(--app-elev-1)" : "var(--app-edge), var(--app-hi)",
                 border: active ? "none" : "1px solid var(--app-border)",
               }}
             >
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.04em]" style={{ color: active ? "#fff" : "var(--app-ink-2)" }}>{letter}</span>
-              <span className="font-mono text-[12px] font-bold tabular-nums leading-none" style={{ color: active ? "#fff" : n > 0 ? "var(--app-ink)" : "var(--app-ink-3)" }}>{n || "·"}</span>
-              <span aria-hidden className="h-1 w-1 rounded-full" style={{ background: isToday ? (active ? "#fff" : "var(--app-accent)") : "transparent" }} />
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.04em]" style={{ color: active ? "var(--app-on-brand)" : "var(--app-ink-2)" }}>{letter}</span>
+              <span className="font-mono text-[12px] font-bold tabular-nums leading-none" style={{ color: active ? "var(--app-on-brand)" : n > 0 ? "var(--app-ink)" : "var(--app-ink-3)" }}>{n || "·"}</span>
+              <span aria-hidden className="h-1 w-1 rounded-full" style={{ background: isToday ? (active ? "var(--app-on-brand)" : "var(--app-accent)") : "transparent" }} />
             </button>
           );
         })}

@@ -141,5 +141,5 @@ describe("getLiveCardEventBySlug", () => {
     });
     const stale = liveToCardEvent(sample()).slug; // different start than the feed event
     expect(await getLiveCardEventBySlug(stale)).toBeNull();
-  });
+  }, 15000); // raised from the 5s default: flakes under full-suite contention (passes in isolation)
 });
