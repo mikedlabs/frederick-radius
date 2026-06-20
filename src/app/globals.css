@@ -173,6 +173,19 @@
   --app-radius-lg: 24px;
   --app-radius-xl: 32px;
 
+  /* Chrome heights — ONE source of truth so the magic numbers (56/48/84) can't
+     drift between the map, its loading skeleton, the aerial view, and the
+     floating controls (they did, causing a tab-in jump + a nav/toggle overlap).
+     --app-topbar-h = the h-14 TopBar; --app-bottomnav-reserve = clearance for the
+     floating bottom nav on viewport-filled surfaces. --app-browse-map-height is
+     the exact map canvas height, consumed by both the map page and its skeleton. */
+  --app-topbar-h: 56px;
+  --app-bottomnav-reserve: 84px;
+  --app-browse-map-height: calc(
+    100dvh - var(--app-topbar-h) - 48px - var(--app-bottomnav-reserve) -
+      env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)
+  );
+
   --app-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --app-dur-fast: 160ms;
   --app-dur-med: 240ms;
