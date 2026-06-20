@@ -3,6 +3,7 @@ import places from "@/data/places-client.json" with { type: "json" };
 import overrides from "@/data/places-overrides.json" with { type: "json" };
 import fieldNotes from "@/data/field-notes.json" with { type: "json" };
 import { isValidCoord } from "@/lib/geo";
+import { LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
 
 /**
  * Data-health guard — locks the invariants the 2026-06-20 all-business audit
@@ -130,6 +131,16 @@ describe("places-overrides referential integrity", () => {
     const ka = (overrides as { keepApart?: string[] }).keepApart ?? [];
     const folded = ka.filter((s) => !slugs.has(s));
     expect(folded).toEqual([]);
+  });
+});
+
+describe("wikimedia landmark-photo integrity", () => {
+  // A curated Commons photo is keyed by place slug. If a slug is renamed the
+  // entry would silently orphan (the photo just stops rendering) — assert each
+  // resolves to a live place so the rename is caught here instead.
+  it("every landmark-photo slug resolves to a live place", () => {
+    const orphans = Object.keys(LANDMARK_PHOTOS).filter((s) => !slugs.has(s));
+    expect(orphans).toEqual([]);
   });
 });
 
