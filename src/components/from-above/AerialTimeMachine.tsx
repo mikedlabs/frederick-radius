@@ -61,7 +61,7 @@ export default function AerialTimeMachine() {
   }, []);
 
   return (
-    <div className="relative h-[calc(100vh-var(--app-nav-h,56px))] w-full overflow-hidden">
+    <div className="relative h-[calc(100dvh-84px-env(safe-area-inset-bottom,0px))] w-full overflow-hidden">
       <Map
         mapboxAccessToken={MAPBOX_TOKEN}
         initialViewState={INITIAL}

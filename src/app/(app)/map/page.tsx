@@ -341,11 +341,12 @@ export default async function MapPage({
         <BrowseMapArea params={earlyParams} />
       </Suspense>
       {/* The mode toggle floats over the map as a control near the bottom
-          edge (the in-view drawer it used to sit above was removed). Radius
-          mode floats its copy the same way. */}
+          edge. Lifted ABOVE the floating bottom-nav reserve (84px) so on a
+          narrow phone the centered toggle and the centered nav pill never
+          overlap (they collided at +16px). lg pins it to the right gutter. */}
       <div
         className="pointer-events-none absolute inset-x-0 z-[var(--z-map-control)] flex justify-center px-3 lg:justify-end lg:px-4"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 84px)" }}
       >
         <div className="pointer-events-auto">
           <MapModeToggle mode="browse" />

@@ -21,8 +21,10 @@ export default function MapLoading() {
       </div>
       {/* Map canvas */}
       <div className="relative px-0">
+        {/* Height must match the real map in map/page.tsx EXACTLY, or the
+            canvas visibly jumps the moment the route resolves. */}
         <Skeleton.Block
-          height="calc(100dvh - 56px - 48px - 48px - env(safe-area-inset-bottom, 0px))"
+          height="calc(100dvh - 56px - 48px - 84px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))"
           round={0}
         />
       </div>
