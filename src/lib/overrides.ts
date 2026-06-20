@@ -20,6 +20,10 @@ export type PatchFields = {
   name?: string;
   category?: string;
   short_blurb?: string;
+  /** Remap an out-of-vocabulary / wrong municipality slug to a valid one (the
+   *  unincorporated communities Jefferson, Ijamsville, etc. have no town page,
+   *  so a place tagged with them silently drops from every municipality filter). */
+  municipality?: string;
 };
 
 export type Overrides = {
@@ -78,6 +82,7 @@ export function patchRecord<T extends { slug: string }>(
   if (x.name) (out as Record<string, unknown>).name = x.name;
   if (x.category) (out as Record<string, unknown>).category = x.category;
   if (x.short_blurb) (out as Record<string, unknown>).short_blurb = x.short_blurb;
+  if (x.municipality) (out as Record<string, unknown>).municipality = x.municipality;
   return out;
 }
 

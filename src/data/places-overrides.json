@@ -53,6 +53,13 @@
     "rockwell-brewery-frederick-2"
   ],
   "patch": {
+    "post-office-4": { "category": "services" },
+    "united-states-postal-service-66": { "category": "services" },
+    "united-states-postal-service-woodsboro": { "category": "services" },
+    "new-market-united-methodist-church-new-market": { "category": "worship" },
+    "welcome-to-the-rusty-rose-restored-farmhouse-feel-in-the-hea-jefferson": { "municipality": "middletown" },
+    "catoctin-creek-aqueduct-co-canal-jefferson": { "municipality": "brunswick" },
+    "ledo-pizza-ijamsville": { "municipality": "urbana" },
     "visitation-hotel": {
       "short_blurb": "Boutique hotel in a restored downtown landmark that began as a monastery, then a school, now home to the Voltaggio brothers' Wye Oak Tavern."
     },
@@ -267,9 +274,6 @@
     },
     "wags-restaurant": {
       "name": "Wag's Restaurant"
-    },
-    "roros-mexican-grill-and-cantina": {
-      "name": "Roro's Mexican Grill and Cantina"
     },
     "mcclintocks-back-bar": {
       "name": "McClintock's Back Bar"
