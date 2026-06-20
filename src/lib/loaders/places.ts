@@ -305,6 +305,20 @@ const BASE_PLACES: Place[] = (DEDUPE_ON ? STATIC_DEDUPED : PLACES)
   // patchRecord so a curated city override would win. Lesson of the city-split
   // + variant audit (2026-06).
   .map((p) => (p.city ? { ...p, city: normalizeCity(p.city, p.municipality) } : p))
+  // postal_code backfill: 952/1646 records had an empty (or "MD"/"United
+  // States") ZIP slot despite a valid MD ZIP sitting in the address string
+  // (2026-06-20 data audit). Parse the /2[01]\d{3}/ token out of the address
+  // when the field isn't already a 5-digit ZIP. Boundary cleaning, BEFORE
+  // patchRecord so a curated override still wins.
+  .map((p) => {
+    const cur = String(p.postal_code ?? "");
+    if (/^\d{5}/.test(cur)) return p;
+    const zip = String(p.address ?? "").match(/\b(2[01]\d{3})\b/)?.[1];
+    if (zip) return { ...p, postal_code: zip };
+    // No recoverable ZIP: clear a junk non-ZIP value ("MD"/"United States") so
+    // it can't masquerade as a postal code; leave a genuinely-empty field empty.
+    return cur ? { ...p, postal_code: "" } : p;
+  })
   .map((p) => patchRecord(p, OV_PATCH))
   // Urbana geo-claim runs LAST so it composes with dedupe + overrides.
   .map(claimUrbana)

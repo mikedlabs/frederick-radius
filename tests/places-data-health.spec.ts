@@ -55,6 +55,14 @@ describe("places-client data health", () => {
     const bad = PLACES.filter((p) => p.state != null && !ok.has(p.state));
     expect(bad.map((p) => `${p.slug} -> ${p.state}`)).toEqual([]);
   });
+
+  it("postal_code, when set, is a 5-digit ZIP (no 'MD'/'United States' leak)", () => {
+    const bad = PLACES.filter((p) => {
+      const z = String((p as { postal_code?: string }).postal_code ?? "");
+      return z !== "" && !/^\d{5}$/.test(z);
+    });
+    expect(bad.map((p) => p.slug)).toEqual([]);
+  });
 });
 
 describe("places-overrides referential integrity", () => {
