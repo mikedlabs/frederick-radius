@@ -1,9 +1,22 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Landmark, MapPin } from "lucide-react";
 import { getHistoricMarkers, getRegisterSites, type HistoricMarker } from "@/lib/integrations/historicSites";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import { wikimediaUrl } from "@/lib/integrations/wikimedia";
+
+// Editorial hero image for the page itself (not a place record): the red Roddy
+// Road covered bridge — the visual shorthand for "history on the ground". Public
+// domain (Carol M. Highsmith), Special:FilePath verified 200 image/jpeg.
+const MARKERS_HERO = {
+  file: "Roddy Road covered bridge near Thurmont in Frederick County, Maryland, built about 1850.jpg",
+  author: "Carol M. Highsmith",
+  license: "Public domain",
+  source_url:
+    "https://commons.wikimedia.org/wiki/File:Roddy_Road_covered_bridge_near_Thurmont_in_Frederick_County,_Maryland,_built_about_1850.jpg",
+};
 
 export const metadata: Metadata = {
   // Orphan-by-design like /trails and /rivers: real content, reachable by URL +
@@ -70,11 +83,37 @@ export default async function MarkersPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1.5">
-        <p className="eyebrow">Frederick County · on the ground</p>
-        <h1 className="display-2" style={{ color: "var(--app-ink)" }}>
-          Markers &amp; landmarks
-        </h1>
+      {/* Editorial hero — a real photograph of the county's most iconic
+          landmark carries identity before the eye reaches a word, then the
+          serif title sits on a soft dark gradient so it stays readable. */}
+      <header className="space-y-3">
+        <div className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
+          <div className="relative h-48 w-full sm:h-60">
+            <Image
+              src={wikimediaUrl(MARKERS_HERO.file, 1200)}
+              alt=""
+              aria-hidden
+              fill
+              priority
+              sizes="(max-width: 768px) 100vw, 640px"
+              className="object-cover"
+              style={{ objectPosition: "center 38%" }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.25) 55%, transparent 90%)",
+              }}
+            />
+            <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+              <p className="eyebrow" style={{ color: "rgba(255,255,255,0.82)" }}>
+                Frederick County · on the ground
+              </p>
+              <h1 className="display-2 text-white">Markers &amp; landmarks</h1>
+            </div>
+          </div>
+        </div>
         <p className="text-[14px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
           Read the inscription on every roadside marker in the county, and find the
           National Register landmarks and covered bridges. Live from MDOT and the
@@ -146,6 +185,19 @@ export default async function MarkersPage() {
           )}
         </>
       )}
+
+      <footer className="pt-2">
+        <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
+          Photo:{" "}
+          <a href={MARKERS_HERO.source_url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--app-ink-2)" }}>
+            {MARKERS_HERO.author}
+          </a>{" "}
+          · {MARKERS_HERO.license} · via{" "}
+          <a href="https://commons.wikimedia.org" target="_blank" rel="noopener noreferrer" style={{ color: "var(--app-ink-2)" }}>
+            Wikimedia Commons
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
