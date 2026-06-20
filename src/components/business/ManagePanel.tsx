@@ -184,7 +184,7 @@ function Field({
         type={type}
         required={required}
         placeholder={placeholder}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>
@@ -200,7 +200,7 @@ function Area({ name, label }: { name: string; label: string }) {
       <textarea
         name={name}
         rows={3}
-        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[15px] outline-none focus:ring-2"
+        className="block w-full rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2.5 text-[16px] outline-none focus:ring-2"
         style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
       />
     </label>

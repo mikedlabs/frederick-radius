@@ -2042,4 +2042,8 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   width: max(100%, 44px);
   height: max(100%, 44px);
   transform: translate(-50%, -50%);
+  /* The invisible hit-extender must actually receive taps even when the
+     control's own box is small or a sibling paints nearby. */
+  pointer-events: auto;
+  z-index: 0;
 }
