@@ -117,11 +117,11 @@
   },
   "black-hog-bbq-bar": {
     "happy_hour": {
-      "schedule": "Mon-Fri 4-6:30 PM",
-      "details": "Discounted wine, beer, rail and specialty cocktails.",
+      "schedule": "Mon-Fri 4-6:30pm",
+      "details": "Discounted wine, beer, rail, and specialty cocktails throughout the restaurant.",
       "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
       "confidence": "high",
-      "last_verified": "2026-06-15"
+      "last_verified": "2026-06-20"
     },
     "parking": {
       "text": "No dedicated lot. The closest public garage is Carroll Creek Garage (44 E Patrick St), reachable off the first block of S Market St; garages run $1/hour. Metered street parking on Market Street is now ParkMobile-only.",
@@ -155,6 +155,11 @@
         "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
         "confidence": "medium",
         "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Tuesday (10am-close): full slab of ribs with one side $25; 8 wings $10.",
+        "source_url": "https://blackhogbbq.com/locations/downtown-frederick/",
+        "confidence": "high"
       }
     ]
   },
@@ -242,14 +247,19 @@
         "text": "Live music weekly (local bands); the pub bills entertainment seven nights a week with trivia, karaoke, darts and live music. No single fixed live-music day/time is published; bands are booked through the Dan McGuire Group (bookings@danmcguiregroup.com).",
         "source_url": "https://www.bushwallers.com/events",
         "confidence": "medium"
+      },
+      {
+        "text": "Sunday: $18 crab cake sandwich, $19 crab mac n cheese; Sunday brunch 'Irish style' 11am-3pm.",
+        "source_url": "https://www.bushwallers.com/menu/daily-specials",
+        "confidence": "high"
       }
     ],
     "happy_hour": {
-      "schedule": "Sun 4-6 PM & 10 PM-close",
-      "details": "$5 off all scotch and $5.50 Irish pints.",
-      "source_url": "https://www.bushwallers.com/menu",
-      "last_verified": "2026-06-16",
-      "confidence": "high"
+      "schedule": "Sunday 4-6pm & 10pm-close",
+      "details": "$5 off all scotch, $5.50 Irish pints.",
+      "source_url": "https://www.bushwallers.com/menu/daily-specials",
+      "confidence": "high",
+      "last_verified": "2026-06-20"
     }
   },
   "cactus-flats-walkersville": {
@@ -1102,8 +1112,30 @@
         "source_url": "https://www.ottfrederick.com/",
         "confidence": "high",
         "last_verified": "2026-06-15"
+      },
+      {
+        "text": "Tuesday: Burger Night, $5 burgers 7-11pm, plus $2.50 drafts and $10 pitchers 7pm-1am.",
+        "source_url": "https://www.ottfrederick.com/",
+        "confidence": "high"
+      },
+      {
+        "text": "Wednesday: Taco Wednesdays, $2 tacos 7-10pm, plus $2.50 drafts and $10 pitchers.",
+        "source_url": "https://www.ottfrederick.com/",
+        "confidence": "high"
+      },
+      {
+        "text": "Thursday: Wing Special, 75c wings 7-11pm, plus $3 domestic bottles.",
+        "source_url": "https://www.ottfrederick.com/",
+        "confidence": "high"
       }
-    ]
+    ],
+    "happy_hour": {
+      "schedule": "Mon-Fri 4-7pm",
+      "details": "75c wings, $5 personal pizza, $1.50 PBR drafts, $3.50 rails, $2 well drinks, $1.50 domestic bottles.",
+      "source_url": "https://www.ottfrederick.com/",
+      "confidence": "high",
+      "last_verified": "2026-06-20"
+    }
   },
   "orchid-cellar-meadery-middletown": {
     "insider": [
@@ -1347,11 +1379,11 @@
       }
     ],
     "happy_hour": {
-      "schedule": "Mon-Fri 3-6 PM",
-      "details": "50% off all wings and $2 off full-pour drafts.",
+      "schedule": "Mon-Fri 3-6pm",
+      "details": "$2 off full pours (rotating craft draft) and 50% off wings.",
       "source_url": "https://roasthousepubfrederick.com/",
-      "last_verified": "2026-06-16",
-      "confidence": "high"
+      "confidence": "high",
+      "last_verified": "2026-06-20"
     }
   },
   "rocky-point-creamery-brunswick": {
@@ -2164,7 +2196,15 @@
       "source_url": "https://bentztown.com/menu/",
       "confidence": "high",
       "last_verified": "2026-06-19"
-    }
+    },
+    "insider": [
+      {
+        "text": "Line dancing every Wednesday, 7:30-9:30pm ($10 cover includes first drink).",
+        "source_url": "https://bentztown.com/line-dancing-night/",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      }
+    ]
   },
   "fireoak-culinary-tavern-frederick": {
     "happy_hour": {
@@ -2191,6 +2231,156 @@
       "source_url": "https://www.housewivesoffrederickcounty.com/best-happy-hour-frederick/",
       "confidence": "medium",
       "last_verified": "2026-06-19"
+    }
+  },
+  "agave-137-tequila-bar-and-kitchen": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-6pm",
+      "details": "$3.50 tacos, $7 margaritas, $5 house wine, half-off draft + rails.",
+      "source_url": "https://www.agave137.com/specials",
+      "confidence": "high",
+      "last_verified": "2026-06-20"
+    },
+    "deals": [
+      {
+        "text": "Monday: Margarita Monday / Service Industry Night, $5 margaritas all day.",
+        "source_url": "https://www.agave137.com/specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Tuesday: T&T Tuesday, $3 select tacos (chicken tinga, chorizo, carnitas) all day.",
+        "source_url": "https://www.agave137.com/specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Wednesday: Wing & Beer Wednesday, 75c wings (8-count, dine-in) and $4 domestic beers.",
+        "source_url": "https://www.agave137.com/specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Thursday: Thank You Thursday, 30% off for first responders, medical workers, and teachers.",
+        "source_url": "https://www.agave137.com/specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Friday: Friday Flight Night, 25% off tequila and mezcal flights, 6-10pm.",
+        "source_url": "https://www.agave137.com/specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Saturday: half-off drafts, 11am-4pm.",
+        "source_url": "https://www.agave137.com/specials",
+        "confidence": "high"
+      },
+      {
+        "text": "Sunday: all-day brunch specials, half-off domestic bottles, and 75c wings (dine-in).",
+        "source_url": "https://www.agave137.com/specials",
+        "confidence": "high"
+      }
+    ]
+  },
+  "rockwell-brewery-frederick": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-6pm",
+      "details": "Taproom happy hour at the Riverside location.",
+      "source_url": "https://www.rockwellbrewery.com/",
+      "confidence": "medium",
+      "last_verified": "2026-06-20"
+    },
+    "insider": [
+      {
+        "text": "Pourhouse Trivia every Wednesday at 7pm (sign-ups 6:30pm).",
+        "source_url": "https://www.pourhousetrivia.com/rockwell-brewery.html",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      }
+    ]
+  },
+  "the-cellar-door": {
+    "insider": [
+      {
+        "text": "Karaoke every Thursday at 9:30pm.",
+        "source_url": "https://www.cellardoorfrederick.com/entertainment-1",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      },
+      {
+        "text": "Open-mic comedy every Tuesday at 8pm.",
+        "source_url": "https://www.cellardoorfrederick.com/entertainment-1",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      }
+    ]
+  },
+  "steinhardt-brewing-company-frederick": {
+    "insider": [
+      {
+        "text": "Pour House Trivia every Thursday, 7-9pm.",
+        "source_url": "https://www.steinhardtbrewing.com/live-music-events",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      },
+      {
+        "text": "Bluegrass jam every Wednesday, 7-9pm.",
+        "source_url": "https://www.steinhardtbrewing.com/live-music-events",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      }
+    ]
+  },
+  "sandbox-brewhouse-frederick": {
+    "insider": [
+      {
+        "text": "Pour House Trivia every Monday at 6:30pm.",
+        "source_url": "https://www.sandboxbrewhouse.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      },
+      {
+        "text": "Board game night every Thursday at 6pm.",
+        "source_url": "https://www.sandboxbrewhouse.com/",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      }
+    ]
+  },
+  "rak-brewing-co-frederick": {
+    "insider": [
+      {
+        "text": "Pour House Trivia Tuesdays and Wednesdays, 7-9pm (sign-ups 6:30pm).",
+        "source_url": "https://www.rakbrewing.com/events/",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      }
+    ]
+  },
+  "prospect-point-brewing-frederick": {
+    "insider": [
+      {
+        "text": "Pour House Trivia every Wednesday at 6:30pm.",
+        "source_url": "https://www.pourhousetrivia.com/prospect-point-brewing.html",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      }
+    ]
+  },
+  "dragon-distillery-frederick": {
+    "insider": [
+      {
+        "text": "Pour House Trivia every Friday at 7pm.",
+        "source_url": "https://www.pourhousetrivia.com/dragon-distillery-friday.html",
+        "confidence": "high",
+        "last_verified": "2026-06-20"
+      }
+    ]
+  },
+  "river-bar-grill": {
+    "happy_hour": {
+      "schedule": "Mon-Fri 3-5pm",
+      "details": "Happy hour specials (itemized prices on the venue's cocktail menu).",
+      "source_url": "https://riverbargrillfrederick.com/happy-hour",
+      "confidence": "medium",
+      "last_verified": "2026-06-20"
     }
   }
 }
