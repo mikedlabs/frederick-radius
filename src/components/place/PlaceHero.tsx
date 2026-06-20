@@ -29,7 +29,7 @@ type Props = {
  */
 function resolvePhotoSrc(slug: string, width: number) {
   const wm = getLandmarkPhoto(slug);
-  if (wm) return { src: wikimediaUrl(wm.file, width), alt: wm.alt };
+  if (wm) return { src: wikimediaUrl(wm.file, width), alt: wm.alt, preferCurated: Boolean(wm.preferCurated) };
   return null;
 }
 
@@ -42,9 +42,21 @@ export default function PlaceHero({
   const width = size === "hero" ? 1200 : 600;
   const height = size === "hero" ? 700 : 400;
   const resolved = resolvePhotoSrc(slug, width);
-  // Real Google photo of the actual business beats a landmark photo.
-  const src = photoSrc ?? resolved?.src ?? null;
-  const alt = photoSrc ? name : resolved?.alt ?? "";
+  // Real Google photo of the actual business beats a landmark photo — unless
+  // the curated entry is preferCurated (the Google hero is wrong/weak for this
+  // landmark, verified per-place), which then wins.
+  let src: string | null;
+  let alt: string;
+  if (resolved?.preferCurated) {
+    src = resolved.src;
+    alt = resolved.alt;
+  } else if (photoSrc) {
+    src = photoSrc;
+    alt = name;
+  } else {
+    src = resolved?.src ?? null;
+    alt = resolved?.alt ?? "";
+  }
 
   // The Living Frame (hero + real photo only): a soft time-of-day wash echoing
   // the SkyHero, plus a warm corner glow during golden hour, both computed
@@ -193,14 +205,16 @@ export default function PlaceHero({
 export function PhotoCredit({
   slug, hasGooglePhoto,
 }: { slug: string; hasGooglePhoto?: boolean }) {
-  if (hasGooglePhoto) {
+  const wm = getLandmarkPhoto(slug);
+  // A preferCurated entry overrides the Google hero in PlaceHero, so credit the
+  // curated source even when a Google photo exists. Otherwise Google wins.
+  if (hasGooglePhoto && !wm?.preferCurated) {
     return (
       <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>
         Photos via Google
       </p>
     );
   }
-  const wm = getLandmarkPhoto(slug);
   if (wm) {
     return (
       <p className="text-[10px]" style={{ color: "var(--app-ink-3)" }}>

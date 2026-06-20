@@ -22,6 +22,11 @@ export type WikimediaPhoto = {
   license: string;
   source_url: string;
   verified: boolean;
+  /** When true, this curated photo WINS over the place's Google photo in
+   *  PlaceHero — for landmarks whose Google hero is wrong or weak (verified by
+   *  eye, per-place). Default/omitted: the Google photo wins and this only
+   *  fills the gap when there is none. */
+  preferCurated?: boolean;
 };
 
 // Curated Creative-Commons / public-domain establishing photos for marquee
@@ -63,6 +68,29 @@ export const LANDMARK_PHOTOS: Record<string, WikimediaPhoto> = {
     source_url:
       "https://commons.wikimedia.org/wiki/File:Roddy_Road_covered_bridge_near_Thurmont_in_Frederick_County,_Maryland,_built_about_1850.jpg",
     verified: true,
+  },
+
+  // preferCurated — these places HAVE a Google hero, but it's wrong or weak
+  // (checked by eye 2026-06-20), so the curated landmark shot wins instead.
+  "barbara-fritchie-house-frederick": {
+    file: "Barbara Fritchie House MD1.jpg",
+    alt: "The brick Barbara Fritchie House in downtown Frederick, flag at the eaves.",
+    author: "Acroterion",
+    license: "CC BY-SA 4.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Barbara_Fritchie_House_MD1.jpg",
+    verified: true,
+    // Google hero is dominated by a directional park sign, not the house.
+    preferCurated: true,
+  },
+  "catoctin-furnace-thurmont": {
+    file: "Catoctin Iron Furnace copy.jpg",
+    alt: "The stone Catoctin Iron Furnace ruins and casting shed near Thurmont.",
+    author: "G Wayne Rhodes",
+    license: "CC BY-SA 4.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Catoctin_Iron_Furnace_copy.jpg",
+    verified: true,
+    // Google hero is a waterfall, not the iron furnace (misattributed).
+    preferCurated: true,
   },
 };
 
