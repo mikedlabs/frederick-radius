@@ -35,6 +35,8 @@ import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { withVenueThumbs } from "@/lib/loaders/eventThumb";
+import { getIngestedSeries } from "@/lib/loaders/ingested";
+import { ingestedSeriesToCards } from "@/lib/loaders/ingestedEvents";
 import { isPublicEvent } from "@/lib/events/classify";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
 import { unstable_cache } from "next/cache";
@@ -50,7 +52,7 @@ export type UnifiedEvents = {
 async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, squarespaceRaw] = await Promise.all([
+  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
     getLiveEvents(60).catch(() => ({
       events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
     })),
@@ -67,6 +69,11 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     // venue's `?format=json` events feed. Inert ([]) until a venue carries a
     // `squarespace` URL in live-music-venues.ts.
     fetchSquarespaceVenueEvents(60).catch(() => []),
+    // Cron-ingested PUBLIC draws (FCPL library + FCVFRA fire-company carnivals
+    // /bingo) lifted into the rails so the gap-town events that have no other
+    // feed read as real "what's on", not a tucked civic row. County CivicEngage
+    // is excluded by the adapter (it already arrives via the live county iCal).
+    getIngestedSeries().catch(() => []),
   ]);
 
   // Live/county + music + sports feeds, curated duplicates dropped.
@@ -84,6 +91,10 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // below collapses any overlap between them.
   const venueCards = [...venueEventsAsCards(now), ...venueEventsToCards(squarespaceRaw)];
 
+  // FCPL/FCVFRA ingested public draws, expanded series → cards, curated
+  // duplicates dropped by the same content matcher the live feeds use.
+  const ingestedCards = dedupeLiveAgainstCurated(ingestedSeriesToCards(ingestedSeries, now), curatedUpcoming);
+
   // Time-sanity guard on FEED/EXTRACTED rows only (curated seeds are
   // hand-authored): a theater curtain at 7 AM is a parsing artifact —
   // withhold it rather than publish a wrong time (June-9 audit P1-11).
@@ -91,8 +102,11 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 
   // One unified, deduplicated, time-sorted set; second-pass dedup catches
   // curated-vs-curated duplicates, keeping the richer record per cluster.
+  // Ingested cards go LAST so a curated/live row with the same slug always wins
+  // (richer record), and so an ingested duplicate the content-dedupe missed
+  // still can't override a first-party event.
   const bySlug = new Map<string, EventWithMeta>();
-  for (const e of [...curatedUpcoming, ...liveCards.filter(sane), ...venueCards.filter(sane)]) {
+  for (const e of [...curatedUpcoming, ...liveCards.filter(sane), ...venueCards.filter(sane), ...ingestedCards.filter(sane)]) {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
   const unified = withVenueThumbs(
@@ -117,7 +131,7 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 // Bump "unified-events-v1" if the assembled shape changes (CLAUDE.md rule).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v5"],
+  ["unified-events-v6"],
   { revalidate: 300 },
 );
 

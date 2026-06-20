@@ -7,6 +7,7 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { EVENTS } from "@/data/events";
 import { getEventBySlug, formatEventWhen, seriesKey, seriesOccurrenceLabel, eventDateBlock, allUpcoming } from "@/lib/loaders/events";
 import { getLiveCardEventBySlug } from "@/lib/loaders/liveEvents";
+import { getIngestedCardBySlug } from "@/lib/loaders/ingestedEvents";
 /**
  * Event detail resolves the hand-authored static seed first
  * (getEventBySlug over EVENT_BY_SLUG); on a miss it falls back to the
@@ -57,7 +58,7 @@ export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params;
-  const event = getEventBySlug(slug) ?? (await getLiveCardEventBySlug(slug));
+  const event = getEventBySlug(slug) ?? (await getLiveCardEventBySlug(slug)) ?? (await getIngestedCardBySlug(slug));
   // notFound() HERE, not just in the page body: metadata resolves before
   // the response streams, so the 404 status actually reaches the wire. A
   // body-only notFound() ships the not-found UI under a 200 — a soft 404
@@ -81,7 +82,7 @@ export async function generateMetadata(
 export default async function EventPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const seed = getEventBySlug(slug);
-  const event = seed ?? (await getLiveCardEventBySlug(slug));
+  const event = seed ?? (await getLiveCardEventBySlug(slug)) ?? (await getIngestedCardBySlug(slug));
   if (!event) notFound();
   // Canonicalize live-event URLs (Phase 2). A live event always carries
   // its clean stored slug; if we resolved one through a legacy

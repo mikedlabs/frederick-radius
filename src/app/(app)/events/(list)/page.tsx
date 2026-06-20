@@ -11,6 +11,7 @@ import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
+import { LIFTED_INGEST_SOURCES } from "@/lib/loaders/ingestedEvents";
 import { itemListJsonLd } from "@/lib/seo/jsonld";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -108,7 +109,12 @@ export default async function EventsIndexPage({
   // cancelled outright, exactly as the card lanes do.
   const publicSeries = ingestedSeries.filter((s) => {
     const lane = classifyEvent({ title: s.title, category: s.category ?? undefined });
-    return lane !== "private_rental" && lane !== "cancelled";
+    if (lane === "private_rental" || lane === "cancelled") return false;
+    // The lifted sources' (FCPL/FCVFRA) PUBLIC draws now appear in the main
+    // rails above, so keep them out of this civic strip — no double-listing.
+    // Their civic/reminder rows (none today, but future-proof) still belong here.
+    if (lane === "public" && LIFTED_INGEST_SOURCES.has(s.sourceDomain)) return false;
+    return true;
   });
   // PAYLOAD WINDOW (perf audit: /events shipped 1.28MB HTML, 913KB of it
   // inline RSC — and the driver wasn't the explorer, it was THIS
