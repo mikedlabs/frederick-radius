@@ -25,6 +25,10 @@ import {
 // everything"). Set RADIUS_EVENT_NOISE_FILTER=0 to disable.
 const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER !== "0";
 
+// Sources whose category is set deliberately at the mapper boundary (not the
+// unreliable county catid mapping), so it's safe to keep + surface.
+const RELIABLE_CATEGORY_DOMAINS = new Set(["frederick.librarycalendar.com", "fcvfra.com"]);
+
 export type IngestedOccurrence = {
   sourceUid: string;
   startsAtUtc: string;
@@ -42,6 +46,10 @@ export type IngestedSeries = {
   venueName: string | null;
   address: string | null;
   municipality: string;
+  /** Ingest source domain (e.g. fcvfra.com, frederick.librarycalendar.com) —
+   *  lets a consumer scope to a source (the rails-lift includes only the
+   *  library + fire-company sources; everything else stays civic-only). */
+  sourceDomain: string;
   category: string | null;
   lat: number | null;
   lng: number | null;
@@ -57,6 +65,7 @@ export type IngestedSeries = {
 
 type Row = {
   source_uid: string;
+  source_domain: string;
   source_url: string | null;
   title: string;
   description: string | null;
@@ -85,7 +94,7 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
   let rows: Row[];
   try {
     rows = (await sql<Row[]>`
-      select source_uid, source_url, title, description, starts_at_utc, ends_at_utc,
+      select source_uid, source_domain, source_url, title, description, starts_at_utc, ends_at_utc,
              all_day, venue_name, address, lat, lng, municipality, category
       from ingested_events
       where starts_at_utc >= ${since}
@@ -131,11 +140,15 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
       venueName: head.venue_name, // already cleaned + junk-nulled above
       address: head.address ? formatAddress(cleanFeedText(head.address)) : null,
       municipality: head.municipality,
+      sourceDomain: head.source_domain,
       // Phase 1.5: the county catid mapping is unreliable (birthday
       // parties, theatre, and tasting rooms all arrive as "Workforce
       // Services"). Quarantine the surfaced label until the upstream
       // mapping is rebuilt. The raw value remains in ingested_events.
-      category: null,
+      // FCPL + FCVFRA set their category at the mapper boundary (library
+      // program type / "community"), so keep theirs — only the county
+      // catid mess is quarantined.
+      category: RELIABLE_CATEGORY_DOMAINS.has(head.source_domain) ? head.category : null,
       lat: head.lat != null ? Number(head.lat) : null,
       lng: head.lng != null ? Number(head.lng) : null,
       // cleanDescription also dedupes repeated sentences (municipal CMS
@@ -171,9 +184,9 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 /** ISR-cached (1h) — the cron refreshes the data daily, hourly is plenty. */
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
-  // v4: bumped for the officials-roster strip — cleaning changes must
+  // v5: added sourceDomain + kept FCPL/FCVFRA category — shape change must
   // invalidate the persisted cache (the #509 lesson).
-  ["ingested-series-v4"],
+  ["ingested-series-v5"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 
