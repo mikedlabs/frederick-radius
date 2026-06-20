@@ -124,14 +124,14 @@ export default function DealsBrowser({ rows, today }: { rows: DealRow[]; today: 
               aria-pressed={active}
               className="tactile-interactive flex flex-col items-center gap-1 rounded-[var(--app-radius-md)] py-2 transition"
               style={{
-                background: active ? "var(--app-brand)" : "var(--app-bg-elevated)",
+                background: active ? "var(--app-brand-press)" : "var(--app-bg-elevated)",
                 boxShadow: active ? "var(--app-elev-1)" : "var(--app-edge), var(--app-hi)",
                 border: active ? "none" : "1px solid var(--app-border)",
               }}
             >
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.04em]" style={{ color: active ? "#fff" : "var(--app-ink-2)" }}>{letter}</span>
-              <span className="font-mono text-[12px] font-bold tabular-nums leading-none" style={{ color: active ? "#fff" : n > 0 ? "var(--app-ink)" : "var(--app-ink-3)" }}>{n || "·"}</span>
-              <span aria-hidden className="h-1 w-1 rounded-full" style={{ background: isToday ? (active ? "#fff" : "var(--app-accent)") : "transparent" }} />
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.04em]" style={{ color: active ? "var(--app-on-brand)" : "var(--app-ink-2)" }}>{letter}</span>
+              <span className="font-mono text-[12px] font-bold tabular-nums leading-none" style={{ color: active ? "var(--app-on-brand)" : n > 0 ? "var(--app-ink)" : "var(--app-ink-3)" }}>{n || "·"}</span>
+              <span aria-hidden className="h-1 w-1 rounded-full" style={{ background: isToday ? (active ? "var(--app-on-brand)" : "var(--app-accent)") : "transparent" }} />
             </button>
           );
         })}
