@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import places from "@/data/places-client.json" with { type: "json" };
 import overrides from "@/data/places-overrides.json" with { type: "json" };
 import fieldNotes from "@/data/field-notes.json" with { type: "json" };
+import { isValidCoord } from "@/lib/geo";
 
 /**
  * Data-health guard — locks the invariants the 2026-06-20 all-business audit
@@ -27,6 +28,7 @@ type Place = {
   google_rating?: number;
   google_rating_count?: number;
   hours?: Partial<Record<string, HoursWindow[]>>;
+  geom?: { lng: number; lat: number };
 };
 
 const PLACES = places as unknown as Place[];
@@ -57,6 +59,15 @@ describe("places-client data health", () => {
         (p.google_rating_count != null && (p.google_rating_count < 0 || !Number.isInteger(p.google_rating_count))),
     );
     expect(bad.map((p) => p.slug)).toEqual([]);
+  });
+
+  // Locks the 2026-06-20 out-of-county fix: 79 rows wore a member-town label
+  // (a Boonsboro coffee shop tagged Myersville, a PA place tagged Brunswick)
+  // but sat outside the county. The build filters on isValidCoord; this asserts
+  // the COMMITTED artifact is clean so a bad coord can't leak one back in.
+  it("keeps every place inside the county outline (+1.5km buffer)", () => {
+    const bad = PLACES.filter((p) => !isValidCoord(p.geom ?? null));
+    expect(bad.map((p) => `${p.slug} -> ${p.geom?.lng},${p.geom?.lat}`)).toEqual([]);
   });
 
   it("has no non-Maryland leak", () => {
@@ -110,6 +121,15 @@ describe("places-overrides referential integrity", () => {
   it("every patch key resolves to a live place (no stale orphans)", () => {
     const orphans = Object.keys(ov.patch ?? {}).filter((s) => !slugs.has(s));
     expect(orphans).toEqual([]);
+  });
+
+  // keepApart names the slugs the dedupe engine must NEVER fold together (the
+  // manual veto on a false merge). If a dedupe change folded one away it would
+  // vanish from the public set — assert every veto'd slug still resolves live.
+  it("every keepApart slug survives as a distinct live place", () => {
+    const ka = (overrides as { keepApart?: string[] }).keepApart ?? [];
+    const folded = ka.filter((s) => !slugs.has(s));
+    expect(folded).toEqual([]);
   });
 });
 
