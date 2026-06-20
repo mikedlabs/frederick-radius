@@ -29,6 +29,7 @@
     "ingest:business": "tsx --tsconfig tsconfig.json scripts/ingest-business-info.ts",
     "discover": "tsx --tsconfig tsconfig.json scripts/discover-places.ts",
     "audit:data": "tsx --tsconfig tsconfig.json scripts/audit-data.ts",
+    "coverage:scorecard": "tsx --tsconfig tsconfig.json scripts/coverage-scorecard.ts",
     "gen:dedup": "tsx --tsconfig tsconfig.json scripts/gen-dedup.ts",
     "data:review": "tsx --tsconfig tsconfig.json scripts/data-review.ts",
     "prune:enrichment": "tsx --tsconfig tsconfig.json scripts/prune-enrichment.ts",
