@@ -42,6 +42,8 @@ import { liveMusicTonight } from "@/lib/events/live-music";
 import RightNowBand from "@/components/now/RightNowBand";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { compareForLead, pickLeadEvent } from "@/lib/events/lead-rank";
+import { pickGoldenHourOutdoorEvent } from "@/lib/events/golden-pairing";
+import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
@@ -157,6 +159,11 @@ export default async function HomePage() {
   const { publicEvents } = await assembleUnifiedEvents(now);
   const featuredEvent = pickFeaturedEvent(now, publicEvents);
 
+  // The golden-hour beat: an outdoor draw you can still catch in today's
+  // remaining daylight, paired with the live light window in TodayContext.
+  // Both halves are found facts (real sun math + a real event start).
+  const goldenEvent = pickGoldenHourOutdoorEvent(publicEvents, now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+
   // Live music on stage TONIGHT — the wedge answer (who's playing, not where
   // the stages are). Feeds the contextual "right now" band above the I-want
   // grid; self-hides when nothing's on. The soonest show rides as a quiet
@@ -264,7 +271,7 @@ export default async function HomePage() {
           in the SkyHero header above; this slim line carries only the
           contextual extras and self-hides when there's neither. */}
       <div className="mt-2">
-        <TodayContext />
+        <TodayContext goldenEvent={goldenEvent} />
       </div>
 
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────

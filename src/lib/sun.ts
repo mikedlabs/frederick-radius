@@ -13,11 +13,29 @@
 
 const DEG = Math.PI / 180;
 
-/** UTC day-of-year (1-based) and the UTC midnight instant of that day. */
-function utcDay(date: Date): { doy: number; midnightMs: number } {
-  const y = date.getUTCFullYear();
+const ET_DATE_PARTS = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/**
+ * Day-of-year (1-based) + UTC-midnight of the EASTERN calendar day of `date`.
+ *
+ * Must key off the LOCAL (ET) date, not the UTC date: an evening instant during
+ * golden hour (e.g. 8:30 PM ET in June) is already the NEXT UTC day, and keying
+ * off UTC would solve the sun for the wrong day — suppressing the golden-hour
+ * window exactly when it's happening. The app is entirely ET, so the Eastern
+ * date is always the right day to solve for.
+ */
+function easternCalendarDay(date: Date): { doy: number; midnightMs: number } {
+  const parts = ET_DATE_PARTS.formatToParts(date);
+  const y = Number(parts.find((p) => p.type === "year")?.value);
+  const m = Number(parts.find((p) => p.type === "month")?.value);
+  const d = Number(parts.find((p) => p.type === "day")?.value);
   const start = Date.UTC(y, 0, 1);
-  const midnightMs = Date.UTC(y, date.getUTCMonth(), date.getUTCDate());
+  const midnightMs = Date.UTC(y, m - 1, d);
   const doy = Math.floor((midnightMs - start) / 86_400_000) + 1;
   return { doy, midnightMs };
 }
@@ -37,7 +55,7 @@ function timeAtElevation(
   elevationDeg: number,
   evening: boolean,
 ): Date | null {
-  const { doy, midnightMs } = utcDay(date);
+  const { doy, midnightMs } = easternCalendarDay(date);
   // Fractional year (radians), evaluated near solar noon.
   const g = ((2 * Math.PI) / 365) * (doy - 1 + 0.5);
   const eqTime =
