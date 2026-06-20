@@ -28,6 +28,18 @@ const ENDPOINT =
   "https://gis.frederickco.gov/arcgis/rest/services/Parks/Parks_Trails_Cartegraph/FeatureServer/0/query" +
   `?where=1%3D1&outFields=${encodeURIComponent(OUT_FIELDS)}` +
   "&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.002&f=geojson";
+// MAP-OVERLAY source. The list ENDPOINT above is the Frederick, COLORADO host
+// (every feature drops on the MD bbox → curated fallback). The MAP needs trail
+// GEOMETRY, and the correct MD host carries it: ParksAndRecreation/Assets layer
+// 12 (Park Trails) = 200 named polyline segments, verified in the MD bbox, ~59KB
+// simplified (well under Next's 2MB fetch-cache limit). Its attributes are
+// Cartegraph asset fields (ParkName / FunctionalClassification), which are too
+// sparse for the rich /trails LIST (that stays curated) but are exactly enough
+// to draw the trails on the map — fixing an overlay that was silently empty.
+const SHAPES_ENDPOINT =
+  "https://fcgis.frederickcountymd.gov/server_pub/rest/services/ParksAndRecreation/Assets/MapServer/12/query" +
+  "?where=1%3D1&outFields=ParkName,FunctionalClassification,PavementClassification" +
+  "&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.0003&f=geojson";
 const TIMEOUT_MS = 15_000;
 // Frederick County bbox [south, west, north, east].
 const BBOX: [number, number, number, number] = [39.265, -77.7, 39.745, -77.15];
@@ -181,7 +193,11 @@ export function trailShapesFC(raw: unknown): TrailLineFC {
       const t = g?.type;
       if (t !== "LineString" && t !== "MultiLineString") continue;
       const p = f?.properties ?? {};
-      const name = str(p.Trail_Name) ?? str(p.Park_Name);
+      // Accept the MD Park-Trails (ParkName) shape OR the legacy Cartegraph
+      // (Trail_Name/Park_Name) shape, so the overlay works regardless of source
+      // and the unit test for either schema stays valid.
+      const park = str(p.ParkName) ?? str(p.Park_Name);
+      const name = str(p.Trail_Name) ?? park;
       if (!name) continue;
       const pt = midpoint(g?.coordinates);
       if (!pt) continue;
@@ -190,7 +206,11 @@ export function trailShapesFC(raw: unknown): TrailLineFC {
       out.push({
         type: "Feature",
         geometry: g,
-        properties: { name, surface: str(p.Surface_Type) ?? "", park: str(p.Park_Name) ?? "" },
+        properties: {
+          name,
+          surface: str(p.PavementClassification) ?? str(p.Surface_Type) ?? "",
+          park: park ?? "",
+        },
       });
     }
   }
@@ -201,7 +221,7 @@ export async function getFrederickTrailShapes(): Promise<TrailLineFC> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch(SHAPES_ENDPOINT, {
       signal: ctrl.signal,
       headers: { Accept: "application/json" },
       next: { revalidate: 604800 },

@@ -205,11 +205,15 @@ export function normalizeParks(raw: unknown): Park[] {
 }
 
 export async function getFrederickParks(): Promise<Park[]> {
-  // The live ENDPOINT points at gis.frederickco.gov — turns out
-  // that's Frederick, COLORADO, not MD. Every feature gets dropped
-  // by the MD bbox filter. Keeping the fetch in place so a fix-up
-  // to the right MD endpoint flows through unchanged; falling back
-  // to the curated list keeps the page useful in the meantime.
+  // The live ENDPOINT points at gis.frederickco.gov — Frederick, COLORADO, not
+  // MD — so every feature drops on the MD bbox and we fall back to curated.
+  // DO NOT "fix" this by repointing to the MD host: its Parks layer
+  // (fcgis.frederickcountymd.gov ParksAndRecreation/Assets/MapServer/7) is a
+  // Cartegraph maintenance-asset dataset (ConditionGroup / EstimatedOCI /
+  // CartegraphID, no public name field), narrower + worse than the curated list
+  // (verified 2026-06-20). Curated stays canonical for the LIST. (The /map trail
+  // OVERLAY does use the MD host — see fcTrails SHAPES_ENDPOINT — because there
+  // geometry is what matters, not rich attributes.)
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   let live: Park[] = [];
