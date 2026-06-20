@@ -287,56 +287,9 @@ export default async function HomePage() {
         />
       </div>
 
-      {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
-          Field Notes moat, as a wallet of overlapping "Last Pour" cards (the
-          deal hook welded to the venue in gold); self-hides when none are
-          in-window. */}
-      <div className="mt-4">
-        <HappyHourWallet now={now} />
-      </div>
-
-      {/* ── TODAY'S DEALS — the verified, day-of-week-aware specials running
-          today, from the Field Notes moat. The 4pm "what's worth going out
-          for" answer; self-hides when nothing runs today. */}
-      <div className="mt-3">
-        <TodaysDeals now={now} />
-      </div>
-
-      {/* "What's happening around you" (NearbyNow) was removed from /today
-          (owner call): the craving grid + Today's Deals already answer "near
-          me now," and the around-you geo surface duplicated that. It still
-          lives on the map. */}
-
-      {/* ── HEADS UP — high-signal interruption layer, only if needed ────
-          "Before you make a plan, is there anything you need to know?"
-          Self-hides when nothing is active; shows ONE worst-first alert
-          (real, sourced, time-bound NWS/NPS), with a quiet "+N more →" to
-          /pulse. Sits after Ask, before the best move — never a banner
-          wall. See CivicAlerts. */}
-      <Suspense fallback={null}>
-        <div className="mt-4">
-          <CivicAlerts />
-        </div>
-      </Suspense>
-
-      {/* The generated "best move now" card (TodayMoves) was removed
-          2026-06-18: /today is a place to FIND, not a suggestion engine. A
-          rule-based "here's the move" tells the user an idea they may already
-          have; the fast-lane I-want grid, the live moat (happy hours/deals),
-          tonight's event in the hero, and What's-on below already let them
-          find their own answer. Finding, not telling. */}
-
-      {/* ── FROM YOUR SAVED ──────────────────────────────────────────────
-          The save → resurface loop closes HERE: saved places that are
-          open right now, offered back where the day starts. A client
-          section (saves are client state) that renders nothing unless it
-          has an answer — no saves or none open means no box. */}
-      <FromYourSaved />
-
-      {/* ── WHAT'S ON — every public event in the city or county TODAY ───
-          Scoped to today, nothing else: no time-mode toggle, no tomorrow /
-          weekend. Just the day's events, soonest first; the rest of the
-          calendar is one tap away via "See all". */}
+      {/* ── WHAT'S ON — every public event in the city or county TODAY. Moved
+          ABOVE the moat (owner call): the day's events are the headline answer.
+          Soonest first; the rest of the calendar is one tap away via "See all". */}
       <section className="mt-4 space-y-3" aria-label="What's on">
         <DismissibleSection
           id="upcoming"
@@ -392,6 +345,56 @@ export default async function HomePage() {
           )}
         </DismissibleSection>
       </section>
+
+      {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
+          Field Notes moat, as a wallet of overlapping "Last Pour" cards (the
+          deal hook welded to the venue in gold); self-hides when none are
+          in-window. */}
+      <div className="mt-4">
+        <HappyHourWallet now={now} />
+      </div>
+
+      {/* ── TODAY'S DEALS — the verified, day-of-week-aware specials running
+          today, from the Field Notes moat. The 4pm "what's worth going out
+          for" answer; self-hides when nothing runs today. */}
+      <div className="mt-3">
+        <TodaysDeals now={now} />
+      </div>
+
+      {/* "What's happening around you" (NearbyNow) was removed from /today
+          (owner call): the craving grid + Today's Deals already answer "near
+          me now," and the around-you geo surface duplicated that. It still
+          lives on the map. */}
+
+      {/* ── HEADS UP — high-signal interruption layer, only if needed ────
+          "Before you make a plan, is there anything you need to know?"
+          Self-hides when nothing is active; shows ONE worst-first alert
+          (real, sourced, time-bound NWS/NPS), with a quiet "+N more →" to
+          /pulse. Sits after Ask, before the best move — never a banner
+          wall. See CivicAlerts. */}
+      <Suspense fallback={null}>
+        <div className="mt-4">
+          <CivicAlerts />
+        </div>
+      </Suspense>
+
+      {/* The generated "best move now" card (TodayMoves) was removed
+          2026-06-18: /today is a place to FIND, not a suggestion engine. A
+          rule-based "here's the move" tells the user an idea they may already
+          have; the fast-lane I-want grid, the live moat (happy hours/deals),
+          tonight's event in the hero, and What's-on below already let them
+          find their own answer. Finding, not telling. */}
+
+      {/* ── FROM YOUR SAVED ──────────────────────────────────────────────
+          The save → resurface loop closes HERE: saved places that are
+          open right now, offered back where the day starts. A client
+          section (saves are client state) that renders nothing unless it
+          has an answer — no saves or none open means no box. */}
+      <FromYourSaved />
+
+      {/* WHAT'S ON was relocated ABOVE Happy hour (owner call 2026-06-19):
+          today's events are the headline "what's happening" answer, so they now
+          sit right after the I-want grid; the happy-hour / deals moat follows. */}
 
       {/* RESPONSIVE SPLIT (desktop only):
        *   mobile  : everything stacks single-column (space-y-6).
