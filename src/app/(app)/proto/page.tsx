@@ -8,6 +8,7 @@ const PROTOS = [
   { href: "/proto/week", title: "Peelable field-folder week", blurb: "Days as colored folders you pull open to reveal what's on. The Peek interaction in our material." },
   { href: "/proto/bigtype", title: "Big type + color blocks", blurb: "Type-as-hierarchy. Giant masthead + bold filing-ink section blocks." },
   { href: "/proto/folders", title: "Tabbed manila folders", blurb: "Sections as file-folder tabs + a numbered field-guide table of contents." },
+  { href: "/proto/almanac", title: "The Almanac (live conditions)", blurb: "One calm screen revealing the county's living state: sky, light, moon, weather, water, air, rail, and the season's own calendar. Many data points already wired, one composition." },
 ];
 
 export default function ProtoIndex() {

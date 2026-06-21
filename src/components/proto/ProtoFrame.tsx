@@ -6,6 +6,7 @@ const LINKS = [
   { href: "/proto/week", label: "Peelable week" },
   { href: "/proto/bigtype", label: "Big type" },
   { href: "/proto/folders", label: "Folder tabs" },
+  { href: "/proto/almanac", label: "The Almanac" },
 ];
 
 /** Shared header + switcher for the throwaway /proto/* design prototypes. */
