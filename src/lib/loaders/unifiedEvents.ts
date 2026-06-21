@@ -131,7 +131,7 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 // Bump "unified-events-v1" if the assembled shape changes (CLAUDE.md rule).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v8"],
+  ["unified-events-v9"],
   { revalidate: 300 },
 );
 

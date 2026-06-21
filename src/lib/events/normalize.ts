@@ -257,13 +257,31 @@ export function cleanVenueName(raw: string | null | undefined): string | null {
  * entry rather than one per weekday. Mirrors the municipal loader's
  * series key, which already collapses correctly.
  */
+/**
+ * The SERIES name behind a "Series | Act" title. Many feeds title each
+ * occurrence of a series with the act after a pipe ("Summer Concert Series
+ * | Radio King Orchestra", "Summerfest Family Theatre … | Mr. Jon"), so the
+ * full titles never match and the series scatters into one row per night.
+ * Keying recurrence on the stem (the part before the first " | ") collapses
+ * them into one card. Guarded: only treat the prefix as the series when it
+ * is substantial (>= 6 chars), so a short generic prefix ("Show | X") can't
+ * wrongly merge unrelated events; combined with the venue+municipality key,
+ * cross-venue merges are already impossible.
+ */
+export function seriesStem(title: string): string {
+  const i = title.indexOf(" | ");
+  if (i < 0) return title;
+  const stem = title.slice(0, i).trim();
+  return stem.length >= 6 ? stem : title;
+}
+
 export function recurrenceKey(input: {
   title: string;
   venue?: string | null;
   municipality?: string | null;
 }): string {
   return [
-    normLoose(input.title),
+    normLoose(seriesStem(input.title)),
     normLoose(input.venue ?? ""),
     normLoose(input.municipality ?? ""),
   ].join("|");
@@ -349,6 +367,11 @@ export function collapseRecurringEvents(events: EventWithMeta[]): EventWithMeta[
     if (count > 1) {
       out[idx] = {
         ...out[idx],
+        // When a "Series | Act" set collapses, show the SERIES name on the
+        // one card (a no-op for titles without a series stem), so the lead
+        // reads "Summer Concert Series · 8 upcoming dates" instead of the
+        // soonest act's name standing in for the whole run.
+        title: seriesStem(out[idx].title),
         is_recurring: true,
         recurrence_text:
           out[idx].recurrence_text ??
