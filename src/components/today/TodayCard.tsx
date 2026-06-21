@@ -203,7 +203,11 @@ export default async function TodayCard({
           className="tactile-interactive group mt-3 flex items-center gap-2.5 rounded-[var(--app-radius-md)] px-2.5 py-2"
           style={{
             background: "color-mix(in srgb, currentColor 9%, transparent)",
-            boxShadow: "inset 0 0 0 1px color-mix(in srgb, currentColor 15%, transparent)",
+            // Pressed-glass inlay: a top highlight above the edge ring makes the
+            // one tappable object read as set INTO the day's light. Tone-adaptive
+            // via currentColor, so it holds over light and dark skies alike.
+            boxShadow:
+              "inset 0 1px 0 color-mix(in srgb, currentColor 22%, transparent), inset 0 0 0 1px color-mix(in srgb, currentColor 15%, transparent)",
           }}
         >
           <span
