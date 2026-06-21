@@ -31,6 +31,7 @@ export const CATEGORIES: Category[] = [
   { slug: "park", name: "Parks", parent: "outdoors", icon: "Trees", color: "#1E6B3A", display_order: 21, blurb: "Public parks across all 12 municipalities and the county." },
   { slug: "trail", name: "Trails", parent: "outdoors", icon: "Mountain", color: "#16352B", display_order: 22, blurb: "200+ miles of hikes, towpaths, and rail-trails." },
   { slug: "playground", name: "Playgrounds", parent: "outdoors", icon: "ToyBrick", color: "#1E6B3A", display_order: 23, blurb: "Where to take the kids when it's nice out." },
+  { slug: "golf", name: "Golf", parent: "outdoors", icon: "Flag", color: "#2E7D5B", display_order: 24, blurb: "Public, championship, and country-club courses across the county." },
 
   { slug: "arts", name: "Arts & Culture", icon: "Palette", color: "#7E2C6F", display_order: 30, blurb: "Galleries, theaters, museums, and live performance." },
   { slug: "museum", name: "Museums", parent: "arts", icon: "Landmark", color: "#5B1E55", display_order: 31, blurb: "Civil War, civic history, science, and art." },

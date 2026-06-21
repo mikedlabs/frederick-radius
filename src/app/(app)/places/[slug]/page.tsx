@@ -17,6 +17,7 @@ import MyRadiusButton from "@/components/place/MyRadiusButton";
 import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
 import ParkAmenitiesStrip from "@/components/place/ParkAmenitiesStrip";
+import CourseInfoStrip from "@/components/place/CourseInfoStrip";
 import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
 import FieldNotesCard from "@/components/place/FieldNotesCard";
 import PlaceNoteCard from "@/components/place/PlaceNoteCard";
@@ -279,6 +280,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           {/* Park amenity rollup (shelters/fields/playgrounds/trails) from
               the county GIS — renders only for parks that have it. */}
           <ParkAmenitiesStrip slug={place.slug} />
+          {/* Golf course facts (holes/par/access/designer) from curated
+              course-info.json — renders only for golf courses. */}
+          <CourseInfoStrip slug={place.slug} />
           {/* Verified Field Notes (the moat) take precedence — happy hour /
               deals / parking / insider, each agent-confirmed at a cited
               source, with the FieldStamp seal. Falls back to the legacy
