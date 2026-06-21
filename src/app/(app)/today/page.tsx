@@ -224,7 +224,12 @@ export default async function HomePage() {
           than a full-bleed band, with a tighter weather row inside; the soft
           downward shadow floats it over the page. The detailed hourly / 7-day
           / almanac forecast still lives in the collapsed "full briefing". */}
-      <SkyHero className="relative z-10 shadow-[0_12px_28px_-16px_rgba(22,20,14,0.22)]">
+      {/* shader-rim — the page's ONE rationed living treatment: a slow, barely-
+          there conic accent ring on the true top-of-page hero (the sky plate),
+          the crafted-product-hero move the primitive reserves for a single
+          element. It freezes under prefers-reduced-motion. (The old className
+          shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
+      <SkyHero className="shader-rim relative z-10">
         <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
           <TodayCard
             tonightEvent={
@@ -254,11 +259,11 @@ export default async function HomePage() {
           context lines self-hide, so on an ordinary day the plate carries just
           the standfirst + the cap rule (which always sits below it, so the rule
           never dangles). Identity copy + voice unchanged (finding, not telling). */}
-      <header className="mt-3 px-0.5">
-        <p className="font-serif text-[19px] font-semibold leading-[1.15] tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+      <header className="mt-2 px-0.5">
+        <p className="display-3" style={{ color: "var(--app-ink)" }}>
           Your field guide to Frederick County.
         </p>
-        <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        <p className="mt-1 text-body text-pretty" style={{ color: "var(--app-ink-2)" }}>
           From Downtown to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
         </p>
         <div className="mt-2 space-y-1.5">
@@ -302,6 +307,7 @@ export default async function HomePage() {
           href="/events"
           cta="See all"
           eyebrow="What's on"
+          plateNo="Pl. I"
         >
           {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 ? (
             <div className="space-y-3">
@@ -312,7 +318,7 @@ export default async function HomePage() {
                 <div className="-mx-4 px-4">
                   <div className="reveal-up shelf-rail gap-3 pb-1">
                     {upcomingRest.map((e) => (
-                      <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
+                      <div key={`${e.slug}-${e.starts_at}`} className="tactile-ring w-[280px] shrink-0 rounded-[var(--app-radius-lg)]">
                         <EventCard event={e} variant="tile" />
                       </div>
                     ))}
