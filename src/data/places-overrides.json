@@ -47,7 +47,10 @@
     "ms-caitlins-school",
     "square-corner",
     "olives-italian",
-    "downtown-hotel-at-carroll-creek"
+    "downtown-hotel-at-carroll-creek",
+    "all-american-lawn-landscape-llc-walkersville",
+    "hgm-lawncare-and-services-llc-myersville",
+    "richly-dunn-furniture-repair-and-refinishing-mount-airy"
   ],
   "keepApart": [
     "clarity-psychotherapy",
@@ -71,6 +74,7 @@
   ],
   "patch": {
     "musket-ridge-golf-club-myersville": { "category": "golf" },
+    "emmitsburg-senior-center-emmitsburg": { "category": "civic" },
     "lima-soul-restaurant-frederick": { "hours": { "wed": [{ "open": "17:00", "close": "22:00" }], "thu": [{ "open": "17:00", "close": "22:00" }], "fri": [{ "open": "17:00", "close": "22:00" }], "sat": [{ "open": "12:00", "close": "22:00" }], "sun": [{ "open": "12:00", "close": "21:00" }] } },
     "walkers-village-shopping-center-walkersville": { "hours": { "mon": [{ "open": "10:00", "close": "21:30" }], "tue": [{ "open": "10:00", "close": "21:30" }], "wed": [{ "open": "10:00", "close": "00:00" }], "thu": [{ "open": "10:00", "close": "00:00" }], "fri": [{ "open": "10:00", "close": "00:00" }], "sat": [{ "open": "10:00", "close": "21:30" }], "sun": [{ "open": "10:00", "close": "21:30" }] } },
     "happiness-is-balance-frederick-md": { "hours": { "mon": [{ "open": "12:00", "close": "20:00" }], "tue": [{ "open": "12:00", "close": "20:00" }], "thu": [{ "open": "12:00", "close": "20:00" }], "fri": [{ "open": "12:00", "close": "20:00" }], "sat": [{ "open": "10:00", "close": "16:00" }] } },
@@ -99,9 +103,6 @@
     },
     "alice-mccormick-acupuncture": {
       "category": "wellness"
-    },
-    "all-american-lawn-landscape-llc-walkersville": {
-      "category": "services"
     },
     "allied-counseling-group": {
       "category": "wellness"
@@ -163,9 +164,6 @@
     },
     "hampton-massage": {
       "category": "wellness"
-    },
-    "hgm-lawncare-and-services-llc-myersville": {
-      "category": "services"
     },
     "in-fit-personal-training-studio": {
       "category": "services"
