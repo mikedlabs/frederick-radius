@@ -23,6 +23,8 @@ export const CATEGORIES: Category[] = [
   { slug: "coffee", name: "Coffee", parent: "food", icon: "Coffee", color: "#8B5A2B", display_order: 12, blurb: "Cafes, roasters, third-wave spots, and quick-stop shops." },
   { slug: "bar", name: "Bars", parent: "food", icon: "Wine", color: "#7E1F1F", display_order: 13, blurb: "Cocktail bars, pubs, dives, and tap rooms." },
   { slug: "brewery", name: "Breweries", parent: "food", icon: "Beer", color: "#C0871F", display_order: 14, blurb: "Independent local brewers, tap rooms, and beer gardens." },
+  { slug: "winery", name: "Wineries", parent: "food", icon: "Grape", color: "#6B2D5A", display_order: 18, blurb: "The Frederick Wine Trail: vineyards, tasting rooms, cideries, and meaderies." },
+  { slug: "distillery", name: "Distilleries", parent: "food", icon: "FlaskConical", color: "#9A5B2E", display_order: 19, blurb: "Maryland craft spirits: whiskey, rye, gin, and tasting rooms." },
   { slug: "bakery", name: "Bakeries", parent: "food", icon: "Cookie", color: "#B26B00", display_order: 15, blurb: "Pastry, bread, and the morning rituals worth the line." },
   { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#E14328", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
   { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#E14328", display_order: 17, blurb: "Frederick's food trucks rotate weekly — here's where they reliably park, plus the festivals built around them." },

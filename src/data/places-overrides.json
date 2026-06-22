@@ -75,6 +75,27 @@
   "patch": {
     "musket-ridge-golf-club-myersville": { "category": "golf" },
     "emmitsburg-senior-center-emmitsburg": { "category": "civic" },
+    "black-ankle-vineyards-mount-airy": { "category": "winery" },
+    "loew-vineyards-mount-airy": { "category": "winery" },
+    "catoctin-breeze-vineyard-thurmont": { "category": "winery" },
+    "springfield-manor-thurmont": { "category": "winery" },
+    "links-bridge-vineyards-thurmont": { "category": "winery" },
+    "orchid-cellar-meadery-middletown": { "category": "winery" },
+    "mazzaroth-vineyard-middletown": { "category": "winery" },
+    "six-wicket-vineyards-myersville": { "category": "winery" },
+    "new-market-plains-vineyards-new-market": { "category": "winery" },
+    "hidden-hills-farm-vineyard-frederick": { "category": "winery" },
+    "willow-oaks-craft-cider-and-wine-burkittsville": { "category": "winery" },
+    "celebration-cellars-winery-walkersville": { "category": "winery" },
+    "red-heifer-winery-thurmont": { "category": "winery" },
+    "elk-run-winery-mount-airy": { "category": "winery" },
+    "mcclintock-distillery": { "category": "distillery" },
+    "tenth-ward-distilling-company": { "category": "distillery" },
+    "dragon-distillery-frederick": { "category": "distillery" },
+    "rosie-cheeks-distillery-woodsboro": { "category": "distillery" },
+    "puerto-rico-distillery-brunswick": { "category": "distillery" },
+    "fordham-lee-distillery-middletown": { "category": "distillery" },
+    "crown-rose-estate-weddings-and-distillery-brunswick": { "category": "distillery" },
     "lima-soul-restaurant-frederick": { "hours": { "wed": [{ "open": "17:00", "close": "22:00" }], "thu": [{ "open": "17:00", "close": "22:00" }], "fri": [{ "open": "17:00", "close": "22:00" }], "sat": [{ "open": "12:00", "close": "22:00" }], "sun": [{ "open": "12:00", "close": "21:00" }] } },
     "walkers-village-shopping-center-walkersville": { "hours": { "mon": [{ "open": "10:00", "close": "21:30" }], "tue": [{ "open": "10:00", "close": "21:30" }], "wed": [{ "open": "10:00", "close": "00:00" }], "thu": [{ "open": "10:00", "close": "00:00" }], "fri": [{ "open": "10:00", "close": "00:00" }], "sat": [{ "open": "10:00", "close": "21:30" }], "sun": [{ "open": "10:00", "close": "21:30" }] } },
     "happiness-is-balance-frederick-md": { "hours": { "mon": [{ "open": "12:00", "close": "20:00" }], "tue": [{ "open": "12:00", "close": "20:00" }], "thu": [{ "open": "12:00", "close": "20:00" }], "fri": [{ "open": "12:00", "close": "20:00" }], "sat": [{ "open": "10:00", "close": "16:00" }] } },
@@ -360,7 +381,7 @@
       "category": "music"
     },
     "true-standard-distilling": {
-      "category": "brewery"
+      "category": "distillery"
     },
     "pj-gilligan-dry-goods-mercantile-co-burkittsville": {
       "category": "shopping"
