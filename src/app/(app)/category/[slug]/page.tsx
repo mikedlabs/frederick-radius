@@ -14,6 +14,8 @@ import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
+import SetTownInline from "@/components/category/SetTownInline";
+import { MUNICIPALITIES } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import { itemListJsonLd } from "@/lib/seo/jsonld";
 
@@ -181,10 +183,26 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           </div>
         </div>
       </header>
-      {fromLabel && (
+      {fromLabel ? (
         <p className="-mt-3 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {fromLabel}
         </p>
+      ) : (
+        /* Downtown-default fix (audit P0): when no home town is set, this page
+           silently ranks from Downtown Frederick. Say so honestly and give a
+           one-tap way to re-rank from the user's own town, instead of leaving
+           an out-of-town reader to assume the app is broken. */
+        <div
+          className="-mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--app-radius-md)] border px-3 py-2"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+        >
+          <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+            Showing all of Frederick County.
+          </span>
+          <SetTownInline
+            municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
+          />
+        </div>
       )}
 
       {/* C3: editorial top picks lead the page instead of a stat block.
