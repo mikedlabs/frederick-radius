@@ -22,6 +22,7 @@ import PlaceAudienceTags from "@/components/place/PlaceAudienceTags";
 import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
 import FieldNotesCard from "@/components/place/FieldNotesCard";
 import PlaceNoteCard from "@/components/place/PlaceNoteCard";
+import PlaceListsCard from "@/components/place/PlaceListsCard";
 import { hasFieldNotes } from "@/lib/loaders/fieldNotes";
 import { businessInfoFor } from "@/lib/loaders/businessInfo";
 import PlaceVisitTracker from "@/components/place/PlaceVisitTracker";
@@ -300,6 +301,9 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           )}
           {/* The user's own margin notes for this place (on-device). */}
           <PlaceNoteCard slug={place.slug} />
+          {/* Personal lists ("date night", "takeout") — organize Saved without
+              folders; filterable on My Radius (on-device). */}
+          <PlaceListsCard slug={place.slug} />
           {place.review_snippet && (
             <figure
               className="border-l-2 pl-3"

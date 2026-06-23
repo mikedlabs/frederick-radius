@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted } from "@/hooks/useSaved";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
 import { useAllNotes, type PlaceNote } from "@/hooks/useNotes";
+import { useAllSavedTags } from "@/hooks/useSavedTags";
 import { useBeenList } from "@/hooks/useBeenHere";
 // A2.8: SavedList no longer static-imports clientPlaceBySlug, so
 // /saved's client bundle no longer ships places-client.json (~2MB).
@@ -74,6 +75,10 @@ export default function SavedList() {
   // localStorage + useSyncExternalStore store as notes/saved, so toggling on a
   // place page updates the Visited section here live.
   const beenSlugs = useBeenList();
+  // The user's personal lists ("date night", "takeout") keyed by slug, plus the
+  // currently selected list filter (null = show all).
+  const savedTags = useAllSavedTags();
+  const [activeList, setActiveList] = useState<string | null>(null);
 
   // Union of every slug this component might need: saved bookmarks,
   // recently viewed, and the empty-state seeds. We hand the whole set
@@ -209,13 +214,20 @@ export default function SavedList() {
       .map((i) => ({ ref: i, place: placesBySlug.get(i.id) }))
       .filter((x): x is { ref: typeof x.ref; place: PlaceCardData } => Boolean(x.place));
 
+    // Personal-list filter: when a list is selected, keep only saved places
+    // the user has labelled with it. Applied BEFORE sort + bucketing so every
+    // view (town/category/flat) honours the filter.
+    const visibleRefs = activeList
+      ? placeRefs.filter((x) => (savedTags[x.place.slug] ?? []).includes(activeList))
+      : placeRefs;
+
     // Apply the user's sort. "category" keeps the original recent-first
     // order before bucketing (so within each category, the freshest
     // saves still come first).
     let sorted: typeof placeRefs;
     switch (sort) {
       case "az":
-        sorted = [...placeRefs].sort((a, b) =>
+        sorted = [...visibleRefs].sort((a, b) =>
           a.place.name.localeCompare(b.place.name, undefined, { sensitivity: "base" }),
         );
         break;
@@ -223,7 +235,7 @@ export default function SavedList() {
         // Open places first, the one closing soonest leading — the
         // saved list as a "right now" tool, not a museum. Closed and
         // unverified places keep their recency order below the fold.
-        sorted = [...placeRefs].sort((a, b) => {
+        sorted = [...visibleRefs].sort((a, b) => {
           const oa = isOpenNow(a.place.open_status);
           const ob = isOpenNow(b.place.open_status);
           if (oa !== ob) return oa ? -1 : 1;
@@ -236,7 +248,7 @@ export default function SavedList() {
         });
         break;
       case "distance":
-        sorted = [...placeRefs].sort((a, b) => {
+        sorted = [...visibleRefs].sort((a, b) => {
           const da = homeOrigin && a.place.geom ? haversineMeters(homeOrigin, a.place.geom) : Infinity;
           const db = homeOrigin && b.place.geom ? haversineMeters(homeOrigin, b.place.geom) : Infinity;
           return da - db;
@@ -245,7 +257,7 @@ export default function SavedList() {
       case "category":
       case "recent":
       default:
-        sorted = [...placeRefs].sort(
+        sorted = [...visibleRefs].sort(
           (a, b) => +new Date(b.ref.saved_at) - +new Date(a.ref.saved_at),
         );
         break;
@@ -288,7 +300,18 @@ export default function SavedList() {
     }
 
     return { places, events, byCategory, byTown, townTally };
-  }, [items, placesBySlug, sort, homeOrigin]);
+  }, [items, placesBySlug, sort, homeOrigin, savedTags, activeList]);
+
+  // Distinct personal lists across SAVED places, with counts, for the filter
+  // row. A selected list that no longer matches anything self-clears below.
+  const availableLists = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const i of items) {
+      if (i.type !== "place") continue;
+      for (const t of savedTags[i.id] ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [items, savedTags]);
 
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
@@ -391,6 +414,47 @@ export default function SavedList() {
           </p>
         </div>
       </section>
+
+      {/* Personal lists filter — the user's own labels ("date night",
+          "takeout") become one-tap collections. Only shows once at least one
+          saved place has been labelled (on the place page). */}
+      {availableLists.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setActiveList(null)}
+            aria-pressed={activeList === null}
+            className="tap-44 inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-medium"
+            style={{
+              borderColor: activeList === null ? "var(--app-accent)" : "var(--app-border)",
+              background: activeList === null ? "color-mix(in srgb, var(--app-accent) 14%, transparent)" : "var(--app-bg-elevated)",
+              color: activeList === null ? "var(--app-accent-press)" : "var(--app-ink-2)",
+            }}
+          >
+            All
+          </button>
+          {availableLists.map(([label, n]) => {
+            const on = activeList === label;
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setActiveList(on ? null : label)}
+                aria-pressed={on}
+                className="tap-44 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-medium"
+                style={{
+                  borderColor: on ? "var(--app-accent)" : "var(--app-border)",
+                  background: on ? "color-mix(in srgb, var(--app-accent) 14%, transparent)" : "var(--app-bg-elevated)",
+                  color: on ? "var(--app-accent-press)" : "var(--app-ink-2)",
+                }}
+              >
+                {label}
+                <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>{n}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Smart suggestion strip — only when there's a real cluster. */}
       {dominantMuni && (
