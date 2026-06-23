@@ -21,6 +21,7 @@ import { Bookmark, MapPin, Sparkles, Calendar, Building2, Route } from "lucide-r
 import IconStamp from "@/components/ui/IconStamp";
 import Skeleton from "@/components/ui/Skeleton";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
+import FilterChip from "@/components/ui/FilterChip";
 import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
@@ -197,6 +198,22 @@ export default function SavedList() {
       .filter((p): p is PlaceCardData => Boolean(p));
   }, [beenSlugs, placesBySlug]);
 
+  // Distinct personal lists across SAVED places, with counts, for the filter row.
+  const availableLists = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const i of items) {
+      if (i.type !== "place") continue;
+      for (const t of savedTags[i.id] ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [items, savedTags]);
+
+  // Derive the EFFECTIVE filter during render (not via a state-resetting effect):
+  // if the selected label no longer exists (its last place was unlabeled or
+  // unsaved), it resolves to null so the list can't get stuck showing nothing.
+  const effectiveList =
+    activeList && availableLists.some(([l]) => l === activeList) ? activeList : null;
+
   const { places, events, byCategory, byTown, townTally } = useMemo(() => {
     if (!placesBySlug) {
       return {
@@ -217,8 +234,8 @@ export default function SavedList() {
     // Personal-list filter: when a list is selected, keep only saved places
     // the user has labelled with it. Applied BEFORE sort + bucketing so every
     // view (town/category/flat) honours the filter.
-    const visibleRefs = activeList
-      ? placeRefs.filter((x) => (savedTags[x.place.slug] ?? []).includes(activeList))
+    const visibleRefs = effectiveList
+      ? placeRefs.filter((x) => (savedTags[x.place.slug] ?? []).includes(effectiveList))
       : placeRefs;
 
     // Apply the user's sort. "category" keeps the original recent-first
@@ -300,18 +317,7 @@ export default function SavedList() {
     }
 
     return { places, events, byCategory, byTown, townTally };
-  }, [items, placesBySlug, sort, homeOrigin, savedTags, activeList]);
-
-  // Distinct personal lists across SAVED places, with counts, for the filter
-  // row. A selected list that no longer matches anything self-clears below.
-  const availableLists = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const i of items) {
-      if (i.type !== "place") continue;
-      for (const t of savedTags[i.id] ?? []) counts.set(t, (counts.get(t) ?? 0) + 1);
-    }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  }, [items, savedTags]);
+  }, [items, placesBySlug, sort, homeOrigin, savedTags, effectiveList]);
 
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
@@ -420,39 +426,16 @@ export default function SavedList() {
           saved place has been labelled (on the place page). */}
       {availableLists.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setActiveList(null)}
-            aria-pressed={activeList === null}
-            className="tap-44 inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-medium"
-            style={{
-              borderColor: activeList === null ? "var(--app-accent)" : "var(--app-border)",
-              background: activeList === null ? "color-mix(in srgb, var(--app-accent) 14%, transparent)" : "var(--app-bg-elevated)",
-              color: activeList === null ? "var(--app-accent-press)" : "var(--app-ink-2)",
-            }}
-          >
-            All
-          </button>
-          {availableLists.map(([label, n]) => {
-            const on = activeList === label;
-            return (
-              <button
-                key={label}
-                type="button"
-                onClick={() => setActiveList(on ? null : label)}
-                aria-pressed={on}
-                className="tap-44 inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[12px] font-medium"
-                style={{
-                  borderColor: on ? "var(--app-accent)" : "var(--app-border)",
-                  background: on ? "color-mix(in srgb, var(--app-accent) 14%, transparent)" : "var(--app-bg-elevated)",
-                  color: on ? "var(--app-accent-press)" : "var(--app-ink-2)",
-                }}
-              >
-                {label}
-                <span className="tabular-nums" style={{ color: "var(--app-ink-3)" }}>{n}</span>
-              </button>
-            );
-          })}
+          <FilterChip label="All" active={effectiveList === null} onClick={() => setActiveList(null)} />
+          {availableLists.map(([label, n]) => (
+            <FilterChip
+              key={label}
+              label={label}
+              count={n}
+              active={effectiveList === label}
+              onClick={() => setActiveList(effectiveList === label ? null : label)}
+            />
+          ))}
         </div>
       )}
 

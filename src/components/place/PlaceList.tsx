@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
 import PlaceCard from "./PlaceCard";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
+import FilterChip from "@/components/ui/FilterChip";
 import type { PlaceCardData } from "@/lib/loaders/places";
 
 /**
@@ -163,30 +164,16 @@ export default function PlaceList({
   return (
     <div className="space-y-2.5">
       {facetTags && facetTags.length > 0 && (
-        <ul className="flex flex-wrap gap-1.5">
-          {facetTags.map((f) => {
-            const on = activeFacets.has(f.slug);
-            return (
-              <li key={f.slug}>
-                <button
-                  type="button"
-                  onClick={() => toggleFacet(f.slug)}
-                  aria-pressed={on}
-                  className="tap-44 inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-medium transition-colors"
-                  style={{
-                    borderColor: on ? "var(--app-brand)" : "var(--app-border)",
-                    background: on
-                      ? "color-mix(in srgb, var(--app-brand) 14%, transparent)"
-                      : "var(--app-bg-elevated)",
-                    color: on ? "var(--app-brand)" : "var(--app-ink-2)",
-                  }}
-                >
-                  {f.name}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex flex-wrap gap-1.5">
+          {facetTags.map((f) => (
+            <FilterChip
+              key={f.slug}
+              label={f.name}
+              active={activeFacets.has(f.slug)}
+              onClick={() => toggleFacet(f.slug)}
+            />
+          ))}
+        </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
@@ -254,7 +241,16 @@ export default function PlaceList({
         </div>
       </div>
 
-      {layout === "grid" ? (
+      {filteredPlaces.length === 0 ? (
+        // Honest empty state: facets narrowed the set to nothing. Without this
+        // the grid/list below render blank under a "0 of N" count.
+        <p
+          className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-sm"
+          style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+        >
+          No places match those filters. Tap a filter again to widen the list.
+        </p>
+      ) : layout === "grid" ? (
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
           {filteredPlaces.map((p) => (
             <PlaceCard key={p.slug} place={p} variant="grid" />

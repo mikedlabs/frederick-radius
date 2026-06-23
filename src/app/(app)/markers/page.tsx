@@ -5,18 +5,13 @@ import { getHistoricMarkers, getRegisterSites, type HistoricMarker } from "@/lib
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { Row, RowList, IconTile } from "@/components/ui/Row";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
-import { wikimediaUrl } from "@/lib/integrations/wikimedia";
+import { wikimediaUrl, LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
 
-// Editorial hero image for the page itself (not a place record): the red Roddy
-// Road covered bridge — the visual shorthand for "history on the ground". Public
-// domain (Carol M. Highsmith), Special:FilePath verified 200 image/jpeg.
-const MARKERS_HERO = {
-  file: "Roddy Road covered bridge near Thurmont in Frederick County, Maryland, built about 1850.jpg",
-  author: "Carol M. Highsmith",
-  license: "Public domain",
-  source_url:
-    "https://commons.wikimedia.org/wiki/File:Roddy_Road_covered_bridge_near_Thurmont_in_Frederick_County,_Maryland,_built_about_1850.jpg",
-};
+// Editorial hero for the page itself: the red Roddy Road covered bridge, the
+// visual shorthand for "history on the ground". Reuses the single verified
+// Commons entry (file + attribution) from LANDMARK_PHOTOS so the filename and
+// credit never drift between here and the place hero.
+const MARKERS_HERO = LANDMARK_PHOTOS["roddy-road-park-thurmont"];
 
 export const metadata: Metadata = {
   // Orphan-by-design like /trails and /rivers: real content, reachable by URL +

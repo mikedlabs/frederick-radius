@@ -656,14 +656,20 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
         : undefined;
   // Rolling refresh override (4.3): a refreshed row carries newer Google
   // hours and status than the static enrichment, so it wins both the
-  // schedule and the verification date.
+  // schedule and the verification date — EXCEPT when a human hours patch
+  // exists. A curated hours correction (places-overrides.json, the
+  // "PM-entered-as-AM" typo fix) must win over the Google refresh, otherwise
+  // the next refresh that adds this slug re-introduces the very typo the patch
+  // fixed. enriched.hours already carries the patched schedule (applyEnrichment
+  // takes p.hours first), so we just suppress the refresh override here.
   const refresh = HOURS_REFRESH[p.slug];
-  const refreshedHours = refresh?.weekday_hours
+  const hasHoursPatch = Boolean(OV_PATCH?.[p.slug]?.hours);
+  const refreshedHours = !hasHoursPatch && refresh?.weekday_hours
     ? parseGoogleHours(refresh.weekday_hours)
     : undefined;
   const hours = refreshedHours ?? enriched.hours;
   const hoursVerified = refreshedHours ? true : (enriched.hours_verified ?? false);
-  const hoursVerifiedAt = refresh?.refreshed_at ?? hours_updated_at;
+  const hoursVerifiedAt = refreshedHours ? refresh?.refreshed_at : hours_updated_at;
   if (refresh?.business_status === "CLOSED_PERMANENTLY") {
     enriched.is_operational = "closed_permanently";
   }
