@@ -42,13 +42,19 @@ export default function PlaceList({
   places,
   initialLayout = "grid",
   emptyMessage,
+  facetTags,
 }: {
   places: PlaceCardData[];
   initialLayout?: "grid" | "list";
   emptyMessage?: string;
+  /** Optional tag filter chips (slug + label). Toggling narrows the list to
+   *  places carrying ALL selected tags. Surfaces shadow data (dog-friendly,
+   *  outdoor, kid-friendly, …) as a real filter instead of buried metadata. */
+  facetTags?: { slug: string; name: string }[];
 }) {
   const [layout, setLayout] = useState<"grid" | "list">(initialLayout);
   const [sort, setSort] = useState<PlaceSortKey>("score");
+  const [activeFacets, setActiveFacets] = useState<ReadonlySet<string>>(new Set());
   const [mounted, setMounted] = useState(false);
 
   // Sort the incoming places per the user's choice. "score" is the
@@ -83,6 +89,16 @@ export default function PlaceList({
     }
     return copy;
   }, [places, sort]);
+
+  // Facet filtering: AND across selected tags (dog-friendly + outdoor = both).
+  const filteredPlaces = useMemo(() => {
+    if (activeFacets.size === 0) return sortedPlaces;
+    return sortedPlaces.filter((p) => {
+      const t = new Set(p.tags ?? []);
+      for (const f of activeFacets) if (!t.has(f)) return false;
+      return true;
+    });
+  }, [sortedPlaces, activeFacets]);
 
   // Filter out the "distance" option when no place has a distance_m
   // value — otherwise the dropdown would offer a sort that produces
@@ -135,11 +151,47 @@ export default function PlaceList({
     ) : null;
   }
 
+  function toggleFacet(slug: string) {
+    setActiveFacets((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-2.5">
+      {facetTags && facetTags.length > 0 && (
+        <ul className="flex flex-wrap gap-1.5">
+          {facetTags.map((f) => {
+            const on = activeFacets.has(f.slug);
+            return (
+              <li key={f.slug}>
+                <button
+                  type="button"
+                  onClick={() => toggleFacet(f.slug)}
+                  aria-pressed={on}
+                  className="tap-44 inline-flex items-center rounded-full border px-3 py-1 text-[12px] font-medium transition-colors"
+                  style={{
+                    borderColor: on ? "var(--app-brand)" : "var(--app-border)",
+                    background: on
+                      ? "color-mix(in srgb, var(--app-brand) 14%, transparent)"
+                      : "var(--app-bg-elevated)",
+                    color: on ? "var(--app-brand)" : "var(--app-ink-2)",
+                  }}
+                >
+                  {f.name}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-          {places.length} {places.length === 1 ? "place" : "places"}
+          {filteredPlaces.length} {filteredPlaces.length === 1 ? "place" : "places"}
+          {activeFacets.size > 0 ? ` of ${places.length}` : ""}
         </p>
         <div className="ml-auto flex items-center gap-2">
           <SortDropdown
@@ -204,13 +256,13 @@ export default function PlaceList({
 
       {layout === "grid" ? (
         <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3">
-          {sortedPlaces.map((p) => (
+          {filteredPlaces.map((p) => (
             <PlaceCard key={p.slug} place={p} variant="grid" />
           ))}
         </div>
       ) : (
         <ul className="space-y-2" aria-busy={!mounted ? "true" : undefined}>
-          {sortedPlaces.map((p) => (
+          {filteredPlaces.map((p) => (
             <li key={p.slug}>
               {/* compact=true drops the second metadata row (status +
                   rating + price) so the row reads tighter — list mode

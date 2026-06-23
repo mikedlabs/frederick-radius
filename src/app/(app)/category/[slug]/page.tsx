@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
+import { TAG_BY_SLUG } from "@/data/tags";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { rankPlaces } from "@/lib/loaders/places";
 import { isRecommendable } from "@/lib/relevance";
@@ -98,6 +99,26 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // Family "school admissions office as a top kids' outing" fix.
   const recommendable = places.filter(isRecommendable);
   const placesWithPhotos = recommendable.filter((p) => p.google_photo_url);
+
+  // Tag faceting (audit theme #2): turn the now-populated tags into a real
+  // filter instead of buried metadata. Show only the curated, relevant tags
+  // that actually appear in THIS category's set (>=3 places), ordered by how
+  // many carry them, capped so the row stays scannable. PlaceList does the
+  // client-side filtering.
+  const FACET_CANDIDATES = [
+    "dog-friendly", "outdoor", "indoor", "outdoor-seating", "family",
+    "kids-6-12", "kids-0-5", "free", "live-music", "date-night", "year-round",
+  ];
+  const facetCounts = new Map<string, number>();
+  for (const p of places) {
+    const t = new Set(p.tags ?? []);
+    for (const slug of FACET_CANDIDATES) if (t.has(slug)) facetCounts.set(slug, (facetCounts.get(slug) ?? 0) + 1);
+  }
+  const facetTags = [...facetCounts.entries()]
+    .filter(([, n]) => n >= 3)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([slug]) => ({ slug, name: TAG_BY_SLUG[slug]?.name ?? slug }));
 
   // C3: top 3 photo-backed picks lead the page. Falls back to the
   // top 3 by feature score if fewer than 3 places have photos.
@@ -278,6 +299,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <PlaceList
           places={places}
           initialLayout="list"
+          facetTags={facetTags}
           emptyMessage="We are still seeding this category. Submit a place you love."
         />
       </CollapsibleSection>
