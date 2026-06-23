@@ -18,6 +18,7 @@ import PendingFollowApplier from "@/components/place/PendingFollowApplier";
 import KnownForCard from "@/components/place/KnownForCard";
 import ParkAmenitiesStrip from "@/components/place/ParkAmenitiesStrip";
 import CourseInfoStrip from "@/components/place/CourseInfoStrip";
+import PlaceAudienceTags from "@/components/place/PlaceAudienceTags";
 import BusinessExtrasCard from "@/components/place/BusinessExtrasCard";
 import FieldNotesCard from "@/components/place/FieldNotesCard";
 import PlaceNoteCard from "@/components/place/PlaceNoteCard";
@@ -283,6 +284,10 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
           {/* Golf course facts (holes/par/access/designer) from curated
               course-info.json — renders only for golf courses. */}
           <CourseInfoStrip slug={place.slug} />
+          {/* "Good to know" — surfaces the audience facet (kid/teen-friendly,
+              wheelchair accessible, good for groups) + key feature tags
+              (rainy-day, seasonal) that were shadow data. Self-hides when none. */}
+          <PlaceAudienceTags tags={place.tags} />
           {/* Verified Field Notes (the moat) take precedence — happy hour /
               deals / parking / insider, each agent-confirmed at a cited
               source, with the FieldStamp seal. Falls back to the legacy
