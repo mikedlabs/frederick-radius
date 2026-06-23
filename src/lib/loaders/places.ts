@@ -595,6 +595,25 @@ export type PlaceDetail = PlaceCardData & {
   upcoming_events: Event[];
 };
 
+// Derived tags (audit theme #2: the audience/feature tags were shadow data AND
+// barely populated). These are FACTUAL from the final category — outdoor for
+// parks/trails/golf, indoor for the rainy-day-relevant indoor venues, and
+// kid-friendly for playgrounds — so the "Good to know" row, faceting, and
+// search have real data without fabricating per-place editorial claims. Unioned
+// with any hand-curated tags; never replaces them.
+const OUTDOOR_CATS = new Set(["park", "trail", "playground", "golf"]);
+const INDOOR_CATS = new Set(["museum", "library", "gallery"]);
+function deriveTags(category: string, tags?: string[]): string[] {
+  const out = new Set(tags ?? []);
+  if (OUTDOOR_CATS.has(category)) out.add("outdoor");
+  if (INDOOR_CATS.has(category)) out.add("indoor");
+  if (category === "playground") {
+    out.add("kids-0-5");
+    out.add("kids-6-12");
+  }
+  return [...out];
+}
+
 export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
   const enriched = applyEnrichment(p);
   // Shared-photo de-twin: a suppressed record shares its Google photo with
@@ -650,6 +669,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   }
   return {
     ...enriched,
+    tags: deriveTags(enriched.category, enriched.tags),
     hours,
     hours_verified: hoursVerified,
     hours_source: refreshedHours ? ("google_places" as const) : hours_source,
