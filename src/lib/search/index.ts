@@ -48,6 +48,10 @@ export type SearchResult = {
    * event's hero_image.
    */
   thumbnail?: string;
+  /** Place coordinates, so SearchOverlay can show distance when the user has
+   *  already granted location (no prompt). Set for place results only. */
+  lat?: number;
+  lng?: number;
 };
 
 /**
@@ -175,6 +179,8 @@ function hitToResult(h: SearchHit): SearchResult {
       // resolved to a proxied or Blob URL in decoratePlace, so the
       // overlay can render it directly without further work.
       thumbnail: p.google_photo_url,
+      lat: p.geom?.lat,
+      lng: p.geom?.lng,
     };
   }
   if (h.type === "event") {
