@@ -675,14 +675,14 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
       if (res.status === 410 || res.status === 404) {
         console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${res.status})`);
       } else {
-        console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
+        console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
       }
       return [];
     }
     const text = await res.text();
     if (!text.includes("BEGIN:VCALENDAR")) {
 
-      console.error(`[ical-live] ${feed.source}: not iCal`);
+      console.warn(`[ical-live] ${feed.source}: not iCal (fail-soft, skipped)`);
       return [];
     }
     const now = new Date();
@@ -737,8 +737,12 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
     return events;
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
-    console.error(
-      `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"}:`,
+    // Expected fail-soft: an unreliable upstream feed timed out / refused. We
+    // return [] and the page degrades gracefully, so this is a WARNING, not an
+    // error — logging it as error drowned real errors in the Vercel dashboard
+    // (~1,400 of these in 7 days). Keep it visible, just not as an "error".
+    console.warn(
+      `[ical-live] ${feed.source} ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
       err instanceof Error ? err.message : err,
     );
     return [];
@@ -762,7 +766,7 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
       if (res.status === 410 || res.status === 404) {
         console.info(`[ical-live] ${feed.source}: feed retired (HTTP ${res.status})`);
       } else {
-        console.error(`[ical-live] ${feed.source}: HTTP ${res.status}`);
+        console.warn(`[ical-live] ${feed.source}: HTTP ${res.status} (fail-soft, skipped)`);
       }
       return [];
     }
@@ -846,8 +850,9 @@ async function fetchRssFeed(feed: FeedSpec, windowDays: number): Promise<LiveEve
     return events;
   } catch (err) {
     const aborted = err instanceof Error && err.name === "AbortError";
-    console.error(
-      `[ical-live] ${feed.source} RSS ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"}:`,
+    // Expected fail-soft (see note in fetchIcalFeed): warn, don't error.
+    console.warn(
+      `[ical-live] ${feed.source} RSS ${aborted ? `timed out (>${FEED_FETCH_TIMEOUT_MS}ms)` : "failed"} (fail-soft, skipped):`,
       err instanceof Error ? err.message : err,
     );
     return [];
