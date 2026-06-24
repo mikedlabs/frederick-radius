@@ -9,6 +9,7 @@ const PROTOS = [
   { href: "/proto/bigtype", title: "Big type + color blocks", blurb: "Type-as-hierarchy. Giant masthead + bold filing-ink section blocks." },
   { href: "/proto/folders", title: "Tabbed manila folders", blurb: "Sections as file-folder tabs + a numbered field-guide table of contents." },
   { href: "/proto/almanac", title: "The Almanac (live conditions)", blurb: "One calm screen revealing the county's living state: sky, light, moon, weather, water, air, rail, and the season's own calendar. Many data points already wired, one composition." },
+  { href: "/proto/time-lens", title: "The Time Lens (day scrubber)", blurb: "Drag through the day; the sky, golden hour, and what's on all re-reveal for that hour. The temporal reveal over real sun math + today's unified events." },
 ];
 
 export default function ProtoIndex() {

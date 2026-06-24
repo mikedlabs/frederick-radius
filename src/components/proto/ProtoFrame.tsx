@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/proto/bigtype", label: "Big type" },
   { href: "/proto/folders", label: "Folder tabs" },
   { href: "/proto/almanac", label: "The Almanac" },
+  { href: "/proto/time-lens", label: "The Time Lens" },
 ];
 
 /** Shared header + switcher for the throwaway /proto/* design prototypes. */
