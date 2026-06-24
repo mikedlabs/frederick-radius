@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { RefreshCw, Compass } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Route-level error state for every app page (refinement audit F2: the
@@ -9,13 +11,22 @@ import { RefreshCw, Compass } from "lucide-react";
  * a bare boundary with no direction). Matches the not-found page's
  * field-guide voice: calm, honest, and it gives the user two real moves.
  * `reset()` re-renders the segment; the data underneath is untouched.
+ *
+ * The boundary RENDERS the fallback but used to swallow the error silently;
+ * report it to Sentry (with the digest that ties it to the server-side log)
+ * so route crashes are actually actionable.
  */
 export default function AppError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <div role="alert" className="relative mx-auto flex min-h-[60vh] max-w-sm flex-col items-center justify-center gap-4 text-center">
       <p

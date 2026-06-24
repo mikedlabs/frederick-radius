@@ -16,8 +16,12 @@ import PageBloom from "@/components/ui/PageBloom";
  * tonight does not appear, and an empty night gets an honest empty state that
  * names the Facebook-only gap and points at the venue list instead.
  *
- * force-dynamic: "who's on right now" is live. The heavy assembly is the same
- * 5-minute-cached set /today + /events share, so this adds no feed cost.
+ * ISR (revalidate 300): the heavy assembly is the SAME 5-minute-cached set
+ * /today + /events share, so there is no freshness to gain from a per-request
+ * render — force-dynamic only added uncached renders and opted the route out of
+ * the client router cache. The per-show "live now" badge is computed against the
+ * render-time clock and is therefore accurate to within the 5-minute bucket,
+ * which matches /today's ISR posture.
  */
 export const metadata: Metadata = {
   alternates: { canonical: "/live-music" },
@@ -26,7 +30,7 @@ export const metadata: Metadata = {
     "Who's on stage tonight around Frederick County: brewery, winery, and bar lineups plus ticketed shows, soonest first.",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function LiveMusicPage() {
   const now = new Date();

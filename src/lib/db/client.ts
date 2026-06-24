@@ -15,9 +15,13 @@ export function getDb(): DB | null {
   if (_db) return _db;
   const url = resolveUrl();
   if (!url) return null;
-  // Supabase's pooled connection (port 6543 / ?pgbouncer=true) requires prepare:false.
-  // Direct connection (port 5432) doesn't care. Setting prepare:false is safe in both modes.
-  const usesPgBouncer = url.includes("pgbouncer=true") || url.includes(":6543");
+  // Supabase's pooled connection (Supavisor transaction mode, port 6543 /
+  // ?pgbouncer=true) requires prepare:false and max:1 per serverless instance.
+  // Direct connection (port 5432) doesn't care, but max:10 per instance can
+  // exhaust Postgres under cron + SSR concurrency. Detect the pooler from the
+  // explicit flag/port OR the Supavisor host (pooler.supabase.*) so a URL that
+  // relies on the host alone is still caught.
+  const usesPgBouncer = /pgbouncer=true|:6543|pooler\.supabase\./.test(url);
   _sql = postgres(url, {
     prepare: !usesPgBouncer,
     max: usesPgBouncer ? 1 : 10,
