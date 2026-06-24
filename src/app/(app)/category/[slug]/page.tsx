@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
 import { TAG_BY_SLUG } from "@/data/tags";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { rankPlaces } from "@/lib/loaders/places";
+import { rankPlaces, slimForList } from "@/lib/loaders/places";
 import { isRecommendable } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
@@ -90,7 +90,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     : null;
   const origin = homeCentroid ?? FREDERICK_CENTER;
 
-  const places = rankPlaces({ category: slug, origin });
+  // slimForList drops google_photos[]/google_hours[] (no card renders them)
+  // before the set crosses to the client PlaceList — ~1.4MB off big categories.
+  const places = rankPlaces({ category: slug, origin }).map(slimForList);
   const subs = CATEGORIES.filter((x) => x.parent === c.slug);
   // Recommendation eligibility: "Worth your time" + the photo wall are
   // PROMOTIONAL, so institutions (schools/daycares/admissions offices that

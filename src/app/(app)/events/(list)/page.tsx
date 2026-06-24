@@ -31,9 +31,22 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
  * page, which loads its own record.
  */
 function slimEventForClient<T extends { description?: string }>(e: T): T {
-  const d = e.description;
-  if (!d || d.length <= 160) return e;
-  return { ...e, description: d.slice(0, 160) };
+  // Drop provenance fields no client surface renders (the explorer reads
+  // category_name + the rendered event fields only), then clamp long
+  // descriptions — both shrink the /events RSC payload + hydration.
+  const {
+    source_id: _si, license: _lic, confidence: _cf,
+    first_seen_at: _fs, last_verified_at: _lv, geo_confidence: _gc,
+    ...rest
+  } = e as T & {
+    source_id?: unknown; license?: unknown; confidence?: unknown;
+    first_seen_at?: unknown; last_verified_at?: unknown; geo_confidence?: unknown;
+  };
+  void _si; void _lic; void _cf; void _fs; void _lv; void _gc;
+  const slim = rest as unknown as T;
+  const d = slim.description;
+  if (!d || d.length <= 160) return slim;
+  return { ...slim, description: d.slice(0, 160) };
 }
 
 export const metadata: Metadata = {

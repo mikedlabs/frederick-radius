@@ -696,6 +696,24 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   };
 }
 
+/**
+ * slimForList — drop the detail-only heavy arrays (google_photos[],
+ * google_hours[]) that NO list/grid card renders, before a server page hands
+ * decorated places to a client component. Shrinks the per-page RSC payload +
+ * client hydration cost (e.g. ~1.4MB off /category/food). The place-detail
+ * surface uses the full loader, so this never starves it. Keeps the single
+ * hero (google_photo_url), review_snippet/author, known_for, customers_loved.
+ */
+export function slimForList(p: PlaceCardData): PlaceCardData {
+  const { google_photos: _gp, google_hours: _gh, ...rest } = p as PlaceCardData & {
+    google_photos?: unknown;
+    google_hours?: unknown;
+  };
+  void _gp;
+  void _gh;
+  return rest as PlaceCardData;
+}
+
 /** Share of places that carry verified hours, for the Open-now gate. */
 export function hoursCoverage(places: PlaceCardData[]): number {
   if (!places.length) return 0;
