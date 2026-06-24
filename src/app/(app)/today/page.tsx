@@ -152,54 +152,16 @@ export const revalidate = 300;
 export default async function HomePage() {
   const now = new Date();
 
-  // ONE unified public event set — the same shared loader /events
-  // renders from, so "This weekend · N" can never disagree between the
-  // two pages again (June-9 deep audit P0-5: /today said 1, /events said
-  // 13, because /today counted curated seeds only).
-  const { publicEvents } = await assembleUnifiedEvents(now);
-  const featuredEvent = pickFeaturedEvent(now, publicEvents);
-
-  // The golden-hour beat: an outdoor draw you can still catch in today's
-  // remaining daylight, paired with the live light window in TodayContext.
-  // Both halves are found facts (real sun math + a real event start).
-  const goldenEvent = pickGoldenHourOutdoorEvent(publicEvents, now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
-
-  // Live music on stage TONIGHT — the wedge answer (who's playing, not where
-  // the stages are). Feeds the contextual "right now" band above the I-want
-  // grid; self-hides when nothing's on. The soonest show rides as a quiet
-  // sub-label ("7:00 PM · Olde Mother"), never a count headline.
-  const liveTonight = liveMusicTonight(publicEvents, now);
-  const soonestShow = liveTonight[0];
-  // The soonest show, as structured parts so the band can say WHAT it is (act +
-  // venue + time), not just a time. RightNowBand owns the formatting + truncation.
-  const soonest = soonestShow
-    ? {
-        title: soonestShow.title,
-        venue: soonestShow.venue_name ?? null,
-        time: eventDateBlock(soonestShow).time,
-      }
-    : undefined;
-  // What's on = every PUBLIC event happening in the city or county TODAY,
-  // soonest first. No time-mode toggle, no tomorrow/weekend — just today's
-  // events, nothing else. The unified set already spans city + county; the
-  // utility filter keeps council-hearing-type admin rows out of the headline.
-  // EVERYTHING happening in the city or county TODAY, soonest first — no cap,
-  // nothing dropped. The draws (concerts, markets, shows) lead as cards; the
-  // civic/utility business (meetings, hearings) still shows, just as a quiet
-  // "Also today" list so it's present without burying the draws.
-  const todayAll = publicEvents
-    .filter((e) => isEventToday(e.starts_at, now))
-    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  // Draws lead, routine recurring programs (storytimes/classes) sink to the end
-  // of the rail — soonest-first within each tier (compareForLead). The civic
-  // tail stays chronological.
-  const todaysEvents = todayAll.filter((e) => !isUtilityEvent(e)).sort(compareForLead);
-  const todaysCivic = todayAll.filter((e) => isUtilityEvent(e));
-  // Lead with the big feature card only when the featured event is one of today's.
-  const showHero = Boolean(featuredEvent && todaysEvents.some((e) => e.slug === featuredEvent.slug));
-  const upcomingRest = showHero
-    ? todaysEvents.filter((e) => e.slug !== featuredEvent!.slug)
-    : todaysEvents;
+  // ONE unified public event set — created here but intentionally NOT awaited.
+  // The static page chrome (sky, headline, holiday note, the craving grid) must
+  // paint on the first byte; each event-dependent region below awaits THIS one
+  // shared promise inside its own <Suspense> boundary, so a cold ISR miss
+  // streams the rail in progressively instead of blocking the whole shell on
+  // the slowest feed. The promise resolves once even though several regions
+  // await it (assembleUnifiedEvents is itself unstable_cache-wrapped, and a
+  // single awaited promise yields one result). (Audit: unified-events
+  // cold-miss streaming gap.)
+  const eventsPromise = assembleUnifiedEvents(now);
 
   return (
     <div className="relative">
@@ -226,21 +188,7 @@ export default async function HomePage() {
           / almanac forecast still lives in the collapsed "full briefing". */}
       <SkyHero className="relative z-10 shadow-[0_12px_28px_-16px_rgba(22,20,14,0.22)]">
         <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
-          <TodayCard
-            tonightEvent={
-              // Today-only: the hero teaser shows tonight's event, never
-              // tomorrow's — /today is the next 24 hours, so a "Tomorrow: …"
-              // line has no place in the masthead.
-              featuredEvent && isEventToday(featuredEvent.starts_at, now)
-                ? {
-                    slug: featuredEvent.slug,
-                    title: featuredEvent.title,
-                    venue_name: featuredEvent.venue_name ?? null,
-                    starts_at: featuredEvent.starts_at,
-                  }
-                : null
-            }
-          />
+          <TonightTeaser eventsPromise={eventsPromise} now={now} />
         </Suspense>
       </SkyHero>
 
@@ -271,7 +219,9 @@ export default async function HomePage() {
           in the SkyHero header above; this slim line carries only the
           contextual extras and self-hides when there's neither. */}
       <div className="mt-2">
-        <TodayContext goldenEvent={goldenEvent} />
+        <Suspense fallback={null}>
+          <TodayContextSlot eventsPromise={eventsPromise} now={now} />
+        </Suspense>
       </div>
 
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
@@ -291,71 +241,27 @@ export default async function HomePage() {
         <CravingStrip
           locationSlot={<LocationPrime />}
           contextSlot={
-            <RightNowBand
-              liveTonight={{ count: liveTonight.length, soonest }}
-            />
+            <Suspense fallback={null}>
+              <RightNowSlot eventsPromise={eventsPromise} now={now} />
+            </Suspense>
           }
         />
       </div>
 
       {/* ── WHAT'S ON — every public event in the city or county TODAY. Moved
           ABOVE the moat (owner call): the day's events are the headline answer.
-          Soonest first; the rest of the calendar is one tap away via "See all". */}
-      <section className="mt-4 space-y-3" aria-label="What's on">
-        <DismissibleSection
-          id="upcoming"
-          title="Today"
-          href="/events"
-          cta="See all"
-          eyebrow="What's on"
-        >
-          {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 ? (
-            <div className="space-y-3">
-              {showHero && featuredEvent && (
-                <EventCard event={featuredEvent} variant="feature" />
-              )}
-              {upcomingRest.length > 0 && (
-                <div className="-mx-4 px-4">
-                  <div className="reveal-up shelf-rail gap-3 pb-1">
-                    {upcomingRest.map((e) => (
-                      <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
-                        <EventCard event={e} variant="tile" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/* Civic / municipal business happening today — present but quiet,
-                  as muted one-line rows so it never competes with the draws. */}
-              {todaysCivic.length > 0 && (
-                <div className="space-y-1">
-                  <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                    Also today
-                  </p>
-                  <ul>
-                    {todaysCivic.map((e) => (
-                      <li key={`${e.slug}-${e.starts_at}`}>
-                        <EventCard event={e} variant="utility" />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p
-              className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
-              style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-            >
-              Nothing on the calendar today.{" "}
-              <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
-                Browse all events
-              </Link>
-              .
-            </p>
-          )}
-        </DismissibleSection>
-      </section>
+          Soonest first; the rest of the calendar is one tap away via "See all".
+          Streamed: the section awaits the shared events promise inside its own
+          Suspense boundary so the chrome above it never waits on the feeds. */}
+      <Suspense
+        fallback={
+          <section className="mt-4 space-y-3" aria-label="What's on">
+            <Skeleton.Block height={220} round="var(--app-radius-lg)" />
+          </section>
+        }
+      >
+        <WhatsOn eventsPromise={eventsPromise} now={now} />
+      </Suspense>
 
       {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
           Field Notes moat, as a wallet of overlapping "Last Pour" cards (the
@@ -553,5 +459,136 @@ export default async function HomePage() {
       </div>{/* /responsive split */}
       </CollapsibleSection>
     </div>
+  );
+}
+
+// ─── Event-dependent slices ──────────────────────────────────────────────
+// Thin async server components that each await the ONE shared events promise
+// and render an existing leaf component with its existing props. Moving the
+// await + derivation off HomePage into these <Suspense>-bounded children is
+// what lets the static chrome paint before the feeds resolve; the leaf
+// components (TodayCard / TodayContext / RightNowBand) are unchanged.
+
+type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
+
+/** Masthead teaser: tonight's featured event, today-only. */
+async function TonightTeaser({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+  const { publicEvents } = await eventsPromise;
+  const featuredEvent = pickFeaturedEvent(now, publicEvents);
+  return (
+    <TodayCard
+      tonightEvent={
+        // Today-only: the hero teaser shows tonight's event, never tomorrow's —
+        // /today is the next 24 hours, so a "Tomorrow: …" line has no place in
+        // the masthead.
+        featuredEvent && isEventToday(featuredEvent.starts_at, now)
+          ? {
+              slug: featuredEvent.slug,
+              title: featuredEvent.title,
+              venue_name: featuredEvent.venue_name ?? null,
+              starts_at: featuredEvent.starts_at,
+            }
+          : null
+      }
+    />
+  );
+}
+
+/** Salutation + golden-hour cue (an outdoor draw still catchable in today's
+ *  remaining daylight, paired with the live light window). Self-hides. */
+async function TodayContextSlot({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+  const { publicEvents } = await eventsPromise;
+  const goldenEvent = pickGoldenHourOutdoorEvent(publicEvents, now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+  return <TodayContext goldenEvent={goldenEvent} />;
+}
+
+/** The contextual "right now" band: who's on stage tonight, as a quiet
+ *  sub-label ("7:00 PM · Olde Mother"), never a count headline. Self-hides. */
+async function RightNowSlot({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+  const { publicEvents } = await eventsPromise;
+  const liveTonight = liveMusicTonight(publicEvents, now);
+  const soonestShow = liveTonight[0];
+  const soonest = soonestShow
+    ? {
+        title: soonestShow.title,
+        venue: soonestShow.venue_name ?? null,
+        time: eventDateBlock(soonestShow).time,
+      }
+    : undefined;
+  return <RightNowBand liveTonight={{ count: liveTonight.length, soonest }} />;
+}
+
+/** What's on = every PUBLIC event in the city or county TODAY, soonest first.
+ *  Draws (concerts/markets/shows) lead as cards; routine recurring programs
+ *  sink to the end; civic/utility business shows quietly as "Also today". */
+async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+  const { publicEvents } = await eventsPromise;
+  const featuredEvent = pickFeaturedEvent(now, publicEvents);
+  const todayAll = publicEvents
+    .filter((e) => isEventToday(e.starts_at, now))
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  const todaysEvents = todayAll.filter((e) => !isUtilityEvent(e)).sort(compareForLead);
+  const todaysCivic = todayAll.filter((e) => isUtilityEvent(e));
+  const showHero = Boolean(featuredEvent && todaysEvents.some((e) => e.slug === featuredEvent.slug));
+  const upcomingRest = showHero
+    ? todaysEvents.filter((e) => e.slug !== featuredEvent!.slug)
+    : todaysEvents;
+
+  return (
+    <section className="mt-4 space-y-3" aria-label="What's on">
+      <DismissibleSection
+        id="upcoming"
+        title="Today"
+        href="/events"
+        cta="See all"
+        eyebrow="What's on"
+      >
+        {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 ? (
+          <div className="space-y-3">
+            {showHero && featuredEvent && (
+              <EventCard event={featuredEvent} variant="feature" />
+            )}
+            {upcomingRest.length > 0 && (
+              <div className="-mx-4 px-4">
+                <div className="reveal-up shelf-rail gap-3 pb-1">
+                  {upcomingRest.map((e) => (
+                    <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
+                      <EventCard event={e} variant="tile" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Civic / municipal business happening today — present but quiet,
+                as muted one-line rows so it never competes with the draws. */}
+            {todaysCivic.length > 0 && (
+              <div className="space-y-1">
+                <p className="px-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+                  Also today
+                </p>
+                <ul>
+                  {todaysCivic.map((e) => (
+                    <li key={`${e.slug}-${e.starts_at}`}>
+                      <EventCard event={e} variant="utility" />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p
+            className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-6 text-center text-[13px]"
+            style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+          >
+            Nothing on the calendar today.{" "}
+            <Link href="/events" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
+              Browse all events
+            </Link>
+            .
+          </p>
+        )}
+      </DismissibleSection>
+    </section>
   );
 }
