@@ -212,10 +212,17 @@ async function fetchFrom(url: string): Promise<Aircraft[]> {
   return normalize(json.ac ?? json.aircraft ?? []);
 }
 
+// Let Vercel's edge collapse the rapid client polls: an in-memory cache only
+// helps a warm instance, so without this every cold/concurrent instance hits the
+// 8s upstream fresh. s-maxage matches the in-memory TTL; SWR serves instantly
+// while revalidating. force-dynamic disables Next's route cache but our own
+// response header still passes through to the CDN (supported pattern).
+const CDN_HEADERS = { "Cache-Control": "public, s-maxage=12, stale-while-revalidate=30" };
+
 export async function GET() {
   const now = Date.now();
   if (cache && now - cache.at < TTL_MS) {
-    return NextResponse.json({ aircraft: cache.data, at: cache.at, source: "airplanes.live" });
+    return NextResponse.json({ aircraft: cache.data, at: cache.at, source: "airplanes.live" }, { headers: CDN_HEADERS });
   }
   try {
     let data: Aircraft[];
@@ -226,10 +233,10 @@ export async function GET() {
     }
     await enrich(data);
     cache = { at: now, data };
-    return NextResponse.json({ aircraft: data, at: now, source: "airplanes.live" });
+    return NextResponse.json({ aircraft: data, at: now, source: "airplanes.live" }, { headers: CDN_HEADERS });
   } catch {
     // Serve the last good snapshot if we have one; otherwise an honest empty.
-    if (cache) return NextResponse.json({ aircraft: cache.data, at: cache.at, source: "airplanes.live", stale: true });
+    if (cache) return NextResponse.json({ aircraft: cache.data, at: cache.at, source: "airplanes.live", stale: true }, { headers: CDN_HEADERS });
     return NextResponse.json({ aircraft: [], at: now, source: "airplanes.live", error: true }, { status: 200 });
   }
 }

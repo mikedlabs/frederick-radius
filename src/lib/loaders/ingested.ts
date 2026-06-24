@@ -185,8 +185,9 @@ async function loadUpcoming(limit: number): Promise<IngestedSeries[]> {
 export const getIngestedSeries = unstable_cache(
   async (limit = 4000) => loadUpcoming(limit),
   // v5: added sourceDomain + kept FCPL/FCVFRA category — shape change must
-  // invalidate the persisted cache (the #509 lesson).
-  ["ingested-series-v5"],
+  // invalidate the persisted cache (the #509 lesson). The deploy SHA is a second
+  // key segment so a forgotten version bump still auto-busts on deploy.
+  ["ingested-series-v5", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 3600, tags: ["ingested-events"] }
 );
 
