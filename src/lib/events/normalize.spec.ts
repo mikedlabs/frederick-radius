@@ -6,7 +6,24 @@ import {
   dedupeSentences,
   clampDescription,
   isOfficialsRoster,
+  seriesStem,
+  recurrenceKey,
+  collapseRecurringEvents,
 } from "./normalize";
+import type { EventWithMeta } from "@/lib/loaders/events";
+
+function mkEvent(over: Partial<EventWithMeta>): EventWithMeta {
+  return {
+    slug: "e",
+    title: "Event",
+    starts_at: "2026-06-25T22:00:00.000Z",
+    venue_name: "Baker Park",
+    municipality: "frederick",
+    geom: { lng: -77.41, lat: 39.41 },
+    geo_confidence: "area",
+    ...over,
+  } as unknown as EventWithMeta;
+}
 
 describe("cleanTitle sponsor strip", () => {
   it("strips a 'sponsored by …' clause up to a pipe, keeping the double bill", () => {
@@ -180,5 +197,47 @@ describe("isOfficialsRoster + cleanDescription roster handling", () => {
 
   it("keeps a two-name roster fragment (under the 3-segment floor)", () => {
     expect(isOfficialsRoster("Mayor Smith, Council Member Jones")).toBe(false);
+  });
+});
+
+describe("seriesStem + series collapse", () => {
+  it("returns the part before ' | ' when the stem is substantial", () => {
+    expect(seriesStem("Summer Concert Series | Radio King Orchestra (Swing)")).toBe(
+      "Summer Concert Series",
+    );
+  });
+
+  it("leaves a pipeless title untouched", () => {
+    expect(seriesStem("Father's Day Walking Tour")).toBe("Father's Day Walking Tour");
+  });
+
+  it("does not strip a too-short generic prefix (avoids merging unrelated events)", () => {
+    expect(seriesStem("Show | The Band")).toBe("Show | The Band");
+  });
+
+  it("keys every act of a series to the same recurrence bucket", () => {
+    const a = recurrenceKey({ title: "Summer Concert Series | K Street Union", venue: "Baker Park", municipality: "frederick" });
+    const b = recurrenceKey({ title: "Summer Concert Series | Radio King Orchestra", venue: "Baker Park", municipality: "frederick" });
+    expect(a).toBe(b);
+  });
+
+  it("collapses a scattered 'Series | Act' run into one card titled by the series", () => {
+    const acts = ["BIRCKHEAD (Jazz)", "The JoGo Project", "K Street Union", "Radio King Orchestra"];
+    const events = acts.map((act, i) =>
+      mkEvent({ slug: `scs-${i}`, title: `Summer Concert Series | ${act}`, starts_at: `2026-06-${25 + i}T22:00:00.000Z` }),
+    );
+    const out = collapseRecurringEvents(events);
+    expect(out).toHaveLength(1);
+    expect(out[0].title).toBe("Summer Concert Series");
+    expect(out[0].is_recurring).toBe(true);
+    expect(out[0].recurrence_text).toBe("4 upcoming dates");
+  });
+
+  it("does not merge the same series stem across different venues", () => {
+    const out = collapseRecurringEvents([
+      mkEvent({ slug: "x1", title: "Trivia Night | Round 1", venue_name: "The Pour House" }),
+      mkEvent({ slug: "x2", title: "Trivia Night | Round 1", venue_name: "Olde Mother Brewing" }),
+    ]);
+    expect(out).toHaveLength(2);
   });
 });

@@ -242,7 +242,7 @@ export default function EventCard({
     const capColor = onPhoto ? "rgba(255,255,255,0.82)" : "var(--app-ink-2)";
     return (
       <article
-        className="tactile tactile-feature tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)]"
+        className="tactile tactile-feature tactile-ring tactile-interactive group relative aspect-[3/2] w-full overflow-hidden rounded-[var(--app-radius-lg)]"
         style={{ backgroundColor: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)" }}
       >
         {/* The face — the venue photo, or a designed engraved-glyph plate. */}

@@ -186,43 +186,44 @@ export default async function HomePage() {
           than a full-bleed band, with a tighter weather row inside; the soft
           downward shadow floats it over the page. The detailed hourly / 7-day
           / almanac forecast still lives in the collapsed "full briefing". */}
-      <SkyHero className="relative z-10 shadow-[0_12px_28px_-16px_rgba(22,20,14,0.22)]">
+      {/* shader-rim — the page's ONE rationed living treatment: a slow, barely-
+          there conic accent ring on the true top-of-page hero (the sky plate),
+          the crafted-product-hero move the primitive reserves for a single
+          element. It freezes under prefers-reduced-motion. (The old className
+          shadow was dead — the .sky-hero rule's own inset shadow overrides it.) */}
+      <SkyHero className="shader-rim relative z-10">
         <Suspense fallback={<Skeleton.Block height={150} round="var(--app-radius-md)" />}>
           <TonightTeaser eventsPromise={eventsPromise} now={now} />
         </Suspense>
       </SkyHero>
 
-      {/* Identity headline — the field-guide positioning, given a confident
-          serif headline + a subtext that spans the county (Downtown Frederick
-          to the towns) and names what the guide covers. Sits below the weather
-          masthead, so it reads as the supporting positioning, not a competing
-          title. (Owner-chosen over a "smarter way to decide" framing, which
-          would have the app telling you what to do rather than helping you
-          find it.) */}
-      <div className="mt-3 px-0.5">
-        <p className="font-serif text-[19px] font-semibold leading-[1.15] tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
+      {/* ── MASTHEAD CAPTION ─────────────────────────────────────────────
+          The identity standfirst, the holiday note, and the salutation /
+          golden-hour line are FUSED into one engraved plate beneath the sky
+          card — serif standfirst, then the mono almanac notes, capped by a
+          fg-rule that reads as the cover/body break of the day's almanac.
+          Previously these were three loose mt-blocks that read as a scattered
+          stack; now they're one composed caption. Both the holiday and the
+          context lines self-hide, so on an ordinary day the plate carries just
+          the standfirst + the cap rule (which always sits below it, so the rule
+          never dangles). Identity copy + voice unchanged (finding, not telling). */}
+      <header className="mt-2 px-0.5">
+        <p className="display-3" style={{ color: "var(--app-ink)" }}>
           Your field guide to Frederick County.
         </p>
-        <p className="mt-1 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+        <p className="mt-1 text-body text-pretty" style={{ color: "var(--app-ink-2)" }}>
           From Downtown to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
         </p>
-      </div>
-
-      {/* Federal-holiday note — names the day + its closure implication
-          (banks, post offices, government offices). Self-hides on an ordinary
-          day. Civic context before a plan, not a celebration banner. */}
-      <div className="mt-3">
-        <HolidayNote now={now} />
-      </div>
-
-      {/* Salutation + golden-hour cue. The date / day / time itself now lives
-          in the SkyHero header above; this slim line carries only the
-          contextual extras and self-hides when there's neither. */}
-      <div className="mt-2">
-        <Suspense fallback={null}>
-          <TodayContextSlot eventsPromise={eventsPromise} now={now} />
-        </Suspense>
-      </div>
+        <div className="mt-2 space-y-1.5">
+          <HolidayNote now={now} />
+          {/* Salutation + golden-hour cue — event-dependent, so it streams in
+              its own Suspense boundary while the masthead plate paints first. */}
+          <Suspense fallback={null}>
+            <TodayContextSlot eventsPromise={eventsPromise} now={now} />
+          </Suspense>
+        </div>
+        <div className="fg-rule mt-3" aria-hidden />
+      </header>
 
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On
@@ -255,7 +256,7 @@ export default async function HomePage() {
           Suspense boundary so the chrome above it never waits on the feeds. */}
       <Suspense
         fallback={
-          <section className="mt-4 space-y-3" aria-label="What's on">
+          <section className="mt-6 space-y-3" aria-label="What's on">
             <Skeleton.Block height={220} round="var(--app-radius-lg)" />
           </section>
         }
@@ -535,13 +536,14 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
     : todaysEvents;
 
   return (
-    <section className="mt-4 space-y-3" aria-label="What's on">
+    <section className="mt-6 space-y-3" aria-label="What's on">
       <DismissibleSection
         id="upcoming"
         title="Today"
         href="/events"
         cta="See all"
         eyebrow="What's on"
+        plateNo="Pl. I"
       >
         {showHero || upcomingRest.length > 0 || todaysCivic.length > 0 ? (
           <div className="space-y-3">
@@ -552,7 +554,7 @@ async function WhatsOn({ eventsPromise, now }: { eventsPromise: EventsPromise; n
               <div className="-mx-4 px-4">
                 <div className="reveal-up shelf-rail gap-3 pb-1">
                   {upcomingRest.map((e) => (
-                    <div key={`${e.slug}-${e.starts_at}`} className="w-[280px] shrink-0">
+                    <div key={`${e.slug}-${e.starts_at}`} className="tactile-ring w-[280px] shrink-0 rounded-[var(--app-radius-lg)]">
                       <EventCard event={e} variant="tile" />
                     </div>
                   ))}

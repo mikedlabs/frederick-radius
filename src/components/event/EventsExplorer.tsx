@@ -628,11 +628,20 @@ export default function EventsExplorer({
             // peek of eight). Group 0's lead is the photo-capable feature;
             // the others lead with their first event as a glance card.
             const EXPANDED_CAP = 40;
+            // Paint a scannable PEEK of each window by default, not just the
+            // lead. The page assembles hundreds of events but the old
+            // lead-only first paint surfaced ~one card per window, so the body
+            // read as nearly empty against the header count (the "653 events,
+            // but I only see a handful" gap). A peek of five behind the lead
+            // makes every window legible at a glance; "Show N more" still
+            // reveals the long tail on demand.
+            const PEEK = 5;
             const lead = g.events[0];
             const leadIsFeature = groupIdx === 0;
             const rest = g.events.slice(1);
-            const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : [];
+            const shown = isOpen ? rest.slice(0, EXPANDED_CAP) : rest.slice(0, PEEK);
             const overflow = isOpen ? Math.max(0, rest.length - EXPANDED_CAP) : 0;
+            const moreCount = rest.length - shown.length;
             return (
               <section key={g.key} className="space-y-3">
                 <SectionHeading title={g.label} count={g.events.length} />
@@ -665,35 +674,41 @@ export default function EventsExplorer({
                         ))}
                       </ol>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(g.key)}
-                      aria-expanded={isOpen}
-                      className="tactile tactile-interactive flex w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
-                      style={{
-                        borderColor: "var(--app-border)",
-                        background: "var(--app-bg-elevated)",
-                        color: "var(--app-cool)",
-                      }}
-                    >
-                      {isOpen ? "Show fewer" : `Show ${rest.length} more`}
-                      <ChevronDown
-                        className="h-4 w-4 transition-transform"
-                        strokeWidth={2.25}
-                        style={{ transform: isOpen ? "rotate(180deg)" : "none" }}
-                        aria-hidden
-                      />
-                    </button>
-                    {overflow > 0 && (
-                      <div className="px-1 pt-1 text-center">
-                        <Link
-                          href="/events/calendar"
-                          className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
-                          style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                    {/* Only when the window holds MORE than the default peek —
+                        otherwise the peek already shows everything. */}
+                    {rest.length > PEEK && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => toggleGroup(g.key)}
+                          aria-expanded={isOpen}
+                          className="tactile tactile-interactive flex w-full items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border px-4 py-2.5 text-[13px] font-semibold"
+                          style={{
+                            borderColor: "var(--app-border)",
+                            background: "var(--app-bg-elevated)",
+                            color: "var(--app-cool)",
+                          }}
                         >
-                          {overflow} more on the calendar →
-                        </Link>
-                      </div>
+                          {isOpen ? "Show fewer" : `Show ${moreCount} more`}
+                          <ChevronDown
+                            className="h-4 w-4 transition-transform"
+                            strokeWidth={2.25}
+                            style={{ transform: isOpen ? "rotate(180deg)" : "none" }}
+                            aria-hidden
+                          />
+                        </button>
+                        {overflow > 0 && (
+                          <div className="px-1 pt-1 text-center">
+                            <Link
+                              href="/events/calendar"
+                              className="inline-flex items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-4 py-2 text-[12px] font-semibold transition hover:bg-[var(--app-bg-sunken)]"
+                              style={{ borderColor: "var(--app-border)", color: "var(--app-cool)" }}
+                            >
+                              {overflow} more on the calendar →
+                            </Link>
+                          </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
