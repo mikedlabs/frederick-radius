@@ -39,6 +39,7 @@ import {
   Store,
   BookOpen,
   FerrisWheel,
+  Flag,
   Users,
   X,
 } from "lucide-react";
@@ -84,6 +85,7 @@ const ICON: Record<NonNullable<SubIntent["icon"]>, typeof Coffee> = {
   Store,
   BookOpen,
   FerrisWheel,
+  Flag,
   Users,
 };
 

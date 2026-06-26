@@ -21,6 +21,7 @@ import {
   FerrisWheel,
   BedDouble,
   Sparkles,
+  Flag,
   ParkingCircle,
   Train,
   Bus,
@@ -67,6 +68,7 @@ const ICONS: Record<string, LucideIcon> = {
   Wine,
   BedDouble,
   Sparkles,
+  Flag,
   // Meal-occasion glyphs (the time-aware lead tile).
   Sunrise,
   Croissant,

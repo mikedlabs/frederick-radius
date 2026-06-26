@@ -45,7 +45,8 @@ export type Craving = {
     | "FerrisWheel"
     | "Wine"
     | "BedDouble"
-    | "Sparkles";
+    | "Sparkles"
+    | "Flag";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -134,22 +135,26 @@ export const CRAVINGS: Craving[] = [
     label: "Drinks",
     icon: "Beer",
     color: "var(--app-positive)",
-    match: (p) => p.category === "bar" || p.category === "brewery",
+    match: (p) => p.category === "bar" || p.category === "brewery" || p.category === "distillery",
     facets: [
       { key: "brewery", label: "Breweries", match: (p) => p.category === "brewery" },
       { key: "bar", label: "Bars", match: (p) => p.category === "bar" },
+      // Distilleries split out of "brewery" into their own category — surface
+      // them here so the craft-spirits scene (8 places) isn't stranded.
+      { key: "distillery", label: "Distilleries", match: (p) => p.category === "distillery" },
     ],
   },
   {
-    // Frederick is wine country — ~15 wineries / vineyards / cideries + a
-    // meadery, filed under "brewery" in the data, matched here by name so they
-    // get their own one-tap door (Linganore, Black Ankle, Loew, Elk Run,
-    // Springfield Manor, Catoctin Breeze, Orchid Cellar, Willow Oaks Cider…).
+    // Frederick is wine country — the Wine Trail's vineyards, cideries + a
+    // meadery (Linganore, Black Ankle, Loew, Elk Run, Springfield Manor,
+    // Catoctin Breeze, Orchid Cellar, Willow Oaks Cider…). Now their own
+    // `winery` category (split out of "brewery"); the name test stays as a
+    // fallback for any straggler still mis-filed under brewery.
     key: "wineries",
     label: "Wineries",
     icon: "Wine",
     color: "var(--app-brand-press)",
-    match: (p) => WINERY.test(p.name),
+    match: (p) => p.category === "winery" || WINERY.test(p.name),
   },
   {
     // Beer breweries — the county's taprooms (Brewer's Alley, Monocacy,
@@ -193,6 +198,17 @@ export const CRAVINGS: Craving[] = [
       { key: "trail", label: "Trails", match: (p) => p.category === "trail" || p.category === "outdoors" },
       { key: "playground", label: "Playgrounds", match: (p) => p.category === "playground" },
     ],
+  },
+  {
+    // The county's public + championship + country-club courses (Whiskey Creek,
+    // Maryland National, Musket Ridge, Worthington Manor, Clustered Spires,
+    // Holly Hills, Maple Run). Golf was invisible in browse until now —
+    // reachable only by direct URL or search. Its own one-tap door.
+    key: "golf",
+    label: "Golf",
+    icon: "Flag",
+    color: "var(--app-brand-2)",
+    match: (p) => p.category === "golf",
   },
   {
     // The formal music halls + stages (Weinberg, Sky Stage, New Spire, the
