@@ -11,7 +11,7 @@ import { usePlaceSheet } from "./PlaceSheetProvider";
 import { haptic } from "@/lib/haptics";
 import PlaceStatus from "./PlaceStatus";
 import { knownFor } from "@/lib/cuisine";
-import { Star } from "lucide-react";
+import { Star, NotebookPen } from "lucide-react";
 import CategoryIcon from "./CategoryIcon";
 import SourceBadge from "./SourceBadge";
 import FieldNoteTag, { DealHookTag } from "./FieldNoteTag";
@@ -275,9 +275,15 @@ export default function PlaceCard({
                   <> · <span style={{ color: "var(--app-ink-2)" }}>{place.known_for?.[0] ?? kf}</span></>
                 )}
               </p>
+              {place.field_note_tip && (
+                <p className="mt-1.5 flex gap-1.5 text-[12px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                  <NotebookPen className="mt-[2px] h-3 w-3 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                  <span className="line-clamp-2">{place.field_note_tip}</span>
+                </p>
+              )}
               <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <PlaceStatus status={place.open_status} className="!text-[12px]" />
-                {place.deal_hook ? <DealHookTag label={place.deal_hook} /> : place.field_notes ? <FieldNoteTag /> : null}
+                {place.deal_hook ? <DealHookTag label={place.deal_hook} /> : place.field_notes && !place.field_note_tip ? <FieldNoteTag /> : null}
                 {nonOpenReasons.length > 0 ? (
                   <StatusChipRow reasons={nonOpenReasons} />
                 ) : (
@@ -348,10 +354,18 @@ export default function PlaceCard({
                   {"$".repeat(place.price_band)}
                 </span>
               )}
-              {place.field_notes && <FieldNoteTag />}
+              {place.field_notes && !place.field_note_tip && <FieldNoteTag />}
             </div>
             {nonOpenReasons.length > 0 && <StatusChipRow reasons={nonOpenReasons} />}
-            {place.review_snippet && (
+            {/* Voice line, in priority order: the VERIFIED field note (the moat's
+                own intel) leads over a Google review snippet, which leads over the
+                "Loved for" tag list. One voice, never stacked. */}
+            {place.field_note_tip ? (
+              <p className="flex gap-1.5 text-[13px] leading-snug" style={{ color: "var(--app-ink-2)" }}>
+                <NotebookPen className="mt-[2px] h-3.5 w-3.5 shrink-0" strokeWidth={2.25} style={{ color: "var(--app-brand-press)" }} aria-hidden />
+                <span className="line-clamp-2">{place.field_note_tip}</span>
+              </p>
+            ) : place.review_snippet ? (
               <blockquote
                 className="mt-0.5 border-l-2 pl-2.5 text-[13px] italic leading-snug"
                 style={{ borderColor: `color-mix(in srgb, ${color} 60%, transparent)`, color: "var(--app-ink-2)" }}
@@ -365,13 +379,12 @@ export default function PlaceCard({
                   </cite>
                 )}
               </blockquote>
-            )}
-            {loved.length > 0 && !place.review_snippet && (
+            ) : loved.length > 0 ? (
               <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
                 <span className="font-semibold" style={{ color: "var(--app-ink-2)" }}>Loved for</span>{" "}
                 {loved.join(" · ")}
               </p>
-            )}
+            ) : null}
           </div>
         </button>
         <div className="absolute right-2.5 top-2.5 z-10">

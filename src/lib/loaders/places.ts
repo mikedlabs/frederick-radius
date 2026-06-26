@@ -446,6 +446,12 @@ export type PlaceCardData = Place & PlaceEnriched & {
    *  never claim "today's" special on the wrong day. Precomputed server-side so
    *  field-notes.json stays off the client. */
   deal_hook?: string;
+  /** The single best VERIFIED local tip to surface on a LEAD card (answer /
+   *  feature): the first insider note, else the parking note, clamped to one
+   *  line. Field Notes are on ~5% of places, so this is the moat's actual
+   *  voice — not just the "Field notes" badge — shown where there's room.
+   *  Precomputed server-side so field-notes.json never ships to the client. */
+  field_note_tip?: string;
 };
 
 /**
@@ -693,7 +699,22 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     deal_hook: figureCount(fieldNotesFor(p.slug)?.happy_hour?.details) === 1
       ? (dealHook(fieldNotesFor(p.slug)?.happy_hour?.details) ?? undefined)
       : undefined,
+    field_note_tip: fieldNoteTip(p.slug),
   };
+}
+
+/** The single best verified local tip for a lead card: the first insider
+ *  note, else the parking note, clamped to one line at a word boundary.
+ *  Surfaces the Field Notes moat's actual voice (not just the badge); kept
+ *  server-side so field-notes.json never reaches the client bundle. */
+function fieldNoteTip(slug: string): string | undefined {
+  const n = fieldNotesFor(slug);
+  const raw = (n?.insider?.[0]?.text ?? n?.parking?.text)?.trim();
+  if (!raw) return undefined;
+  if (raw.length <= 120) return raw;
+  const cut = raw.slice(0, 120);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 80 ? cut.slice(0, lastSpace) : cut).replace(/[.,;:\s]+$/, "") + "…";
 }
 
 /**
