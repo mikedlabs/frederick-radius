@@ -9,7 +9,7 @@
  * /events/<slug> link resolves instead of hitting notFound().
  */
 import { stampEventProvenance } from "@/lib/provenance";
-import { getLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
+import { getCachedLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
 import {
   fetchTicketmasterMusic,
   fetchTicketmasterSports,
@@ -125,7 +125,7 @@ export async function getLiveCardEventBySlug(
   // a hung provider degrades to [], never throws. All four fetches are
   // HTTP-cached upstream, so this shares the index's cache entries.
   const [ical, tmMusic, tmSports, bit, sqRaw] = await Promise.all([
-    getLiveEvents(windowDays).then((r) => r.events).catch(() => [] as LiveEvent[]),
+    getCachedLiveEvents(windowDays).then((r) => r.events).catch(() => [] as LiveEvent[]),
     fetchTicketmasterMusic().catch(() => [] as LiveEvent[]),
     fetchTicketmasterSports().catch(() => [] as LiveEvent[]),
     fetchBandsintownForArtists([]).catch(() => [] as LiveEvent[]),

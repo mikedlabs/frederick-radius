@@ -28,6 +28,7 @@ import { deriveEventStatus, stripStatusMarker, type EventStatus } from "@/lib/ev
 const EVENT_NOISE_FILTER = process.env.RADIUS_EVENT_NOISE_FILTER !== "0";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
+import { unstable_cache } from "next/cache";
 
 // Hard ceiling on a single feed fetch. These feeds normally answer in
 // ~1s, but the /events render awaits all of them in parallel, so one
@@ -936,6 +937,36 @@ export async function getLiveEvents(windowDays = 60): Promise<{
     sources_succeeded: results.filter((r) => r.evts.length > 0).map((r) => r.source),
     sources_failed: results.filter((r) => r.evts.length === 0).map((r) => r.source),
   };
+}
+
+/**
+ * Cached wrapper around getLiveEvents — ONE shared 300s data-cache entry that
+ * every request-path surface reads from (/map, /events, /today, /towns,
+ * /events/[slug]), so the live iCal/RSS feeds are fetched at most once per
+ * 5 minutes per deploy instead of on every render.
+ *
+ * This is the fix for the request-time feed timeouts (Vercel runtime errors:
+ * ~1,500 feed aborts affecting 150+ users over 7 days). /map and the slug
+ * resolver called getLiveEvents UNCACHED, so a slow upstream (city-frederick,
+ * parks, county, thurmont, mount-airy) stalled the page up to 8s PER REQUEST —
+ * and because an aborted fetch is never cached, the very next request retried
+ * the same timeout, a thundering herd. Wrapping the ASSEMBLED + deduped result
+ * in unstable_cache means a warm hit skips the network (and the parse/dedupe)
+ * entirely; a cold miss is paid once per 5 min and even a partial result (some
+ * feeds fail-soft to []) is cached and self-heals on the next revalidate.
+ *
+ * ~5-minute staleness is acceptable for event listings (owner-approved). The
+ * key is SHA-pinned so a deploy busts it, and tagged "events" to share
+ * invalidation with the other event caches. Same proven pattern as
+ * town-event-counts.ts. Crons (data-health, daily-briefing) keep calling the
+ * raw getLiveEvents so they measure / read genuinely fresh feed state.
+ */
+export function getCachedLiveEvents(windowDays = 60): ReturnType<typeof getLiveEvents> {
+  return unstable_cache(
+    () => getLiveEvents(windowDays),
+    ["live-events-v1", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+    { revalidate: 300, tags: ["events"] },
+  )();
 }
 
 export const LIVE_FEEDS = FEEDS.map((f) => ({

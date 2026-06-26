@@ -22,6 +22,10 @@ import {
   dedupeCuratedClusters,
   type EventWithMeta,
 } from "@/lib/loaders/events";
+// Raw (uncached) getLiveEvents on purpose: this call already runs INSIDE
+// cachedAssemble (unstable_cache, 300s) below, so wrapping it again would nest
+// unstable_cache. /map + /events/[slug], which are NOT inside another cache,
+// use getCachedLiveEvents instead.
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import {
   fetchTicketmasterMusic,
