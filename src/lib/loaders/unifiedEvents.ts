@@ -22,6 +22,10 @@ import {
   dedupeCuratedClusters,
   type EventWithMeta,
 } from "@/lib/loaders/events";
+// Raw (uncached) getLiveEvents on purpose: this call already runs INSIDE
+// cachedAssemble (unstable_cache, 300s) below, so wrapping it again would nest
+// unstable_cache. /map + /events/[slug], which are NOT inside another cache,
+// use getCachedLiveEvents instead.
 import { getLiveEvents } from "@/lib/integrations/ical-live";
 import {
   fetchTicketmasterMusic,
@@ -129,9 +133,11 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 // page is fast even though it renders dynamically. The pages still window the
 // set against the REAL now (eventsForMode), so "tonight/weekend" stay exact.
 // Bump "unified-events-v1" if the assembled shape changes (CLAUDE.md rule).
+// The deploy SHA is a second key segment so a shape change ALSO auto-busts the
+// cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v9"],
+  ["unified-events-v9", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 300 },
 );
 

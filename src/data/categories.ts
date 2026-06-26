@@ -23,6 +23,8 @@ export const CATEGORIES: Category[] = [
   { slug: "coffee", name: "Coffee", parent: "food", icon: "Coffee", color: "#8B5A2B", display_order: 12, blurb: "Cafes, roasters, third-wave spots, and quick-stop shops." },
   { slug: "bar", name: "Bars", parent: "food", icon: "Wine", color: "#7E1F1F", display_order: 13, blurb: "Cocktail bars, pubs, dives, and tap rooms." },
   { slug: "brewery", name: "Breweries", parent: "food", icon: "Beer", color: "#C0871F", display_order: 14, blurb: "Independent local brewers, tap rooms, and beer gardens." },
+  { slug: "winery", name: "Wineries", parent: "food", icon: "Grape", color: "#6B2D5A", display_order: 18, blurb: "The Frederick Wine Trail: vineyards, tasting rooms, cideries, and meaderies." },
+  { slug: "distillery", name: "Distilleries", parent: "food", icon: "FlaskConical", color: "#9A5B2E", display_order: 19, blurb: "Maryland craft spirits: whiskey, rye, gin, and tasting rooms." },
   { slug: "bakery", name: "Bakeries", parent: "food", icon: "Cookie", color: "#B26B00", display_order: 15, blurb: "Pastry, bread, and the morning rituals worth the line." },
   { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#E14328", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
   { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#E14328", display_order: 17, blurb: "Frederick's food trucks rotate weekly — here's where they reliably park, plus the festivals built around them." },
@@ -31,6 +33,7 @@ export const CATEGORIES: Category[] = [
   { slug: "park", name: "Parks", parent: "outdoors", icon: "Trees", color: "#1E6B3A", display_order: 21, blurb: "Public parks across all 12 municipalities and the county." },
   { slug: "trail", name: "Trails", parent: "outdoors", icon: "Mountain", color: "#16352B", display_order: 22, blurb: "200+ miles of hikes, towpaths, and rail-trails." },
   { slug: "playground", name: "Playgrounds", parent: "outdoors", icon: "ToyBrick", color: "#1E6B3A", display_order: 23, blurb: "Where to take the kids when it's nice out." },
+  { slug: "golf", name: "Golf", parent: "outdoors", icon: "Flag", color: "#2E7D5B", display_order: 24, blurb: "Public, championship, and country-club courses across the county." },
 
   { slug: "arts", name: "Arts & Culture", icon: "Palette", color: "#7E2C6F", display_order: 30, blurb: "Galleries, theaters, museums, and live performance." },
   { slug: "museum", name: "Museums", parent: "arts", icon: "Landmark", color: "#5B1E55", display_order: 31, blurb: "Civil War, civic history, science, and art." },

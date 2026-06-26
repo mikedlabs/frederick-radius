@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Search, ArrowRight, ArrowUpRight } from "lucide-react";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { eventsInMunicipality, nearTown, BY_TOWN_ENABLED } from "@/lib/loaders/events";
-import { decoratePlace, publicPlacesByMunicipality } from "@/lib/loaders/places";
+import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/loaders/places";
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
@@ -71,7 +71,7 @@ export default async function MunicipalityPage(
   if (!m) notFound();
 
   const places = publicPlacesByMunicipality(m.slug)
-    .map((p) => decoratePlace(p, m.centroid))
+    .map((p) => slimForList(decoratePlace(p, m.centroid)))
     .sort((a, b) => b.feature_score - a.feature_score);
 
   // "Worth your time" is a destination-led reel that ranks differently

@@ -1258,14 +1258,10 @@ export default function AppMap({
           onMouseMove={onHover}
           onMouseLeave={() => setHover(null)}
         >
-          {/* DEM source — required for the terrain prop to resolve. */}
-          <Source
-            id="mapbox-dem"
-            type="raster-dem"
-            url="mapbox://mapbox.mapbox-terrain-dem-v1"
-            tileSize={512}
-            maxzoom={14}
-          />
+          {/* (Removed an orphaned mapbox-dem raster-dem Source: there is no
+              `terrain` prop on <Map> — see the note above — and
+              applyFrederickPalette installs its own `fr-dem` source + hillshade,
+              so this was a duplicate terrain-DEM tile pyramid with no consumer.) */}
           {/* Municipality labels — no fake bbox rectangles, just point labels */}
           <Source id="muni-labels" type="geojson" data={muniLabelsGeoJson}>
             <Layer

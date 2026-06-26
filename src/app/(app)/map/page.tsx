@@ -14,7 +14,7 @@ import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta
 import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
-import { getLiveEvents } from "@/lib/integrations/ical-live";
+import { getCachedLiveEvents } from "@/lib/integrations/ical-live";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
@@ -201,7 +201,7 @@ async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
   // can't hang the render — the radius branch (the DEFAULT /map view)
   // awaits this, so an unbounded hang here is a default-page 503.
   const [liveEventsRaw, tmMusic, tmSports, bitEvents] = await Promise.all([
-    withTimeout(getLiveEvents(60).then((r) => r.events), 5000, [] as Awaited<ReturnType<typeof getLiveEvents>>["events"]),
+    withTimeout(getCachedLiveEvents(60).then((r) => r.events), 5000, [] as Awaited<ReturnType<typeof getCachedLiveEvents>>["events"]),
     withTimeout(fetchTicketmasterMusic(), 5000, []),
     withTimeout(fetchTicketmasterSports(), 5000, []),
     withTimeout(fetchBandsintownForArtists([]), 5000, []),

@@ -6,20 +6,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  * only the static seed. The fix gives each live event a deterministic,
  * URL-safe slug and resolves it back from the feed at request time.
  *
- * Feeds are unreachable from CI/sandbox, so getLiveEvents is stubbed
+ * Feeds are unreachable from CI/sandbox, so getCachedLiveEvents is stubbed
  * while the real liveEventSlug runs: this verifies the slug the card and
  * Share emit is exactly what the detail route resolves, without a
  * network round trip.
  */
 vi.mock("@/lib/integrations/ical-live", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/integrations/ical-live")>();
-  return { ...actual, getLiveEvents: vi.fn() };
+  return { ...actual, getCachedLiveEvents: vi.fn() };
 });
 
-import { getLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
+import { getCachedLiveEvents, liveEventSlug, type LiveEvent } from "@/lib/integrations/ical-live";
 import { liveToCardEvent, getLiveCardEventBySlug, liveCleanSlug } from "@/lib/loaders/liveEvents";
 
-const mockGetLiveEvents = vi.mocked(getLiveEvents);
+const mockGetCachedLiveEvents = vi.mocked(getCachedLiveEvents);
 
 const sample = (over: Partial<LiveEvent> = {}): LiveEvent => ({
   id: "raw-uid:040000008200E00074C5B7101A82E008",
@@ -43,7 +43,7 @@ const sample = (over: Partial<LiveEvent> = {}): LiveEvent => ({
 });
 
 beforeEach(() => {
-  mockGetLiveEvents.mockReset();
+  mockGetCachedLiveEvents.mockReset();
 });
 
 describe("liveEventSlug", () => {
@@ -87,19 +87,19 @@ describe("getLiveCardEventBySlug", () => {
     // Phase 2 removed the "starts-with-live-" fast path, because a clean
     // live slug now looks like a seed slug. The resolver consults the
     // feed (cached) and returns null when nothing matches.
-    mockGetLiveEvents.mockResolvedValue({
+    mockGetCachedLiveEvents.mockResolvedValue({
       events: [sample()],
       sources_succeeded: ["celebrate"],
       sources_failed: [],
     });
     const result = await getLiveCardEventBySlug("not-a-real-event-2026-01-01");
     expect(result).toBeNull();
-    expect(mockGetLiveEvents).toHaveBeenCalled();
+    expect(mockGetCachedLiveEvents).toHaveBeenCalled();
   });
 
   it("still resolves a legacy live- slug as a fallback, returning the clean slug", async () => {
     const e = sample();
-    mockGetLiveEvents.mockResolvedValue({
+    mockGetCachedLiveEvents.mockResolvedValue({
       events: [e],
       sources_succeeded: ["celebrate"],
       sources_failed: [],
@@ -116,7 +116,7 @@ describe("getLiveCardEventBySlug", () => {
 
   it("resolves the exact slug the card and Share emit (the 404 the fix removes)", async () => {
     const e = sample();
-    mockGetLiveEvents.mockResolvedValue({
+    mockGetCachedLiveEvents.mockResolvedValue({
       events: [e],
       sources_succeeded: ["celebrate"],
       sources_failed: [],
@@ -126,7 +126,7 @@ describe("getLiveCardEventBySlug", () => {
     const sharedSlug = liveToCardEvent(e).slug;
     const resolved = await getLiveCardEventBySlug(sharedSlug);
 
-    expect(mockGetLiveEvents).toHaveBeenCalled();
+    expect(mockGetCachedLiveEvents).toHaveBeenCalled();
     expect(resolved).not.toBeNull();
     expect(resolved?.title).toBe(e.title);
     expect(resolved?.slug).toBe(sharedSlug);
@@ -134,7 +134,7 @@ describe("getLiveCardEventBySlug", () => {
   });
 
   it("returns null for a slug no longer in the feed window", async () => {
-    mockGetLiveEvents.mockResolvedValue({
+    mockGetCachedLiveEvents.mockResolvedValue({
       events: [sample({ starts_at: "2026-09-01T22:00:00Z" })],
       sources_succeeded: ["celebrate"],
       sources_failed: [],

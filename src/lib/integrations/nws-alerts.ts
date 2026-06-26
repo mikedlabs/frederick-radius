@@ -85,9 +85,17 @@ function isForFrederickMD(p: AlertProperties): boolean {
 }
 
 export async function getNwsAlerts(): Promise<NwsAlert[]> {
+  // Hard 8s ceiling: api.weather.gov intermittently hangs on connect
+  // (prod runtime errors: connect ETIMEDOUT). The .catch below already
+  // fail-softs to [], but without an abort the request can tie up the
+  // notify-civic-alerts cron for the platform's full connect timeout. Fail
+  // fast instead so a slow NWS degrades to "no alerts this run", not a stall.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8_000);
   try {
     const res = await fetch(`${NWS}/alerts/active?area=MD`, {
       headers: { "User-Agent": UA, Accept: "application/geo+json" },
+      signal: ctrl.signal,
       next: { revalidate: 600 },
     });
     if (!res.ok) return [];
@@ -110,5 +118,7 @@ export async function getNwsAlerts(): Promise<NwsAlert[]> {
       }));
   } catch {
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }

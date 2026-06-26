@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef } from "react";
+import { useState, useTransition, useRef, useEffect, useMemo } from "react";
 import {
   Sparkles, MapPin, Navigation, Share2, RefreshCw, X, Clock,
   Wand2, Shuffle, ChevronDown, Plus, ChevronRight,
@@ -18,7 +18,7 @@ import { generatePlan, removeStop, stopAlternatives, stopSwapOptions, setStop, a
 import { formatDistance } from "@/lib/geo";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 import { useFollowedSlugs } from "@/hooks/useFollows";
-import { clientPlaceBySlug } from "@/lib/loaders/places-client";
+import type { PlaceCardData } from "@/lib/loaders/places";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import CategoryIcon from "@/components/place/CategoryIcon";
 
@@ -170,6 +170,26 @@ export default function PlanBuilder({
   // Add-from-Saved drawer.
   const [addOpen, setAddOpen] = useState(false);
   const { slugs: savedSlugs } = useFollowedSlugs();
+  // Hydrate saved places via the by-slugs API (NOT a static import of
+  // places-client.json — that inlined the whole ~1.8MB dataset into /plan's
+  // client bundle). Mirrors SavedList's pattern; ships only the saved rows.
+  const savedKey = useMemo(() => [...savedSlugs].sort().join(","), [savedSlugs]);
+  const [savedPlaces, setSavedPlaces] = useState<Map<string, PlaceCardData>>(new Map());
+  useEffect(() => {
+    if (savedSlugs.size === 0) return;
+    const ctrl = new AbortController();
+    fetch(`/api/places/by-slugs?slugs=${encodeURIComponent(savedKey)}`, { signal: ctrl.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: { places: PlaceCardData[] }) => {
+        const m = new Map<string, PlaceCardData>();
+        for (const p of data.places) m.set(p.slug, p);
+        setSavedPlaces(m);
+      })
+      .catch((err) => {
+        if (err && err.name !== "AbortError") setSavedPlaces(new Map());
+      });
+    return () => ctrl.abort();
+  }, [savedKey, savedSlugs.size]);
   // Monotonic shuffle seed — advanced on each re-roll.
   const shuffleSeed = useRef(0);
 
@@ -337,7 +357,7 @@ export default function PlanBuilder({
   );
   const savedCandidates = [...savedSlugs]
     .filter((s) => !inPlanSlugs.has(s))
-    .map((s) => clientPlaceBySlug(s))
+    .map((s) => savedPlaces.get(s))
     .filter((p): p is NonNullable<typeof p> => Boolean(p && p.geom));
 
   const onShare = async () => {

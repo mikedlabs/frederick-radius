@@ -24,9 +24,10 @@ export const municipalities = pgTable(
     hero_image: text("hero_image"),
     created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
-  (t) => ({
-    slugIdx: uniqueIndex("municipalities_slug_idx").on(t.slug),
-  }),
+  // slug is already uniquely indexed by .unique() above (the
+  // municipalities_slug_unique constraint). An explicit
+  // uniqueIndex("municipalities_slug_idx") was a duplicate btree on the same
+  // column (Supabase duplicate-index advisory) — dropped via migration 0010.
 );
 
 export const categories = pgTable(
@@ -42,7 +43,8 @@ export const categories = pgTable(
     blurb: text("blurb"),
   },
   (t) => ({
-    slugIdx: uniqueIndex("categories_slug_idx").on(t.slug),
+    // slug: unique index supplied by .unique() (categories_slug_unique);
+    // the duplicate categories_slug_idx was dropped via migration 0010.
     parentIdx: index("categories_parent_idx").on(t.parent_slug),
   }),
 );
@@ -96,7 +98,8 @@ export const places = pgTable(
     deleted_at: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => ({
-    slugIdx: uniqueIndex("places_slug_idx").on(t.slug),
+    // slug: unique index supplied by .unique() (places_slug_unique); the
+    // duplicate places_slug_idx was dropped via migration 0010.
     muniIdx: index("places_municipality_idx").on(t.municipality_slug),
     catIdx: index("places_category_idx").on(t.category_slug),
     lngLatIdx: index("places_lng_lat_idx").on(t.lng, t.lat),
@@ -142,7 +145,8 @@ export const events = pgTable(
     deleted_at: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => ({
-    slugIdx: uniqueIndex("events_slug_idx").on(t.slug),
+    // slug: unique index supplied by .unique() (events_slug_unique); the
+    // duplicate events_slug_idx was dropped via migration 0010.
     timeIdx: index("events_starts_at_idx").on(t.starts_at),
     muniTimeIdx: index("events_muni_starts_idx").on(t.municipality_slug, t.starts_at),
   }),

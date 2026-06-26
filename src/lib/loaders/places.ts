@@ -25,6 +25,23 @@ import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
 import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import { amenityTags } from "@/lib/loaders/placeAmenities";
+import { findMarketSchedule, type MdMarket } from "@/lib/integrations/mdFarmersMarkets";
+import MD_MARKETS_RAW from "@/data/farmers-markets.json";
+
+// Official Maryland farmers-market schedule snapshot (built by
+// `npm run build:farmers-markets`). Ships as [] until run, so the join below is
+// a graceful no-op today.
+const MD_MARKETS = MD_MARKETS_RAW as MdMarket[];
+
+/** Real market day/hours for a category="market" place, joined by normalized
+ *  name (conservative exact/stripped match, never fuzzy). {} when not a market
+ *  or no confident match — so a card never shows a guessed schedule. */
+function marketFields(category: string, name: string): { market_day?: string; market_hours?: string } {
+  if (category !== "market" || MD_MARKETS.length === 0) return {};
+  const m = findMarketSchedule(name, MD_MARKETS);
+  return m ? { market_day: m.day, market_hours: m.hours } : {};
+}
 import { dealHook, figureCount } from "@/lib/happyHourDeal";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
@@ -446,6 +463,17 @@ export type PlaceCardData = Place & PlaceEnriched & {
    *  never claim "today's" special on the wrong day. Precomputed server-side so
    *  field-notes.json stays off the client. */
   deal_hook?: string;
+  /** The single best VERIFIED local tip to surface on a LEAD card (answer /
+   *  feature): the first insider note, else the parking note, clamped to one
+   *  line. Field Notes are on ~5% of places, so this is the moat's actual
+   *  voice — not just the "Field notes" badge — shown where there's room.
+   *  Precomputed server-side so field-notes.json never ships to the client. */
+  field_note_tip?: string;
+  /** Official Maryland farmers-market schedule for category="market" places,
+   *  joined by normalized name. Empty until `npm run build:farmers-markets`
+   *  snapshots the dataset. */
+  market_day?: string;
+  market_hours?: string;
 };
 
 /**
@@ -595,6 +623,25 @@ export type PlaceDetail = PlaceCardData & {
   upcoming_events: Event[];
 };
 
+// Derived tags (audit theme #2: the audience/feature tags were shadow data AND
+// barely populated). These are FACTUAL from the final category — outdoor for
+// parks/trails/golf, indoor for the rainy-day-relevant indoor venues, and
+// kid-friendly for playgrounds — so the "Good to know" row, faceting, and
+// search have real data without fabricating per-place editorial claims. Unioned
+// with any hand-curated tags; never replaces them.
+const OUTDOOR_CATS = new Set(["park", "trail", "playground", "golf"]);
+const INDOOR_CATS = new Set(["museum", "library", "gallery"]);
+function deriveTags(category: string, tags?: string[]): string[] {
+  const out = new Set(tags ?? []);
+  if (OUTDOOR_CATS.has(category)) out.add("outdoor");
+  if (INDOOR_CATS.has(category)) out.add("indoor");
+  if (category === "playground") {
+    out.add("kids-0-5");
+    out.add("kids-6-12");
+  }
+  return [...out];
+}
+
 export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date()): PlaceCardData {
   const enriched = applyEnrichment(p);
   // Shared-photo de-twin: a suppressed record shares its Google photo with
@@ -637,19 +684,31 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
         : undefined;
   // Rolling refresh override (4.3): a refreshed row carries newer Google
   // hours and status than the static enrichment, so it wins both the
-  // schedule and the verification date.
+  // schedule and the verification date — EXCEPT when a human hours patch
+  // exists. A curated hours correction (places-overrides.json, the
+  // "PM-entered-as-AM" typo fix) must win over the Google refresh, otherwise
+  // the next refresh that adds this slug re-introduces the very typo the patch
+  // fixed. enriched.hours already carries the patched schedule (applyEnrichment
+  // takes p.hours first), so we just suppress the refresh override here.
   const refresh = HOURS_REFRESH[p.slug];
-  const refreshedHours = refresh?.weekday_hours
+  const hasHoursPatch = Boolean(OV_PATCH?.[p.slug]?.hours);
+  const refreshedHours = !hasHoursPatch && refresh?.weekday_hours
     ? parseGoogleHours(refresh.weekday_hours)
     : undefined;
   const hours = refreshedHours ?? enriched.hours;
   const hoursVerified = refreshedHours ? true : (enriched.hours_verified ?? false);
-  const hoursVerifiedAt = refresh?.refreshed_at ?? hours_updated_at;
+  const hoursVerifiedAt = refreshedHours ? refresh?.refreshed_at : hours_updated_at;
   if (refresh?.business_status === "CLOSED_PERMANENTLY") {
     enriched.is_operational = "closed_permanently";
   }
   return {
     ...enriched,
+    // Category-derived tags (outdoor/indoor/kids) UNION the place's own tags
+    // UNION its structured Google amenities (outdoor-seating, dog-friendly,
+    // reservations, …) — the last is [] until `npm run enrich:amenities` is
+    // run, so this is a no-op today and lights up the amenity facets once the
+    // data lands. All three feed the category-page facet filters.
+    tags: [...new Set([...deriveTags(enriched.category, enriched.tags), ...amenityTags(p.slug)])],
     hours,
     hours_verified: hoursVerified,
     hours_source: refreshedHours ? ("google_places" as const) : hours_source,
@@ -667,7 +726,41 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     deal_hook: figureCount(fieldNotesFor(p.slug)?.happy_hour?.details) === 1
       ? (dealHook(fieldNotesFor(p.slug)?.happy_hour?.details) ?? undefined)
       : undefined,
+    field_note_tip: fieldNoteTip(p.slug),
+    ...marketFields(enriched.category, enriched.name),
   };
+}
+
+/** The single best verified local tip for a lead card: the first insider
+ *  note, else the parking note, clamped to one line at a word boundary.
+ *  Surfaces the Field Notes moat's actual voice (not just the badge); kept
+ *  server-side so field-notes.json never reaches the client bundle. */
+function fieldNoteTip(slug: string): string | undefined {
+  const n = fieldNotesFor(slug);
+  const raw = (n?.insider?.[0]?.text ?? n?.parking?.text)?.trim();
+  if (!raw) return undefined;
+  if (raw.length <= 120) return raw;
+  const cut = raw.slice(0, 120);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 80 ? cut.slice(0, lastSpace) : cut).replace(/[.,;:\s]+$/, "") + "…";
+}
+
+/**
+ * slimForList — drop the detail-only heavy arrays (google_photos[],
+ * google_hours[]) that NO list/grid card renders, before a server page hands
+ * decorated places to a client component. Shrinks the per-page RSC payload +
+ * client hydration cost (e.g. ~1.4MB off /category/food). The place-detail
+ * surface uses the full loader, so this never starves it. Keeps the single
+ * hero (google_photo_url), review_snippet/author, known_for, customers_loved.
+ */
+export function slimForList(p: PlaceCardData): PlaceCardData {
+  const { google_photos: _gp, google_hours: _gh, ...rest } = p as PlaceCardData & {
+    google_photos?: unknown;
+    google_hours?: unknown;
+  };
+  void _gp;
+  void _gh;
+  return rest as PlaceCardData;
 }
 
 /** Share of places that carry verified hours, for the Open-now gate. */

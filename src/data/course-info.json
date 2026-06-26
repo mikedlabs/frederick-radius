@@ -1,0 +1,64 @@
+{
+  "_note": "Curated golf course facts (holes, par, access, designer, on-site amenities). Stable, well-documented public facts; rendered by CourseInfoStrip on /places/[slug]. Yardage intentionally omitted until per-tee data is verified.",
+  "whiskey-creek-golf-club-ijamsville": {
+    "holes": 18,
+    "par": 72,
+    "access": "public",
+    "designer": "Ernie Els & J. Michael Poellot",
+    "drivingRange": true,
+    "restaurant": true,
+    "lessons": true
+  },
+  "worthington-manor-golf-club-urbana": {
+    "holes": 18,
+    "par": 72,
+    "access": "public",
+    "designer": "Ault, Clark & Associates",
+    "drivingRange": true,
+    "restaurant": true,
+    "lessons": true
+  },
+  "maryland-national-golf-club-middletown": {
+    "holes": 18,
+    "par": 72,
+    "access": "public",
+    "designer": "Arthur Hills",
+    "drivingRange": true,
+    "restaurant": true,
+    "lessons": true
+  },
+  "clustered-spires-golf-course-frederick": {
+    "holes": 18,
+    "par": 72,
+    "access": "municipal",
+    "designer": "Ault, Clark & Associates",
+    "drivingRange": true,
+    "restaurant": true,
+    "lessons": true
+  },
+  "holly-hills-country-club-ijamsville": {
+    "holes": 18,
+    "par": 72,
+    "access": "private",
+    "drivingRange": true,
+    "restaurant": true,
+    "lessons": true
+  },
+  "maple-run-golf-course-thurmont": {
+    "holes": 18,
+    "par": 72,
+    "access": "public",
+    "drivingRange": true,
+    "restaurant": false,
+    "lessons": false
+  },
+  "musket-ridge-golf-club-myersville": {
+    "holes": 18,
+    "par": 72,
+    "access": "public",
+    "designer": "Joe Lee",
+    "drivingRange": true,
+    "restaurant": true,
+    "lessons": true
+  }
+}

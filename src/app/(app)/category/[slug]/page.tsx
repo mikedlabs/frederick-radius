@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
+import { TAG_BY_SLUG } from "@/data/tags";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
-import { rankPlaces } from "@/lib/loaders/places";
+import { rankPlaces, slimForList } from "@/lib/loaders/places";
 import { isRecommendable } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import PlaceList from "@/components/place/PlaceList";
@@ -14,6 +15,8 @@ import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
 import SectionHeading from "@/components/ui/SectionHeading";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import CategoryView from "@/components/category/CategoryView";
+import SetTownInline from "@/components/category/SetTownInline";
+import { MUNICIPALITIES } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
 import { itemListJsonLd } from "@/lib/seo/jsonld";
 
@@ -87,7 +90,9 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     : null;
   const origin = homeCentroid ?? FREDERICK_CENTER;
 
-  const places = rankPlaces({ category: slug, origin });
+  // slimForList drops google_photos[]/google_hours[] (no card renders them)
+  // before the set crosses to the client PlaceList — ~1.4MB off big categories.
+  const places = rankPlaces({ category: slug, origin }).map(slimForList);
   const subs = CATEGORIES.filter((x) => x.parent === c.slug);
   // Recommendation eligibility: "Worth your time" + the photo wall are
   // PROMOTIONAL, so institutions (schools/daycares/admissions offices that
@@ -96,6 +101,30 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   // Family "school admissions office as a top kids' outing" fix.
   const recommendable = places.filter(isRecommendable);
   const placesWithPhotos = recommendable.filter((p) => p.google_photo_url);
+
+  // Tag faceting (audit theme #2): turn the now-populated tags into a real
+  // filter instead of buried metadata. Show only the curated, relevant tags
+  // that actually appear in THIS category's set (>=3 places), ordered by how
+  // many carry them, capped so the row stays scannable. PlaceList does the
+  // client-side filtering.
+  const FACET_CANDIDATES = [
+    "dog-friendly", "outdoor", "indoor", "outdoor-seating", "family",
+    "kids-6-12", "kids-0-5", "free", "live-music", "date-night", "year-round",
+    // Structured Google amenities (populated by `npm run enrich:amenities`).
+    // Each only appears when >=3 places in the category carry it, so these are
+    // inert until the amenity data is fetched.
+    "reservations", "takeout", "delivery", "groups", "restroom",
+  ];
+  const facetCounts = new Map<string, number>();
+  for (const p of places) {
+    const t = new Set(p.tags ?? []);
+    for (const slug of FACET_CANDIDATES) if (t.has(slug)) facetCounts.set(slug, (facetCounts.get(slug) ?? 0) + 1);
+  }
+  const facetTags = [...facetCounts.entries()]
+    .filter(([, n]) => n >= 3)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([slug]) => ({ slug, name: TAG_BY_SLUG[slug]?.name ?? slug }));
 
   // C3: top 3 photo-backed picks lead the page. Falls back to the
   // top 3 by feature score if fewer than 3 places have photos.
@@ -181,10 +210,26 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
           </div>
         </div>
       </header>
-      {fromLabel && (
+      {fromLabel ? (
         <p className="-mt-3 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
           {fromLabel}
         </p>
+      ) : (
+        /* Downtown-default fix (audit P0): when no home town is set, this page
+           silently ranks from Downtown Frederick. Say so honestly and give a
+           one-tap way to re-rank from the user's own town, instead of leaving
+           an out-of-town reader to assume the app is broken. */
+        <div
+          className="-mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--app-radius-md)] border px-3 py-2"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+        >
+          <span className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+            Showing all of Frederick County.
+          </span>
+          <SetTownInline
+            municipalities={MUNICIPALITIES.map((m) => ({ slug: m.slug, name: m.name }))}
+          />
+        </div>
       )}
 
       {/* C3: editorial top picks lead the page instead of a stat block.
@@ -260,6 +305,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         <PlaceList
           places={places}
           initialLayout="list"
+          facetTags={facetTags}
           emptyMessage="We are still seeding this category. Submit a place you love."
         />
       </CollapsibleSection>

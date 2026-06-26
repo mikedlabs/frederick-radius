@@ -66,6 +66,12 @@ const nextConfig: NextConfig = {
     // The optimizer encodes once and caches, so the extra encode cost is
     // paid a single time per source and size.
     formats: ["image/avif", "image/webp"],
+    // Next 16 rejects any next/image `quality` value not in this allowlist
+    // with a runtime 400. The app emits q=70 (the sizedImage() default in
+    // src/lib/format/img.ts — map pins, aerial cards, event-marker art) plus
+    // the implicit next/image default of 75, so BOTH must be listed. Do not
+    // drop 70: it is the value actually shipped on photo-led surfaces.
+    qualities: [70, 75],
     // Optimized images carry an immutable content hash, so a long cache
     // floor is safe and keeps repeat visits from re-fetching the same hero.
     minimumCacheTTL: 2678400,
@@ -146,10 +152,14 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           // Lock down powerful browser features. Geolocation is allowed
           // for our own origin only — the Radius / "near me" features
-          // need it; everything else is denied to every origin.
+          // need it; everything else is denied to every origin. This is
+          // now the SINGLE source for Permissions-Policy (the weaker
+          // duplicate in vercel.json was removed); `browsing-topics=()`
+          // (modern) + `interest-cohort=()` (legacy) carry the FLoC/Topics
+          // opt-out that vercel.json used to own.
           {
             key: "Permissions-Policy",
-            value: "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=()",
+            value: "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), magnetometer=(), gyroscope=(), browsing-topics=(), interest-cohort=()",
           },
         ],
       },

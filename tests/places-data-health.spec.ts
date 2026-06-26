@@ -2,22 +2,34 @@ import { describe, it, expect } from "vitest";
 import places from "@/data/places-client.json" with { type: "json" };
 import overrides from "@/data/places-overrides.json" with { type: "json" };
 import fieldNotes from "@/data/field-notes.json" with { type: "json" };
+import { isValidCoord } from "@/lib/geo";
+import { LANDMARK_PHOTOS } from "@/lib/integrations/wikimedia";
 
 /**
  * Data-health guard — locks the invariants the 2026-06-20 all-business audit
  * (workflow wwvolblmx) verified clean or fixed, so the next enrichment/scrape
  * re-run can't silently re-introduce a known bug class. Runs on every change to
- * places-client.json. NOT yet asserted here (known backlog, tracked separately):
- * the 50 phantom shared-Google-data groups, the 952 empty postal_codes, and the
- * 3 inverted-hours typos — add those once each is driven to zero.
+ * places-client.json.
+ *
+ * Backlog driven to zero and now asserted: the 952 malformed postal_codes (the
+ * 5-digit ZIP guard below; the 4 remaining empties are addresses with no ZIP)
+ * and the 3 inverted-hours "PM entered as AM" typos (the inverted-hours guard
+ * below, fixed via an hours patch in places-overrides.json). Still tracked
+ * separately, not yet a generic assertion: the phantom shared-Google-data
+ * groups (suppressed per-slug via the `clearGoogle` override).
  */
+
+type HoursWindow = { open: string; close: string };
 
 type Place = {
   slug: string;
+  category?: string;
   municipality?: string;
   state?: string;
   google_rating?: number;
   google_rating_count?: number;
+  hours?: Partial<Record<string, HoursWindow[]>>;
+  geom?: { lng: number; lat: number };
 };
 
 const PLACES = places as unknown as Place[];
@@ -50,6 +62,15 @@ describe("places-client data health", () => {
     expect(bad.map((p) => p.slug)).toEqual([]);
   });
 
+  // Locks the 2026-06-20 out-of-county fix: 79 rows wore a member-town label
+  // (a Boonsboro coffee shop tagged Myersville, a PA place tagged Brunswick)
+  // but sat outside the county. The build filters on isValidCoord; this asserts
+  // the COMMITTED artifact is clean so a bad coord can't leak one back in.
+  it("keeps every place inside the county outline (+1.5km buffer)", () => {
+    const bad = PLACES.filter((p) => !isValidCoord(p.geom ?? null));
+    expect(bad.map((p) => `${p.slug} -> ${p.geom?.lng},${p.geom?.lat}`)).toEqual([]);
+  });
+
   it("has no non-Maryland leak", () => {
     const ok = new Set(["MD", "Maryland", "md", undefined, ""]);
     const bad = PLACES.filter((p) => p.state != null && !ok.has(p.state));
@@ -63,6 +84,36 @@ describe("places-client data health", () => {
     });
     expect(bad.map((p) => p.slug)).toEqual([]);
   });
+
+  // A same-day interval whose close precedes its open is a "PM entered as AM"
+  // typo (a restaurant Google reports as "closing" at 10:00). A close in the
+  // small hours (≤ 05:59) is the legitimate late-night / overnight case (a bar
+  // closing at 01:00), so it is excluded. Two genuine overnight operations are
+  // allowlisted: an emergency shelter (18:30–07:00) and an inn whose hours
+  // encode check-in/checkout (16:00–11:00), not a service window.
+  const OVERNIGHT_OK = new Set([
+    "alan-p-linton-jr-emergency-shelter",
+    "strawberry-inn-new-market",
+  ]);
+  const toMin = (t: string) => {
+    const [h, m] = t.split(":").map(Number);
+    return h * 60 + (m || 0);
+  };
+  it("has no inverted same-day hours (PM-as-AM typos)", () => {
+    const bad: string[] = [];
+    for (const p of PLACES) {
+      if (OVERNIGHT_OK.has(p.slug) || !p.hours) continue;
+      for (const [day, ivs] of Object.entries(p.hours)) {
+        for (const iv of ivs ?? []) {
+          if (!iv?.open || !iv?.close) continue;
+          const o = toMin(iv.open);
+          const c = toMin(iv.close);
+          if (c < o && c >= 6 * 60) bad.push(`${p.slug} ${day} ${iv.open}-${iv.close}`);
+        }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
 });
 
 describe("places-overrides referential integrity", () => {
@@ -70,6 +121,25 @@ describe("places-overrides referential integrity", () => {
 
   it("every patch key resolves to a live place (no stale orphans)", () => {
     const orphans = Object.keys(ov.patch ?? {}).filter((s) => !slugs.has(s));
+    expect(orphans).toEqual([]);
+  });
+
+  // keepApart names the slugs the dedupe engine must NEVER fold together (the
+  // manual veto on a false merge). If a dedupe change folded one away it would
+  // vanish from the public set — assert every veto'd slug still resolves live.
+  it("every keepApart slug survives as a distinct live place", () => {
+    const ka = (overrides as { keepApart?: string[] }).keepApart ?? [];
+    const folded = ka.filter((s) => !slugs.has(s));
+    expect(folded).toEqual([]);
+  });
+});
+
+describe("wikimedia landmark-photo integrity", () => {
+  // A curated Commons photo is keyed by place slug. If a slug is renamed the
+  // entry would silently orphan (the photo just stops rendering) — assert each
+  // resolves to a live place so the rename is caught here instead.
+  it("every landmark-photo slug resolves to a live place", () => {
+    const orphans = Object.keys(LANDMARK_PHOTOS).filter((s) => !slugs.has(s));
     expect(orphans).toEqual([]);
   });
 });

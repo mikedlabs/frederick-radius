@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Building2 } from "lucide-react";
 import { eventsLive } from "@/lib/loaders/events";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
@@ -15,6 +16,7 @@ import { LIFTED_INGEST_SOURCES } from "@/lib/loaders/ingestedEvents";
 import { itemListJsonLd } from "@/lib/seo/jsonld";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
+import Skeleton from "@/components/ui/Skeleton";
 
 /**
  * Slim an event before it crosses into a client component.
@@ -31,9 +33,22 @@ import CollapsibleSection from "@/components/ui/CollapsibleSection";
  * page, which loads its own record.
  */
 function slimEventForClient<T extends { description?: string }>(e: T): T {
-  const d = e.description;
-  if (!d || d.length <= 160) return e;
-  return { ...e, description: d.slice(0, 160) };
+  // Drop provenance fields no client surface renders (the explorer reads
+  // category_name + the rendered event fields only), then clamp long
+  // descriptions — both shrink the /events RSC payload + hydration.
+  const {
+    source_id: _si, license: _lic, confidence: _cf,
+    first_seen_at: _fs, last_verified_at: _lv, geo_confidence: _gc,
+    ...rest
+  } = e as T & {
+    source_id?: unknown; license?: unknown; confidence?: unknown;
+    first_seen_at?: unknown; last_verified_at?: unknown; geo_confidence?: unknown;
+  };
+  void _si; void _lic; void _cf; void _fs; void _lv; void _gc;
+  const slim = rest as unknown as T;
+  const d = slim.description;
+  if (!d || d.length <= 160) return slim;
+  return { ...slim, description: d.slice(0, 160) };
 }
 
 export const metadata: Metadata = {
@@ -70,9 +85,13 @@ export const revalidate = 600;
  *
  * Server-rendered shell; the explorer is the client browse surface and
  * owns its filter state via URL params. HONESTY: every card + time is
- * restyled from data already present — nothing is invented. Photos for the
- * feature lead + the premium vibe-doorway TILES + the prominent county-map
- * toggle are the next passes (PR3b/PR3c).
+ * restyled from data already present — nothing is invented.
+ *
+ * STREAMING (audit: unified-events cold-miss): the masthead identity (rule +
+ * dateline + serif title) is event-independent and paints on the first byte;
+ * the count line and the entire board await the ONE shared events promise
+ * inside their own <Suspense> boundaries, so a cold ISR miss streams the board
+ * in instead of holding the whole page on the slowest third-party feed.
  */
 export default async function EventsIndexPage({
   searchParams,
@@ -80,6 +99,134 @@ export default async function EventsIndexPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const now = new Date();
+
+  // Shared, intentionally NOT awaited here — see the streaming note above. A
+  // single awaited promise resolves once across both consumers below, and
+  // assembleUnifiedEvents is itself unstable_cache-wrapped.
+  const eventsPromise = assembleUnifiedEvents(now);
+
+  // Masthead dateline — Eastern "Mon · Jun 15" for the almanac nameplate.
+  // Event-independent, so it renders immediately.
+  const dlWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(now);
+  const dlDate = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" }).format(now);
+
+  return (
+    <div className="relative space-y-4">
+      <PageBloom variant="warm-cool" />
+
+      {/* ── HEADER — the almanac nameplate. Premium masthead: a hairline
+          rule, a "Frederick County / Mon · Jun 15" dateline, the serif
+          title dropping into an italic continuation, a mono count, and a
+          single vermilion accent tick. Typography carries it; high contrast
+          on the deepened paper ground. */}
+      <header className="pt-0.5">
+        <div
+          aria-hidden
+          className="h-px"
+          style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }}
+        />
+        <div className="flex items-center justify-between py-2.5">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>
+            Frederick County
+          </span>
+          <span className="font-mono text-[10.5px] tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
+            {dlWeekday} &middot; {dlDate}
+          </span>
+        </div>
+        <h1
+          className="font-serif text-[32px] font-semibold leading-[0.98] tracking-[-0.02em]"
+          style={{ color: "var(--app-ink)" }}
+        >
+          What&rsquo;s on
+          <span className="block font-medium italic" style={{ color: "var(--app-ink-2)" }}>
+            around Frederick
+          </span>
+        </h1>
+        {/* Count line streams in with the feed; reserve its line height so the
+            tick below doesn't jump when the numbers arrive. */}
+        <Suspense
+          fallback={
+            <p className="mt-2 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+              &nbsp;
+            </p>
+          }
+        >
+          <EventCounts eventsPromise={eventsPromise} />
+        </Suspense>
+        <div
+          aria-hidden
+          className="mt-2.5 h-[3px] w-[42px] rounded-full"
+          style={{ background: "var(--app-brand)", boxShadow: "0 1px 4px color-mix(in srgb, var(--app-brand) 40%, transparent)" }}
+        />
+      </header>
+
+      {/* ── THE BOARD — the explorer + the fenced civic sections, all
+          event-dependent, streamed behind one boundary so the masthead never
+          waits on the feeds. */}
+      <Suspense fallback={<Skeleton.Block height={420} round="var(--app-radius-lg)" />}>
+        <EventsBoard searchParams={searchParams} now={now} eventsPromise={eventsPromise} />
+      </Suspense>
+
+      {/* ── Honesty footer — static, so it never waits on the feeds. ──── */}
+      <footer
+        className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
+        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+      >
+        {/* Honesty footer = TRUE sources only (June-9 automation audit):
+            DFP killed their public iCal and the Hood Trumba feed is gone;
+            naming dead feeds in the trust block was the opposite of trust. */}
+        <p>
+          Live event data pulled from Celebrate Frederick, the Frederick
+          County calendar, Ticketmaster (music + Frederick Keys home
+          games), Bandsintown, the Weinberg Center lineup, and the county
+          municipal calendars. Refreshed about every 10 minutes.
+        </p>
+        <p>
+          Missing an event?{" "}
+          <a
+            href="/submit/event"
+            className="underline"
+            style={{ color: "var(--app-cool)" }}
+          >
+            Submit it →
+          </a>
+        </p>
+      </footer>
+    </div>
+  );
+}
+
+type EventsPromise = ReturnType<typeof assembleUnifiedEvents>;
+
+/** The masthead count line ("N events · M towns"), streamed from the shared
+ *  events promise so the serif title above it paints first. */
+async function EventCounts({ eventsPromise }: { eventsPromise: EventsPromise }) {
+  const { publicEvents } = await eventsPromise;
+  const eventCount = publicEvents.length;
+  const townCount = new Set(publicEvents.map((e) => e.municipality).filter(Boolean)).size;
+  return (
+    <p className="mt-2 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
+      <span style={{ color: "var(--app-brand-press)" }}>{eventCount}</span> events &middot;{" "}
+      <span style={{ color: "var(--app-brand-press)" }}>{townCount}</span> towns
+    </p>
+  );
+}
+
+/**
+ * The event-dependent body: the explorer board + the fenced "Government &
+ * notices" sections. Awaits the shared events promise (plus the ingested civic
+ * series, which is fail-soft) and does all the derivation the page used to do
+ * inline at the top of the server component.
+ */
+async function EventsBoard({
+  searchParams,
+  now,
+  eventsPromise,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  now: Date;
+  eventsPromise: EventsPromise;
+}) {
   const seedLive = eventsLive(now);
 
   // The unified set is assembled in lib/loaders/unifiedEvents, the SAME
@@ -89,7 +236,7 @@ export default async function EventsIndexPage({
   // never block or break /events.
   const [{ unified, publicEvents }, ingestedSeries, ingestedSummary] =
     await Promise.all([
-      assembleUnifiedEvents(now),
+      eventsPromise,
       getIngestedSeries().catch(() => []),
       getIngestedSummary().catch(() => ({ total: 0, series: 0, recurring: 0 })),
     ]);
@@ -166,10 +313,6 @@ export default async function EventsIndexPage({
   const initialDay =
     dParam && /^\d{4}-\d{2}-\d{2}$/.test(dParam) ? dParam : undefined;
 
-  // Masthead dateline — Eastern "Mon · Jun 15" for the almanac nameplate.
-  const dlWeekday = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short" }).format(now);
-  const dlDate = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "short", day: "numeric" }).format(now);
-
   // Structured data (June-9 audit P2): the listing as an ItemList of the
   // next public events, mirroring what the page renders.
   const eventsJsonLd = itemListJsonLd(
@@ -178,51 +321,11 @@ export default async function EventsIndexPage({
   );
 
   return (
-    <div className="relative space-y-4">
+    <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsJsonLd) }}
       />
-      <PageBloom variant="warm-cool" />
-
-      {/* ── HEADER — the almanac nameplate. Premium masthead: a hairline
-          rule, a "Frederick County / Mon · Jun 15" dateline, the serif
-          title dropping into an italic continuation, a mono count, and a
-          single vermilion accent tick. Typography carries it; high contrast
-          on the deepened paper ground. */}
-      <header className="pt-0.5">
-        <div
-          aria-hidden
-          className="h-px"
-          style={{ background: "linear-gradient(90deg, transparent, var(--app-border) 14%, var(--app-border) 86%, transparent)" }}
-        />
-        <div className="flex items-center justify-between py-2.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em]" style={{ color: "var(--app-ink-2)" }}>
-            Frederick County
-          </span>
-          <span className="font-mono text-[10.5px] tracking-[0.06em]" style={{ color: "var(--app-ink-2)" }}>
-            {dlWeekday} &middot; {dlDate}
-          </span>
-        </div>
-        <h1
-          className="font-serif text-[32px] font-semibold leading-[0.98] tracking-[-0.02em]"
-          style={{ color: "var(--app-ink)" }}
-        >
-          What&rsquo;s on
-          <span className="block font-medium italic" style={{ color: "var(--app-ink-2)" }}>
-            around Frederick
-          </span>
-        </h1>
-        <p className="mt-2 font-mono text-[11.5px] tabular-nums" style={{ color: "var(--app-ink-2)" }}>
-          <span style={{ color: "var(--app-brand-press)" }}>{allEvents.length}</span> events &middot;{" "}
-          <span style={{ color: "var(--app-brand-press)" }}>{towns.length}</span> towns
-        </p>
-        <div
-          aria-hidden
-          className="mt-2.5 h-[3px] w-[42px] rounded-full"
-          style={{ background: "var(--app-brand)", boxShadow: "0 1px 4px color-mix(in srgb, var(--app-brand) 40%, transparent)" }}
-        />
-      </header>
 
       {/* ── THE BOARD — the explorer IS the page body now. It was a
           collapsed "Browse & search" power tool buried beneath five tiered
@@ -322,33 +425,6 @@ export default async function EventsIndexPage({
           <MunicipalEvents series={civicSeries} summary={ingestedSummary} />
         </CollapsibleSection>
       )}
-
-      {/* ── 7. Honesty footer ───────────────────────────────────────── */}
-      <footer
-        className="space-y-1 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-sunken)] p-3 text-[11px]"
-        style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
-      >
-        {/* Honesty footer = TRUE sources only (June-9 automation audit):
-            DFP killed their public iCal and the Hood Trumba feed is gone;
-            naming dead feeds in the trust block was the opposite of trust. */}
-        <p>
-          Live event data pulled from Celebrate Frederick, the Frederick
-          County calendar, Ticketmaster (music + Frederick Keys home
-          games), Bandsintown, the Weinberg Center lineup, and the county
-          municipal calendars. Refreshed about every 10 minutes.
-        </p>
-        <p>
-          Missing an event?{" "}
-          <a
-            href="/submit/event"
-            className="underline"
-            style={{ color: "var(--app-cool)" }}
-          >
-            Submit it →
-          </a>
-        </p>
-      </footer>
-    </div>
+    </>
   );
 }
-

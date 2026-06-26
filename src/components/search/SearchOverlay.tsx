@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Search, X, MapPin, Calendar, Tag, Building2, Clock, ArrowRight, Sparkles, Phone, Train } from "lucide-react";
 import type { SearchResult, SearchResultType } from "@/lib/search/index";
+import { readCachedPosition } from "@/hooks/useGeolocation";
+import { haversineMeters, formatDistance } from "@/lib/geo";
 import { findDepartments, jurisdictionLabel, formatPhone } from "@/data/departments";
 import { findQuickAnswers } from "@/lib/answers/intents";
 import type { IntentIcon } from "@/lib/answers/types";
@@ -133,6 +135,7 @@ export default function SearchOverlay({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [coords, setCoords] = useState<{ lng: number; lat: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const recent = useRecentSearches();
@@ -175,9 +178,13 @@ export default function SearchOverlay({
     };
   }, [query]);
 
-  // Focus the input when overlay opens
+  // Focus the input when overlay opens; also read any ALREADY-granted location
+  // fix (no prompt) so place results can show distance. If there's no cached
+  // fix, distance simply isn't shown — search never nags for permission.
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot read of a client-only cached fix when the overlay opens
+      setCoords(readCachedPosition());
       const t = setTimeout(() => inputRef.current?.focus(), 50);
       return () => clearTimeout(t);
     }
@@ -467,6 +474,9 @@ export default function SearchOverlay({
                                 </p>
                                 <p className="truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
                                   {r.subtitle}
+                                  {coords && r.lat != null && r.lng != null
+                                    ? ` · ${formatDistance(haversineMeters(coords, { lng: r.lng, lat: r.lat }))}`
+                                    : ""}
                                 </p>
                                 {trust && <TrustChip signal={trust} className="mt-1" />}
                               </div>
