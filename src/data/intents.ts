@@ -125,6 +125,7 @@ export type SubIntent = {
     | "Store"
     | "BookOpen"
     | "FerrisWheel"
+    | "Flag"
     | "Users";
 };
 
@@ -140,6 +141,7 @@ const COFFEE = new Set(["coffee", "bakery"]);
 const WINERY_SUBS = new Set(["winery", "meadery", "cidery"]);
 const WINERY_NAME_RE = /winer|vineyard|cellar|meader|ciderworks?/i;
 const isWinery = (p: PlaceCardData): boolean =>
+  p.category === "winery" ||
   (p.subcategories ?? []).some((s) => WINERY_SUBS.has(s)) ||
   WINERY_NAME_RE.test(p.name);
 
@@ -162,6 +164,11 @@ const isTeaHouse = (p: PlaceCardData): boolean =>
 // than a winery one, so they ride the breweries chip.
 const BREWERY_CATS = new Set(["brewery"]);
 const BREWERY_SUBS = new Set(["distillery"]);
+// Distilleries are their own category since the Wine/Beer-Trail split; the
+// subcategory check stays as a fallback for any straggler still under brewery.
+const isDistillery = (p: PlaceCardData): boolean =>
+  p.category === "distillery" ||
+  (p.subcategories ?? []).some((s) => BREWERY_SUBS.has(s));
 const FOOD = new Set([
   "restaurant",
   "food",
@@ -170,7 +177,7 @@ const FOOD = new Set([
   "brewery",
   "food-truck",
 ]);
-const OUTDOOR = new Set(["park", "trail", "outdoors", "playground"]);
+const OUTDOOR = new Set(["park", "trail", "outdoors", "playground", "golf"]);
 // Outdoor sub signals. The directory only structures park/trail/playground
 // as categories, so gardens and water-features are surfaced by NAME (verified
 // against the dataset). These chips only ever narrow WITHIN the outdoor set,
@@ -421,17 +428,17 @@ export const INTENTS: Intent[] = [
       // A brewery is anything in the brewery category that ISN'T a
       // winery (those have their own chip above), plus distilleries.
       (BREWERY_CATS.has(p.category) && !isWinery(p)) ||
-      (p.subcategories ?? []).some((s) => BREWERY_SUBS.has(s)),
+      isDistillery(p),
     preferOpen: false,
     subIntents: [
       { key: "brewpubs",     type: "category", label: "Brewpubs",     icon: "Beer", match: (p) => BREWERY_CATS.has(p.category) && !isWinery(p) },
-      { key: "distilleries", type: "category", label: "Distilleries", icon: "Wine", match: (p) => (p.subcategories ?? []).some((s) => BREWERY_SUBS.has(s)) },
+      { key: "distilleries", type: "category", label: "Distilleries", icon: "Wine", match: isDistillery },
     ],
   },
   {
     key: "outdoor",
     label: "Get outside",
-    blurb: "Parks, trails, and playgrounds for an hour or an afternoon.",
+    blurb: "Parks, trails, playgrounds, and golf courses for an hour or an afternoon.",
     color: "#1E6B3A",
     icon: "Trees",
     match: (p) => OUTDOOR.has(p.category),
@@ -440,6 +447,7 @@ export const INTENTS: Intent[] = [
       { key: "parks",       type: "category", label: "Parks",         icon: "Trees",    match: (p) => p.category === "park" },
       { key: "trails",      type: "category", label: "Trails",        icon: "Mountain", match: (p) => p.category === "trail" || TRAIL_NAME_RE.test(p.name) },
       { key: "playgrounds", type: "category", label: "Playgrounds",   icon: "ToyBrick", match: isPlaygroundLike },
+      { key: "golf",        type: "category", label: "Golf",          icon: "Flag",     match: (p) => p.category === "golf" },
       { key: "gardens",     type: "category", label: "Gardens",       icon: "Flower2",  match: (p) => GARDEN_NAME_RE.test(p.name) },
       { key: "water",       type: "category", label: "Water & creek", icon: "Waves",    match: (p) => WATER_NAME_RE.test(p.name) },
     ],
