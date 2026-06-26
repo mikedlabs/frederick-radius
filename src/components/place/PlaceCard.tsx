@@ -536,6 +536,11 @@ export default function PlaceCard({
           {cat?.name ?? place.category}
           {kf && <> · {kf}</>}
         </p>
+        {place.market_day && (
+          <p className="mt-0.5 truncate text-[12px] font-medium" style={{ color: "var(--app-brand-press)" }}>
+            {place.market_day}{place.market_hours ? ` · ${place.market_hours}` : ""}
+          </p>
+        )}
         {place.deal_hook ? <DealHookTag label={place.deal_hook} className="mt-1.5" /> : place.field_notes ? <FieldNoteTag className="mt-1.5" /> : null}
         {!compact && (
           rowReasons.length > 0 ? (

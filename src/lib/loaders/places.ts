@@ -26,6 +26,22 @@ import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
 import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { amenityTags } from "@/lib/loaders/placeAmenities";
+import { findMarketSchedule, type MdMarket } from "@/lib/integrations/mdFarmersMarkets";
+import MD_MARKETS_RAW from "@/data/farmers-markets.json";
+
+// Official Maryland farmers-market schedule snapshot (built by
+// `npm run build:farmers-markets`). Ships as [] until run, so the join below is
+// a graceful no-op today.
+const MD_MARKETS = MD_MARKETS_RAW as MdMarket[];
+
+/** Real market day/hours for a category="market" place, joined by normalized
+ *  name (conservative exact/stripped match, never fuzzy). {} when not a market
+ *  or no confident match — so a card never shows a guessed schedule. */
+function marketFields(category: string, name: string): { market_day?: string; market_hours?: string } {
+  if (category !== "market" || MD_MARKETS.length === 0) return {};
+  const m = findMarketSchedule(name, MD_MARKETS);
+  return m ? { market_day: m.day, market_hours: m.hours } : {};
+}
 import { dealHook, figureCount } from "@/lib/happyHourDeal";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
@@ -453,6 +469,11 @@ export type PlaceCardData = Place & PlaceEnriched & {
    *  voice — not just the "Field notes" badge — shown where there's room.
    *  Precomputed server-side so field-notes.json never ships to the client. */
   field_note_tip?: string;
+  /** Official Maryland farmers-market schedule for category="market" places,
+   *  joined by normalized name. Empty until `npm run build:farmers-markets`
+   *  snapshots the dataset. */
+  market_day?: string;
+  market_hours?: string;
 };
 
 /**
@@ -706,6 +727,7 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
       ? (dealHook(fieldNotesFor(p.slug)?.happy_hour?.details) ?? undefined)
       : undefined,
     field_note_tip: fieldNoteTip(p.slug),
+    ...marketFields(enriched.category, enriched.name),
   };
 }
 
