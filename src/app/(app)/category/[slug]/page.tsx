@@ -110,6 +110,10 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const FACET_CANDIDATES = [
     "dog-friendly", "outdoor", "indoor", "outdoor-seating", "family",
     "kids-6-12", "kids-0-5", "free", "live-music", "date-night", "year-round",
+    // Structured Google amenities (populated by `npm run enrich:amenities`).
+    // Each only appears when >=3 places in the category carry it, so these are
+    // inert until the amenity data is fetched.
+    "reservations", "takeout", "delivery", "groups", "restroom",
   ];
   const facetCounts = new Map<string, number>();
   for (const p of places) {

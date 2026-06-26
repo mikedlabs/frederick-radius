@@ -25,6 +25,7 @@ import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
 import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
+import { amenityTags } from "@/lib/loaders/placeAmenities";
 import { dealHook, figureCount } from "@/lib/happyHourDeal";
 
 type DedupEntry = { canonical: string; merged?: { website?: string; phone?: string } };
@@ -681,7 +682,12 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
   }
   return {
     ...enriched,
-    tags: deriveTags(enriched.category, enriched.tags),
+    // Category-derived tags (outdoor/indoor/kids) UNION the place's own tags
+    // UNION its structured Google amenities (outdoor-seating, dog-friendly,
+    // reservations, …) — the last is [] until `npm run enrich:amenities` is
+    // run, so this is a no-op today and lights up the amenity facets once the
+    // data lands. All three feed the category-page facet filters.
+    tags: [...new Set([...deriveTags(enriched.category, enriched.tags), ...amenityTags(p.slug)])],
     hours,
     hours_verified: hoursVerified,
     hours_source: refreshedHours ? ("google_places" as const) : hours_source,
