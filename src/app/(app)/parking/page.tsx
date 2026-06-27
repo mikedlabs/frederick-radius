@@ -18,6 +18,7 @@ import {
   Moon,
   KeyRound,
   Receipt,
+  Bell,
   type LucideIcon,
 } from "lucide-react";
 import PageBloom from "@/components/ui/PageBloom";
@@ -28,6 +29,11 @@ import {
   PARKING_ACCESSIBILITY,
 } from "@/data/parking-garages";
 import { cityMapsFor } from "@/data/city-maps";
+import {
+  occupancyByGarageSlug,
+  parkingFeedConfigured,
+  type GarageOccupancy,
+} from "@/lib/integrations/parking-live";
 
 // "Common requests" — intent-led entry tiles, same pattern as
 // /contacts. Each tile routes to either the specific garage best
@@ -136,7 +142,52 @@ export const metadata: Metadata = {
  * Phase B (deferred): street-parking ParkMobile zone polygons.
  * Requires shapefile from the City Parking Department.
  */
-export default function ParkingPage() {
+/**
+ * Live availability pill for one garage — rendered only when the feed is wired
+ * and reported this deck (otherwise null, so the card is unchanged). Honest
+ * about the source: ParkZen's counts are crowd-sourced estimates, so this reads
+ * "about this full," never an exact ledger. */
+function GarageLiveBadge({ occ }: { occ: GarageOccupancy }) {
+  const dot = (color: string) => (
+    <span
+      aria-hidden
+      className="inline-block h-1.5 w-1.5 rounded-full"
+      style={{ background: color }}
+    />
+  );
+  let color = "var(--app-ink-3)";
+  let text: string;
+  if (occ.isFull) {
+    color = "var(--app-warning)";
+    text = "Full";
+  } else if (occ.available !== null) {
+    color = occ.isFilling ? "var(--app-accent-press)" : "var(--app-positive)";
+    text = `${occ.available} ${occ.available === 1 ? "space" : "spaces"}`;
+  } else if (occ.percentFull !== null) {
+    color = occ.isFilling ? "var(--app-accent-press)" : "var(--app-positive)";
+    text = `${occ.percentFull}% full`;
+  } else if (occ.status) {
+    text = occ.status;
+  } else {
+    return null;
+  }
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums"
+      style={{ background: `color-mix(in srgb, ${color} 12%, transparent)`, color }}
+      title="Live availability via Park Frederick (ParkZen), crowd-sourced"
+    >
+      {dot(color)}
+      {text}
+    </span>
+  );
+}
+
+export default async function ParkingPage() {
+  // Live occupancy keyed by garage slug. Empty map when the feed is dormant
+  // (the default) — every badge/CTA below simply doesn't render.
+  const occupancy = await occupancyByGarageSlug();
+  const feedLive = parkingFeedConfigured() && occupancy.size > 0;
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-7 py-6">
       <PageBloom variant="warm-cool" />
@@ -393,6 +444,45 @@ export default function ParkingPage() {
         </ul>
       </section>
 
+      {/* Garage-full alerts CTA — only when the live feed is wired, so we never
+          promise an alert we can't send. Links to the notifications settings
+          where the "garage-full" topic becomes available. */}
+      {feedLive && (
+        <Link
+          href="/settings/notifications"
+          className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 transition"
+          style={{
+            borderColor: "var(--app-border)",
+            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+          }}
+        >
+          <span
+            aria-hidden
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
+            style={{
+              background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
+              color: "var(--app-brand)",
+            }}
+          >
+            <Bell className="h-5 w-5" strokeWidth={2} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+              Get a ping when a garage fills up
+            </span>
+            <span className="mt-0.5 block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+              Turn on garage-full alerts and we&rsquo;ll point you to one with space.
+            </span>
+          </span>
+          <ArrowUpRight
+            aria-hidden
+            className="h-4 w-4 shrink-0"
+            strokeWidth={2}
+            style={{ color: "var(--app-ink-3)" }}
+          />
+        </Link>
+      )}
+
       <section className="space-y-3">
         <h2
           className="font-serif text-[22px] font-semibold tracking-tight"
@@ -448,7 +538,12 @@ export default function ParkingPage() {
                       {g.notes}
                     </span>
                   )}
-                  <span className="mt-2 flex flex-wrap gap-1.5">
+                  <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {/* Live availability (when the feed is wired) leads the
+                        pill row; dormant ⇒ nothing renders here. */}
+                    {occupancy.get(g.slug) && (
+                      <GarageLiveBadge occ={occupancy.get(g.slug)!} />
+                    )}
                     {g.payment.includes("park-mobile") && (
                       <span
                         className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"

@@ -37,6 +37,10 @@
     {
       "path": "/api/cron/link-health",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/parking-alerts",
+      "schedule": "*/10 * * * *"
     }
   ],
   "headers": [

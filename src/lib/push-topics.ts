@@ -3,7 +3,12 @@
  * NotificationsCard (and any other client surface) can import the
  * labels without pulling in the Node-only `web-push` library.
  */
-export type PushTopic = "civic-alerts" | "saved-events" | "daily-briefing" | "specials";
+export type PushTopic =
+  | "civic-alerts"
+  | "saved-events"
+  | "daily-briefing"
+  | "specials"
+  | "garage-full";
 
 export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = {
   "civic-alerts": {
@@ -21,6 +26,10 @@ export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = 
   specials: {
     label: "Specials near you",
     desc: "Deals and pop-ups from Frederick County businesses",
+  },
+  "garage-full": {
+    label: "Garage full alerts",
+    desc: "When a downtown garage fills up, so you can pick another",
   },
 };
 
