@@ -33,6 +33,10 @@ import {
   Bus,
   Wrench,
   Activity,
+  Pizza,
+  FlaskConical,
+  Armchair,
+  Building2,
   ChevronDown,
   type LucideIcon,
 } from "lucide-react";
@@ -44,7 +48,8 @@ const ICONS: Record<string, LucideIcon> = {
   Utensils, UtensilsCrossed, Coffee, IceCream, Cookie, ShoppingCart, Croissant,
   Beer, Wine, Martini, Trees, Mountain, Waves, Flag, Tractor, FerrisWheel, Music,
   Palette, Landmark, Route, ShoppingBag, ShoppingBasket, BookOpen, Sparkles,
-  BedDouble, ParkingCircle, Train, Bus, Wrench, Activity,
+  BedDouble, ParkingCircle, Train, Bus, Wrench, Activity, Pizza, FlaskConical,
+  Armchair, Building2,
 };
 
 type SubWithHint = WantSub & { hint?: string };
@@ -61,11 +66,15 @@ type SubWithHint = WantSub & { hint?: string };
  */
 export default function WantsAccordion({
   meal,
+  defaultOpen = "eat",
 }: {
   /** Current meal occasion (server-computed), injected as Eat's lead sub. */
   meal: { key: string; label: string; phrase: string };
+  /** Which main starts expanded — moment-aware (server-computed): Eat by day,
+   *  Drink on a Fri/Sat evening, Outdoors on a weekend afternoon. */
+  defaultOpen?: string;
 }) {
-  const [openKey, setOpenKey] = useState<string>("eat");
+  const [openKey, setOpenKey] = useState<string>(defaultOpen);
 
   const subsFor = (key: string): SubWithHint[] => {
     const cat = WANTS.find((c) => c.key === key);

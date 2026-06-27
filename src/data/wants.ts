@@ -47,6 +47,7 @@ export const WANTS: WantCategory[] = [
     color: "var(--app-accent)",
     mealLead: true,
     subs: [
+      { label: "Pizza", icon: "Pizza", href: "/category/pizza" },
       { label: "Coffee", icon: "Coffee", href: "/nearby?c=coffee" },
       { label: "Ice cream", icon: "IceCream", href: "/nearby?c=ice-cream" },
       { label: "Bakeries", icon: "Cookie", href: "/category/bakery" },
@@ -63,6 +64,7 @@ export const WANTS: WantCategory[] = [
       { label: "Bars", icon: "Beer", href: "/nearby?c=drinks" },
       { label: "Breweries", icon: "Beer", href: "/nearby?c=breweries" },
       { label: "Wineries", icon: "Wine", href: "/nearby?c=wineries" },
+      { label: "Distilleries", icon: "FlaskConical", href: "/category/distillery" },
       { label: "Happy hour", icon: "Martini", href: "/happy-hour" },
     ],
   },
@@ -101,6 +103,7 @@ export const WANTS: WantCategory[] = [
       { label: "Shops", icon: "ShoppingBag", href: "/nearby?c=shops" },
       { label: "Farmers markets", icon: "ShoppingBasket", href: "/category/market" },
       { label: "Books", icon: "BookOpen", href: "/category/book-store" },
+      { label: "Antiques", icon: "Armchair", href: "/category/antiques" },
     ],
   },
   {
@@ -124,6 +127,7 @@ export const WANTS: WantCategory[] = [
       { label: "Transit bus", icon: "Bus", href: "/transit" },
       { label: "Amenities", icon: "Wrench", href: "/amenities" },
       { label: "County pulse", icon: "Activity", href: "/pulse" },
+      { label: "Contacts", icon: "Building2", href: "/contacts" },
     ],
   },
 ];

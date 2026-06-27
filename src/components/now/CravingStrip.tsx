@@ -1,6 +1,23 @@
 import type { ReactNode } from "react";
 import { currentMeal } from "@/lib/meal";
+import { easternParts } from "@/lib/tz";
 import WantsAccordion from "./WantsAccordion";
+
+/**
+ * Which main category starts expanded, by the moment — a smart default, NOT a
+ * reshuffle (the 7 mains keep fixed positions; only the open one changes). Late
+ * night and Fri/Sat evenings lead with Drink, weekend afternoons with Outdoors,
+ * everything else with Eat (the universal default + its time-aware meal lead).
+ */
+function defaultWant(now: Date): string {
+  const { hour, weekday } = easternParts(now);
+  const weekend = weekday === 0 || weekday === 6;
+  const friOrSat = weekday === 5 || weekday === 6;
+  if (hour >= 22 || hour < 5) return "drink"; // late night
+  if (weekend && hour >= 9 && hour < 16) return "outdoors"; // weekend daytime
+  if (friOrSat && hour >= 16) return "drink"; // Fri/Sat evening
+  return "eat";
+}
 
 /**
  * CravingStrip — the "I want…" fast lane on Today.
@@ -30,7 +47,9 @@ export default function CravingStrip({
   contextSlot?: ReactNode;
 }) {
   // The meal occasion right now (Frederick clock) — Eat's time-aware lead sub.
-  const meal = currentMeal();
+  const now = new Date();
+  const meal = currentMeal(now);
+  const defaultOpen = defaultWant(now);
 
   return (
     <section aria-labelledby="i-want-eyebrow" className="space-y-3">
@@ -45,7 +64,10 @@ export default function CravingStrip({
         {locationSlot}
       </div>
 
-      <WantsAccordion meal={{ key: meal.key, label: meal.label, phrase: meal.phrase }} />
+      <WantsAccordion
+        meal={{ key: meal.key, label: meal.label, phrase: meal.phrase }}
+        defaultOpen={defaultOpen}
+      />
 
       {contextSlot}
     </section>
