@@ -2,7 +2,7 @@
  * Garage-full fanout cron — DORMANT until the live feed is wired.
  *
  * Pulls the live downtown-garage occupancy snapshot and pushes a "garage is
- * full" alert to subscribers on the `garage-full` topic whenever a deck crosses
+ * full" alert to subscribers on the `parking` topic whenever a deck crosses
  * the full threshold (see GARAGE_FULL_THRESHOLD). Dedupe is by deck + a coarse
  * time window via push_log, so a garage that stays full doesn't re-ping every
  * run — at most once per ~3-hour block per deck (≈ one alert per fill episode),
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
       ? `Try ${withSpace.slice(0, 2).join(" or ")}, still has room.`
       : "Tap for the other downtown garages.";
 
-    const r = await fanoutToTopic("garage-full", `${d.garageSlug}:${block}`, {
+    const r = await fanoutToTopic("parking", `${d.garageSlug}:${block}`, {
       title: `${label} ${detail}`,
       body,
       url: "/parking",

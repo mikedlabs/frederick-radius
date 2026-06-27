@@ -15,7 +15,7 @@ import { unstable_cache } from "next/cache";
  *
  * The flag: set `PARKING_OCCUPANCY_URL` (a licensed ParkZen / City endpoint
  * returning the deck list) and the whole feature lights up — the /parking live
- * badges, the settings toggle, and the garage-full push cron all key off this
+ * badges, the settings toggle, and the live-full push cron all key off this
  * one env var. Unset (the default), every path is a graceful no-op: we never
  * fabricate a count, exactly as `data/sources.yaml` (cof_parking_occupancy,
  * pending_review) and parking-garages.ts already promise.

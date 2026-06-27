@@ -8,7 +8,7 @@ export type PushTopic =
   | "saved-events"
   | "daily-briefing"
   | "specials"
-  | "garage-full";
+  | "parking";
 
 export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = {
   "civic-alerts": {
@@ -27,9 +27,9 @@ export const TOPIC_LABELS: Record<PushTopic, { label: string; desc: string }> = 
     label: "Specials near you",
     desc: "Deals and pop-ups from Frederick County businesses",
   },
-  "garage-full": {
-    label: "Garage full alerts",
-    desc: "When a downtown garage fills up, so you can pick another",
+  parking: {
+    label: "Parking alerts",
+    desc: "A heads-up before downtown garages fill, so you can pick another",
   },
 };
 

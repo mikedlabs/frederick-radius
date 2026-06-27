@@ -3,7 +3,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import NotificationsCard from "@/components/settings/NotificationsCard";
 import PageBloom from "@/components/ui/PageBloom";
-import { parkingFeedConfigured } from "@/lib/integrations/parking-live";
 
 export const metadata: Metadata = {
   robots: { index: false },
@@ -38,9 +37,7 @@ export default function NotificationsSettingsPage() {
         </p>
       </header>
 
-      {/* "garage-full" is offered only when the live parking feed is wired —
-          otherwise the toggle would never fire. */}
-      <NotificationsCard extraTopics={parkingFeedConfigured() ? ["garage-full"] : []} />
+      <NotificationsCard />
 
       <section
         className="rounded-[var(--app-radius-md)] border-l-4 px-3 py-2.5 text-[12px]"
