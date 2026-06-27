@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { publicPlaces, decoratePlace, type PlaceCardData } from "@/lib/loaders/places";
 import { isCravingPlace } from "@/data/cravings";
 import RightNow from "@/components/now/RightNow";
+import { approxLocation } from "@/lib/ip-geo";
 
 export const metadata: Metadata = {
   title: "Right now",
@@ -42,6 +43,12 @@ export default async function NowPage({
   searchParams: Promise<{ c?: string }>;
 }) {
   const { c } = await searchParams;
+  // Edge IP geo: a coarse "which town" seed so a visitor outside Downtown ranks
+  // from where they actually are BEFORE granting precise location. Ranking only,
+  // never a printed distance. Null (out of area / no header) keeps the Downtown
+  // default. Free at the edge; /nearby is already force-dynamic so reading the
+  // request headers costs nothing extra.
+  const approx = await approxLocation();
   const places = publicPlaces()
     // Filter to craving-eligible FIRST (the matcher only reads category + name,
     // both on the raw Place), then decorate only that subset instead of
@@ -52,5 +59,12 @@ export default async function NowPage({
     .map((p) => decoratePlace(p))
     .map(slim);
 
-  return <RightNow places={places} initialCraving={c ?? null} />;
+  return (
+    <RightNow
+      places={places}
+      initialCraving={c ?? null}
+      approxOrigin={approx.origin}
+      approxCity={approx.city}
+    />
+  );
 }
