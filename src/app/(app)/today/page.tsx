@@ -49,6 +49,7 @@ import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TonightParkingPlan from "@/components/today/TonightParkingPlan";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
+import MarketsTodayBeat from "@/components/today/MarketsTodayBeat";
 import { parkingPlanForToday } from "@/lib/parking-forecast";
 import { PARKING_GARAGES } from "@/data/parking-garages";
 
@@ -285,6 +286,11 @@ export default async function HomePage() {
       >
         <WhatsOn eventsPromise={eventsPromise} now={now} />
       </Suspense>
+
+      {/* ── FARMERS MARKETS TODAY — a slim almanac line naming the markets open
+          today (official MD schedule), self-hiding on non-market days. No feed
+          fetch; reads the committed snapshot. */}
+      <MarketsTodayBeat now={now} />
 
       {/* ── TONIGHT'S PARKING PLAY — when a crowd-draw event is coming up
           downtown, name the garage that fills and the backups. Self-hides when
