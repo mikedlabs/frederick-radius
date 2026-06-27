@@ -119,6 +119,9 @@ export default function RightNow({
   // ON by default so the page leads with what you can actually walk into.
   const [facetKey, setFacetKey] = useState<string | null>(null);
   const [openOnly, setOpenOnly] = useState(true);
+  // "Catch it before it closes" — narrow to places open but closing within the
+  // hour. Off by default; the chip only appears when there ARE any (below).
+  const [closingSoonOnly, setClosingSoonOnly] = useState(false);
 
   // Arriving straight to an answer from a Today craving tile (?c=coffee skips
   // the picker) should still ask for location, exactly like tapping a craving
@@ -209,9 +212,19 @@ export default function RightNow({
   }, [cravingMatchedAll, craving, facetKey, origin]);
 
   const openCount = useMemo(() => matched.filter((m) => m.open).length, [matched]);
+  // Open, but closing within the hour (getOpenStatus → "closing-soon"). Drives
+  // the urgency chip + filter; closing-soon places are a subset of "open".
+  const closingSoonCount = useMemo(
+    () => matched.filter((m) => m.p.open_status.state === "closing-soon").length,
+    [matched],
+  );
 
   const results = useMemo(() => {
-    const list = openOnly ? matched.filter((m) => m.open) : matched;
+    const list = closingSoonOnly
+      ? matched.filter((m) => m.p.open_status.state === "closing-soon")
+      : openOnly
+        ? matched.filter((m) => m.open)
+        : matched;
     return (
       list
         .slice(0, RESULT_LIMIT)
@@ -219,12 +232,13 @@ export default function RightNow({
         // print a distance measured from a place the user isn't standing at.
         .map(({ p, dist }) => ({ ...p, distance_m: hasFix ? dist : undefined }))
     );
-  }, [matched, openOnly, hasFix]);
+  }, [matched, openOnly, closingSoonOnly, hasFix]);
 
   function pick(key: string) {
     haptic("light"); // the tap should feel like a tap
     setCravingKey(key);
     setFacetKey(null); // a fresh craving starts unfiltered
+    setClosingSoonOnly(false); // and not stuck on a previous craving's urgency filter
     // First craving with no location yet → ask, so the answer can be
     // "nearest to YOU" rather than nearest to downtown. One prompt, then
     // it's cached for the session.
@@ -361,6 +375,32 @@ export default function RightNow({
             Open now
           </button>
           )}
+          {/* Closing soon — only when there's something to catch. Amber urgency;
+              tapping it narrows to the open-but-closing-within-the-hour set. */}
+          {!craving?.alwaysOpen && closingSoonCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setClosingSoonOnly((v) => !v)}
+              aria-pressed={closingSoonOnly}
+              className="tactile-interactive inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
+              style={
+                closingSoonOnly
+                  ? {
+                      background: "color-mix(in srgb, var(--app-warning) 18%, transparent)",
+                      color: "var(--app-ink)",
+                      boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-warning) 38%, transparent)",
+                    }
+                  : { background: "var(--app-bg-elevated)", color: "var(--app-ink-3)", boxShadow: "inset 0 0 0 1px var(--app-border)" }
+              }
+            >
+              <span
+                aria-hidden
+                className="inline-block h-[6px] w-[6px] rounded-full"
+                style={{ background: "var(--app-warning)" }}
+              />
+              Closing soon · {closingSoonCount}
+            </button>
+          )}
           {craving && facetDefs.length > 0 && (
             <>
               <FacetChip label="All" active={facetKey === null} color={craving.color} onClick={() => setFacetKey(null)} />
@@ -403,23 +443,36 @@ export default function RightNow({
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>
-            {openOnly && matched.length > 0
-              ? `Nothing open right now for ${activeNoun}.`
-              : meal
-                ? `Nothing open ${meal.phrase} near you right now.`
-                : `Nothing for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
+            {closingSoonOnly
+              ? `Nothing closing soon for ${activeNoun}${hasFix ? " near you" : ""}.`
+              : openOnly && matched.length > 0
+                ? `Nothing open right now for ${activeNoun}.`
+                : meal
+                  ? `Nothing open ${meal.phrase} near you right now.`
+                  : `Nothing for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
           </p>
-          {/* When Open-now hid everything but closed matches exist, offer them
-              rather than dead-ending — "on by default, with a way to see all." */}
-          {openOnly && matched.length > 0 && (
+          {/* Clear the closing-soon filter, or (when Open-now hid everything but
+              closed matches exist) offer those — never dead-end. */}
+          {closingSoonOnly ? (
             <button
               type="button"
-              onClick={() => setOpenOnly(false)}
+              onClick={() => setClosingSoonOnly(false)}
               className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
               style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
             >
-              Show all {matched.length}, including closed
+              Show all open
             </button>
+          ) : (
+            openOnly && matched.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setOpenOnly(false)}
+                className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+                style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+              >
+                Show all {matched.length}, including closed
+              </button>
+            )
           )}
         </div>
       ) : (
