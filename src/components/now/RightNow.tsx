@@ -102,11 +102,18 @@ function walkLabel(distance_m: number): string {
 export default function RightNow({
   places,
   initialCraving = null,
+  approxOrigin = null,
+  approxCity = null,
 }: {
   places: PlaceCardData[];
   /** Preselected craving from a deep link (?c=coffee) — skips the picker
    *  straight to the answer when arriving from a Today craving chip. */
   initialCraving?: string | null;
+  /** Coarse edge-IP origin used to rank BEFORE a precise device fix (never to
+   *  print a distance). Null when out of area → Downtown default. */
+  approxOrigin?: { lng: number; lat: number } | null;
+  /** City label for the coarse location ("near Thurmont"). */
+  approxCity?: string | null;
 }) {
   const { state, request } = useGeolocation();
   const [cravingKey, setCravingKey] = useState<string | null>(
@@ -142,9 +149,12 @@ export default function RightNow({
   }, [initialCraving, state.status, request]);
 
   const hasFix = state.status === "granted";
+  // Origin precedence: a precise device fix → the coarse edge-IP seed → Downtown.
+  // The IP seed only improves the fallback RANKING; printed distances stay gated
+  // on `hasFix` so we never claim a precision we don't have.
   const origin = hasFix
     ? { lng: state.position.lng, lat: state.position.lat }
-    : FREDERICK_CENTER;
+    : (approxOrigin ?? FREDERICK_CENTER);
 
   // The selection is either a noun craving or a time-aware meal occasion
   // (breakfast/lunch/dinner/brunch/late, arrived at via the /today meal tile).
@@ -326,7 +336,7 @@ export default function RightNow({
               className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {active.label} near {hasFix ? "you" : "Downtown"}
+              {active.label} near {hasFix ? "you" : (approxCity ?? "Downtown")}
             </h1>
             {/* Meals frame the count on the CLOCK fact ("open for dinner now")
                 — never a service claim. Nouns keep the plain "open now". */}
@@ -431,7 +441,7 @@ export default function RightNow({
           <Navigation className="h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--app-brand)" }} aria-hidden />
           <span className="text-[13px]" style={{ color: "var(--app-ink-2)" }}>
             {state.status === "denied" || state.status === "unavailable"
-              ? "Showing Downtown Frederick. Turn on location for what's nearest to you."
+              ? `Showing ${approxCity ? `${approxCity} (approximate)` : "Downtown Frederick"}. Turn on location for what's nearest to you.`
               : "Use my location to see what's nearest to where you're standing."}
           </span>
         </button>
