@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Sun } from "lucide-react";
-import { nextSunHint } from "@/lib/sun";
+import { nextSunHint, sunTimes } from "@/lib/sun";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getHomeMuni } from "@/lib/personalize";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -42,15 +42,31 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
   const hour24 = mounted ? Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }).format(now)) : 0;
   const greet = hour24 < 12 ? "Morning" : hour24 < 17 ? "Afternoon" : hour24 < 21 ? "Evening" : "Late night";
 
+  const clock = (d: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).format(d);
   const hint = mounted ? nextSunHint(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng) : null;
   let golden: string | null = null;
   if (hint) {
-    const clock = (d: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).format(d);
     if (now >= hint.from && hint.to) {
       golden = `Golden hour now · best light until ${clock(hint.to)}`;
     } else {
       const mins = Math.max(1, Math.round((hint.from.getTime() - now.getTime()) / 60_000));
       golden = `Golden hour ${clock(hint.from)} · in ${mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`}`;
+    }
+  }
+
+  // Daylight-left cue — shown only when the golden-hour line ISN'T (so the two
+  // never stack): during daylight, name sunset + how much light is left. It
+  // gives the all-day "should I head out now?" read that golden hour only
+  // answers near dusk. Hidden once the sun is down (nothing to promise).
+  let daylight: string | null = null;
+  if (mounted && !golden) {
+    const sun = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
+    if (sun.sunrise && sun.sunset && now >= sun.sunrise && now < sun.sunset) {
+      const mins = Math.round((sun.sunset.getTime() - now.getTime()) / 60_000);
+      if (mins >= 20) {
+        const left = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+        daylight = `Sunset ${clock(sun.sunset)} · ${left} of daylight left`;
+      }
     }
   }
 
@@ -79,7 +95,11 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
     }
   }
 
-  if (!homeMuni && !golden) return null;
+  // One "sun line": the golden-hour cue near dusk, otherwise the daylight-left
+  // read during the day. Never both (daylight is computed only when !golden).
+  const sunLine = golden ?? daylight;
+
+  if (!homeMuni && !sunLine) return null;
 
   return (
     <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-snug" suppressHydrationWarning>
@@ -92,11 +112,11 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
           .
         </span>
       )}
-      {homeMuni && golden && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
-      {golden && (
+      {homeMuni && sunLine && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
+      {sunLine && (
         <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
           <Sun className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-accent)" }} />
-          {golden}
+          {sunLine}
         </span>
       )}
       {goldenEventClause && (
