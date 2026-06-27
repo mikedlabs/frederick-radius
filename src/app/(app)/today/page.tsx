@@ -48,6 +48,7 @@ import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TonightParkingPlan from "@/components/today/TonightParkingPlan";
+import FirstVisitNote from "@/components/today/FirstVisitNote";
 import { parkingPlanForToday } from "@/lib/parking-forecast";
 import { PARKING_GARAGES } from "@/data/parking-garages";
 
@@ -214,19 +215,37 @@ export default async function HomePage() {
         <p className="display-3" style={{ color: "var(--app-ink)" }}>
           Your field guide to Frederick County.
         </p>
-        <p className="mt-1 text-body text-pretty" style={{ color: "var(--app-ink-2)" }}>
-          From Downtown to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
-        </p>
+        {/* The descriptive standfirst orients a NEWCOMER; a returning daily user
+            scrolls past it to reach the grid, so it shows on the first visit
+            only and then retires itself (returning users never render it). */}
+        <FirstVisitNote>
+          <p className="mt-1 text-body text-pretty" style={{ color: "var(--app-ink-2)" }}>
+            From Downtown to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
+          </p>
+        </FirstVisitNote>
         <div className="mt-2 space-y-1.5">
           <HolidayNote now={now} />
-          {/* Salutation + golden-hour cue — event-dependent, so it streams in
-              its own Suspense boundary while the masthead plate paints first. */}
+          {/* Salutation + golden-hour / daylight cue — event-dependent, so it
+              streams in its own Suspense boundary while the plate paints first. */}
           <Suspense fallback={null}>
             <TodayContextSlot eventsPromise={eventsPromise} now={now} />
           </Suspense>
         </div>
         <div className="fg-rule mt-3" aria-hidden />
       </header>
+
+      {/* ── HEADS UP — an ACTIVE civic alert (NWS/NPS: warning, closure,
+          incident) is the one thing that changes whether the rest of the page
+          matters, so it sits right under the masthead, before anyone plans.
+          Self-hides when nothing is active (the common case), so it costs the
+          ordinary day nothing; on an alert day it leads instead of hiding at the
+          bottom. Still one worst-first card with a quiet "+N more", never a
+          banner wall. */}
+      <Suspense fallback={null}>
+        <div className="mt-3">
+          <CivicAlerts />
+        </div>
+      </Suspense>
 
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On
@@ -295,17 +314,8 @@ export default async function HomePage() {
           me now," and the around-you geo surface duplicated that. It still
           lives on the map. */}
 
-      {/* ── HEADS UP — high-signal interruption layer, only if needed ────
-          "Before you make a plan, is there anything you need to know?"
-          Self-hides when nothing is active; shows ONE worst-first alert
-          (real, sourced, time-bound NWS/NPS), with a quiet "+N more →" to
-          /pulse. Sits after Ask, before the best move — never a banner
-          wall. See CivicAlerts. */}
-      <Suspense fallback={null}>
-        <div className="mt-4">
-          <CivicAlerts />
-        </div>
-      </Suspense>
+      {/* (HEADS UP / CivicAlerts moved UP to just under the masthead — an active
+          warning belongs before anyone plans, not below the whole moat.) */}
 
       {/* The generated "best move now" card (TodayMoves) was removed
           2026-06-18: /today is a place to FIND, not a suggestion engine. A
