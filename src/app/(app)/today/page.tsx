@@ -288,9 +288,12 @@ export default async function HomePage() {
       </Suspense>
 
       {/* ── FARMERS MARKETS TODAY — a slim almanac line naming the markets open
-          today (official MD schedule), self-hiding on non-market days. No feed
-          fetch; reads the committed snapshot. */}
-      <MarketsTodayBeat now={now} />
+          today (official MD schedule), self-hiding on non-market days. Reads the
+          live MD feed (weekly-cached, auto-refreshing) with the committed
+          snapshot as fallback, so it streams in its own boundary. */}
+      <Suspense fallback={null}>
+        <MarketsTodayBeat now={now} />
+      </Suspense>
 
       {/* ── TONIGHT'S PARKING PLAY — when a crowd-draw event is coming up
           downtown, name the garage that fills and the backups. Self-hides when

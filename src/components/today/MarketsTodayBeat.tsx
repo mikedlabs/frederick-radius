@@ -9,8 +9,8 @@ import { marketsOpenToday } from "@/lib/markets-today";
  * with no market, so it costs the ordinary day nothing. Honest: only markets
  * Maryland publishes with a real day + hours appear.
  */
-export default function MarketsTodayBeat({ now }: { now: Date }) {
-  const markets = marketsOpenToday(now);
+export default async function MarketsTodayBeat({ now }: { now: Date }) {
+  const markets = await marketsOpenToday(now);
   if (markets.length === 0) return null;
 
   const shown = markets.slice(0, 3);
