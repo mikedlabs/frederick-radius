@@ -178,11 +178,12 @@ export const CRAVINGS: Craving[] = [
     // Name-matched, but never an outdoors place: "Creamery Park" contains
     // "creamery" yet is a park, not dessert. Ice cream is a food/treat venue.
     match: (p) =>
-      ICE_CREAM.test(p.name) &&
-      p.category !== "park" &&
-      p.category !== "trail" &&
-      p.category !== "playground" &&
-      p.category !== "outdoors",
+      p.category === "ice-cream" ||
+      (ICE_CREAM.test(p.name) &&
+        p.category !== "park" &&
+        p.category !== "trail" &&
+        p.category !== "playground" &&
+        p.category !== "outdoors"),
   },
   {
     key: "outside",

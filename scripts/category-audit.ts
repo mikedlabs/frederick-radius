@@ -37,7 +37,7 @@ const TYPE_MAP: Record<string, string> = {
   bakery: "bakery", coffee_shop: "coffee", cafe: "coffee",
   bar: "bar", pub: "bar", wine_bar: "bar",
   brewery: "brewery", winery: "winery", distillery: "distillery",
-  ice_cream_shop: "restaurant",
+  ice_cream_shop: "ice-cream", frozen_yogurt_shop: "ice-cream", dessert_shop: "ice-cream", dessert_restaurant: "ice-cream", candy_store: "ice-cream", chocolate_shop: "ice-cream",
   museum: "museum", art_gallery: "gallery", performing_arts_theater: "theater",
   hotel: "lodging", motel: "lodging", bed_and_breakfast: "lodging", lodging: "lodging",
   book_store: "book-store", library: "library",
@@ -54,6 +54,7 @@ const TYPE_MAP: Record<string, string> = {
 // is generic). Order matters — first match wins.
 const NAME_RULES: Array<{ re: RegExp; cat: string }> = [
   { re: /\b(orchard|pick[- ]?your[- ]?own|\bpyo\b|petting farm|corn maze|pumpkin patch|christmas tree farm|berry farm|farm stand|u-pick)\b/i, cat: "agritourism" },
+  { re: /\b(ice cream|gelato|frozen yogurt|froyo|frozen custard|snowball|snoballs?|soft serve|baskin|cold stone|rita'?s|bruster'?s|dairy queen)\b/i, cat: "ice-cream" },
   { re: /\b(distiller|distilling)\b/i, cat: "distillery" },
   { re: /\b(winer|vineyard|cidery|ciderworks|meadery)\b/i, cat: "winery" },
   { re: /\b(brewer|brewing|taproom|tap room)\b/i, cat: "brewery" },
