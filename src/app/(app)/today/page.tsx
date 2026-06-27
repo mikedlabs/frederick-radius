@@ -47,6 +47,9 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
+import TonightParkingPlan from "@/components/today/TonightParkingPlan";
+import { parkingPlanForToday } from "@/lib/parking-forecast";
+import { PARKING_GARAGES } from "@/data/parking-garages";
 
 /**
  * Now — the daily briefing.
@@ -262,6 +265,14 @@ export default async function HomePage() {
         }
       >
         <WhatsOn eventsPromise={eventsPromise} now={now} />
+      </Suspense>
+
+      {/* ── TONIGHT'S PARKING PLAY — when a crowd-draw event is coming up
+          downtown, name the garage that fills and the backups. Self-hides when
+          nothing qualifies; streams on the shared events promise. The predictive
+          companion to the parking-alert push, for people who didn't opt in. */}
+      <Suspense fallback={null}>
+        <TonightParkingSlot eventsPromise={eventsPromise} now={now} />
       </Suspense>
 
       {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
@@ -517,6 +528,26 @@ async function RightNowSlot({ eventsPromise, now }: { eventsPromise: EventsPromi
       }
     : undefined;
   return <RightNowBand liveTonight={{ count: liveTonight.length, soonest }} />;
+}
+
+/** Tonight's parking play: the soonest crowd-draw downtown event in the next
+ *  ~12h + its garage plan, as a quiet self-hiding line. */
+async function TonightParkingSlot({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
+  const { publicEvents } = await eventsPromise;
+  const plan = parkingPlanForToday(
+    publicEvents.map((e) => ({ slug: e.slug, title: e.title, starts_at: e.starts_at, geom: e.geom, category: e.category })),
+    PARKING_GARAGES,
+    now,
+  );
+  if (!plan) return null;
+  return (
+    <TonightParkingPlan
+      eventTitle={plan.event.title}
+      eventSlug={plan.event.slug}
+      primaryGarageName={plan.primaryGarage.name}
+      alternatives={plan.alternatives}
+    />
+  );
 }
 
 /** What's on = every PUBLIC event in the city or county TODAY, soonest first.
