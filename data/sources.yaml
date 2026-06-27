@@ -569,9 +569,9 @@ sources:
       The APP-SIDE is already wired and DORMANT behind one flag: set
       PARKING_OCCUPANCY_URL (optionally PARKING_OCCUPANCY_KEY) and the
       runtime loader src/lib/integrations/parking-live.ts lights up the
-      /parking live badges, the settings "garage-full" toggle, and the
-      /api/cron/parking-alerts fanout. Unset = graceful no-op, no
-      fabricated counts. The pipeline schema/transform here remain the
+      /parking live badges and the /api/cron/parking-alerts fanout. Unset
+      = graceful no-op, no fabricated counts. (The predictive
+      /api/cron/parking-forecast nudge runs without this feed.) The pipeline schema/transform here remain the
       batch-ingest mirror of that same model. pending_review by design.
 
   - id: transit_gtfs

@@ -31,7 +31,6 @@ import {
 import { cityMapsFor } from "@/data/city-maps";
 import {
   occupancyByGarageSlug,
-  parkingFeedConfigured,
   type GarageOccupancy,
 } from "@/lib/integrations/parking-live";
 
@@ -185,9 +184,10 @@ function GarageLiveBadge({ occ }: { occ: GarageOccupancy }) {
 
 export default async function ParkingPage() {
   // Live occupancy keyed by garage slug. Empty map when the feed is dormant
-  // (the default) — every badge/CTA below simply doesn't render.
+  // (the default) — the live availability badges simply don't render. The
+  // alerts CTA shows regardless, because the predictive "garage usually fills"
+  // nudge works today with no live feed.
   const occupancy = await occupancyByGarageSlug();
-  const feedLive = parkingFeedConfigured() && occupancy.size > 0;
   return (
     <div className="relative mx-auto w-full max-w-screen-md space-y-7 py-6">
       <PageBloom variant="warm-cool" />
@@ -444,44 +444,42 @@ export default async function ParkingPage() {
         </ul>
       </section>
 
-      {/* Garage-full alerts CTA — only when the live feed is wired, so we never
-          promise an alert we can't send. Links to the notifications settings
-          where the "garage-full" topic becomes available. */}
-      {feedLive && (
-        <Link
-          href="/settings/notifications"
-          className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 transition"
+      {/* Parking alerts CTA. The predictive "this garage usually fills before a
+          big event, try another" nudge works today with no live feed, so this
+          always shows; live full-alerts layer on once a feed is wired. */}
+      <Link
+        href="/settings/notifications"
+        className="hover-lift flex items-center gap-3 rounded-[var(--app-radius-lg)] border bg-[var(--app-bg-elevated)] p-4 transition"
+        style={{
+          borderColor: "var(--app-border)",
+          boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+        }}
+      >
+        <span
+          aria-hidden
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
           style={{
-            borderColor: "var(--app-border)",
-            boxShadow: "var(--app-elev-1), var(--app-edge), var(--app-hi)",
+            background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
+            color: "var(--app-brand)",
           }}
         >
-          <span
-            aria-hidden
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full"
-            style={{
-              background: "color-mix(in srgb, var(--app-brand) 14%, transparent)",
-              color: "var(--app-brand)",
-            }}
-          >
-            <Bell className="h-5 w-5" strokeWidth={2} aria-hidden />
+          <Bell className="h-5 w-5" strokeWidth={2} aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+            Get a heads-up before a garage fills
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
-              Get a ping when a garage fills up
-            </span>
-            <span className="mt-0.5 block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Turn on garage-full alerts and we&rsquo;ll point you to one with space.
-            </span>
+          <span className="mt-0.5 block text-[12px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
+            Turn on parking alerts and we&rsquo;ll point you to a garage with space.
           </span>
-          <ArrowUpRight
-            aria-hidden
-            className="h-4 w-4 shrink-0"
-            strokeWidth={2}
-            style={{ color: "var(--app-ink-3)" }}
-          />
-        </Link>
-      )}
+        </span>
+        <ArrowUpRight
+          aria-hidden
+          className="h-4 w-4 shrink-0"
+          strokeWidth={2}
+          style={{ color: "var(--app-ink-3)" }}
+        />
+      </Link>
 
       <section className="space-y-3">
         <h2
