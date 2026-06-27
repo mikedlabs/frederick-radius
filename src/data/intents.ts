@@ -126,6 +126,7 @@ export type SubIntent = {
     | "BookOpen"
     | "FerrisWheel"
     | "Flag"
+    | "Tractor"
     | "Users";
 };
 
@@ -177,7 +178,7 @@ const FOOD = new Set([
   "brewery",
   "food-truck",
 ]);
-const OUTDOOR = new Set(["park", "trail", "outdoors", "playground", "golf"]);
+const OUTDOOR = new Set(["park", "trail", "outdoors", "playground", "golf", "agritourism"]);
 // Outdoor sub signals. The directory only structures park/trail/playground
 // as categories, so gardens and water-features are surfaced by NAME (verified
 // against the dataset). These chips only ever narrow WITHIN the outdoor set,
@@ -448,6 +449,7 @@ export const INTENTS: Intent[] = [
       { key: "trails",      type: "category", label: "Trails",        icon: "Mountain", match: (p) => p.category === "trail" || TRAIL_NAME_RE.test(p.name) },
       { key: "playgrounds", type: "category", label: "Playgrounds",   icon: "ToyBrick", match: isPlaygroundLike },
       { key: "golf",        type: "category", label: "Golf",          icon: "Flag",     match: (p) => p.category === "golf" },
+      { key: "farms",       type: "category", label: "Farms & PYO",   icon: "Tractor",  match: (p) => p.category === "agritourism" },
       { key: "gardens",     type: "category", label: "Gardens",       icon: "Flower2",  match: (p) => GARDEN_NAME_RE.test(p.name) },
       { key: "water",       type: "category", label: "Water & creek", icon: "Waves",    match: (p) => WATER_NAME_RE.test(p.name) },
     ],

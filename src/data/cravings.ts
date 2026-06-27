@@ -46,7 +46,8 @@ export type Craving = {
     | "Wine"
     | "BedDouble"
     | "Sparkles"
-    | "Flag";
+    | "Flag"
+    | "Tractor";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -209,6 +210,16 @@ export const CRAVINGS: Craving[] = [
     icon: "Flag",
     color: "var(--app-brand-2)",
     match: (p) => p.category === "golf",
+  },
+  {
+    // Frederick is farm country — orchards, pick-your-own, farm stands,
+    // creameries, corn mazes, petting farms. A seasonal day-out that was
+    // scattered across market/family/restaurant until the agritourism category.
+    key: "farms",
+    label: "Farms & PYO",
+    icon: "Tractor",
+    color: "var(--app-positive)",
+    match: (p) => p.category === "agritourism",
   },
   {
     // The formal music halls + stages (Weinberg, Sky Stage, New Spire, the
