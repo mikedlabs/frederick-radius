@@ -168,6 +168,10 @@ function runExisting() {
     ["places-data-audit", "scripts/audit-data.ts"],
     ["coords", "scripts/coord-audit.ts"],
     ["closures", "scripts/closures-report.ts"],
+    // Category correctness — flags likely-miscategorized places (Google
+    // primary_type + name signals) into docs/category-audit.md; the captured
+    // stdout here is just its summary. Part of one `npm run audit` pass.
+    ["category-audit", "scripts/category-audit.ts"],
   ];
   const ran: string[] = [];
   for (const [name, path] of scripts) {
