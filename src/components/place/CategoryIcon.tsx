@@ -5,7 +5,7 @@ import {
   PawPrint, Pill, Pizza, Recycle, ShieldCheck, ShoppingBag, Tent, Theater,
   ToyBrick, Train, Trees, Truck, Users, Utensils, UtensilsCrossed, Vote,
   Wifi, Wine, Wrench, MapPin,
-  Flag, Grape, FlaskConical, Tractor,
+  Flag, Grape, FlaskConical, Tractor, IceCream,
   type LucideIcon,
 } from "lucide-react";
 import type { CSSProperties } from "react";
@@ -30,7 +30,7 @@ const MAP: Record<string, LucideIcon> = {
   // New-category icons (golf / wineries / distilleries / agritourism) — these
   // were declared in categories.ts but missing here, so they were silently
   // falling back to the generic pin.
-  Flag, Grape, FlaskConical, Tractor,
+  Flag, Grape, FlaskConical, Tractor, IceCream,
   // Long-tail names declared in categories.ts that are not 1:1 Lucide
   // exports resolve to a sensible vector rather than a broken import.
   PinCircle: MapPin,

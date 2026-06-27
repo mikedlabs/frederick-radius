@@ -27,6 +27,7 @@ export const CATEGORIES: Category[] = [
   { slug: "distillery", name: "Distilleries", parent: "food", icon: "FlaskConical", color: "#9A5B2E", display_order: 19, blurb: "Maryland craft spirits: whiskey, rye, gin, and tasting rooms." },
   { slug: "bakery", name: "Bakeries", parent: "food", icon: "Cookie", color: "#B26B00", display_order: 15, blurb: "Pastry, bread, and the morning rituals worth the line." },
   { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#E14328", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
+  { slug: "ice-cream", name: "Ice cream & treats", parent: "food", icon: "IceCream", color: "#D6739B", display_order: 17, blurb: "Ice cream, gelato, frozen custard, snowballs, and sweet shops." },
   { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#E14328", display_order: 17, blurb: "Frederick's food trucks rotate weekly — here's where they reliably park, plus the festivals built around them." },
 
   { slug: "outdoors", name: "Parks & Trails", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, playgrounds, water, and views." },
