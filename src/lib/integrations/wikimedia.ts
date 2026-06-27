@@ -113,7 +113,57 @@ export function getLandmarkPhoto(slug: string): WikimediaPhoto | null {
 // unknown/unverified slug returns null and the /m hero falls back to
 // SeasonalPhoto automatically. Photos must DEPICT the town (Main Street,
 // downtown, the signature landmark/station) — never a generic small-town stock.
-export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {};
+export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
+  // Each verified by eye (depicts the town) + Special:FilePath confirmed 200.
+  brunswick: {
+    file: "Brunswick 001.jpg",
+    alt: "A downtown Brunswick, Maryland heritage mural depicting the town's railroad history, reading “Brunswick, MD · Founded 1787.”",
+    author: "Bob Carney",
+    license: "CC BY 2.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Brunswick_001.jpg",
+    verified: true,
+  },
+  thurmont: {
+    file: "Thurmont Town Square Park.jpg",
+    alt: "Thurmont, Maryland's town square park — the town clock, a gazebo, and flower beds at the town center.",
+    author: "CraigShipp.com Photos",
+    license: "CC BY-SA 2.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Thurmont_Town_Square_Park.jpg",
+    verified: true,
+  },
+  middletown: {
+    file: "Middletown, Maryland historic district.jpg",
+    alt: "Main Street in Middletown, Maryland's historic district — porch-fronted homes with the Catoctin ridge beyond.",
+    author: "Acroterion",
+    license: "CC BY-SA 4.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Middletown,_Maryland_historic_district.jpg",
+    verified: true,
+  },
+  emmitsburg: {
+    file: "Emmitsburg Pano.jpg",
+    alt: "A panorama of Emmitsburg, Maryland, its church spires set below Catoctin Mountain.",
+    author: "Vasiliy Meshko",
+    license: "CC BY-SA 3.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Emmitsburg_Pano.jpg",
+    verified: true,
+  },
+  "new-market": {
+    file: "New Market, Maryland.jpg",
+    alt: "A Victorian antiques storefront on Main Street in New Market, Maryland — the county's antiques town.",
+    author: "Dougtone",
+    license: "CC BY-SA 2.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:New_Market,_Maryland.jpg",
+    verified: true,
+  },
+  walkersville: {
+    file: "Harris Farmhouse Walkersville, MD1.jpg",
+    alt: "The historic brick Harris Farmhouse in Walkersville, Maryland, a bank barn beyond it.",
+    author: "Acroterion",
+    license: "CC BY-SA 4.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Harris_Farmhouse_Walkersville,_MD1.jpg",
+    verified: true,
+  },
+};
 
 export function getTownPhoto(slug: string): WikimediaPhoto | null {
   const p = TOWN_PHOTOS[slug];
