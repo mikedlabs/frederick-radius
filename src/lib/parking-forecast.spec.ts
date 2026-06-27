@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   parkingForecasts,
+  parkingPlanForToday,
   eventDrawsParking,
   FORECAST_LEAD_MIN_MINUTES,
   type ForecastEvent,
@@ -60,5 +61,32 @@ describe("parkingForecasts", () => {
 
   it("returns nothing when no events are eligible", () => {
     expect(parkingForecasts([ev({ category: "government" })], GARAGES, NOW)).toEqual([]);
+  });
+});
+
+describe("parkingPlanForToday", () => {
+  it("picks the soonest upcoming downtown draw within the day horizon", () => {
+    const soon = new Date(NOW.getTime() + 3 * 60 * 60_000).toISOString();
+    const later = new Date(NOW.getTime() + 6 * 60 * 60_000).toISOString();
+    const plan = parkingPlanForToday(
+      [ev({ slug: "later", starts_at: later, geom: COURT }), ev({ slug: "soon", starts_at: soon, geom: CARROLL })],
+      GARAGES,
+      NOW,
+    );
+    expect(plan?.event.slug).toBe("soon");
+    expect(plan?.primaryGarage.slug).toBe("carroll-creek-parking-garage-frederick");
+  });
+
+  it("looks further ahead than the push window (a 3-hour-out event still shows)", () => {
+    const threeHours = new Date(NOW.getTime() + 3 * 60 * 60_000).toISOString();
+    expect(eventDrawsParking(ev({ starts_at: threeHours }), NOW)).toBe(false); // outside push window
+    expect(parkingPlanForToday([ev({ starts_at: threeHours })], GARAGES, NOW)).not.toBeNull();
+  });
+
+  it("returns null when the only event is already past or beyond the horizon", () => {
+    const past = new Date(NOW.getTime() - 60 * 60_000).toISOString();
+    const wayOut = new Date(NOW.getTime() + 20 * 60 * 60_000).toISOString();
+    expect(parkingPlanForToday([ev({ starts_at: past })], GARAGES, NOW)).toBeNull();
+    expect(parkingPlanForToday([ev({ starts_at: wayOut })], GARAGES, NOW)).toBeNull();
   });
 });
