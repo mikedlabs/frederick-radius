@@ -4,7 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell, BellOff, Check, AlertCircle, Send } from "lucide-react";
 import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
 
-const ALL_TOPICS: PushTopic[] = ["civic-alerts", "saved-events", "daily-briefing", "specials"];
+// The always-available topics. `garage-full` is appended only when the parking
+// feed is live (passed via `extraTopics`), so we never offer a toggle that can't
+// fire anything.
+const BASE_TOPICS: PushTopic[] = ["civic-alerts", "saved-events", "daily-briefing", "specials"];
 
 type SupportState =
   | "unknown"
@@ -23,7 +26,14 @@ function uint8FromBase64(base64: string): Uint8Array {
   return arr;
 }
 
-export default function NotificationsCard() {
+export default function NotificationsCard({
+  extraTopics = [],
+}: {
+  /** Topics surfaced only when their data source is live (e.g. "garage-full"
+   *  when the parking feed is configured). */
+  extraTopics?: PushTopic[];
+}) {
+  const ALL_TOPICS: PushTopic[] = [...BASE_TOPICS, ...extraTopics];
   const [support, setSupport] = useState<SupportState>("unknown");
   const [pubKey, setPubKey] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);

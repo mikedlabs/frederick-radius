@@ -550,19 +550,29 @@ sources:
     status: pending_review
     last_validated: null
     last_success: null
-    schema_file: null
-    transform_file: null
+    schema_file: pipeline/schemas_ts/cof_parking_occupancy.ts
+    transform_file: transforms/cof_parking_occupancy.ts
     notes: |
-      Live counts for the Court Street, Carroll Creek, and West Patrick
-      Street decks. Two gates block activation and are deliberately left
-      unresolved here rather than guessed: (1) a machine-readable
-      live-occupancy endpoint is not confirmed (the public parking page
-      exists; a documented feed has not been verified), so url is null
-      on purpose, no URL is invented; (2) licensing for redistributing
-      live counts is unconfirmed. Schema and transform are scaffolds
-      shaped to the common deck / available / capacity model and must be
-      validated against the real feed before activation. pending_review
-      by design.
+      Live counts for the downtown decks. The real-time source is the
+      "Park Frederick" app, powered by ParkZen (Android package
+      com.parkzen.frederick; ParkZen was acquired by Parking Guidance
+      Systems). There is NO free public web feed — the live layer is a
+      commercial vendor API, and the counts are CROWD-SOURCED estimates
+      (phone-motion / car-Bluetooth inference, ~96% claimed accuracy),
+      not garage gate-counts, so treat them as "about this full."
+
+      Two gates still block activation, left unresolved rather than
+      guessed: (1) a licensed machine-readable endpoint (ParkZen API,
+      or a City-provided feed) is not yet confirmed, so url is null on
+      purpose; (2) redistribution licensing is unconfirmed.
+
+      The APP-SIDE is already wired and DORMANT behind one flag: set
+      PARKING_OCCUPANCY_URL (optionally PARKING_OCCUPANCY_KEY) and the
+      runtime loader src/lib/integrations/parking-live.ts lights up the
+      /parking live badges, the settings "garage-full" toggle, and the
+      /api/cron/parking-alerts fanout. Unset = graceful no-op, no
+      fabricated counts. The pipeline schema/transform here remain the
+      batch-ingest mirror of that same model. pending_review by design.
 
   - id: transit_gtfs
     name: Frederick County TransIT GTFS
