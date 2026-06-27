@@ -25,6 +25,7 @@
     "enrich": "tsx --tsconfig tsconfig.json scripts/enrich-places.ts",
     "enrich:amenities": "tsx --tsconfig tsconfig.json scripts/enrich-amenities.ts",
     "build:farmers-markets": "tsx --tsconfig tsconfig.json scripts/build-farmers-markets.ts",
+    "fetch:town-photos": "tsx --tsconfig tsconfig.json scripts/fetch-town-photo-candidates.ts",
     "extract:descriptions": "node scripts/extract-descriptions.mjs",
     "ingest:civic": "tsx --tsconfig tsconfig.json scripts/ingest-municipal-civic.ts",
     "ingest:venues": "tsx --tsconfig tsconfig.json scripts/ingest-venue-events.ts",

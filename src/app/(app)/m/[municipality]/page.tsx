@@ -8,8 +8,10 @@ import { decoratePlace, publicPlacesByMunicipality, slimForList } from "@/lib/lo
 import { isRecommendable, isDestinationCategory } from "@/lib/relevance";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
+import Image from "next/image";
 import PageBloom from "@/components/ui/PageBloom";
 import SeasonalPhoto from "@/components/ui/SeasonalPhoto";
+import { getTownPhoto, wikimediaUrl } from "@/lib/integrations/wikimedia";
 import TownStrip from "@/components/municipality/TownStrip";
 import TownLocatorLine from "@/components/municipality/TownLocatorLine";
 import TownAlmanac from "@/components/municipality/TownAlmanac";
@@ -69,6 +71,10 @@ export default async function MunicipalityPage(
   const { municipality } = await params;
   const m = MUNICIPALITY_BY_SLUG[municipality];
   if (!m) notFound();
+
+  // A curated CC/PD photo OF this town wins the hero over the generic seasonal
+  // county photography; null until one is approved (then the town shows itself).
+  const townPhoto = getTownPhoto(m.slug);
 
   const places = publicPlacesByMunicipality(m.slug)
     .map((p) => slimForList(decoratePlace(p, m.centroid)))
@@ -172,14 +178,30 @@ export default async function MunicipalityPage(
           ONE blurb — the pop./est. metadata lead is gone. */}
       <header className="relative overflow-hidden rounded-[var(--app-radius-lg)]">
         <div className="relative h-52 w-full sm:h-72">
-          <SeasonalPhoto
-            season="auto"
-            alt={`Frederick County (near ${m.name})`}
-            priority
-            sizes="(max-width: 720px) 100vw, 720px"
-            className="absolute inset-0"
-          />
+          {townPhoto ? (
+            <Image
+              src={wikimediaUrl(townPhoto.file, 1200)}
+              alt={townPhoto.alt}
+              fill
+              priority
+              sizes="(max-width: 720px) 100vw, 720px"
+              className="absolute inset-0 object-cover"
+            />
+          ) : (
+            <SeasonalPhoto
+              season="auto"
+              alt={`Frederick County (near ${m.name})`}
+              priority
+              sizes="(max-width: 720px) 100vw, 720px"
+              className="absolute inset-0"
+            />
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/15" />
+          {townPhoto && (
+            <p className="absolute bottom-1 right-2 z-10 font-mono text-[8.5px] tracking-wide text-white/55">
+              {townPhoto.author} · {townPhoto.license} · Wikimedia
+            </p>
+          )}
           <div className="absolute inset-x-0 bottom-0 space-y-1.5 p-4 sm:p-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/75">
               {m.type === "city" ? "City" : m.type === "town" ? "Town" : "Community"} · Frederick County

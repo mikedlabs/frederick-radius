@@ -103,3 +103,19 @@ export function getLandmarkPhoto(slug: string): WikimediaPhoto | null {
   const p = LANDMARK_PHOTOS[slug];
   return p && p.verified ? p : null;
 }
+
+// Curated CC / public-domain HERO photos for each MUNICIPALITY (the /m town
+// page), keyed by municipality slug. Same discipline as LANDMARK_PHOTOS: every
+// entry is a real Commons file whose Special:FilePath URL returns 200, with
+// verified:true, so a town shows ITSELF instead of the generic seasonal county
+// hero. Empty until candidates are approved by eye (see
+// scripts/fetch-town-photo-candidates.ts → docs/town-photo-candidates.md); an
+// unknown/unverified slug returns null and the /m hero falls back to
+// SeasonalPhoto automatically. Photos must DEPICT the town (Main Street,
+// downtown, the signature landmark/station) — never a generic small-town stock.
+export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {};
+
+export function getTownPhoto(slug: string): WikimediaPhoto | null {
+  const p = TOWN_PHOTOS[slug];
+  return p && p.verified ? p : null;
+}
