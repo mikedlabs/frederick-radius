@@ -59,7 +59,7 @@ export default function CravingStrip({
           className="font-serif text-[18px] font-semibold leading-none tracking-tight"
           style={{ color: "var(--app-ink)" }}
         >
-          I want…
+          I want to…
         </h2>
         {locationSlot}
       </div>
