@@ -52,6 +52,26 @@ function townAccent(slug: string): string {
   return TOWN_ACCENTS[Math.abs(h) % TOWN_ACCENTS.length];
 }
 
+/**
+ * Build a /plan share token from a set of saved place slugs — the same
+ * PlanSpec the planner's shared-plan path decodes (`{ v:1, i, s:[{p}] }`,
+ * URL-safe base64 of JSON). Mirrored here ON PURPOSE: importing
+ * planner.ts would drag the ~2MB client place index into the Saved bundle
+ * (see the by-slugs note at the top of this file). Keep in sync with
+ * encodeSpec/PlanSpec in src/lib/integrations/planner.ts. `reconstructPlan`
+ * preserves stop ORDER, so the slugs go in the order we want them walked.
+ */
+function planTokenFromSaved(slugs: string[]): string {
+  const spec = {
+    v: 1,
+    i: { audience: "friends", vibe: "easy", duration_hours: 4 },
+    s: slugs.map((p) => ({ p })),
+  };
+  const json = JSON.stringify(spec);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 /** "21:00" → "9 PM" for the open-until label. Returns null on a bad value so
  *  the caller can fall back to a plain "Open now". */
 function fmtClock(hhmm?: string): string | null {
@@ -461,6 +481,15 @@ export default function SavedList() {
     ? MUNICIPALITY_BY_SLUG[dominantTown[0]]
     : null;
 
+  // Plan a day from the cluster: the dominant town's saved places (cap 6 — a
+  // day out, not a march), encoded into the planner's shared-plan token so
+  // /plan rebuilds them into a real itinerary. Order = current Places order.
+  const planClusterSlugs = dominantTown
+    ? (byTown.get(dominantTown[0]) ?? []).slice(0, 6).map((p) => p.slug)
+    : [];
+  const planHref =
+    planClusterSlugs.length >= 2 ? `/plan?p=${planTokenFromSaved(planClusterSlugs)}` : "/plan";
+
   return (
     <div className="space-y-4">
       {/* ── ON NOW IN YOUR RADIUS — the actionable lead. Turns the archive into
@@ -641,7 +670,7 @@ export default function SavedList() {
       {/* Smart suggestion strip — only when there's a real cluster. */}
       {dominantMuni && (
         <Link
-          href={`/plan?from=my-radius`}
+          href={planHref}
           className="group flex items-center gap-3 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] p-3 transition active:scale-[0.99]"
           style={{ borderColor: "var(--app-border)" }}
         >
@@ -660,10 +689,10 @@ export default function SavedList() {
               className="block text-[13px] font-semibold leading-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {dominantTown![1]} of your Radius is in {dominantMuni.name}
+              Plan a day in {dominantMuni.name}
             </span>
             <span className="block text-[12px]" style={{ color: "var(--app-ink-3)" }}>
-              Build a route from these → Planner
+              {dominantTown![1]} of your saves are here. Turn them into a route →
             </span>
           </span>
           <span
