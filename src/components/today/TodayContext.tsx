@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sun } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Sun, ChevronDown, MapPin } from "lucide-react";
 import { nextSunHint, sunTimes } from "@/lib/sun";
 import { FREDERICK_CENTER } from "@/lib/geo";
-import { getHomeMuni } from "@/lib/personalize";
-import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
+import { getHomeMuni, setHomeMuni } from "@/lib/personalize";
+import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import type { GoldenHourEvent } from "@/lib/events/golden-pairing";
 
@@ -28,19 +29,28 @@ function clampTitle(s: string, max: number): string {
  * post-mount only, so no SSR/hydration mismatch.
  */
 export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHourEvent | null }) {
+  const router = useRouter();
   const [now, setNow] = useState(() => new Date());
   const [mounted, setMounted] = useState(false);
+  const [homeSlug, setHomeSlug] = useState<string | null>(null);
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount flag so the client-only salutation + golden-hour cue render post-hydration (no SSR/localStorage mismatch)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time mount: render the client-only salutation + cue post-hydration and read the home town from localStorage (no SSR mismatch)
     setMounted(true);
+    setHomeSlug(getHomeMuni());
     const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
 
-  const homeSlug = mounted ? getHomeMuni() : null;
+  // Change the home town inline — writes the same personalization SetTownInline
+  // does (localStorage + cookie), updates the line, and refreshes so the
+  // town-ranked server surfaces (/category, etc.) re-rank too.
+  const pickTown = (slug: string) => {
+    setHomeMuni(slug || null);
+    setHomeSlug(slug || null);
+    router.refresh();
+  };
+
   const homeMuni = homeSlug ? MUNICIPALITY_BY_SLUG[homeSlug] : null;
-  const hour24 = mounted ? Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }).format(now)) : 0;
-  const greet = hour24 < 12 ? "Morning" : hour24 < 17 ? "Afternoon" : hour24 < 21 ? "Evening" : "Late night";
 
   const clock = (d: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).format(d);
   const hint = mounted ? nextSunHint(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng) : null;
@@ -99,20 +109,42 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
   // read during the day. Never both (daylight is computed only when !golden).
   const sunLine = golden ?? daylight;
 
-  if (!homeMuni && !sunLine) return null;
+  // Render nothing until mounted (the town + cues are client-only). After mount
+  // the salutation always shows so the town SWITCHER is discoverable — pick a
+  // town here to personalize the whole app, set or not.
+  if (!mounted) return null;
 
   return (
     <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-snug" suppressHydrationWarning>
-      {homeMuni && (
-        <span style={{ color: "var(--app-ink-3)" }}>
-          {greet} in{" "}
-          <Link href={`/m/${homeMuni.slug}`} className="font-semibold" style={{ color: "var(--app-brand)" }}>
-            {homeMuni.name}
-          </Link>
-          .
+      {/* A plain LOCATION control, not a time-of-day greeting (the old "Morning
+          in…" read oddly on a picker): a pin + the town you're browsing. */}
+      <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-3)" }}>
+        <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
+        {!homeMuni && <span>Browsing</span>}
+        <span className="relative inline-flex items-center">
+          <select
+            aria-label="Choose the town you're browsing"
+            value={homeSlug ?? ""}
+            onChange={(e) => pickTown(e.target.value)}
+            className="cursor-pointer appearance-none bg-transparent pr-4 font-semibold focus:outline-none focus-visible:underline"
+            style={{ color: "var(--app-brand)" }}
+          >
+            {!homeMuni && <option value="">all of Frederick County</option>}
+            {MUNICIPALITIES.map((m) => (
+              <option key={m.slug} value={m.slug}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            className="pointer-events-none absolute right-0 h-3 w-3"
+            strokeWidth={2.5}
+            aria-hidden
+            style={{ color: "var(--app-brand)" }}
+          />
         </span>
-      )}
-      {homeMuni && sunLine && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
+      </span>
+      {sunLine && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
       {sunLine && (
         <span className="inline-flex items-center gap-1 font-medium" style={{ color: "var(--app-ink-2)" }}>
           <Sun className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-accent)" }} />

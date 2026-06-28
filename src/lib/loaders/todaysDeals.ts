@@ -41,8 +41,8 @@ function daysInText(t: string): Set<number> {
 /**
  * Does this text actually describe an OFFER (a price, a discount, a special) —
  * versus a venue description or an activity that merely names a weekday? "Today's
- * Intel" is verified SPECIALS, so a row that reads "Live music Thursday" or
- * "Football-season bar" is intel for Events, not a deal, and is dropped here so
+ * briefing" is verified SPECIALS, so a row that reads "Live music Thursday" or
+ * "Football-season bar" is fodder for Events, not a deal, and is dropped here so
  * every row genuinely answers "what's the deal".
  */
 const OFFER_RE =

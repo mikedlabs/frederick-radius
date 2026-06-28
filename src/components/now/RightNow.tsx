@@ -22,6 +22,11 @@ import {
   Sandwich,
   UtensilsCrossed,
   Moon,
+  Flag,
+  Tractor,
+  Film,
+  Waves,
+  Scissors,
   ArrowLeft,
   Navigation,
   type LucideIcon,
@@ -30,6 +35,7 @@ import Link from "next/link";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import PlaceCard from "@/components/place/PlaceCard";
 import { CRAVINGS, CRAVING_BY_KEY } from "@/data/cravings";
+import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { cuisinesOf, cuisineLabel } from "@/lib/cuisine";
 import { mealForKey, matchMeal, isMealKey } from "@/lib/meal";
 import { useGeolocation } from "@/hooks/useGeolocation";
@@ -71,6 +77,13 @@ const ICONS: Record<string, LucideIcon> = {
   Wine,
   BedDouble,
   Sparkles,
+  // Newer craving icons (golf / farms / movies / pools / salons) — without these
+  // the /nearby picker tile would fall back to the fork glyph.
+  Flag,
+  Tractor,
+  Film,
+  Waves,
+  Scissors,
   // Meal-occasion glyphs (the time-aware lead from the /today I-want strip).
   Sunrise,
   Croissant,
@@ -102,6 +115,8 @@ function walkLabel(distance_m: number): string {
 export default function RightNow({
   places,
   initialCraving = null,
+  initialFacet = null,
+  initialTown = null,
   approxOrigin = null,
   approxCity = null,
 }: {
@@ -109,6 +124,12 @@ export default function RightNow({
   /** Preselected craving from a deep link (?c=coffee) — skips the picker
    *  straight to the answer when arriving from a Today craving chip. */
   initialCraving?: string | null;
+  /** Preselected sub-facet from a deep link (?c=shops&facet=thrift) — lands on
+   *  the already-narrowed list (e.g. Shop → Thrift & vintage from /today). */
+  initialFacet?: string | null;
+  /** Preselected town scope from a deep link (?c=coffee&town=brunswick) — set
+   *  when the visitor has a home town, so answers default to it. */
+  initialTown?: string | null;
   /** Coarse edge-IP origin used to rank BEFORE a precise device fix (never to
    *  print a distance). Null when out of area → Downtown default. */
   approxOrigin?: { lng: number; lat: number } | null;
@@ -124,11 +145,22 @@ export default function RightNow({
   // Sub-filters on the results page ("find more specific things"): a facet
   // narrows within the craving (Food → Pizza), and Open now hides closed —
   // ON by default so the page leads with what you can actually walk into.
-  const [facetKey, setFacetKey] = useState<string | null>(null);
-  const [openOnly, setOpenOnly] = useState(true);
+  const [facetKey, setFacetKey] = useState<string | null>(initialFacet ?? null);
+  // Show EVERYTHING by default (open first, closed clearly marked below) so you
+  // can see what's out there in general; the Open-now toggle narrows to open.
+  const [openOnly, setOpenOnly] = useState(false);
   // "Catch it before it closes" — narrow to places open but closing within the
   // hour. Off by default; the chip only appears when there ARE any (below).
   const [closingSoonOnly, setClosingSoonOnly] = useState(false);
+  // Town scope: null = everywhere (ranked by distance), or a municipality slug
+  // to narrow the answer to one town ("coffee in Brunswick"). Seeded from the
+  // visitor's home town via the deep link when present.
+  const [townKey, setTownKey] = useState<string | null>(
+    initialTown && MUNICIPALITY_BY_SLUG[initialTown] ? initialTown : null,
+  );
+  // Sort: nearest-first (default) or top-rated-first. Open places always lead
+  // either way — you can't walk into a closed one.
+  const [sort, setSort] = useState<"nearest" | "rated">("nearest");
 
   // Arriving straight to an answer from a Today craving tile (?c=coffee skips
   // the picker) should still ask for location, exactly like tapping a craving
@@ -207,6 +239,7 @@ export default function RightNow({
     };
     return cravingMatchedAll
       .filter(passFacet)
+      .filter((p) => !townKey || p.municipality === townKey)
       .map((p) => {
         const dist = haversineMeters(origin, p.geom);
         // Always-available cravings (lodging) count as open regardless of
@@ -216,10 +249,23 @@ export default function RightNow({
         return { p, dist, open };
       })
       .sort((a, b) => {
-        if (a.open !== b.open) return a.open ? -1 : 1; // open first
-        return a.dist - b.dist; // then nearest
+        if (a.open !== b.open) return a.open ? -1 : 1; // open first, always
+        if (sort === "rated") {
+          const r = (b.p.google_rating ?? 0) - (a.p.google_rating ?? 0);
+          if (r) return r;
+          const c = (b.p.google_rating_count ?? 0) - (a.p.google_rating_count ?? 0);
+          if (c) return c;
+        }
+        return a.dist - b.dist; // nearest (and the tiebreak for top-rated)
       });
-  }, [cravingMatchedAll, craving, facetKey, origin]);
+  }, [cravingMatchedAll, craving, facetKey, townKey, sort, origin]);
+
+  // Towns that actually have a result for this craving — so the town row only
+  // offers places that lead somewhere, never a dead "0 in Myersville" chip.
+  const townsWithResults = useMemo(() => {
+    const present = new Set(cravingMatchedAll.map((p) => p.municipality));
+    return MUNICIPALITIES.filter((m) => present.has(m.slug));
+  }, [cravingMatchedAll]);
 
   const openCount = useMemo(() => matched.filter((m) => m.open).length, [matched]);
   // Open, but closing within the hour (getOpenStatus → "closing-soon"). Drives
@@ -249,6 +295,7 @@ export default function RightNow({
     setCravingKey(key);
     setFacetKey(null); // a fresh craving starts unfiltered
     setClosingSoonOnly(false); // and not stuck on a previous craving's urgency filter
+    setTownKey(null); // and back to everywhere
     // First craving with no location yet → ask, so the answer can be
     // "nearest to YOU" rather than nearest to downtown. One prompt, then
     // it's cached for the session.
@@ -309,6 +356,12 @@ export default function RightNow({
 
   // ── The answer (nearest open of the chosen craving / meal occasion) ──
   const ActiveIcon = ICONS[active.icon] ?? Utensils;
+  const townName = townKey ? (MUNICIPALITY_BY_SLUG[townKey]?.name ?? null) : null;
+  // The heading reflects what you actually picked: the active facet ("Thrift &
+  // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
+  // this, arriving from a Today sub like Shop → Thrift still read "Shops".
+  const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
+  const sortLabel = sort === "rated" ? "top rated first" : "nearest first";
   return (
     <div className="space-y-4">
       <header className="space-y-2">
@@ -336,23 +389,59 @@ export default function RightNow({
               className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {active.label} near {hasFix ? "you" : (approxCity ?? "Downtown")}
+              {headingNoun}{" "}
+              {townName ? `in ${townName}` : `near ${hasFix ? "you" : (approxCity ?? "Downtown")}`}
             </h1>
             {/* Meals frame the count on the CLOCK fact ("open for dinner now")
                 — never a service claim. Nouns keep the plain "open now". */}
             <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               {meal
                 ? openCount > 0
-                  ? `${openCount} open ${meal.phrase} right now · nearest first`
-                  : `Nothing open ${meal.phrase} right now · nearest first`
+                  ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
+                  : `Nothing open ${meal.phrase} right now · ${sortLabel}`
                 : craving?.alwaysOpen
-                  ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · nearest first`
-                  : openCount > 0
-                    ? `${openCount} open now · nearest first`
-                    : "Nearest first"}
+                  ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
+                  : openOnly
+                    ? openCount > 0
+                      ? `${openCount} open now · ${sortLabel}`
+                      : sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)
+                    : `${openCount} open · ${matched.length} nearby · ${sortLabel}`}
             </p>
           </div>
         </div>
+      </header>
+
+      {/* Sticky filter bar — town scope, what-kind filters, and sort stay
+          pinned under the top bar as the results scroll, so you can re-filter
+          without scrolling back up. */}
+      <div
+        className="sticky z-30 space-y-1.5 border-b py-2 backdrop-blur-sm"
+        style={{
+          top: "calc(var(--app-topbar-h) + env(safe-area-inset-top))",
+          borderColor: "var(--app-border)",
+          background: "color-mix(in srgb, var(--app-bg) 92%, transparent)",
+        }}
+      >
+        {/* Town scope — "everywhere" or one town ("coffee in Brunswick"). A
+            horizontal rail; only offers towns that actually have a result for
+            this craving, so a chip never dead-ends. Sits above the what-kind
+            filters: pick WHERE, then narrow WHAT. */}
+        {townsWithResults.length > 1 && (
+          <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-max items-center gap-1.5">
+              <FacetChip label="All towns" active={townKey === null} color="var(--app-ink-2)" onClick={() => setTownKey(null)} />
+              {townsWithResults.map((m) => (
+                <FacetChip
+                  key={m.slug}
+                  label={m.name}
+                  active={townKey === m.slug}
+                  color="var(--app-ink-2)"
+                  onClick={() => setTownKey(m.slug)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Find more specific things: an Open-now toggle (on by default) plus
             the craving's sub-facet chips (Food → Pizza / Food trucks, …). The
@@ -426,12 +515,24 @@ export default function RightNow({
             </>
           )}
         </div>
-      </header>
 
-      {/* Location trust: only when we DON'T have a fix. With one we silently
+        {/* Sort — open places lead either way; this toggles the secondary
+            ordering (distance vs rating). Its own quiet row so it reads as a
+            sort, not another filter. */}
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            Sort
+          </span>
+          <FacetChip label="Nearest" active={sort === "nearest"} color="var(--app-ink-2)" onClick={() => setSort("nearest")} />
+          <FacetChip label="Top rated" active={sort === "rated"} color="var(--app-ink-2)" onClick={() => setSort("rated")} />
+        </div>
+      </div>
+
+      {/* Location trust: only when we DON'T have a fix AND aren't scoped to a
+          town (a town scope makes "nearest to you" moot). With a fix we silently
           show real walk times; without one we say so and offer the button —
           never a distance we can't stand behind. */}
-      {!hasFix && (
+      {!hasFix && !townKey && (
         <button
           type="button"
           onClick={request}
@@ -453,17 +554,28 @@ export default function RightNow({
           style={{ borderColor: "var(--app-border)" }}
         >
           <p className="text-sm" style={{ color: "var(--app-ink-3)" }}>
-            {closingSoonOnly
-              ? `Nothing closing soon for ${activeNoun}${hasFix ? " near you" : ""}.`
-              : openOnly && matched.length > 0
-                ? `Nothing open right now for ${activeNoun}.`
-                : meal
-                  ? `Nothing open ${meal.phrase} near you right now.`
-                  : `Nothing for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
+            {townName
+              ? `Nothing ${openOnly && !closingSoonOnly ? "open " : ""}for ${activeNoun} in ${townName} right now.`
+              : closingSoonOnly
+                ? `Nothing closing soon for ${activeNoun}${hasFix ? " near you" : ""}.`
+                : openOnly && matched.length > 0
+                  ? `Nothing open right now for ${activeNoun}.`
+                  : meal
+                    ? `Nothing open ${meal.phrase} near you right now.`
+                    : `Nothing for ${activeNoun} ${hasFix ? "near you" : "in range"} right now.`}
           </p>
-          {/* Clear the closing-soon filter, or (when Open-now hid everything but
-              closed matches exist) offer those — never dead-end. */}
-          {closingSoonOnly ? (
+          {/* Clear the town scope, the closing-soon filter, or (when Open-now hid
+              everything but closed matches exist) offer those — never dead-end. */}
+          {townName ? (
+            <button
+              type="button"
+              onClick={() => setTownKey(null)}
+              className="tactile-interactive mt-3 inline-flex items-center rounded-full px-3 py-1.5 text-[13px] font-semibold"
+              style={{ background: "var(--app-bg-elevated)", color: "var(--app-ink-2)", boxShadow: "inset 0 0 0 1px var(--app-border)" }}
+            >
+              Show all towns
+            </button>
+          ) : closingSoonOnly ? (
             <button
               type="button"
               onClick={() => setClosingSoonOnly(false)}

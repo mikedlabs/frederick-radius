@@ -47,7 +47,10 @@ export type Craving = {
     | "BedDouble"
     | "Sparkles"
     | "Flag"
-    | "Tractor";
+    | "Tractor"
+    | "Film"
+    | "Waves"
+    | "Scissors";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -79,15 +82,32 @@ const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom
 // categories so a fun spot miscategorized elsewhere (a skatepark filed under
 // "park") still surfaces.
 const FAMILY_FUN =
-  /\b(arcade|pinball|escape room|escape this|mini ?golf|miniature golf|bowling|lanes\b|zoo|wildlife preserve|aquarium|trampoline|go.?kart|go.?cart|laser ?tag|skating|skate ?park|roller ?rink|ice ?rink|adventure park|fun ?(center|land|zone)|amusement|water ?park|carousel|science (center|lab)|discovery (center|museum)|children.?s museum|paintball|axe ?throwing|putt|raceway|speedway)\b/i;
-// Exclude the schooling/childcare/admin noise the `family` bucket is full of —
-// "Escape This" is fun, "Gregs Driving School" is not.
+  /\b(arcade|pinball|escape room|escape this|mini ?golf|miniature golf|bowling|lanes\b|zoo|petting (zoo|farm)|wildlife preserve|aquarium|trampoline|tramp ?park|go.?kart|go.?cart|laser ?tag|skating|skate ?park|roller ?rink|ice ?rink|adventure park|fun ?(center|land|zone)|amusement|water ?park|splash ?pad|spray ?(ground|park)|carousel|science (center|lab)|discovery (center|museum)|children.?s museum|paintball|axe ?throwing|putt|raceway|speedway|pottery|paint.?your.?own|ceramics|climbing|bouldering|gymnastics|tumbling|jump\b|bounce|indoor play|play ?(cafe|place|zone))\b/i;
+// Exclude the schooling/childcare/medical/admin noise the `family` bucket is
+// full of — "Escape This" is fun, "Gregs Driving School" and "Kids Care
+// Pediatrics" are not. (Medical terms added so broadening the fun matcher above
+// with kid words can't pull in a pediatrics/dental/therapy practice.)
 const FAMILY_FUN_JUNK =
-  /\b(school|elementary|middle|high school|academy|universit|college|early learning|daycare|day care|preschool|pre-?k|\bpta\b|admission|montessori|children.?s center|learning center|recovery|church|ministry|driving)\b/i;
+  /\b(school|elementary|middle|high school|academy|universit|college|early learning|daycare|day care|preschool|pre-?k|\bpta\b|admission|montessori|children.?s center|learning center|recovery|church|ministry|driving|pediatric|dental|orthodont|clinic|medical|therapy|hospital)\b/i;
 // Wineries / vineyards / cideries / meaderies — matched by PRODUCTION terms
 // (the county's ~15 are filed under "brewery"), NOT bare "wine" which would
 // catch wine shops, wine bars, and beer-&-wine convenience stores.
 const WINERY = /\b(winery|wineries|vineyard|vineyards|winecellars|cider|cidery|meadery)\b/i;
+// Retail bottle shops — liquor / wine & spirits / beer & wine stores (a "buy a
+// bottle" intent, distinct from bars/breweries/wineries you drink AT). Telltale
+// names, so name-matched; production venues are excluded by category + WINERY.
+const LIQUOR = /\b(liquors?|spirits|package store|wine ?(&|and) ?spirits|beer ?(&|and) ?wine|bottle shop|wine ?shop)\b/i;
+// Movie theaters (cinemas) — distinct from the performing-arts "theater"
+// category they're filed under. Name-matched: the county's are Warehouse
+// Cinemas + Regal Westview.
+const MOVIES = /\b(cinemas?|cineplex|imax|movie ?theat(er|re)?|drive.?in theat|regal westview)\b/i;
+// Public pools / swimming (mostly filed under wellness/playground). Excludes
+// pool halls, billiards, whirlpools.
+const POOL = /\b(swimming pool|swim club|aquatic|community pool|municipal pool|natatorium|\bpool\b)\b/i;
+const POOL_JUNK = /\b(hall|billiard|table|car ?pool|whirlpool|gene pool|consulting|supply|supplies|service)\b/i;
+// Salons / barbers / nail shops — the grooming intent (filed under "services"),
+// distinct from the wellness self-care set.
+const SALON = /\b(salon|barber|barbershop|nails?|nail bar|blow ?dry|blowout)\b/i;
 // Wellness DESTINATIONS — yoga, spa, massage, fitness, the self-care set — NOT
 // the medical/clinical practices the "wellness" category is bloated with (it
 // holds ~150 dialysis/sleep/dental/psychotherapy/MD entries). Matched by name
@@ -171,6 +191,21 @@ export const CRAVINGS: Craving[] = [
     match: (p) => p.category === "brewery" && !WINERY.test(p.name),
   },
   {
+    // Retail bottle shops — "I want to BUY a bottle", distinct from the bars and
+    // breweries you drink at. Name-matched (telltale names), with production
+    // venues excluded so a winery/brewery/distillery never lands here.
+    key: "liquor",
+    label: "Wine & liquor",
+    icon: "Wine",
+    color: "var(--app-brand-press)",
+    match: (p) =>
+      LIQUOR.test(p.name) &&
+      !WINERY.test(p.name) &&
+      p.category !== "winery" &&
+      p.category !== "brewery" &&
+      p.category !== "distillery",
+  },
+  {
     key: "ice-cream",
     label: "Ice cream",
     icon: "IceCream",
@@ -199,6 +234,7 @@ export const CRAVINGS: Craving[] = [
       { key: "park", label: "Parks", match: (p) => p.category === "park" },
       { key: "trail", label: "Trails", match: (p) => p.category === "trail" || p.category === "outdoors" },
       { key: "playground", label: "Playgrounds", match: (p) => p.category === "playground" },
+      { key: "dog", label: "Dog parks", match: (p) => /\b(dog park|bark park)\b/i.test(p.name) },
     ],
   },
   {
@@ -250,6 +286,11 @@ export const CRAVINGS: Craving[] = [
       p.category === "book-store",
     facets: [
       { key: "shopping", label: "Shops", match: (p) => p.category === "shopping" },
+      // Thrift / vintage / consignment (incl. the few "antiques" rows) — a real
+      // local draw otherwise buried in the 200-place shopping bucket.
+      { key: "thrift", label: "Thrift & vintage", match: (p) => p.category === "antiques" || /\b(thrift|vintage|consignment|retro|resale|second.?hand)\b/i.test(p.name) },
+      // Home & décor / furniture / candles.
+      { key: "home", label: "Home & décor", match: (p) => p.category === "shopping" && /\b(home|d[eé]cor|furniture|furnishing|candle|interiors?)\b/i.test(p.name) },
       { key: "market", label: "Markets", match: (p) => p.category === "market" },
       { key: "book-store", label: "Books", match: (p) => p.category === "book-store" },
     ],
@@ -296,6 +337,33 @@ export const CRAVINGS: Craving[] = [
     match: (p) =>
       Boolean(p.subcategories?.includes("family-fun")) ||
       (FAMILY_FUN.test(p.name) && !FAMILY_FUN_JUNK.test(p.name)),
+  },
+  {
+    // Movie theaters (cinemas) — a top "what to do tonight" intent that was
+    // buried inside the performing-arts "theater" category.
+    key: "movies",
+    label: "Movies",
+    icon: "Film",
+    color: "var(--app-accent)",
+    match: (p) => MOVIES.test(p.name),
+  },
+  {
+    // Public pools + swimming — a summer staple, scattered across wellness /
+    // playground; name-matched across categories, pool halls excluded.
+    key: "pools",
+    label: "Pools & swimming",
+    icon: "Waves",
+    color: "var(--app-cool)",
+    match: (p) => POOL.test(p.name) && !POOL_JUNK.test(p.name),
+  },
+  {
+    // Salons, barbers, nail shops — the grooming intent (filed under
+    // "services"), distinct from the wellness self-care set.
+    key: "salon",
+    label: "Salons & barbers",
+    icon: "Scissors",
+    color: "var(--app-brand-2)",
+    match: (p) => SALON.test(p.name),
   },
   {
     // Wellness DESTINATIONS — yoga, spa, massage, fitness, martial arts, the

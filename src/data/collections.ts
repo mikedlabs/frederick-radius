@@ -116,6 +116,23 @@ export const COLLECTIONS: CollectionDef[] = [
       "monocacy-national-battlefield-frederick",
     ],
   },
+  {
+    // LGBTQ+ Frederick — CURATED, never auto-detected. We hold no
+    // "LGBTQ-friendly" data attribute, and guessing which venues are welcoming
+    // would be worse than saying nothing. So this is hand-verified only: it
+    // starts with The Frederick Center (the county's LGBTQ+ community hub) and
+    // grows as the owner/community confirms welcoming + LGBTQ-owned spaces.
+    // Add verified place slugs below (unknown slugs are skipped by the renderer).
+    slug: "lgbtq-frederick",
+    title: "LGBTQ+ Frederick",
+    blurb:
+      "Starting with The Frederick Center, the county's LGBTQ+ community hub. We list spaces we can verify are welcoming, not guesses, and this grows as we confirm more.",
+    accent: "var(--app-accent)",
+    places: [
+      "the-frederick-center",
+      // Add owner/community-verified welcoming + LGBTQ-owned venues here.
+    ],
+  },
 ];
 
 /** O(1) lookup by slug, with the same data the array carries. */

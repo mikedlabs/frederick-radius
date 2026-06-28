@@ -115,6 +115,16 @@ export function getLandmarkPhoto(slug: string): WikimediaPhoto | null {
 // downtown, the signature landmark/station) — never a generic small-town stock.
 export const TOWN_PHOTOS: Record<string, WikimediaPhoto> = {
   // Each verified by eye (depicts the town) + Special:FilePath confirmed 200.
+  frederick: {
+    // Carroll Creek Promenade — the iconic downtown Frederick scene (the same
+    // verified shot the landmark set uses). Reviewed by eye 2026-06-28.
+    file: "Carroll Creek Park Frederick MD1.jpg",
+    alt: "Carroll Creek Promenade in downtown Frederick — brick buildings, the water feature, and spring blossoms along the creek.",
+    author: "Acroterion",
+    license: "CC BY-SA 4.0",
+    source_url: "https://commons.wikimedia.org/wiki/File:Carroll_Creek_Park_Frederick_MD1.jpg",
+    verified: true,
+  },
   brunswick: {
     file: "Brunswick 001.jpg",
     alt: "A downtown Brunswick, Maryland heritage mural depicting the town's railroad history, reading “Brunswick, MD · Founded 1787.”",

@@ -8,13 +8,13 @@ import CategoryIcon from "@/components/place/CategoryIcon";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 
 /**
- * Today's Intel — the verified day-of-week specials as rich, photo-forward
+ * Today's briefing — the verified day-of-week specials as rich, photo-forward
  * cards with an EMBOSSED GOLD DENOMINATION (the "$10 / $4 / $1" struck like a
  * gift-card figure). The card face carries the venue's real photo, the deal in
  * serif, and the day/town/hours in mono; the denomination is the foil-gold
  * star. Shares the photo-card language of the Happy-Hour wallet above it (so
  * the moat surfaces read as one set) and adds the struck figure on top, so
- * Intel is the richer of the two, not the plainer. Server component.
+ * the briefing is the richer of the two, not the plainer. Server component.
  */
 const MAX_ROWS = 12;
 
@@ -139,7 +139,7 @@ export default function TodaysDealsStack({
   const shown = deals.slice(0, MAX_ROWS);
 
   return (
-    <section aria-label={`Verified intel for ${weekday}`} className="space-y-3">
+    <section aria-label={`Today's briefing for ${weekday}`} className="space-y-3">
       {/* Dossier masthead — a pressed VERIFIED seal (the moat's trust anchor),
           the serif section title, and a mono dateline carrying the weekday +
           count, closed with the field-guide hairline rule. Reads as a filed
@@ -159,7 +159,7 @@ export default function TodaysDealsStack({
           </span>
           <div className="min-w-0">
             <h2 className="font-serif text-[19px] font-semibold leading-none tracking-[-0.01em]" style={{ color: "var(--app-ink)" }}>
-              Today&rsquo;s Intel
+              Today&rsquo;s briefing
             </h2>
             <p className="fg-eyebrow mt-1.5">
               {weekday} · {deals.length} verified {deals.length === 1 ? "special" : "specials"}
@@ -172,7 +172,7 @@ export default function TodaysDealsStack({
       {/* The deck of struck-denomination cards. */}
       {shown.length === 0 ? (
         <p className="px-0.5 py-2 font-serif text-[14px]" style={{ color: "var(--app-ink-3)" }}>
-          No verified intel today.
+          No verified specials today.
         </p>
       ) : (
         <ul className="space-y-2">
@@ -189,7 +189,7 @@ export default function TodaysDealsStack({
         className="tap-44 flex items-center justify-between px-0.5 text-[12px] font-semibold"
         style={{ color: "var(--app-brand)" }}
       >
-        All intel, by day
+        All specials, by day
         <span aria-hidden>→</span>
       </Link>
     </section>

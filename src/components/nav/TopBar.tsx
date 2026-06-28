@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Search, MoreHorizontal, ChevronLeft } from "lucide-react";
+import { Search, Compass, ChevronLeft } from "lucide-react";
 import SearchOverlay from "@/components/search/SearchOverlay";
 import LocationChip from "./LocationChip";
 import MoreSheet from "./MoreSheet";
@@ -222,23 +222,23 @@ export default function TopBar() {
               traffic incident, or significant outage; quiet otherwise. */}
           <PulseIndicator />
 
-          {/* "More" opens the Field Guide drawer (History, Markers, Trails,
-              Rivers, Collections, Tools…). A visible label from sm: up so the
-              whole field guide behind it is discoverable, not buried under a
-              bare "⋯"; bordered like PulseIndicator for one consistent cluster.
-              tap-44 keeps the 44px target on the 36px-tall control. */}
+          {/* "Explore" opens the field-guide index — the complete directory of
+              every surface (Discover, Outdoors, Around the county, Contribute,
+              App…), so nothing is reachable only by typing a URL. A compass +
+              visible label from sm: up makes the whole guide discoverable rather
+              than buried under a bare "⋯". tap-44 keeps the 44px target. */}
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={moreOpen}
-            aria-label="More"
-            title="More"
+            aria-label="Explore"
+            title="Explore"
             className="tap-44 relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border bg-[var(--app-bg-elevated)] px-2.5 transition hover:bg-[var(--app-bg-sunken)] active:scale-95 sm:px-3"
             style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
           >
-            <MoreHorizontal className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
-            <span className="hidden text-[14px] font-medium leading-none sm:inline">More</span>
+            <Compass className="h-[18px] w-[18px] shrink-0" strokeWidth={2} aria-hidden />
+            <span className="hidden text-[14px] font-medium leading-none sm:inline">Explore</span>
           </button>
         </div>
       </header>

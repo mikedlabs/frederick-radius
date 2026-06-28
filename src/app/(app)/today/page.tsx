@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
-import TodaysDeals from "@/components/today/TodaysDeals";
-import HappyHourWallet from "@/components/today/HappyHourWallet";
+import MastheadTitle from "@/components/today/MastheadTitle";
+import OnNowBand from "@/components/today/OnNowBand";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
 import LocationPrime from "@/components/today/LocationPrime";
@@ -47,11 +47,9 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import TonightParkingPlan from "@/components/today/TonightParkingPlan";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
-import MarketsTodayBeat from "@/components/today/MarketsTodayBeat";
-import { parkingPlanForToday } from "@/lib/parking-forecast";
-import { PARKING_GARAGES } from "@/data/parking-garages";
+import NowIntel from "@/components/today/NowIntel";
+import PrideBeat from "@/components/today/PrideBeat";
 
 /**
  * Now — the daily briefing.
@@ -62,9 +60,10 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
  *   2. TodayContext   → slim salutation + golden-hour cue (self-hides)
  *   3. CravingStrip   → "I want…" bar (LocationPrime consent pill on its
  *                        right) + cravings grid + a "Getting around" row
- *   4. TodaysDeals    → verified day-of-week specials as a Wallet deck (self-hides)
- *   5. CivicAlerts    → worst-first heads-up (self-hides)
- *   6. What's on      → every public event in the city/county TODAY (no toggle)
+ *   4. CivicAlerts    → worst-first heads-up (self-hides)
+ *   5. What's on      → every public event in the city/county TODAY (no toggle)
+ *   6. OnNowBand      → the live layer (markets · happy hour · specials · parking)
+ *                        under one header, reordered by daypart (self-hides)
  *   7. The full briefing + More for today (collapsed)
  *
  * (The generated "best move now" card was removed 2026-06-18: /today is a place
@@ -213,9 +212,10 @@ export default async function HomePage() {
           the standfirst + the cap rule (which always sits below it, so the rule
           never dangles). Identity copy + voice unchanged (finding, not telling). */}
       <header className="mt-2 px-0.5">
-        <p className="display-3" style={{ color: "var(--app-ink)" }}>
-          Your field guide to Frederick County.
-        </p>
+        {/* Cover line, personalized: the brand line by default, the home town
+            ("Middletown, today.") once one is set. Client swap post-mount; SSR
+            keeps the brand line for crawlers. */}
+        <MastheadTitle />
         {/* The descriptive standfirst orients a NEWCOMER; a returning daily user
             scrolls past it to reach the grid, so it shows on the first visit
             only and then retires itself (returning users never render it). */}
@@ -226,6 +226,7 @@ export default async function HomePage() {
         </FirstVisitNote>
         <div className="mt-2 space-y-1.5">
           <HolidayNote now={now} />
+          <PrideBeat now={now} />
           {/* Salutation + golden-hour / daylight cue — event-dependent, so it
               streams in its own Suspense boundary while the plate paints first. */}
           <Suspense fallback={null}>
@@ -248,6 +249,30 @@ export default async function HomePage() {
         </div>
       </Suspense>
 
+      {/* ── CONTENTS RAIL — a slim almanac "on this page" line (not a chunky
+          chip bar): mono anchors that skip to the major sections below the
+          fold, with a quiet "Live" tick on the right so the open-now / specials
+          data reads as real-time. The page is medium-long after the On-now
+          consolidation; this gives a one-tap skip without adding visual weight.
+          (CivicAlerts above self-hides on the ordinary day, so the rail then
+          sits right under the masthead.) */}
+      <nav
+        aria-label="On this page"
+        className="mt-3 flex items-center justify-between gap-3 px-0.5"
+      >
+        <div className="flex items-center gap-x-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em]">
+          <a href="#want" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>I want</a>
+          <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+          <a href="#whats-on" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>Events</a>
+          <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+          <a href="#on-now" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>On now</a>
+        </div>
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+          <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
+          Live
+        </span>
+      </nav>
+
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On
           tonight" card (the open-now and weekend answers were retired
@@ -261,9 +286,14 @@ export default async function HomePage() {
           (Parking / MARC / Transit) so utilities don't read as cravings. The
           location consent now rides on the right of the "I want…" bar (one row,
           opposite the prompt) instead of a separate banner above it. */}
-      <div className="mt-4">
+      <div className="mt-4" id="want" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <CravingStrip
           locationSlot={<LocationPrime />}
+          intelSlot={
+            <Suspense fallback={null}>
+              <NowIntel now={now} />
+            </Suspense>
+          }
           contextSlot={
             <Suspense fallback={null}>
               <RightNowSlot eventsPromise={eventsPromise} now={now} />
@@ -277,45 +307,37 @@ export default async function HomePage() {
           Soonest first; the rest of the calendar is one tap away via "See all".
           Streamed: the section awaits the shared events promise inside its own
           Suspense boundary so the chrome above it never waits on the feeds. */}
-      <Suspense
-        fallback={
-          <section className="mt-6 space-y-3" aria-label="What's on">
-            <Skeleton.Block height={220} round="var(--app-radius-lg)" />
-          </section>
-        }
-      >
-        <WhatsOn eventsPromise={eventsPromise} now={now} />
-      </Suspense>
-
-      {/* ── FARMERS MARKETS TODAY — a slim almanac line naming the markets open
-          today (official MD schedule), self-hiding on non-market days. Reads the
-          live MD feed (weekly-cached, auto-refreshing) with the committed
-          snapshot as fallback, so it streams in its own boundary. */}
-      <Suspense fallback={null}>
-        <MarketsTodayBeat now={now} />
-      </Suspense>
-
-      {/* ── TONIGHT'S PARKING PLAY — when a crowd-draw event is coming up
-          downtown, name the garage that fills and the backups. Self-hides when
-          nothing qualifies; streams on the shared events promise. The predictive
-          companion to the parking-alert push, for people who didn't opt in. */}
-      <Suspense fallback={null}>
-        <TonightParkingSlot eventsPromise={eventsPromise} now={now} />
-      </Suspense>
-
-      {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
-          Field Notes moat, as a wallet of overlapping "Last Pour" cards (the
-          deal hook welded to the venue in gold); self-hides when none are
-          in-window. */}
-      <div className="mt-4">
-        <HappyHourWallet now={now} />
+      <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+        <Suspense
+          fallback={
+            <section className="mt-6 space-y-3" aria-label="What's on">
+              <Skeleton.Block height={220} round="var(--app-radius-lg)" />
+            </section>
+          }
+        >
+          <WhatsOn eventsPromise={eventsPromise} now={now} />
+        </Suspense>
       </div>
 
-      {/* ── TODAY'S DEALS — the verified, day-of-week-aware specials running
-          today, from the Field Notes moat. The 4pm "what's worth going out
-          for" answer; self-hides when nothing runs today. */}
-      <div className="mt-3">
-        <TodaysDeals now={now} />
+      {/* ── FROM YOUR SAVED — the save → resurface loop, lifted HERE (was below
+          the live layer): a returning user's own saved places that are open
+          RIGHT NOW are the highest-intent answer on the page, so they sit just
+          under the day's events, above the general live layer. Client section
+          (saves are client state); renders nothing unless something's open, so
+          a first-timer or anyone with no open saves never sees a box. */}
+      <FromYourSaved />
+
+      {/* ── ON NOW — the live layer (farmers markets, happy hours, today's
+          verified specials, tonight's parking play) gathered under ONE header
+          instead of four free-floating beats, and REORDERED BY DAYPART so the
+          most useful live thing leads at 8am vs 9pm. Each block still self-hides;
+          the band header reads "On now" when something's genuinely live and
+          "Coming up" when the only card is the next happy hour. Streams on the
+          shared events promise (it needs tonight's events for the parking play). */}
+      <div className="mt-4" id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+        <Suspense fallback={null}>
+          <OnNowBand now={now} eventsPromise={eventsPromise} />
+        </Suspense>
       </div>
 
       {/* "What's happening around you" (NearbyNow) was removed from /today
@@ -333,12 +355,9 @@ export default async function HomePage() {
           tonight's event in the hero, and What's-on below already let them
           find their own answer. Finding, not telling. */}
 
-      {/* ── FROM YOUR SAVED ──────────────────────────────────────────────
-          The save → resurface loop closes HERE: saved places that are
-          open right now, offered back where the day starts. A client
-          section (saves are client state) that renders nothing unless it
-          has an answer — no saves or none open means no box. */}
-      <FromYourSaved />
+      {/* (FROM YOUR SAVED moved UP to just under the day's events — a returning
+          user's own open-now saves are the highest-intent answer, so they no
+          longer sit below the whole live layer.) */}
 
       {/* WHAT'S ON was relocated ABOVE Happy hour (owner call 2026-06-19):
           today's events are the headline "what's happening" answer, so they now
@@ -547,26 +566,6 @@ async function RightNowSlot({ eventsPromise, now }: { eventsPromise: EventsPromi
       }
     : undefined;
   return <RightNowBand liveTonight={{ count: liveTonight.length, soonest }} />;
-}
-
-/** Tonight's parking play: the soonest crowd-draw downtown event in the next
- *  ~12h + its garage plan, as a quiet self-hiding line. */
-async function TonightParkingSlot({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
-  const { publicEvents } = await eventsPromise;
-  const plan = parkingPlanForToday(
-    publicEvents.map((e) => ({ slug: e.slug, title: e.title, starts_at: e.starts_at, geom: e.geom, category: e.category })),
-    PARKING_GARAGES,
-    now,
-  );
-  if (!plan) return null;
-  return (
-    <TonightParkingPlan
-      eventTitle={plan.event.title}
-      eventSlug={plan.event.slug}
-      primaryGarageName={plan.primaryGarage.name}
-      alternatives={plan.alternatives}
-    />
-  );
 }
 
 /** What's on = every PUBLIC event in the city or county TODAY, soonest first.
