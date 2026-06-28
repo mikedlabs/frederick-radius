@@ -90,6 +90,7 @@ export const WANTS: WantCategory[] = [
       { label: "Family fun", icon: "FerrisWheel", href: "/nearby?c=family" },
       { label: "Live music", icon: "Music", href: "/nearby?c=music" },
       { label: "Arts & museums", icon: "Palette", href: "/nearby?c=art" },
+      { label: "Libraries", icon: "Library", href: "/category/library" },
       { label: "Markers & landmarks", icon: "Landmark", href: "/markers" },
       { label: "Plan a day", icon: "Route", href: "/plan" },
     ],
@@ -109,11 +110,11 @@ export const WANTS: WantCategory[] = [
   {
     key: "unwind",
     label: "Wellness & stay",
-    icon: "Sparkles",
+    icon: "Heart",
     color: "var(--app-brand-2)",
     subs: [
-      { label: "Wellness", icon: "Sparkles", href: "/nearby?c=wellness" },
-      { label: "Hotels & B&Bs", icon: "BedDouble", href: "/nearby?c=stay" },
+      { label: "Wellness", icon: "Heart", href: "/nearby?c=wellness" },
+      { label: "Hotels & B&Bs", icon: "Hotel", href: "/nearby?c=stay" },
     ],
   },
   {

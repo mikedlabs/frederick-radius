@@ -37,10 +37,14 @@ import {
   FlaskConical,
   Armchair,
   Building2,
+  Heart,
+  Library,
+  Hotel,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { WANTS, type WantSub } from "@/data/wants";
+import { GLYPHS } from "@/components/glyphs";
 import { haptic } from "@/lib/haptics";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -48,8 +52,20 @@ const ICONS: Record<string, LucideIcon> = {
   Beer, Wine, Martini, Trees, Mountain, Waves, Flag, Tractor, FerrisWheel, Music,
   Palette, Landmark, Route, ShoppingBag, ShoppingBasket, BookOpen, Sparkles,
   BedDouble, ParkingCircle, Train, Bus, Wrench, Activity, Pizza, FlaskConical,
-  Armchair, Building2,
+  Armchair, Building2, Heart, Library, Hotel,
 };
+
+/**
+ * Bespoke engraved WOODCUT first (the app's signature mark), Lucide line-icon
+ * fallback — the exact GLYPHS-first precedence CategoryIcon/craveTile use, so
+ * Eat/Drink/Outdoors/Arts/Shop/Coffee/Pizza/Wine/Trails/Music/Libraries/… get
+ * the engraved look and the long-tail degrades to a clean vector. */
+function renderIcon(name: string, sizeClass: string) {
+  const Glyph = GLYPHS[name];
+  if (Glyph) return <Glyph className={sizeClass} aria-hidden />;
+  const Icon = ICONS[name] ?? Utensils;
+  return <Icon className={sizeClass} strokeWidth={1.9} aria-hidden />;
+}
 
 type SubWithHint = WantSub & { hint?: string; lead?: boolean };
 
@@ -97,7 +113,6 @@ export default function WantsAccordion({
       {/* Main categories — engraved specimen plates. */}
       <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
         {WANTS.map((cat) => {
-          const Icon = ICONS[cat.icon] ?? Utensils;
           const open = openKey === cat.key;
           const ink = cat.color;
           return (
@@ -131,7 +146,7 @@ export default function WantsAccordion({
                   color: `color-mix(in srgb, ${ink} ${open ? 88 : 74}%, var(--app-ink))`,
                 }}
               >
-                <Icon className="h-[21px] w-[21px]" strokeWidth={1.9} />
+                {renderIcon(cat.icon, "h-[22px] w-[22px]")}
               </span>
               <span
                 className="font-mono text-[10px] font-semibold uppercase leading-tight tracking-[0.03em]"
@@ -172,7 +187,6 @@ export default function WantsAccordion({
         >
           <div className="flex flex-wrap gap-1.5">
             {subsFor(openKey).map((sub) => {
-              const SubIcon = ICONS[sub.icon] ?? Utensils;
               return (
                 <Link
                   key={sub.href + sub.label}
@@ -197,7 +211,7 @@ export default function WantsAccordion({
                       color: `color-mix(in srgb, ${accent} 80%, var(--app-ink))`,
                     }}
                   >
-                    <SubIcon className="h-[14px] w-[14px]" strokeWidth={2} />
+                    {renderIcon(sub.icon, "h-[15px] w-[15px]")}
                   </span>
                   <span className={sub.lead ? "font-semibold" : undefined}>{sub.label}</span>
                   {sub.hint && (
