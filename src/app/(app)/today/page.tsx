@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
-import TodaysDeals from "@/components/today/TodaysDeals";
-import HappyHourWallet from "@/components/today/HappyHourWallet";
+import OnNowBand from "@/components/today/OnNowBand";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
 import LocationPrime from "@/components/today/LocationPrime";
@@ -47,13 +46,9 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
-import TonightParkingPlan from "@/components/today/TonightParkingPlan";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
-import MarketsTodayBeat from "@/components/today/MarketsTodayBeat";
 import NowIntel from "@/components/today/NowIntel";
 import PrideBeat from "@/components/today/PrideBeat";
-import { parkingPlanForToday } from "@/lib/parking-forecast";
-import { PARKING_GARAGES } from "@/data/parking-garages";
 
 /**
  * Now — the daily briefing.
@@ -64,9 +59,10 @@ import { PARKING_GARAGES } from "@/data/parking-garages";
  *   2. TodayContext   → slim salutation + golden-hour cue (self-hides)
  *   3. CravingStrip   → "I want…" bar (LocationPrime consent pill on its
  *                        right) + cravings grid + a "Getting around" row
- *   4. TodaysDeals    → verified day-of-week specials as a Wallet deck (self-hides)
- *   5. CivicAlerts    → worst-first heads-up (self-hides)
- *   6. What's on      → every public event in the city/county TODAY (no toggle)
+ *   4. CivicAlerts    → worst-first heads-up (self-hides)
+ *   5. What's on      → every public event in the city/county TODAY (no toggle)
+ *   6. OnNowBand      → the live layer (markets · happy hour · specials · parking)
+ *                        under one header, reordered by daypart (self-hides)
  *   7. The full briefing + More for today (collapsed)
  *
  * (The generated "best move now" card was removed 2026-06-18: /today is a place
@@ -295,35 +291,17 @@ export default async function HomePage() {
         <WhatsOn eventsPromise={eventsPromise} now={now} />
       </Suspense>
 
-      {/* ── FARMERS MARKETS TODAY — a slim almanac line naming the markets open
-          today (official MD schedule), self-hiding on non-market days. Reads the
-          live MD feed (weekly-cached, auto-refreshing) with the committed
-          snapshot as fallback, so it streams in its own boundary. */}
-      <Suspense fallback={null}>
-        <MarketsTodayBeat now={now} />
-      </Suspense>
-
-      {/* ── TONIGHT'S PARKING PLAY — when a crowd-draw event is coming up
-          downtown, name the garage that fills and the backups. Self-hides when
-          nothing qualifies; streams on the shared events promise. The predictive
-          companion to the parking-alert push, for people who didn't opt in. */}
-      <Suspense fallback={null}>
-        <TonightParkingSlot eventsPromise={eventsPromise} now={now} />
-      </Suspense>
-
-      {/* ── HAPPY HOURS ON NOW — the most time-live "go now" signal off the
-          Field Notes moat, as a wallet of overlapping "Last Pour" cards (the
-          deal hook welded to the venue in gold); self-hides when none are
-          in-window. */}
+      {/* ── ON NOW — the live layer (farmers markets, happy hours, today's
+          verified specials, tonight's parking play) gathered under ONE header
+          instead of four free-floating beats, and REORDERED BY DAYPART so the
+          most useful live thing leads at 8am vs 9pm. Each block still self-hides;
+          the band header reads "On now" when something's genuinely live and
+          "Coming up" when the only card is the next happy hour. Streams on the
+          shared events promise (it needs tonight's events for the parking play). */}
       <div className="mt-4">
-        <HappyHourWallet now={now} />
-      </div>
-
-      {/* ── TODAY'S DEALS — the verified, day-of-week-aware specials running
-          today, from the Field Notes moat. The 4pm "what's worth going out
-          for" answer; self-hides when nothing runs today. */}
-      <div className="mt-3">
-        <TodaysDeals now={now} />
+        <Suspense fallback={null}>
+          <OnNowBand now={now} eventsPromise={eventsPromise} />
+        </Suspense>
       </div>
 
       {/* "What's happening around you" (NearbyNow) was removed from /today
@@ -555,26 +533,6 @@ async function RightNowSlot({ eventsPromise, now }: { eventsPromise: EventsPromi
       }
     : undefined;
   return <RightNowBand liveTonight={{ count: liveTonight.length, soonest }} />;
-}
-
-/** Tonight's parking play: the soonest crowd-draw downtown event in the next
- *  ~12h + its garage plan, as a quiet self-hiding line. */
-async function TonightParkingSlot({ eventsPromise, now }: { eventsPromise: EventsPromise; now: Date }) {
-  const { publicEvents } = await eventsPromise;
-  const plan = parkingPlanForToday(
-    publicEvents.map((e) => ({ slug: e.slug, title: e.title, starts_at: e.starts_at, geom: e.geom, category: e.category })),
-    PARKING_GARAGES,
-    now,
-  );
-  if (!plan) return null;
-  return (
-    <TonightParkingPlan
-      eventTitle={plan.event.title}
-      eventSlug={plan.event.slug}
-      primaryGarageName={plan.primaryGarage.name}
-      alternatives={plan.alternatives}
-    />
-  );
 }
 
 /** What's on = every PUBLIC event in the city or county TODAY, soonest first.
