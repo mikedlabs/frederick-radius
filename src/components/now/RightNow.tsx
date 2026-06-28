@@ -149,6 +149,9 @@ export default function RightNow({
   // Town scope: null = everywhere (ranked by distance), or a municipality slug
   // to narrow the answer to one town ("coffee in Brunswick").
   const [townKey, setTownKey] = useState<string | null>(null);
+  // Sort: nearest-first (default) or top-rated-first. Open places always lead
+  // either way — you can't walk into a closed one.
+  const [sort, setSort] = useState<"nearest" | "rated">("nearest");
 
   // Arriving straight to an answer from a Today craving tile (?c=coffee skips
   // the picker) should still ask for location, exactly like tapping a craving
@@ -237,10 +240,16 @@ export default function RightNow({
         return { p, dist, open };
       })
       .sort((a, b) => {
-        if (a.open !== b.open) return a.open ? -1 : 1; // open first
-        return a.dist - b.dist; // then nearest
+        if (a.open !== b.open) return a.open ? -1 : 1; // open first, always
+        if (sort === "rated") {
+          const r = (b.p.google_rating ?? 0) - (a.p.google_rating ?? 0);
+          if (r) return r;
+          const c = (b.p.google_rating_count ?? 0) - (a.p.google_rating_count ?? 0);
+          if (c) return c;
+        }
+        return a.dist - b.dist; // nearest (and the tiebreak for top-rated)
       });
-  }, [cravingMatchedAll, craving, facetKey, townKey, origin]);
+  }, [cravingMatchedAll, craving, facetKey, townKey, sort, origin]);
 
   // Towns that actually have a result for this craving — so the town row only
   // offers places that lead somewhere, never a dead "0 in Myersville" chip.
@@ -343,6 +352,7 @@ export default function RightNow({
   // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
   // this, arriving from a Today sub like Shop → Thrift still read "Shops".
   const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
+  const sortLabel = sort === "rated" ? "top rated first" : "nearest first";
   return (
     <div className="space-y-4">
       <header className="space-y-2">
@@ -378,24 +388,36 @@ export default function RightNow({
             <p className="text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
               {meal
                 ? openCount > 0
-                  ? `${openCount} open ${meal.phrase} right now · nearest first`
-                  : `Nothing open ${meal.phrase} right now · nearest first`
+                  ? `${openCount} open ${meal.phrase} right now · ${sortLabel}`
+                  : `Nothing open ${meal.phrase} right now · ${sortLabel}`
                 : craving?.alwaysOpen
-                  ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · nearest first`
+                  ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
                   : openCount > 0
-                    ? `${openCount} open now · nearest first`
-                    : "Nearest first"}
+                    ? `${openCount} open now · ${sortLabel}`
+                    : sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)}
             </p>
           </div>
         </div>
+      </header>
 
+      {/* Sticky filter bar — town scope, what-kind filters, and sort stay
+          pinned under the top bar as the results scroll, so you can re-filter
+          without scrolling back up. */}
+      <div
+        className="sticky z-30 space-y-1.5 border-b py-2 backdrop-blur-sm"
+        style={{
+          top: "calc(var(--app-topbar-h) + env(safe-area-inset-top))",
+          borderColor: "var(--app-border)",
+          background: "color-mix(in srgb, var(--app-bg) 92%, transparent)",
+        }}
+      >
         {/* Town scope — "everywhere" or one town ("coffee in Brunswick"). A
             horizontal rail; only offers towns that actually have a result for
             this craving, so a chip never dead-ends. Sits above the what-kind
             filters: pick WHERE, then narrow WHAT. */}
         {townsWithResults.length > 1 && (
-          <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max items-center gap-1.5 pt-0.5">
+          <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex w-max items-center gap-1.5">
               <FacetChip label="All towns" active={townKey === null} color="var(--app-ink-2)" onClick={() => setTownKey(null)} />
               {townsWithResults.map((m) => (
                 <FacetChip
@@ -482,7 +504,18 @@ export default function RightNow({
             </>
           )}
         </div>
-      </header>
+
+        {/* Sort — open places lead either way; this toggles the secondary
+            ordering (distance vs rating). Its own quiet row so it reads as a
+            sort, not another filter. */}
+        <div className="flex items-center gap-1.5 pt-0.5">
+          <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--app-ink-3)" }}>
+            Sort
+          </span>
+          <FacetChip label="Nearest" active={sort === "nearest"} color="var(--app-ink-2)" onClick={() => setSort("nearest")} />
+          <FacetChip label="Top rated" active={sort === "rated"} color="var(--app-ink-2)" onClick={() => setSort("rated")} />
+        </div>
+      </div>
 
       {/* Location trust: only when we DON'T have a fix AND aren't scoped to a
           town (a town scope makes "nearest to you" moot). With a fix we silently
