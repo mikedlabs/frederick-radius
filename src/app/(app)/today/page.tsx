@@ -249,6 +249,30 @@ export default async function HomePage() {
         </div>
       </Suspense>
 
+      {/* ── CONTENTS RAIL — a slim almanac "on this page" line (not a chunky
+          chip bar): mono anchors that skip to the major sections below the
+          fold, with a quiet "Live" tick on the right so the open-now / specials
+          data reads as real-time. The page is medium-long after the On-now
+          consolidation; this gives a one-tap skip without adding visual weight.
+          (CivicAlerts above self-hides on the ordinary day, so the rail then
+          sits right under the masthead.) */}
+      <nav
+        aria-label="On this page"
+        className="mt-3 flex items-center justify-between gap-3 px-0.5"
+      >
+        <div className="flex items-center gap-x-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em]">
+          <a href="#want" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>I want</a>
+          <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+          <a href="#whats-on" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>Events</a>
+          <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
+          <a href="#on-now" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>On now</a>
+        </div>
+        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
+          <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
+          Live
+        </span>
+      </nav>
+
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On
           tonight" card (the open-now and weekend answers were retired
@@ -262,7 +286,7 @@ export default async function HomePage() {
           (Parking / MARC / Transit) so utilities don't read as cravings. The
           location consent now rides on the right of the "I want…" bar (one row,
           opposite the prompt) instead of a separate banner above it. */}
-      <div className="mt-4">
+      <div className="mt-4" id="want" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <CravingStrip
           locationSlot={<LocationPrime />}
           intelSlot={
@@ -283,15 +307,17 @@ export default async function HomePage() {
           Soonest first; the rest of the calendar is one tap away via "See all".
           Streamed: the section awaits the shared events promise inside its own
           Suspense boundary so the chrome above it never waits on the feeds. */}
-      <Suspense
-        fallback={
-          <section className="mt-6 space-y-3" aria-label="What's on">
-            <Skeleton.Block height={220} round="var(--app-radius-lg)" />
-          </section>
-        }
-      >
-        <WhatsOn eventsPromise={eventsPromise} now={now} />
-      </Suspense>
+      <div id="whats-on" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
+        <Suspense
+          fallback={
+            <section className="mt-6 space-y-3" aria-label="What's on">
+              <Skeleton.Block height={220} round="var(--app-radius-lg)" />
+            </section>
+          }
+        >
+          <WhatsOn eventsPromise={eventsPromise} now={now} />
+        </Suspense>
+      </div>
 
       {/* ── FROM YOUR SAVED — the save → resurface loop, lifted HERE (was below
           the live layer): a returning user's own saved places that are open
@@ -308,7 +334,7 @@ export default async function HomePage() {
           the band header reads "On now" when something's genuinely live and
           "Coming up" when the only card is the next happy hour. Streams on the
           shared events promise (it needs tonight's events for the parking play). */}
-      <div className="mt-4">
+      <div className="mt-4" id="on-now" style={{ scrollMarginTop: "calc(var(--app-topbar-h, 56px) + 12px)" }}>
         <Suspense fallback={null}>
           <OnNowBand now={now} eventsPromise={eventsPromise} />
         </Suspense>
