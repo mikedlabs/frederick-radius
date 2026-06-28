@@ -25,6 +25,7 @@ import FilterChip from "@/components/ui/FilterChip";
 import { isOpenNow } from "@/lib/hours";
 import { haversineMeters } from "@/lib/geo";
 import { eventGeoConfidence } from "@/lib/events/geo-confidence";
+import { isEventToday } from "@/lib/eventWhenLabel";
 
 type SavedSortKey = "town" | "category" | "recent" | "az" | "distance" | "open";
 
@@ -46,6 +47,17 @@ function townAccent(slug: string): string {
   let h = 0;
   for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;
   return TOWN_ACCENTS[Math.abs(h) % TOWN_ACCENTS.length];
+}
+
+/** "21:00" → "9 PM" for the open-until label. Returns null on a bad value so
+ *  the caller can fall back to a plain "Open now". */
+function fmtClock(hhmm?: string): string | null {
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(":").map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  const mer = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return m === 0 ? `${h12} ${mer}` : `${h12}:${String(m).padStart(2, "0")} ${mer}`;
 }
 
 type DecoratedEvent = ReturnType<typeof decorateEvent>;
@@ -198,6 +210,27 @@ export default function SavedList() {
       .filter((p): p is PlaceCardData => Boolean(p));
   }, [beenSlugs, placesBySlug]);
 
+  // One render-stable "now" for the actionable lead (open-now + today's events).
+  // A single value per mount is plenty — Saved isn't a live ticker.
+  const now = useMemo(() => new Date(), []);
+
+  // ── ON NOW IN YOUR RADIUS — the actionable lead. Saved places OPEN right now
+  // (closing-soonest first, so the page reads as a "go" tool, not an archive),
+  // computed from open_status the by-slugs API already hydrates. Independent of
+  // the sort/list filter below — this is always "what of mine is live now".
+  const liveNowPlaces = useMemo<PlaceCardData[]>(() => {
+    if (!placesBySlug) return [];
+    const open = items
+      .filter((i) => i.type === "place")
+      .map((i) => placesBySlug.get(i.id))
+      .filter((p): p is PlaceCardData => p !== undefined && isOpenNow(p.open_status));
+    return open.sort((a, b) => {
+      const ca = a.open_status.state === "open" || a.open_status.state === "closing-soon" ? a.open_status.closesAt ?? "99:99" : "99:99";
+      const cb = b.open_status.state === "open" || b.open_status.state === "closing-soon" ? b.open_status.closesAt ?? "99:99" : "99:99";
+      return ca.localeCompare(cb);
+    });
+  }, [items, placesBySlug]);
+
   // Distinct personal lists across SAVED places, with counts, for the filter row.
   const availableLists = useMemo(() => {
     const counts = new Map<string, number>();
@@ -319,6 +352,13 @@ export default function SavedList() {
     return { places, events, byCategory, byTown, townTally };
   }, [items, placesBySlug, sort, homeOrigin, savedTags, effectiveList]);
 
+  // Saved events happening TODAY — the other half of the actionable lead. The
+  // full Events section below keeps the whole saved set; this is just "tonight".
+  const eventsToday = useMemo(
+    () => events.filter((e) => isEventToday(e.starts_at, now)),
+    [events, now],
+  );
+
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
   // index. Capped to 6 so the row stays scannable.
@@ -369,6 +409,101 @@ export default function SavedList() {
 
   return (
     <div className="space-y-4">
+      {/* ── ON NOW IN YOUR RADIUS — the actionable lead. Turns the archive into
+          a "what can I do with my saves right now" tool: saved places open this
+          minute (closing-soonest first, deal hook if they have one) and saved
+          events happening today. Self-hides when nothing of yours is live, so a
+          quiet day opens on the At-a-glance briefing as before. */}
+      {(liveNowPlaces.length > 0 || eventsToday.length > 0) && (
+        <section
+          aria-label="On now in your radius"
+          className="space-y-2.5 rounded-[var(--app-radius-lg)] border p-3.5"
+          style={{
+            borderColor: "color-mix(in srgb, var(--app-brand) 30%, var(--app-border))",
+            background: "color-mix(in srgb, var(--app-brand) 5%, var(--app-bg-elevated))",
+            boxShadow: "var(--app-elev-1), var(--app-hi)",
+          }}
+        >
+          <header className="flex items-center gap-2 px-0.5">
+            <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
+            <h2 className="font-mono text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-2)" }}>
+              On now in your radius
+            </h2>
+            <span className="ml-auto font-mono text-[10.5px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+              {[liveNowPlaces.length > 0 ? `${liveNowPlaces.length} open` : null, eventsToday.length > 0 ? `${eventsToday.length} today` : null].filter(Boolean).join(" · ")}
+            </span>
+          </header>
+
+          {liveNowPlaces.length > 0 && (
+            <ul className="space-y-1.5">
+              {liveNowPlaces.slice(0, 4).map((p) => {
+                const closing = p.open_status.state === "closing-soon";
+                const till = p.open_status.state === "open" || p.open_status.state === "closing-soon" ? fmtClock(p.open_status.closesAt) : null;
+                const townName = MUNICIPALITY_BY_SLUG[p.municipality]?.name ?? null;
+                return (
+                  <li key={p.slug}>
+                    <Link
+                      href={`/places/${p.slug}`}
+                      className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
+                      style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-serif text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                          {p.name}
+                        </span>
+                        <span className="block truncate font-mono text-[10.5px] uppercase tracking-[0.04em]" style={{ color: closing ? "var(--app-brand-press)" : "var(--app-ink-3)" }}>
+                          {closing ? "Closing soon" : till ? `Open till ${till}` : "Open now"}
+                          {townName ? ` · ${townName}` : ""}
+                        </span>
+                      </span>
+                      {p.deal_hook && (
+                        <span
+                          className="shrink-0 rounded-full px-2 py-0.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.04em]"
+                          style={{ background: "color-mix(in srgb, var(--app-accent) 18%, transparent)", color: "var(--app-accent-press)" }}
+                        >
+                          {p.deal_hook}
+                        </span>
+                      )}
+                      <span aria-hidden className="shrink-0 text-[12px] font-bold" style={{ color: "var(--app-ink-3)" }}>→</span>
+                    </Link>
+                  </li>
+                );
+              })}
+              {liveNowPlaces.length > 4 && (
+                <li className="px-0.5 pt-0.5 font-mono text-[10.5px]" style={{ color: "var(--app-ink-3)" }}>
+                  +{liveNowPlaces.length - 4} more open, in Places below
+                </li>
+              )}
+            </ul>
+          )}
+
+          {eventsToday.length > 0 && (
+            <ul className="space-y-1.5">
+              {eventsToday.slice(0, 3).map((e) => (
+                <li key={`${e.slug}-${e.starts_at}`}>
+                  <Link
+                    href={`/events/${e.slug}`}
+                    className="tactile-interactive flex items-center gap-2.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] px-3 py-2"
+                    style={{ borderColor: "var(--app-border)", boxShadow: "var(--app-edge), var(--app-hi)" }}
+                  >
+                    <Calendar className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-serif text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                        {e.title}
+                      </span>
+                      <span className="block truncate font-mono text-[10.5px] uppercase tracking-[0.04em]" style={{ color: "var(--app-brand-press)" }}>
+                        Today{e.venue_name ? ` · ${e.venue_name}` : ""}
+                      </span>
+                    </span>
+                    <span aria-hidden className="shrink-0 text-[12px] font-bold" style={{ color: "var(--app-ink-3)" }}>→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
       {/* Personal hero — the "your Frederick" briefing. Stitches the
           tallies into one editorial sentence; the bar of stat pills
           underneath gives the at-a-glance read without a heavy 4-cell
