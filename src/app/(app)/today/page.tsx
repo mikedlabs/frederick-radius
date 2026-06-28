@@ -51,6 +51,7 @@ import TonightParkingPlan from "@/components/today/TonightParkingPlan";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
 import MarketsTodayBeat from "@/components/today/MarketsTodayBeat";
 import NowIntel from "@/components/today/NowIntel";
+import PrideBeat from "@/components/today/PrideBeat";
 import { parkingPlanForToday } from "@/lib/parking-forecast";
 import { PARKING_GARAGES } from "@/data/parking-garages";
 
@@ -227,6 +228,7 @@ export default async function HomePage() {
         </FirstVisitNote>
         <div className="mt-2 space-y-1.5">
           <HolidayNote now={now} />
+          <PrideBeat now={now} />
           {/* Salutation + golden-hour / daylight cue — event-dependent, so it
               streams in its own Suspense boundary while the plate paints first. */}
           <Suspense fallback={null}>
