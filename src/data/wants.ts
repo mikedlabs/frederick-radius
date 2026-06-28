@@ -65,6 +65,7 @@ export const WANTS: WantCategory[] = [
       { label: "Breweries", icon: "Beer", href: "/nearby?c=breweries" },
       { label: "Wineries", icon: "Wine", href: "/nearby?c=wineries" },
       { label: "Distilleries", icon: "FlaskConical", href: "/category/distillery" },
+      { label: "Wine & liquor shops", icon: "ShoppingBag", href: "/nearby?c=liquor" },
       { label: "Happy hour", icon: "Martini", href: "/happy-hour" },
     ],
   },

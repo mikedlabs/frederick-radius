@@ -79,15 +79,21 @@ const GROCERY = /grocer|supermarket|safeway|giant\b|weis|aldi|lidl|food lion|mom
 // categories so a fun spot miscategorized elsewhere (a skatepark filed under
 // "park") still surfaces.
 const FAMILY_FUN =
-  /\b(arcade|pinball|escape room|escape this|mini ?golf|miniature golf|bowling|lanes\b|zoo|wildlife preserve|aquarium|trampoline|go.?kart|go.?cart|laser ?tag|skating|skate ?park|roller ?rink|ice ?rink|adventure park|fun ?(center|land|zone)|amusement|water ?park|carousel|science (center|lab)|discovery (center|museum)|children.?s museum|paintball|axe ?throwing|putt|raceway|speedway)\b/i;
-// Exclude the schooling/childcare/admin noise the `family` bucket is full of —
-// "Escape This" is fun, "Gregs Driving School" is not.
+  /\b(arcade|pinball|escape room|escape this|mini ?golf|miniature golf|bowling|lanes\b|zoo|petting (zoo|farm)|wildlife preserve|aquarium|trampoline|tramp ?park|go.?kart|go.?cart|laser ?tag|skating|skate ?park|roller ?rink|ice ?rink|adventure park|fun ?(center|land|zone)|amusement|water ?park|splash ?pad|spray ?(ground|park)|carousel|science (center|lab)|discovery (center|museum)|children.?s museum|paintball|axe ?throwing|putt|raceway|speedway|pottery|paint.?your.?own|ceramics|climbing|bouldering|gymnastics|tumbling|jump\b|bounce|indoor play|play ?(cafe|place|zone))\b/i;
+// Exclude the schooling/childcare/medical/admin noise the `family` bucket is
+// full of — "Escape This" is fun, "Gregs Driving School" and "Kids Care
+// Pediatrics" are not. (Medical terms added so broadening the fun matcher above
+// with kid words can't pull in a pediatrics/dental/therapy practice.)
 const FAMILY_FUN_JUNK =
-  /\b(school|elementary|middle|high school|academy|universit|college|early learning|daycare|day care|preschool|pre-?k|\bpta\b|admission|montessori|children.?s center|learning center|recovery|church|ministry|driving)\b/i;
+  /\b(school|elementary|middle|high school|academy|universit|college|early learning|daycare|day care|preschool|pre-?k|\bpta\b|admission|montessori|children.?s center|learning center|recovery|church|ministry|driving|pediatric|dental|orthodont|clinic|medical|therapy|hospital)\b/i;
 // Wineries / vineyards / cideries / meaderies — matched by PRODUCTION terms
 // (the county's ~15 are filed under "brewery"), NOT bare "wine" which would
 // catch wine shops, wine bars, and beer-&-wine convenience stores.
 const WINERY = /\b(winery|wineries|vineyard|vineyards|winecellars|cider|cidery|meadery)\b/i;
+// Retail bottle shops — liquor / wine & spirits / beer & wine stores (a "buy a
+// bottle" intent, distinct from bars/breweries/wineries you drink AT). Telltale
+// names, so name-matched; production venues are excluded by category + WINERY.
+const LIQUOR = /\b(liquors?|spirits|package store|wine ?(&|and) ?spirits|beer ?(&|and) ?wine|bottle shop|wine ?shop)\b/i;
 // Wellness DESTINATIONS — yoga, spa, massage, fitness, the self-care set — NOT
 // the medical/clinical practices the "wellness" category is bloated with (it
 // holds ~150 dialysis/sleep/dental/psychotherapy/MD entries). Matched by name
@@ -169,6 +175,21 @@ export const CRAVINGS: Craving[] = [
     icon: "Beer",
     color: "var(--app-brand-2)",
     match: (p) => p.category === "brewery" && !WINERY.test(p.name),
+  },
+  {
+    // Retail bottle shops — "I want to BUY a bottle", distinct from the bars and
+    // breweries you drink at. Name-matched (telltale names), with production
+    // venues excluded so a winery/brewery/distillery never lands here.
+    key: "liquor",
+    label: "Wine & liquor",
+    icon: "Wine",
+    color: "var(--app-brand-press)",
+    match: (p) =>
+      LIQUOR.test(p.name) &&
+      !WINERY.test(p.name) &&
+      p.category !== "winery" &&
+      p.category !== "brewery" &&
+      p.category !== "distillery",
   },
   {
     key: "ice-cream",
