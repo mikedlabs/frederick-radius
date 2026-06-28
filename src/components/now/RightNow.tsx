@@ -142,7 +142,9 @@ export default function RightNow({
   // narrows within the craving (Food → Pizza), and Open now hides closed —
   // ON by default so the page leads with what you can actually walk into.
   const [facetKey, setFacetKey] = useState<string | null>(initialFacet ?? null);
-  const [openOnly, setOpenOnly] = useState(true);
+  // Show EVERYTHING by default (open first, closed clearly marked below) so you
+  // can see what's out there in general; the Open-now toggle narrows to open.
+  const [openOnly, setOpenOnly] = useState(false);
   // "Catch it before it closes" — narrow to places open but closing within the
   // hour. Off by default; the chip only appears when there ARE any (below).
   const [closingSoonOnly, setClosingSoonOnly] = useState(false);
@@ -392,9 +394,11 @@ export default function RightNow({
                   : `Nothing open ${meal.phrase} right now · ${sortLabel}`
                 : craving?.alwaysOpen
                   ? `${matched.length} ${matched.length === 1 ? "place" : "places"} · ${sortLabel}`
-                  : openCount > 0
-                    ? `${openCount} open now · ${sortLabel}`
-                    : sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)}
+                  : openOnly
+                    ? openCount > 0
+                      ? `${openCount} open now · ${sortLabel}`
+                      : sortLabel.charAt(0).toUpperCase() + sortLabel.slice(1)
+                    : `${openCount} open · ${matched.length} nearby · ${sortLabel}`}
             </p>
           </div>
         </div>

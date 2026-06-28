@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sun, ChevronDown } from "lucide-react";
+import { Sun, ChevronDown, MapPin } from "lucide-react";
 import { nextSunHint, sunTimes } from "@/lib/sun";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getHomeMuni, setHomeMuni } from "@/lib/personalize";
@@ -51,8 +51,6 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
   };
 
   const homeMuni = homeSlug ? MUNICIPALITY_BY_SLUG[homeSlug] : null;
-  const hour24 = mounted ? Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hour12: false }).format(now)) : 0;
-  const greet = hour24 < 12 ? "Morning" : hour24 < 17 ? "Afternoon" : hour24 < 21 ? "Evening" : "Late night";
 
   const clock = (d: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" }).format(d);
   const hint = mounted ? nextSunHint(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng) : null;
@@ -118,19 +116,20 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
 
   return (
     <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-snug" suppressHydrationWarning>
-      <span className="inline-flex items-center" style={{ color: "var(--app-ink-3)" }}>
-        {greet}
-        {homeMuni ? " in " : ". "}
-        {/* The town itself is the picker: choose one to personalize the app. */}
+      {/* A plain LOCATION control, not a time-of-day greeting (the old "Morning
+          in…" read oddly on a picker): a pin + the town you're browsing. */}
+      <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-3)" }}>
+        <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
+        {!homeMuni && <span>Browsing</span>}
         <span className="relative inline-flex items-center">
           <select
-            aria-label="Choose your town"
+            aria-label="Choose the town you're browsing"
             value={homeSlug ?? ""}
             onChange={(e) => pickTown(e.target.value)}
             className="cursor-pointer appearance-none bg-transparent pr-4 font-semibold focus:outline-none focus-visible:underline"
             style={{ color: "var(--app-brand)" }}
           >
-            {!homeMuni && <option value="">Set your town</option>}
+            {!homeMuni && <option value="">all of Frederick County</option>}
             {MUNICIPALITIES.map((m) => (
               <option key={m.slug} value={m.slug}>
                 {m.name}
@@ -144,7 +143,6 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
             style={{ color: "var(--app-brand)" }}
           />
         </span>
-        {homeMuni ? "." : ""}
       </span>
       {sunLine && <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>}
       {sunLine && (
