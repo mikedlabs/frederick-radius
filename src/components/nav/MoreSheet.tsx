@@ -19,6 +19,17 @@ import {
   Tag,
   Plane,
   Landmark,
+  DoorOpen,
+  CalendarDays,
+  Music,
+  Layers,
+  ScrollText,
+  Camera,
+  MapPinned,
+  CalendarPlus,
+  CirclePlus,
+  Store,
+  FileText,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -77,6 +88,18 @@ const LOCAL_INTEL: Item[] = [
   { href: "/deals", label: "Intel", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
 ];
 
+// Discovery surfaces that previously had no home in this sheet (some were only
+// reachable from a single deep link, From Above from none) — gathered so every
+// way to explore the county is in one index.
+const DISCOVER: Item[] = [
+  { href: "/open-now", label: "Open now", description: "Everything open across the county right this minute", icon: DoorOpen, color: "var(--app-positive)" },
+  { href: "/weekend", label: "This weekend", description: "What's on this weekend, Friday through Sunday", icon: CalendarDays, color: "var(--app-brand)" },
+  { href: "/live-music", label: "Live music", description: "Who's playing tonight and this week across the county", icon: Music, color: "var(--app-accent)" },
+  { href: "/collections", label: "Collections", description: "Editor's curated lists: date night, with kids, rainy day", icon: Layers, color: "var(--app-brand-2)" },
+  { href: "/history", label: "History", description: "How Frederick County came to be, place by place", icon: ScrollText, color: "#7A5C2E" },
+  { href: "/from-above/preview", label: "From Above", description: "The aerial photography book of Frederick County", icon: Camera, color: "var(--app-cool)" },
+];
+
 const GETTING_AROUND: Item[] = [
   { href: "/parking",   label: "Parking",   description: "Downtown garages, rates, and event-day closures",     icon: SquareParking, color: "var(--app-ink-2)" },
   { href: "/transit",   label: "Transit",   description: "TransIT bus routes and stops",                      icon: Bus,           color: "var(--app-cool)" },
@@ -97,14 +120,25 @@ const AROUND_COUNTY: Item[] = [
   { href: "/pulse",     label: "County pulse", description: "Right now: traffic, power outages, school closings, 311", icon: Activity, color: "var(--app-brand)" },
   { href: "/overhead",  label: "Overhead", description: "Live radar of planes flying over the county right now", icon: Plane, color: "var(--app-cool)" },
   { href: "/markers",   label: "Markers & landmarks", description: "Every roadside marker's inscription + the National Register sites", icon: Landmark, color: "#7A5C2E" },
+  { href: "/towns",     label: "Towns",     description: "Explore all 12 municipalities + Urbana",          icon: MapPinned,     color: "var(--app-brand-2)" },
   { href: "/plan",      label: "Plan a day", description: "Build a shareable Frederick day itinerary",           icon: Route,         color: "var(--app-brand-2)" },
   { href: "/contacts",  label: "Contacts",  description: "City and county department directory",              icon: Building2,     color: "var(--app-ink-2)" },
+];
+
+// Ways to contribute — community submission + business claim surfaces that were
+// only reachable from scattered contextual links. Their own labeled cluster so
+// "how do I add my event / place / business" has an obvious home.
+const CONTRIBUTE: Item[] = [
+  { href: "/submit/event", label: "Add an event", description: "Submit a public event for the calendar", icon: CalendarPlus, color: "var(--app-brand)" },
+  { href: "/submit/place", label: "Add a place", description: "Suggest a place that's missing from the map", icon: CirclePlus, color: "var(--app-positive)" },
+  { href: "/business/claim", label: "Claim your business", description: "Own a listing? Claim it to keep it accurate", icon: Store, color: "var(--app-brand-2)" },
 ];
 
 const APP: Item[] = [
   { href: "/about",    label: "About",        description: "What this app is and how it stays honest",     icon: Info,        color: "var(--app-ink-2)" },
   { href: "/trust",    label: "Trust & data", description: "Where the data comes from and what the badges mean", icon: ShieldCheck, color: "var(--app-cool)" },
   { href: "/settings", label: "Settings",     description: "Persona, home spot, interests, notifications", icon: SettingsIcon, color: "var(--app-ink-3)" },
+  { href: "/terms",    label: "Terms",        description: "Terms of use and privacy",                     icon: FileText,    color: "var(--app-ink-3)" },
 ];
 
 export default function MoreSheet({
@@ -120,25 +154,20 @@ export default function MoreSheet({
     <BottomDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title="More"
-      subtitle="Useful pages and settings"
+      title="Explore"
+      subtitle="Every page, tool, and way to help"
     >
+      {/* The field-guide index: every surface in the app, in one place, grouped
+          into scannable clusters so nothing is reachable only by typing a URL.
+          (Renamed from "More" — it's a directory of the whole app, not an
+          overflow afterthought.) */}
       <div className="space-y-5 px-4 pt-3 pb-6">
-        {/* DISCOVER + TOOLS sections retired (Field Guide Phase 2,
-            May 2026). Discover items (books, History, Collections)
-            moved to /about as Companion content. Tools (Plan,
-            Within reach, Pulse) moved to their natural homes —
-            /events CTA, /map default mode, header indicator
-            respectively. The drawer now leads with the secondary
-            destinations, split into three scannable clusters — Getting
-            around / Outdoors / Around the county — instead of one flat
-            "Useful" wall you had to read end-to-end. APP closes out the
-            sheet so About, Trust, Settings stay reachable. */}
-
         <IconCluster heading="Local intel" items={LOCAL_INTEL} onClose={close} columns={3} />
+        <IconCluster heading="Discover" items={DISCOVER} onClose={close} columns={3} />
         <IconCluster heading="Getting around" items={GETTING_AROUND} onClose={close} columns={3} />
         <IconCluster heading="Outdoors" items={OUTDOORS} onClose={close} columns={3} />
         <IconCluster heading="Around the county" items={AROUND_COUNTY} onClose={close} columns={3} />
+        <IconCluster heading="Contribute" items={CONTRIBUTE} onClose={close} columns={3} />
         <IconCluster heading="App" items={APP} onClose={close} columns={3} />
       </div>
     </BottomDrawer>
