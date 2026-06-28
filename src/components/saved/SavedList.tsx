@@ -14,6 +14,7 @@ import type { PlaceCardData } from "@/lib/loaders/places";
 import { EVENT_BY_SLUG } from "@/data/events";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
+import AppMapClient from "@/components/map/AppMapClient";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
@@ -39,6 +40,7 @@ const SORT_OPTIONS: ReadonlyArray<SortOption<SavedSortKey>> = [
 ];
 
 const SAVED_SORT_STORAGE_KEY = "fr.saved-sort";
+const SAVED_VIEW_STORAGE_KEY = "fr.saved-view";
 
 // Deterministic per-town accent so each town reads as its own colored
 // "chapter" of the field guide (matches the town grid on /places).
@@ -165,6 +167,29 @@ export default function SavedList() {
     setSort(next);
     try {
       window.localStorage.setItem(SAVED_SORT_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // List vs map view of the Places section. Persisted like the sort so a user
+  // who prefers the map lands on it next time. The Mapbox canvas only mounts in
+  // map view (AppMapClient dynamic-imports AppMap), so list-view visitors never
+  // pay the map JS.
+  const [view, setView] = useState<"list" | "map">("list");
+  useEffect(() => {
+    try {
+      const v = window.localStorage.getItem(SAVED_VIEW_STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount localStorage hydration of a view preference; SSR can't read it
+      if (v === "map") setView("map");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  function setViewAndStore(next: "list" | "map") {
+    setView(next);
+    try {
+      window.localStorage.setItem(SAVED_VIEW_STORAGE_KEY, next);
     } catch {
       /* ignore */
     }
@@ -632,13 +657,65 @@ export default function SavedList() {
                 Places
               </h2>
             </div>
-            <SortDropdown
-              options={SORT_OPTIONS}
-              value={sort}
-              onChange={setSortAndStore}
-            />
+            <div className="flex items-center gap-2">
+              {/* List ↔ map view of your saved places. */}
+              <div
+                role="tablist"
+                aria-label="View saved places as a list or map"
+                className="inline-flex rounded-full border p-0.5"
+                style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
+              >
+                {(["list", "map"] as const).map((v) => {
+                  const active = view === v;
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setViewAndStore(v)}
+                      className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                      style={{
+                        background: active ? "var(--app-bg-elevated)" : "transparent",
+                        color: active ? "var(--app-ink)" : "var(--app-ink-3)",
+                        boxShadow: active ? "var(--app-edge), var(--app-hi)" : "none",
+                      }}
+                    >
+                      {v === "map" && <MapPin className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
+                      {v === "list" ? "List" : "Map"}
+                    </button>
+                  );
+                })}
+              </div>
+              {view === "list" && (
+                <SortDropdown
+                  options={SORT_OPTIONS}
+                  value={sort}
+                  onChange={setSortAndStore}
+                />
+              )}
+            </div>
           </header>
-          {sort === "town" || sort === "category" ? (
+          {view === "map" ? (
+            (() => {
+              const mapPlaces = places.filter((p) => p.geom);
+              return mapPlaces.length > 0 ? (
+                <div
+                  className="relative h-[60vh] min-h-[360px] w-full overflow-hidden rounded-[var(--app-radius-lg)] border"
+                  style={{ borderColor: "var(--app-border)" }}
+                >
+                  <AppMapClient places={mapPlaces} fullBleed />
+                </div>
+              ) : (
+                <p
+                  className="rounded-[var(--app-radius-md)] border border-dashed px-4 py-8 text-center text-[13px]"
+                  style={{ borderColor: "var(--app-border)", color: "var(--app-ink-3)" }}
+                >
+                  None of your saved places have a location to map yet.
+                </p>
+              );
+            })()
+          ) : sort === "town" || sort === "category" ? (
             <div className="space-y-4">
               {(sort === "town"
                 ? [...byTown.entries()]
