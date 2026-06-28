@@ -41,9 +41,12 @@ function defaultWant(now: Date): string {
  */
 export default function CravingStrip({
   locationSlot,
+  intelSlot,
   contextSlot,
 }: {
   locationSlot?: ReactNode;
+  /** The "right now" intelligence line (NowIntel) above the grid. */
+  intelSlot?: ReactNode;
   contextSlot?: ReactNode;
 }) {
   // The meal occasion right now (Frederick clock) — Eat's time-aware lead sub.
@@ -63,6 +66,8 @@ export default function CravingStrip({
         </h2>
         {locationSlot}
       </div>
+
+      {intelSlot}
 
       <WantsAccordion
         meal={{ key: meal.key, label: meal.label, phrase: meal.phrase }}

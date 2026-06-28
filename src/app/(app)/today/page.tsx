@@ -50,6 +50,7 @@ import FreshnessGuard from "@/components/today/FreshnessGuard";
 import TonightParkingPlan from "@/components/today/TonightParkingPlan";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
 import MarketsTodayBeat from "@/components/today/MarketsTodayBeat";
+import NowIntel from "@/components/today/NowIntel";
 import { parkingPlanForToday } from "@/lib/parking-forecast";
 import { PARKING_GARAGES } from "@/data/parking-garages";
 
@@ -264,6 +265,11 @@ export default async function HomePage() {
       <div className="mt-4">
         <CravingStrip
           locationSlot={<LocationPrime />}
+          intelSlot={
+            <Suspense fallback={null}>
+              <NowIntel now={now} />
+            </Suspense>
+          }
           contextSlot={
             <Suspense fallback={null}>
               <RightNowSlot eventsPromise={eventsPromise} now={now} />
