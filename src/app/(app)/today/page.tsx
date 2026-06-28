@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import TodayCard from "@/components/today/TodayCard";
+import MastheadTitle from "@/components/today/MastheadTitle";
 import OnNowBand from "@/components/today/OnNowBand";
 import SkyHero, { currentSkyPalette } from "@/components/today/SkyHero";
 import TodayContext from "@/components/today/TodayContext";
@@ -211,9 +212,10 @@ export default async function HomePage() {
           the standfirst + the cap rule (which always sits below it, so the rule
           never dangles). Identity copy + voice unchanged (finding, not telling). */}
       <header className="mt-2 px-0.5">
-        <p className="display-3" style={{ color: "var(--app-ink)" }}>
-          Your field guide to Frederick County.
-        </p>
+        {/* Cover line, personalized: the brand line by default, the home town
+            ("Middletown, today.") once one is set. Client swap post-mount; SSR
+            keeps the brand line for crawlers. */}
+        <MastheadTitle />
         {/* The descriptive standfirst orients a NEWCOMER; a returning daily user
             scrolls past it to reach the grid, so it shows on the first visit
             only and then retires itself (returning users never render it). */}
@@ -291,6 +293,14 @@ export default async function HomePage() {
         <WhatsOn eventsPromise={eventsPromise} now={now} />
       </Suspense>
 
+      {/* ── FROM YOUR SAVED — the save → resurface loop, lifted HERE (was below
+          the live layer): a returning user's own saved places that are open
+          RIGHT NOW are the highest-intent answer on the page, so they sit just
+          under the day's events, above the general live layer. Client section
+          (saves are client state); renders nothing unless something's open, so
+          a first-timer or anyone with no open saves never sees a box. */}
+      <FromYourSaved />
+
       {/* ── ON NOW — the live layer (farmers markets, happy hours, today's
           verified specials, tonight's parking play) gathered under ONE header
           instead of four free-floating beats, and REORDERED BY DAYPART so the
@@ -319,12 +329,9 @@ export default async function HomePage() {
           tonight's event in the hero, and What's-on below already let them
           find their own answer. Finding, not telling. */}
 
-      {/* ── FROM YOUR SAVED ──────────────────────────────────────────────
-          The save → resurface loop closes HERE: saved places that are
-          open right now, offered back where the day starts. A client
-          section (saves are client state) that renders nothing unless it
-          has an answer — no saves or none open means no box. */}
-      <FromYourSaved />
+      {/* (FROM YOUR SAVED moved UP to just under the day's events — a returning
+          user's own open-now saves are the highest-intent answer, so they no
+          longer sit below the whole live layer.) */}
 
       {/* WHAT'S ON was relocated ABOVE Happy hour (owner call 2026-06-19):
           today's events are the headline "what's happening" answer, so they now
