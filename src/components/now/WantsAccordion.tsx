@@ -43,6 +43,8 @@ import {
   Film,
   Scissors,
   PawPrint,
+  Church,
+  Pill,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -56,6 +58,7 @@ const ICONS: Record<string, LucideIcon> = {
   Palette, Landmark, Route, ShoppingBag, ShoppingBasket, BookOpen, Sparkles,
   BedDouble, ParkingCircle, Train, Bus, Wrench, Activity, Pizza, FlaskConical,
   Armchair, Building2, Heart, Library, Hotel, Film, Scissors, PawPrint,
+  Church, Pill,
 };
 
 /**
@@ -114,7 +117,7 @@ export default function WantsAccordion({
   return (
     <div className="space-y-2.5">
       {/* Main categories — engraved specimen plates. */}
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
         {WANTS.map((cat) => {
           const open = openKey === cat.key;
           const ink = cat.color;

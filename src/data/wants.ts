@@ -94,7 +94,6 @@ export const WANTS: WantCategory[] = [
       { label: "Live music", icon: "Music", href: "/nearby?c=music" },
       { label: "Movies", icon: "Film", href: "/nearby?c=movies" },
       { label: "Arts & museums", icon: "Palette", href: "/nearby?c=art" },
-      { label: "Libraries", icon: "Library", href: "/category/library" },
       { label: "Markers & landmarks", icon: "Landmark", href: "/markers" },
       { label: "Plan a day", icon: "Route", href: "/plan" },
     ],
@@ -124,6 +123,18 @@ export const WANTS: WantCategory[] = [
     ],
   },
   {
+    key: "community",
+    label: "Community",
+    icon: "Building2",
+    color: "var(--app-brand-2)",
+    subs: [
+      { label: "Churches & worship", icon: "Church", href: "/category/worship" },
+      { label: "Libraries", icon: "Library", href: "/category/library" },
+      { label: "Pharmacies", icon: "Pill", href: "/category/pharmacy" },
+      { label: "Contacts", icon: "Building2", href: "/contacts" },
+    ],
+  },
+  {
     key: "around",
     label: "Get around",
     icon: "Bus",
@@ -134,7 +145,6 @@ export const WANTS: WantCategory[] = [
       { label: "Transit bus", icon: "Bus", href: "/transit" },
       { label: "Amenities", icon: "Wrench", href: "/amenities" },
       { label: "County pulse", icon: "Activity", href: "/pulse" },
-      { label: "Contacts", icon: "Building2", href: "/contacts" },
     ],
   },
 ];
