@@ -116,6 +116,7 @@ export default function RightNow({
   places,
   initialCraving = null,
   initialFacet = null,
+  initialTown = null,
   approxOrigin = null,
   approxCity = null,
 }: {
@@ -126,6 +127,9 @@ export default function RightNow({
   /** Preselected sub-facet from a deep link (?c=shops&facet=thrift) — lands on
    *  the already-narrowed list (e.g. Shop → Thrift & vintage from /today). */
   initialFacet?: string | null;
+  /** Preselected town scope from a deep link (?c=coffee&town=brunswick) — set
+   *  when the visitor has a home town, so answers default to it. */
+  initialTown?: string | null;
   /** Coarse edge-IP origin used to rank BEFORE a precise device fix (never to
    *  print a distance). Null when out of area → Downtown default. */
   approxOrigin?: { lng: number; lat: number } | null;
@@ -149,8 +153,11 @@ export default function RightNow({
   // hour. Off by default; the chip only appears when there ARE any (below).
   const [closingSoonOnly, setClosingSoonOnly] = useState(false);
   // Town scope: null = everywhere (ranked by distance), or a municipality slug
-  // to narrow the answer to one town ("coffee in Brunswick").
-  const [townKey, setTownKey] = useState<string | null>(null);
+  // to narrow the answer to one town ("coffee in Brunswick"). Seeded from the
+  // visitor's home town via the deep link when present.
+  const [townKey, setTownKey] = useState<string | null>(
+    initialTown && MUNICIPALITY_BY_SLUG[initialTown] ? initialTown : null,
+  );
   // Sort: nearest-first (default) or top-rated-first. Open places always lead
   // either way — you can't walk into a closed one.
   const [sort, setSort] = useState<"nearest" | "rated">("nearest");

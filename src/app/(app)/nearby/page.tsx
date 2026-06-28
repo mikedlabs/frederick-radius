@@ -40,9 +40,9 @@ function slim(p: PlaceCardData): PlaceCardData {
 export default async function NowPage({
   searchParams,
 }: {
-  searchParams: Promise<{ c?: string; facet?: string }>;
+  searchParams: Promise<{ c?: string; facet?: string; town?: string }>;
 }) {
-  const { c, facet } = await searchParams;
+  const { c, facet, town } = await searchParams;
   // Edge IP geo: a coarse "which town" seed so a visitor outside Downtown ranks
   // from where they actually are BEFORE granting precise location. Ranking only,
   // never a printed distance. Null (out of area / no header) keeps the Downtown
@@ -64,6 +64,7 @@ export default async function NowPage({
       places={places}
       initialCraving={c ?? null}
       initialFacet={facet ?? null}
+      initialTown={town ?? null}
       approxOrigin={approx.origin}
       approxCity={approx.city}
     />

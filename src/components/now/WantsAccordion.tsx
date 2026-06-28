@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Utensils,
@@ -50,6 +50,7 @@ import {
 } from "lucide-react";
 import { WANTS, type WantSub } from "@/data/wants";
 import { GLYPHS } from "@/components/glyphs";
+import { getHomeMuni } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -94,6 +95,17 @@ export default function WantsAccordion({
   defaultOpen?: string;
 }) {
   const [openKey, setOpenKey] = useState<string>(defaultOpen);
+  // Home town (read post-mount, client-only). When set, the geo-aware /nearby
+  // answers default to that town — so picking a town in the masthead actually
+  // scopes what you find here. Curated/page links (/trails, /brunch…) are left
+  // alone; only /nearby?c= answers take a town.
+  const [homeSlug, setHomeSlug] = useState<string | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- post-mount localStorage read; SSR can't see the home town
+    setHomeSlug(getHomeMuni());
+  }, []);
+  const hrefFor = (href: string): string =>
+    homeSlug && href.startsWith("/nearby?c=") ? `${href}&town=${homeSlug}` : href;
 
   const openCat = WANTS.find((c) => c.key === openKey) ?? null;
   const accent = openCat?.color ?? "var(--app-brand)";
@@ -198,7 +210,7 @@ export default function WantsAccordion({
             {subsFor(openKey).map((sub) => (
               <Link
                 key={sub.href + sub.label}
-                href={sub.href}
+                href={hrefFor(sub.href)}
                 className={`tactile-interactive group/sub flex items-center gap-2.5 rounded-[var(--app-radius-sm)] p-2.5 ${
                   sub.lead ? "col-span-2 sm:col-span-3" : ""
                 }`}
