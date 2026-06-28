@@ -22,6 +22,11 @@ import {
   Sandwich,
   UtensilsCrossed,
   Moon,
+  Flag,
+  Tractor,
+  Film,
+  Waves,
+  Scissors,
   ArrowLeft,
   Navigation,
   type LucideIcon,
@@ -72,6 +77,13 @@ const ICONS: Record<string, LucideIcon> = {
   Wine,
   BedDouble,
   Sparkles,
+  // Newer craving icons (golf / farms / movies / pools / salons) — without these
+  // the /nearby picker tile would fall back to the fork glyph.
+  Flag,
+  Tractor,
+  Film,
+  Waves,
+  Scissors,
   // Meal-occasion glyphs (the time-aware lead from the /today I-want strip).
   Sunrise,
   Croissant,

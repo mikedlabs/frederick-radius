@@ -78,6 +78,8 @@ export const WANTS: WantCategory[] = [
       { label: "Parks", icon: "Trees", href: "/nearby?c=outside" },
       { label: "Trails", icon: "Mountain", href: "/trails" },
       { label: "Rivers & creeks", icon: "Waves", href: "/rivers" },
+      { label: "Dog parks", icon: "PawPrint", href: "/nearby?c=outside&facet=dog" },
+      { label: "Pools & swimming", icon: "Waves", href: "/nearby?c=pools" },
       { label: "Golf", icon: "Flag", href: "/nearby?c=golf" },
       { label: "Farms & PYO", icon: "Tractor", href: "/nearby?c=farms" },
     ],
@@ -90,6 +92,7 @@ export const WANTS: WantCategory[] = [
     subs: [
       { label: "Family fun", icon: "FerrisWheel", href: "/nearby?c=family" },
       { label: "Live music", icon: "Music", href: "/nearby?c=music" },
+      { label: "Movies", icon: "Film", href: "/nearby?c=movies" },
       { label: "Arts & museums", icon: "Palette", href: "/nearby?c=art" },
       { label: "Libraries", icon: "Library", href: "/category/library" },
       { label: "Markers & landmarks", icon: "Landmark", href: "/markers" },
@@ -116,6 +119,7 @@ export const WANTS: WantCategory[] = [
     color: "var(--app-brand-2)",
     subs: [
       { label: "Wellness", icon: "Heart", href: "/nearby?c=wellness" },
+      { label: "Salons & barbers", icon: "Scissors", href: "/nearby?c=salon" },
       { label: "Hotels & B&Bs", icon: "Hotel", href: "/nearby?c=stay" },
     ],
   },

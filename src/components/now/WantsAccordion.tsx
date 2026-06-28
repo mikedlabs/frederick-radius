@@ -40,6 +40,9 @@ import {
   Heart,
   Library,
   Hotel,
+  Film,
+  Scissors,
+  PawPrint,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -52,7 +55,7 @@ const ICONS: Record<string, LucideIcon> = {
   Beer, Wine, Martini, Trees, Mountain, Waves, Flag, Tractor, FerrisWheel, Music,
   Palette, Landmark, Route, ShoppingBag, ShoppingBasket, BookOpen, Sparkles,
   BedDouble, ParkingCircle, Train, Bus, Wrench, Activity, Pizza, FlaskConical,
-  Armchair, Building2, Heart, Library, Hotel,
+  Armchair, Building2, Heart, Library, Hotel, Film, Scissors, PawPrint,
 };
 
 /**

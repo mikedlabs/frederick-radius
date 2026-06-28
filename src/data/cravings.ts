@@ -47,7 +47,10 @@ export type Craving = {
     | "BedDouble"
     | "Sparkles"
     | "Flag"
-    | "Tractor";
+    | "Tractor"
+    | "Film"
+    | "Waves"
+    | "Scissors";
   /** Category token used only for the tile tint, reusing the palette the
    *  rest of the app already keys off. */
   color: string;
@@ -94,6 +97,17 @@ const WINERY = /\b(winery|wineries|vineyard|vineyards|winecellars|cider|cidery|m
 // bottle" intent, distinct from bars/breweries/wineries you drink AT). Telltale
 // names, so name-matched; production venues are excluded by category + WINERY.
 const LIQUOR = /\b(liquors?|spirits|package store|wine ?(&|and) ?spirits|beer ?(&|and) ?wine|bottle shop|wine ?shop)\b/i;
+// Movie theaters (cinemas) — distinct from the performing-arts "theater"
+// category they're filed under. Name-matched: the county's are Warehouse
+// Cinemas + Regal Westview.
+const MOVIES = /\b(cinemas?|cineplex|imax|movie ?theat(er|re)?|drive.?in theat|regal westview)\b/i;
+// Public pools / swimming (mostly filed under wellness/playground). Excludes
+// pool halls, billiards, whirlpools.
+const POOL = /\b(swimming pool|swim club|aquatic|community pool|municipal pool|natatorium|\bpool\b)\b/i;
+const POOL_JUNK = /\b(hall|billiard|table|car ?pool|whirlpool|gene pool|consulting|supply|supplies|service)\b/i;
+// Salons / barbers / nail shops — the grooming intent (filed under "services"),
+// distinct from the wellness self-care set.
+const SALON = /\b(salon|barber|barbershop|nails?|nail bar|blow ?dry|blowout)\b/i;
 // Wellness DESTINATIONS — yoga, spa, massage, fitness, the self-care set — NOT
 // the medical/clinical practices the "wellness" category is bloated with (it
 // holds ~150 dialysis/sleep/dental/psychotherapy/MD entries). Matched by name
@@ -220,6 +234,7 @@ export const CRAVINGS: Craving[] = [
       { key: "park", label: "Parks", match: (p) => p.category === "park" },
       { key: "trail", label: "Trails", match: (p) => p.category === "trail" || p.category === "outdoors" },
       { key: "playground", label: "Playgrounds", match: (p) => p.category === "playground" },
+      { key: "dog", label: "Dog parks", match: (p) => /\b(dog park|bark park)\b/i.test(p.name) },
     ],
   },
   {
@@ -322,6 +337,33 @@ export const CRAVINGS: Craving[] = [
     match: (p) =>
       Boolean(p.subcategories?.includes("family-fun")) ||
       (FAMILY_FUN.test(p.name) && !FAMILY_FUN_JUNK.test(p.name)),
+  },
+  {
+    // Movie theaters (cinemas) — a top "what to do tonight" intent that was
+    // buried inside the performing-arts "theater" category.
+    key: "movies",
+    label: "Movies",
+    icon: "Film",
+    color: "var(--app-accent)",
+    match: (p) => MOVIES.test(p.name),
+  },
+  {
+    // Public pools + swimming — a summer staple, scattered across wellness /
+    // playground; name-matched across categories, pool halls excluded.
+    key: "pools",
+    label: "Pools & swimming",
+    icon: "Waves",
+    color: "var(--app-cool)",
+    match: (p) => POOL.test(p.name) && !POOL_JUNK.test(p.name),
+  },
+  {
+    // Salons, barbers, nail shops — the grooming intent (filed under
+    // "services"), distinct from the wellness self-care set.
+    key: "salon",
+    label: "Salons & barbers",
+    icon: "Scissors",
+    color: "var(--app-brand-2)",
+    match: (p) => SALON.test(p.name),
   },
   {
     // Wellness DESTINATIONS — yoga, spa, massage, fitness, martial arts, the
