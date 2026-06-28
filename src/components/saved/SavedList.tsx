@@ -15,6 +15,7 @@ import { EVENT_BY_SLUG } from "@/data/events";
 import PlaceCard from "@/components/place/PlaceCard";
 import EventCard from "@/components/event/EventCard";
 import AppMapClient from "@/components/map/AppMapClient";
+import ShareButton from "@/components/place/ShareButton";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import Link from "next/link";
@@ -194,6 +195,10 @@ export default function SavedList() {
       /* ignore */
     }
   }
+
+  // Past saved events are kept (you saved them) but tucked behind a toggle so a
+  // months-old show never clutters the upcoming list.
+  const [showPast, setShowPast] = useState(false);
 
   // The "distance" sort needs an origin. Read the user's home muni
   // from localStorage (the same key PreferencesPanel writes); fall
@@ -384,6 +389,30 @@ export default function SavedList() {
     [events, now],
   );
 
+  // Saved-event hygiene: upcoming (soonest first) vs past (most-recent first).
+  // A saved event whose end is behind us is "past" — kept, not deleted, but
+  // demoted so it stops cluttering the active list.
+  const { upcomingEvents, pastEvents } = useMemo(() => {
+    const up: DecoratedEvent[] = [];
+    const pa: DecoratedEvent[] = [];
+    for (const e of events) {
+      const endMs = Date.parse(e.ends_at || e.starts_at);
+      if (!Number.isNaN(endMs) && endMs < now.getTime()) pa.push(e);
+      else up.push(e);
+    }
+    up.sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+    pa.sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at));
+    return { upcomingEvents: up, pastEvents: pa };
+  }, [events, now]);
+
+  // Shareable read-only "radius": the ordered saved PLACE slugs, encoded into a
+  // /radius/shared link. Places only (events are time-bound; a shared list is a
+  // "here's my Frederick" recommendation, which is about places).
+  const shareUrl = useMemo(() => {
+    const slugs = items.filter((i) => i.type === "place").map((i) => i.id);
+    return slugs.length > 0 ? `/radius/shared?p=${slugs.map(encodeURIComponent).join(",")}` : null;
+  }, [items]);
+
   // Resolve recent slugs to PlaceCardData, drop ones now-saved (the
   // "Saved" sections already surface them) and ones not in the place
   // index. Capped to 6 so the row stays scannable.
@@ -564,6 +593,16 @@ export default function SavedList() {
             >
               At a glance
             </p>
+            {/* Share your radius — turns a private list into a "here's my
+                Frederick" recommendation a friend can open. Places only. */}
+            {shareUrl && (
+              <ShareButton
+                title="My Frederick radius"
+                text="Places I'm keeping an eye on in Frederick County"
+                url={shareUrl}
+                className="tap-44 ml-auto inline-flex items-center gap-1 text-[12px] font-semibold transition active:scale-95"
+              />
+            )}
           </div>
           <p
             className="font-serif text-[20px] font-semibold leading-snug tracking-tight"
@@ -923,14 +962,49 @@ export default function SavedList() {
             >
               Events
             </h2>
+            {pastEvents.length > 0 && (
+              <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                {upcomingEvents.length} upcoming
+              </span>
+            )}
           </header>
-          <ul className="space-y-2">
-            {events.map((e: DecoratedEvent) => (
-              <li key={`${e.slug}-${e.starts_at}`}>
-                <EventCard event={e} />
-              </li>
-            ))}
-          </ul>
+          {upcomingEvents.length > 0 ? (
+            <ul className="space-y-2">
+              {upcomingEvents.map((e: DecoratedEvent) => (
+                <li key={`${e.slug}-${e.starts_at}`}>
+                  <EventCard event={e} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-0.5 text-[12.5px]" style={{ color: "var(--app-ink-3)" }}>
+              Nothing upcoming. Your saved shows have all passed.
+            </p>
+          )}
+
+          {/* Past saved events — kept, but tucked behind a toggle. */}
+          {pastEvents.length > 0 && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowPast((v) => !v)}
+                className="tap-44 text-[11px] font-semibold underline-offset-2 hover:underline"
+                style={{ color: "var(--app-ink-3)" }}
+                aria-expanded={showPast}
+              >
+                {showPast ? "Hide" : "Show"} {pastEvents.length} past event{pastEvents.length === 1 ? "" : "s"}
+              </button>
+              {showPast && (
+                <ul className="space-y-2 opacity-70">
+                  {pastEvents.map((e: DecoratedEvent) => (
+                    <li key={`${e.slug}-${e.starts_at}`}>
+                      <EventCard event={e} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </section>
       )}
     </div>
