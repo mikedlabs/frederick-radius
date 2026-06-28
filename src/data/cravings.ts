@@ -250,6 +250,11 @@ export const CRAVINGS: Craving[] = [
       p.category === "book-store",
     facets: [
       { key: "shopping", label: "Shops", match: (p) => p.category === "shopping" },
+      // Thrift / vintage / consignment (incl. the few "antiques" rows) — a real
+      // local draw otherwise buried in the 200-place shopping bucket.
+      { key: "thrift", label: "Thrift & vintage", match: (p) => p.category === "antiques" || /\b(thrift|vintage|consignment|retro|resale|second.?hand)\b/i.test(p.name) },
+      // Home & décor / furniture / candles.
+      { key: "home", label: "Home & décor", match: (p) => p.category === "shopping" && /\b(home|d[eé]cor|furniture|furnishing|candle|interiors?)\b/i.test(p.name) },
       { key: "market", label: "Markets", match: (p) => p.category === "market" },
       { key: "book-store", label: "Books", match: (p) => p.category === "book-store" },
     ],

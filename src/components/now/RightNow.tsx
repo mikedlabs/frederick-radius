@@ -102,6 +102,7 @@ function walkLabel(distance_m: number): string {
 export default function RightNow({
   places,
   initialCraving = null,
+  initialFacet = null,
   approxOrigin = null,
   approxCity = null,
 }: {
@@ -109,6 +110,9 @@ export default function RightNow({
   /** Preselected craving from a deep link (?c=coffee) — skips the picker
    *  straight to the answer when arriving from a Today craving chip. */
   initialCraving?: string | null;
+  /** Preselected sub-facet from a deep link (?c=shops&facet=thrift) — lands on
+   *  the already-narrowed list (e.g. Shop → Thrift & vintage from /today). */
+  initialFacet?: string | null;
   /** Coarse edge-IP origin used to rank BEFORE a precise device fix (never to
    *  print a distance). Null when out of area → Downtown default. */
   approxOrigin?: { lng: number; lat: number } | null;
@@ -124,7 +128,7 @@ export default function RightNow({
   // Sub-filters on the results page ("find more specific things"): a facet
   // narrows within the craving (Food → Pizza), and Open now hides closed —
   // ON by default so the page leads with what you can actually walk into.
-  const [facetKey, setFacetKey] = useState<string | null>(null);
+  const [facetKey, setFacetKey] = useState<string | null>(initialFacet ?? null);
   const [openOnly, setOpenOnly] = useState(true);
   // "Catch it before it closes" — narrow to places open but closing within the
   // hour. Off by default; the chip only appears when there ARE any (below).

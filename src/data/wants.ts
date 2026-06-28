@@ -102,9 +102,10 @@ export const WANTS: WantCategory[] = [
     color: "var(--app-cool)",
     subs: [
       { label: "Shops", icon: "ShoppingBag", href: "/nearby?c=shops" },
+      { label: "Thrift & vintage", icon: "Armchair", href: "/nearby?c=shops&facet=thrift" },
+      { label: "Home & décor", icon: "Sparkles", href: "/nearby?c=shops&facet=home" },
       { label: "Farmers markets", icon: "ShoppingBasket", href: "/category/market" },
       { label: "Books", icon: "BookOpen", href: "/category/book-store" },
-      { label: "Antiques", icon: "Armchair", href: "/category/antiques" },
     ],
   },
   {
