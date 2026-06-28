@@ -339,6 +339,10 @@ export default function RightNow({
   // ── The answer (nearest open of the chosen craving / meal occasion) ──
   const ActiveIcon = ICONS[active.icon] ?? Utensils;
   const townName = townKey ? (MUNICIPALITY_BY_SLUG[townKey]?.name ?? null) : null;
+  // The heading reflects what you actually picked: the active facet ("Thrift &
+  // vintage") when one is set, otherwise the craving/meal ("Shops"). Without
+  // this, arriving from a Today sub like Shop → Thrift still read "Shops".
+  const headingNoun = facetDefs.find((f) => f.key === facetKey)?.label ?? active.label;
   return (
     <div className="space-y-4">
       <header className="space-y-2">
@@ -366,7 +370,7 @@ export default function RightNow({
               className="font-serif text-[22px] font-semibold leading-tight tracking-tight"
               style={{ color: "var(--app-ink)" }}
             >
-              {active.label}{" "}
+              {headingNoun}{" "}
               {townName ? `in ${townName}` : `near ${hasFix ? "you" : (approxCity ?? "Downtown")}`}
             </h1>
             {/* Meals frame the count on the CLOCK fact ("open for dinner now")
