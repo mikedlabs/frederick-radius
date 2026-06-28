@@ -15,7 +15,7 @@ import Link from "next/link";
  * top border, text-xs, ink-3 — the page's content keeps the stage.
  */
 // STRUCTURAL wayfinding only (about / trust / browse). The moat content
-// surfaces (Happy hour, Brunch, Intel/deals) deliberately do NOT live here —
+// surfaces (Happy hour, Brunch, Briefing/deals) deliberately do NOT live here —
 // they read as out-of-place next to "About / Towns / All places" in a sitewide
 // footer, and each is already a primary tile or link on /today, so they keep
 // their internal links from the home page.
