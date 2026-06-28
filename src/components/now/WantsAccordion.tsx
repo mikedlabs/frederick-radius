@@ -191,48 +191,56 @@ export default function WantsAccordion({
             background: `color-mix(in srgb, ${accent} 5%, var(--app-bg-sunken))`,
           }}
         >
-          <div className="flex flex-wrap gap-1.5">
-            {subsFor(openKey).map((sub) => {
-              return (
-                <Link
-                  key={sub.href + sub.label}
-                  href={sub.href}
-                  className="tactile-interactive group/sub inline-flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5 text-[13px] font-medium"
+          {/* Subs as a scannable mini-tile grid (engraved glyph + label), not a
+              cramped chip wrap — easier to read and consistent with the mains.
+              The time-aware Restaurants lead spans the row with its hint. */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {subsFor(openKey).map((sub) => (
+              <Link
+                key={sub.href + sub.label}
+                href={sub.href}
+                className={`tactile-interactive group/sub flex items-center gap-2.5 rounded-[var(--app-radius-sm)] p-2.5 ${
+                  sub.lead ? "col-span-2 sm:col-span-3" : ""
+                }`}
+                style={{
+                  border: sub.lead
+                    ? `1px solid color-mix(in srgb, ${accent} 45%, var(--app-border))`
+                    : "1px solid var(--app-border)",
+                  background: sub.lead
+                    ? `color-mix(in srgb, ${accent} 12%, var(--app-bg-elevated))`
+                    : "var(--app-bg-elevated)",
+                  color: "var(--app-ink)",
+                  boxShadow: "var(--app-elev-1), var(--app-hi)",
+                }}
+              >
+                <span
+                  aria-hidden
+                  className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]"
                   style={{
-                    border: sub.lead
-                      ? `1px solid color-mix(in srgb, ${accent} 45%, var(--app-border))`
-                      : "1px solid var(--app-border)",
-                    background: sub.lead
-                      ? `color-mix(in srgb, ${accent} 12%, var(--app-bg-elevated))`
-                      : "var(--app-bg-elevated)",
-                    color: "var(--app-ink)",
-                    boxShadow: "var(--app-elev-1), var(--app-hi)",
+                    background: `color-mix(in srgb, ${accent} ${sub.lead ? 22 : 14}%, var(--app-bg-elevated))`,
+                    boxShadow: "inset 0 0 0 1px color-mix(in srgb, var(--app-ink) 8%, transparent), var(--app-hi)",
+                    color: `color-mix(in srgb, ${accent} 80%, var(--app-ink))`,
                   }}
                 >
-                  <span
-                    aria-hidden
-                    className="grid h-6 w-6 shrink-0 place-items-center rounded-full"
-                    style={{
-                      background: `color-mix(in srgb, ${accent} ${sub.lead ? 22 : 14}%, var(--app-bg-elevated))`,
-                      color: `color-mix(in srgb, ${accent} 80%, var(--app-ink))`,
-                    }}
-                  >
-                    {renderIcon(sub.icon, "h-[15px] w-[15px]")}
+                  {renderIcon(sub.icon, "h-[18px] w-[18px]")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block truncate text-[13px] ${sub.lead ? "font-semibold" : "font-medium"}`}>
+                    {sub.label}
                   </span>
-                  <span className={sub.lead ? "font-semibold" : undefined}>{sub.label}</span>
                   {sub.hint && (
-                    <span className="font-normal" style={{ color: "var(--app-ink-3)" }}>
-                      · {sub.hint}
+                    <span className="block truncate text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                      {sub.hint}
                     </span>
                   )}
-                  <ChevronRight
-                    aria-hidden
-                    className="h-3.5 w-3.5 shrink-0 opacity-0 transition-opacity group-hover/sub:opacity-60"
-                    style={{ color: "var(--app-ink-3)" }}
-                  />
-                </Link>
-              );
-            })}
+                </span>
+                <ChevronRight
+                  aria-hidden
+                  className="h-3.5 w-3.5 shrink-0 opacity-30 transition-transform group-hover/sub:translate-x-0.5"
+                  style={{ color: "var(--app-ink-3)" }}
+                />
+              </Link>
+            ))}
           </div>
         </div>
       )}
