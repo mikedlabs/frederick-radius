@@ -159,7 +159,9 @@ function SourceRow({ label, wired, setupDoc, purpose }: { label: string; wired: 
       </div>
       <span className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
             style={{
-              background: wired ? `${"#1E6B3A"}1F` : `${"#B26B00"}1F`,
+              background: wired
+                ? "color-mix(in srgb, var(--app-positive) 12%, transparent)"
+                : "color-mix(in srgb, var(--app-warning) 12%, transparent)",
               color: wired ? "var(--app-positive)" : "var(--app-warning)",
             }}>
         {wired ? "Wired" : `See ${setupDoc}`}

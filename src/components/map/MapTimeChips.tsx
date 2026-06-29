@@ -58,7 +58,7 @@ export default function MapTimeChips({
           background: openNow
             ? "var(--app-positive)"
             : "color-mix(in srgb, var(--app-bg-elevated) 82%, transparent)",
-          color: openNow ? "#fff" : "var(--app-positive)",
+          color: openNow ? "var(--app-on-brand)" : "var(--app-positive)",
           border: openNow
             ? "1px solid var(--app-positive)"
             : "1px solid color-mix(in srgb, var(--app-positive) 35%, transparent)",
@@ -74,7 +74,7 @@ export default function MapTimeChips({
               background: openNow
                 ? "rgba(255,255,255,0.25)"
                 : "color-mix(in srgb, var(--app-positive) 12%, transparent)",
-              color: openNow ? "#fff" : "var(--app-positive)",
+              color: openNow ? "var(--app-on-brand)" : "var(--app-positive)",
             }}
           >
             {openNowCount}

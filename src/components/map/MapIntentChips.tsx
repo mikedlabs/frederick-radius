@@ -169,7 +169,7 @@ export default function MapIntentChips({
           className="pointer-events-auto mx-auto flex w-full max-w-[680px] items-center gap-2.5 rounded-full px-3.5 py-2"
           style={{
             background: activeIntent.color,
-            color: "#fff",
+            color: "var(--app-on-brand)",
             boxShadow: `0 10px 30px -10px ${activeIntent.color}`,
           }}
         >
@@ -223,7 +223,7 @@ export default function MapIntentChips({
             className="tap-44 shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] transition active:scale-[0.97]"
             style={{
               background: !activeSub ? activeIntent.color : "transparent",
-              color: !activeSub ? "#fff" : activeIntent.color,
+              color: !activeSub ? "var(--app-on-brand)" : activeIntent.color,
             }}
           >
             All
@@ -247,7 +247,7 @@ export default function MapIntentChips({
                   background: isActive
                     ? activeIntent.color
                     : "transparent",
-                  color: isActive ? "#fff" : activeIntent.color,
+                  color: isActive ? "var(--app-on-brand)" : activeIntent.color,
                 }}
               >
                 {SubIcon && <SubIcon className="h-3 w-3" strokeWidth={2.25} aria-hidden />}
