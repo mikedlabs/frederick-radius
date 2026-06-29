@@ -56,7 +56,7 @@ export type LiveEvent = {
   municipality: string;
   category: string;
   organizer: string;
-  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys";
+  source: "dfp" | "celebrate" | "county" | "hood" | "visit-frederick" | "weinberg" | "delaplaine" | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "fcpl" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick" | "monocacy" | "msd" | "mount-st-marys" | "frederick-keys";
   source_label: string;
   url: string;
   is_free: boolean;

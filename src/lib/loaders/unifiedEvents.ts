@@ -35,6 +35,7 @@ import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { fetchSeatGeek } from "@/lib/integrations/seatgeek";
 import { fetchEventbrite } from "@/lib/integrations/eventbrite";
 import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
+import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
@@ -57,7 +58,7 @@ export type UnifiedEvents = {
 async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
+  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, keysEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
     getLiveEvents(60).catch(() => ({
       events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
     })),
@@ -73,6 +74,9 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     // Visit Frederick destination-marketing events RSS (keyless Simpleview
     // feed). Partner-confidence county listings; fail-soft to [].
     fetchVisitFrederick().catch(() => []),
+    // Frederick Keys home games from the keyless MLB Stats API. Dedupes against
+    // Ticketmaster on the clean slug; fail-soft to [].
+    fetchFrederickKeys().catch(() => []),
     // Squarespace venue lineups (The Banyan, …): runtime-fetched from each
     // venue's `?format=json` events feed. Inert ([]) until a venue carries a
     // `squarespace` URL in live-music-venues.ts.
@@ -87,7 +91,10 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // Live/county + music + sports feeds, curated duplicates dropped.
   const liveCards = dedupeLiveAgainstCurated(
     collapseRecurringEvents(
-      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents, ...sgEvents, ...ebEvents, ...vfEvents].map(liveToCardEvent),
+      // Keys go immediately AFTER tmSports (load-bearing order): on a same-game
+      // slug collision the bySlug map keeps the first inserted, so the richer
+      // Ticketmaster row (price/tickets) wins and Keys only adds net-new games.
+      [...liveEventsRaw, ...tmMusic, ...tmSports, ...keysEvents, ...bitEvents, ...sgEvents, ...ebEvents, ...vfEvents].map(liveToCardEvent),
     ),
     curatedUpcoming,
   );
@@ -141,7 +148,7 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v11", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v12", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 300 },
 );
 

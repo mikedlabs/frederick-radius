@@ -1,0 +1,50 @@
+{
+  "copyright": "Copyright 2026 MLB Advanced Media, L.P.",
+  "dates": [
+    {
+      "date": "2026-07-01",
+      "games": [
+        {
+          "gamePk": 800001,
+          "gameDate": "2026-07-01T23:00:00Z",
+          "status": { "detailedState": "Scheduled" },
+          "teams": {
+            "away": { "team": { "id": 419, "name": "Hudson Valley Renegades" } },
+            "home": { "team": { "id": 493, "name": "Frederick Keys" } }
+          },
+          "venue": { "id": 2782, "name": "Nymeo Field" }
+        }
+      ]
+    },
+    {
+      "date": "2026-07-02",
+      "games": [
+        {
+          "gamePk": 800002,
+          "gameDate": "2026-07-02T23:00:00Z",
+          "status": { "detailedState": "Postponed" },
+          "teams": {
+            "away": { "team": { "id": 419, "name": "Hudson Valley Renegades" } },
+            "home": { "team": { "id": 493, "name": "Frederick Keys" } }
+          },
+          "venue": { "id": 2782, "name": "Nymeo Field" }
+        }
+      ]
+    },
+    {
+      "date": "2026-07-05",
+      "games": [
+        {
+          "gamePk": 800003,
+          "gameDate": "2026-07-05T17:05:00Z",
+          "status": { "detailedState": "Scheduled" },
+          "teams": {
+            "away": { "team": { "id": 493, "name": "Frederick Keys" } },
+            "home": { "team": { "id": 453, "name": "Brooklyn Cyclones" } }
+          },
+          "venue": { "id": 2502, "name": "Maimonides Park" }
+        }
+      ]
+    }
+  ]
+}

@@ -76,7 +76,7 @@ export type Event = {
     | "hood" | "visit-frederick" | "weinberg" | "delaplaine"
     | "fcpl" | "fcvfra" | "city-frederick" | "fair" | "mount-airy" | "thurmont" | "parks" | "heritage-frederick"
     | "monocacy" | "msd" | "mount-st-marys"
-    | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "venue-extract";
+    | "ticketmaster" | "bandsintown" | "seatgeek" | "eventbrite" | "venue-extract" | "frederick-keys";
   is_verified: boolean;
   /**
    * ISO date for when this event was last editorially verified. Live
