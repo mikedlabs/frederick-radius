@@ -149,10 +149,15 @@ function groupByRiver(sites: WaterSite[]): Array<{ river: string; sites: WaterSi
  * blank the dashboard — each tile self-hides on an empty feed.
  */
 function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return Promise.race([
-    Promise.resolve(p).catch(() => fallback),
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
-  ]);
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  // clearTimeout once the race settles so the loser timer doesn't linger ~ms
+  // past resolution for every feed on every render.
+  return Promise.race([Promise.resolve(p).catch(() => fallback), timeout]).finally(
+    () => clearTimeout(timer),
+  );
 }
 
 export default async function PulsePage({

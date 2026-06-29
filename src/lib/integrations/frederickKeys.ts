@@ -24,6 +24,7 @@
  * fail-soft to []; the pure normalizer is exported for unit testing.
  */
 import type { LiveEvent } from "@/lib/integrations/ical-live";
+import { cleanFeedText } from "@/lib/format/text";
 
 const STATSAPI = "https://statsapi.mlb.com/api/v1/schedule";
 const KEYS_TEAM_ID = 493;
@@ -84,8 +85,10 @@ export function normalizeStatsApiSchedule(
       out.push({
         id: `keys-${g.gamePk}`,
         // Mirror Ticketmaster's "Frederick Keys vs. <Opponent>" so the clean
-        // slug collides and the two sources dedupe to one card.
-        title: `${homeName} vs. ${away.name}`,
+        // slug collides and the two sources dedupe to one card. Run through the
+        // boundary cleaner like every other source (decode/whitespace; a no-op
+        // on clean team names).
+        title: cleanFeedText(`${homeName} vs. ${away.name}`),
         description: "",
         starts_at: new Date(start).toISOString(),
         ends_at: new Date(start + GAME_DURATION_MS).toISOString(),
