@@ -68,7 +68,12 @@ async function expectedBetaToken(pw: string): Promise<string> {
 }
 
 /** The shared-password beta wall. Returns a redirect to /beta when the site is
- *  gated and this request is not yet unlocked; null otherwise (incl. gate off). */
+ *  gated and this request is not yet unlocked; null otherwise (incl. gate off).
+ *
+ *  NOTE: BETA_PASSWORD is read into the Edge Middleware bundle at BUILD time, so
+ *  setting or changing it in Vercel requires a FRESH build (a new commit, or a
+ *  Redeploy with "Use existing Build Cache" UNCHECKED). A cache-reusing redeploy
+ *  keeps the old bundle and the gate stays off. */
 async function betaGate(req: NextRequest): Promise<NextResponse | null> {
   const pw = process.env.BETA_PASSWORD;
   if (!pw) return null; // gate disabled: site is public
