@@ -48,6 +48,8 @@ import { getFcpsAlerts } from "@/lib/integrations/fcps";
 import { getFixItIssues } from "@/lib/integrations/seeclickfix";
 import { getPulsePointIncidents } from "@/lib/integrations/pulsepoint";
 import { getNwsAlerts } from "@/lib/integrations/nws-alerts";
+import { getNwsForecast } from "@/lib/integrations/nws";
+import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getFrederickTransitRoutes, getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
@@ -165,7 +167,7 @@ export default async function PulsePage({
   // so one slow or failing upstream can't stall the ISR regeneration or blank
   // the board — each tile self-hides on an empty feed.
   const FEED_MS = 6000;
-  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes] = await Promise.all([
+  const [incidents, outages, fcps, fixit, safety, alerts, news, press, transitRoutes, rivers, airports, transitShapes, forecast] = await Promise.all([
     withTimeout(getChartIncidentsFrederick(), FEED_MS, []),
     withTimeout(getFrederickOutages(), FEED_MS, { total_out: 0, total_served: 0, munis: [] }),
     withTimeout(getFcpsAlerts(), FEED_MS, []),
@@ -187,7 +189,15 @@ export default async function PulsePage({
     withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
     // TransIT route shapes + stops for the live bus map (weekly-cached).
     withTimeout(getFrederickTransitRouteShapes(), FEED_MS, { type: "FeatureCollection" as const, features: [] }),
+    // Current conditions for the leading Weather tile (the full panel is its
+    // tap-to-open body). Same cached NWS call PulseWeatherPanel makes.
+    withTimeout(getNwsForecast(FREDERICK_CENTER), FEED_MS, null),
   ]);
+
+  // Current weather for the leading dashboard tile. The rich PulseWeatherPanel
+  // is the tile's body; here we only need the at-a-glance temp + condition.
+  const wxCur = forecast?.hourly?.[0] ?? null;
+  const wxCondition = wxCur ? wxCur.shortForecast.toLowerCase().replace(/^\w/, (c) => c.toUpperCase()) : null;
 
   // ── "By the numbers" canon — pure / no fetch beyond the routes
   // above. Computed once at request time. Numbers blend our LIVE
@@ -305,6 +315,22 @@ export default async function PulsePage({
     </p>
   );
   const pulseTiles: PulseTile[] = [
+    // Weather LEADS the board: "what's it doing out" is the most-asked live
+    // question. An ambient tile (not an alarm) carrying the current reading;
+    // tapping it opens the full conditions + hourly + 7-day panel as its body.
+    ...(wxCur
+      ? [{
+          key: "weather",
+          label: "Weather",
+          iconName: "CloudSun",
+          countLabel: `${wxCur.temperature}°`,
+          accent: "var(--app-cool)",
+          active: false,
+          sourceLabel: "NWS · weather.gov",
+          peek: wxCondition ?? undefined,
+          body: <PulseWeatherPanel />,
+        } as PulseTile]
+      : []),
     {
       key: "safety",
       label: "Fire & rescue",
@@ -677,13 +703,11 @@ export default async function PulsePage({
           civic signal a resident wants. Absent when there's no recent one. */}
       {breakingPolice && <PoliceBreakingStrip item={breakingPolice} now={nowMs} />}
 
-      {/* ── Weather, built into the dashboard — a tall, data-dense panel that
-          uses the vertical screen: a time-of-day sky header with the current
-          reading, a realtime stat grid (feels/humidity/wind/rain/dewpoint/AQI),
-          an hourly temperature curve, sun rise/set, and a 7-day range strip.
-          Leads the status board because "what's it doing out" is the most-asked
-          live question. Self-hides if the NWS feed is briefly down. */}
-      <PulseWeatherPanel />
+      {/* Weather is now the LEADING dashboard tile (key: "weather") rather than
+          a standalone panel: tapping it opens the full PulseWeatherPanel (sky
+          header, realtime stats, hourly curve, sun, 7-day) as the tile's body,
+          so weather is a first-class main category consistent with every other
+          feed's tap-to-open pattern. */}
 
       {/* ── Status dashboard — each tile opens the feed's detail in a
           bottom-sheet "window"; no more scroll-to-section. Seven tiles now
