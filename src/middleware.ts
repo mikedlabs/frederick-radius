@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { BETA_COOKIE, betaToken } from "@/lib/beta-gate";
 
 /**
  * Edge middleware: three independent gates, applied conditionally
@@ -39,6 +40,47 @@ function isAdminPath(pathname: string): boolean {
   return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
+/** Paths that stay reachable even while the beta wall is up: the unlock page +
+ *  its action, all API/fetch routes (never redirect a fetch to an HTML page),
+ *  and anything that is a real file (sw.js, manifest, icons, og images). */
+function isBetaExempt(pathname: string): boolean {
+  return (
+    pathname === "/beta" ||
+    pathname.startsWith("/beta/") ||
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/sitemap") ||
+    pathname.startsWith("/icons/") ||
+    pathname.startsWith("/opengraph") ||
+    /\.[a-z0-9]+$/i.test(pathname) // sw.js, manifest.webmanifest, robots.txt, *.png, ...
+  );
+}
+
+// Memoize the expected token across requests on a warm edge worker; recompute
+// only if the password env changes (a redeploy resets module scope anyway).
+let cachedPw: string | undefined;
+let cachedToken: string | null = null;
+async function expectedBetaToken(pw: string): Promise<string> {
+  if (cachedPw !== pw) {
+    cachedToken = await betaToken(pw);
+    cachedPw = pw;
+  }
+  return cachedToken!;
+}
+
+/** The shared-password beta wall. Returns a redirect to /beta when the site is
+ *  gated and this request is not yet unlocked; null otherwise (incl. gate off). */
+async function betaGate(req: NextRequest): Promise<NextResponse | null> {
+  const pw = process.env.BETA_PASSWORD;
+  if (!pw) return null; // gate disabled: site is public
+  const { pathname } = req.nextUrl;
+  if (isBetaExempt(pathname)) return null;
+  const cookie = req.cookies.get(BETA_COOKIE)?.value;
+  if (cookie && cookie === (await expectedBetaToken(pw))) return null; // unlocked
+  const url = new URL("/beta", req.url);
+  url.searchParams.set("next", pathname + req.nextUrl.search);
+  return NextResponse.redirect(url);
+}
+
 function adminBasicAuth(req: NextRequest): NextResponse | null {
   const user = process.env.ADMIN_USER;
   const pass = process.env.ADMIN_PASSWORD;
@@ -73,6 +115,12 @@ export async function middleware(req: NextRequest) {
     // is its own world.
     return NextResponse.next();
   }
+
+  // Beta wall (when BETA_PASSWORD is set): redirect un-unlocked visitors to
+  // /beta. Sits before the session refresh so a locked visitor never reaches
+  // the app. No-op when the gate is disabled.
+  const blocked = await betaGate(req);
+  if (blocked) return blocked;
 
   // Everywhere else: refresh Supabase session on the cookie if there
   // is one, then pass through. Logged-out users get an unchanged

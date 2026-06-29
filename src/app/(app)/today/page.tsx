@@ -15,6 +15,8 @@ import LocationPrime from "@/components/today/LocationPrime";
 // lives at src/components/today/AdaptiveGreeting.tsx if we want to
 // surface it elsewhere later.
 import CivicAlerts from "@/components/today/CivicAlerts";
+import MastheadNotes from "@/components/today/MastheadNotes";
+import WeatherNudge from "@/components/today/WeatherNudge";
 import DismissibleSection from "@/components/today/DismissibleSection";
 import EventCard from "@/components/event/EventCard";
 import PageBloom from "@/components/ui/PageBloom";
@@ -27,10 +29,10 @@ import WeeklyForecast from "@/components/today/WeeklyForecast";
 import WeeklyCard from "@/components/today/WeeklyCard";
 import WeeklySummary from "@/components/today/WeeklySummary";
 import BetaIntroCard from "@/components/today/BetaIntroCard";
-import HolidayNote from "@/components/today/HolidayNote";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
 import FromYourSaved from "@/components/today/FromYourSaved";
+import TasteNudge from "@/components/today/TasteNudge";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // CreekHairline removed in the pleasant-layout pass — it was a
 // decorative divider between weather/discovery and action; the
@@ -49,7 +51,6 @@ import CravingStrip from "@/components/now/CravingStrip";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
 import NowIntel from "@/components/today/NowIntel";
-import PrideBeat from "@/components/today/PrideBeat";
 
 /**
  * Now — the daily briefing.
@@ -224,15 +225,25 @@ export default async function HomePage() {
             From Downtown to the surrounding towns: food, events, parks, shops, and the places worth your time, right now.
           </p>
         </FirstVisitNote>
-        <div className="mt-2 space-y-1.5">
-          <HolidayNote now={now} />
-          <PrideBeat now={now} />
-          {/* Salutation + golden-hour / daylight cue — event-dependent, so it
-              streams in its own Suspense boundary while the plate paints first. */}
-          <Suspense fallback={null}>
-            <TodayContextSlot eventsPromise={eventsPromise} now={now} />
-          </Suspense>
-        </div>
+        {/* The masthead almanac notes, capped + prioritized by MastheadNotes so
+            the stack never piles up: at most one dated note (holiday / First
+            Saturday / Pride / season) plus the streamed weather "duck inside"
+            beat plus the always-on town picker. WeatherNudge and TodayContext are
+            passed in PRE-SUSPENDED so MastheadNotes never awaits the forecast or
+            the events feed (the plate paints first). */}
+        <MastheadNotes
+          now={now}
+          weatherSlot={
+            <Suspense fallback={null}>
+              <WeatherNudge />
+            </Suspense>
+          }
+          contextSlot={
+            <Suspense fallback={null}>
+              <TodayContextSlot eventsPromise={eventsPromise} now={now} />
+            </Suspense>
+          }
+        />
         <div className="fg-rule mt-3" aria-hidden />
       </header>
 
@@ -339,6 +350,13 @@ export default async function HomePage() {
           <OnNowBand now={now} eventsPromise={eventsPromise} />
         </Suspense>
       </div>
+
+      {/* TASTE-AWARE: a single quiet shortcut derived from the user's OWN saved
+          places (their dominant craving), linking into /nearby for it. Client +
+          self-hiding (renders nothing until the saves show a clear pattern), so
+          it never weighs on a first-timer and never touches the I-want grid's
+          first-paint path. Finding from the user's own signal, not telling. */}
+      <TasteNudge />
 
       {/* "What's happening around you" (NearbyNow) was removed from /today
           (owner call): the craving grid + Today's Deals already answer "near
@@ -537,6 +555,7 @@ async function TonightTeaser({ eventsPromise, now }: { eventsPromise: EventsProm
               title: featuredEvent.title,
               venue_name: featuredEvent.venue_name ?? null,
               starts_at: featuredEvent.starts_at,
+              ends_at: featuredEvent.ends_at ?? featuredEvent.starts_at,
             }
           : null
       }
