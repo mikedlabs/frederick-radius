@@ -90,10 +90,13 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
     distance_m: undefined,
-    // Live feeds carry no per-event geocode — every row sits on its feed's
-    // default centroid, so this resolves to "area" and never claims a
-    // distance. See lib/events/geo-confidence.
-    geo_confidence: eventGeoConfidence({ geom: e.geom }),
+    // Most live feeds carry no per-event geocode — every row sits on its
+    // feed's default centroid, so this resolves to "area" and never claims a
+    // distance. A feed that DOES resolve a distinct per-event coordinate marks
+    // it with placement:"geocoded" (e.g. Visit Frederick detail-page JSON-LD),
+    // which lifts it to "exact_address" and a real distance. Absent placement,
+    // behaviour is exactly as before. See lib/events/geo-confidence.
+    geo_confidence: eventGeoConfidence({ placement: e.placement, geom: e.geom }),
   };
 }
 

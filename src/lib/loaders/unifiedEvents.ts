@@ -141,7 +141,7 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v10", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v11", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 300 },
 );
 

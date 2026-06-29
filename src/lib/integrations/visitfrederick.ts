@@ -37,11 +37,24 @@
  */
 import type { LiveEvent } from "@/lib/integrations/ical-live";
 import { easternWallToUtcISO } from "@/lib/tz";
+import { isInsideFrederickCounty } from "@/lib/geo";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 
 const FEED_URL = "https://www.visitfrederick.org/event/rss/";
 const FETCH_TIMEOUT_MS = 15_000;
 const SOURCE_LABEL = "Visit Frederick";
+const USER_AGENT = "FrederickRadius/1.0 (+https://frederickradius.app)";
+
+// Detail-page enrichment (Item 1): each RSS link points at a detail page that
+// embeds schema.org Event JSON-LD with the venue, address, and coordinates the
+// RSS omits. We fetch those pages with a small concurrency pool and a short
+// per-page timeout, and cache each for a day (they are near-static for a given
+// event id), so the cold cost is paid once per day app-wide and a warm render
+// is ~30 data-cache reads. Any page that fails leaves its event on the town
+// centroid (today's behaviour) — enrichment is purely additive.
+const DETAIL_TIMEOUT_MS = 4_000;
+const DETAIL_CONCURRENCY = 6;
+const DETAIL_REVALIDATE_S = 86_400;
 
 // Visit Frederick region tag (lower-cased) -> our municipality slug. The feed
 // tags each listing with a region; map the ones that name a town we model,
@@ -195,30 +208,186 @@ export function normalizeVisitFrederickRss(xml: string, now: Date = new Date()):
   return out;
 }
 
+/** What a detail page's schema.org Event JSON-LD adds over the RSS row. */
+export type VfDetail = {
+  venue_name: string;
+  address: string;
+  /** Precise venue coordinate, only when finite AND inside the county. */
+  geom: { lng: number; lat: number } | null;
+  description: string;
+};
+
+const LD_JSON_RE = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+
+/** Find the schema.org Event node in a parsed JSON-LD value (handles a bare
+ *  object, an array of nodes, or an `@graph` wrapper). */
+function asEventNode(parsed: unknown): Record<string, unknown> | null {
+  const consider = (v: unknown): Record<string, unknown> | null => {
+    if (!v || typeof v !== "object") return null;
+    const o = v as Record<string, unknown>;
+    const t = o["@type"];
+    const isEvent =
+      t === "Event" ||
+      (Array.isArray(t) && t.includes("Event")) ||
+      (typeof t === "string" && /(^|\W)Event$/.test(t));
+    return isEvent ? o : null;
+  };
+  if (Array.isArray(parsed)) {
+    for (const n of parsed) {
+      const hit = consider(n);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  if (parsed && typeof parsed === "object") {
+    const graph = (parsed as Record<string, unknown>)["@graph"];
+    if (Array.isArray(graph)) {
+      for (const n of graph) {
+        const hit = consider(n);
+        if (hit) return hit;
+      }
+    }
+    return consider(parsed);
+  }
+  return null;
+}
+
 /**
- * Fetch + normalize the Visit Frederick events RSS. Returns [] (never throws
- * into the events page) on any network, status, or parse failure. HTTP-cached
- * upstream (next.revalidate 3600) so concurrent /today + /events renders share
- * one fetch.
+ * Pure: extract venue/address/geo/description from a Visit Frederick detail
+ * page's schema.org Event JSON-LD. Returns null when no usable Event block is
+ * found. Never throws (a malformed JSON block is skipped). Exported for unit
+ * testing against a captured fixture with no network.
+ */
+export function parseVisitFrederickDetail(html: string): VfDetail | null {
+  if (!html) return null;
+  LD_JSON_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = LD_JSON_RE.exec(html))) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(m[1].trim());
+    } catch {
+      continue; // a non-JSON or HTML-bearing block: skip, never throw
+    }
+    const ev = asEventNode(parsed);
+    if (!ev) continue;
+    const loc = (ev.location ?? {}) as Record<string, unknown>;
+    const addr = (loc.address ?? {}) as Record<string, unknown>;
+    const geoRaw = (loc.geo ?? {}) as Record<string, unknown>;
+    const lat = Number(geoRaw.latitude);
+    const lng = Number(geoRaw.longitude);
+    // Only adopt a coordinate we can vouch for: finite AND inside the county.
+    const geom =
+      Number.isFinite(lat) && Number.isFinite(lng) && isInsideFrederickCounty(lat, lng)
+        ? { lng, lat }
+        : null;
+    const region = [addr.addressRegion, addr.postalCode]
+      .map((p) => (typeof p === "string" ? p.trim() : ""))
+      .filter(Boolean)
+      .join(" ");
+    const address = [addr.streetAddress, addr.addressLocality, region]
+      .map((p) => (typeof p === "string" ? p.trim() : p === region ? region : ""))
+      .filter(Boolean)
+      .join(", ");
+    return {
+      venue_name: typeof loc.name === "string" ? loc.name.trim() : "",
+      address,
+      geom,
+      description: typeof ev.description === "string" ? ev.description.trim() : "",
+    };
+  }
+  return null;
+}
+
+/** Run `fn` over `items` with at most `limit` in flight; preserves order. */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const idx = next++;
+      out[idx] = await fn(items[idx]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+/** Fetch one detail page and parse its JSON-LD. Fail-soft → null. Cached a day
+ *  per URL (detail pages are near-static for a given event id). */
+async function fetchVisitFrederickDetail(url: string): Promise<VfDetail | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), DETAIL_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      next: { revalidate: DETAIL_REVALIDATE_S },
+      headers: { "User-Agent": USER_AGENT },
+    });
+    if (!res.ok) return null;
+    return parseVisitFrederickDetail(await res.text());
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Fetch + normalize the Visit Frederick events RSS, then enrich each row from
+ * its detail page (venue, address, precise geo, fuller description). Returns []
+ * (never throws into the events page) on any RSS network/parse failure;
+ * degrades to the un-enriched RSS rows if enrichment as a whole fails. The RSS
+ * is HTTP-cached (revalidate 3600) and each detail page a day, so concurrent
+ * /today + /events renders share cache entries.
  */
 export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  let base: LiveEvent[];
   try {
     const res = await fetch(FEED_URL, {
       signal: ctrl.signal,
       next: { revalidate: 3600 },
-      headers: { "User-Agent": "FrederickRadius/1.0 (+https://frederickradius.app)" },
+      headers: { "User-Agent": USER_AGENT },
     });
     if (!res.ok) {
       console.error(`[visit-frederick] HTTP ${res.status}`);
       return [];
     }
-    return normalizeVisitFrederickRss(await res.text());
+    base = normalizeVisitFrederickRss(await res.text());
   } catch (err) {
     console.error("[visit-frederick] fetch failed:", err);
     return [];
   } finally {
     clearTimeout(timer);
+  }
+  if (base.length === 0) return base;
+
+  // Enrich each row from its detail page. Fail-soft PER PAGE (a failed page
+  // keeps the centroid row the RSS produced) and overall (any thrown error
+  // returns the un-enriched feed), so the worst case equals today's behaviour.
+  try {
+    return await mapWithConcurrency(base, DETAIL_CONCURRENCY, async (e) => {
+      const d = e.url ? await fetchVisitFrederickDetail(e.url) : null;
+      if (!d) return e;
+      const description = d.description.length > e.description.length ? d.description : e.description;
+      return {
+        ...e,
+        venue_name: d.venue_name || e.venue_name,
+        address: d.address || e.address,
+        description,
+        // Precise coord -> mark "geocoded" so the card shows a real distance.
+        // No coord -> stay on the town centroid (no placement -> "area").
+        ...(d.geom ? { geom: d.geom, placement: "geocoded" as const } : {}),
+      };
+    });
+  } catch (err) {
+    console.error("[visit-frederick] enrichment failed, using un-enriched feed:", err);
+    return base;
   }
 }

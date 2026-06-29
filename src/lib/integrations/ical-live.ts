@@ -46,6 +46,13 @@ export type LiveEvent = {
   venue_name: string;
   address: string;
   geom: LngLat;
+  /** Optional positional-precision hint for eventGeoConfidence. ABSENT on every
+   *  existing source, so behaviour is unchanged: a town-centroid coord → "area",
+   *  a precise non-centroid coord → "unknown" (lists, no distance). Set to
+   *  "geocoded" ONLY when a row carries a distinct, vouched-for per-event
+   *  coordinate (e.g. Visit Frederick detail-page JSON-LD geo, Frederick Keys
+   *  stadium) so the card can show a real distance. */
+  placement?: "geocoded" | "venue";
   municipality: string;
   category: string;
   organizer: string;
