@@ -28,7 +28,11 @@ const PHOTOGENIC: ReadonlySet<string> = new Set([
   "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
   "park", "trail", "outdoors", "playground",
   "museum", "gallery", "theater", "music", "public-art",
-  "market", "lodging", "family", "winery",
+  "market", "lodging", "family",
+  // The county's signature photo-led draws: the wine/spirits trails and
+  // pick-your-own, which overrides patch dozens of places into. They were
+  // missing here, so a high-rated vineyard or orchard could never surface.
+  "winery", "distillery", "agritourism", "ice-cream",
 ]);
 
 /** Eastern-time YYYY-MM-DD — the rotation key. */

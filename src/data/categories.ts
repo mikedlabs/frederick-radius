@@ -28,7 +28,7 @@ export const CATEGORIES: Category[] = [
   { slug: "bakery", name: "Bakeries", parent: "food", icon: "Cookie", color: "#B26B00", display_order: 15, blurb: "Pastry, bread, and the morning rituals worth the line." },
   { slug: "pizza", name: "Pizza", parent: "food", icon: "Pizza", color: "#E14328", display_order: 16, blurb: "Pies from quick slice to wood-fired." },
   { slug: "ice-cream", name: "Ice cream & treats", parent: "food", icon: "IceCream", color: "#D6739B", display_order: 17, blurb: "Ice cream, gelato, frozen custard, snowballs, and sweet shops." },
-  { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#E14328", display_order: 17, blurb: "Frederick's food trucks rotate weekly. Here's where they reliably park, plus the festivals built around them." },
+  { slug: "food-truck", name: "Food Trucks", parent: "food", icon: "Truck", color: "#E14328", display_order: 17.5, blurb: "Frederick's food trucks rotate weekly. Here's where they reliably park, plus the festivals built around them." },
 
   { slug: "outdoors", name: "Parks & Trails", icon: "Trees", color: "#1E6B3A", display_order: 20, blurb: "Parks, trails, playgrounds, water, and views." },
   { slug: "park", name: "Parks", parent: "outdoors", icon: "Trees", color: "#1E6B3A", display_order: 21, blurb: "Public parks across all 12 municipalities and the county." },
@@ -87,7 +87,7 @@ export const CATEGORIES: Category[] = [
   { slug: "recycling", name: "Recycling drop-offs", parent: "amenities", icon: "Recycle", color: "#1E6B3A", display_order: 104, blurb: "Glass, plastic, paper, and yard-waste drop-offs." },
   { slug: "dog-waste", name: "Dog waste stations", parent: "amenities", icon: "PawPrint", color: "#1E6B3A", display_order: 105, blurb: "Dog-bag dispensers and waste bins." },
   { slug: "wifi", name: "Public WiFi", parent: "amenities", icon: "Wifi", color: "#20506A", display_order: 106, blurb: "Free public internet: libraries, parks, and spots that publish open WiFi." },
-  { slug: "bench", name: "Benches", parent: "amenities", icon: "Armchair", color: "#7A7975", display_order: 106, blurb: "Public seating along trails and in parks." },
+  { slug: "bench", name: "Benches", parent: "amenities", icon: "Armchair", color: "#7A7975", display_order: 106.5, blurb: "Public seating along trails and in parks." },
   { slug: "picnic", name: "Picnic areas", parent: "amenities", icon: "Utensils", color: "#1E6B3A", display_order: 107, blurb: "Picnic tables, shelters, and grilling spots." },
   { slug: "bike-parking", name: "Bike parking", parent: "amenities", icon: "Bike", color: "#20506A", display_order: 108, blurb: "Bike racks and corrals." },
   { slug: "bike-repair", name: "Bike repair stations", parent: "amenities", icon: "Wrench", color: "#20506A", display_order: 109, blurb: "Public fix-it stations with tools and air pumps." },

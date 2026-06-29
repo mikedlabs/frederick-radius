@@ -47,6 +47,9 @@ const WEEKEND_BET_CATS = new Set([
   "restaurant", "bar", "brewery", "coffee", "bakery", "pizza",
   "music", "theater", "gallery", "museum", "market",
   "park", "trail", "outdoors", "playground",
+  // The wine/spirits trails and pick-your-own farms are exactly the
+  // weekend-bet draws of the county; they were absent from this set.
+  "winery", "distillery", "agritourism", "ice-cream",
 ]);
 
 function openNowCats(daypart: Daypart): Set<string> {

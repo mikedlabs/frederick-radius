@@ -78,6 +78,7 @@ const REGION_TO_MUNICIPALITY: Record<string, string> = {
   myersville: "myersville",
   woodsboro: "woodsboro",
   burkittsville: "burkittsville",
+  rosemont: "rosemont",
   urbana: "urbana",
 };
 
