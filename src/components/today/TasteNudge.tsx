@@ -28,23 +28,26 @@ const CRAVING_PRIORITY = [
   "drinks", "shops", "outside", "food",
 ];
 
-// Display nouns per craving key, the way a person says it.
+// Display nouns per craving key. `lower` is a PLACE-noun that reads naturally
+// after "You keep a lot of ___." (the nudge is about saved PLACES, so every
+// value is a plural/mass place-noun, never a singular count noun like "a
+// drink"). `cap` is the short label for the "<X> near you" link.
 const NOUN: Record<string, { lower: string; cap: string }> = {
-  coffee: { lower: "coffee", cap: "Coffee" },
-  "ice-cream": { lower: "ice cream", cap: "Ice cream" },
-  food: { lower: "good food", cap: "Food" },
-  drinks: { lower: "a good drink", cap: "Drinks" },
+  coffee: { lower: "coffee spots", cap: "Coffee" },
+  "ice-cream": { lower: "ice cream shops", cap: "Ice cream" },
+  food: { lower: "places to eat", cap: "Food" },
+  drinks: { lower: "bars and taprooms", cap: "Drinks" },
   breweries: { lower: "breweries", cap: "Breweries" },
   wineries: { lower: "wineries", cap: "Wineries" },
-  grocery: { lower: "groceries", cap: "Grocery" },
-  outside: { lower: "the outdoors", cap: "Parks" },
+  grocery: { lower: "grocery stores", cap: "Grocery" },
+  outside: { lower: "parks and trails", cap: "Parks" },
   shops: { lower: "shops", cap: "Shops" },
-  art: { lower: "art", cap: "Art" },
-  music: { lower: "live music", cap: "Live music" },
-  family: { lower: "family outings", cap: "Family fun" },
-  golf: { lower: "golf", cap: "Golf" },
+  art: { lower: "galleries and museums", cap: "Art" },
+  music: { lower: "live-music spots", cap: "Live music" },
+  family: { lower: "family spots", cap: "Family fun" },
+  golf: { lower: "golf courses", cap: "Golf" },
   farms: { lower: "farms", cap: "Farms" },
-  movies: { lower: "movies", cap: "Movies" },
+  movies: { lower: "movie theaters", cap: "Movies" },
   pools: { lower: "pools", cap: "Pools" },
   salon: { lower: "salons", cap: "Salons" },
   wellness: { lower: "wellness spots", cap: "Wellness" },
@@ -101,19 +104,31 @@ export default function TasteNudge() {
     if (!places || places.length < MIN_SAVED) return null;
     const saved = new Set(slugs);
     const tally = new Map<string, number>();
+    const townsByCraving = new Map<string, Set<string>>();
     let matched = 0;
     for (const p of places) {
       if (!saved.has(p.slug)) continue; // intersect the LIVE saved set
       const key = bestCraving(p as CravingMatchable);
       if (!key) continue;
       tally.set(key, (tally.get(key) ?? 0) + 1);
+      if (p.municipality) {
+        const set = townsByCraving.get(key) ?? new Set<string>();
+        set.add(p.municipality);
+        townsByCraving.set(key, set);
+      }
       matched++;
     }
     if (matched === 0) return null;
     const [winner, n] = [...tally.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
     if (n < MIN_TOP || n / matched < DOMINANCE) return null; // no clear top
-    return CRAVING_BY_KEY[winner] ? { key: winner, n } : null;
-  }, [places, slugs]);
+    if (!CRAVING_BY_KEY[winner]) return null;
+    // Town-scope the /nearby link ONLY when the user actually saved one of these
+    // in their home town, which guarantees a non-empty town-scoped result. If
+    // their saves of this craving are all elsewhere, answer county-wide so we
+    // never deep-link into an empty town filter.
+    const scopeTown = Boolean(homeMuni && townsByCraving.get(winner)?.has(homeMuni));
+    return { key: winner, n, scopeTown };
+  }, [places, slugs, homeMuni]);
 
   if (loading || !top) return null; // honest empty: render nothing
 
@@ -121,7 +136,7 @@ export default function TasteNudge() {
     lower: CRAVING_BY_KEY[top.key].label.toLowerCase(),
     cap: CRAVING_BY_KEY[top.key].label,
   };
-  const href = `/nearby?c=${encodeURIComponent(top.key)}${homeMuni ? `&town=${encodeURIComponent(homeMuni)}` : ""}`;
+  const href = `/nearby?c=${encodeURIComponent(top.key)}${top.scopeTown && homeMuni ? `&town=${encodeURIComponent(homeMuni)}` : ""}`;
 
   return (
     <Link
