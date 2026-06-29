@@ -34,6 +34,7 @@ import {
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { fetchSeatGeek } from "@/lib/integrations/seatgeek";
 import { fetchEventbrite } from "@/lib/integrations/eventbrite";
+import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
@@ -56,7 +57,7 @@ export type UnifiedEvents = {
 async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
 
-  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
+  const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
     getLiveEvents(60).catch(() => ({
       events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
     })),
@@ -69,6 +70,9 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     // Eventbrite organizer registry (Phase 4 item 4): inert without
     // EVENTBRITE_TOKEN or an empty registry.
     fetchEventbrite().catch(() => []),
+    // Visit Frederick destination-marketing events RSS (keyless Simpleview
+    // feed). Partner-confidence county listings; fail-soft to [].
+    fetchVisitFrederick().catch(() => []),
     // Squarespace venue lineups (The Banyan, …): runtime-fetched from each
     // venue's `?format=json` events feed. Inert ([]) until a venue carries a
     // `squarespace` URL in live-music-venues.ts.
@@ -83,7 +87,7 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   // Live/county + music + sports feeds, curated duplicates dropped.
   const liveCards = dedupeLiveAgainstCurated(
     collapseRecurringEvents(
-      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents, ...sgEvents, ...ebEvents].map(liveToCardEvent),
+      [...liveEventsRaw, ...tmMusic, ...tmSports, ...bitEvents, ...sgEvents, ...ebEvents, ...vfEvents].map(liveToCardEvent),
     ),
     curatedUpcoming,
   );
@@ -137,7 +141,7 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v9", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v10", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 300 },
 );
 

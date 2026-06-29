@@ -15,6 +15,7 @@ import {
   fetchTicketmasterSports,
 } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -124,14 +125,15 @@ export async function getLiveCardEventBySlug(
   // 6 of 45 listing links dead). Same fail-soft pattern as the index:
   // a hung provider degrades to [], never throws. All four fetches are
   // HTTP-cached upstream, so this shares the index's cache entries.
-  const [ical, tmMusic, tmSports, bit, sqRaw] = await Promise.all([
+  const [ical, tmMusic, tmSports, bit, vf, sqRaw] = await Promise.all([
     getCachedLiveEvents(windowDays).then((r) => r.events).catch(() => [] as LiveEvent[]),
     fetchTicketmasterMusic().catch(() => [] as LiveEvent[]),
     fetchTicketmasterSports().catch(() => [] as LiveEvent[]),
     fetchBandsintownForArtists([]).catch(() => [] as LiveEvent[]),
+    fetchVisitFrederick().catch(() => [] as LiveEvent[]),
     fetchSquarespaceVenueEvents(windowDays).catch(() => []),
   ]);
-  const events = [...ical, ...tmMusic, ...tmSports, ...bit];
+  const events = [...ical, ...tmMusic, ...tmSports, ...bit, ...vf];
   // Clean stored slug first (the canonical form a card links to).
   let hit = events.find((e) => liveCleanSlug(e) === slug);
   // Legacy fallback: an old "live-..." shared link still resolves so it
