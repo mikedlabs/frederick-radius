@@ -24,6 +24,7 @@ import { getLandmarkPhoto } from "@/lib/integrations/wikimedia";
 import { autoFold } from "@/lib/dedupe";
 import { makeResolver, patchRecord, type Overrides } from "@/lib/overrides";
 import { normalizePlaceName, normalizeCity } from "@/lib/format/placeName";
+import { cleanFeedText } from "@/lib/format/text";
 import { hasFieldNotes, fieldNotesFor } from "@/lib/loaders/fieldNotes";
 import { amenityTags } from "@/lib/loaders/placeAmenities";
 import { findMarketSchedule, type MdMarket } from "@/lib/integrations/mdFarmersMarkets";
@@ -538,10 +539,15 @@ function applyEnrichment(p: Place): Place & PlaceEnriched {
   // discovered, Google's real one-line description replaces the
   // scraped/placeholder blurb ("Coffee in Thurmont"). Never blank,
   // never fabricated — only a real Google summary wins.
-  const short_blurb =
+  // Boundary clean: scraped/editorial blurbs carry em dashes (against the
+  // no-em-dash voice rule), stray entities, and tags. cleanFeedText normalizes
+  // them (— -> ", ") and is a no-op on already-clean curated text, so both the
+  // client bundle and the server detail page render consistent, on-voice copy.
+  const rawBlurb =
     p.source !== "seed" && p.source !== "manual" && e.editorial_summary?.trim()
       ? e.editorial_summary.trim()
       : p.short_blurb;
+  const short_blurb = rawBlurb ? cleanFeedText(rawBlurb) : rawBlurb;
   // Hours: a hand-curated structured schedule (seed/manual, e.g. the
   // parks) always wins; otherwise parse Google's weekday strings into the
   // structured shape getOpenStatus needs. THIS is the line that lifts
@@ -726,7 +732,9 @@ export function decoratePlace(p: Place, origin?: LngLat, now: Date = new Date())
     deal_hook: figureCount(fieldNotesFor(p.slug)?.happy_hour?.details) === 1
       ? (dealHook(fieldNotesFor(p.slug)?.happy_hour?.details) ?? undefined)
       : undefined,
-    field_note_tip: fieldNoteTip(p.slug),
+    // Boundary clean (em-dash voice rule): a curated field-note tip may carry
+    // an em dash; cleanFeedText converts it and is a no-op on clean text.
+    field_note_tip: ((tip) => (tip ? cleanFeedText(tip) : tip))(fieldNoteTip(p.slug)),
     ...marketFields(enriched.category, enriched.name),
   };
 }
