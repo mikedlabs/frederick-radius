@@ -84,6 +84,18 @@ export default function Sheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  // Restore focus to the trigger when the sheet closes (it had role=dialog +
+  // aria-modal + ESC, but never returned focus, stranding keyboard/SR users).
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (open) {
+      lastFocusedRef.current = (document.activeElement as HTMLElement | null) ?? null;
+    } else if (lastFocusedRef.current) {
+      lastFocusedRef.current.focus?.();
+      lastFocusedRef.current = null;
+    }
+  }, [open]);
+
   // Swipe-down dismiss. We track touchmove on the drag handle / header
   // area only; the scrollable body keeps its native scroll so a swipe
   // inside long content scrolls instead of dismissing. The threshold

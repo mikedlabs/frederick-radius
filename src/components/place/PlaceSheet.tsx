@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useMotionValue, useTransform, type PanInfo } from "framer-motion";
+import { motion, AnimatePresence, useMotionValue, useTransform, useReducedMotion, type PanInfo } from "framer-motion";
 import { ExternalLink, Phone, Globe, Navigation, X, Expand, ChevronRight, MapPin, Instagram, Footprints, Car, UtensilsCrossed, ShoppingBag, ParkingCircle, BookOpen } from "lucide-react";
 import { placeActions, type PlaceAction } from "@/lib/place-actions";
 import Link from "next/link";
@@ -39,18 +39,34 @@ type Props = {
 };
 
 export default function PlaceSheet({ place, onClose }: Props) {
+  const reduce = useReducedMotion();
   const y = useMotionValue(0);
   const backdropOpacity = useTransform(y, [0, 300], [0.45, 0]);
   const sheetRef = useRef<HTMLDivElement>(null);
+  // Remember what was focused before opening so we can restore it on close —
+  // a baseline dialog expectation (the sheet had aria-modal but never managed
+  // focus, leaving keyboard/SR users stranded behind it).
+  const lastFocused = useRef<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (place) {
+      lastFocused.current = (document.activeElement as HTMLElement | null) ?? null;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs sheet-open state to the incoming place prop to drive the open animation
       setOpen(true);
       haptic("light");
     }
   }, [place]);
+
+  // Move focus into the sheet on open; restore it to the trigger on close.
+  useEffect(() => {
+    if (open) {
+      sheetRef.current?.focus();
+    } else if (lastFocused.current) {
+      lastFocused.current.focus?.();
+      lastFocused.current = null;
+    }
+  }, [open]);
 
   // Lock body scroll while open
   useEffect(() => {
@@ -94,7 +110,7 @@ export default function PlaceSheet({ place, onClose }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
+            transition={reduce ? { duration: 0 } : { duration: 0.18 }}
             className="absolute inset-0 bg-black"
             style={{ opacity: backdropOpacity }}
           />
@@ -102,10 +118,11 @@ export default function PlaceSheet({ place, onClose }: Props) {
           {/* Sheet */}
           <motion.div
             ref={sheetRef}
+            tabIndex={-1}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 32 }}
             drag="y"
             dragConstraints={{ top: 0, bottom: 600 }}
             dragElastic={{ top: 0, bottom: 0.55 }}

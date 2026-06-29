@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { HTMLMotionProps, motion } from "framer-motion";
+import { HTMLMotionProps, motion, useReducedMotion } from "framer-motion";
 import { ReactNode } from "react";
 
 interface AnimatedButtonProps extends HTMLMotionProps<"button"> {
@@ -10,6 +10,7 @@ interface AnimatedButtonProps extends HTMLMotionProps<"button"> {
 }
 
 export function AnimatedButton({ children, className, variant = "primary", ...props }: AnimatedButtonProps) {
+    const reduce = useReducedMotion();
     const variants = {
         primary: "bg-gradient-to-r from-primary to-secondary text-white border-transparent shadow-[0_0_20px_rgba(112,0,255,0.5)]",
         secondary: "bg-white/10 text-white border-white/10 hover:bg-white/20",
@@ -18,8 +19,8 @@ export function AnimatedButton({ children, className, variant = "primary", ...pr
 
     return (
         <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={reduce ? undefined : { scale: 1.05 }}
+            whileTap={reduce ? undefined : { scale: 0.95 }}
             className={cn(
                 "relative px-8 py-4 rounded-full font-semibold tracking-wide border transition-all duration-300",
                 "flex items-center justify-center gap-2 overflow-hidden",

@@ -52,6 +52,14 @@ export default function PhotoLightbox({
     };
   }, [go, onClose]);
 
+  // Restore focus to whatever opened the lightbox when it closes, so keyboard
+  // and screen-reader users aren't dropped at the top of the page. Mount-only
+  // so a parent re-render (changing onClose identity) can't restore early.
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    return () => opener?.focus?.();
+  }, []);
+
   // Portal to <body> so the overlay escapes the draggable sheet's
   // transform (a transformed ancestor would otherwise re-anchor `fixed`).
   if (count === 0 || typeof document === "undefined") return null;
