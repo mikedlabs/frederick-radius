@@ -20,6 +20,7 @@ import {
   ShoppingBag,
   Heart,
   Hotel,
+  Users,
 } from "lucide-react";
 import { useMode, resetModeState, type Mode } from "@/hooks/useMode";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -28,6 +29,8 @@ import {
   setHomeMuni,
   getInterests,
   setInterests,
+  getCommunityNotes,
+  setCommunityNotes,
 } from "@/lib/personalize";
 import { haptic } from "@/lib/haptics";
 
@@ -79,6 +82,7 @@ export default function PreferencesPanel() {
   const [muni, setMuni] = useState<string | null>(null);
   const [interests, setInterestsState] = useState<Set<string>>(new Set());
   const [muniEditing, setMuniEditing] = useState(false);
+  const [communityOn, setCommunityOn] = useState(true);
 
   useEffect(() => {
     // SSR-safe: server renders the initial null/empty, the stored
@@ -87,6 +91,7 @@ export default function PreferencesPanel() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMuni(getHomeMuni());
     setInterestsState(new Set(getInterests()));
+    setCommunityOn(getCommunityNotes());
   }, []);
 
   const changeMode = useCallback(
@@ -112,6 +117,15 @@ export default function PreferencesPanel() {
       if (next.has(slug)) next.delete(slug);
       else next.add(slug);
       setInterests([...next]);
+      return next;
+    });
+  }, []);
+
+  const toggleCommunity = useCallback(() => {
+    haptic("light");
+    setCommunityOn((prev) => {
+      const next = !prev;
+      setCommunityNotes(next);
       return next;
     });
   }, []);
@@ -314,6 +328,36 @@ export default function PreferencesPanel() {
         </p>
       </SectionShell>
 
+      {/* COMMUNITY NOTES — one topic-neutral switch for the whole quiet
+          community layer on Today (Pride Month, Sunday places of worship). */}
+      <SectionShell title="Community notes" icon="community">
+        <div
+          className="flex items-center justify-between gap-3 rounded-xl border p-3"
+          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
+        >
+          <span className="min-w-0 flex-1 text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
+            {communityOn ? "Showing" : "Hidden"}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={communityOn}
+            aria-label="Show community notes"
+            onClick={toggleCommunity}
+            className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+            style={{ background: communityOn ? "var(--app-brand)" : "color-mix(in srgb, var(--app-ink) 22%, transparent)" }}
+          >
+            <span
+              className="inline-block h-5 w-5 rounded-full bg-white transition-transform"
+              style={{ transform: communityOn ? "translateX(22px)" : "translateX(2px)", boxShadow: "var(--app-elev-1)" }}
+            />
+          </button>
+        </div>
+        <p className="mt-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          Quiet local notes like Pride Month and Sunday places of worship. On by default; this hides all of them.
+        </p>
+      </SectionShell>
+
       {/* NOTIFICATIONS — link to the existing dedicated page */}
       <Link
         href="/settings/notifications"
@@ -374,17 +418,19 @@ function SectionShell({
   children,
 }: {
   title: string;
-  icon: "persona" | "muni" | "interests";
+  icon: "persona" | "muni" | "interests" | "community";
   children: React.ReactNode;
 }) {
   const Icon =
-    icon === "persona" ? Compass : icon === "muni" ? MapPin : Sparkles;
+    icon === "persona" ? Compass : icon === "muni" ? MapPin : icon === "community" ? Users : Sparkles;
   const tint =
     icon === "persona"
       ? "var(--app-brand)"
       : icon === "muni"
         ? "var(--app-cool)"
-        : "var(--app-positive)";
+        : icon === "community"
+          ? "var(--app-brand-2)"
+          : "var(--app-positive)";
   return (
     <section
       className="rounded-[var(--app-radius-lg)] border p-4"

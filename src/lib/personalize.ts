@@ -25,6 +25,7 @@
 
 const HOME_MUNI_KEY = "fr:home-muni:v1";
 const INTERESTS_KEY = "fr:interests:v1";
+const COMMUNITY_NOTES_KEY = "fr:community-notes:v1";
 
 function safeStorage(): Storage | null {
   try {
@@ -143,4 +144,32 @@ export function setInterests(slugs: string[]): void {
 
 export function hasOnboardingPrefs(): boolean {
   return getHomeMuni() !== null || getInterests().length > 0;
+}
+
+/**
+ * Whether the quiet "community notes" layer on Today (Pride Month, Sunday
+ * places of worship, and any future community beat) is shown. ON by default.
+ * One topic-neutral switch governs the WHOLE layer, never a single community,
+ * so turning it off is "I don't want these notes," not "hide that group."
+ * Stored only when OFF ("0") so the default stays implicit.
+ */
+export function getCommunityNotes(): boolean {
+  const ls = safeStorage();
+  if (!ls) return true;
+  try {
+    return ls.getItem(COMMUNITY_NOTES_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+export function setCommunityNotes(enabled: boolean): void {
+  const ls = safeStorage();
+  if (!ls) return;
+  try {
+    if (enabled) ls.removeItem(COMMUNITY_NOTES_KEY);
+    else ls.setItem(COMMUNITY_NOTES_KEY, "0");
+  } catch {
+    // ignore
+  }
 }

@@ -4,7 +4,7 @@ import { pickSeasonalNote } from "@/lib/seasonal-notes";
 
 /**
  * SeasonalBeat — one dated, sourced, self-hiding local-rhythm line for the
- * /today masthead (sits with HolidayNote / PrideBeat). Surfaces the single most
+ * /today masthead (sits with HolidayNote / the community notes). Surfaces the single most
  * relevant active almanac note: a computed rhythm like "First Saturday is today"
  * or a curated, sourced range like leaf season. Renders nothing on an ordinary
  * day, so it costs the common day nothing. Honest: every claim is dated, and
