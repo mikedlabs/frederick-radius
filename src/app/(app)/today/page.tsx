@@ -31,6 +31,7 @@ import HolidayNote from "@/components/today/HolidayNote";
 import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
 import FromYourSaved from "@/components/today/FromYourSaved";
+import TasteNudge from "@/components/today/TasteNudge";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // CreekHairline removed in the pleasant-layout pass — it was a
 // decorative divider between weather/discovery and action; the
@@ -339,6 +340,13 @@ export default async function HomePage() {
           <OnNowBand now={now} eventsPromise={eventsPromise} />
         </Suspense>
       </div>
+
+      {/* TASTE-AWARE: a single quiet shortcut derived from the user's OWN saved
+          places (their dominant craving), linking into /nearby for it. Client +
+          self-hiding (renders nothing until the saves show a clear pattern), so
+          it never weighs on a first-timer and never touches the I-want grid's
+          first-paint path. Finding from the user's own signal, not telling. */}
+      <TasteNudge />
 
       {/* "What's happening around you" (NearbyNow) was removed from /today
           (owner call): the craving grid + Today's Deals already answer "near
