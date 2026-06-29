@@ -32,6 +32,7 @@ import {
   fetchTicketmasterSports,
 } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { BANDSINTOWN_ARTISTS } from "@/data/bandsintown-artists";
 import { fetchSeatGeek } from "@/lib/integrations/seatgeek";
 import { fetchEventbrite } from "@/lib/integrations/eventbrite";
 import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
@@ -64,7 +65,7 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     })),
     fetchTicketmasterMusic().catch(() => []),
     fetchTicketmasterSports().catch(() => []),
-    fetchBandsintownForArtists([]).catch(() => []),
+    fetchBandsintownForArtists(BANDSINTOWN_ARTISTS).catch(() => []),
     // SeatGeek area discovery (Phase 4 item 3): inert without
     // SEATGEEK_CLIENT_ID, fail-soft like the others.
     fetchSeatGeek().catch(() => []),

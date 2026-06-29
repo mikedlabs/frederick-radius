@@ -15,6 +15,7 @@ import {
   fetchTicketmasterSports,
 } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { BANDSINTOWN_ARTISTS } from "@/data/bandsintown-artists";
 import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
 import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
@@ -133,7 +134,7 @@ export async function getLiveCardEventBySlug(
     getCachedLiveEvents(windowDays).then((r) => r.events).catch(() => [] as LiveEvent[]),
     fetchTicketmasterMusic().catch(() => [] as LiveEvent[]),
     fetchTicketmasterSports().catch(() => [] as LiveEvent[]),
-    fetchBandsintownForArtists([]).catch(() => [] as LiveEvent[]),
+    fetchBandsintownForArtists(BANDSINTOWN_ARTISTS).catch(() => [] as LiveEvent[]),
     fetchVisitFrederick().catch(() => [] as LiveEvent[]),
     fetchFrederickKeys().catch(() => [] as LiveEvent[]),
     fetchSquarespaceVenueEvents(windowDays).catch(() => []),
