@@ -74,6 +74,44 @@ export const SEASONAL_NOTES: SeasonalNote[] = [
     source: "NPS Catoctin Mountain Park",
   },
   {
+    // CURATED nature rhythm: spring peepers (chorus frogs) call from wetlands
+    // late winter into spring. Real, dated MD phenomenon; sourced.
+    id: "spring-peepers",
+    priority: 24,
+    active: (now) => {
+      const { month } = easternParts(now);
+      return month === 3 || month === 4;
+    },
+    lead: "Spring peepers are calling",
+    detail: "Listen near the ponds and wetlands at dusk.",
+    href: "/category/park",
+    hrefLabel: "Find a park",
+    source: "Maryland DNR",
+  },
+  {
+    // CURATED nature rhythm: firefly season peaks in June in central Maryland.
+    id: "firefly-season",
+    priority: 25,
+    active: (now) => easternParts(now).month === 6,
+    lead: "Firefly season",
+    detail: "Best after dusk along the meadows and creek lines.",
+    href: "/category/park",
+    hrefLabel: "Find a park",
+    source: "Maryland DNR",
+  },
+  {
+    // CURATED nature rhythm: fall raptor migration crosses the Catoctin ridge
+    // in September, a long-watched mid-Atlantic flyway event.
+    id: "hawk-migration",
+    priority: 26,
+    active: (now) => easternParts(now).month === 9,
+    lead: "Hawk migration over the ridge",
+    detail: "Clear north winds carry raptors down the Catoctin flyway.",
+    href: "/category/park",
+    hrefLabel: "Find a park",
+    source: "Hawk Migration Association",
+  },
+  {
     // COMPUTABLE: farmers-market season (May to October in Maryland). States the
     // SEASON only and links to the category. The live per-day market count is
     // OnNowBand's job, so the two never disagree.

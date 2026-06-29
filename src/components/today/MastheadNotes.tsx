@@ -1,9 +1,11 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { holidayOn } from "@/lib/holidays";
 import { pickSeasonalNote } from "@/lib/seasonal-notes";
 import HolidayNote from "./HolidayNote";
 import SeasonalBeat from "./SeasonalBeat";
 import CommunityNotes from "./CommunityNotes";
+import FcpsBeat from "./FcpsBeat";
+import CreekWatch from "./CreekWatch";
 
 /**
  * MastheadNotes — the calm cap on the /today masthead almanac stack.
@@ -45,6 +47,14 @@ export default function MastheadNotes({
     <div className="mt-2 space-y-1.5">
       {dated === "holiday" && <HolidayNote now={now} />}
       {dated === "seasonal" && <SeasonalBeat now={now} />}
+      {/* School + creek alerts: rare, important, self-hiding. Async, so each is
+          streamed in its own Suspense and never awaited by the masthead. */}
+      <Suspense fallback={null}>
+        <FcpsBeat now={now} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <CreekWatch />
+      </Suspense>
       <CommunityNotes />
       {weatherSlot}
       {contextSlot}
