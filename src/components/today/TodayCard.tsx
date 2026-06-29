@@ -7,6 +7,7 @@ import { eventWhenLabel } from "@/lib/eventWhenLabel";
 import { isActivelyWet, mentionsWet } from "@/lib/weather-verdict";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
 import LiveClock from "./LiveClock";
+import EventCountdown from "./EventCountdown";
 
 /**
  * TodayCard — the daily hook at the very top of /now.
@@ -36,6 +37,8 @@ type TonightEvent = {
   /** ISO start — so the line labels by the event's REAL day (Tonight /
    *  Tomorrow / Friday), never just by the current time-of-day band. */
   starts_at: string;
+  /** ISO end — powers the live "On now" / "in 40 min" countdown clause. */
+  ends_at?: string | null;
 } | null;
 
 type Band = "morning" | "midday" | "afternoon" | "evening" | "late";
@@ -220,6 +223,7 @@ export default async function TodayCard({
           <span className="min-w-0 flex-1">
             <span className="block text-meta font-semibold uppercase tracking-[0.14em] opacity-65">
               {eventWhenLabel(tonightEvent.starts_at, now, band === "evening" || band === "late")}
+              <EventCountdown startsAt={tonightEvent.starts_at} endsAt={tonightEvent.ends_at} />
             </span>
             <span className="block truncate text-body font-semibold leading-snug">
               {tonightEvent.title}

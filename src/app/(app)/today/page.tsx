@@ -545,6 +545,7 @@ async function TonightTeaser({ eventsPromise, now }: { eventsPromise: EventsProm
               title: featuredEvent.title,
               venue_name: featuredEvent.venue_name ?? null,
               starts_at: featuredEvent.starts_at,
+              ends_at: featuredEvent.ends_at ?? featuredEvent.starts_at,
             }
           : null
       }
