@@ -83,7 +83,7 @@ export default function SeriesCard({ series }: { series: IngestedSeries }) {
               <button
                 type="button"
                 onClick={() => { haptic("light"); setOpen((v) => !v); }}
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                className="tap-44 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
                 style={{ background: "var(--app-brand-tint-14)", color: "var(--app-brand-press)" }}
                 aria-expanded={open}
               >

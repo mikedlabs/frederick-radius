@@ -98,7 +98,7 @@ export default function LocationChip() {
         }}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2 py-1 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
+        className="tap-44 inline-flex items-center gap-1 rounded-full border bg-[var(--app-bg-elevated)] px-2 py-1 text-[11px] font-medium transition hover:bg-[var(--app-bg-sunken)]"
         style={{ borderColor: "var(--app-border)", color: labelColor }}
       >
         <LabelIcon

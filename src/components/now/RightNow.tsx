@@ -455,7 +455,7 @@ export default function RightNow({
             type="button"
             onClick={() => setOpenOnly((v) => !v)}
             aria-pressed={openOnly}
-            className="tactile-interactive inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
+            className="tap-44-y tactile-interactive inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
             style={
               openOnly
                 ? {
@@ -481,7 +481,7 @@ export default function RightNow({
               type="button"
               onClick={() => setClosingSoonOnly((v) => !v)}
               aria-pressed={closingSoonOnly}
-              className="tactile-interactive inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
+              className="tap-44-y tactile-interactive inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
               style={
                 closingSoonOnly
                   ? {
@@ -634,7 +634,7 @@ function FacetChip({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className="tactile-interactive rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
+      className="tap-44-y tactile-interactive rounded-full px-2.5 py-1 text-[12.5px] font-semibold"
       style={
         active
           ? {

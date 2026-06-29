@@ -344,7 +344,7 @@ export default function PreferencesPanel() {
             aria-checked={communityOn}
             aria-label="Show community notes"
             onClick={toggleCommunity}
-            className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
+            className="tap-44 relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
             style={{ background: communityOn ? "var(--app-brand)" : "color-mix(in srgb, var(--app-ink) 22%, transparent)" }}
           >
             <span
