@@ -123,6 +123,19 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     .sort((a, b) => (a.distance_m ?? Infinity) - (b.distance_m ?? Infinity))
     .slice(0, 3);
 
+  // Map our lifecycle status to schema.org's enum — a postponed/cancelled game
+  // (Frederick Keys feeds these) must not tell Google "scheduled".
+  const schemaEventStatus =
+    event.status === "cancelled"
+      ? "https://schema.org/EventCancelled"
+      : event.status === "postponed"
+        ? "https://schema.org/EventPostponed"
+        : "https://schema.org/EventScheduled";
+  // A present-but-EMPTY location name/address is a Rich-Results "incomplete
+  // location" warning — worse than omitting the field. Some feed rows (an
+  // un-enriched Visit Frederick row whose detail page timed out, a venue-less
+  // ingested library/fire row) carry "". Fall the name back to the town and
+  // drop an empty address rather than emit blanks.
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Event",
@@ -132,12 +145,12 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
     // "Z" but prefers this, and it self-documents tz correctness.
     startDate: easternOffsetIso(event.starts_at),
     endDate: easternOffsetIso(event.ends_at),
-    eventStatus: "https://schema.org/EventScheduled",
+    eventStatus: schemaEventStatus,
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     location: {
       "@type": "Place",
-      name: event.venue_name,
-      address: event.address,
+      name: event.venue_name || event.municipality_name || "Frederick County",
+      ...(event.address ? { address: event.address } : {}),
       geo: { "@type": "GeoCoordinates", latitude: event.geom.lat, longitude: event.geom.lng },
     },
     organizer: event.organizer ? { "@type": "Organization", name: event.organizer } : undefined,

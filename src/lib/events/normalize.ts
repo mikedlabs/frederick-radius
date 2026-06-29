@@ -68,7 +68,20 @@ export function cleanTitle(raw: string, opts: { year?: number } = {}): string {
   // Tidy a pipe the strip (or the feed) left dangling at an edge or doubled,
   // so a remaining "Series | Act" double bill reads as one clean line.
   t = t.replace(/\s*\|\s*\|\s*/g, " | ").replace(/^\s*\|\s*|\s*\|\s*$/g, "");
-  t = t.replace(/([A-Za-z])-(?=[A-Z0-9])/g, "$1 ");
+  // Un-mash a hyphen a feed jammed between two words, WITHOUT breaking real
+  // hyphenated names. Two narrow cases only:
+  //   1) hyphen before a digit ("Fire-54th Anniversary" -> "Fire 54th") — a
+  //      feed mash; genuine compounds almost never put a digit after a hyphen.
+  //   2) hyphen adjacent to an administrative/meeting word ("Council-Workshop")
+  //      — the civic-calendar mash this was written for.
+  // Everything else is left intact, so "E-Bike", "T-Shirt", "X-Ray",
+  // "Spider-Man", "Mother-Daughter", "co-op", "pop-up" survive (the old blanket
+  // letter-before-capital rule mangled all of these).
+  const ORG_WORD = "council|commission|committee|subcommittee|board|workshop|meeting|session|hearing|luncheon|forum";
+  t = t
+    .replace(/([A-Za-z])-(?=\d)/g, "$1 ")
+    .replace(new RegExp(`([A-Za-z])-(?=(?:${ORG_WORD})\\b)`, "gi"), "$1 ")
+    .replace(new RegExp(`\\b(${ORG_WORD})-(?=[A-Za-z])`, "gi"), "$1 ");
   // Strip a trailing 4-digit year, but not when a preposition precedes
   // it ("...patients in 2025" keeps the year, "Octoberfest 2026" drops
   // it). When a year is provided, only strip that exact year.

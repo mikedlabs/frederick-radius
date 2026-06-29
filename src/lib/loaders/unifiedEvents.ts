@@ -46,6 +46,7 @@ import { getIngestedSeries } from "@/lib/loaders/ingested";
 import { ingestedSeriesToCards } from "@/lib/loaders/ingestedEvents";
 import { isPublicEvent } from "@/lib/events/classify";
 import { hasImplausibleStartTime } from "@/lib/events/visible";
+import { easternDayKey } from "@/lib/tz";
 import { unstable_cache } from "next/cache";
 
 export type UnifiedEvents = {
@@ -126,14 +127,50 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
     if (!bySlug.has(e.slug)) bySlug.set(e.slug, e);
   }
   const unified = withVenueThumbs(
-    dedupeCuratedClusters(
-      [...bySlug.values()].sort(
-        (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+    dedupeKeysHomeGames(
+      dedupeCuratedClusters(
+        [...bySlug.values()].sort(
+          (a, b) => +new Date(a.starts_at) - +new Date(b.starts_at),
+        ),
       ),
     ),
   );
 
   return { unified, publicEvents: unified.filter(isPublicEvent) };
+}
+
+/**
+ * Collapse a Frederick Keys home game that arrived from BOTH Ticketmaster and
+ * the statsapi feed into one card. The two sources title the same game
+ * differently ("Frederick Keys vs. Hudson Valley" vs "…Renegades", or TM's
+ * "<Opponent> at Frederick Keys"), so the clean-slug dedupe can miss them. The
+ * reliable key is the Eastern calendar DAY: there is at most one Keys home game
+ * on a given day in normal play. We prefer the NON-"frederick-keys" row, since
+ * Ticketmaster carries price + ticket links; the statsapi feed exists to fill
+ * the days Ticketmaster missed. (Caveat: a rare doubleheader collapses to one
+ * card — acceptable, and what a ticket gate usually shows anyway; far better
+ * than the title-variant double-count this prevents.)
+ */
+function dedupeKeysHomeGames(events: EventWithMeta[]): EventWithMeta[] {
+  const KEYS = /frederick keys/i;
+  const seenIdx = new Map<string, number>();
+  const out: EventWithMeta[] = [];
+  for (const e of events) {
+    const isKeysHome = e.category === "sports" && e.municipality === "frederick" && KEYS.test(e.title);
+    if (!isKeysHome) {
+      out.push(e);
+      continue;
+    }
+    const key = `keys-home-${easternDayKey(new Date(e.starts_at))}`;
+    const prevIdx = seenIdx.get(key);
+    if (prevIdx === undefined) {
+      seenIdx.set(key, out.length);
+      out.push(e);
+    } else if (out[prevIdx].source === "frederick-keys" && e.source !== "frederick-keys") {
+      out[prevIdx] = e; // upgrade to the richer Ticketmaster row
+    }
+  }
+  return out;
 }
 
 // Cache the whole assembly per 5-minute bucket so /today + /events stop paying
@@ -149,7 +186,7 @@ async function assembleRaw(now: Date): Promise<UnifiedEvents> {
 // cache on deploy even if the manual version bump is forgotten (the #509 lesson).
 const cachedAssemble = unstable_cache(
   (bucket: number) => assembleRaw(new Date(bucket * 300_000)),
-  ["unified-events-v12", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  ["unified-events-v13", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
   { revalidate: 300 },
 );
 

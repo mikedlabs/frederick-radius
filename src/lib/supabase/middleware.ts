@@ -63,7 +63,17 @@ export async function updateSession(req: NextRequest) {
 
   // Triggers the refresh-if-needed flow. Result is intentionally
   // ignored — we only care about the side effect on the cookies.
-  await supabase.auth.getUser();
+  // Guarded: getUser() normally resolves {data,error}, but a transport
+  // failure (DNS, abort, Supabase outage) REJECTS. Since this runs in edge
+  // middleware on the render path, an unhandled rejection would 500 every
+  // request that carries a session cookie. Swallow it and pass through
+  // unrefreshed — a missed silent refresh is a far smaller harm than a
+  // site-wide 500 for logged-in users during a Supabase blip.
+  try {
+    await supabase.auth.getUser();
+  } catch {
+    /* refresh unavailable this request; pass through with existing cookies */
+  }
 
   return supabaseResponse;
 }

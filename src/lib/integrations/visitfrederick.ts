@@ -53,8 +53,14 @@ const USER_AGENT = "FrederickRadius/1.0 (+https://frederickradius.app)";
 // is ~30 data-cache reads. Any page that fails leaves its event on the town
 // centroid (today's behaviour) — enrichment is purely additive.
 const DETAIL_TIMEOUT_MS = 4_000;
-const DETAIL_CONCURRENCY = 6;
+const DETAIL_CONCURRENCY = 8;
 const DETAIL_REVALIDATE_S = 86_400;
+// Hard ceiling on the whole enrichment fan-out, independent of the per-page
+// timeout × wave math. If detail pages are slow on a cold render, we return the
+// un-enriched RSS rows at this point rather than let enrichment gate the events
+// assembly. In-flight fetches keep running and still warm the per-page cache
+// for the next render, so a slow first paint self-heals.
+const DETAIL_ENRICH_BUDGET_MS = 7_000;
 
 // Visit Frederick region tag (lower-cased) -> our municipality slug. The feed
 // tags each listing with a region; map the ones that name a town we model,
@@ -75,23 +81,41 @@ const REGION_TO_MUNICIPALITY: Record<string, string> = {
   urbana: "urbana",
 };
 
-// Theme text (category tags + title) -> our event category slug. Conservative,
-// first match wins; anything unmatched falls back to "community" (the public
-// default the classifier and the other live adapters use).
-const CATEGORY_RULES: Array<[RegExp, string]> = [
-  [/winer|vineyard/i, "winery"],
-  [/brewer|distiller|\bpubs?\b|tasting|\bbeer\b/i, "brewery"],
-  [/farmers?\s*market|\bmarket\b/i, "market"],
-  [/theat|performing|opera|\bdance\b/i, "theater"],
-  [/\bmusic\b|concert|alive\s*@?\s*five|open\s*mic|band\b/i, "music"],
-  [/museum|history|heritage|historic/i, "museum"],
-  [/gallery|\bart\b|arts\b|exhibit|visual/i, "arts"],
-  [/family|\bkids?\b|children|workshop/i, "family"],
-  [/yoga|wellness|fitness|exercise/i, "wellness"],
-  [/sport|\bkeys\b|\bgame\b|\brace\b|\b5k\b|\brun\b/i, "sports"],
-  [/outdoor|\bhike\b|\btrail\b|\bpark\b|nature|garden/i, "outdoors"],
-  [/food|culin|dining|restaurant|\bcurds?\b|\bbrunch\b/i, "food"],
-  [/\bshop\b|vendor|\bsale\b/i, "shopping"],
+// Category classification, two-stage. Visit Frederick's OWN category tags are
+// the most reliable signal (a human curator chose them), so map those first;
+// fall back to a conservative title-keyword pass only when no tag matches.
+//
+// The keyword pass deliberately mirrors the proven iCal classifier's PHILOSOPHY
+// (src/lib/ingest/ical.ts CATEGORY_KEYWORDS): first match wins; "pub"/"trivia"
+// is a BAR, not a brewery; "tasting"/"wine" is food/drink, not a guessed
+// brewery; a bare "workshop" is NOT family (adult craft classes exist); only an
+// explicit museum/gallery word maps to arts/museum (a heritage FESTIVAL is
+// community, not a museum). Default is "community" — an honest catch-all, never
+// a guessed specific. This replaces an earlier single-haystack rule set that
+// mislabelled pub trivia, wine tastings, and craft workshops.
+const TAG_CATEGORY: Array<[RegExp, string]> = [
+  [/live music/, "music"],
+  [/minor league baseball|sports & games|^sports/, "sports"],
+  [/farmers'? *market/, "market"],
+  [/winer|brewer|distiller/, "brewery"],
+  [/food truck|foodie|culinary/, "food"],
+  [/arts? - visual|visual art|gallery/, "arts"],
+  [/arts? - perform|performances?|theat/, "theater"],
+  [/history & heritage|civil war|\bhistory\b|heritage|museum/, "museum"],
+  [/outdoor|recreation/, "outdoors"],
+  [/family friendly|\bfamily\b/, "family"],
+];
+const TITLE_KEYWORDS: Array<[RegExp, string]> = [
+  [/\btrivia\b|\bpub\b|happy hour/i, "bar"],
+  [/\bconcert\b|live music|open mic|alive\s*@?\s*five|\bband\b|\bdj\b/i, "music"],
+  [/\btheat|\bplay\b|\bstage\b|comedy|\bopera\b/i, "theater"],
+  [/farmers?\b.*market|makers?\b.*market/i, "market"],
+  [/brewer|winer|distiller|tap(room| takeover)|beer release/i, "brewery"],
+  [/\bmuseum\b|\bexhibit\b|\bgallery\b/i, "arts"],
+  [/\bkids?\b|children|story time|all ages|\bfamily\b/i, "family"],
+  [/\bhike\b|\btrail\b|\bnature\b|\branger\b/i, "outdoors"],
+  [/\bkeys\b|baseball|\b5k\b|\brace\b/i, "sports"],
+  [/food truck|\bdinner\b|\bbrunch\b|tasting|\bwine\b/i, "food"],
 ];
 
 function decodeEntities(s: string): string {
@@ -128,8 +152,9 @@ function pickMunicipality(cats: string[]): string {
 }
 
 function pickCategory(cats: string[], title: string): string {
-  const hay = `${cats.join(" ")} ${title}`;
-  for (const [re, slug] of CATEGORY_RULES) if (re.test(hay)) return slug;
+  const tagHay = cats.join(" | "); // cats are already lower-cased + trimmed
+  for (const [re, slug] of TAG_CATEGORY) if (re.test(tagHay)) return slug;
+  for (const [re, slug] of TITLE_KEYWORDS) if (re.test(title)) return slug;
   return "community";
 }
 
@@ -369,10 +394,12 @@ export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
   if (base.length === 0) return base;
 
   // Enrich each row from its detail page. Fail-soft PER PAGE (a failed page
-  // keeps the centroid row the RSS produced) and overall (any thrown error
-  // returns the un-enriched feed), so the worst case equals today's behaviour.
+  // keeps the centroid row the RSS produced), bounded by an OVERALL wall-time
+  // budget (return un-enriched rows if it trips), and wrapped so any thrown
+  // error returns the un-enriched feed — the worst case equals prior behaviour.
+  let budgetTimer: ReturnType<typeof setTimeout> | undefined;
   try {
-    return await mapWithConcurrency(base, DETAIL_CONCURRENCY, async (e) => {
+    const enrich = mapWithConcurrency(base, DETAIL_CONCURRENCY, async (e) => {
       const d = e.url ? await fetchVisitFrederickDetail(e.url) : null;
       if (!d) return e;
       const description = d.description.length > e.description.length ? d.description : e.description;
@@ -386,8 +413,14 @@ export async function fetchVisitFrederick(): Promise<LiveEvent[]> {
         ...(d.geom ? { geom: d.geom, placement: "geocoded" as const } : {}),
       };
     });
+    const budget = new Promise<LiveEvent[]>((resolve) => {
+      budgetTimer = setTimeout(() => resolve(base), DETAIL_ENRICH_BUDGET_MS);
+    });
+    return await Promise.race([enrich, budget]);
   } catch (err) {
     console.error("[visit-frederick] enrichment failed, using un-enriched feed:", err);
     return base;
+  } finally {
+    clearTimeout(budgetTimer);
   }
 }
