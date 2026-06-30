@@ -60,7 +60,18 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: false, error: "listing fetch failed", dry }, { status: 502 });
   }
 
-  const mapped = fcvfraMapListing(html, new Date());
+  // Wrap the mapper so a parser throw stamps the run as error rather than
+  // leaving a dangling 'running' row that getRecentIngestRuns surfaces forever.
+  let mapped: ReturnType<typeof fcvfraMapListing>;
+  try {
+    mapped = fcvfraMapListing(html, new Date());
+  } catch (e) {
+    await finishIngestRun(runId, {
+      status: "error",
+      error: e instanceof Error ? e.message : String(e),
+    });
+    throw e;
+  }
   const stats: UpsertStats = emptyStats();
   const perMunicipality: Record<string, number> = {};
   let failed = 0;

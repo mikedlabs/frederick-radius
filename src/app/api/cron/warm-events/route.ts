@@ -95,11 +95,14 @@ export async function GET(request: Request) {
   const body = { ok: failures.length === 0, duration_ms: Date.now() - t0, warmed };
 
   if (failures.length > 0) {
-    void sendWarmFailureAlert(failures);
     Sentry.captureMessage(
       `warm-events: ${failures.length} cache(s) failed to warm`,
       { level: "warning", extra: { failures } },
     );
+    // Await (not void) so the Slack POST flushes before the serverless function
+    // can freeze post-response — the response is already 500, so there's no
+    // latency cost to the user. sendWarmFailureAlert always resolves.
+    await sendWarmFailureAlert(failures);
     return NextResponse.json(body, { status: 500 });
   }
 

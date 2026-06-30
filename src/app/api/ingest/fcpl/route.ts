@@ -63,8 +63,19 @@ export async function GET(req: NextRequest) {
     return Response.json({ ok: false, error: "feed fetch failed", dry }, { status: 502 });
   }
 
-  let mapped = fcplMapFeed(feed, new Date());
-  if (only) mapped = mapped.filter((m) => m.municipality.toLowerCase() === only.toLowerCase());
+  // Wrap the mapper so a parser throw stamps the run as error rather than
+  // leaving a dangling 'running' row that getRecentIngestRuns surfaces forever.
+  let mapped: ReturnType<typeof fcplMapFeed>;
+  try {
+    mapped = fcplMapFeed(feed, new Date());
+    if (only) mapped = mapped.filter((m) => m.municipality.toLowerCase() === only.toLowerCase());
+  } catch (e) {
+    await finishIngestRun(runId, {
+      status: "error",
+      error: e instanceof Error ? e.message : String(e),
+    });
+    throw e;
+  }
 
   const stats: UpsertStats = emptyStats();
   const perMunicipality: Record<string, number> = {};

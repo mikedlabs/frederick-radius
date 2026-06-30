@@ -275,8 +275,16 @@ export default function RootLayout({
           duration={3000}
         />
         <Plausible />
-        <Analytics />
-        <SpeedInsights />
+        {/* obs-4: gate the Vercel real-user telemetry to PRODUCTION so preview
+            and local traffic don't pollute the Core Web Vitals / traffic data
+            you judge prod against. Plausible stays on everywhere (product
+            metrics). VERCEL_ENV is "production" | "preview" | "development". */}
+        {process.env.VERCEL_ENV === "production" && (
+          <>
+            <Analytics />
+            <SpeedInsights />
+          </>
+        )}
         <ServiceWorkerRegister />
         {/* Swallows clipboard NotAllowedError rejections that browser
             extensions throw inside our window context, so the dev
