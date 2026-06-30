@@ -64,6 +64,7 @@ export default function robots(): MetadataRoute.Robots {
           "/welcome",
           "/my-radius",
           "/collect",
+          "/report",
         ],
       },
       // AI-training opt-out. Each LLM crawler declares its own UA;
