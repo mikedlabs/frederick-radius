@@ -187,6 +187,19 @@ export default async function HomePage() {
           render nothing. */}
       <FreshnessGuard renderedAtIso={now.toISOString()} />
 
+      {/* ── HEADS UP — an ACTIVE civic alert (NWS/NPS: warning, closure,
+          incident) LEADS the entire page (owner call: alerts before the
+          header). It's the one thing that changes whether anything else on the
+          page matters, so nothing — not even the weather hero — sits above it.
+          Self-hides when nothing is active (the common case), and the
+          :not(:empty) wrapper means it then costs the ordinary day zero space:
+          no phantom gap above the sky hero. */}
+      <Suspense fallback={null}>
+        <div className="[&:not(:empty)]:mb-4">
+          <CivicAlerts />
+        </div>
+      </Suspense>
+
       {/* ── WEATHER HERO — the time-of-day gradient sky + today's weather +
           tonight's event LEADS the page. Now a COMPACT, CONTAINED card (owner
           call: "all cards within the main part" + "one header with the weather
@@ -249,19 +262,6 @@ export default async function HomePage() {
         />
         <div className="fg-rule mt-3" aria-hidden />
       </header>
-
-      {/* ── HEADS UP — an ACTIVE civic alert (NWS/NPS: warning, closure,
-          incident) is the one thing that changes whether the rest of the page
-          matters, so it sits right under the masthead, before anyone plans.
-          Self-hides when nothing is active (the common case), so it costs the
-          ordinary day nothing; on an alert day it leads instead of hiding at the
-          bottom. Still one worst-first card with a quiet "+N more", never a
-          banner wall. */}
-      <Suspense fallback={null}>
-        <div className="mt-3">
-          <CivicAlerts />
-        </div>
-      </Suspense>
 
       {/* ── LENS PICKER — the calm, always-visible Resident/Visitor chooser
           that replaces the startup "are you visiting" popup (owner call).
