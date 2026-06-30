@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Bell, BellOff, Check, AlertCircle, Send } from "lucide-react";
+import { Bell, BellOff, Check, AlertCircle, Send, Share, Plus } from "lucide-react";
 import { TOPIC_LABELS, type PushTopic } from "@/lib/push-topics";
+import { isIos, isStandalone } from "@/lib/pwa-display";
 
 const ALL_TOPICS: PushTopic[] = [
   "civic-alerts",
@@ -16,6 +17,7 @@ type SupportState =
   | "unknown"
   | "unsupported"
   | "server-disabled"
+  | "ios-needs-install"
   | "blocked"
   | "ready"
   | "subscribed";
@@ -57,11 +59,30 @@ export default function NotificationsCard() {
           setSupport("blocked");
           return;
         }
+        // iOS Web Push only works in an INSTALLED (standalone) PWA. In a
+        // Safari tab the APIs are present but no-op, so a "Turn on" button
+        // would silently fail — guide the user to Add to Home Screen first.
+        if (isIos() && !isStandalone()) {
+          setSupport("ios-needs-install");
+          return;
+        }
         const reg = await navigator.serviceWorker.ready;
         const existing = await reg.pushManager.getSubscription();
         if (existing) {
           setSubscription(existing);
           setSupport("subscribed");
+          // Hydrate the toggles from the server so a returning subscriber
+          // sees their REAL selections, not all-off (a stale empty UI would,
+          // on the next toggle, REPLACE the server set and wipe their topics).
+          try {
+            const tRes = await fetch(`/api/push/topics?endpoint=${encodeURIComponent(existing.endpoint)}`);
+            if (tRes.ok) {
+              const tj = (await tRes.json()) as { topics?: string[] };
+              if (Array.isArray(tj.topics)) {
+                setTopics(new Set(tj.topics.filter((t): t is PushTopic => (ALL_TOPICS as string[]).includes(t))));
+              }
+            }
+          } catch { /* leave toggles as-seeded */ }
         } else {
           setSupport("ready");
         }
@@ -85,6 +106,9 @@ export default function NotificationsCard() {
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         setSupport(permission === "denied" ? "blocked" : "ready");
+        // "default" = the user dismissed the prompt without choosing. Say so,
+        // rather than silently snapping back to the Turn-on button.
+        if (permission === "default") flash("Tap Turn on and choose Allow to get notifications.");
         return;
       }
       const reg = await navigator.serviceWorker.ready;
@@ -221,6 +245,31 @@ export default function NotificationsCard() {
     );
   }
 
+  if (support === "ios-needs-install") {
+    return (
+      <article className="tactile rounded-[var(--app-radius-lg)] bg-[var(--app-bg-elevated)] p-4">
+        <header className="flex items-center gap-2">
+          <Bell className="h-4 w-4" style={{ color: "var(--app-ink-3)" }} aria-hidden />
+          <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+            Notifications
+          </h2>
+        </header>
+        <p className="mt-2 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          On iPhone and iPad, notifications work once Frederick Radius is on
+          your Home Screen. Tap{" "}
+          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
+            <Share className="h-3 w-3" aria-hidden /> Share
+          </span>{" "}
+          in Safari, then{" "}
+          <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5" style={{ background: "var(--app-bg-sunken)" }}>
+            <Plus className="h-3 w-3" aria-hidden /> Add to Home Screen
+          </span>
+          . Open it from there, then come back here to turn them on.
+        </p>
+      </article>
+    );
+  }
+
   const enabled = support === "subscribed";
 
   return (
@@ -271,7 +320,9 @@ export default function NotificationsCard() {
         {support === "blocked"
           ? "Notifications are blocked at the browser level. Re-enable in your site settings to subscribe."
           : enabled
-            ? "Choose what gets through. Your selections save automatically."
+            ? topics.size === 0
+              ? "You're subscribed. Pick at least one topic below to start receiving alerts."
+              : "Choose what gets through. Your selections save automatically."
             : "One tap to opt in. You'll only get the topics you choose."}
       </p>
 

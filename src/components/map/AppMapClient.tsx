@@ -17,8 +17,9 @@ const AppMap = dynamic(() => import("./AppMap"), {
   // feel intentional and shorter.
   loading: () => (
     <div
-      className="relative grid h-[78vh] w-full place-items-center overflow-hidden rounded-[var(--app-radius-lg)] border"
+      className="relative grid w-full place-items-center overflow-hidden rounded-[var(--app-radius-lg)] border"
       style={{
+        height: "var(--app-browse-map-height)",
         borderColor: "var(--app-border)",
         background:
           "radial-gradient(120% 90% at 50% 35%, color-mix(in srgb, var(--app-cool) 12%, var(--app-bg-sunken)) 0%, var(--app-bg-sunken) 70%)",

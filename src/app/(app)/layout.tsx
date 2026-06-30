@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             BETWEEN the body bg and the wrapper's children. With a bg
             on this wrapper the orbs (z:-10 fixed) were obscured. */}
         <div
-          className="min-h-screen"
+          className="min-h-dvh"
           style={{ color: "var(--app-ink)" }}
         >
           {/* Global printed-paper materiality (grain + warm vignette) on

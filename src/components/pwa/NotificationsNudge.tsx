@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Bell, ChevronRight } from "lucide-react";
+import { isIos, isStandalone } from "@/lib/pwa-display";
 
 const DISMISS_KEY = "fr:notif-nudge-dismissed";
 
@@ -37,6 +38,10 @@ export default function NotificationsNudge() {
     if (!("Notification" in window) || !("PushManager" in window)) return;
     if (Notification.permission === "granted") return;
     if (Notification.permission === "denied") return;
+    // iOS in a Safari tab can't deliver push (needs an installed PWA), so a
+    // "Turn on notifications" nudge there dead-ends — the InstallPrompt is the
+    // right surface for those users instead.
+    if (isIos() && !isStandalone()) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- canonical post-mount feature-detection gate; the server can't read Notification.permission or sessionStorage, so this must run after hydration
     setShow(true);
   }, []);

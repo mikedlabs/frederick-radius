@@ -53,7 +53,7 @@ export default function MapTimeChips({
         href={openHref()}
         aria-pressed={openNow ? "true" : "false"}
         aria-label={openNow ? "Show all places" : "Show only places open now"}
-        className="inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tracking-tight backdrop-blur transition active:scale-[0.97]"
+        className="tap-44-y inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tracking-tight backdrop-blur transition active:scale-[0.97]"
         style={{
           background: openNow
             ? "var(--app-positive)"
