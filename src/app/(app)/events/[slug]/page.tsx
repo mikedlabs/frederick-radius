@@ -39,7 +39,7 @@ import EventSmartPairings from "@/components/event/EventSmartPairings";
 import TrustChip from "@/components/ui/TrustChip";
 import FreshnessChip from "@/components/ui/FreshnessChip";
 import { eventTrust } from "@/lib/trust";
-import { easternOffsetIso } from "@/lib/seo/jsonld";
+import { easternOffsetIso, jsonLdScript } from "@/lib/seo/jsonld";
 
 export const revalidate = 300;
 // NOTE: this segment deliberately has NO loading.tsx. Event slugs are an
@@ -684,7 +684,7 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
     </div>
   );

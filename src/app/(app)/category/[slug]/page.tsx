@@ -18,7 +18,7 @@ import CategoryView from "@/components/category/CategoryView";
 import SetTownInline from "@/components/category/SetTownInline";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { FREDERICK_CENTER, type LngLat } from "@/lib/geo";
-import { itemListJsonLd } from "@/lib/seo/jsonld";
+import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 export const revalidate = 600;
 
@@ -173,7 +173,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
     <div className="relative space-y-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(collectionJsonLd) }}
       />
       <PageBloom variant="single" />
 

@@ -38,7 +38,7 @@ import { getVisibleEvents } from "@/lib/events/visible";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
 import SourceBadge from "@/components/place/SourceBadge";
-import { breadcrumbJsonLd } from "@/lib/seo/jsonld";
+import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -516,7 +516,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       {/* BreadcrumbList (June-9 audit P2): mirrors the visible breadcrumb. */}
       <script

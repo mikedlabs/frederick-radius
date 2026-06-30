@@ -74,3 +74,26 @@ export function itemListJsonLd(name: string, items: Crumb[]) {
     })),
   };
 }
+
+/**
+ * Serialize a JSON-LD object for SAFE embedding inside a
+ * `<script type="application/ld+json">` tag.
+ *
+ * Bare `JSON.stringify` does not escape `<`, `>`, `&`, or the U+2028/U+2029
+ * line separators. A third-party-feed field containing `</script>` (or even a
+ * lone `</script` with no `>`, which our balanced-tag stripper leaves intact)
+ * therefore terminates the script element verbatim, and the HTML parser reads
+ * everything after as live markup — a stored-XSS vector for any place/event
+ * title, venue, organizer, or address we don't control. Escaping these few
+ * characters to their `\uXXXX` form keeps the payload byte-identical to a JSON
+ * parser while making a tag break-out impossible. Route EVERY
+ * `dangerouslySetInnerHTML` JSON-LD emit through this.
+ */
+export function jsonLdScript(data: unknown): string {
+  return JSON.stringify(data)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}

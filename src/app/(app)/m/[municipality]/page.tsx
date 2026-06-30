@@ -19,7 +19,7 @@ import AerialBeat from "@/components/place/AerialBeat";
 import StayDeepLinks from "@/components/municipality/StayDeepLinks";
 import LivingHere from "@/components/municipality/LivingHere";
 import { municipalCivicFor } from "@/lib/loaders/municipalCivic";
-import { breadcrumbJsonLd } from "@/lib/seo/jsonld";
+import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 export const revalidate = 600;
 
@@ -157,7 +157,7 @@ export default async function MunicipalityPage(
     <div className="relative space-y-5">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       <script
         type="application/ld+json"

@@ -13,7 +13,7 @@ import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import MunicipalEvents from "@/components/event/MunicipalEvents";
 import { getIngestedSeries, getIngestedSummary } from "@/lib/loaders/ingested";
 import { LIFTED_INGEST_SOURCES } from "@/lib/loaders/ingestedEvents";
-import { itemListJsonLd } from "@/lib/seo/jsonld";
+import { itemListJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 import PageBloom from "@/components/ui/PageBloom";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import Skeleton from "@/components/ui/Skeleton";
@@ -324,7 +324,7 @@ async function EventsBoard({
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventsJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(eventsJsonLd) }}
       />
 
       {/* ── THE BOARD — the explorer IS the page body now. It was a
