@@ -106,9 +106,11 @@ export default function TransitMap({
   /** Hide the in-map "TransIT · N routes" pill (when a section header already
    *  labels the map, e.g. /pulse — keeps the top clear for bus badges). */
   hideBadge?: boolean;
-  /** Leash the camera to the bus SERVICE AREA (the route-network bbox) and
-   *  frame it on load, so the map can't be panned/zoomed off into empty county
-   *  where no buses run. Used by the /pulse live-bus map. */
+  /** Leash the camera to the bus SERVICE AREA (the route-network bbox) so the
+   *  map can't be panned/zoomed off into empty county where no buses run. With
+   *  an explicit `center`/`zoom` the map OPENS there (e.g. /pulse → downtown
+   *  Frederick); without one it frames the whole service area on load. Used by
+   *  the /pulse live-bus map. */
   lockToService?: boolean;
 }) {
   const initial = useMemo(() => {
@@ -212,9 +214,14 @@ export default function TransitMap({
         minZoom={lockToService ? 10.5 : undefined}
         onLoad={(e) => {
           applyFrederickPalette(e.target);
-          // Frame the service area on open so the live-bus map lands exactly on
-          // where buses run, not the whole county.
-          if (lockToService) e.target.fitBounds(SERVICE_BOUNDS, { padding: 24, duration: 0 });
+          // With an explicit center (e.g. /pulse → downtown Frederick) we open
+          // THERE — the maxBounds leash still keeps the camera over the service
+          // area, the user can zoom out for outlying buses. Without a center,
+          // frame the whole service area so the map still lands where buses run
+          // instead of the empty county.
+          if (lockToService && !center) {
+            e.target.fitBounds(SERVICE_BOUNDS, { padding: 24, duration: 0 });
+          }
         }}
       >
         {/* The loader types geometry as `unknown` to stay defensive

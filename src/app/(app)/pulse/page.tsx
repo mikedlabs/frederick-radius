@@ -738,8 +738,11 @@ export default async function PulsePage({
         <TransitMap
           shapes={transitShapes}
           height={300}
+          /* Open on downtown Frederick (Market & Patrick) — the densest part of
+             the network and where most riders are. The lockToService leash keeps
+             the camera over the service area; the user zooms out for outer routes. */
           center={[-77.4105, 39.4143]}
-          zoom={11}
+          zoom={12.5}
           liveBuses
           highlightRoutes
           hideBadge
