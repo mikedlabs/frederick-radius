@@ -62,6 +62,7 @@ import ScannerTimeline from "@/components/pulse/ScannerTimeline";
 import { PoliceBreakingStrip, PoliceBlotter, AdvisoryCard } from "@/components/pulse/CivicPress";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import TransitMap from "@/components/transit/TransitMapClient";
+import NextStopsBoard from "@/components/transit/NextStopsBoard";
 import PulseFreshness from "@/components/pulse/PulseFreshness";
 import PulseWeatherPanel from "@/components/pulse/PulseWeatherPanel";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
@@ -743,6 +744,9 @@ export default async function PulsePage({
           highlightRoutes
           hideBadge
         />
+        {/* Live arrivals board — every bus's NEXT stop + countdown, no tapping.
+            Polls the same vehicle feed as the map; self-hides when none. */}
+        <NextStopsBoard />
         <p className="text-[10.5px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
           Live bus positions from TransIT&rsquo;s GTFS-realtime feed, refreshed
           every 15 seconds. Tap a route to trace its path and follow just its

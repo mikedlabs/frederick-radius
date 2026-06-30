@@ -121,7 +121,10 @@ export default function TransitMap({
     <div className="space-y-2">
       {highlightRoutes && (
         <div
-          className="flex gap-1.5 overflow-x-auto pb-0.5"
+          // py-1 (was pb-0.5): overflow-x-auto also clips the vertical axis, so
+          // a selected chip's 2px ring was getting shaved off the top. The
+          // padding gives the ring room top + bottom.
+          className="flex gap-1.5 overflow-x-auto px-0.5 py-1"
           role="group"
           aria-label="Highlight a route"
           style={{ scrollbarWidth: "none" }}
