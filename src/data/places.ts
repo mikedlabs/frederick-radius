@@ -293,7 +293,7 @@ export const PLACES: Place[] = [
     postal_code: "21788",
     municipality: "thurmont",
     geom: { lng: -77.4612, lat: 39.6217 },
-    website: "https://dnr.maryland.gov/publiclands/Pages/western/cunninghamfalls.aspx",
+    website: "https://dnr.maryland.gov/publiclands/Pages/western/cunningham.aspx",
     price_band: 1,
     is_verified: true,
     is_operational: "operational",

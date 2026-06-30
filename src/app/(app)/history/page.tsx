@@ -276,7 +276,7 @@ export default async function HistoryPage() {
         Sources: National Park Service · Library of Congress · Maryland
         Historical Trust · Frederick County Public Libraries. Got a story
         we should add?{" "}
-        <a className="underline" style={{ color: "var(--app-cool)" }} href="mailto:hello@frederickradius.com">
+        <a className="underline" style={{ color: "var(--app-cool)" }} href="mailto:hello@frederickradius.app">
           Tell us
         </a>
         .
