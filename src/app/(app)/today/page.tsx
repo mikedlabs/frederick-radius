@@ -48,6 +48,7 @@ import { pickGoldenHourOutdoorEvent } from "@/lib/events/golden-pairing";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
+import PoolsToday from "@/components/today/PoolsToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
 import NowIntel from "@/components/today/NowIntel";
@@ -313,6 +314,11 @@ export default async function HomePage() {
           }
         />
       </div>
+
+      {/* Seasonal pools "open now" (summer only; self-hides out of season).
+          A resident-utility answer to "where can we swim right now," with
+          accurate City of Frederick pool hours. */}
+      <PoolsToday now={now} />
 
       {/* ── WHAT'S ON — every public event in the city or county TODAY. Moved
           ABOVE the moat (owner call): the day's events are the headline answer.
