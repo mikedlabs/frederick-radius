@@ -3,6 +3,10 @@
   "regions": ["iad1"],
   "crons": [
     {
+      "path": "/api/cron/warm-events",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/ingest/all",
       "schedule": "0 9 * * *"
     },
