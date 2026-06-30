@@ -20,7 +20,10 @@ type Bucket =
   | "wellness" | "civic" | "services" | "lodging" | "transit" | "parking"
   | "restroom" | "water" | "trash" | "recycle" | "dogwaste" | "bench"
   | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "ev" | "publicart"
-  | "outlet" | "dogwater" | "pin";
+  | "outlet" | "dogwater"
+  // Community-report buckets (the /report crowdsourced layer).
+  | "rhazard" | "rcond" | "rtip" | "rnote"
+  | "pin";
 
 // Consumer drink/food categories get their OWN mark, not one generic
 // fork. A brewery, winery, bar, coffee shop, and bakery should read
@@ -58,6 +61,11 @@ const BUCKET: Record<string, Bucket> = {
   outlet: "outlet",
   "dog-water": "dogwater",
   "public-art": "publicart",
+  // Community reports.
+  "report-hazard": "rhazard",
+  "report-condition": "rcond",
+  "report-tip": "rtip",
+  "report-note": "rnote",
 };
 
 export function bucketOf(slug: string): Bucket {
@@ -79,11 +87,15 @@ export const BUCKET_COLOR: Record<Bucket, string> = {
   shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#2F5470", ev: "#1E6B3A",
   publicart: "#9B3F8A",
   outlet: "#4A4A48", dogwater: "#2F5470",
+  rhazard: "#C2410C", rcond: "#2F5470", rtip: "#B07A1E", rnote: "#7A7975",
   pin: "#7A7975",
 };
 
 function colorOf(slug: string): string {
   if (slug === "_default") return DEFAULT_COLOR;
+  // Community-report slugs aren't in the place taxonomy; take the disc color
+  // from their bucket so a hazard reads caution-orange, not brand vermilion.
+  if (slug.startsWith("report-")) return BUCKET_COLOR[bucketOf(slug)] ?? DEFAULT_COLOR;
   const c = CATEGORY_BY_SLUG[slug];
   return c?.color ?? (c?.parent ? CATEGORY_BY_SLUG[c.parent]?.color : undefined) ?? DEFAULT_COLOR;
 }
@@ -360,6 +372,35 @@ function drawIcon(ctx: CanvasRenderingContext2D, b: Bucket, x: number, y: number
       ctx.moveTo(-7, 2.5); ctx.lineTo(7, 2.5);
       ctx.lineTo(4.5, 9); ctx.lineTo(-4.5, 9);
       ctx.closePath(); ctx.fill();
+      break;
+    case "rhazard": // warning triangle with a bang
+      ctx.beginPath();
+      ctx.moveTo(0, -8.5); ctx.lineTo(9.5, 8); ctx.lineTo(-9.5, 8);
+      ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.fillRect(-1.2, -3.5, 2.4, 6.5);
+      ctx.beginPath(); ctx.arc(0, 5.4, 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      break;
+    case "rcond": // info "i" disc
+      ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.beginPath(); ctx.arc(0, -3.6, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-1.4, -1, 2.8, 6.5);
+      ctx.restore();
+      break;
+    case "rtip": // lightbulb
+      ctx.beginPath(); ctx.arc(0, -3, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(-3, 2.5, 6, 2.4);
+      ctx.fillRect(-2.2, 5.4, 4.4, 2.2);
+      ctx.fillRect(-1.6, 8, 3.2, 1.8);
+      break;
+    case "rnote": // speech bubble
+      rr(-9, -8, 18, 13, 4); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(-3, 5); ctx.lineTo(2, 5); ctx.lineTo(-5, 10); ctx.closePath(); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      for (const dx of [-4, 0, 4]) { ctx.beginPath(); ctx.arc(dx, -1.5, 1.1, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
       break;
     case "publicart": // ring sculpture on a pedestal
       ctx.lineWidth = 2.4;

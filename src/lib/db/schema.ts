@@ -551,6 +551,49 @@ export const field_amenities = pgTable(
   }),
 );
 
+/**
+ * Community reports — the crowdsourced "community layer" (Phase 1). Distinct
+ * from field_amenities (permanent infrastructure): these are EPHEMERAL,
+ * observational reports — hazards (pothole, bad sidewalk, flooding), live
+ * conditions (parking full, trail muddy), tips, and local notes.
+ *
+ * Moderation model (Phase 1): a trusted submitter (valid COLLECT_PASSCODE)
+ * publishes immediately (status='approved'); everyone else's report lands
+ * 'pending' for /admin review. `expires_at` makes reports ephemeral so the map
+ * stays current and stale spam ages out on its own. `confirmations` backs the
+ * future Waze-style "still there?" voting.
+ *
+ * Writes flow through /api/reports using the server postgres role; RLS is
+ * enabled with NO policies so the anon key can't read/write it directly.
+ */
+export const community_reports = pgTable(
+  "community_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    category: text("category").notNull(), // hazard | condition | tip | note
+    subtype: text("subtype"), // pothole, parking_full, etc. (optional)
+    title: text("title"),
+    note: text("note"),
+    photo_url: text("photo_url"),
+    lng: doublePrecision("lng").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    municipality: text("municipality"),
+    status: text("status").notNull().default("pending"), // pending | approved | rejected
+    source: text("source").notNull().default("community"),
+    reported_by: text("reported_by"),
+    confirmations: integer("confirmations").notNull().default(0),
+    expires_at: timestamp("expires_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index("community_reports_status_idx").on(t.status),
+    lngLatIdx: index("community_reports_lng_lat_idx").on(t.lng, t.lat),
+    expiresIdx: index("community_reports_expires_idx").on(t.expires_at),
+    createdIdx: index("community_reports_created_idx").on(t.created_at),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- pg_trgm lives in the extensions schema (NOT public — Supabase advisory),
