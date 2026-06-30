@@ -72,6 +72,12 @@ async function callModel(userContent: string): Promise<string | null> {
         model: "anthropic/claude-haiku-4.5",
         system: SYSTEM,
         prompt: userContent,
+        // ai-gw-3: bound the primary Ask path like the fallbacks (raw
+        // Anthropic caps max_tokens:400, the planner 200). The system prompt
+        // asks for 2-4 sentences, so 400 is ample; a low temperature keeps the
+        // local-expert voice consistent and the output near-deterministic.
+        maxOutputTokens: 400,
+        temperature: 0.3,
       });
       if (text) return text.trim();
     } catch {

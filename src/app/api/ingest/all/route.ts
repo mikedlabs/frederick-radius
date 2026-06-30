@@ -40,11 +40,15 @@ export async function GET(request: Request) {
 
   const t0 = Date.now();
   const results = await Promise.all(SOURCES.map((s) => ingestICal(s)));
-  // isr-1: fresh rows landed in ingested_events — bust the DB-backed loader
-  // cache (ingested-events) AND the assembled /today + /events pages (events)
-  // so the new events appear immediately instead of waiting out the TTL.
-  revalidateTag("ingested-events", "max");
-  revalidateTag("events", "max");
+  // isr-1: only bust the event caches when rows ACTUALLY changed (skips the
+  // no-op case where DATABASE_URL is unset and ingestICal early-returns having
+  // written nothing). Refreshes the DB-backed loader (ingested-events) AND the
+  // assembled /today + /events + /map surfaces (events) immediately.
+  const upserted = results.reduce((a, r) => a + r.records_upserted, 0);
+  if (upserted > 0) {
+    revalidateTag("ingested-events", "max");
+    revalidateTag("events", "max");
+  }
   return NextResponse.json({
     duration_ms: Date.now() - t0,
     totals: {

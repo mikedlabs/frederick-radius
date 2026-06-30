@@ -69,6 +69,15 @@
           "value": "public, max-age=2592000, immutable"
         }
       ]
+    },
+    {
+      "source": "/history-photos/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=2592000, immutable"
+        }
+      ]
     }
   ]
 }

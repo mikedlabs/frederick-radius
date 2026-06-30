@@ -27,9 +27,11 @@
  * repopulates as before, never worse than today.
  */
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { verifyCronAuth } from "../../ingest/_auth";
 import { assembleUnifiedEvents } from "@/lib/loaders/unifiedEvents";
 import { getCachedLiveEvents } from "@/lib/integrations/ical-live";
+import { sendWarmFailureAlert, type WarmFailure } from "@/lib/integrations/alerts";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,21 +58,50 @@ export async function GET(request: Request) {
     getCachedLiveEvents(90),
   ]);
 
-  return NextResponse.json({
-    duration_ms: Date.now() - t0,
-    warmed: {
-      unified:
-        unified.status === "fulfilled"
-          ? { ok: true, count: unified.value.unified.length }
-          : { ok: false, error: errMsg(unified.reason) },
-      live60:
-        live60.status === "fulfilled"
-          ? { ok: true, count: live60.value.events.length }
-          : { ok: false, error: errMsg(live60.reason) },
-      live90:
-        live90.status === "fulfilled"
-          ? { ok: true, count: live90.value.events.length }
-          : { ok: false, error: errMsg(live90.reason) },
-    },
-  });
+  // obs-3: this cron is the ONLY thing between users and cold-miss TTFB, so a
+  // rejected warm must be loud — not silently 200'd (which Vercel records as
+  // "succeeded"). Collect failures, alert + capture, and return non-200 so the
+  // Vercel cron-failure surface lights up.
+  const failures: WarmFailure[] = [];
+  const summarize = (
+    cache: string,
+    r: PromiseSettledResult<unknown>,
+    count: number,
+  ) => {
+    if (r.status === "fulfilled") return { ok: true, count };
+    const error = errMsg(r.reason);
+    failures.push({ cache, error });
+    return { ok: false, error };
+  };
+
+  const warmed = {
+    unified: summarize(
+      "unified",
+      unified,
+      unified.status === "fulfilled" ? unified.value.unified.length : 0,
+    ),
+    live60: summarize(
+      "live60",
+      live60,
+      live60.status === "fulfilled" ? live60.value.events.length : 0,
+    ),
+    live90: summarize(
+      "live90",
+      live90,
+      live90.status === "fulfilled" ? live90.value.events.length : 0,
+    ),
+  };
+
+  const body = { ok: failures.length === 0, duration_ms: Date.now() - t0, warmed };
+
+  if (failures.length > 0) {
+    void sendWarmFailureAlert(failures);
+    Sentry.captureMessage(
+      `warm-events: ${failures.length} cache(s) failed to warm`,
+      { level: "warning", extra: { failures } },
+    );
+    return NextResponse.json(body, { status: 500 });
+  }
+
+  return NextResponse.json(body);
 }
