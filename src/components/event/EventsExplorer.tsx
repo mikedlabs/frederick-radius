@@ -16,8 +16,9 @@ import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon } from "@/lib/eventHorizon";
-import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, type IntentId } from "@/lib/events/intents";
-import type { Daypart } from "@/lib/daypart";
+import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
+import { daypart, type Daypart } from "@/lib/daypart";
+import EventsSavedRail from "@/components/event/EventsSavedRail";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
@@ -379,12 +380,52 @@ export default function EventsExplorer({
     setRecurringOnly(false);
   };
 
+  // Active facets as one-tap "drop this" relaxations — the honest empty
+  // state names exactly what's narrowing the list and lets the user widen
+  // one constraint at a time instead of a blunt "Clear all". Built in the
+  // order a user is most likely to want to relax (the sharpest filters
+  // first). Labels resolve to the human name, not the raw slug.
+  const relaxations: { key: string; label: string; drop: () => void }[] = [];
+  if (intent) relaxations.push({ key: "intent", label: INTENT_BY_ID[intent].label, drop: () => { setIntent(null); setSub(null); } });
+  if (sub) relaxations.push({ key: "sub", label: categories.find((c) => c.slug === sub)?.name ?? sub, drop: () => setSub(null) });
+  if (cat) relaxations.push({ key: "cat", label: categories.find((c) => c.slug === cat)?.name ?? cat, drop: () => setCat(null) });
+  if (tod) relaxations.push({ key: "tod", label: DAYPARTS.find((d) => d.key === tod)?.label ?? tod, drop: () => setTod(null) });
+  if (kidsOnly) relaxations.push({ key: "kids", label: "Kid-friendly", drop: () => setKidsOnly(false) });
+  if (recurringOnly) relaxations.push({ key: "recurring", label: "Recurring", drop: () => setRecurringOnly(false) });
+  if (freeOnly) relaxations.push({ key: "free", label: "Free", drop: () => setFreeOnly(false) });
+  if (happyOnly) relaxations.push({ key: "happy", label: "Happy hour", drop: () => setHappyOnly(false) });
+  if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? town, drop: () => setTown(null) });
+  if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
+  if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
+
+  // Daypart-aware lead chip — mirrors the /today time-of-day character on
+  // /events: in the evening it offers "Tonight," in the morning "This
+  // morning," each scoping to today + that Eastern daypart in one tap.
+  // Derived from the server `nowISO` prop, so render stays deterministic.
+  const nowDaypart = daypart(new Date(nowISO));
+  const DAYPART_CHIP: Record<Daypart, string> = {
+    morning: "This morning",
+    midday: "This afternoon",
+    evening: "Tonight",
+    late: "Late tonight",
+  };
+  const daypartOn = tod === nowDaypart && time === "today";
+
   // Orthogonal time / price facets — the WHEN and the deal, separate from
   // the WHAT (which the intent rail owns). Category-based chips (music,
   // family, civic) moved into the rail as first-class intents, so this
   // row no longer double-encodes the taxonomy.
   const QUICK: { key: string; label: string; on: boolean; toggle: () => void }[] = [
-    { key: "today", label: "Today", on: time === "today", toggle: () => setTime(time === "today" ? "all" : "today") },
+    {
+      key: "daypart",
+      label: DAYPART_CHIP[nowDaypart],
+      on: daypartOn,
+      toggle: () => {
+        if (daypartOn) { setTod(null); setTime("all"); }
+        else { setTod(nowDaypart); setTime("today"); }
+      },
+    },
+    { key: "today", label: "Today", on: time === "today" && tod === null, toggle: () => setTime(time === "today" ? "all" : "today") },
     { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
     { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
     { key: "happy", label: "Happy hour", on: happyOnly, toggle: () => setHappyOnly((v) => !v) },
@@ -392,6 +433,11 @@ export default function EventsExplorer({
 
   return (
     <div className="space-y-3">
+      {/* Your saved — upcoming saves surfaced first, closing the
+          find → save → resurface loop on the page people browse from.
+          Self-hides when there's nothing saved or ahead. */}
+      <EventsSavedRail events={events} nowISO={nowISO} liveSlugs={liveSlugs} />
+
       {/* Category front door — the seven human intents (+ tucked civic) as
           a scannable icon rail, with a second row of sub-categories when an
           intent has them. Replaces the old flat alphabetical category dump;
@@ -707,22 +753,42 @@ export default function EventsExplorer({
             className="mx-auto mt-1 max-w-xs text-[13px] text-pretty"
             style={{ color: "var(--app-ink-2)" }}
           >
-            Try a wider time window or fewer types. The list updates as
-            soon as something matches.
+            {relaxations.length > 0
+              ? "Drop a filter to widen the search. The list updates the moment something matches."
+              : "Try a wider time window or fewer types. The list updates as soon as something matches."}
           </p>
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={clear}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
-              style={{
-                background: "var(--app-bg-elevated)",
-                color: "var(--section-accent, var(--app-brand))",
-              }}
-            >
-              <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Clear filters
-            </button>
+          {/* Honest relaxations — name each active filter and let the user
+              widen ONE at a time, sharpest first. Beats a blunt "Clear all"
+              when only one constraint is the culprit. */}
+          {relaxations.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+              {relaxations.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={r.drop}
+                  className="tap-44-y inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tactile tactile-interactive"
+                  style={{
+                    background: "var(--app-bg-elevated)",
+                    color: "var(--app-ink-2)",
+                    boxShadow: "inset 0 0 0 1px var(--app-border)",
+                  }}
+                >
+                  <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                  {r.label}
+                </button>
+              ))}
+              {relaxations.length > 1 && (
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="tap-44-y inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tactile tactile-interactive"
+                  style={{ background: "var(--app-bg-elevated)", color: "var(--section-accent, var(--app-brand))" }}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           )}
         </div>
       ) : sort !== "time" ? (
