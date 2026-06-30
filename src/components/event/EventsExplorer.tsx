@@ -7,6 +7,7 @@ import { Search, List as ListIcon, Rows3, CalendarDays, Map as MapIcon, X, Chevr
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
+import EventsIntentRail from "@/components/event/EventsIntentRail";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Sheet from "@/components/ui/Sheet";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
@@ -15,11 +16,19 @@ import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon } from "@/lib/eventHorizon";
+import { eventIntentOf, countByIntent, type IntentId } from "@/lib/events/intents";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 type EventSortKey = "time" | "az" | "venue";
+
+// The eight intent ids, for the ?intent= URL codec. Mirrors IntentId in
+// lib/events/intents.ts (civic included — it's tucked in the rail, not
+// absent from the taxonomy, and a shared link to it must still restore).
+const INTENT_IDS: IntentId[] = [
+  "music", "arts", "food", "family", "sports", "outdoors", "community", "civic",
+];
 
 // Editorial hierarchy by TYPE, not just time: the grouped list leads
 // with draws (music, food, arts, family) and tucks civic business into a
@@ -110,6 +119,16 @@ export default function EventsExplorer({
       .withDefault(whenToTime(initialView?.when)),
   );
   const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
+  // Intent + sub — the new category front door (EventsIntentRail). The
+  // seven human intents roll up the ~25 place-categories; `sub` is a real
+  // category slug shown as a second row when an intent has curated subs.
+  // Both URL-synced (?intent / ?sub) so a "free music this weekend" view
+  // is shareable. They compose as AND with the lens / town / free facets.
+  const [intent, setIntent] = useQueryState<IntentId>(
+    "intent",
+    parseAsStringEnum<IntentId>(INTENT_IDS),
+  );
+  const [sub, setSub] = useQueryState("sub");
   const [day, setDay] = useState<string | null>(initialDay ?? null);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"list" | "compact" | "calendar" | "map">("list");
@@ -177,7 +196,11 @@ export default function EventsExplorer({
     }
   }, [sort]);
 
-  const filtered = useMemo(() => {
+  // Stage 1 — everything EXCEPT the category dimension (intent / sub /
+  // exact cat). The intent rail's badges count against THIS set, so a
+  // glance reads "how many music events match my current time + town +
+  // free filters," not a static all-time tally.
+  const baseFiltered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return events.filter((e) => {
       // Day filter wins over time-window filters when both are set.
@@ -190,7 +213,6 @@ export default function EventsExplorer({
       )
         return false;
       if (!day && time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
-      if (cat && e.category !== cat) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
       if (happyOnly) {
@@ -208,8 +230,25 @@ export default function EventsExplorer({
       )
         return false;
       return true;
-    }).sort(sortFn);
-  }, [events, day, time, cat, town, q, freeOnly, happyOnly, now, next24ISO, weekendStartISO, weekendEndISO, sortFn]);
+    });
+  }, [events, day, time, town, q, freeOnly, happyOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+
+  // Rail badges — per-intent counts over the base set (post time/town/free,
+  // pre intent/sub) so picking an intent doesn't zero out the other badges.
+  const intentCounts = useMemo(() => countByIntent(baseFiltered), [baseFiltered]);
+
+  // Stage 2 — the category dimension (intent roll-up + sub + the legacy
+  // exact-cat from the Type drawer / deep-links), then the chosen sort.
+  const filtered = useMemo(() => {
+    return baseFiltered
+      .filter((e) => {
+        if (intent && eventIntentOf(e) !== intent) return false;
+        if (sub && e.category !== sub) return false;
+        if (cat && e.category !== cat) return false;
+        return true;
+      })
+      .sort(sortFn);
+  }, [baseFiltered, intent, sub, cat, sortFn]);
 
   // Split the filtered set by TYPE so the grouped list leads with what
   // people actually come for; civic business sinks into a quiet tail
@@ -285,11 +324,15 @@ export default function EventsExplorer({
   }, [viewState, day]);
 
   const anyFilter =
-    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly || happyOnly || day !== null;
-  // Count only the panel facets (search is its own visible field).
+    cat !== null || intent !== null || sub !== null || town !== null ||
+    time !== "all" || q.trim() !== "" || freeOnly || happyOnly || day !== null;
+  // Count only the panel facets (search is its own visible field; the
+  // intent rail shows its own active state, so it's not tallied here).
   const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0);
   const clear = () => {
     setCat(null);
+    setIntent(null);
+    setSub(null);
     setTown(null);
     setDay(null);
     setTime("all");
@@ -298,28 +341,33 @@ export default function EventsExplorer({
     setHappyOnly(false);
   };
 
-  // One-tap intent chips — what people actually open an events page
-  // for. They drive the existing state; the deeper facets stay in the
-  // Filters drawer so the main area leads with these, not controls.
+  // Orthogonal time / price facets — the WHEN and the deal, separate from
+  // the WHAT (which the intent rail owns). Category-based chips (music,
+  // family, civic) moved into the rail as first-class intents, so this
+  // row no longer double-encodes the taxonomy.
   const QUICK: { key: string; label: string; on: boolean; toggle: () => void }[] = [
     { key: "today", label: "Today", on: time === "today", toggle: () => setTime(time === "today" ? "all" : "today") },
     { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
-    { key: "music", label: "Live music", on: cat === "music", toggle: () => setCat(cat === "music" ? null : "music") },
     { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
     { key: "happy", label: "Happy hour", on: happyOnly, toggle: () => setHappyOnly((v) => !v) },
-    { key: "family", label: "Family", on: cat === "family", toggle: () => setCat(cat === "family" ? null : "family") },
-    // Civic / meetings — separated per the May 2026 product review:
-    // commission meetings, public hearings, and municipal agendas are
-    // useful data but emotionally distinct from "dinner and music."
-    // Surfacing this lane lets the user pull civic forward when they
-    // want it AND keeps it from cluttering the default browse.
-    { key: "civic", label: "Civic", on: cat === "civic", toggle: () => setCat(cat === "civic" ? null : "civic") },
   ];
 
   return (
     <div className="space-y-3">
-      {/* Quick intent — the lead affordance. One tap for what people
-          actually want; deeper facets stay tucked in Filters. */}
+      {/* Category front door — the seven human intents (+ tucked civic) as
+          a scannable icon rail, with a second row of sub-categories when an
+          intent has them. Replaces the old flat alphabetical category dump;
+          owns the WHAT, leaving the WHEN/price to the quick facets below. */}
+      <EventsIntentRail
+        activeIntent={intent}
+        activeSub={sub}
+        counts={intentCounts}
+        onIntent={setIntent}
+        onSub={setSub}
+      />
+
+      {/* Quick facets — WHEN (today / weekend) and the deal (free / happy
+          hour). One tap; orthogonal to the intent rail above. */}
       <div className="flex flex-wrap gap-2" role="group" aria-label="Quick filters">
         {QUICK.map((c) => (
           <Pill key={c.key} tone="prominent" active={c.on} onClick={c.toggle}>
