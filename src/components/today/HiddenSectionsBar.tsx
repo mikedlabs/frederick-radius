@@ -34,7 +34,7 @@ export default function HiddenSectionsBar({
         <button
           type="button"
           onClick={showAll}
-          className="text-xs font-medium"
+          className="tap-44 text-xs font-medium"
           style={{ color: "var(--app-brand)" }}
         >
           Show all
@@ -57,7 +57,7 @@ function RestoreChip({ id, label }: { id: string; label: string }) {
     <button
       type="button"
       onClick={show}
-      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
+      className="tap-44-y inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-[var(--app-bg-sunken)]"
       style={{ borderColor: "var(--app-border)", color: "var(--app-ink-2)" }}
     >
       <Eye className="h-3 w-3" strokeWidth={2} aria-hidden />

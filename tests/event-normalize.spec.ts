@@ -86,14 +86,21 @@ describe("splitPresenter", () => {
 });
 
 describe("cleanTitle", () => {
-  it("spaces a hyphen before an uppercase letter or digit", () => {
+  it("un-mashes a feed hyphen before a digit or a meeting word", () => {
     expect(cleanTitle("Council-Workshop")).toBe("Council Workshop");
     expect(cleanTitle("Fire-54th Anniversary")).toBe("Fire 54th Anniversary");
+    expect(cleanTitle("Planning Commission-Meeting")).toBe("Planning Commission Meeting");
   });
 
-  it("keeps real compounds (lowercase after hyphen)", () => {
+  it("keeps real hyphenated names intact", () => {
     expect(cleanTitle("Pop-up market")).toBe("Pop-up market");
     expect(cleanTitle("Drive-in movie")).toBe("Drive-in movie");
+    // The old blanket letter-before-capital rule mangled all of these.
+    expect(cleanTitle("E-Bike Demo")).toBe("E-Bike Demo");
+    expect(cleanTitle("T-Shirt Tie-Dye")).toBe("T-Shirt Tie-Dye");
+    expect(cleanTitle("Spider-Man Movie Night")).toBe("Spider-Man Movie Night");
+    expect(cleanTitle("Mother-Daughter Tea")).toBe("Mother-Daughter Tea");
+    expect(cleanTitle("X-Ray Tech Open House")).toBe("X-Ray Tech Open House");
   });
 
   it("strips a trailing year the date implies", () => {

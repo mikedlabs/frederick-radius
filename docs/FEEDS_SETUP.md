@@ -46,7 +46,24 @@ Status re-checked this date from a networked environment, app-style fetch:
 - **Mount St. Mary's — bot-walled.** `calendar.msmary.edu` returns a **202
   challenge interstitial** (not real ICS) regardless of User-Agent, so it can't
   be verified or wired without a proxy/partnership. Source key kept for when a
-  reachable feed appears. (This is the Emmitsburg event gap.)
+  reachable feed appears. (This is the Emmitsburg event gap.) Re-checked
+  2026-06-29: still walls a browser UA (403). Defer until a partnership or a
+  reachable endpoint appears.
+
+- **FCPS / high-school athletics — no clean public feed (spike, 2026-06-29).**
+  Probed the obvious platforms; none yields a usable iCal/JSON schedule:
+  - `fcps.org/athletics` routes ticketing to **GoFan** (`gofan.co/app/school/MD68111`)
+    and competition info to **MPSSAA** — neither is a schedule feed.
+  - GoFan API guesses (`/api/schools/<id>/events`) **404/302 to an error page**;
+    its schedule data is JS-rendered behind the app shell, per-school (a separate
+    code per high school), and ticketed-events-only — brittle and partial, not a
+    clean feed.
+  - **MPSSAA** (state association) publishes PDFs, no iCal/RSS. **MaxPreps**
+    per-team pages exist but expose no feed.
+  Conclusion: no reliable public source today. Revisit if FCPS adopts a
+  feed-capable scheduler (rSchoolToday/Arbiter), or pursue a GoFan partnership /
+  per-school rendered-calendar scrape only if HS sports becomes a priority. No
+  source key reserved until a feed exists.
 
 To enable a keyed feed: set its env var in Vercel → redeploy → confirm it flips
 to green on `/admin/data-health`.

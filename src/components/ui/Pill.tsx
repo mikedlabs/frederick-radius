@@ -77,7 +77,7 @@ function CountBadge({ count, active, tone }: { count: number; active: boolean; t
       className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums"
       style={{
         background: active
-          ? `color-mix(in srgb, ${onInk ? "var(--app-bg)" : "#fff"} 22%, transparent)`
+          ? `color-mix(in srgb, ${onInk ? "var(--app-bg)" : "var(--app-on-brand)"} 22%, transparent)`
           : "color-mix(in srgb, var(--app-ink) 8%, transparent)",
         color: active ? ACTIVE_FG[tone] : "var(--app-ink-3)",
       }}

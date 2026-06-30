@@ -170,6 +170,7 @@ const EVENT_SOURCE_REGISTRY: Record<string, SourceMeta> = {
   bandsintown:      { license: "Bandsintown API terms",                          confidence: "verified" },
   seatgeek:         { license: "SeatGeek Platform API terms",                     confidence: "verified" },
   eventbrite:       { license: "Eventbrite API terms, organizer-published",       confidence: "scraped" },
+  "frederick-keys": { license: "MLB Stats API (statsapi.mlb.com), public",        confidence: "verified" },
 };
 
 export type EventProvenanceInput = {

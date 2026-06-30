@@ -61,7 +61,7 @@ export default function MyRadiusButton({
         type="button"
         aria-hidden
         tabIndex={-1}
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
+        className="tap-44 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold"
         style={{
           borderColor: "var(--app-border)",
           background: "var(--app-bg-elevated)",

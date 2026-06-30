@@ -1315,7 +1315,7 @@ function Stop({
                 href={`https://www.google.com/maps/dir/?api=1&destination=${geom.lat},${geom.lng}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
+                className="tap-44-y tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
                 style={{ color: "var(--app-ink-2)" }}
               >
                 <Navigation className="h-3 w-3" aria-hidden />
@@ -1324,7 +1324,7 @@ function Stop({
             )}
             <Link
               href={href}
-              className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
+              className="tap-44-y tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold"
               style={{ color: "var(--app-ink-2)" }}
             >
               Details
@@ -1336,7 +1336,7 @@ function Stop({
                   type="button"
                   disabled={pending}
                   onClick={onSwap}
-                  className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                  className="tap-44-y tactile tactile-interactive inline-flex items-center gap-1 rounded-full bg-[var(--app-bg-sunken)] px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
                   style={{ color: "var(--app-ink-2)" }}
                 >
                   <RefreshCw
@@ -1351,7 +1351,7 @@ function Stop({
                     onClick={onPin}
                     disabled={pending}
                     aria-pressed={isPinned}
-                    className="tactile tactile-interactive inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                    className="tap-44-y tactile tactile-interactive inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
                     style={{
                       background: isPinned ? "var(--app-cool)" : "var(--app-bg-sunken)",
                       color: isPinned ? "#fff" : "var(--app-ink-2)",

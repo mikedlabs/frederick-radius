@@ -94,7 +94,7 @@ export default function CollapsibleSection({
         onClick={toggle}
         aria-expanded={mounted ? open : defaultOpen}
         aria-controls={contentId}
-        className="flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left transition active:opacity-70"
+        className="tap-44 flex w-full items-center justify-between gap-2 px-1 py-1.5 text-left transition active:opacity-70"
       >
         <span className="flex items-baseline gap-2">
           <span className="eyebrow" style={{ color: "var(--app-ink-3)" }}>

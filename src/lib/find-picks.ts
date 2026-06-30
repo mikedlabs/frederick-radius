@@ -34,7 +34,7 @@ export const FIND_FILTERS = {
   dinner: ["restaurant", "pizza"],
   drinks: ["bar", "brewery", "winery"],
   coffee: ["coffee", "cafe", "bakery"],
-  sweet: ["bakery", "dessert", "ice-cream"],
+  sweet: ["bakery", "ice-cream"],
 } as const;
 
 export type FindFilter = keyof typeof FIND_FILTERS;

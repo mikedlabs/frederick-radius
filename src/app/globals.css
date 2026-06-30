@@ -2075,3 +2075,22 @@ input[type="range"]:active::-moz-range-thumb { transform: scale(1.18); }
   pointer-events: auto;
   z-index: 0;
 }
+
+/* Vertical-only 44px hit-extender. For a small control packed in a HORIZONTAL
+   row (filter chips, radio pairs) where the symmetric .tap-44 overlay would
+   extend sideways into a neighbor and steal its taps. Same idea as the Pill's
+   before:-inset-y extender, as a reusable class. */
+.tap-44-y {
+  position: relative;
+}
+.tap-44-y::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: max(100%, 44px);
+  transform: translateY(-50%);
+  pointer-events: auto;
+  z-index: 0;
+}

@@ -106,7 +106,7 @@ export default function TuneForYou() {
         type="button"
         onClick={dismiss}
         aria-label="Dismiss"
-        className="grid h-7 w-7 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)]"
+        className="tap-44 grid h-7 w-7 shrink-0 place-items-center rounded-full transition hover:bg-[var(--app-bg-sunken)]"
         style={{ color: "var(--app-ink-3)" }}
       >
         <X className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />

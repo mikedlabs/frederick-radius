@@ -28,7 +28,7 @@ export default function FilterChip({
         onClick();
       }}
       aria-pressed={active}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition active:opacity-70"
+      className="tap-44-y inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition active:opacity-70"
       style={{
         borderColor: active ? "var(--app-brand-press)" : "var(--app-border)",
         background: active ? "var(--app-brand-press)" : "var(--app-bg-elevated)",

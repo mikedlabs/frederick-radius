@@ -17,7 +17,7 @@ export default function ModeToggle() {
         role="radio"
         aria-checked={mode === "resident"}
         onClick={() => setMode("resident")}
-        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors"
+        className="tap-44-y inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors"
         style={{
           background: mode === "resident" ? "var(--app-brand)" : "transparent",
           color: mode === "resident" ? "white" : "var(--app-ink-2)",
@@ -30,7 +30,7 @@ export default function ModeToggle() {
         role="radio"
         aria-checked={mode === "visitor"}
         onClick={() => setMode("visitor")}
-        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors"
+        className="tap-44-y inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors"
         style={{
           background: mode === "visitor" ? "var(--app-cool)" : "transparent",
           color: mode === "visitor" ? "white" : "var(--app-ink-2)",

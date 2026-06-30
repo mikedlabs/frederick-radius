@@ -15,6 +15,9 @@ import {
   fetchTicketmasterSports,
 } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
+import { BANDSINTOWN_ARTISTS } from "@/data/bandsintown-artists";
+import { fetchVisitFrederick } from "@/lib/integrations/visitfrederick";
+import { fetchFrederickKeys } from "@/lib/integrations/frederickKeys";
 import { fetchSquarespaceVenueEvents } from "@/lib/integrations/squarespace-live";
 import { venueEventsAsCards, venueEventsToCards } from "@/lib/loaders/venueEvents";
 import type { EventWithMeta } from "@/lib/loaders/events";
@@ -89,10 +92,13 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     category_name: CATEGORY_BY_SLUG[e.category]?.name ?? e.category,
     municipality_name: MUNICIPALITY_BY_SLUG[e.municipality]?.name ?? e.municipality,
     distance_m: undefined,
-    // Live feeds carry no per-event geocode — every row sits on its feed's
-    // default centroid, so this resolves to "area" and never claims a
-    // distance. See lib/events/geo-confidence.
-    geo_confidence: eventGeoConfidence({ geom: e.geom }),
+    // Most live feeds carry no per-event geocode — every row sits on its
+    // feed's default centroid, so this resolves to "area" and never claims a
+    // distance. A feed that DOES resolve a distinct per-event coordinate marks
+    // it with placement:"geocoded" (e.g. Visit Frederick detail-page JSON-LD),
+    // which lifts it to "exact_address" and a real distance. Absent placement,
+    // behaviour is exactly as before. See lib/events/geo-confidence.
+    geo_confidence: eventGeoConfidence({ placement: e.placement, geom: e.geom }),
   };
 }
 
@@ -124,14 +130,16 @@ export async function getLiveCardEventBySlug(
   // 6 of 45 listing links dead). Same fail-soft pattern as the index:
   // a hung provider degrades to [], never throws. All four fetches are
   // HTTP-cached upstream, so this shares the index's cache entries.
-  const [ical, tmMusic, tmSports, bit, sqRaw] = await Promise.all([
+  const [ical, tmMusic, tmSports, bit, vf, keys, sqRaw] = await Promise.all([
     getCachedLiveEvents(windowDays).then((r) => r.events).catch(() => [] as LiveEvent[]),
     fetchTicketmasterMusic().catch(() => [] as LiveEvent[]),
     fetchTicketmasterSports().catch(() => [] as LiveEvent[]),
-    fetchBandsintownForArtists([]).catch(() => [] as LiveEvent[]),
+    fetchBandsintownForArtists(BANDSINTOWN_ARTISTS).catch(() => [] as LiveEvent[]),
+    fetchVisitFrederick().catch(() => [] as LiveEvent[]),
+    fetchFrederickKeys().catch(() => [] as LiveEvent[]),
     fetchSquarespaceVenueEvents(windowDays).catch(() => []),
   ]);
-  const events = [...ical, ...tmMusic, ...tmSports, ...bit];
+  const events = [...ical, ...tmMusic, ...tmSports, ...bit, ...vf, ...keys];
   // Clean stored slug first (the canonical form a card links to).
   let hit = events.find((e) => liveCleanSlug(e) === slug);
   // Legacy fallback: an old "live-..." shared link still resolves so it
