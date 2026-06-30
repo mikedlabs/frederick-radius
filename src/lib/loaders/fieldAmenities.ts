@@ -51,6 +51,7 @@ export async function getFieldAmenities(): Promise<Amenity[]> {
         municipality: field_amenities.municipality,
         lng: field_amenities.lng,
         lat: field_amenities.lat,
+        photo_url: field_amenities.photo_url,
       })
       .from(field_amenities)
       .where(eq(field_amenities.status, "approved"));
@@ -71,6 +72,7 @@ export async function getFieldAmenities(): Promise<Amenity[]> {
         municipality: r.municipality ?? "Frederick County",
         lng: r.lng,
         lat: r.lat,
+        photo: r.photo_url ?? undefined,
       });
     }
     return out;

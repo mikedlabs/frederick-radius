@@ -103,6 +103,50 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
 
 export function OsmPopup({ p }: { p: SelectedOsm }) {
   const cat = CATEGORY_BY_SLUG[p.category_slug];
+
+  // Field-collected amenities (the /collect tool) are NOT from OpenStreetMap —
+  // they're marked on foot by a neighbor. Show the reference photo + note and
+  // honest provenance instead of the OSM "unverified / may be stale" warning
+  // and the (bogus) OSM link.
+  if (p.osm_id?.startsWith("field:")) {
+    return (
+      <div style={{ minWidth: 200, maxWidth: 240, padding: 4 }}>
+        {p.photo && (
+          // eslint-disable-next-line @next/next/no-img-element -- Mapbox popup is outside next/image's tree
+          <img
+            src={p.photo}
+            alt={p.name}
+            style={{
+              width: "100%", height: 120, objectFit: "cover",
+              borderRadius: 8, marginBottom: 6, display: "block",
+            }}
+          />
+        )}
+        <p style={{
+          fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+          textTransform: "uppercase", color: cat?.color ?? "var(--app-brand-2, #2F5470)", marginBottom: 4,
+        }}>
+          {cat?.name ?? p.category_slug}
+        </p>
+        <strong style={{ display: "block", fontSize: 15, color: "var(--app-ink, #1A1A1A)", fontFamily: "var(--font-display), ui-serif, Georgia, serif" }}>
+          {p.name}
+        </strong>
+        {p.address && (
+          <p style={{ fontSize: 12, margin: "6px 0 4px", color: "var(--app-ink-2, #4A4A48)", lineHeight: 1.4 }}>
+            {p.address}
+          </p>
+        )}
+        <p style={{
+          marginTop: 6, fontSize: 10, fontWeight: 600,
+          textTransform: "uppercase", letterSpacing: "0.06em",
+          color: "var(--app-brand-2, #2F5470)",
+        }}>
+          Marked on foot
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minWidth: 200, padding: 4 }}>
       <p style={{

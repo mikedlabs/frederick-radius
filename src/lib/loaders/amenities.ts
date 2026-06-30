@@ -26,6 +26,9 @@ export type Amenity = {
   municipality: string;
   lng: number;
   lat: number;
+  /** Reference photo URL (field-collected points only; the /collect tool
+   *  uploads it to blob storage). Undefined for static/OSM amenities. */
+  photo?: string;
 };
 
 const AMENITIES = AMENITIES_RAW as Amenity[];
