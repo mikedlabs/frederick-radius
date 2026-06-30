@@ -262,7 +262,7 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
             />
             <span
               aria-hidden
-              className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full"
+              className="pointer-events-none absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full"
               style={{ background: "rgba(0,0,0,0.42)", color: "white", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)" }}
             >
               <Expand className="h-4 w-4" strokeWidth={2.25} />
@@ -292,9 +292,10 @@ function PlaceSheetContent({ place, onClose }: { place: PlaceCardData; onClose: 
                 {place.name}
               </h2>
             </div>
-            {/* Save button anchored to the upper-right of the photo —
-             *  keeps the cinematic crop clean while staying tappable. */}
-            <div className="absolute right-3 top-3">
+            {/* Save button anchored to the upper-LEFT so it can't collide
+             *  with the decorative Expand glyph in the top-right corner
+             *  (both were at right-3 top-3 and overlapped). */}
+            <div className="absolute left-3 top-3 z-10">
               <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
             </div>
           </div>
