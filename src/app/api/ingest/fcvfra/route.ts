@@ -10,6 +10,7 @@
  *   GET /api/ingest/fcvfra?dry=1     (fetch + parse + count only, no writes)
  */
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
 import { geocodePending } from "@/lib/ingest/geocode";
@@ -73,6 +74,13 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       geocode = { error: err instanceof Error ? err.message : "geocode failed" };
     }
+  }
+
+  // isr-1: real ingest wrote fresh rows — bust the event caches so /today,
+  // /events, and /map pick up the new fire-company events immediately.
+  if (!dry && sql) {
+    revalidateTag("ingested-events", "max");
+    revalidateTag("events", "max");
   }
 
   return Response.json({

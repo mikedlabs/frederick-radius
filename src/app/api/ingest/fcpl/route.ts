@@ -12,6 +12,7 @@
  *   GET /api/ingest/fcpl?only=brunswick
  */
 import { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getSql } from "@/lib/db/client";
 import { upsertEvent, emptyStats, type UpsertStats } from "@/lib/ingest/upsert";
 import { geocodePending } from "@/lib/ingest/geocode";
@@ -82,6 +83,13 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       geocode = { error: err instanceof Error ? err.message : "geocode failed" };
     }
+  }
+
+  // isr-1: real ingest wrote fresh rows — bust the event caches so /today,
+  // /events, and /map pick up the new library programs immediately.
+  if (!dry && sql) {
+    revalidateTag("ingested-events", "max");
+    revalidateTag("events", "max");
   }
 
   return Response.json({

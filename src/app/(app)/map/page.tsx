@@ -19,6 +19,7 @@ import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
 import { getFrederickWaterSites } from "@/lib/integrations/usgsWater";
 import { getCachedLiveEvents } from "@/lib/integrations/ical-live";
+import { unstable_cache } from "next/cache";
 import { fetchTicketmasterMusic, fetchTicketmasterSports } from "@/lib/integrations/ticketmaster";
 import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
@@ -229,6 +230,29 @@ async function loadUpcomingEvents(now: Date): Promise<EventWithMeta[]> {
   );
 }
 
+/**
+ * Cached wrapper around loadUpcomingEvents (isr-6). The radius branch is the
+ * DEFAULT /map view and previously re-ran the full feed union + liveToCardEvent
+ * + collapseRecurringEvents + dedupe + sort on EVERY render — and re-fetched
+ * Ticketmaster/Bandsintown uncached (only getCachedLiveEvents was warm). Cache
+ * the assembled result per 300s bucket (matching cachedAssemble in
+ * unifiedEvents.ts), tagged "events" so the ingest crons bust it, and SHA-pinned
+ * so a deploy auto-invalidates (the #509 lesson). `now` is rounded to the bucket
+ * and rebuilt INSIDE the cached fn — passing the raw Date would make every
+ * render a unique key and the cache a no-op. The page still windows the result
+ * against the REAL now downstream (eventsForMode), so "tonight/weekend" stay
+ * exact.
+ */
+const cachedUpcomingEvents = unstable_cache(
+  (bucket: number) => loadUpcomingEvents(new Date(bucket * 300_000)),
+  ["map-upcoming-events-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  { revalidate: 300, tags: ["events"] },
+);
+
+function upcomingEventsBucket(now: Date): number {
+  return Math.floor(now.getTime() / 300_000);
+}
+
 // Slim places projection used to de-dupe amenities (same shape the
 // /radius route used to derive). Inlined here so the radius branch
 // can compute its amenity set without dragging the full Place loader
@@ -287,7 +311,7 @@ export default async function MapPage({
     // identical across modes; ISR caching bounds the cold-path cost.
     const radiusNow = new Date();
     const radiusEvents = getVisibleEvents(
-      await withTimeout(loadUpcomingEvents(radiusNow), 8000, [] as EventWithMeta[]),
+      await withTimeout(cachedUpcomingEvents(upcomingEventsBucket(radiusNow)), 8000, [] as EventWithMeta[]),
       radiusNow,
     )
       // Belt-and-suspenders against past events leaking into "within reach":
@@ -447,7 +471,7 @@ async function BrowseMapArea({
     // Upcoming events (curated seed + live feeds), deduped + sorted.
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
-    withTimeout(loadUpcomingEvents(now), 8000, [] as EventWithMeta[]),
+    withTimeout(cachedUpcomingEvents(upcomingEventsBucket(now)), 8000, [] as EventWithMeta[]),
   ]);
   const civic: CivicPin[] = [
     ...incidents
