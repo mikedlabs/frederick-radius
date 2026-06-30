@@ -742,7 +742,7 @@ export default function SavedList() {
                       role="tab"
                       aria-selected={active}
                       onClick={() => setViewAndStore(v)}
-                      className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                      className="tap-44-y flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
                       style={{
                         background: active ? "var(--app-bg-elevated)" : "transparent",
                         color: active ? "var(--app-ink)" : "var(--app-ink-3)",

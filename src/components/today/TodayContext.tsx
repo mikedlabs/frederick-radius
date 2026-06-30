@@ -121,7 +121,7 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
       <span className="inline-flex items-center gap-1" style={{ color: "var(--app-ink-3)" }}>
         <MapPin className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: "var(--app-brand)" }} />
         {!homeMuni && <span>Browsing</span>}
-        <span className="relative inline-flex items-center">
+        <span className="tap-44 relative inline-flex items-center">
           <select
             aria-label="Choose the town you're browsing"
             value={homeSlug ?? ""}

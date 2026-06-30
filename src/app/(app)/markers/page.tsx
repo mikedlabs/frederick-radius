@@ -113,7 +113,7 @@ export default async function MarkersPage() {
           Read the inscription on every roadside marker in the county, and find the
           National Register landmarks and covered bridges. Live from MDOT and the
           National Park Service. For the stories behind them, see{" "}
-          <a href="/history" className="font-semibold" style={{ color: "var(--app-brand)" }}>
+          <a href="/history" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
             Frederick history
           </a>
           .

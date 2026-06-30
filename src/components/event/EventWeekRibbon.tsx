@@ -161,7 +161,7 @@ export default function EventWeekRibbon({
             {d.count > 0 && d.key === todayKey ? (
               <span
                 className="inline-flex min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums leading-[16px]"
-                style={{ background: "var(--app-brand)", color: "white" }}
+                style={{ background: "var(--app-brand-press)", color: "var(--app-on-brand)" }}
               >
                 {d.count}
               </span>

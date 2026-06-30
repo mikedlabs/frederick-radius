@@ -284,7 +284,7 @@ export default function AppMapDeck({
             <span>Layers</span>
             {activeCats.size + activeAmenityGroupCount > 0 && (
               <span
-                className="inline-flex min-w-[16px] items-center justify-center rounded-full bg-[var(--app-brand)] px-1 text-[10px] font-bold tabular-nums text-white"
+                className="inline-flex min-w-[16px] items-center justify-center rounded-full bg-[var(--app-brand-press)] px-1 text-[10px] font-bold tabular-nums text-white"
               >
                 {activeCats.size + activeAmenityGroupCount}
               </span>
