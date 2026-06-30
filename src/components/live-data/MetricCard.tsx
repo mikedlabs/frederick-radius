@@ -26,6 +26,7 @@ export default function MetricCard({
   unit,
   trend,
   trendStroke = "var(--app-cool)",
+  animatedTrend = false,
   accent = "var(--app-cool)",
   status,
   meta,
@@ -46,6 +47,8 @@ export default function MetricCard({
   trend?: number[];
   /** Color for the sparkline line + fill. */
   trendStroke?: string;
+  /** Animate the sparkline (draw-in + live beacon) on mount. */
+  animatedTrend?: boolean;
   /** Color for the top accent bar + chip backgrounds. */
   accent?: string;
   /** Optional status pill text bottom-left of the card. */
@@ -122,7 +125,7 @@ export default function MetricCard({
               className="ml-auto flex-1"
               style={{ color: trendStroke, maxWidth: 130 }}
             >
-              <Sparkline values={trend} width={130} height={36} />
+              <Sparkline values={trend} width={130} height={36} animated={animatedTrend} />
             </span>
           )}
         </div>

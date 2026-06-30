@@ -32,10 +32,14 @@ export default function FloodGauge({
   current,
   stages,
   category,
+  animated = false,
 }: {
   current: number;
   stages: FloodStages;
   category: FloodCategory;
+  /** One-shot reveal on mount: the level bar wipes in left-to-right (water
+   *  filling). Freezes under prefers-reduced-motion. */
+  animated?: boolean;
 }) {
   // Domain runs 0 → just past major so the "major" band stays visible.
   const domainMax = stages.major * 1.12;
@@ -63,7 +67,7 @@ export default function FloodGauge({
       <div
         role="img"
         aria-label={`Gage height ${current.toFixed(2)} ft, ${category.label}. NWS flood stage ${category.floodStageFt} ft. ${distance}.`}
-        className="relative h-2.5 w-full overflow-hidden rounded-full"
+        className={`relative h-2.5 w-full overflow-hidden rounded-full${animated ? " flood-fill" : ""}`}
         style={{ background: "var(--app-bg-sunken)" }}
       >
         {zones.map((z) => {

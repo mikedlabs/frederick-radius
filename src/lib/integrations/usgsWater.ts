@@ -294,3 +294,23 @@ export function normalizeWaterSitesWithHistory(raw: unknown): WaterSite[] {
     .filter((x) => x.gageHeightFt != null || x.streamflowCfs != null)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
+/**
+ * Trend direction over the last 4 readings vs the previous 4 — a cheap
+ * "rising / falling / steady" indicator without a statistical model. Returns
+ * null when there's not enough history. Shared by /rivers and the /pulse rivers
+ * tile so the two surfaces label the same gauge the same way.
+ */
+export function readingTrend(
+  history?: Reading[],
+): "rising" | "falling" | "steady" | null {
+  if (!history || history.length < 8) return null;
+  const recent = history.slice(-4).reduce((a, b) => a + b.value, 0) / 4;
+  const prior = history.slice(-8, -4).reduce((a, b) => a + b.value, 0) / 4;
+  const delta = recent - prior;
+  // Threshold = 1% of recent value, or 0.05 if recent is tiny.
+  const tol = Math.max(Math.abs(recent) * 0.01, 0.05);
+  if (delta > tol) return "rising";
+  if (delta < -tol) return "falling";
+  return "steady";
+}

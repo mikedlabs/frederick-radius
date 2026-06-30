@@ -53,7 +53,10 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { getLocalHeadlines } from "@/lib/integrations/news";
 import { getCivicPressReleases, policeReleases, latestPoliceRelease, advisoryReleases } from "@/lib/integrations/civic-press";
 import { getFrederickTransitRoutes, getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
-import { getFrederickWaterSites, type WaterSite } from "@/lib/integrations/usgsWater";
+import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
+import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
+import MetricCard from "@/components/live-data/MetricCard";
+import FloodGauge from "@/components/live-data/FloodGauge";
 import { getAreaAirportStatus, type AirportStatus } from "@/lib/integrations/faa-airports";
 import { publicPlaces } from "@/lib/loaders/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
@@ -189,8 +192,9 @@ export default async function PulsePage({
     withTimeout(getCivicPressReleases(), FEED_MS, []),
     // TransIT route count for the "by the numbers" grid (weekly-cached loader).
     withTimeout(getFrederickTransitRoutes(), FEED_MS, []),
-    // USGS live gage height + streamflow for county rivers (latest reading only).
-    withTimeout(getFrederickWaterSites(), FEED_MS, [] as WaterSite[]),
+    // USGS live gage height + streamflow for county rivers, WITH 24h history
+    // (powers the tile's sparklines + rising/falling read + NWS flood gauge).
+    withTimeout(getFrederickWaterSitesWithHistory(), FEED_MS, [] as WaterSite[]),
     // FAA status for BWI / Dulles / Reagan; the tile self-hides when empty.
     withTimeout(getAreaAirportStatus(), FEED_MS, [] as AirportStatus[]),
     // TransIT route shapes + stops for the live bus map (weekly-cached).
@@ -291,8 +295,9 @@ export default async function PulsePage({
   // height + observed time only, never a synthesized flood "stage".
   const riverGroups = groupByRiver(rivers);
   const riverPeekSite = riverGroups[0]?.sites.find((s) => s.gageHeightFt != null);
+  const riverPeekDir = riverPeekSite ? readingTrend(riverPeekSite.gageHistory) : null;
   const riverPeek = riverPeekSite
-    ? `${riverGroups[0].river} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft`
+    ? `${riverGroups[0].river} · ${riverPeekSite.gageHeightFt!.toFixed(1)} ft${riverPeekDir ? ` · ${riverPeekDir}` : ""}`
     : undefined;
 
   // Airports — BWI / Dulles / Reagan. An empty `airports` means the FAA feed
@@ -522,42 +527,73 @@ export default async function PulsePage({
       peek: riverPeek,
       body: rivers.length > 0
         ? (
-          <>
+          <div className="space-y-4">
             {riverGroups.map((g) => (
-              <div
-                key={g.river}
-                className="rounded-[var(--app-radius-md)] border px-3 py-2.5"
-                style={{ borderColor: "var(--app-border)", background: "var(--app-bg-sunken)" }}
-              >
-                <p className="flex items-baseline gap-1.5">
-                  <span className="text-[13px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+              <div key={g.river} className="space-y-2">
+                <p className="flex items-baseline gap-1.5 px-0.5">
+                  <span className="font-serif text-[15px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
                     {g.river}
                   </span>
-                  <span className="font-mono text-[11px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
+                  <span className="font-mono text-[10px] tabular-nums" style={{ color: "var(--app-ink-3)" }}>
                     {g.sites.length} {g.sites.length === 1 ? "gauge" : "gauges"}
                   </span>
                 </p>
-                <ul className="mt-1 space-y-1">
-                  {g.sites.map((s) => (
-                    <li key={s.id} className="flex items-baseline justify-between gap-2 text-[12px]">
-                      <span className="min-w-0 flex-1 truncate" style={{ color: "var(--app-ink-2)" }}>
-                        {riverLocationOf(s.name) || titleCaseRiver(s.name)}
-                      </span>
-                      <span className="shrink-0 font-mono tabular-nums" style={{ color: "var(--app-ink)" }}>
-                        {s.gageHeightFt != null
-                          ? `${s.gageHeightFt.toFixed(2)} ft`
-                          : s.streamflowCfs != null
-                            ? `${s.streamflowCfs.toLocaleString()} ft³/s`
-                            : // eslint-disable-next-line no-restricted-syntax -- standalone no-data glyph, not prose
-                              "—"}
-                        {s.observedAt && (
-                          <span className="ml-1.5 text-[10px]" style={{ color: "var(--app-ink-3)" }}>
-                            {timeAgo(s.observedAt)}
-                          </span>
-                        )}
-                      </span>
-                    </li>
-                  ))}
+                <ul className="space-y-2.5">
+                  {g.sites.map((s) => {
+                    const hasHeight = s.gageHeightFt != null;
+                    const dir = readingTrend(s.gageHistory) ?? readingTrend(s.streamflowHistory);
+                    const flood = classifyFlood(s.gageHeightFt, s.floodStages);
+                    const trendTone: "neutral" | "good" | "warning" =
+                      dir === "rising" ? "warning" : dir === "falling" ? "good" : "neutral";
+                    const trendLabel =
+                      dir === "rising" ? "Rising" : dir === "falling" ? "Falling" : dir === "steady" ? "Steady" : "Live";
+                    // A flood category (action+) outranks the trend on the pill —
+                    // on a water board, "how close to flooding" beats "rising".
+                    const status: { label: string; tone: "neutral" | "good" | "warning" | "danger" } =
+                      flood && flood.key !== "normal"
+                        ? { label: flood.label, tone: flood.tone === "danger" ? "danger" : "warning" }
+                        : { label: trendLabel, tone: trendTone };
+                    const value = hasHeight ? s.gageHeightFt!.toFixed(2) : (s.streamflowCfs ?? 0).toLocaleString();
+                    const unit = hasHeight ? "ft" : "ft³/s";
+                    const trend = hasHeight ? s.gageHistory?.map((r) => r.value) : s.streamflowHistory?.map((r) => r.value);
+                    const secondary = hasHeight && s.streamflowCfs != null
+                      ? `Flow ${s.streamflowCfs.toLocaleString()} ft³/s`
+                      : null;
+                    const ago = s.observedAt ? timeAgo(s.observedAt) : "";
+                    return (
+                      <li key={s.id}>
+                        <MetricCard
+                          title={riverLocationOf(s.name) || titleCaseRiver(s.name)}
+                          value={value}
+                          unit={unit}
+                          trend={trend}
+                          animatedTrend
+                          accent="var(--app-cool)"
+                          trendStroke="var(--app-cool)"
+                          status={status}
+                          meta={
+                            ago || secondary ? (
+                              <>
+                                {ago}
+                                {ago && secondary && <span className="mx-1.5 opacity-50">·</span>}
+                                {secondary}
+                              </>
+                            ) : undefined
+                          }
+                          footer={
+                            flood && s.floodStages && s.gageHeightFt != null ? (
+                              <FloodGauge current={s.gageHeightFt} stages={s.floodStages} category={flood} animated />
+                            ) : undefined
+                          }
+                          href={
+                            s.floodStages
+                              ? nwsGaugeUrl(s.floodStages.nws)
+                              : `https://waterdata.usgs.gov/monitoring-location/${s.id}/`
+                          }
+                        />
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ))}
@@ -570,9 +606,9 @@ export default async function PulsePage({
               <ChevronRight className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
             </Link>
             <p className="px-1 pt-0.5 text-[10px] leading-snug" style={{ color: "var(--app-ink-3)" }}>
-              Latest reading only. Flood forecasts are the National Weather Service&rsquo;s job, not ours.
+              Latest reading + 24-hour trend. Flood categories are the National Weather Service&rsquo;s; crest forecasts stay with them.
             </p>
-          </>
+          </div>
         )
         : emptyNote("River gauge readings are briefly unavailable."),
     },

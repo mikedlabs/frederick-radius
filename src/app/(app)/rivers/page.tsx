@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Waves, Droplets, ExternalLink, Clock, MapPin } from "lucide-react";
-import { getFrederickWaterSitesWithHistory, type WaterSite } from "@/lib/integrations/usgsWater";
+import { getFrederickWaterSitesWithHistory, readingTrend, type WaterSite } from "@/lib/integrations/usgsWater";
 import { classifyFlood, nwsGaugeUrl } from "@/lib/integrations/floodStage";
 import PageBloom from "@/components/ui/PageBloom";
 import MetricCard from "@/components/live-data/MetricCard";
@@ -75,21 +75,6 @@ function groupByRiver(sites: WaterSite[]): Array<{ river: string; sites: WaterSi
       sites: list.sort((a, b) => a.name.localeCompare(b.name)),
     }))
     .sort((a, b) => b.sites.length - a.sites.length);
-}
-
-/** Trend direction over the last 4 readings vs the previous 4 — a
- *  cheap "rising / falling / steady" indicator without needing a
- *  statistical model. Returns null when there's not enough data. */
-function trendDirection(history?: Array<{ value: number; at: string }>): "rising" | "falling" | "steady" | null {
-  if (!history || history.length < 8) return null;
-  const recent = history.slice(-4).reduce((a, b) => a + b.value, 0) / 4;
-  const prior = history.slice(-8, -4).reduce((a, b) => a + b.value, 0) / 4;
-  const delta = recent - prior;
-  // Threshold = 1% of recent value, or 0.05 if recent is tiny.
-  const tol = Math.max(Math.abs(recent) * 0.01, 0.05);
-  if (delta > tol) return "rising";
-  if (delta < -tol) return "falling";
-  return "steady";
 }
 
 export default async function RiversPage() {
@@ -219,7 +204,7 @@ export default async function RiversPage() {
             </header>
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {list.map((site) => {
-                const dir = trendDirection(site.gageHistory) ?? trendDirection(site.streamflowHistory);
+                const dir = readingTrend(site.gageHistory) ?? readingTrend(site.streamflowHistory);
                 const flood = classifyFlood(site.gageHeightFt, site.floodStages);
                 // The status pill leads with the SAFETY signal: when a gauge is
                 // at or above NWS action stage, that flood category IS the pill
