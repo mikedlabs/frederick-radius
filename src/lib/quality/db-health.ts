@@ -1,0 +1,142 @@
+/**
+ * Database-health probes for the nightly data-health cron + admin dashboard.
+ *
+ * These read the RAW-SQL ingestion/security surface that is deliberately NOT
+ * modeled in src/lib/db/schema.ts (the ingestion tables + RLS posture live
+ * only in the hand-applied migrations — see drizzle/README.md), so they go
+ * through the raw postgres-js handle (getSql) rather than Drizzle.
+ *
+ * Every probe is FAIL-SOFT: it returns an empty result when the DB is
+ * unavailable (dev / no DATABASE_URL) or the query errors, so wiring them
+ * into the cron can never break the health report or a page render.
+ */
+import "server-only";
+import { getSql } from "@/lib/db/client";
+import type { Anomaly } from "@/lib/integrations/feed-snapshot";
+
+/**
+ * mig-6 — RLS-coverage guard. The security model is deny-all RLS on every
+ * public table (drizzle/0007, 0009): all reads/writes go through Drizzle on a
+ * BYPASSRLS role, never the public anon/PostgREST role. A table hand-added
+ * WITHOUT `ENABLE ROW LEVEL SECURITY` silently re-opens the anon read/write
+ * hole. Returns the names of any public base table with RLS disabled.
+ */
+export async function findRlsUnprotectedTables(): Promise<string[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    const rows = (await sql`
+      SELECT c.relname
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relkind = 'r'
+        AND c.relrowsecurity = false
+      ORDER BY c.relname
+    `) as unknown as Array<{ relname: string }>;
+    return rows.map((r) => r.relname);
+  } catch (err) {
+    console.warn(
+      "[db-health] RLS coverage check failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}
+
+/** mig-6, as alert-shaped anomalies for the cron's existing Slack path. */
+export async function findRlsAnomalies(): Promise<Anomaly[]> {
+  const tables = await findRlsUnprotectedTables();
+  return tables.map((t) => ({
+    source: t,
+    kind: "rls_unprotected" as const,
+    detail: `public.${t} has RLS DISABLED — the anon/PostgREST role can read/write it. Run "ALTER TABLE public.${t} ENABLE ROW LEVEL SECURITY;" in the Supabase SQL editor.`,
+  }));
+}
+
+/** A source that exists in ingested_events but hasn't refreshed within this
+ *  many hours is treated as stale (a daily cron that has silently died). */
+const INGEST_STALE_HOURS = 36;
+
+/**
+ * ING-5 — dead-feed freshness. Flags any ingest source whose newest
+ * `ingested_events` row is older than `maxAgeHours` (a CivicEngage/FCPL/FCVFRA
+ * cron that quietly stopped writing — the DFP/Hood-style silent retirement).
+ * Returns alert-shaped anomalies; empty when the table is empty or unavailable.
+ */
+export async function findStaleIngestSources(
+  maxAgeHours = INGEST_STALE_HOURS,
+): Promise<Anomaly[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    const rows = (await sql`
+      SELECT source_domain, max(updated_at) AS last
+      FROM ingested_events
+      GROUP BY source_domain
+    `) as unknown as Array<{ source_domain: string; last: string | Date | null }>;
+    const cutoff = Date.now() - maxAgeHours * 3_600_000;
+    const out: Anomaly[] = [];
+    for (const r of rows) {
+      const lastMs = r.last ? new Date(r.last).getTime() : 0;
+      if (lastMs < cutoff) {
+        const ageH = lastMs ? Math.round((Date.now() - lastMs) / 3_600_000) : null;
+        out.push({
+          source: r.source_domain,
+          kind: "ingest_stale",
+          detail: ageH
+            ? `No ingest in ~${ageH}h (last ${new Date(lastMs).toISOString()}); the cron for this source may be dead.`
+            : `Source present in ingested_events but has no updated_at — ingest may be broken.`,
+        });
+      }
+    }
+    return out;
+  } catch (err) {
+    console.warn(
+      "[db-health] ingest staleness check failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}
+
+export type UnparseableSummary = {
+  source: string;
+  count: number;
+  sample: string | null;
+};
+
+/**
+ * obs-3 — surface the `unparseable_locations` queue. The ingest pipeline logs
+ * every location it could not geocode here (per drizzle/0001) but nothing ever
+ * reads it, so geocode-quality failures accumulate invisibly. Returns a
+ * per-source count + most-recent sample for the admin dashboard.
+ */
+export async function getUnparseableLocationSummary(
+  limit = 12,
+): Promise<UnparseableSummary[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    const rows = (await sql`
+      SELECT source_domain,
+             count(*)::int AS n,
+             (array_agg(raw_location ORDER BY seen_at DESC))[1] AS sample
+      FROM unparseable_locations
+      GROUP BY source_domain
+      ORDER BY count(*) DESC
+      LIMIT ${limit}
+    `) as unknown as Array<{ source_domain: string; n: number; sample: string | null }>;
+    return rows.map((r) => ({
+      source: r.source_domain,
+      count: Number(r.n),
+      sample: r.sample,
+    }));
+  } catch (err) {
+    console.warn(
+      "[db-health] unparseable summary failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}

@@ -16,6 +16,7 @@ import {
 } from "@/lib/integrations/feed-snapshot";
 import { getDriftStats } from "@/lib/drift-review";
 import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
+import { getUnparseableLocationSummary } from "@/lib/quality/db-health";
 
 export const metadata: Metadata = {
   title: "Data health · Admin",
@@ -55,6 +56,12 @@ export default async function DataHealth() {
   // feeds are dark until their env var is set in the deployment.
   const feeds = feedStatuses();
   const dark = darkFeedCount();
+
+  // Geocode-failure queue (obs-3). The ingest pipeline logs every location
+  // it could not parse/geocode to `unparseable_locations`, but nothing read
+  // it — failures accumulated invisibly. Fail-soft to [] without a DB.
+  const unparseable = await getUnparseableLocationSummary();
+  const unparseableTotal = unparseable.reduce((a, r) => a + r.count, 0);
 
   // Trust layer (Phase 1): provenance coverage, the confidence ladder, and
   // the stale open-assertion count that the freshness flip would blank.
@@ -481,6 +488,60 @@ export default async function DataHealth() {
               ))}
             </tbody>
           </table>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          Unparseable locations (geocode queue)
+        </h2>
+        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          Locations the ingest pipeline could not parse or geocode, logged to{" "}
+          <code>unparseable_locations</code> per source. The event still ships
+          (never dropped), but it lands on a feed-default centroid until the
+          address is fixed upstream or a parser rule is added.
+        </p>
+        {unparseable.length === 0 ? (
+          <p
+            className="mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px]"
+            style={{
+              background: "color-mix(in srgb, var(--app-positive) 10%, var(--app-bg-elevated))",
+              color: "var(--app-positive)",
+            }}
+          >
+            None queued (or no database in this environment).
+          </p>
+        ) : (
+          <>
+            <p className="mt-2 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+              <span className="font-semibold tabular-nums" style={{ color: "var(--app-warning)" }}>
+                {unparseableTotal.toLocaleString()}
+              </span>{" "}
+              across {unparseable.length} source{unparseable.length === 1 ? "" : "s"}.
+            </p>
+            <table className="mt-3 w-full text-sm">
+              <thead>
+                <tr style={{ color: "var(--app-ink-3)" }}>
+                  <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
+                  <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Count</th>
+                  <th className="py-1 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Most recent sample</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unparseable.map((r) => (
+                  <tr key={r.source} className="border-b align-top" style={{ borderColor: "var(--app-border)" }}>
+                    <td className="py-2 pr-3 font-semibold" style={{ color: "var(--app-ink)" }}>{r.source}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums font-semibold" style={{ color: "var(--app-warning)" }}>
+                      {r.count.toLocaleString()}
+                    </td>
+                    <td className="py-2 text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+                      {r.sample ?? "–"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </section>
 

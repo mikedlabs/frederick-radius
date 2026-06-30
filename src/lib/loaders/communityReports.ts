@@ -6,7 +6,7 @@
  * error all return [] — so this can be wired into the map safely before the
  * `community_reports` table exists on prod.
  */
-import { and, eq, gt, isNull, or, desc } from "drizzle-orm";
+import { and, eq, gt, isNull, or, desc, lt } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
 import { community_reports } from "@/lib/db/schema";
 
@@ -70,5 +70,47 @@ export async function getCommunityReports(now: Date = new Date()): Promise<Commu
     return out;
   } catch {
     return [];
+  }
+}
+
+/**
+ * integrity-01 — prune dead community reports. The `expires_at` index exists
+ * (drizzle community-reports migration) but nothing ever deletes, so expired
+ * and rejected rows accumulate forever. Deletes only:
+ *   - APPROVED reports whose expiry has passed (already invisible to the map), and
+ *   - REJECTED reports older than the grace window.
+ * It NEVER touches `pending` rows (the live admin queue) or live/permanent
+ * approved rows (expires_at NULL is preserved — a NULL never satisfies `<`).
+ * Mirrors prunePushLog / pruneOldSnapshots: fail-soft, returns the count
+ * deleted, no-op without a DB.
+ */
+export async function pruneExpiredReports(graceDays = 1): Promise<number> {
+  const db = getDb();
+  if (!db) return 0;
+  const now = new Date();
+  const cutoff = new Date(Date.now() - graceDays * 86_400_000);
+  try {
+    const deleted = await db
+      .delete(community_reports)
+      .where(
+        or(
+          and(
+            eq(community_reports.status, "approved"),
+            lt(community_reports.expires_at, now),
+          ),
+          and(
+            eq(community_reports.status, "rejected"),
+            lt(community_reports.reviewed_at, cutoff),
+          ),
+        ),
+      )
+      .returning({ id: community_reports.id });
+    return deleted.length;
+  } catch (err) {
+    console.warn(
+      "[community-reports] prune failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return 0;
   }
 }
