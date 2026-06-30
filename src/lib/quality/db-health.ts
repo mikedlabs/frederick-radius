@@ -100,6 +100,72 @@ export async function findStaleIngestSources(
   }
 }
 
+export type IngestRunSummary = {
+  source: string;
+  status: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  recordsIn: number;
+  recordsUpserted: number;
+  recordsFailed: number;
+  error: string | null;
+  /** Last run older than 36h (the source's cron may have stopped firing).
+   *  Computed here, not in the page, so the server component render stays pure. */
+  stale: boolean;
+};
+
+const INGEST_STALE_MS = 36 * 3_600_000;
+
+/**
+ * obs-2 read side — the most recent `ingest_runs` row per source, so the admin
+ * dashboard shows whether each cron-driven ingest succeeded, when, and how many
+ * rows it wrote. The (source_slug, started_at) index backs the per-source
+ * latest lookup. Fail-soft to [].
+ */
+export async function getRecentIngestRuns(): Promise<IngestRunSummary[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    const rows = (await sql`
+      SELECT DISTINCT ON (source_slug)
+             source_slug, status, started_at, ended_at,
+             records_in, records_upserted, records_failed, error
+      FROM ingest_runs
+      ORDER BY source_slug, started_at DESC
+    `) as unknown as Array<{
+      source_slug: string;
+      status: string | null;
+      started_at: string | Date | null;
+      ended_at: string | Date | null;
+      records_in: number | null;
+      records_upserted: number | null;
+      records_failed: number | null;
+      error: string | null;
+    }>;
+    const nowMs = Date.now();
+    return rows.map((r) => {
+      const startedMs = r.started_at ? new Date(r.started_at).getTime() : 0;
+      return {
+        source: r.source_slug,
+        status: r.status,
+        startedAt: r.started_at ? new Date(r.started_at).toISOString() : null,
+        endedAt: r.ended_at ? new Date(r.ended_at).toISOString() : null,
+        recordsIn: Number(r.records_in ?? 0),
+        recordsUpserted: Number(r.records_upserted ?? 0),
+        recordsFailed: Number(r.records_failed ?? 0),
+        error: r.error,
+        stale: !startedMs || nowMs - startedMs > INGEST_STALE_MS,
+      };
+    });
+  } catch (err) {
+    console.warn(
+      "[db-health] ingest-runs summary failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return [];
+  }
+}
+
 export type UnparseableSummary = {
   source: string;
   count: number;

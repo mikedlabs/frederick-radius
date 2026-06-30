@@ -16,7 +16,7 @@ import {
 } from "@/lib/integrations/feed-snapshot";
 import { getDriftStats } from "@/lib/drift-review";
 import { feedStatuses, darkFeedCount } from "@/lib/integrations/feed-registry";
-import { getUnparseableLocationSummary } from "@/lib/quality/db-health";
+import { getUnparseableLocationSummary, getRecentIngestRuns } from "@/lib/quality/db-health";
 
 export const metadata: Metadata = {
   title: "Data health · Admin",
@@ -62,6 +62,11 @@ export default async function DataHealth() {
   // it — failures accumulated invisibly. Fail-soft to [] without a DB.
   const unparseable = await getUnparseableLocationSummary();
   const unparseableTotal = unparseable.reduce((a, r) => a + r.count, 0);
+
+  // Ingest-run telemetry (obs-2): the most recent run per cron-driven source,
+  // so a silent partial-failure ingest is visible. Staleness is computed in the
+  // loader (keeps this server render pure). Fail-soft to [] without a DB.
+  const ingestRuns = await getRecentIngestRuns();
 
   // Trust layer (Phase 1): provenance coverage, the confidence ladder, and
   // the stale open-assertion count that the freshness flip would blank.
@@ -486,6 +491,62 @@ export default async function DataHealth() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <h2 className="font-serif text-[18px] font-semibold tracking-tight" style={{ color: "var(--app-ink)" }}>
+          Ingest runs (last per source)
+        </h2>
+        <p className="mt-1 text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+          The most recent run of each cron-driven ingest (<code>ingest_runs</code>).
+          A red status or a stale timestamp means the source&apos;s cron has
+          failed or stopped firing, so its events go quietly stale.
+        </p>
+        {ingestRuns.length === 0 ? (
+          <p
+            className="mt-3 rounded-[var(--app-radius-md)] px-3 py-2 text-[12px]"
+            style={{
+              background: "color-mix(in srgb, var(--app-ink) 5%, var(--app-bg-elevated))",
+              color: "var(--app-ink-3)",
+            }}
+          >
+            No ingest runs recorded (or no database in this environment).
+          </p>
+        ) : (
+          <table className="mt-3 w-full text-sm">
+            <thead>
+              <tr style={{ color: "var(--app-ink-3)" }}>
+                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Source</th>
+                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Status</th>
+                <th className="py-1 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em]">Last run</th>
+                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">In</th>
+                <th className="py-1 pr-3 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Upserted</th>
+                <th className="py-1 text-right text-[11px] font-semibold uppercase tracking-[0.08em]">Failed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ingestRuns.map((r) => {
+                const bad = r.status === "error" || r.recordsFailed > 0 || r.stale;
+                return (
+                  <tr key={r.source} className="border-b align-top" style={{ borderColor: "var(--app-border)" }}>
+                    <td className="py-2 pr-3 font-semibold" style={{ color: "var(--app-ink)" }}>{r.source}</td>
+                    <td className="py-2 pr-3 text-[11px] font-semibold" style={{ color: bad ? "var(--app-warning)" : "var(--app-positive)" }}>
+                      {r.status ?? "–"}
+                    </td>
+                    <td className="py-2 pr-3 text-[11px]" style={{ color: r.stale ? "var(--app-warning)" : "var(--app-ink-3)" }}>
+                      {r.startedAt ? new Date(r.startedAt).toLocaleString() : "–"}
+                    </td>
+                    <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--app-ink-2)" }}>{r.recordsIn}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--app-ink-2)" }}>{r.recordsUpserted}</td>
+                    <td className="py-2 text-right tabular-nums font-semibold" style={{ color: r.recordsFailed > 0 ? "var(--app-warning)" : "var(--app-ink-3)" }}>
+                      {r.recordsFailed}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
