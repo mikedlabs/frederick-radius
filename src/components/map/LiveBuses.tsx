@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Marker, Popup } from "react-map-gl/mapbox";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Marker, Popup, Source, Layer } from "react-map-gl/mapbox";
 import TRANSIT from "@/data/transit.json";
 import { haptic } from "@/lib/haptics";
 
@@ -30,6 +30,7 @@ import { haptic } from "@/lib/haptics";
  * position updates, no glide, ripple, streak, or pop.
  */
 
+type NextStop = { id: string; name: string; lat: number; lng: number; etaEpoch?: number };
 type LiveVehicle = {
   vehicleId: string;
   routeId?: string;
@@ -38,7 +39,21 @@ type LiveVehicle = {
   lng: number;
   bearing?: number;
   timestamp?: number;
+  /** Resolved server-side (join to TripUpdates + the static stop table). */
+  nextStop?: NextStop;
 };
+
+/** Minutes-to-arrival label for a next-stop ETA. `nowMs` is state (updated on
+ *  the 1s tick), never Date.now() in render — the purity rule. Returns null
+ *  when there's no predicted time, so the UI shows the stop name alone. */
+function etaLabel(etaEpoch: number | undefined, nowMs: number): string | null {
+  if (etaEpoch == null || nowMs === 0) return null;
+  const mins = Math.round((etaEpoch * 1000 - nowMs) / 60000);
+  if (mins <= 0) return "due";
+  if (mins === 1) return "1 min";
+  if (mins > 90) return null; // stale/implausible prediction — name only
+  return `${mins} min`;
+}
 type TransitRoute = { id: string; short: string; name: string; color: string; text: string };
 
 const ROUTE_BY_ID: Record<string, TransitRoute> = Object.fromEntries(
@@ -159,6 +174,10 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
   const [pos, setPos] = useState<Record<string, Pos>>({});
   const [selected, setSelected] = useState<string | null>(null);
   const [ago, setAgo] = useState(0);
+  // Wall-clock now (ms), refreshed on the 1s tick — drives the next-stop ETA
+  // ("· 4 min") WITHOUT a Date.now() in render (react-hooks/purity). Starts 0
+  // until the first poll/tick stamps it; etaLabel() suppresses ETAs at 0.
+  const [nowMs, setNowMs] = useState(0);
   // Increments on each successful poll; drives the one-shot ripple + badge pop.
   const [pollSeq, setPollSeq] = useState(0);
   // Computed once on the client; never changes, so no effect/ref needed.
@@ -181,13 +200,14 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
         if (alive && Array.isArray(d.vehicles)) {
           setVehicles(d.vehicles);
           setAgo(0);
+          setNowMs(Date.now());
           setPollSeq((s) => s + 1);
         }
       } catch { /* keep last known */ }
     };
     load();
     const poll = setInterval(load, POLL_MS);
-    const tick = setInterval(() => setAgo((a) => a + 1), 1000);
+    const tick = setInterval(() => { setAgo((a) => a + 1); setNowMs(Date.now()); }, 1000);
     return () => { alive = false; clearInterval(poll); clearInterval(tick); };
   }, [show]);
 
@@ -257,6 +277,28 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [vehicles, reduced]);
 
+  // The selected bus's path-ahead: a line from its REPORTED fix to its next
+  // stop, plus the stop itself. Memoized on [selected, vehicles] so it only
+  // recomputes per poll/selection — NOT per glide frame (the line anchors at
+  // the static reported position, not the gliding marker, so the Source data
+  // is stable between polls and doesn't thrash mapbox). Null when nothing is
+  // selected or the next stop couldn't be resolved.
+  const nextStopView = useMemo(() => {
+    if (!selected) return null;
+    const v = vehicles.find((x) => x.vehicleId === selected);
+    if (!v?.nextStop) return null;
+    const color = (v.routeId ? ROUTE_BY_ID[v.routeId]?.color : undefined) ?? "#20506A";
+    const line: GeoJSON.Feature<GeoJSON.LineString> = {
+      type: "Feature",
+      properties: {},
+      geometry: {
+        type: "LineString",
+        coordinates: [[v.lng, v.lat], [v.nextStop.lng, v.nextStop.lat]],
+      },
+    };
+    return { stop: v.nextStop, color, line };
+  }, [selected, vehicles]);
+
   if (!show || vehicles.length === 0) return null;
 
   return (
@@ -265,8 +307,54 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
         "@keyframes fr-bus-in{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}" +
         "@keyframes fr-bus-pop{0%{transform:scale(1)}35%{transform:scale(1.16)}100%{transform:scale(1)}}" +
         "@keyframes fr-bus-ripple{0%{opacity:.45;transform:translate(-50%,-50%) scale(.5)}100%{opacity:0;transform:translate(-50%,-50%) scale(2.5)}}" +
-        "@keyframes fr-bus-dwell{0%,100%{opacity:.3;transform:translate(-50%,-50%) scale(1)}50%{opacity:.65;transform:translate(-50%,-50%) scale(1.3)}}"
+        "@keyframes fr-bus-dwell{0%,100%{opacity:.3;transform:translate(-50%,-50%) scale(1)}50%{opacity:.65;transform:translate(-50%,-50%) scale(1.3)}}" +
+        "@keyframes fr-bus-target{0%{opacity:.7;transform:translate(-50%,-50%) scale(.7)}70%{opacity:0;transform:translate(-50%,-50%) scale(2.1)}100%{opacity:0}}"
       }</style>
+      {/* Path-ahead — the selected bus's line to its next stop + a target
+          ring on the stop (the flight-tracker "where it's headed"). The line
+          anchors at the reported fix (stable per poll), so it never thrashes
+          on glide frames. Renders as map layers, beneath the DOM markers. */}
+      {nextStopView && (
+        <>
+          <Source id="bus-next-stop" type="geojson" data={nextStopView.line}>
+            <Layer
+              id="bus-next-stop-line"
+              type="line"
+              layout={{ "line-cap": "round", "line-join": "round" }}
+              paint={{
+                "line-color": nextStopView.color,
+                "line-width": 2.5,
+                "line-opacity": 0.7,
+                "line-dasharray": [1.5, 1.5],
+              }}
+            />
+          </Source>
+          <Marker longitude={nextStopView.stop.lng} latitude={nextStopView.stop.lat} anchor="center">
+            <span aria-hidden style={{ position: "relative", display: "block", width: 12, height: 12 }}>
+              {!reduced && (
+                <span
+                  style={{
+                    position: "absolute", left: "50%", top: "50%",
+                    width: 12, height: 12, borderRadius: 999,
+                    border: `2px solid ${nextStopView.color}`,
+                    transform: "translate(-50%,-50%)",
+                    animation: "fr-bus-target 1.8s ease-out infinite",
+                  }}
+                />
+              )}
+              <span
+                style={{
+                  position: "absolute", left: "50%", top: "50%",
+                  width: 9, height: 9, borderRadius: 999,
+                  background: nextStopView.color, border: "2px solid #fff",
+                  transform: "translate(-50%,-50%)",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                }}
+              />
+            </span>
+          </Marker>
+        </>
+      )}
       {vehicles.map((v) => {
         const p = pos[v.vehicleId];
         if (!p) return null;
@@ -375,6 +463,7 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
         const route = v.routeId ? ROUTE_BY_ID[v.routeId] : undefined;
         const color = route?.color ?? "#20506A";
         const stateLabel = p.moving ? "Moving now" : "At a stop";
+        const eta = etaLabel(v.nextStop?.etaEpoch, nowMs);
         return (
           <Popup
             longitude={p.lng}
@@ -399,7 +488,22 @@ export default function LiveBuses({ show, highlightRouteId }: { show: boolean; h
                 <span aria-hidden style={{ display: "inline-block", width: 7, height: 7, borderRadius: 999, background: p.moving ? "var(--app-positive, #1E6B3A)" : "var(--app-ink-3, #5C5A50)" }} />
                 {stateLabel} <span style={{ color: "var(--app-positive, #1E6B3A)", fontWeight: 600 }}>· free</span>
               </div>
-              <div style={{ marginTop: 3, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
+              {/* Next stop — the flight-tracker line: where it's headed + when.
+                  Name alone when there's no live ETA (honest, never guessed). */}
+              {v.nextStop && (
+                <div style={{ marginTop: 5, display: "flex", alignItems: "baseline", gap: 5, fontSize: 12.5, lineHeight: 1.25 }}>
+                  <span aria-hidden style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--app-ink-3, #5C5A50)", transform: "translateY(-1px)" }}>
+                    Next
+                  </span>
+                  <span style={{ fontWeight: 600, color: "var(--app-ink, #16140E)" }}>
+                    {v.nextStop.name}
+                    {eta && (
+                      <span style={{ color: "var(--app-cool, #20506A)", fontWeight: 700 }}> · {eta}</span>
+                    )}
+                  </span>
+                </div>
+              )}
+              <div style={{ marginTop: 4, fontSize: 11, color: "var(--app-ink-3, #5C5A50)" }}>
                 Updated {ago}s ago · live from TransIT
               </div>
             </div>
