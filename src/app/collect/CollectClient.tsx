@@ -455,8 +455,17 @@ export default function CollectClient() {
             placeholder={kind === "other" ? "What is it?" : "Note (optional)"}
             className="min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
           />
-          <label className="tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm font-medium">
+          {/* Visible "Photo" text (not an emoji alone): the camera glyph fails
+              to render on some Android/desktop fonts, collapsing the control to
+              a blank box — the "no photo button" report. The word label keeps
+              it visible + recognizable everywhere, matching every other control
+              in this tool (glyph + label). aria-label names it for AT. */}
+          <label
+            aria-label="Add photo"
+            className="tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm font-medium"
+          >
             <span aria-hidden="true">{"\u{1F4F7}"}</span>
+            <span>{photo || editing?.photo ? "Change" : "Photo"}</span>
             <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
           </label>
           {photo ? (
