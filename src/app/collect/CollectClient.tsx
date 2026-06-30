@@ -382,26 +382,10 @@ export default function CollectClient() {
         </div>
       )}
 
-      {/* Floating count + locate (prominent, labeled). */}
+      {/* Floating count chip (info only; the locate control lives in the card). */}
       <div className="absolute left-3 top-3 rounded-full bg-[var(--app-ink)]/85 px-3 py-1.5 font-mono text-xs text-white shadow">
         {recent.length} marked
       </div>
-      <button
-        type="button"
-        onClick={() => locate(true)}
-        className="absolute right-3 top-3 inline-flex h-11 items-center gap-1.5 rounded-full bg-white/95 px-3.5 text-sm font-semibold text-[var(--app-ink)] shadow-md"
-        aria-label="Use my location"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className={locating ? "animate-spin" : undefined}>
-          <circle cx="12" cy="12" r="7" />
-          <line x1="12" y1="1" x2="12" y2="4" />
-          <line x1="12" y1="20" x2="12" y2="23" />
-          <line x1="1" y1="12" x2="4" y2="12" />
-          <line x1="20" y1="12" x2="23" y2="12" />
-          <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
-        </svg>
-        {locating ? "Locating" : "My location"}
-      </button>
 
       {/* Floating control card pinned to the bottom. */}
       <div
@@ -413,11 +397,29 @@ export default function CollectClient() {
             <button type="button" onClick={cancelEdit} className="tap-44 text-sm text-[var(--app-ink)]/60">Cancel</button>
           </div>
         ) : (
-          <p className="text-center text-[11px] text-[var(--app-ink)]/55">
-            {geoBlocked
-              ? "Location blocked. Drag the map so the crosshair sits on the spot."
-              : "Center the crosshair on the spot (or tap My location), pick a type, Add. Tap a dot to edit."}
-          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => locate(true)}
+              className="tap-44 inline-flex shrink-0 items-center gap-1.5 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2 text-sm font-semibold text-[var(--app-ink)]"
+              aria-label="Use my location"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className={locating ? "animate-spin" : undefined}>
+                <circle cx="12" cy="12" r="7" />
+                <line x1="12" y1="1" x2="12" y2="4" />
+                <line x1="12" y1="20" x2="12" y2="23" />
+                <line x1="1" y1="12" x2="4" y2="12" />
+                <line x1="20" y1="12" x2="23" y2="12" />
+                <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+              </svg>
+              {locating ? "Locating…" : "My location"}
+            </button>
+            <p className="text-[11px] leading-tight text-[var(--app-ink)]/55">
+              {geoBlocked
+                ? "Location blocked. Drag the map so the crosshair sits on the spot."
+                : "Center the crosshair on the spot, pick a type, Add. Tap a dot to edit."}
+            </p>
+          </div>
         )}
 
         {/* Type picker — single horizontal row (saves vertical space for the map). */}
