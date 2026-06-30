@@ -214,6 +214,10 @@ type Props = {
    *  category — instead of dumping all ~1,700. The control surface lets
    *  them compose what they want to see. */
   pinpointDefault?: boolean;
+  /** Amenity-tray group keys to pre-activate (e.g. a /map?amenity=restroom
+   *  deep-link from /amenities or /today). Opens the tray showing that layer
+   *  on first paint instead of a clean map. */
+  initialAmenityGroups?: string[];
 };
 
 export default function AppMap({
@@ -235,6 +239,7 @@ export default function AppMap({
   municipalBoundaries = EMPTY_LINE_FC,
   countyBoundary = EMPTY_LINE_FC,
   events = [],
+  initialAmenityGroups,
 }: Props) {
   const mapRef = useRef<MapRef>(null);
   // Effective camera home: when we arrived via a category and already
@@ -292,8 +297,13 @@ export default function AppMap({
   // Cold open is CLEAN: no layers pre-selected (matching the empty-categories
   // decision above) so the map opens as the live town, not a wall of pins. The
   // mode toggle still applies its curated layers when the user picks a mode.
-  const [amenityGroups, setAmenityGroups] = useState<Set<string>>(() => new Set());
-  const [amenityOpen, setAmenityOpen] = useState(false);
+  // Cold open is normally CLEAN, but a deep-link (/map?amenity=restroom from
+  // /amenities or /today) pre-activates those groups and opens the tray so the
+  // requested amenity layer is on at first paint.
+  const [amenityGroups, setAmenityGroups] = useState<Set<string>>(
+    () => new Set(initialAmenityGroups ?? []),
+  );
+  const [amenityOpen, setAmenityOpen] = useState((initialAmenityGroups?.length ?? 0) > 0);
   // The category rail is heavy; collapsed by default so the in-map
   // deck stays a clean glass bar. "Filters" reveals it as a panel.
   const [filtersOpen, setFiltersOpen] = useState(false);

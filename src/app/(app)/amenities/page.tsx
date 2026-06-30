@@ -9,16 +9,54 @@ import {
   Baby,
   Waves,
   Trash2,
+  Recycle,
+  Droplets,
   PawPrint,
   Armchair,
   Mailbox,
   PackageOpen,
+  MapPin,
+  Footprints,
   ArrowLeft,
   Sparkles,
+  type LucideIcon,
 } from "lucide-react";
-import { amenitiesByKind } from "@/lib/loaders/amenities";
+import { amenitiesByKind, type AmenityKind } from "@/lib/loaders/amenities";
+import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
+import { AMENITY_KIND_TO_CAT, AMENITY_GROUPS } from "@/components/map/constants";
 import PageBloom from "@/components/ui/PageBloom";
 import SectionHeading from "@/components/ui/SectionHeading";
+
+// Kind → map amenity-tray group key, derived from the same source of truth
+// the map uses (kind → category slug → the group that carries that slug). Lets
+// every tile here deep-link straight to /map with that layer turned on.
+const KIND_TO_GROUP: Record<string, string> = (() => {
+  const m: Record<string, string> = {};
+  for (const [kind, slug] of Object.entries(AMENITY_KIND_TO_CAT)) {
+    const g = AMENITY_GROUPS.find((gr) => gr.cats.includes(slug));
+    if (g) m[kind] = g.key;
+  }
+  return m;
+})();
+
+const mapHrefForKind = (kind: string): string => {
+  const group = KIND_TO_GROUP[kind];
+  return group ? `/map?amenity=${group}` : "/map";
+};
+
+// Label + icon for the field-collected kinds (the /collect tool's output).
+const FIELD_META: Record<string, { label: string; icon: LucideIcon }> = {
+  trash: { label: "Trash cans", icon: Trash2 },
+  recycling: { label: "Recycling", icon: Recycle },
+  water: { label: "Water fountains", icon: Droplets },
+  bench: { label: "Benches", icon: Armchair },
+  dog_waste: { label: "Dog bag stations", icon: PawPrint },
+  dog_water: { label: "Dog water", icon: PawPrint },
+  outlet: { label: "Power outlets", icon: PlugZap },
+  ev_charging: { label: "EV charging", icon: PlugZap },
+  restroom: { label: "Restrooms", icon: Toilet },
+  other: { label: "Other spots", icon: MapPin },
+};
 
 /**
  * /amenities — the editorial roadmap for the civic-services layer.
@@ -48,7 +86,10 @@ export const metadata: Metadata = {
     "Public restrooms, Wi-Fi, EV charging, bike racks, picnic spots and playgrounds across Frederick County, plus what's coming next.",
 };
 
-export const revalidate = 3600; // amenities data only changes on rebuild
+// Static OSM amenities change only on rebuild, but field-collected counts come
+// from the DB — match the map's 5-min ISR so a freshly collected point shows
+// up here within the same window it appears on the map.
+export const revalidate = 300;
 
 // Icon mapping for the six live kinds. Kept inline (not in the loader)
 // because lucide-react is a UI concern, not a data concern.
@@ -73,21 +114,6 @@ const COMING_SOON: {
   why: string;
 }[] = [
   {
-    icon: Trash2,
-    label: "Public trash cans",
-    why: "Where to actually put the wrapper, without trekking five blocks looking.",
-  },
-  {
-    icon: PawPrint,
-    label: "Dog waste bag stations",
-    why: "The hand-on-leash question. Carroll Creek, parks, downtown corners.",
-  },
-  {
-    icon: Armchair,
-    label: "Public benches",
-    why: "Where to sit and read a minute. Especially the shaded ones.",
-  },
-  {
     icon: Mailbox,
     label: "USPS mailboxes",
     why: "Last-pickup-of-the-day with the address, not a Google search rabbit hole.",
@@ -99,9 +125,20 @@ const COMING_SOON: {
   },
 ];
 
-export default function AmenitiesPage() {
+export default async function AmenitiesPage() {
   const live = amenitiesByKind();
   const totalLive = live.reduce((n, g) => n + g.list.length, 0);
+
+  // Field-collected amenities (the /collect walkabout tool) — counted by kind
+  // so the catalog reflects what's actually been marked on foot. Fail-soft to
+  // an empty list (no DB / error), so the section simply doesn't render.
+  const fieldRaw = await getFieldAmenities();
+  const fieldByKind = new Map<AmenityKind, number>();
+  for (const a of fieldRaw) fieldByKind.set(a.kind, (fieldByKind.get(a.kind) ?? 0) + 1);
+  const fieldGroups = [...fieldByKind.entries()]
+    .map(([kind, count]) => ({ kind, count, ...(FIELD_META[kind] ?? { label: kind, icon: MapPin }) }))
+    .sort((a, b) => b.count - a.count);
+  const totalField = fieldRaw.length;
 
   return (
     <div className="relative mx-auto max-w-md space-y-7 py-6">
@@ -165,7 +202,7 @@ export default function AmenitiesPage() {
             return (
               <li key={g.kind}>
                 <Link
-                  href="/map"
+                  href={mapHrefForKind(g.kind)}
                   className="group flex h-full flex-col gap-1.5 rounded-[var(--app-radius-md)] border p-3 transition active:scale-[0.985]"
                   style={{
                     background: "var(--app-paper)",
@@ -215,6 +252,65 @@ export default function AmenitiesPage() {
           on each deploy via the amenities build script.
         </p>
       </section>
+
+      {/* COLLECTED ON FOOT — points dropped via the /collect field tool.
+          Honest-empty: the whole section hides until at least one point is
+          marked, so it never reads as an empty promise. Each tile deep-links
+          to the map with that amenity layer on. */}
+      {fieldGroups.length > 0 && (
+        <section className="space-y-3">
+          <SectionHeading
+            title="Marked on foot"
+            count={totalField}
+            trailing={
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em]"
+                style={{ color: "var(--app-brand-2, #2F5470)" }}
+              >
+                <Footprints className="h-3 w-3" strokeWidth={2.25} aria-hidden />
+                Collected
+              </span>
+            }
+          />
+          <p className="text-[12px]" style={{ color: "var(--app-ink-3)" }}>
+            Spots neighbors marked by walking the county with the collection
+            tool. Tap to see them on the map.
+          </p>
+          <ul className="grid grid-cols-2 gap-2.5" aria-label="Field-collected amenity kinds">
+            {fieldGroups.map((g) => {
+              const Icon = g.icon;
+              return (
+                <li key={g.kind}>
+                  <Link
+                    href={mapHrefForKind(g.kind)}
+                    className="group flex h-full flex-col gap-1.5 rounded-[var(--app-radius-md)] border p-3 transition active:scale-[0.985]"
+                    style={{ background: "var(--app-paper)", borderColor: "var(--app-border)" }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full"
+                        style={{ background: "var(--app-brand-tint-6)", color: "var(--app-brand-2, #2F5470)" }}
+                        aria-hidden
+                      >
+                        <Icon className="h-4 w-4" strokeWidth={2} />
+                      </span>
+                      <span
+                        className="text-[11px] font-semibold tabular-nums"
+                        style={{ color: "var(--app-ink-3)" }}
+                      >
+                        {g.count}
+                      </span>
+                    </div>
+                    <p className="text-[14px] font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>
+                      {g.label}
+                    </p>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* COMING SOON — owner-specified roadmap. Plain list with intent
           per item; no fake percentages, no fake ETAs. The honesty is
