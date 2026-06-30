@@ -5,6 +5,7 @@ import { search, type SearchHit } from "@/lib/search";
 import SearchInput from "@/components/search/SearchInput";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/search" },
   title: "Search",
   description: "Search Frederick County for places, events, towns, and categories.",
 };
@@ -120,7 +121,7 @@ export default async function SearchPage({
               { label: "Out with the kids", href: "/collections/kid-energy-burners" },
               { label: "Walkable date night", href: "/collections/walkable-date-night" },
               { label: "Hidden gems", href: "/collections/hidden-gems" },
-              { label: "What's on this weekend", href: "/today?t=weekend" },
+              { label: "What's on this weekend", href: "/events?lens=weekend" },
               { label: "Coffee near me", href: "/category/coffee" },
               { label: "What's open right now", href: "/open-now" },
             ].map((p) => (

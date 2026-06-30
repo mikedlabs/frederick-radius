@@ -130,7 +130,7 @@ export const revalidate = 60;
  * the towns; we already had the data loader (MD Open Data, keyless,
  * weekly revalidate). This rebuild surfaces it as a real map plus a
  * full route list, replacing the earlier text-only list that linked
- * out to /map?focus=.
+ * out to /map?at=.
  *
  * What's here
  *   - The map: every route drawn in Carroll Creek slate on the same
@@ -443,11 +443,10 @@ export default async function TransitPage() {
       >
         <p>
           Route shapes and {stops.length > 0 ? `${stops.length} stops` : "stops"}{" "}
-          come from Maryland Open Data (Frederick County TransIT). Live
-          schedules and real-time vehicle positions need the county&apos;s
-          GTFS feed, which isn&apos;t published yet. When it is,
-          a future phase will add next-departure times and bus icons
-          to this map.
+          come from Maryland Open Data (Frederick County TransIT). Live bus
+          positions stream from the county&apos;s public GTFS-realtime feed and
+          refresh every few seconds. Scheduled next-departure times aren&apos;t
+          in that feed yet; a future phase will add them here.
         </p>
         <p className="flex flex-wrap items-center gap-3 pt-1">
           <a

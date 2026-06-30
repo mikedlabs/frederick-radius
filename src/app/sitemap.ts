@@ -3,6 +3,7 @@ import { publicPlaces } from "@/lib/loaders/places";
 import { EVENTS } from "@/data/events";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import { CATEGORIES } from "@/data/categories";
+import { COLLECTIONS } from "@/data/collections";
 
 const BASE = process.env.NEXT_PUBLIC_BASE_URL ?? "https://frederickradius.app";
 
@@ -67,5 +68,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "weekly" as const,
     priority: 0.6,
   }));
-  return [...top, ...munis, ...cats, ...places, ...events];
+  // Editorial collections — each /collections/[slug] is self-canonical and
+  // indexable, but only the /collections index was listed, so the individual
+  // collection pages never entered the sitemap. (audit SEO finding)
+  const collections = COLLECTIONS.map((c) => ({
+    url: `${BASE}/collections/${c.slug}`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
+  return [...top, ...munis, ...cats, ...collections, ...places, ...events];
 }

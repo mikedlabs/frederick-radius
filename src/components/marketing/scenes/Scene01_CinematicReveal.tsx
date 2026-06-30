@@ -48,7 +48,7 @@ export default function Scene01_CinematicReveal() {
                                 Frederick <GradientText>Radius</GradientText>
                             </h1>
                             <p className="text-xl text-gray-400 font-light tracking-wide">
-                                Current Snapshot — {SNAPSHOT.date}
+                                Current Snapshot · {SNAPSHOT.date}
                             </p>
                         </motion.div>
 

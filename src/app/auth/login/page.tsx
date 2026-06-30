@@ -28,13 +28,28 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; email_sent?: string }>;
+  searchParams: Promise<{ next?: string; email_sent?: string; error?: string }>;
 }) {
   const sp = await searchParams;
+  // Same-origin only (and reject protocol-relative "//evil.com"): an
+  // unvalidated ?next would 302 a signed-in user off-site — an open redirect.
+  const next = sp.next;
+  const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/my-radius";
   const user = await getServerUser();
   if (user) {
-    redirect(sp.next || "/my-radius");
+    redirect(safeNext);
   }
+  // Surface a callback error instead of swallowing it: an expired/incomplete
+  // magic link bounces here with ?error=…, and a pristine form with no
+  // explanation reads as "nothing happened."
+  const errorMessage =
+    sp.error === "expired"
+      ? "That sign-in link expired. Enter your email for a fresh one."
+      : sp.error === "missing_code"
+        ? "That sign-in link was incomplete. Enter your email to try again."
+        : sp.error
+          ? "Something went wrong with that link. Enter your email to try again."
+          : null;
 
   return (
     <div className="mx-auto max-w-md space-y-6 px-4 py-12">
@@ -64,7 +79,23 @@ export default async function LoginPage({
         </p>
       </header>
 
-      <LoginForm next={sp.next ?? null} initialSentTo={sp.email_sent ?? null} />
+      {errorMessage && (
+        <div
+          role="alert"
+          className="rounded-[var(--app-radius-md)] px-4 py-3 text-center text-[13px] font-medium"
+          style={{
+            background: "color-mix(in srgb, var(--app-danger) 12%, transparent)",
+            color: "var(--app-danger)",
+          }}
+        >
+          {errorMessage}
+        </div>
+      )}
+
+      <LoginForm
+        next={next && next.startsWith("/") && !next.startsWith("//") ? next : null}
+        initialSentTo={sp.email_sent ?? null}
+      />
 
       <p
         className="text-center text-[12px] leading-relaxed"

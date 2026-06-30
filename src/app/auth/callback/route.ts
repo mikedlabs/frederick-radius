@@ -58,8 +58,9 @@ export async function GET(req: NextRequest) {
     console.error("[auth/callback] profile upsert failed:", err);
   }
 
-  // Safe-list `next` to same-origin paths only — prevents using us as
-  // an open redirector. Anything that doesn't start with "/" goes home.
-  const safeNext = next.startsWith("/") ? next : "/my-radius";
+  // Safe-list `next` to same-origin paths only — prevents using us as an
+  // open redirector. Must reject protocol-relative "//evil.com" too: it
+  // startsWith("/") but the browser resolves it off-origin.
+  const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/my-radius";
   return NextResponse.redirect(new URL(safeNext, req.url));
 }

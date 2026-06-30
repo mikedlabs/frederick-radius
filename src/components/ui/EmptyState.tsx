@@ -112,8 +112,8 @@ export default function EmptyState({
           className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
           style={{
             background:
-              tone === "brand" ? t.color : "var(--app-bg-elevated)",
-            color: tone === "brand" ? "white" : t.color,
+              tone === "brand" ? "var(--app-brand-press)" : "var(--app-bg-elevated)",
+            color: tone === "brand" ? "var(--app-on-brand)" : t.color,
             boxShadow: tone === "brand" ? "var(--app-shadow-1)" : undefined,
           }}
         >

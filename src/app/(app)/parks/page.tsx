@@ -39,8 +39,8 @@ function ParkRow({ p }: { p: Park }) {
   const subtitle = [kind, p.address].filter(Boolean).join(" · ") || undefined;
   return (
     <Row
-      href={`/map?focus=${p.lat},${p.lng}`}
-      leading={<IconTile icon={Trees} tone="#2E3B2C" />}
+      href={`/map?at=${p.lat},${p.lng}`}
+      leading={<IconTile icon={Trees} tone="var(--app-brand-2)" />}
       title={titleCase(p.name)}
       subtitle={subtitle}
       meta={p.acres != null ? `${p.acres} ${p.acres === 1 ? "ac" : "ac"}` : undefined}
@@ -101,12 +101,12 @@ export default async function ParksPage() {
           <ul className="space-y-2">
             {[
               {
-                href: "https://www.cityoffrederickmd.gov/175/Carroll-Creek-Park",
+                href: "https://www.cityoffrederickmd.gov/255/Parks-and-Recreation",
                 title: "Carroll Creek Park · Frederick",
                 meta: "Downtown linear park · amphitheater · the bridge",
               },
               {
-                href: "https://www.cityoffrederickmd.gov/176/Baker-Park",
+                href: "https://www.cityoffrederickmd.gov/255/Parks-and-Recreation",
                 title: "Baker Park · Frederick",
                 meta: "44 acres downtown · playground · creek loop · band shell",
               },
@@ -116,7 +116,7 @@ export default async function ParksPage() {
                 meta: "5,800 acres · Cunningham Falls vista · the source of the trail map",
               },
               {
-                href: "https://dnr.maryland.gov/publiclands/Pages/western/cunninghamfalls.aspx",
+                href: "https://dnr.maryland.gov/publiclands/Pages/western/cunningham.aspx",
                 title: "Cunningham Falls State Park · MD DNR",
                 meta: "78-foot cascade · Hunting Creek Lake · car-camping",
               },

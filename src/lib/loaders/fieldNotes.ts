@@ -1,4 +1,5 @@
 import RAW from "@/data/field-notes.json" with { type: "json" };
+import { cleanFeedText } from "@/lib/format/text";
 
 /**
  * Field Notes — the VERIFIED local-intelligence layer (the moat).
@@ -37,7 +38,23 @@ export type FieldNotes = {
   deals?: FNSourced[];
 };
 
-const NOTES = RAW as Record<string, FieldNotes>;
+// Boundary cleaning, never render-time: field-notes.json is hand-authored, so
+// it bypasses cleanFeedText and the ESLint JSXText em-dash guard that protect
+// feed/JSX copy. Normalize every string on read (em dash -> ", ", en dash ->
+// "-", entities/tags stripped) so a curated note can't leak an em dash to a
+// user. cleanFeedText is a no-op on URLs/enums (no dashes/tags/entities).
+function deepCleanStrings<T>(value: T): T {
+  if (typeof value === "string") return cleanFeedText(value) as unknown as T;
+  if (Array.isArray(value)) return value.map(deepCleanStrings) as unknown as T;
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = deepCleanStrings(v);
+    return out as T;
+  }
+  return value;
+}
+
+const NOTES = deepCleanStrings(RAW as Record<string, FieldNotes>);
 
 export function fieldNotesFor(slug: string): FieldNotes | null {
   return NOTES[slug] ?? null;

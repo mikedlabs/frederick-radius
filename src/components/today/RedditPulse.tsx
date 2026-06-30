@@ -2,13 +2,17 @@ import Link from "next/link";
 import { ArrowUpRight, Flame } from "lucide-react";
 import { getFrederickRedditPulse, type RedditPost } from "@/lib/integrations/reddit";
 
+// Each `color` is used both as the badge text AND (mixed into the elevated
+// ground) as its tint background, so it must be a TEXT-SAFE token: the warm
+// signals use their darker -press variants (the plain brand/accent/warning
+// fail AA at this 10px size), and vent darkens its warning toward ink.
 const CATEGORY_STYLE: Record<RedditPost["category"], { label: string; color: string }> = {
   news: { label: "News", color: "var(--app-danger)" },
   question: { label: "Question", color: "var(--app-cool)" },
   recommendation: { label: "Rec", color: "var(--app-positive)" },
-  event: { label: "Event", color: "var(--app-brand)" },
-  vent: { label: "Vent", color: "var(--app-warning)" },
-  humor: { label: "Humor", color: "var(--app-accent)" },
+  event: { label: "Event", color: "var(--app-brand-press)" },
+  vent: { label: "Vent", color: "color-mix(in srgb, var(--app-warning), var(--app-ink) 30%)" },
+  humor: { label: "Humor", color: "var(--app-accent-press)" },
   discussion: { label: "Discussion", color: "var(--app-ink-2)" },
   other: { label: "Post", color: "var(--app-ink-3)" },
 };
@@ -63,7 +67,7 @@ export default async function RedditPulse() {
                 <span
                   aria-hidden
                   className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider"
-                  style={{ background: `${cat.color}1A`, color: cat.color }}
+                  style={{ background: `color-mix(in srgb, ${cat.color} 14%, var(--app-bg-elevated))`, color: cat.color }}
                 >
                   {cat.label}
                 </span>

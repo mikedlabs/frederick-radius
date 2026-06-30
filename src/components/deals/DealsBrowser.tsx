@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { townAccent } from "@/lib/townAccent";
 import Link from "next/link";
 import Image from "next/image";
 import { Tag } from "lucide-react";
@@ -36,12 +37,6 @@ function PhotoFallback() {
 
 // A deterministic accent per town so each town reads as its own colored
 // "chapter" of the guide (same family the Saved + happy-hour pages use).
-const TOWN_ACCENTS = ["#E14328", "#20506A", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
-function townAccent(s: string): string {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return TOWN_ACCENTS[Math.abs(h) % TOWN_ACCENTS.length];
-}
 
 /** Dense field-guide row: a colored chapter rail + 52px thumb, then the venue,
  *  the hours (accent mono), and the FULL offer. */

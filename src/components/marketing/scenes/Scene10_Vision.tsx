@@ -15,6 +15,12 @@ export default function Scene10_Vision() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        if (!email.trim()) return;
+        // No waitlist backend yet: hand the address to the real inbox instead
+        // of silently discarding it behind a fake "you're on the list" state.
+        window.location.href = `mailto:hello@frederickradius.app?subject=${encodeURIComponent(
+            "Frederick Radius early access",
+        )}&body=${encodeURIComponent(`Please add me to the list: ${email.trim()}`)}`;
         setIsSubmitted(true);
     };
 
@@ -45,7 +51,7 @@ export default function Scene10_Vision() {
                         <GradientText>Civic Connection</GradientText>
                     </h1>
                     <p className="text-2xl text-gray-400 font-light leading-relaxed max-w-3xl mx-auto">
-                        Frederick Radius isn&apos;t just an app—it&apos;s the operating system for modern community life.
+                        Frederick Radius isn&apos;t just an app. It&apos;s the operating system for modern community life.
                         Join us in building a more connected, informed, and empowered Frederick County.
                     </p>
                 </motion.div>
@@ -147,8 +153,7 @@ export default function Scene10_Vision() {
                     <div className="h-4 w-px bg-gray-700" />
                     <span>© 2025 All rights reserved</span>
                     <div className="h-4 w-px bg-gray-700" />
-                    <a href="#" className="hover:text-white transition-colors">Privacy</a>
-                    <a href="#" className="hover:text-white transition-colors">Terms</a>
+                    <a href="/terms" className="hover:text-white transition-colors">Terms</a>
                 </div>
             </motion.footer>
 

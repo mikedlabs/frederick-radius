@@ -98,6 +98,7 @@ import NowIntel from "@/components/today/NowIntel";
  */
 export const metadata: Metadata = {
   alternates: { canonical: "/today" },
+  title: "Today in Frederick County",
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
   openGraph: {
     title: "Today in Frederick County",
@@ -477,7 +478,7 @@ export default async function HomePage() {
           cinematic sky + the hourly / 7-day disclosure pills, then hands off.
           One link instead of a second weather app inside the front door. */}
       <Link
-        href="/pulse#weather"
+        href="/pulse?open=weather"
         className="tap-44 mt-1 inline-flex items-center gap-1 px-1 text-[13px] font-semibold"
         style={{ color: "var(--app-ink-3)" }}
       >

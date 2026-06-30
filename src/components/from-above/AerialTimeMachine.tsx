@@ -80,8 +80,12 @@ export default function AerialTimeMachine() {
       >
         {/* Every year is mounted; only the active layer is opaque, so
             scrubbing crossfades with the raster-fade-duration. The newest
-            year sits at the bottom as a never-blank base. */}
-        {AERIAL_YEARS.map((year) => {
+            year is mounted FIRST so Mapbox stacks it at the BOTTOM as a
+            never-blank base; the active historical year mounts after it and
+            therefore paints ON TOP. (Mounting base last — the obvious array
+            order — put it on top at opacity 1 and hid every scrubbed year, so
+            the scrubber appeared to do nothing.) */}
+        {[AERIAL_YEARS[AERIAL_YEARS.length - 1], ...AERIAL_YEARS.slice(0, -1)].map((year) => {
           const isBase = year === AERIAL_YEARS[AERIAL_YEARS.length - 1];
           const opacity = year === activeYear ? 1 : isBase ? 1 : 0;
           const paint: RasterLayerSpecification["paint"] = {

@@ -25,6 +25,35 @@ import { getDb } from "@/lib/db/client";
 import { push_subscriptions } from "@/lib/db/schema";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/push/topics?endpoint=... — read back the topics a subscription is
+ * currently opted into, so the settings card can hydrate its toggles on mount
+ * instead of showing everything OFF for a returning subscriber (which, on the
+ * next toggle, would REPLACE the server set with the empty-seeded UI and wipe
+ * their real selections). Returns [] when push isn't configured or the
+ * subscription isn't found.
+ */
+export async function GET(request: Request) {
+  const db = getDb();
+  if (!db) return NextResponse.json({ topics: [] });
+  const endpoint = new URL(request.url).searchParams.get("endpoint");
+  if (!endpoint) {
+    return NextResponse.json({ error: "endpoint required" }, { status: 400 });
+  }
+  try {
+    const rows = await db
+      .select({ topics: push_subscriptions.topics })
+      .from(push_subscriptions)
+      .where(eq(push_subscriptions.endpoint, endpoint))
+      .limit(1);
+    return NextResponse.json({ topics: rows[0]?.topics ?? [] });
+  } catch (err) {
+    console.error("[push/topics GET] failed:", err instanceof Error ? err.message : err);
+    return NextResponse.json({ topics: [] });
+  }
+}
 
 type Body = {
   endpoint?: string;

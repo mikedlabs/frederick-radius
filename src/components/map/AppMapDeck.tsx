@@ -172,8 +172,13 @@ export default function AppMapDeck({
             is a separate small pill so the active-count badge still
             has room to surface. */}
         <div className="flex items-center gap-2">
+          {/* Outer positioning context: the results dropdown is a SIBLING of
+              the pill (not a child), so the pill's overflow-hidden — which it
+              needs to clip the input's rounded corners — can't clip the
+              dropdown that drops below it. */}
+          <div className="relative flex-1">
           <div
-            className="relative flex flex-1 items-center overflow-hidden rounded-full border backdrop-blur"
+            className="flex w-full items-center overflow-hidden rounded-full border backdrop-blur"
             style={{
               borderColor: "var(--app-border)",
               background: "color-mix(in srgb, var(--app-bg-elevated) 88%, transparent)",
@@ -220,6 +225,7 @@ export default function AppMapDeck({
                 aria-hidden
               />
             </button>
+          </div>
             {searchMatches.length > 0 && (
               <ul
                 className="absolute inset-x-0 top-full z-[var(--z-dropdown)] mt-1.5 overflow-hidden rounded-[var(--app-radius-md)] border backdrop-blur"
@@ -284,7 +290,7 @@ export default function AppMapDeck({
             <span>Layers</span>
             {activeCats.size + activeAmenityGroupCount > 0 && (
               <span
-                className="inline-flex min-w-[16px] items-center justify-center rounded-full bg-[var(--app-brand)] px-1 text-[10px] font-bold tabular-nums text-white"
+                className="inline-flex min-w-[16px] items-center justify-center rounded-full bg-[var(--app-brand-press)] px-1 text-[10px] font-bold tabular-nums text-white"
               >
                 {activeCats.size + activeAmenityGroupCount}
               </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { stampEventProvenance } from "@/lib/provenance";
+import { townAccent } from "@/lib/townAccent";
 import { useEffect, useMemo, useState } from "react";
 import { useSavedList, useMounted } from "@/hooks/useSaved";
 import { useRecentPlaces, useClearRecentPlaces } from "@/hooks/useRecentPlaces";
@@ -45,12 +46,6 @@ const SAVED_VIEW_STORAGE_KEY = "fr.saved-view";
 
 // Deterministic per-town accent so each town reads as its own colored
 // "chapter" of the field guide (matches the town grid on /places).
-const TOWN_ACCENTS = ["#E14328", "#20506A", "#1E6B3A", "#7E2C6F", "#B07A1E", "#3F5E8F"];
-function townAccent(slug: string): string {
-  let h = 0;
-  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) | 0;
-  return TOWN_ACCENTS[Math.abs(h) % TOWN_ACCENTS.length];
-}
 
 /**
  * Build a /plan share token from a set of saved place slugs — the same
@@ -742,7 +737,7 @@ export default function SavedList() {
                       role="tab"
                       aria-selected={active}
                       onClick={() => setViewAndStore(v)}
-                      className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                      className="tap-44-y flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors"
                       style={{
                         background: active ? "var(--app-bg-elevated)" : "transparent",
                         color: active ? "var(--app-ink)" : "var(--app-ink-3)",

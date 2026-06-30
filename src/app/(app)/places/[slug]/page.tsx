@@ -38,7 +38,7 @@ import { getVisibleEvents } from "@/lib/events/visible";
 import { classifyDescription } from "@/lib/copy-quality";
 import { Button } from "@/components/ui/Button";
 import SourceBadge from "@/components/place/SourceBadge";
-import { breadcrumbJsonLd } from "@/lib/seo/jsonld";
+import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/jsonld";
 
 /**
  * Phase 2: never render scraped second-person copy (quality bar 9,
@@ -121,15 +121,20 @@ export async function generateMetadata(
   // soft 404 (200 + not-found UI) Google indexes (June-9 audit P0-2).
   if (!place) notFound();
   const blurb = safeBlurb(place);
+  // Canonicalize to the RESOLVED record, not the URL param: places is a closed
+  // set that prerenders every folded/legacy alias slug (each returns 200 with
+  // the canonical content), so a self-referential `/places/${slug}` made each
+  // alias an indexable duplicate and the fold never consolidated link equity.
+  // place.slug is the surviving canonical (the BreadcrumbList already uses it).
   return {
     title: place.name,
     description: blurb,
-    alternates: { canonical: `/places/${slug}` },
+    alternates: { canonical: `/places/${place.slug}` },
     openGraph: {
       title: place.name,
       description: blurb,
       type: "website",
-      images: [{ url: `/api/og?type=place&slug=${slug}`, width: 1200, height: 630 }],
+      images: [{ url: `/api/og?type=place&slug=${place.slug}`, width: 1200, height: 630 }],
     },
   };
 }
@@ -516,7 +521,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }}
       />
       {/* BreadcrumbList (June-9 audit P2): mirrors the visible breadcrumb. */}
       <script

@@ -260,25 +260,25 @@ const BADGES: Array<{
 }> = [
   {
     label: "Hand-picked",
-    color: "#A03A22",
+    color: "var(--app-brand-press)",
     icon: Sparkles,
     body: "We picked this one ourselves. Vetted by hand, blurb written by a person, not auto-filled.",
   },
   {
     label: "Confirmed",
-    color: "#1E6B3A",
+    color: "var(--app-positive)",
     icon: CheckCircle2,
     body: "Operational and current: the basics (hours, category, rating) confirmed and enriched, with a confirmed-on date. This is NOT owner-managed; once a business claims its listing it earns the stronger “Verified”.",
   },
   {
     label: "Community",
-    color: "#2F5470",
+    color: "var(--app-cool)",
     icon: Users,
     body: "Submitted by a local or pulled from a public community feed. Reliable but not directly verified by us.",
   },
   {
     label: "Official",
-    color: "#7E2C6F",
+    color: "var(--app-civic)",
     icon: Database,
     body: "From an official county or government data feed. Refreshed on a schedule and never edited by us.",
   },

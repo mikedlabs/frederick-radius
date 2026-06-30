@@ -5,6 +5,7 @@ import RightNow from "@/components/now/RightNow";
 import { approxLocation } from "@/lib/ip-geo";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/nearby" },
   title: "Right now",
   description: "Tap what you want: coffee, ice cream, food. Get the nearest one that's open.",
 };

@@ -43,6 +43,9 @@ export type LiveEvent = {
   description: string;
   starts_at: string;
   ends_at: string;
+  /** True for VALUE=DATE iCal events. starts_at is anchored to ET noon so the
+   *  row lands on the right Eastern day; surfaces show "All day", not a clock. */
+  is_all_day?: boolean;
   venue_name: string;
   address: string;
   geom: LngLat;
@@ -620,6 +623,8 @@ type ParsedVEvent = {
   url?: string;
   start?: Date;
   end?: Date;
+  /** True when DTSTART is a VALUE=DATE / 8-digit (date-only) value. */
+  allDay?: boolean;
   /** iCal STATUS property (CONFIRMED / TENTATIVE / CANCELLED). */
   status?: string;
 };
@@ -650,7 +655,13 @@ function parseICalEvents(text: string): ParsedVEvent[] {
         case "DESCRIPTION": cur.description = unescapeIcalText(value); break;
         case "LOCATION": cur.location = unescapeIcalText(value); break;
         case "URL": cur.url = value; break;
-        case "DTSTART": cur.start = parseICalDate(value, params) ?? undefined; break;
+        case "DTSTART":
+          cur.start = parseICalDate(value, params) ?? undefined;
+          // VALUE=DATE / YYYYMMDD = all-day. Remember it: the candidate will
+          // anchor to ET noon (UTC midnight is the prior evening in ET, which
+          // listed the row a day early with a fabricated ~8 PM time).
+          cur.allDay = params.VALUE === "DATE" || /^\d{8}$/.test(value);
+          break;
         case "DTEND": cur.end = parseICalDate(value, params) ?? undefined; break;
         case "STATUS": cur.status = value.trim(); break;
       }
@@ -700,8 +711,20 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
     const events: LiveEvent[] = [];
     for (const item of parseICalEvents(text)) {
       const start = item.start;
-      if (!start || start < now || start > horizon) continue;
-      const end = item.end ?? new Date(start.getTime() + 2 * 60 * 60 * 1000);
+      if (!start) continue;
+      const allDay = item.allDay === true;
+      // All-day VEVENTs parse to UTC midnight = the prior evening in ET, so
+      // they listed a day early with a fabricated ~8 PM time. Re-anchor to ET
+      // NOON of the date's Y/M/D so the row lands on the correct Eastern day
+      // with no misleading clock; the window filter uses that real instant.
+      const startsAtISO = allDay
+        ? easternWallToUtcISO(start.getUTCFullYear(), start.getUTCMonth() + 1, start.getUTCDate(), 12, 0)
+        : start.toISOString();
+      const effectiveStart = new Date(startsAtISO);
+      if (effectiveStart < now || effectiveStart > horizon) continue;
+      const endsAtISO = allDay
+        ? easternWallToUtcISO(start.getUTCFullYear(), start.getUTCMonth() + 1, start.getUTCDate(), 23, 59)
+        : (item.end ?? new Date(effectiveStart.getTime() + 2 * 60 * 60 * 1000)).toISOString();
       const rawTitle = (item.summary ?? "").trim();
       if (!rawTitle) continue;
       // Cancellation can arrive two ways — the iCal STATUS property or
@@ -722,8 +745,9 @@ async function fetchIcalFeed(feed: FeedSpec, windowDays: number): Promise<LiveEv
         title,
         status,
         description: cleanedDesc,
-        starts_at: start.toISOString(),
-        ends_at: end.toISOString(),
+        starts_at: startsAtISO,
+        ends_at: endsAtISO,
+        is_all_day: allDay,
         venue_name: venue,
         address,
         geom: feed.default_geom,
@@ -971,7 +995,7 @@ export async function getLiveEvents(windowDays = 60): Promise<{
 export function getCachedLiveEvents(windowDays = 60): ReturnType<typeof getLiveEvents> {
   return unstable_cache(
     () => getLiveEvents(windowDays),
-    ["live-events-v1", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+    ["live-events-v2", String(windowDays), process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
     { revalidate: 300, tags: ["events"] },
   )();
 }

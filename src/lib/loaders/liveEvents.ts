@@ -65,7 +65,7 @@ export function liveToCardEvent(e: LiveEvent): EventWithMeta {
     starts_at: e.starts_at,
     ends_at: e.ends_at,
     timezone: "America/New_York",
-    is_all_day: false,
+    is_all_day: e.is_all_day ?? false,
     is_recurring: false,
     venue_name: cleanFeedText(e.venue_name ?? ""),
     address: formatAddress(cleanFeedText(e.address ?? "")),

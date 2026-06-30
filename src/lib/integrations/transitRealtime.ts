@@ -15,12 +15,29 @@
  * match transit.json. Free to ride.
  */
 import GtfsRealtimeBindings from "gtfs-realtime-bindings";
+import { decorateVehiclesWithNextStop } from "@/lib/integrations/transitNextStop";
 
 const VEHICLE_POSITIONS =
   "https://passio3.com/frederick/passioTransit/gtfs/realtime/vehiclePositions";
 const TRIP_UPDATES =
   "https://passio3.com/frederick/passioTransit/gtfs/realtime/tripUpdates";
 const TIMEOUT_MS = 10_000;
+
+/** Where a bus is in its run, GTFS-rt VehiclePosition.current_status. */
+export type VehicleStatus = "INCOMING_AT" | "STOPPED_AT" | "IN_TRANSIT_TO";
+
+/** A resolved next stop for a bus — name + coordinate from the static stop
+ *  table, with the predicted arrival epoch (seconds) when TripUpdates has it.
+ *  The flight-tracker "where's it headed + when." */
+export type NextStop = {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  /** Unix seconds of predicted arrival (or departure fallback); omitted when
+   *  the TripUpdates feed has no time for this stop. */
+  etaEpoch?: number;
+};
 
 export type LiveVehicle = {
   vehicleId?: string;
@@ -33,7 +50,46 @@ export type LiveVehicle = {
   bearing?: number;
   /** Unix seconds of the position fix, when reported. */
   timestamp?: number;
+  /** GTFS stop_id the bus is currently at / approaching (the join seed for
+   *  next-stop). String to match transit.json + TripUpdates stop ids. */
+  stopId?: string;
+  /** current_stop_sequence — the bus's position in its trip's stop list. */
+  stopSequence?: number;
+  /** INCOMING_AT / STOPPED_AT / IN_TRANSIT_TO — disambiguates whether
+   *  `stopId` is the stop the bus is AT vs. heading to. */
+  status?: VehicleStatus;
+  /** The next stop, resolved server-side by joining to TripUpdates + the
+   *  static stop table. Undefined when it can't be resolved honestly. */
+  nextStop?: NextStop;
 };
+
+/** One stop in a trip's predicted timetable (from TripUpdates). */
+export type TripStop = {
+  stopId?: string;
+  stopSequence?: number;
+  arrivalEpoch?: number;
+  departureEpoch?: number;
+};
+
+/** A trip's predicted stop timetable, keyed back to its vehicle/route. */
+export type TripUpdate = {
+  tripId?: string;
+  routeId?: string;
+  vehicleId?: string;
+  stops: TripStop[];
+};
+
+/** Normalize current_status (protobufjs decodes the enum to its integer by
+ *  default, but tolerate a string too). */
+function vehicleStatus(raw: unknown): VehicleStatus | undefined {
+  if (raw == null) return undefined;
+  if (typeof raw === "string") {
+    return raw === "INCOMING_AT" || raw === "STOPPED_AT" || raw === "IN_TRANSIT_TO"
+      ? raw
+      : undefined;
+  }
+  return raw === 0 ? "INCOMING_AT" : raw === 1 ? "STOPPED_AT" : raw === 2 ? "IN_TRANSIT_TO" : undefined;
+}
 
 async function decodeFeed(url: string) {
   const ctl = new AbortController();
@@ -67,9 +123,64 @@ export async function getLiveVehicles(): Promise<LiveVehicle[]> {
       lng: +pos.longitude.toFixed(5),
       bearing: pos.bearing != null ? Math.round(pos.bearing) : undefined,
       timestamp: v.timestamp != null ? Number(v.timestamp) : undefined,
+      // The stop the bus is at / heading to — the seed for the next-stop
+      // join. The Passio feed carries both of these on the vehicle entity.
+      stopId: v.stopId != null ? String(v.stopId) : undefined,
+      stopSequence: v.currentStopSequence != null ? Number(v.currentStopSequence) : undefined,
+      status: vehicleStatus(v.currentStatus),
     });
   }
   return out;
+}
+
+/**
+ * Per-trip predicted stop timetables (from TripUpdates). Unlike
+ * getStopPredictions (a flat per-stop "next bus here" view), this keeps each
+ * trip's full stop list WITH stopSequence + tripId, so a moving vehicle can be
+ * joined to its own next stop + ETA. Returns [] on any failure.
+ */
+export async function getTripUpdates(): Promise<TripUpdate[]> {
+  const feed = await decodeFeed(TRIP_UPDATES);
+  if (!feed) return [];
+  const out: TripUpdate[] = [];
+  for (const e of feed.entity) {
+    const tu = e.tripUpdate;
+    if (!tu) continue;
+    const stops: TripStop[] = [];
+    for (const stu of tu.stopTimeUpdate ?? []) {
+      const arr = stu.arrival?.time;
+      const dep = stu.departure?.time;
+      stops.push({
+        stopId: stu.stopId != null ? String(stu.stopId) : undefined,
+        stopSequence: stu.stopSequence != null ? Number(stu.stopSequence) : undefined,
+        arrivalEpoch: arr != null ? Number(arr) : undefined,
+        departureEpoch: dep != null ? Number(dep) : undefined,
+      });
+    }
+    out.push({
+      tripId: tu.trip?.tripId ?? undefined,
+      routeId: tu.trip?.routeId ?? undefined,
+      vehicleId: tu.vehicle?.id ?? undefined,
+      stops,
+    });
+  }
+  return out;
+}
+
+/**
+ * Live buses, each decorated with their resolved NEXT stop (name + coord +
+ * ETA). Fetches both realtime feeds in parallel (VehiclePositions for the
+ * positions, TripUpdates for the ETAs) and joins them via the pure next-stop
+ * resolver. Both feeds are fail-soft, so a TripUpdates hiccup degrades to
+ * positions-only (no nextStop) rather than throwing. Returns [] when there are
+ * no vehicles.
+ */
+export async function getLiveVehiclesWithNextStop(): Promise<LiveVehicle[]> {
+  const [vehicles, updates] = await Promise.all([getLiveVehicles(), getTripUpdates()]);
+  if (vehicles.length === 0) return vehicles;
+  // decorate is pure + injectable (tested without the network); vehicles
+  // whose next stop can't be resolved simply pass through without `nextStop`.
+  return decorateVehiclesWithNextStop(vehicles, updates);
 }
 
 export type StopPrediction = { stopId: string; routeId?: string; arrivalEpoch?: number };

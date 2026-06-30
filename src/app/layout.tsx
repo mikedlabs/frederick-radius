@@ -113,11 +113,16 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  // Brand Book No. 01: paper-cream is the canonical ground. The mobile
-  // browser chrome / status bar tints to match the app's warm-paper
-  // identity instead of the prior System-Black dark. Dark mode is
-  // opt-in (html.dark class) and ships when we wire a user toggle.
-  themeColor: "#EEE6D4",
+  // Keep fixed-bottom UI (BottomNav, sheets, the search overlay) above the
+  // on-screen keyboard on Android Chrome instead of being shoved/covered.
+  interactiveWidget: "resizes-content",
+  // Brand Book No. 01: paper-cream is the canonical ground, so the status bar
+  // tints warm-paper in light mode. The marketing/dark surfaces (and iOS
+  // dark-mode users) get the ink ground so the bar doesn't clash.
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#16140E" },
+    { media: "(prefers-color-scheme: light)", color: "#EEE6D4" },
+  ],
 };
 
 export default function RootLayout({

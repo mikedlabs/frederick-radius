@@ -46,7 +46,7 @@ function MarkerCard({ m }: { m: HistoricMarker }) {
         </p>
       )}
       <a
-        href={`/map?focus=${m.lat},${m.lng}`}
+        href={`/map?at=${m.lat},${m.lng}`}
         className="tap-44 relative mt-3 inline-flex items-center gap-1 text-[12px] font-semibold"
         style={{ color: "var(--app-brand)" }}
       >
@@ -113,7 +113,7 @@ export default async function MarkersPage() {
           Read the inscription on every roadside marker in the county, and find the
           National Register landmarks and covered bridges. Live from MDOT and the
           National Park Service. For the stories behind them, see{" "}
-          <a href="/history" className="font-semibold" style={{ color: "var(--app-brand)" }}>
+          <a href="/history" className="font-semibold underline" style={{ color: "var(--app-brand-press)" }}>
             Frederick history
           </a>
           .
@@ -159,7 +159,7 @@ export default async function MarkersPage() {
                 {register.map((s) => (
                   <Row
                     key={s.id}
-                    href={`/map?focus=${s.lat},${s.lng}`}
+                    href={`/map?at=${s.lat},${s.lng}`}
                     leading={<IconTile icon={Landmark} tone="#7A5C2E" />}
                     title={s.name}
                     subtitle={[muniName(s.municipality), s.isCoveredBridge ? "Covered bridge" : null]

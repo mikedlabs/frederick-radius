@@ -68,10 +68,10 @@ export const TOWN_WEBSITES: TownWebsite[] = [
     cms: "civicplus",
     links: {
       // Confirmed elsewhere in the app (parking page links here).
-      permits: "https://www.cityoffrederickmd.gov/164/Planning",
+      permits: "https://www.cityoffrederickmd.gov/221/Planning",
       parksRec: "https://www.cityoffrederickmd.gov/parks",
       // /parking is the City's parking hub (already used on /parking).
-      trashRecycling: "https://www.cityoffrederickmd.gov/166/Refuse-Recycling",
+      trashRecycling: "https://www.cityoffrederickmd.gov/220/Refuse-Recycling",
     },
     note: "Deep links to confirm against the live CivicPlus tree.",
   },
