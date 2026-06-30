@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { toast } from "sonner";
-import { suggestModeFromLocation, useMode } from "@/hooks/useMode";
+import { suggestModeFromLocation } from "@/hooks/useMode";
 
 /**
  * ModeBootstrap — the one mount-time hook that runs the optional
@@ -14,27 +13,19 @@ import { suggestModeFromLocation, useMode } from "@/hooks/useMode";
  *   • Probe outside / denied / error → leave the default (Visitor).
  *   • Returning users with a stored value → no-op.
  *
- * Being physically in-county does NOT actually prove residency — a
- * visitor standing downtown trips the same heuristic (the sims caught a
- * visitor getting silently switched to Resident, which hides the "Where
- * to stay" door). So when we auto-flip to Resident we now surface a quiet,
- * one-time, reversible toast instead of changing the lens silently. The
- * resident default still serves the majority (locals); the visitor gets
- * an obvious one-tap way out.
+ * The auto-flip to Resident is SILENT (owner call: the "are you
+ * visiting" toast shouldn't pop up). The resident default serves the
+ * majority — locals get the right lens on arrival without a startup nag.
+ * Trade-off knowingly accepted: a visitor who opens the app while
+ * standing in-county is flipped to Resident too and won't see the
+ * Visitor "Where to stay" door until they switch the lens in Settings.
+ * If that edge needs addressing later, prefer a discoverable in-page
+ * affordance over a re-introduced startup popup.
  */
 export default function ModeBootstrap() {
-  const { setMode } = useMode();
   useEffect(() => {
-    suggestModeFromLocation({
-      onSuggest: (mode) => {
-        if (mode !== "resident") return;
-        toast("Showing the resident view", {
-          description: "Just visiting Frederick? Switch the view anytime.",
-          action: { label: "I'm visiting", onClick: () => setMode("visitor") },
-          duration: 8000,
-        });
-      },
-    });
-  }, [setMode]);
+    // Silent: persists the lens, no toast.
+    suggestModeFromLocation();
+  }, []);
   return null;
 }

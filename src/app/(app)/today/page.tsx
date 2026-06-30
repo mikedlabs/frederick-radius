@@ -262,29 +262,12 @@ export default async function HomePage() {
         </div>
       </Suspense>
 
-      {/* ── CONTENTS RAIL — a slim almanac "on this page" line (not a chunky
-          chip bar): mono anchors that skip to the major sections below the
-          fold, with a quiet "Live" tick on the right so the open-now / specials
-          data reads as real-time. The page is medium-long after the On-now
-          consolidation; this gives a one-tap skip without adding visual weight.
-          (CivicAlerts above self-hides on the ordinary day, so the rail then
-          sits right under the masthead.) */}
-      <nav
-        aria-label="On this page"
-        className="mt-3 flex items-center justify-between gap-3 px-0.5"
-      >
-        <div className="flex items-center gap-x-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.1em]">
-          <a href="#want" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>I want</a>
-          <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-          <a href="#whats-on" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>Events</a>
-          <span aria-hidden style={{ color: "var(--app-ink-3)" }}>·</span>
-          <a href="#on-now" className="tap-44 transition-colors hover:opacity-70" style={{ color: "var(--app-ink-2)" }}>On now</a>
-        </div>
-        <span className="inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--app-ink-3)" }}>
-          <span aria-hidden className="live-dot h-1.5 w-1.5 rounded-full" style={{ background: "var(--app-brand)" }} />
-          Live
-        </span>
-      </nav>
+      {/* ── CONTENTS RAIL removed (owner call) ───────────────────────────
+          The slim "on this page" jump-nav ("I want · Events · On now" + a
+          Live tick) was redundant: the page is short enough to scroll, the
+          primary nav already covers Events, and the labels duplicated the
+          section headers right below. Section ids stay on their divs so any
+          deep-link anchor (e.g. /today#whats-on) still works. */}
 
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On
