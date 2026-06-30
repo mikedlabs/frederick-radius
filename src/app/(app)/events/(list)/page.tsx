@@ -139,7 +139,7 @@ export default async function EventsIndexPage({
         >
           What&rsquo;s on
           <span className="block font-medium italic" style={{ color: "var(--app-ink-2)" }}>
-            around Frederick
+            in Frederick County
           </span>
         </h1>
         {/* Count line streams in with the feed; reserve its line height so the

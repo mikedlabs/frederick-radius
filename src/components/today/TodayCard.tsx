@@ -3,6 +3,7 @@ import { Ticket, ChevronRight } from "lucide-react";
 import { getNwsForecast, iconForShortForecast } from "@/lib/integrations/nws";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { sunTimes } from "@/lib/sun";
+import DaylightLeftInline from "@/components/today/DaylightLeftInline";
 import { eventWhenLabel } from "@/lib/eventWhenLabel";
 import { isActivelyWet, mentionsWet } from "@/lib/weather-verdict";
 import AnimatedSkyGlyph, { type SkyVariant } from "./AnimatedSkyGlyph";
@@ -190,6 +191,9 @@ export default async function TodayCard({
           {stats.length > 0 && (
             <span className="text-[12.5px] font-medium leading-snug tabular-nums opacity-90">
               {stats.join("  ·  ")}
+              {/* Live daylight-left, moved here from TodayContext (client-side
+                  so it stays accurate; the server card would freeze it). */}
+              <DaylightLeftInline />
             </span>
           )}
         </div>

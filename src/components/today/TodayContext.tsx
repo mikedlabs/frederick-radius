@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sun, ChevronDown, MapPin } from "lucide-react";
-import { nextSunHint, sunTimes } from "@/lib/sun";
+import { nextSunHint } from "@/lib/sun";
 import { FREDERICK_CENTER } from "@/lib/geo";
 import { getHomeMuni, setHomeMuni } from "@/lib/personalize";
 import { MUNICIPALITIES, MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
@@ -64,21 +64,9 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
     }
   }
 
-  // Daylight-left cue — shown only when the golden-hour line ISN'T (so the two
-  // never stack): during daylight, name sunset + how much light is left. It
-  // gives the all-day "should I head out now?" read that golden hour only
-  // answers near dusk. Hidden once the sun is down (nothing to promise).
-  let daylight: string | null = null;
-  if (mounted && !golden) {
-    const sun = sunTimes(now, FREDERICK_CENTER.lat, FREDERICK_CENTER.lng);
-    if (sun.sunrise && sun.sunset && now >= sun.sunrise && now < sun.sunset) {
-      const mins = Math.round((sun.sunset.getTime() - now.getTime()) / 60_000);
-      if (mins >= 20) {
-        const left = mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
-        daylight = `Sunset ${clock(sun.sunset)} · ${left} of daylight left`;
-      }
-    }
-  }
+  // Daylight-left moved to the weather header (TodayCard → DaylightLeftInline)
+  // so it isn't printed twice with sunset. This line now carries only the
+  // golden-hour cue near dusk.
 
   // Pair the live light window with an outdoor draw — shown ONLY while golden
   // hour is ACTIVE (now past golden start), and re-validated against the LIVE
@@ -105,9 +93,9 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
     }
   }
 
-  // One "sun line": the golden-hour cue near dusk, otherwise the daylight-left
-  // read during the day. Never both (daylight is computed only when !golden).
-  const sunLine = golden ?? daylight;
+  // One "sun line": the golden-hour cue near dusk. Daylight-left moved to the
+  // weather header (DaylightLeftInline) so sunset isn't printed twice.
+  const sunLine = golden;
 
   // Render nothing until mounted (the town + cues are client-only). After mount
   // the salutation always shows so the town SWITCHER is discoverable — pick a
