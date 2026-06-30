@@ -52,6 +52,7 @@ import PoolsToday from "@/components/today/PoolsToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
 import NowIntel from "@/components/today/NowIntel";
+import TodayLens from "@/components/today/TodayLens";
 
 /**
  * Now — the daily briefing.
@@ -262,12 +263,14 @@ export default async function HomePage() {
         </div>
       </Suspense>
 
-      {/* ── CONTENTS RAIL removed (owner call) ───────────────────────────
-          The slim "on this page" jump-nav ("I want · Events · On now" + a
-          Live tick) was redundant: the page is short enough to scroll, the
-          primary nav already covers Events, and the labels duplicated the
-          section headers right below. Section ids stay on their divs so any
-          deep-link anchor (e.g. /today#whats-on) still works. */}
+      {/* ── LENS PICKER — the calm, always-visible Resident/Visitor chooser
+          that replaces the startup "are you visiting" popup (owner call).
+          Stating the active lens and letting the user switch it in place
+          makes the choice easy to make AND easy to find later, without an
+          interruption on arrival. (The old "on this page" jump-rail that
+          used to sit here was removed as redundant; section ids stay on
+          their divs so deep-link anchors like /today#whats-on still work.) */}
+      <TodayLens />
 
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On
