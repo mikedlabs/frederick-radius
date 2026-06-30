@@ -7,6 +7,7 @@ import { Search, List as ListIcon, Rows3, CalendarDays, Map as MapIcon, X, Chevr
 import EventCard from "@/components/event/EventCard";
 import EventAgenda from "@/components/event/EventAgenda";
 import EventsMap from "@/components/event/EventsMap";
+import EventsIntentRail from "@/components/event/EventsIntentRail";
 import SectionHeading from "@/components/ui/SectionHeading";
 import Sheet from "@/components/ui/Sheet";
 import SortDropdown, { type SortOption } from "@/components/ui/SortDropdown";
@@ -15,11 +16,32 @@ import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon } from "@/lib/eventHorizon";
+import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, INTENT_BY_ID, type IntentId } from "@/lib/events/intents";
+import { daypart, type Daypart } from "@/lib/daypart";
+import EventsSavedRail from "@/components/event/EventsSavedRail";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
 type TimeKey = "all" | "today" | "weekend" | "week";
 type EventSortKey = "time" | "az" | "venue";
+
+// The eight intent ids, for the ?intent= URL codec. Mirrors IntentId in
+// lib/events/intents.ts (civic included — it's tucked in the rail, not
+// absent from the taxonomy, and a shared link to it must still restore).
+const INTENT_IDS: IntentId[] = [
+  "music", "arts", "food", "family", "sports", "outdoors", "community", "civic",
+];
+
+// Time-of-day facet — the four Eastern dayparts (shared with /today's
+// reorder spine), surfaced here as a composable filter (?tod=). Single
+// label per bucket so the chip reads plainly.
+const DAYPARTS: Array<{ key: Daypart; label: string }> = [
+  { key: "morning", label: "Morning" },
+  { key: "midday", label: "Midday" },
+  { key: "evening", label: "Evening" },
+  { key: "late", label: "Late" },
+];
+const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 
 // Editorial hierarchy by TYPE, not just time: the grouped list leads
 // with draws (music, food, arts, family) and tucks civic business into a
@@ -110,6 +132,16 @@ export default function EventsExplorer({
       .withDefault(whenToTime(initialView?.when)),
   );
   const [town, setTown] = useState<string | null>(initialView?.municipality ?? null);
+  // Intent + sub — the new category front door (EventsIntentRail). The
+  // seven human intents roll up the ~25 place-categories; `sub` is a real
+  // category slug shown as a second row when an intent has curated subs.
+  // Both URL-synced (?intent / ?sub) so a "free music this weekend" view
+  // is shareable. They compose as AND with the lens / town / free facets.
+  const [intent, setIntent] = useQueryState<IntentId>(
+    "intent",
+    parseAsStringEnum<IntentId>(INTENT_IDS),
+  );
+  const [sub, setSub] = useQueryState("sub");
   const [day, setDay] = useState<string | null>(initialDay ?? null);
   const [q, setQ] = useState("");
   const [view, setView] = useState<"list" | "compact" | "calendar" | "map">("list");
@@ -130,6 +162,22 @@ export default function EventsExplorer({
   // broader product without bolting on a new event type.
   const [happyOnly, setHappyOnly] = useQueryState(
     "happy",
+    parseAsBoolean.withDefault(false),
+  );
+  // ── Composable sub-facets (overhaul wave 3) — orthogonal to the intent
+  // and to each other, each backed by a field that already exists on the
+  // event and a pure predicate in lib/events/intents.ts. All URL-synced so
+  // "free evening music for kids this weekend" is one shareable query.
+  // Time of day (?tod=) — single Eastern daypart bucket via eventDaypart().
+  const [tod, setTod] = useQueryState<Daypart>(
+    "tod",
+    parseAsStringEnum<Daypart>(DAYPART_KEYS),
+  );
+  // Kid-friendly (?kids=1) — audience includes kids-0-5 / kids-6-12.
+  const [kidsOnly, setKidsOnly] = useQueryState("kids", parseAsBoolean.withDefault(false));
+  // Recurring (?recurring=1) — repeats on a schedule (weekly series, etc.).
+  const [recurringOnly, setRecurringOnly] = useQueryState(
+    "recurring",
     parseAsBoolean.withDefault(false),
   );
   // Sort order (?sort=time|az|venue). "time" keeps the horizon
@@ -177,7 +225,11 @@ export default function EventsExplorer({
     }
   }, [sort]);
 
-  const filtered = useMemo(() => {
+  // Stage 1 — everything EXCEPT the category dimension (intent / sub /
+  // exact cat). The intent rail's badges count against THIS set, so a
+  // glance reads "how many music events match my current time + town +
+  // free filters," not a static all-time tally.
+  const baseFiltered = useMemo(() => {
     const term = q.trim().toLowerCase();
     return events.filter((e) => {
       // Day filter wins over time-window filters when both are set.
@@ -190,9 +242,11 @@ export default function EventsExplorer({
       )
         return false;
       if (!day && time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
-      if (cat && e.category !== cat) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
+      if (tod && eventDaypart(e) !== tod) return false;
+      if (kidsOnly && !isForKids(e)) return false;
+      if (recurringOnly && !isRecurringEvent(e)) return false;
       if (happyOnly) {
         // Match against title + venue + description so we catch both
         // event-level happy hours ("Tuesday happy hour at X") and the
@@ -208,8 +262,25 @@ export default function EventsExplorer({
       )
         return false;
       return true;
-    }).sort(sortFn);
-  }, [events, day, time, cat, town, q, freeOnly, happyOnly, now, next24ISO, weekendStartISO, weekendEndISO, sortFn]);
+    });
+  }, [events, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+
+  // Rail badges — per-intent counts over the base set (post time/town/free,
+  // pre intent/sub) so picking an intent doesn't zero out the other badges.
+  const intentCounts = useMemo(() => countByIntent(baseFiltered), [baseFiltered]);
+
+  // Stage 2 — the category dimension (intent roll-up + sub + the legacy
+  // exact-cat from the Type drawer / deep-links), then the chosen sort.
+  const filtered = useMemo(() => {
+    return baseFiltered
+      .filter((e) => {
+        if (intent && eventIntentOf(e) !== intent) return false;
+        if (sub && e.category !== sub) return false;
+        if (cat && e.category !== cat) return false;
+        return true;
+      })
+      .sort(sortFn);
+  }, [baseFiltered, intent, sub, cat, sortFn]);
 
   // Split the filtered set by TYPE so the grouped list leads with what
   // people actually come for; civic business sinks into a quiet tail
@@ -285,41 +356,102 @@ export default function EventsExplorer({
   }, [viewState, day]);
 
   const anyFilter =
-    cat !== null || town !== null || time !== "all" || q.trim() !== "" || freeOnly || happyOnly || day !== null;
-  // Count only the panel facets (search is its own visible field).
-  const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0);
+    cat !== null || intent !== null || sub !== null || town !== null ||
+    time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
+    tod !== null || kidsOnly || recurringOnly || day !== null;
+  // Count only the panel facets (search + the quick row + the intent rail
+  // show their own active state, so they're not tallied here). These are
+  // the deeper facets that live behind the Filters button.
+  const filterCount =
+    (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0) +
+    (tod !== null ? 1 : 0) + (kidsOnly ? 1 : 0) + (recurringOnly ? 1 : 0);
   const clear = () => {
     setCat(null);
+    setIntent(null);
+    setSub(null);
     setTown(null);
     setDay(null);
     setTime("all");
     setQ("");
     setFreeOnly(false);
     setHappyOnly(false);
+    setTod(null);
+    setKidsOnly(false);
+    setRecurringOnly(false);
   };
 
-  // One-tap intent chips — what people actually open an events page
-  // for. They drive the existing state; the deeper facets stay in the
-  // Filters drawer so the main area leads with these, not controls.
+  // Active facets as one-tap "drop this" relaxations — the honest empty
+  // state names exactly what's narrowing the list and lets the user widen
+  // one constraint at a time instead of a blunt "Clear all". Built in the
+  // order a user is most likely to want to relax (the sharpest filters
+  // first). Labels resolve to the human name, not the raw slug.
+  const relaxations: { key: string; label: string; drop: () => void }[] = [];
+  if (intent) relaxations.push({ key: "intent", label: INTENT_BY_ID[intent].label, drop: () => { setIntent(null); setSub(null); } });
+  if (sub) relaxations.push({ key: "sub", label: categories.find((c) => c.slug === sub)?.name ?? sub, drop: () => setSub(null) });
+  if (cat) relaxations.push({ key: "cat", label: categories.find((c) => c.slug === cat)?.name ?? cat, drop: () => setCat(null) });
+  if (tod) relaxations.push({ key: "tod", label: DAYPARTS.find((d) => d.key === tod)?.label ?? tod, drop: () => setTod(null) });
+  if (kidsOnly) relaxations.push({ key: "kids", label: "Kid-friendly", drop: () => setKidsOnly(false) });
+  if (recurringOnly) relaxations.push({ key: "recurring", label: "Recurring", drop: () => setRecurringOnly(false) });
+  if (freeOnly) relaxations.push({ key: "free", label: "Free", drop: () => setFreeOnly(false) });
+  if (happyOnly) relaxations.push({ key: "happy", label: "Happy hour", drop: () => setHappyOnly(false) });
+  if (town) relaxations.push({ key: "town", label: towns.find((t) => t.slug === town)?.name ?? town, drop: () => setTown(null) });
+  if (time !== "all") relaxations.push({ key: "time", label: time === "today" ? "Today" : time === "weekend" ? "This weekend" : "This week", drop: () => setTime("all") });
+  if (day) relaxations.push({ key: "day", label: "That day", drop: () => setDay(null) });
+
+  // Daypart-aware lead chip — mirrors the /today time-of-day character on
+  // /events: in the evening it offers "Tonight," in the morning "This
+  // morning," each scoping to today + that Eastern daypart in one tap.
+  // Derived from the server `nowISO` prop, so render stays deterministic.
+  const nowDaypart = daypart(new Date(nowISO));
+  const DAYPART_CHIP: Record<Daypart, string> = {
+    morning: "This morning",
+    midday: "This afternoon",
+    evening: "Tonight",
+    late: "Late tonight",
+  };
+  const daypartOn = tod === nowDaypart && time === "today";
+
+  // Orthogonal time / price facets — the WHEN and the deal, separate from
+  // the WHAT (which the intent rail owns). Category-based chips (music,
+  // family, civic) moved into the rail as first-class intents, so this
+  // row no longer double-encodes the taxonomy.
   const QUICK: { key: string; label: string; on: boolean; toggle: () => void }[] = [
-    { key: "today", label: "Today", on: time === "today", toggle: () => setTime(time === "today" ? "all" : "today") },
+    {
+      key: "daypart",
+      label: DAYPART_CHIP[nowDaypart],
+      on: daypartOn,
+      toggle: () => {
+        if (daypartOn) { setTod(null); setTime("all"); }
+        else { setTod(nowDaypart); setTime("today"); }
+      },
+    },
+    { key: "today", label: "Today", on: time === "today" && tod === null, toggle: () => setTime(time === "today" ? "all" : "today") },
     { key: "weekend", label: "This weekend", on: time === "weekend", toggle: () => setTime(time === "weekend" ? "all" : "weekend") },
-    { key: "music", label: "Live music", on: cat === "music", toggle: () => setCat(cat === "music" ? null : "music") },
     { key: "free", label: "Free", on: freeOnly, toggle: () => setFreeOnly((v) => !v) },
     { key: "happy", label: "Happy hour", on: happyOnly, toggle: () => setHappyOnly((v) => !v) },
-    { key: "family", label: "Family", on: cat === "family", toggle: () => setCat(cat === "family" ? null : "family") },
-    // Civic / meetings — separated per the May 2026 product review:
-    // commission meetings, public hearings, and municipal agendas are
-    // useful data but emotionally distinct from "dinner and music."
-    // Surfacing this lane lets the user pull civic forward when they
-    // want it AND keeps it from cluttering the default browse.
-    { key: "civic", label: "Civic", on: cat === "civic", toggle: () => setCat(cat === "civic" ? null : "civic") },
   ];
 
   return (
     <div className="space-y-3">
-      {/* Quick intent — the lead affordance. One tap for what people
-          actually want; deeper facets stay tucked in Filters. */}
+      {/* Your saved — upcoming saves surfaced first, closing the
+          find → save → resurface loop on the page people browse from.
+          Self-hides when there's nothing saved or ahead. */}
+      <EventsSavedRail events={events} nowISO={nowISO} liveSlugs={liveSlugs} />
+
+      {/* Category front door — the seven human intents (+ tucked civic) as
+          a scannable icon rail, with a second row of sub-categories when an
+          intent has them. Replaces the old flat alphabetical category dump;
+          owns the WHAT, leaving the WHEN/price to the quick facets below. */}
+      <EventsIntentRail
+        activeIntent={intent}
+        activeSub={sub}
+        counts={intentCounts}
+        onIntent={setIntent}
+        onSub={setSub}
+      />
+
+      {/* Quick facets — WHEN (today / weekend) and the deal (free / happy
+          hour). One tap; orthogonal to the intent rail above. */}
       <div className="flex flex-wrap gap-2" role="group" aria-label="Quick filters">
         {QUICK.map((c) => (
           <Pill key={c.key} tone="prominent" active={c.on} onClick={c.toggle}>
@@ -510,6 +642,52 @@ export default function EventsExplorer({
               })}
             </div>
           </div>
+          {/* Time of day — the four Eastern dayparts as a composable facet,
+              orthogonal to the Today/Weekend lens above (which is the WHICH
+              DAYS window). Single-select; tap again to clear. */}
+          <div>
+            <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
+              Time of day
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <Pill tone="brand" size="sm" active={tod === null} onClick={() => setTod(null)}>
+                Any time
+              </Pill>
+              {DAYPARTS.map((d) => {
+                const on = tod === d.key;
+                return (
+                  <Pill
+                    key={d.key}
+                    tone="brand"
+                    size="sm"
+                    active={on}
+                    onClick={() => setTod(on ? null : d.key)}
+                  >
+                    {d.label}
+                  </Pill>
+                );
+              })}
+            </div>
+          </div>
+          {/* Good for — orthogonal "good to know" toggles that compose with
+              everything else. Kid-friendly reads the audience tags; Recurring
+              flags series that repeat on a schedule. */}
+          <div>
+            <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
+              Good for
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <Pill tone="cool" size="sm" active={kidsOnly} onClick={() => setKidsOnly((v) => !v)}>
+                Kid-friendly
+              </Pill>
+              <Pill tone="cool" size="sm" active={recurringOnly} onClick={() => setRecurringOnly((v) => !v)}>
+                Recurring
+              </Pill>
+              <Pill tone="cool" size="sm" active={freeOnly} onClick={() => setFreeOnly((v) => !v)}>
+                Free
+              </Pill>
+            </div>
+          </div>
         </div>
       </Sheet>
 
@@ -575,22 +753,42 @@ export default function EventsExplorer({
             className="mx-auto mt-1 max-w-xs text-[13px] text-pretty"
             style={{ color: "var(--app-ink-2)" }}
           >
-            Try a wider time window or fewer types. The list updates as
-            soon as something matches.
+            {relaxations.length > 0
+              ? "Drop a filter to widen the search. The list updates the moment something matches."
+              : "Try a wider time window or fewer types. The list updates as soon as something matches."}
           </p>
-          {anyFilter && (
-            <button
-              type="button"
-              onClick={clear}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold tactile tactile-interactive"
-              style={{
-                background: "var(--app-bg-elevated)",
-                color: "var(--section-accent, var(--app-brand))",
-              }}
-            >
-              <X className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-              Clear filters
-            </button>
+          {/* Honest relaxations — name each active filter and let the user
+              widen ONE at a time, sharpest first. Beats a blunt "Clear all"
+              when only one constraint is the culprit. */}
+          {relaxations.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5">
+              {relaxations.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={r.drop}
+                  className="tap-44-y inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tactile tactile-interactive"
+                  style={{
+                    background: "var(--app-bg-elevated)",
+                    color: "var(--app-ink-2)",
+                    boxShadow: "inset 0 0 0 1px var(--app-border)",
+                  }}
+                >
+                  <X className="h-3 w-3" strokeWidth={2.5} aria-hidden />
+                  {r.label}
+                </button>
+              ))}
+              {relaxations.length > 1 && (
+                <button
+                  type="button"
+                  onClick={clear}
+                  className="tap-44-y inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold tactile tactile-interactive"
+                  style={{ background: "var(--app-bg-elevated)", color: "var(--section-accent, var(--app-brand))" }}
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           )}
         </div>
       ) : sort !== "time" ? (
