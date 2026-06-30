@@ -72,6 +72,7 @@ export default function AppMapClient({
   recenterToKnownLocation = false,
   pinpointDefault = false,
   initialCenter,
+  initialAmenityGroups,
   children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -113,6 +114,9 @@ export default function AppMapClient({
    *  trail row) instead of the county default. Forwarded to AppMap, whose
    *  initialZoom (14) frames it. Undefined -> AppMap's county default. */
   initialCenter?: [number, number];
+  /** Amenity-tray group keys to pre-activate (a /map?amenity=restroom
+   *  deep-link from /amenities or /today). Forwarded to AppMap. */
+  initialAmenityGroups?: string[];
   /** Overlay content for the map column (the MapIntentChips strip).
    *  Lives inside the map column so it overlays only the map, never the
    *  desktop list pane. */
@@ -140,6 +144,7 @@ export default function AppMapClient({
           recenterToKnownLocation={recenterToKnownLocation}
           pinpointDefault={pinpointDefault}
           initialCenter={initialCenter}
+          initialAmenityGroups={initialAmenityGroups}
         />
       </div>
     );
@@ -147,7 +152,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} events={events} initialCenter={initialCenter} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} events={events} initialCenter={initialCenter} initialAmenityGroups={initialAmenityGroups} />
     </div>
   );
 }

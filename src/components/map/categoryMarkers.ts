@@ -19,7 +19,8 @@ type Bucket =
   | "outdoors" | "arts" | "music" | "family" | "library" | "shopping"
   | "wellness" | "civic" | "services" | "lodging" | "transit" | "parking"
   | "restroom" | "water" | "trash" | "recycle" | "dogwaste" | "bench"
-  | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "ev" | "publicart" | "pin";
+  | "bike" | "aed" | "shelter" | "picnic" | "wifi" | "ev" | "publicart"
+  | "outlet" | "dogwater" | "pin";
 
 // Consumer drink/food categories get their OWN mark, not one generic
 // fork. A brewery, winery, bar, coffee shop, and bakery should read
@@ -54,6 +55,8 @@ const BUCKET: Record<string, Bucket> = {
   shelter: "shelter",
   wifi: "wifi",
   "ev-charging": "ev",
+  outlet: "outlet",
+  "dog-water": "dogwater",
   "public-art": "publicart",
 };
 
@@ -75,6 +78,7 @@ export const BUCKET_COLOR: Record<Bucket, string> = {
   dogwaste: "#1E6B3A", bench: "#4A4A48", bike: "#1E6B3A", aed: "#A02929",
   shelter: "#4A4A48", picnic: "#1E6B3A", wifi: "#2F5470", ev: "#1E6B3A",
   publicart: "#9B3F8A",
+  outlet: "#4A4A48", dogwater: "#2F5470",
   pin: "#7A7975",
 };
 
@@ -336,6 +340,26 @@ function drawIcon(ctx: CanvasRenderingContext2D, b: Bucket, x: number, y: number
       ctx.lineTo(0.5, -1.5);
       ctx.closePath();
       ctx.fill();
+      break;
+    case "outlet": { // wall socket: rounded plate + two prong slots
+      rr(-7, -8, 14, 16, 4); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = "destination-out";
+      ctx.fillRect(-3.4, -4, 1.8, 5);
+      ctx.fillRect(1.6, -4, 1.8, 5);
+      ctx.beginPath(); ctx.arc(0, 4, 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case "dogwater": // paw above a water bowl
+      ctx.beginPath(); ctx.ellipse(0, -3.5, 3.2, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      for (const [tx, ty] of [[-3.6, -7.4], [-1.2, -9.2], [1.2, -9.2], [3.6, -7.4]] as const) {
+        ctx.beginPath(); ctx.arc(tx, ty, 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      // bowl
+      ctx.beginPath();
+      ctx.moveTo(-7, 2.5); ctx.lineTo(7, 2.5);
+      ctx.lineTo(4.5, 9); ctx.lineTo(-4.5, 9);
+      ctx.closePath(); ctx.fill();
       break;
     case "publicart": // ring sculpture on a pedestal
       ctx.lineWidth = 2.4;

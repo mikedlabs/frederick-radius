@@ -10,6 +10,7 @@ import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { getMunicipalBoundaries, getCountyBoundary } from "@/lib/integrations/fcGis";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
+import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
 import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
@@ -20,6 +21,7 @@ import { fetchBandsintownForArtists } from "@/lib/integrations/bandsintown";
 import { liveToCardEvent } from "@/lib/loaders/liveEvents";
 import { collapseRecurringEvents } from "@/lib/events/normalize";
 import AppMapClient, { type CivicPin, type EventPin } from "@/components/map/AppMapClient";
+import { AMENITY_GROUPS } from "@/components/map/constants";
 import MapIntentChips from "@/components/map/MapIntentChips";
 import MapTimeChips, { type TimeMode } from "@/components/map/MapTimeChips";
 import MapModeToggle from "@/components/map/MapModeToggle";
@@ -244,6 +246,9 @@ export default async function MapPage({
     sub?: string;
     t?: string;
     open?: string;
+    /** Amenity-tray group keys to pre-activate, comma-separated (e.g.
+     *  `?amenity=restroom,water`) — deep-link from /amenities + /today. */
+    amenity?: string;
     /** `browse` (DEFAULT — the clean full-map surface: intent + time
      *  chips, no isochrone, no bottom sheet) or `radius` (the guided
      *  "Nearby" tool: isochrone + the within-reach control sheet). The
@@ -266,8 +271,11 @@ export default async function MapPage({
     // Radius mode: minimal SSR payload (just amenities) — RadiusBuilder
     // is a client component that reads clientPlaces() itself. Result:
     // the radius surface ships ~⅒ the HTML the browse surface does.
+    // Field-collected amenities ride the radius "within reach" set too, so a
+    // collected restroom/water/etc. counts toward Nearby, not just browse.
+    const radiusField = await withTimeout(getFieldAmenities(), 6000, []);
     const radiusAmenities = dedupeAmenities(
-      allAmenities(),
+      [...allAmenities(), ...radiusField],
       CLIENT_PLACES_FOR_DEDUPE,
     );
     // Upcoming events with coordinates, slimmed to just what the reach
@@ -373,9 +381,16 @@ const BROWSE_MAP_HEIGHT = "var(--app-browse-map-height)";
 async function BrowseMapArea({
   params,
 }: {
-  params: { intent?: string; sub?: string; t?: string; open?: string; at?: string };
+  params: { intent?: string; sub?: string; t?: string; open?: string; at?: string; amenity?: string };
 }) {
-  const { intent: intentParam, sub: subParam, t: tParam, open: openParam, at: atParam } = params;
+  const { intent: intentParam, sub: subParam, t: tParam, open: openParam, at: atParam, amenity: amenityParam } = params;
+  // Deep-link a specific amenity layer on (/map?amenity=restroom,water from
+  // /amenities or /today). Validate against the real tray group keys so a junk
+  // param can't activate a nonexistent layer; undefined → clean map as before.
+  const validAmenityGroups = new Set(AMENITY_GROUPS.map((g) => g.key));
+  const initialAmenityGroups = amenityParam
+    ? amenityParam.split(",").map((s) => s.trim()).filter((k) => validAmenityGroups.has(k))
+    : undefined;
   // Deep-link camera: a park/trail "see it on the map" row links to
   // /map?at=lat,lng. Parse + sanity-bound to Frederick County (a bad coord
   // falls through to the county default), and seed the map there. Returns
@@ -399,6 +414,7 @@ async function BrowseMapArea({
     municipalBoundaries,
     countyBoundary,
     waterSites,
+    fieldAmenities,
     allWeek,
   ] = await Promise.all([
     // Timeout-guarded (not just .catch'd): a slow upstream degrades to a
@@ -417,6 +433,10 @@ async function BrowseMapArea({
     // USGS river gauges — surfaced as a map layer (kind="river_gauge")
     // so the Rivers & creeks dataset isn't trapped on /rivers alone.
     withTimeout(getFrederickWaterSites(), 6000, []),
+    // Field-collected amenities (the /collect walkabout tool). Reads
+    // the field_amenities table; fail-soft to [] (no DB / error) so the
+    // map degrades to the static + OSM amenity set, never a 503.
+    withTimeout(getFieldAmenities(), 6000, []),
     // Upcoming events (curated seed + live feeds), deduped + sorted.
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
@@ -457,7 +477,7 @@ async function BrowseMapArea({
   }));
 
   const amenities = dedupeAmenities(
-    [...allAmenities(), ...riverGaugeAmenities],
+    [...allAmenities(), ...riverGaugeAmenities, ...fieldAmenities],
     OPEN_PLACES.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
   );
 
@@ -577,6 +597,8 @@ async function BrowseMapArea({
           pinpointDefault={false}
           // Park/trail "see it on the map" deep-link (/map?at=lat,lng).
           initialCenter={initialCenter}
+          // Amenity deep-link (/map?amenity=restroom) from /amenities + /today.
+          initialAmenityGroups={initialAmenityGroups}
         >
           {/* In-context filter UI — passed as children so it overlays
               only the map column, never the desktop list pane. */}

@@ -54,6 +54,7 @@ export default function robots(): MetadataRoute.Robots {
         //   /submit/         — submission forms (no content)
         //   /welcome         — first-run onboarding (no content)
         //   /my-radius       — user-only state surface (renamed from /saved)
+        //   /collect         — passcode-gated field-collection tool (internal)
         disallow: [
           "/api/",
           "/admin/",
@@ -62,6 +63,7 @@ export default function robots(): MetadataRoute.Robots {
           "/submit/",
           "/welcome",
           "/my-radius",
+          "/collect",
         ],
       },
       // AI-training opt-out. Each LLM crawler declares its own UA;

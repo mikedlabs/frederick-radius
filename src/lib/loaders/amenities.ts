@@ -11,7 +11,12 @@ import { haversineMeters, type LngLat } from "@/lib/geo";
 export type AmenityKind =
   | "restroom" | "ev_charging" | "wifi" | "bike_parking" | "picnic" | "playground"
   | "pool"
-  | "river_gauge";
+  | "river_gauge"
+  // Field-collected kinds (the /collect walkabout tool). These ride the
+  // same Amenity shape + map layer as the static OSM amenities; the
+  // points come from the field_amenities table, not amenities.json.
+  | "trash" | "recycling" | "water" | "bench"
+  | "dog_waste" | "dog_water" | "outlet" | "other";
 
 export type Amenity = {
   id: string;
