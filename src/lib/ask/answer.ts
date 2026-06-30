@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { search } from "@/lib/search";
 import { matchCivicAction } from "@/data/civic-actions";
 import { matchDepartment } from "@/data/department-contacts";
@@ -128,6 +129,29 @@ async function callModel(userContent: string): Promise<string | null> {
   return null;
 }
 
+/**
+ * ai-gw-2: cache the (paid) model answer so identical questions over identical
+ * data reuse the response instead of re-billing the LLM on every POST. The
+ * cache KEY is the full `userContent` — which embeds the query AND the retrieved
+ * Frederick data block + civic/dept lines — so the cached prose can never drift
+ * from live data: when the catalog/events change, userContent changes and the
+ * key changes. `sources` are recomputed live in askFrederick and never cached.
+ *
+ * Failures are NOT cached: callModel returns null when no provider is configured
+ * or every provider threw (transient), so we throw a sentinel on null — a thrown
+ * inner fn is not stored by unstable_cache, so the next request retries instead
+ * of serving an hour of "no answer". SHA-pinned per the #509 lesson.
+ */
+const cachedCallModel = unstable_cache(
+  async (userContent: string): Promise<string> => {
+    const answer = await callModel(userContent);
+    if (answer === null) throw new Error("ask:no-answer"); // don't cache failures
+    return answer;
+  },
+  ["ask-answer-v1", process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"],
+  { revalidate: 3600, tags: ["ask"] },
+);
+
 export async function askFrederick(query: string): Promise<AskResult> {
   const q = (query || "").trim();
   if (!q) return { configured: hasKey(), answer: null, sources: [] };
@@ -191,6 +215,13 @@ export async function askFrederick(query: string): Promise<AskResult> {
       : "(no matching places or events were found in the Frederick catalog)";
   const userContent = `The user asked: "${q}"\n\nFREDERICK DATA (the only facts you may use):\n${civicLine}${deptLine}${dataBlock}\n\nAnswer using only this data.`;
 
-  const answer = await callModel(userContent);
+  // Cached on a hit (identical question + identical data); a miss or a cached
+  // failure (sentinel throw) falls back to null without poisoning the cache.
+  let answer: string | null;
+  try {
+    answer = await cachedCallModel(userContent);
+  } catch {
+    answer = null;
+  }
   return { configured: answer !== null || hasKey(), answer, sources };
 }
