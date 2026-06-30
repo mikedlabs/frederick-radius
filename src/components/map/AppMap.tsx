@@ -627,6 +627,9 @@ export default function AppMap({
           website: "",
           opening_hours: "",
           cuisine: "",
+          // Reference photo (field-collected points only) — surfaced in the
+          // popup. Empty string for OSM/static amenities.
+          photo: a.photo ?? "",
         },
         geometry: { type: "Point" as const, coordinates: [a.lng, a.lat] },
       }));
@@ -774,6 +777,7 @@ export default function AppMap({
         website: props.website,
         opening_hours: props.opening_hours,
         cuisine: props.cuisine,
+        photo: props.photo || undefined,
         lng: (feature.geometry as GeoJSON.Point).coordinates[0] as number,
         lat: (feature.geometry as GeoJSON.Point).coordinates[1] as number,
       });
