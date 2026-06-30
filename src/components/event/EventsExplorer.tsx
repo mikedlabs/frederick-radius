@@ -16,7 +16,8 @@ import Segmented, { type SegmentItem } from "@/components/ui/Segmented";
 import CollapsibleSection from "@/components/ui/CollapsibleSection";
 import { isUtilityEvent } from "@/lib/event-kind";
 import { groupByHorizon } from "@/lib/eventHorizon";
-import { eventIntentOf, countByIntent, type IntentId } from "@/lib/events/intents";
+import { eventIntentOf, countByIntent, eventDaypart, isForKids, isRecurringEvent, type IntentId } from "@/lib/events/intents";
+import type { Daypart } from "@/lib/daypart";
 import { toQuery, type ViewState, type When } from "@/lib/view-state";
 import type { EventWithMeta } from "@/lib/loaders/events";
 
@@ -29,6 +30,17 @@ type EventSortKey = "time" | "az" | "venue";
 const INTENT_IDS: IntentId[] = [
   "music", "arts", "food", "family", "sports", "outdoors", "community", "civic",
 ];
+
+// Time-of-day facet — the four Eastern dayparts (shared with /today's
+// reorder spine), surfaced here as a composable filter (?tod=). Single
+// label per bucket so the chip reads plainly.
+const DAYPARTS: Array<{ key: Daypart; label: string }> = [
+  { key: "morning", label: "Morning" },
+  { key: "midday", label: "Midday" },
+  { key: "evening", label: "Evening" },
+  { key: "late", label: "Late" },
+];
+const DAYPART_KEYS: Daypart[] = DAYPARTS.map((d) => d.key);
 
 // Editorial hierarchy by TYPE, not just time: the grouped list leads
 // with draws (music, food, arts, family) and tucks civic business into a
@@ -151,6 +163,22 @@ export default function EventsExplorer({
     "happy",
     parseAsBoolean.withDefault(false),
   );
+  // ── Composable sub-facets (overhaul wave 3) — orthogonal to the intent
+  // and to each other, each backed by a field that already exists on the
+  // event and a pure predicate in lib/events/intents.ts. All URL-synced so
+  // "free evening music for kids this weekend" is one shareable query.
+  // Time of day (?tod=) — single Eastern daypart bucket via eventDaypart().
+  const [tod, setTod] = useQueryState<Daypart>(
+    "tod",
+    parseAsStringEnum<Daypart>(DAYPART_KEYS),
+  );
+  // Kid-friendly (?kids=1) — audience includes kids-0-5 / kids-6-12.
+  const [kidsOnly, setKidsOnly] = useQueryState("kids", parseAsBoolean.withDefault(false));
+  // Recurring (?recurring=1) — repeats on a schedule (weekly series, etc.).
+  const [recurringOnly, setRecurringOnly] = useQueryState(
+    "recurring",
+    parseAsBoolean.withDefault(false),
+  );
   // Sort order (?sort=time|az|venue). "time" keeps the horizon
   // grouping ("Tonight / This weekend / This week / Later"); the
   // alphabetical and by-venue sorts drop the grouping and render
@@ -215,6 +243,9 @@ export default function EventsExplorer({
       if (!day && time === "week" && !(t >= now && t < now + 7 * 864e5)) return false;
       if (town && e.municipality !== town) return false;
       if (freeOnly && !e.is_free) return false;
+      if (tod && eventDaypart(e) !== tod) return false;
+      if (kidsOnly && !isForKids(e)) return false;
+      if (recurringOnly && !isRecurringEvent(e)) return false;
       if (happyOnly) {
         // Match against title + venue + description so we catch both
         // event-level happy hours ("Tuesday happy hour at X") and the
@@ -231,7 +262,7 @@ export default function EventsExplorer({
         return false;
       return true;
     });
-  }, [events, day, time, town, q, freeOnly, happyOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
+  }, [events, day, time, town, q, freeOnly, happyOnly, tod, kidsOnly, recurringOnly, now, next24ISO, weekendStartISO, weekendEndISO]);
 
   // Rail badges — per-intent counts over the base set (post time/town/free,
   // pre intent/sub) so picking an intent doesn't zero out the other badges.
@@ -325,10 +356,14 @@ export default function EventsExplorer({
 
   const anyFilter =
     cat !== null || intent !== null || sub !== null || town !== null ||
-    time !== "all" || q.trim() !== "" || freeOnly || happyOnly || day !== null;
-  // Count only the panel facets (search is its own visible field; the
-  // intent rail shows its own active state, so it's not tallied here).
-  const filterCount = (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0);
+    time !== "all" || q.trim() !== "" || freeOnly || happyOnly ||
+    tod !== null || kidsOnly || recurringOnly || day !== null;
+  // Count only the panel facets (search + the quick row + the intent rail
+  // show their own active state, so they're not tallied here). These are
+  // the deeper facets that live behind the Filters button.
+  const filterCount =
+    (cat !== null ? 1 : 0) + (town !== null ? 1 : 0) + (day ? 1 : 0) +
+    (tod !== null ? 1 : 0) + (kidsOnly ? 1 : 0) + (recurringOnly ? 1 : 0);
   const clear = () => {
     setCat(null);
     setIntent(null);
@@ -339,6 +374,9 @@ export default function EventsExplorer({
     setQ("");
     setFreeOnly(false);
     setHappyOnly(false);
+    setTod(null);
+    setKidsOnly(false);
+    setRecurringOnly(false);
   };
 
   // Orthogonal time / price facets — the WHEN and the deal, separate from
@@ -556,6 +594,52 @@ export default function EventsExplorer({
                   </Pill>
                 );
               })}
+            </div>
+          </div>
+          {/* Time of day — the four Eastern dayparts as a composable facet,
+              orthogonal to the Today/Weekend lens above (which is the WHICH
+              DAYS window). Single-select; tap again to clear. */}
+          <div>
+            <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
+              Time of day
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <Pill tone="brand" size="sm" active={tod === null} onClick={() => setTod(null)}>
+                Any time
+              </Pill>
+              {DAYPARTS.map((d) => {
+                const on = tod === d.key;
+                return (
+                  <Pill
+                    key={d.key}
+                    tone="brand"
+                    size="sm"
+                    active={on}
+                    onClick={() => setTod(on ? null : d.key)}
+                  >
+                    {d.label}
+                  </Pill>
+                );
+              })}
+            </div>
+          </div>
+          {/* Good for — orthogonal "good to know" toggles that compose with
+              everything else. Kid-friendly reads the audience tags; Recurring
+              flags series that repeat on a schedule. */}
+          <div>
+            <h3 className="eyebrow mb-2" style={{ color: "var(--app-ink-3)" }}>
+              Good for
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              <Pill tone="cool" size="sm" active={kidsOnly} onClick={() => setKidsOnly((v) => !v)}>
+                Kid-friendly
+              </Pill>
+              <Pill tone="cool" size="sm" active={recurringOnly} onClick={() => setRecurringOnly((v) => !v)}>
+                Recurring
+              </Pill>
+              <Pill tone="cool" size="sm" active={freeOnly} onClick={() => setFreeOnly((v) => !v)}>
+                Free
+              </Pill>
             </div>
           </div>
         </div>
