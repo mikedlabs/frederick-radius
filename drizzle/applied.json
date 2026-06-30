@@ -1,0 +1,83 @@
+{
+  "note": "Ledger of hand-applied migrations (mig-4). applied_at=null means recorded but not yet confirmed applied on prod. See drizzle/README.md.",
+  "migrations": [
+    {
+      "file": "0000_adorable_roxanne_simpson.sql",
+      "sha256": "61dbe7e916c72a53c339e5fcd1f4be9df7ab38d5f95c0256073744df8ce23ba1",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0001_event_ingestion.sql",
+      "sha256": "c4daa36bab0a3c6660603927b69964ab121618e74f3bd7646236024775c27143",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0002_feed_snapshots.sql",
+      "sha256": "daedbfa76ce5d09362f937a6801a1be9ff2da11950188aadb9761b5e38b63033",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0003_push_subscriptions.sql",
+      "sha256": "ff21e9951d7c3d88ee83b22f2cdfcaa69f3dbced99ebfbf200083f9452b8bbbe",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0004_push_log.sql",
+      "sha256": "aecc554de3584cc4b0fb408d26c663f45b7be1bc342eb6d2a8ac1fdb28bfd8a7",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0005_friendly_marten_broadcloak.sql",
+      "sha256": "7029bd538ab211ce3d95d27cac902f2c69ea372e13464d6f30057f684b669177",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0006_robust_miss_america.sql",
+      "sha256": "51a1db97ff81e2682061bf28dc61dc11227f878fb9d07f724feebc87b6af6fe1",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0007_enable_rls.sql",
+      "sha256": "5acf075f8f6dcf8c2f946a98bb8ddd5ae30e1ac527b641e675dd41be920b8b75",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0008_move_pg_trgm_out_of_public.sql",
+      "sha256": "86bf2c0fa08349747cd6cc70631aa2dd4624886f25f88bd92dc91c26591e4174",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0009_enable_rls_all_public.sql",
+      "sha256": "95e62651eb0f9d93cf5f7746db7d10a28bdad531306087912e26412d4068a255",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0010_drop_duplicate_slug_indexes.sql",
+      "sha256": "5e01ddc14eee6d664a353e045783a12c39da7486a5b42a64dcbd9e40d11eb105",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0011_index_ingested_events_raw_event_id.sql",
+      "sha256": "6157997971bd6dbee96b9c45e591a35c40f16bb70bd3bd70e2038666db33f32c",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0012_enable_rls_field_amenities.sql",
+      "sha256": "d1b6dde69c8ff87e59a1abea3eb15b950dd02a88bed1f6938ad86cbb0146c9cb",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
+    }
+  ]
+}
