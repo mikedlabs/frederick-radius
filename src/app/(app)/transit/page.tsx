@@ -130,7 +130,7 @@ export const revalidate = 60;
  * the towns; we already had the data loader (MD Open Data, keyless,
  * weekly revalidate). This rebuild surfaces it as a real map plus a
  * full route list, replacing the earlier text-only list that linked
- * out to /map?focus=.
+ * out to /map?at=.
  *
  * What's here
  *   - The map: every route drawn in Carroll Creek slate on the same

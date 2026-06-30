@@ -40,7 +40,7 @@ function TrailRow({ t }: { t: Trail }) {
   ].filter(Boolean);
   return (
     <Row
-      href={`/map?focus=${t.lat},${t.lng}`}
+      href={`/map?at=${t.lat},${t.lng}`}
       leading={<IconTile icon={Icon} tone="#1E6B3A" />}
       title={t.name}
       subtitle={bits.length ? bits.join(" · ") : undefined}

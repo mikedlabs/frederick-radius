@@ -373,9 +373,22 @@ const BROWSE_MAP_HEIGHT = "var(--app-browse-map-height)";
 async function BrowseMapArea({
   params,
 }: {
-  params: { intent?: string; sub?: string; t?: string; open?: string };
+  params: { intent?: string; sub?: string; t?: string; open?: string; at?: string };
 }) {
-  const { intent: intentParam, sub: subParam, t: tParam, open: openParam } = params;
+  const { intent: intentParam, sub: subParam, t: tParam, open: openParam, at: atParam } = params;
+  // Deep-link camera: a park/trail "see it on the map" row links to
+  // /map?at=lat,lng. Parse + sanity-bound to Frederick County (a bad coord
+  // falls through to the county default), and seed the map there. Returns
+  // [lng, lat] for Mapbox; the row emits lat,lng.
+  const initialCenter = ((): [number, number] | undefined => {
+    if (!atParam) return undefined;
+    const m = /^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/.exec(atParam.trim());
+    if (!m) return undefined;
+    const lat = +m[1];
+    const lng = +m[2];
+    if (lat < 38.8 || lat > 39.9 || lng < -77.9 || lng > -76.9) return undefined;
+    return [lng, lat];
+  })();
   const now = new Date();
   const [
     incidents,
@@ -562,6 +575,8 @@ async function BrowseMapArea({
           // than gate. (Was pinpoint-first: blank until you tapped a chip,
           // which assumed you didn't want to see anything yet.)
           pinpointDefault={false}
+          // Park/trail "see it on the map" deep-link (/map?at=lat,lng).
+          initialCenter={initialCenter}
         >
           {/* In-context filter UI — passed as children so it overlays
               only the map column, never the desktop list pane. */}

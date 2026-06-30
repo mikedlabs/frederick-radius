@@ -70,6 +70,7 @@ export default function AppMapClient({
   fullBleed = false,
   recenterToKnownLocation = false,
   pinpointDefault = false,
+  initialCenter,
   children,
 }: {
   /** Already decorated server-side (map/page → publicPlaces().map
@@ -107,6 +108,10 @@ export default function AppMapClient({
   /** Pinpoint-first: open the browse map clean (no pins) until the user
    *  adds a category. Set when browsing with no server-side intent. */
   pinpointDefault?: boolean;
+  /** Seed the camera here (e.g. a /map?at=lat,lng deep-link from a park or
+   *  trail row) instead of the county default. Forwarded to AppMap, whose
+   *  initialZoom (14) frames it. Undefined -> AppMap's county default. */
+  initialCenter?: [number, number];
   /** Overlay content for the map column (the MapIntentChips strip).
    *  Lives inside the map column so it overlays only the map, never the
    *  desktop list pane. */
@@ -133,6 +138,7 @@ export default function AppMapClient({
           fullBleed
           recenterToKnownLocation={recenterToKnownLocation}
           pinpointDefault={pinpointDefault}
+          initialCenter={initialCenter}
         />
       </div>
     );
@@ -140,7 +146,7 @@ export default function AppMapClient({
 
   return (
     <div className="space-y-3">
-      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} events={events} />
+      <AppMap places={places} civic={civic} extraAmenities={extraAmenities} amenities={amenities} trailLines={trailLines} transitLines={transitLines} municipalBoundaries={municipalBoundaries} countyBoundary={countyBoundary} events={events} initialCenter={initialCenter} />
     </div>
   );
 }
