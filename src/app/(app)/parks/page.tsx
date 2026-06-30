@@ -40,7 +40,7 @@ function ParkRow({ p }: { p: Park }) {
   return (
     <Row
       href={`/map?focus=${p.lat},${p.lng}`}
-      leading={<IconTile icon={Trees} tone="#2E3B2C" />}
+      leading={<IconTile icon={Trees} tone="var(--app-brand-2)" />}
       title={titleCase(p.name)}
       subtitle={subtitle}
       meta={p.acres != null ? `${p.acres} ${p.acres === 1 ? "ac" : "ac"}` : undefined}

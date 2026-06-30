@@ -63,7 +63,7 @@ type Item = {
 // discovery + curiosity surfaces, ways to contribute, and the app/meta pages.
 const DISCOVER: Item[] = [
   { href: "/open-now", label: "Open now", description: "Everything open across the county right this minute", icon: DoorOpen, color: "var(--app-positive)" },
-  { href: "/weekend", label: "This weekend", description: "What's on this weekend, Friday through Sunday", icon: CalendarDays, color: "var(--app-brand)" },
+  { href: "/events", label: "This weekend", description: "What's on this weekend, Friday through Sunday", icon: CalendarDays, color: "var(--app-brand)" },
   { href: "/live-music", label: "Live music", description: "Who's playing tonight and this week across the county", icon: Music, color: "var(--app-accent)" },
   { href: "/deals", label: "Deals", description: "Verified daily specials across the county, by day", icon: Tag, color: "var(--app-brand)" },
   { href: "/collections", label: "Collections", description: "Editor's curated lists: date night, with kids, rainy day", icon: Layers, color: "var(--app-brand-2)" },

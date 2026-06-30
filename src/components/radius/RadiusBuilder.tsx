@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Footprints, Bike, Car, MapPin, ChevronDown, ChevronUp, Locate, X, Compass } from "lucide-react";
+import { Footprints, Bike, Car, MapPin, ChevronDown, ChevronUp, Locate, Compass } from "lucide-react";
 import PlaceCard from "@/components/place/PlaceCard";
 import SectionHeading from "@/components/ui/SectionHeading";
 import FilterChip from "@/components/ui/FilterChip";
@@ -478,18 +478,6 @@ export default function RadiusBuilder({
       cancelled = true;
     };
   }, []);
-
-  // Permanent dismiss for the first-visit prompt. The Locate button in
-  // the control card stays the always-on opt-in path; we just stop
-  // pushing the big card at the top of the page.
-  const dismissPrompt = () => {
-    setPromptDismissed(true);
-    try {
-      localStorage.setItem(GEO_PROMPT_DISMISS_KEY, "1");
-    } catch {
-      // ignore
-    }
-  };
 
   // Snap the center to the nearest municipality for an out-of-county
   // user — surfaces the closest sensible jumping-off point.
