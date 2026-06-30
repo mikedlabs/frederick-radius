@@ -40,7 +40,6 @@ import {
   Siren,
   ShieldCheck,
   ExternalLink, MapPin, Clock, ChevronRight,
-  Radio,
 } from "lucide-react";
 import { getChartIncidentsFrederick } from "@/lib/integrations/mdot-chart";
 import { getFrederickOutages } from "@/lib/integrations/firstenergy";
@@ -62,7 +61,7 @@ import { publicPlaces } from "@/lib/loaders/places";
 import { MUNICIPALITIES } from "@/data/municipalities";
 import PageBloom from "@/components/ui/PageBloom";
 import ScannerTimeline from "@/components/pulse/ScannerTimeline";
-import { PoliceBreakingStrip, PoliceBlotter, AdvisoryCard } from "@/components/pulse/CivicPress";
+import { PoliceBreakingStrip, PoliceBlotter } from "@/components/pulse/CivicPress";
 import PulseDashboard, { type PulseTile } from "@/components/pulse/PulseDashboard";
 import TransitMap from "@/components/transit/TransitMapClient";
 import NextStopsBoard from "@/components/transit/NextStopsBoard";
@@ -325,6 +324,98 @@ export default async function PulsePage({
       {text}
     </p>
   );
+
+  // ── Bodies for the civic-feed tiles (News · Police · Road work · Scanner).
+  // These reference feeds used to stack as their own text-heavy sections below
+  // the board; they now live INSIDE the dashboard as tap-to-open tiles, so the
+  // whole page is one unified, visual grid. Built server-side like every tile.
+  const newsLead = news[0];
+  const newsBody = news.length > 0 ? (
+    <div className="space-y-1">
+      <a
+        href={newsLead.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block rounded-[var(--app-radius-md)] px-1 py-2 transition hover:bg-[var(--app-bg-sunken)]"
+      >
+        <h3 className="font-serif text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+          {newsLead.title}
+        </h3>
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
+          {newsLead.source} · {timeAgo(newsLead.published_at)}
+        </p>
+      </a>
+      {news.length > 1 && (
+        <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
+          {news.slice(1, 6).map((h) => (
+            <li
+              key={h.url}
+              className="border-b last:border-b-0"
+              style={{ borderColor: "color-mix(in srgb, var(--app-border) 65%, transparent)" }}
+            >
+              <a
+                href={h.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start justify-between gap-3 px-1 py-2.5 transition hover:bg-[var(--app-bg-sunken)]"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
+                    {h.title}
+                  </span>
+                  <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
+                    {h.source} · {timeAgo(h.published_at)}
+                  </span>
+                </span>
+                <ExternalLink aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  ) : emptyNote("No local headlines right now.");
+
+  const policeBody = (
+    <div className="space-y-3">
+      {blotter.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
+            Recent releases
+          </p>
+          <PoliceBlotter items={blotter} now={nowMs} />
+        </div>
+      )}
+      <div
+        className={blotter.length > 0 ? "space-y-2.5 border-t pt-3" : "space-y-2.5"}
+        style={blotter.length > 0 ? { borderColor: "var(--app-border)" } : undefined}
+      >
+        <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
+          Frederick PD also publishes the prior day&apos;s calls for service from its
+          CAD system on an official map, updated daily.
+        </p>
+        <a
+          href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
+          style={{ background: "var(--app-cool)" }}
+        >
+          Open the official CFS map
+          <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
+        </a>
+        <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
+          Calls for service are not confirmed crimes. They reflect requests for
+          police response, from the City of Frederick &amp; Frederick County.
+        </p>
+      </div>
+    </div>
+  );
+
+  const roadworkBody = advisories.length > 0
+    ? <PoliceBlotter items={advisories} now={nowMs} />
+    : emptyNote("No road work or closures reported right now.");
+
   const pulseTiles: PulseTile[] = [
     // Weather LEADS the board: "what's it doing out" is the most-asked live
     // question. An ambient tile (not an alarm) carrying the current reading;
@@ -646,6 +737,53 @@ export default async function PulsePage({
           ),
         } as PulseTile]
       : []),
+    // ── Reference feeds, now first-class tiles (were stacked text sections).
+    {
+      key: "news",
+      label: "In the news",
+      iconName: "Newspaper",
+      countLabel: news.length > 0 ? `${news.length} ${news.length === 1 ? "story" : "stories"}` : "Quiet",
+      accent: "var(--app-cool)",
+      active: false,
+      sourceLabel: "Google News · Frederick County",
+      peek: news[0]?.title,
+      body: newsBody,
+    },
+    {
+      key: "police",
+      label: "Police & safety",
+      iconName: "Shield",
+      countLabel: blotter.length > 0 ? `${blotter.length} ${blotter.length === 1 ? "release" : "releases"}` : "CFS map",
+      accent: "var(--app-cool)",
+      active: false,
+      sourceLabel: "Frederick PD · City + County",
+      peek: breakingPolice?.title ?? blotter[0]?.title,
+      body: policeBody,
+    },
+    ...(advisories.length > 0
+      ? [{
+          key: "roadwork",
+          label: "Road work",
+          iconName: "TrafficCone",
+          countLabel: `${advisories.length} ${advisories.length === 1 ? "advisory" : "advisories"}`,
+          accent: "var(--app-cool)",
+          active: false,
+          sourceLabel: "City + County advisories",
+          peek: advisories[0]?.title,
+          body: roadworkBody,
+        } as PulseTile]
+      : []),
+    {
+      key: "scanner",
+      label: "Scanner",
+      iconName: "Radio",
+      countLabel: "Live on X",
+      accent: "var(--app-cool)",
+      active: false,
+      sourceLabel: "Frederick Scanner · X",
+      peek: "Police, fire & EMS calls",
+      body: <ScannerTimeline />,
+    },
   ];
 
   return (
@@ -794,262 +932,6 @@ export default async function PulsePage({
         </p>
       </section>
 
-      {/* ── Active sections only ──────────────────────────────── */}
-      {/* Desktop multi-column: at lg+ the operational sections fall
-          into a 2-col grid so traffic, power, schools, alerts, news
-          read side-by-side instead of as long single-column rows.
-          Mobile keeps the natural vertical stack. The grid is on the
-          parent <div>; conditional children populate cells in source
-          order so urgency stays top-left. */}
-      {/* Secondary surfaces — Scanner, local news, the police blotter, and
-          road-work advisories. These are REFERENCE feeds (text-heavy), so they
-          now live behind ONE "More civic feeds" disclosure: the live, visual
-          dashboard + buses + rivers lead, and /pulse stops reading as a long
-          text scroll. The operational feeds are the tap-to-open tiles above. */}
-      <CollapsibleSection title="More civic feeds & news" storageKey="fr.pulse.feeds" defaultOpen={false}>
-      <div className="space-y-4 pt-1">
-
-      {/* Frederick Scanner — Twitter/X timeline embed. Sits between
-          the operational feeds and the editorial news section because
-          the scanner is operational-news in feel (raw incidents)
-          but lives on a third-party surface. Self-falls-back to an
-          "open on X" link card if the widget can't load. */}
-      <section
-        id="scanner"
-        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-        style={{
-          // Explicit side colors (not the borderColor shorthand) so the left
-          // accent longhand below doesn't trip React's shorthand/longhand warn.
-          borderTopColor: "var(--app-border)",
-          borderRightColor: "var(--app-border)",
-          borderBottomColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          borderLeftWidth: 3,
-          borderLeftColor: "var(--app-cool)",
-        }}
-      >
-        <header
-          className="flex items-center justify-between gap-3 border-b px-4 py-2.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <h2
-            className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-cool) 13%, transparent)",
-                color: "var(--app-cool)",
-              }}
-            >
-              <Radio className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </span>
-            Frederick Scanner
-          </h2>
-          <span
-            className="text-[11px]"
-            style={{ color: "var(--app-ink-3)" }}
-          >
-            Live on X
-          </span>
-        </header>
-        <div className="px-3 py-3">
-          <ScannerTimeline />
-        </div>
-      </section>
-
-      {/* Rivers moved INTO the dashboard as the cool-accent 7th tile — it's
-          live county data (gage height), so it belongs in the heat-map grid
-          alongside the other live feeds, not stranded below as a quiet link.
-          The full /rivers dashboard (24h trends + map) is linked from inside
-          the tile's window. */}
-
-      {/* City signal — Local news. Always-on city data even when the
-          operational feeds are quiet. Top headlines from Google News
-          RSS for Frederick County + the four named towns. Each row
-          links out; rendering quiet headline text + source +
-          published-ago meta. */}
-      {news.length > 0 && (() => {
-        // Broadsheet treatment: a lead story set large in serif, then a tight
-        // ruled column of the rest. Typography carries the "newspaper" feel.
-        const [lead, ...rest] = news.slice(0, 6);
-        const dateline = new Intl.DateTimeFormat("en-US", {
-          timeZone: "America/New_York",
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        }).format(new Date(nowMs));
-        return (
-        <section
-          id="news"
-          className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-          style={{ borderColor: "var(--app-border)", background: "var(--app-bg-elevated)" }}
-        >
-          {/* Nameplate — a masthead double-rule, serif title, mono dateline. */}
-          <div className="px-4 pt-3.5 sm:px-5">
-            <div aria-hidden className="h-px" style={{ background: "var(--app-ink)" }} />
-            <div className="flex items-baseline justify-between gap-3 pt-2">
-              <h2 className="font-serif text-[21px] font-semibold leading-none tracking-tight" style={{ color: "var(--app-ink)" }}>
-                In the news
-              </h2>
-              <span className="font-mono text-[10px] uppercase tracking-[0.16em]" style={{ color: "var(--app-ink-3)" }}>
-                Frederick · {dateline}
-              </span>
-            </div>
-            <div aria-hidden className="mt-2 h-px" style={{ background: "color-mix(in srgb, var(--app-ink) 28%, transparent)" }} />
-          </div>
-
-          {/* Lead story — set larger in serif, the broadsheet lead. */}
-          <a
-            href={lead.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block px-4 py-3 transition hover:bg-[var(--app-bg-sunken)] sm:px-5"
-          >
-            <h3 className="font-serif text-[17px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-              {lead.title}
-            </h3>
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
-              {lead.source} · {timeAgo(lead.published_at)}
-            </p>
-          </a>
-
-          {/* The column — secondary stories as a tight ruled run. */}
-          {rest.length > 0 && (
-            <ul className="border-t" style={{ borderColor: "var(--app-border)" }}>
-              {rest.map((h) => (
-                <li
-                  key={h.url}
-                  className="border-b last:border-b-0"
-                  style={{ borderColor: "color-mix(in srgb, var(--app-border) 65%, transparent)" }}
-                >
-                  <a
-                    href={h.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-start justify-between gap-3 px-4 py-2.5 transition hover:bg-[var(--app-bg-sunken)] sm:px-5"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[13.5px] font-semibold leading-snug" style={{ color: "var(--app-ink)" }}>
-                        {h.title}
-                      </span>
-                      <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.07em]" style={{ color: "var(--app-ink-3)" }}>
-                        {h.source} · {timeAgo(h.published_at)}
-                      </span>
-                    </span>
-                    <ExternalLink aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} style={{ color: "var(--app-ink-3)" }} />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <p
-            className="px-4 py-2.5 font-mono text-[9.5px] uppercase tracking-[0.14em] sm:px-5"
-            style={{ color: "var(--app-ink-3)", borderTop: "1px solid var(--app-border)" }}
-          >
-            Wire: Google News · Frederick County
-          </p>
-        </section>
-        );
-      })()}
-      {/* (Scanner + News above and Police + Road work below all live inside the
-          same "More civic feeds" disclosure opened above — the div stays open
-          until after the advisories.) */}
-
-      {/* The all-clear verdict lives ONCE, in the hero ("All clear across
-          the county" + the sage live dot at the top). A second celebration
-          card here repeated it AFTER the user had already scrolled past the
-          tiles, scanner, and news — the verdict landing last, divorced from
-          the headline. One verdict, one place; removed. */}
-
-      {/* Police — kept as a quiet card with its required disclaimer.
-          Not part of the active-sections loop because there's no
-          feed to count from. */}
-      <section
-        id="police"
-        className="scroll-mt-20 overflow-hidden rounded-[var(--app-radius-lg)] border shadow-[var(--app-shadow-1)]"
-        style={{
-          // Explicit side colors (not the borderColor shorthand) so the left
-          // accent longhand below doesn't trip React's shorthand/longhand warn.
-          borderTopColor: "var(--app-border)",
-          borderRightColor: "var(--app-border)",
-          borderBottomColor: "var(--app-border)",
-          background: "var(--app-bg-elevated)",
-          borderLeftWidth: 3,
-          borderLeftColor: "var(--app-cool)",
-        }}
-      >
-        <header
-          className="flex items-center gap-3 border-b px-4 py-2.5"
-          style={{ borderColor: "var(--app-border)" }}
-        >
-          <h2
-            className="inline-flex items-center gap-2.5 font-serif text-[17px] font-semibold tracking-tight"
-            style={{ color: "var(--app-ink)" }}
-          >
-            <span
-              aria-hidden
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full"
-              style={{
-                background: "color-mix(in srgb, var(--app-cool) 10%, transparent)",
-                color: "var(--app-cool)",
-              }}
-            >
-              <Siren className="h-3.5 w-3.5" strokeWidth={2.25} aria-hidden />
-            </span>
-            Police &amp; safety
-          </h2>
-        </header>
-        <div className="px-4 py-3">
-          {/* The running blotter — recent police press releases from the
-              City + County newsrooms, the one already featured up top
-              excluded. Self-hides when the feeds carry no police items. */}
-          {blotter.length > 0 && (
-            <div className="space-y-1.5">
-              <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "var(--app-ink-3)" }}>
-                Recent releases
-              </p>
-              <PoliceBlotter items={blotter} now={nowMs} />
-            </div>
-          )}
-          <div
-            className={blotter.length > 0 ? "mt-3 space-y-2.5 border-t pt-3" : "space-y-2.5"}
-            style={blotter.length > 0 ? { borderColor: "var(--app-border)" } : undefined}
-          >
-            <p className="text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>
-              Frederick PD also publishes the prior day&apos;s calls for service
-              from its CAD system on an official map, updated daily. You
-              can browse it and subscribe to alerts for your area there.
-            </p>
-            <a
-              href="https://www.cityoffrederickmd.gov/329/Calls-for-Service---Map"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-[var(--app-shadow-1)] active:scale-[0.99]"
-              style={{ background: "var(--app-cool)" }}
-            >
-              Open the official CFS map
-              <ExternalLink className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
-            </a>
-            <p className="text-[11px]" style={{ color: "var(--app-ink-3)" }}>
-              Calls for service are not confirmed crimes. They reflect
-              requests for police response. Releases and the CFS map come
-              from the City of Frederick &amp; Frederick County.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Road work & closures — the civic-press advisory lane (planned City/
-          County closures + road work), a quiet standing card below Police.
-          Self-hides when there's nothing recent. Distinct from the live MDOT
-          traffic tile (accidents now) in the dashboard above. */}
-      <AdvisoryCard items={advisories} now={nowMs} />
-      </div>
-      </CollapsibleSection>
 
       {/* By the numbers — county canon + live directory counts. Collapsed
           by DEFAULT: on a live-status page this is the largest block and pure
