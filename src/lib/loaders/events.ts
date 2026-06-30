@@ -448,12 +448,17 @@ export function eventDateBlock(e: Event): { weekday: string; day: string; month:
     weekday: new Intl.DateTimeFormat("en-US", { timeZone: tz, weekday: "short" }).format(start),
     day: new Intl.DateTimeFormat("en-US", { timeZone: tz, day: "numeric" }).format(start),
     month: new Intl.DateTimeFormat("en-US", { timeZone: tz, month: "short" }).format(start).toUpperCase(),
-    time: new Intl.DateTimeFormat("en-US", {
-      timeZone: tz,
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    }).format(start),
+    // All-day rows carry no real clock — a formatted starts_at would print a
+    // bogus "12:00 AM" (the guards downstream only test truthiness, so they
+    // never caught it). Surface "All day" so every card variant reads right.
+    time: e.is_all_day
+      ? "All day"
+      : new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        }).format(start),
   };
 }
 

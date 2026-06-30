@@ -108,7 +108,7 @@ export default function EventAgenda({
                       className="w-14 shrink-0 text-[12px] font-semibold tabular-nums"
                       style={{ color: "var(--app-brand)" }}
                     >
-                      {nyTime(e.starts_at)}
+                      {e.is_all_day ? "All day" : nyTime(e.starts_at)}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14px] font-semibold" style={{ color: "var(--app-ink)" }}>
