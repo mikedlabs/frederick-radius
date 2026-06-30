@@ -16,6 +16,31 @@ type TRoute = { id: string; short: string; name: string; color: string };
 const ROUTES = TRANSIT.routes as TRoute[];
 const SHAPES = TRANSIT.shapes as Record<string, number[][]>;
 
+/**
+ * The transit SERVICE AREA — the bounding box of every route polyline (the real
+ * extent where buses actually run), padded slightly. Used to leash the live-bus
+ * map so it can't be panned off into empty county where nothing moves. Shape
+ * points are [lat, lng]; mapbox bounds are [[west,south],[east,north]].
+ */
+const SERVICE_BOUNDS: [[number, number], [number, number]] = (() => {
+  let minLng = Infinity, minLat = Infinity, maxLng = -Infinity, maxLat = -Infinity;
+  for (const pts of Object.values(SHAPES)) {
+    for (const p of pts) {
+      const lat = p[0], lng = p[1];
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    }
+  }
+  // Sensible fallback (downtown Frederick) if shapes are somehow empty.
+  if (!Number.isFinite(minLng)) return [[-77.50, 39.34], [-77.32, 39.50]];
+  const padLng = (maxLng - minLng) * 0.06 || 0.02;
+  const padLat = (maxLat - minLat) * 0.06 || 0.02;
+  return [[minLng - padLng, minLat - padLat], [maxLng + padLng, maxLat + padLat]];
+})();
+
 /** Dark or light, whichever reads on the route color (GTFS text colors are
  *  unreliable — white on the light routes). */
 function readableOn(hex: string): string {
@@ -59,6 +84,7 @@ export default function TransitMap({
   liveBuses = false,
   highlightRoutes = false,
   hideBadge = false,
+  lockToService = false,
 }: {
   shapes: LineFC;
   /** Real Frederick County TransIT stops (MD Open Data, 4zcx-89nc).
@@ -80,6 +106,10 @@ export default function TransitMap({
   /** Hide the in-map "TransIT · N routes" pill (when a section header already
    *  labels the map, e.g. /pulse — keeps the top clear for bus badges). */
   hideBadge?: boolean;
+  /** Leash the camera to the bus SERVICE AREA (the route-network bbox) and
+   *  frame it on load, so the map can't be panned/zoomed off into empty county
+   *  where no buses run. Used by the /pulse live-bus map. */
+  lockToService?: boolean;
 }) {
   const initial = useMemo(() => {
     const cx = center?.[0] ?? (FREDERICK_COUNTY_BBOX.west + FREDERICK_COUNTY_BBOX.east) / 2;
@@ -178,7 +208,14 @@ export default function TransitMap({
         // pan works without the "use two fingers" hint.
         interactive
         cooperativeGestures={false}
-        onLoad={(e) => applyFrederickPalette(e.target)}
+        maxBounds={lockToService ? SERVICE_BOUNDS : undefined}
+        minZoom={lockToService ? 10.5 : undefined}
+        onLoad={(e) => {
+          applyFrederickPalette(e.target);
+          // Frame the service area on open so the live-bus map lands exactly on
+          // where buses run, not the whole county.
+          if (lockToService) e.target.fitBounds(SERVICE_BOUNDS, { padding: 24, duration: 0 });
+        }}
       >
         {/* The loader types geometry as `unknown` to stay defensive
             about Socrata's response, but Mapbox's Source needs the
