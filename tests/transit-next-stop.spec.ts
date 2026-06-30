@@ -1,8 +1,11 @@
 /**
  * Next-stop join — the live-bus flight-tracker brain. Asserts the
- * vehicle -> TripUpdate -> next stop resolution against the EXACT shapes
- * captured from the live Passio feed (trip 714318), plus the honest
- * fallbacks (unknown stop, deadhead, STOPPED_AT advance, departure fallback).
+ * vehicle -> TripUpdate -> next stop resolution against shapes captured from
+ * the live Passio feed (trip 714318), and codifies the hard-won rule that the
+ * reported stop_id is AUTHORITATIVE: the two feeds number stop_sequence
+ * differently for the same stop_id, so a sequence-first join picked the wrong
+ * stop on ~half of real buses. Also covers loop routes (repeated stopId
+ * disambiguated by the report timestamp) and the honest fallbacks.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -19,6 +22,8 @@ const STOPS: Record<string, StopMeta> = {
   "187567": { id: "187567", name: "TC Exit Announcements", lat: 39.4146, lng: -77.4108 },
   "162876": { id: "162876", name: "Square Corner", lat: 39.4151, lng: -77.4106 },
   "162877": { id: "162877", name: "North Market Street at 3rd Street", lat: 39.4178, lng: -77.4103 },
+  A: { id: "A", name: "Loop Stop A", lat: 39.41, lng: -77.41 },
+  B: { id: "B", name: "Loop Stop B", lat: 39.42, lng: -77.42 },
 };
 
 // TripUpdate captured live (trip 714318, first 4 of 26 stop_time_updates).
@@ -35,11 +40,27 @@ const TRIP_714318: TripUpdate = {
 };
 
 const byTrip = tripUpdatesByTripId([TRIP_714318]);
+const veh = (o: Partial<LiveVehicle>): LiveVehicle => ({ vehicleId: "v", lat: 0, lng: 0, ...o });
 
 describe("resolveNextStop", () => {
-  it("resolves the approached stop + ETA from the live shapes (IN_TRANSIT_TO / no status)", () => {
+  it("resolves the reported stop + its ETA by stopId, IGNORING the VehiclePositions sequence", () => {
+    // The bus reports it's approaching 162876 (TripUpdates seq 3) while its
+    // VehiclePositions currentStopSequence is a DIFFERENT, offset value (2).
+    // The reported stopId must win — a sequence-first join would wrongly pick
+    // seq-2's stop (187567). This is the exact live-feed bug guarded here.
     const next = resolveNextStop(
-      { tripId: "714318", stopId: "187567", stopSequence: 2, status: "IN_TRANSIT_TO" },
+      veh({ tripId: "714318", stopId: "162876", stopSequence: 2, status: "IN_TRANSIT_TO" }),
+      byTrip,
+      STOPS,
+    );
+    expect(next?.id).toBe("162876");
+    expect(next?.name).toBe("Square Corner");
+    expect(next?.etaEpoch).toBe(1782814272);
+  });
+
+  it("resolves the approached stop + ETA when current_status is absent (feed default)", () => {
+    const next = resolveNextStop(
+      veh({ tripId: "714318", stopId: "187567" }),
       byTrip,
       STOPS,
     );
@@ -52,38 +73,51 @@ describe("resolveNextStop", () => {
     });
   });
 
-  it("advances to the FOLLOWING stop when the bus is STOPPED_AT its current one", () => {
+  it("advances to the FOLLOWING stop (by trip sequence) when the bus is STOPPED_AT", () => {
     const next = resolveNextStop(
-      { tripId: "714318", stopId: "187567", stopSequence: 2, status: "STOPPED_AT" },
+      veh({ tripId: "714318", stopId: "187567", status: "STOPPED_AT" }),
       byTrip,
       STOPS,
     );
-    expect(next?.id).toBe("162876"); // seq 3, the next one
+    expect(next?.id).toBe("162876"); // the stop after seq-2 in the trip
     expect(next?.etaEpoch).toBe(1782814272);
   });
 
-  it("matches by sequence on loop routes (prefers exact sequence over stopId)", () => {
-    // currentStopSequence wins even if a stale stopId points elsewhere.
+  it("on a loop route, picks the UPCOMING occurrence of the reported stopId via the report timestamp", () => {
+    const loop: TripUpdate = {
+      tripId: "loop", stops: [
+        { stopId: "A", stopSequence: 2, arrivalEpoch: 1000 },
+        { stopId: "B", stopSequence: 3, arrivalEpoch: 1500 },
+        { stopId: "A", stopSequence: 8, arrivalEpoch: 2000 },
+      ],
+    };
     const next = resolveNextStop(
-      { tripId: "714318", stopId: "162847", stopSequence: 3, status: "IN_TRANSIT_TO" },
-      byTrip,
+      veh({ tripId: "loop", stopId: "A", timestamp: 1600, status: "IN_TRANSIT_TO" }),
+      tripUpdatesByTripId([loop]),
       STOPS,
     );
-    expect(next?.id).toBe("162876");
+    expect(next?.id).toBe("A");
+    expect(next?.etaEpoch).toBe(2000); // the future lap, not the passed seq-2 (1000)
   });
 
-  it("uses the earliest stop at-or-after the target sequence when no exact match", () => {
+  it("on a loop route without a timestamp, falls back to the earliest occurrence", () => {
+    const loop: TripUpdate = {
+      tripId: "loop", stops: [
+        { stopId: "A", stopSequence: 2, arrivalEpoch: 1000 },
+        { stopId: "A", stopSequence: 8, arrivalEpoch: 2000 },
+      ],
+    };
     const next = resolveNextStop(
-      { tripId: "714318", stopSequence: 2 } as LiveVehicle,
-      tripUpdatesByTripId([{ ...TRIP_714318, stops: TRIP_714318.stops.filter((s) => s.stopSequence !== 2) }]),
+      veh({ tripId: "loop", stopId: "A" }),
+      tripUpdatesByTripId([loop]),
       STOPS,
     );
-    expect(next?.id).toBe("162876"); // seq 2 gone -> seq 3 is the next
+    expect(next?.etaEpoch).toBe(1000);
   });
 
   it("falls back to departure time when arrival is missing", () => {
     const next = resolveNextStop(
-      { tripId: "714318", stopId: "187567", stopSequence: 2 },
+      veh({ tripId: "714318", stopId: "187567" }),
       tripUpdatesByTripId([{
         ...TRIP_714318,
         stops: [{ stopId: "187567", stopSequence: 2, departureEpoch: 1782814213 }],
@@ -95,7 +129,7 @@ describe("resolveNextStop", () => {
 
   it("names the stop without an ETA when there is no TripUpdate for the trip", () => {
     const next = resolveNextStop(
-      { tripId: "999999", stopId: "187567", stopSequence: 2, status: "IN_TRANSIT_TO" },
+      veh({ tripId: "999999", stopId: "187567", status: "IN_TRANSIT_TO" }),
       byTrip,
       STOPS,
     );
@@ -105,7 +139,7 @@ describe("resolveNextStop", () => {
 
   it("returns undefined for an unknown stop id (never guesses)", () => {
     const next = resolveNextStop(
-      { tripId: "714318", stopId: "000000", stopSequence: 99 },
+      veh({ tripId: "714318", stopId: "000000" }),
       byTrip,
       STOPS,
     );
@@ -113,13 +147,12 @@ describe("resolveNextStop", () => {
   });
 
   it("returns undefined for a deadheading bus (no trip, no stop)", () => {
-    const next = resolveNextStop({}, byTrip, STOPS);
-    expect(next).toBeUndefined();
+    expect(resolveNextStop(veh({}), byTrip, STOPS)).toBeUndefined();
   });
 
   it("returns undefined when STOPPED_AT the last stop and no following STU exists", () => {
     const next = resolveNextStop(
-      { tripId: "714318", stopId: "162877", stopSequence: 4, status: "STOPPED_AT" },
+      veh({ tripId: "714318", stopId: "162877", status: "STOPPED_AT" }),
       byTrip,
       STOPS,
     );
@@ -130,7 +163,7 @@ describe("resolveNextStop", () => {
 describe("decorateVehiclesWithNextStop", () => {
   it("attaches nextStop where resolvable and passes others through unchanged", () => {
     const vehicles: LiveVehicle[] = [
-      { vehicleId: "16253", routeId: "6160", tripId: "714318", lat: 39.434, lng: -77.438, stopId: "187567", stopSequence: 2, status: "IN_TRANSIT_TO" },
+      { vehicleId: "16253", routeId: "6160", tripId: "714318", lat: 39.434, lng: -77.438, stopId: "187567", status: "IN_TRANSIT_TO" },
       { vehicleId: "deadhead", lat: 39.4, lng: -77.4 }, // no trip/stop
     ];
     const out = decorateVehiclesWithNextStop(vehicles, [TRIP_714318], STOPS);

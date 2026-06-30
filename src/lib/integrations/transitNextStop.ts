@@ -33,43 +33,87 @@ export function tripUpdatesByTripId(updates: TripUpdate[]): Map<string, TripUpda
   return m;
 }
 
-/** Pick a vehicle's NEXT stop from its trip's timetable + reported position.
- *  `stopById` is injected so this is pure/testable. */
+const stuTime = (s: TripStop): number | undefined => s.arrivalEpoch ?? s.departureEpoch;
+const bySeq = (a: TripStop, b: TripStop): number =>
+  (a.stopSequence ?? Number.POSITIVE_INFINITY) - (b.stopSequence ?? Number.POSITIVE_INFINITY);
+
+/**
+ * Find the trip-timetable entry for the stop the vehicle reports (by stopId).
+ * On a loop/out-and-back trip the same physical stopId appears more than once;
+ * `after` (the vehicle's last report epoch) disambiguates by preferring the
+ * UPCOMING occurrence — the lap the bus hasn't served yet — over an
+ * already-passed one. Falls back to the earliest-by-sequence when there's no
+ * timestamp or no future-dated match.
+ */
+function matchReportedStop(
+  stops: TripStop[],
+  stopId: string | undefined,
+  after: number | undefined,
+): TripStop | undefined {
+  if (stopId == null) return undefined;
+  const matches = stops.filter((s) => s.stopId === stopId);
+  if (matches.length <= 1) return matches[0];
+  if (after != null) {
+    const future = matches
+      .filter((s) => { const t = stuTime(s); return t == null || t >= after; })
+      .sort(bySeq);
+    if (future.length > 0) return future[0];
+  }
+  return [...matches].sort(bySeq)[0];
+}
+
+/**
+ * Pick a vehicle's NEXT stop from its trip's timetable + reported position.
+ * `stopById` is injected so this is pure/testable.
+ *
+ * stop_id is AUTHORITATIVE across the two realtime feeds. The Passio
+ * VehiclePositions and TripUpdates feeds number stop_sequence DIFFERENTLY for
+ * the same stop_id (a fixed per-trip offset), and the feed never sets
+ * current_status on the wire — so for a moving/approaching bus the reported
+ * stopId *is* the stop being approached (GTFS: stop_id with the default
+ * IN_TRANSIT_TO status = the next stop). We therefore resolve by stopId and
+ * read the ETA from the matching TripUpdates stop, and only use the
+ * (internally-consistent) TripUpdates sequence to advance PAST a stop the bus
+ * is STOPPED_AT — never trusting the VehiclePositions sequence against
+ * TripUpdates. (Verified against the live feed: a sequence-first join showed
+ * the wrong next stop on ~half of buses.)
+ */
 export function resolveNextStop(
-  v: Pick<LiveVehicle, "tripId" | "stopId" | "stopSequence" | "status">,
+  v: Pick<LiveVehicle, "tripId" | "stopId" | "status" | "timestamp">,
   byTrip: Map<string, TripUpdate>,
   stopById: Record<string, StopMeta>,
 ): NextStop | undefined {
   const tu = v.tripId ? byTrip.get(v.tripId) : undefined;
-
-  // If the bus is STOPPED_AT its current stop, the NEXT stop is the one after
-  // it in the sequence — and we can only name it from the trip timetable, so
-  // the seed stopId starts undefined (no honest guess without the trip).
   const stopped = v.status === "STOPPED_AT";
-  const targetSeq =
-    v.stopSequence != null ? v.stopSequence + (stopped ? 1 : 0) : undefined;
-  let targetStopId: string | undefined = stopped ? undefined : v.stopId;
+
+  let targetStopId: string | undefined;
   let etaEpoch: number | undefined;
 
   if (tu && tu.stops.length > 0) {
-    let stu: TripStop | undefined;
-    if (targetSeq != null) {
-      // Prefer an exact sequence match (handles loop routes where a stopId
-      // repeats); else the earliest stop at-or-after the target sequence.
-      stu =
-        tu.stops.find((s) => s.stopSequence === targetSeq) ??
-        tu.stops
-          .filter((s) => s.stopSequence != null && s.stopSequence >= targetSeq)
-          .sort((a, b) => (a.stopSequence! - b.stopSequence!))[0];
+    const at = matchReportedStop(tu.stops, v.stopId, v.timestamp);
+    if (!stopped) {
+      // Moving / approaching: the reported stop IS the next stop. Take its ETA
+      // from the timetable; if the trip has no STU for it, still name it.
+      if (at) {
+        targetStopId = at.stopId;
+        etaEpoch = stuTime(at);
+      } else if (v.stopId != null) {
+        targetStopId = v.stopId;
+      }
+    } else if (at?.stopSequence != null) {
+      // STOPPED_AT the reported stop: the next stop is the one right after it
+      // in the trip's OWN sequence space (consistent within TripUpdates).
+      const next = tu.stops
+        .filter((s) => s.stopSequence != null && s.stopSequence > at.stopSequence!)
+        .sort(bySeq)[0];
+      if (next) {
+        targetStopId = next.stopId;
+        etaEpoch = stuTime(next);
+      }
     }
-    // Not stopped + no sequence match: fall back to the reported stopId.
-    if (!stu && !stopped && v.stopId != null) {
-      stu = tu.stops.find((s) => s.stopId === v.stopId);
-    }
-    if (stu) {
-      targetStopId = stu.stopId ?? targetStopId;
-      etaEpoch = stu.arrivalEpoch ?? stu.departureEpoch;
-    }
+  } else if (!stopped && v.stopId != null) {
+    // No TripUpdate for this trip: name the approached stop, no ETA.
+    targetStopId = v.stopId;
   }
 
   if (!targetStopId) return undefined;
