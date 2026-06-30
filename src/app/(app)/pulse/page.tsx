@@ -801,11 +801,13 @@ export default async function PulsePage({
           Mobile keeps the natural vertical stack. The grid is on the
           parent <div>; conditional children populate cells in source
           order so urgency stays top-left. */}
-      {/* Secondary surfaces — the scanner handoff, the rivers quick-link,
-          and local news. The operational feeds (weather alerts, fire &
-          rescue, traffic, power, schools, 311) are the tap-to-open dashboard
-          tiles above now, not a stacked run here. */}
-      <div className="space-y-4">
+      {/* Secondary surfaces — Scanner, local news, the police blotter, and
+          road-work advisories. These are REFERENCE feeds (text-heavy), so they
+          now live behind ONE "More civic feeds" disclosure: the live, visual
+          dashboard + buses + rivers lead, and /pulse stops reading as a long
+          text scroll. The operational feeds are the tap-to-open tiles above. */}
+      <CollapsibleSection title="More civic feeds & news" storageKey="fr.pulse.feeds" defaultOpen={false}>
+      <div className="space-y-4 pt-1">
 
       {/* Frederick Scanner — Twitter/X timeline embed. Sits between
           the operational feeds and the editorial news section because
@@ -953,7 +955,9 @@ export default async function PulsePage({
         </section>
         );
       })()}
-      </div>{/* /active-sections grid */}
+      {/* (Scanner + News above and Police + Road work below all live inside the
+          same "More civic feeds" disclosure opened above — the div stays open
+          until after the advisories.) */}
 
       {/* The all-clear verdict lives ONCE, in the hero ("All clear across
           the county" + the sage live dot at the top). A second celebration
@@ -1044,6 +1048,8 @@ export default async function PulsePage({
           Self-hides when there's nothing recent. Distinct from the live MDOT
           traffic tile (accidents now) in the dashboard above. */}
       <AdvisoryCard items={advisories} now={nowMs} />
+      </div>
+      </CollapsibleSection>
 
       {/* By the numbers — county canon + live directory counts. Collapsed
           by DEFAULT: on a live-status page this is the largest block and pure
