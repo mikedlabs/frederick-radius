@@ -443,11 +443,10 @@ export default async function TransitPage() {
       >
         <p>
           Route shapes and {stops.length > 0 ? `${stops.length} stops` : "stops"}{" "}
-          come from Maryland Open Data (Frederick County TransIT). Live
-          schedules and real-time vehicle positions need the county&apos;s
-          GTFS feed, which isn&apos;t published yet. When it is,
-          a future phase will add next-departure times and bus icons
-          to this map.
+          come from Maryland Open Data (Frederick County TransIT). Live bus
+          positions stream from the county&apos;s public GTFS-realtime feed and
+          refresh every few seconds. Scheduled next-departure times aren&apos;t
+          in that feed yet; a future phase will add them here.
         </p>
         <p className="flex flex-wrap items-center gap-3 pt-1">
           <a

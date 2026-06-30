@@ -110,9 +110,9 @@ export default function AdminHome() {
       </section>
 
       <p className="mt-8 text-[11px] leading-relaxed" style={{ color: "var(--app-ink-3)" }}>
-        This page is currently public-but-no-indexed. Once Auth.js is wired, it&apos;ll require an admin email
-        on the `ADMIN_EMAILS` allowlist. Submission queue + ingest run history land here when Neon Postgres
-        is connected.
+        This page is noindexed and gated by HTTP Basic Auth in middleware (set ADMIN_USER and ADMIN_PASSWORD;
+        /admin/* is unreachable if either is unset). Submission queue + ingest run history land here when a
+        database is connected.
       </p>
     </div>
   );
