@@ -13,15 +13,14 @@ import {
   isInFrederickCounty,
 } from "@/components/map/constants";
 
-/** The fixed set of types the collector can drop. kind matches the
- *  AmenityKind union + /api/collect's allow-list; glyph + label are the
- *  one-tap picker; color tints the placed dot so types read apart. */
+/** Fixed picker types. kind matches the AmenityKind union + /api/collect's
+ *  allow-list; glyph + label are the one-tap picker; color tints the dot. */
 const TYPES: { kind: string; label: string; glyph: string; color: string }[] = [
   { kind: "trash", label: "Trash", glyph: "\u{1F5D1}\u{FE0F}", color: "#4A4A48" },
   { kind: "recycling", label: "Recycling", glyph: "\u{267B}\u{FE0F}", color: "#1E6B3A" },
   { kind: "water", label: "Water", glyph: "\u{1F6B0}", color: "#20506A" },
   { kind: "bench", label: "Bench", glyph: "\u{1FA91}", color: "#7A7975" },
-  { kind: "ev_charging", label: "EV charging", glyph: "\u{26A1}", color: "#1E6B3A" },
+  { kind: "ev_charging", label: "EV", glyph: "\u{26A1}", color: "#1E6B3A" },
   { kind: "outlet", label: "Outlet", glyph: "\u{1F50C}", color: "#4A4A48" },
   { kind: "dog_water", label: "Dog water", glyph: "\u{1F43E}", color: "#20506A" },
   { kind: "dog_waste", label: "Dog bags", glyph: "\u{1F4A9}", color: "#1E6B3A" },
@@ -36,8 +35,6 @@ const BY_KEY = "fr:collect:by";
 type RecentPoint = { id: string; kind: string; note: string; photo: string | null; lng: number; lat: number };
 type Status = { tone: "ok" | "error" | "info"; text: string } | null;
 
-/** Downscale a captured photo to a small JPEG data URL (max ~1280px, q0.8),
- *  honoring EXIF orientation. Keeps the upload small (~150-300KB). */
 async function downscale(file: File, maxDim = 1280, quality = 0.8): Promise<string> {
   const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
   let { width, height } = bmp;
@@ -67,15 +64,19 @@ export default function CollectClient() {
   const [status, setStatus] = useState<Status>(null);
   const [recent, setRecent] = useState<RecentPoint[]>([]);
   const [userPos, setUserPos] = useState<{ lng: number; lat: number } | null>(null);
-  const [located, setLocated] = useState(false);
-  // When set, the bottom panel is editing this already-placed point instead of
-  // adding a new one.
+  const [locating, setLocating] = useState(false);
+  const [geoBlocked, setGeoBlocked] = useState(false);
   const [editing, setEditing] = useState<RecentPoint | null>(null);
+  // Passcode/name live behind a disclosure once a passcode is set, to keep the
+  // panel short on a phone (more map = easier placement).
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     try {
-      setPasscode(window.localStorage.getItem(PASS_KEY) ?? "");
+      const pc = window.localStorage.getItem(PASS_KEY) ?? "";
+      setPasscode(pc);
       setCollectedBy(window.localStorage.getItem(BY_KEY) ?? "");
+      if (!pc) setSettingsOpen(true);
     } catch {
       /* private mode */
     }
@@ -100,26 +101,44 @@ export default function CollectClient() {
     };
   }, []);
 
-  const flyTo = useCallback((lng: number, lat: number, zoom = 17) => {
-    mapRef.current?.getMap().flyTo({ center: [lng, lat], zoom, duration: 800 });
+  const flyTo = useCallback((lng: number, lat: number, zoom = 18) => {
+    mapRef.current?.getMap().flyTo({ center: [lng, lat], zoom, duration: 700 });
   }, []);
 
+  // Locate: recenter the map on the live GPS fix (the crosshair = where the pin
+  // drops, so "use my location" = move the crosshair onto me). Robust handling
+  // of denied/unavailable so mobile never silently does nothing.
   const locate = useCallback(
     (fly: boolean) => {
       if (typeof navigator === "undefined" || !navigator.geolocation) {
+        setGeoBlocked(true);
         setStatus({ tone: "error", text: "Location isn't available on this device." });
         return;
       }
+      setLocating(true);
       navigator.geolocation.getCurrentPosition(
         (pos) => {
+          setLocating(false);
+          setGeoBlocked(false);
           const lng = pos.coords.longitude;
           const lat = pos.coords.latitude;
           setUserPos({ lng, lat });
-          setLocated(true);
-          if (fly && isInFrederickCounty(lng, lat)) flyTo(lng, lat, 17);
+          if (!isInFrederickCounty(lng, lat)) {
+            setStatus({ tone: "info", text: "You're outside Frederick County. Drag the map to the spot." });
+            return;
+          }
+          if (fly) flyTo(lng, lat, 18);
         },
-        () => setStatus({ tone: "info", text: "Couldn't get your location. Move the map so the crosshair is on the spot." }),
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 },
+        (err) => {
+          setLocating(false);
+          if (err.code === err.PERMISSION_DENIED) {
+            setGeoBlocked(true);
+            setStatus({ tone: "error", text: "Location is blocked. Allow location for this site, or drag the map to the spot." });
+          } else {
+            setStatus({ tone: "info", text: "Couldn't get a fix. Drag the map so the crosshair is on the spot." });
+          }
+        },
+        { enableHighAccuracy: true, timeout: 9000, maximumAge: 8000 },
       );
     },
     [flyTo],
@@ -149,7 +168,6 @@ export default function CollectClient() {
 
   const selected = TYPES.find((t) => t.kind === kind);
 
-  // ── ADD a new point at the crosshair ──────────────────────────────────────
   const add = useCallback(async () => {
     const map = mapRef.current?.getMap();
     if (!map) return;
@@ -161,6 +179,7 @@ export default function CollectClient() {
       return;
     }
     if (!passcode) {
+      setSettingsOpen(true);
       setStatus({ tone: "error", text: "Enter the passcode first." });
       return;
     }
@@ -181,6 +200,7 @@ export default function CollectClient() {
         }),
       });
       if (res.status === 401) {
+        setSettingsOpen(true);
         setStatus({ tone: "error", text: "Passcode incorrect." });
         return;
       }
@@ -204,12 +224,11 @@ export default function CollectClient() {
     }
   }, [kind, note, photo, passcode, collectedBy, selected]);
 
-  // ── EDIT mode: open / save / delete an existing point ──────────────────────
   const startEdit = useCallback((p: RecentPoint) => {
     setEditing(p);
     setKind(p.kind);
     setNote(p.note);
-    setPhoto(null); // a new photo replaces; leaving it null keeps the existing
+    setPhoto(null);
     setStatus(null);
     flyTo(p.lng, p.lat, 18);
   }, [flyTo]);
@@ -224,6 +243,7 @@ export default function CollectClient() {
   const saveEdit = useCallback(async () => {
     if (!editing) return;
     if (!passcode) {
+      setSettingsOpen(true);
       setStatus({ tone: "error", text: "Enter the passcode first." });
       return;
     }
@@ -245,9 +265,7 @@ export default function CollectClient() {
         return;
       }
       setRecent((prev) =>
-        prev.map((p) =>
-          p.id === editing.id ? { ...p, kind, note: note.trim(), photo: photo || p.photo } : p,
-        ),
+        prev.map((p) => (p.id === editing.id ? { ...p, kind, note: note.trim(), photo: photo || p.photo } : p)),
       );
       setStatus({ tone: "ok", text: "Updated." });
       cancelEdit();
@@ -261,6 +279,7 @@ export default function CollectClient() {
   const removePoint = useCallback(async () => {
     if (!editing) return;
     if (!passcode) {
+      setSettingsOpen(true);
       setStatus({ tone: "error", text: "Enter the passcode first." });
       return;
     }
@@ -292,8 +311,10 @@ export default function CollectClient() {
   }, [editing, passcode, cancelEdit]);
 
   return (
-    <div className="relative flex flex-col bg-[var(--app-bg)] text-[var(--app-ink)]" style={{ height: "100dvh" }}>
-      <div className="relative flex-1">
+    <div className="relative bg-[var(--app-bg)] text-[var(--app-ink)]" style={{ height: "100dvh" }}>
+      {/* Map fills the whole screen; the control bar floats over the bottom so
+          the map stays as large as possible for accurate placement. */}
+      <div className="absolute inset-0">
         <Map
           ref={mapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
@@ -311,7 +332,7 @@ export default function CollectClient() {
         >
           {userPos && (
             <Marker longitude={userPos.lng} latitude={userPos.lat} anchor="center">
-              <span className="block h-3.5 w-3.5 rounded-full border-2 border-white bg-[#2F5470] shadow" />
+              <span className="block h-4 w-4 rounded-full border-2 border-white bg-[#2F5470] shadow-[0_0_0_4px_rgba(47,84,112,0.25)]" />
             </Marker>
           )}
           {recent.map((p) => {
@@ -325,74 +346,82 @@ export default function CollectClient() {
                     startEdit(p);
                   }}
                   aria-label={`Edit ${p.kind}`}
-                  className="block rounded-full border border-white shadow"
-                  style={{
-                    width: active ? 16 : 11,
-                    height: active ? 16 : 11,
-                    background: COLOR_FOR(p.kind),
-                    outline: active ? "2px solid var(--app-ink)" : "none",
-                    outlineOffset: 1,
-                  }}
-                />
+                  className="grid place-items-center"
+                  style={{ width: 34, height: 34 }}
+                >
+                  <span
+                    className="block rounded-full border-2 border-white shadow"
+                    style={{
+                      width: active ? 18 : 14,
+                      height: active ? 18 : 14,
+                      background: COLOR_FOR(p.kind),
+                      outline: active ? "2px solid var(--app-ink)" : "none",
+                      outlineOffset: 1,
+                    }}
+                  />
+                </button>
               </Marker>
             );
           })}
         </Map>
-
-        {/* Center crosshair — only while ADDING (hidden in edit mode). */}
-        {!editing && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
-              <circle cx="22" cy="22" r="13" fill="none" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-              <line x1="22" y1="2" x2="22" y2="12" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-              <line x1="22" y1="32" x2="22" y2="42" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-              <line x1="2" y1="22" x2="12" y2="22" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-              <line x1="32" y1="22" x2="42" y2="22" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
-              <circle cx="22" cy="22" r="2.5" fill="var(--app-brand,#E14328)" />
-            </svg>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => locate(true)}
-          className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/95 text-[var(--app-ink)] shadow-md"
-          aria-label="Center on my location"
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <circle cx="12" cy="12" r="7" />
-            <line x1="12" y1="1" x2="12" y2="4" />
-            <line x1="12" y1="20" x2="12" y2="23" />
-            <line x1="1" y1="12" x2="4" y2="12" />
-            <line x1="20" y1="12" x2="23" y2="12" />
-            <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
-          </svg>
-        </button>
-
-        <div className="absolute left-3 top-3 rounded-full bg-[var(--app-ink)]/85 px-3 py-1.5 font-mono text-xs text-white shadow">
-          {recent.length} marked
-        </div>
       </div>
 
-      {/* Control panel */}
-      <div className="shrink-0 space-y-3 border-t border-[var(--app-ink)]/10 bg-[var(--app-bg)] p-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]">
+      {/* Center crosshair — at the map's geometric center, which is exactly
+          where getCenter() (the drop point) reads. The bottom control card
+          floats below it. Hidden while editing. */}
+      {!editing && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
+            <circle cx="24" cy="24" r="14" fill="rgba(225,67,40,0.10)" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
+            <line x1="24" y1="3" x2="24" y2="13" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
+            <line x1="24" y1="35" x2="24" y2="45" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
+            <line x1="3" y1="24" x2="13" y2="24" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
+            <line x1="35" y1="24" x2="45" y2="24" stroke="var(--app-brand,#E14328)" strokeWidth="2.5" />
+            <circle cx="24" cy="24" r="3" fill="var(--app-brand,#E14328)" />
+          </svg>
+        </div>
+      )}
+
+      {/* Floating count + locate (prominent, labeled). */}
+      <div className="absolute left-3 top-3 rounded-full bg-[var(--app-ink)]/85 px-3 py-1.5 font-mono text-xs text-white shadow">
+        {recent.length} marked
+      </div>
+      <button
+        type="button"
+        onClick={() => locate(true)}
+        className="absolute right-3 top-3 inline-flex h-11 items-center gap-1.5 rounded-full bg-white/95 px-3.5 text-sm font-semibold text-[var(--app-ink)] shadow-md"
+        aria-label="Use my location"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className={locating ? "animate-spin" : undefined}>
+          <circle cx="12" cy="12" r="7" />
+          <line x1="12" y1="1" x2="12" y2="4" />
+          <line x1="12" y1="20" x2="12" y2="23" />
+          <line x1="1" y1="12" x2="4" y2="12" />
+          <line x1="20" y1="12" x2="23" y2="12" />
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+        </svg>
+        {locating ? "Locating" : "My location"}
+      </button>
+
+      {/* Floating control card pinned to the bottom. */}
+      <div
+        className="absolute inset-x-0 bottom-0 space-y-2.5 rounded-t-[var(--app-radius-lg,18px)] border-t border-[var(--app-ink)]/10 bg-[var(--app-bg)]/97 p-3 pb-[calc(env(safe-area-inset-bottom,0px)+0.6rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.12)] backdrop-blur"
+      >
         {editing ? (
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">Editing a marked spot</p>
-            <button type="button" onClick={cancelEdit} className="tap-44 text-sm text-[var(--app-ink)]/60">
-              Cancel
-            </button>
+            <button type="button" onClick={cancelEdit} className="tap-44 text-sm text-[var(--app-ink)]/60">Cancel</button>
           </div>
         ) : (
-          !located && (
-            <p className="text-center text-xs text-[var(--app-ink)]/60">
-              Line the crosshair up on the spot, pick a type, then Add. Tap a dot to edit it.
-            </p>
-          )
+          <p className="text-center text-[11px] text-[var(--app-ink)]/55">
+            {geoBlocked
+              ? "Location blocked. Drag the map so the crosshair sits on the spot."
+              : "Center the crosshair on the spot (or tap My location), pick a type, Add. Tap a dot to edit."}
+          </p>
         )}
 
-        {/* Type picker */}
-        <div className="grid grid-cols-5 gap-1.5">
+        {/* Type picker — single horizontal row (saves vertical space for the map). */}
+        <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5" style={{ scrollbarWidth: "none" }}>
           {TYPES.map((t) => {
             const active = t.kind === kind;
             return (
@@ -401,77 +430,76 @@ export default function CollectClient() {
                 type="button"
                 onClick={() => setKind(t.kind)}
                 aria-pressed={active}
-                className={`flex min-h-[56px] flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md,12px)] border px-1 py-1.5 text-center transition-colors ${
+                className={`flex min-h-[52px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md,12px)] border px-1 py-1.5 text-center transition-colors ${
                   active
                     ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-2,rgba(225,67,40,0.12))]"
-                    : "border-[var(--app-ink)]/12 bg-white/60"
+                    : "border-[var(--app-ink)]/12 bg-white/70"
                 }`}
               >
                 <span className="text-lg leading-none" aria-hidden="true">{t.glyph}</span>
-                <span className="text-[10px] font-medium leading-tight">{t.label}</span>
+                <span className="text-[9.5px] font-medium leading-tight">{t.label}</span>
               </button>
             );
           })}
         </div>
 
-        <input
-          type="text"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          maxLength={280}
-          placeholder={kind === "other" ? "What is it? (required for Other)" : "Note (optional)"}
-          className="w-full rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
-        />
-
-        {/* Photo capture + preview */}
-        <div className="flex items-center gap-3">
-          <label className="tap-44 inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm font-medium">
-            <span aria-hidden="true">{"\u{1F4F7}"}</span>
-            {photo ? "Retake photo" : editing ? "Add/replace photo" : "Add photo"}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => onPickPhoto(e.target.files?.[0])}
-            />
-          </label>
-          {photo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- local capture preview (data URL), not a remote asset
-            <img src={photo} alt="Preview" className="h-12 w-12 rounded-md object-cover" />
-          ) : editing?.photo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- existing reference photo
-            <img src={editing.photo} alt="Current" className="h-12 w-12 rounded-md object-cover opacity-80" />
-          ) : (
-            <span className="text-xs text-[var(--app-ink)]/45">Optional reference shot</span>
-          )}
-        </div>
-
-        {/* Passcode + collector name */}
-        <div className="flex gap-2">
-          <input
-            type="password"
-            value={passcode}
-            onChange={(e) => {
-              setPasscode(e.target.value);
-              rememberField(PASS_KEY, e.target.value);
-            }}
-            placeholder="Passcode"
-            autoComplete="off"
-            className="w-1/2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
-          />
+        {/* Note + photo on one row. */}
+        <div className="flex items-center gap-2">
           <input
             type="text"
-            value={collectedBy}
-            onChange={(e) => {
-              setCollectedBy(e.target.value);
-              rememberField(BY_KEY, e.target.value);
-            }}
-            maxLength={60}
-            placeholder="Your name (optional)"
-            className="w-1/2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            maxLength={280}
+            placeholder={kind === "other" ? "What is it?" : "Note (optional)"}
+            className="min-w-0 flex-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
           />
+          <label className="tap-44 inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm font-medium">
+            <span aria-hidden="true">{"\u{1F4F7}"}</span>
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onPickPhoto(e.target.files?.[0])} />
+          </label>
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- local capture preview (data URL)
+            <img src={photo} alt="Preview" className="h-10 w-10 shrink-0 rounded-md object-cover" />
+          ) : editing?.photo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- existing reference photo
+            <img src={editing.photo} alt="Current" className="h-10 w-10 shrink-0 rounded-md object-cover opacity-80" />
+          ) : null}
         </div>
+
+        {/* Passcode + name behind a disclosure (set once). */}
+        <button
+          type="button"
+          onClick={() => setSettingsOpen((s) => !s)}
+          className="tap-44 text-[11px] font-medium text-[var(--app-ink)]/55"
+        >
+          {settingsOpen ? "Hide passcode" : passcode ? "Passcode set · change" : "Enter passcode"}
+        </button>
+        {settingsOpen && (
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={passcode}
+              onChange={(e) => {
+                setPasscode(e.target.value);
+                rememberField(PASS_KEY, e.target.value);
+              }}
+              placeholder="Passcode"
+              autoComplete="off"
+              className="w-1/2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
+            />
+            <input
+              type="text"
+              value={collectedBy}
+              onChange={(e) => {
+                setCollectedBy(e.target.value);
+                rememberField(BY_KEY, e.target.value);
+              }}
+              maxLength={60}
+              placeholder="Your name (optional)"
+              className="w-1/2 rounded-[var(--app-radius-md,12px)] border border-[var(--app-ink)]/15 bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--app-brand,#E14328)]"
+            />
+          </div>
+        )}
 
         {status && (
           <p
@@ -494,7 +522,7 @@ export default function CollectClient() {
               type="button"
               onClick={removePoint}
               disabled={saving}
-              className="rounded-[var(--app-radius-md,12px)] border border-[var(--app-brand,#E14328)] px-4 py-3.5 text-base font-semibold text-[var(--app-brand,#E14328)] disabled:opacity-50"
+              className="rounded-[var(--app-radius-md,12px)] border border-[var(--app-brand,#E14328)] px-4 py-3 text-base font-semibold text-[var(--app-brand,#E14328)] disabled:opacity-50"
             >
               Delete
             </button>
@@ -502,7 +530,7 @@ export default function CollectClient() {
               type="button"
               onClick={saveEdit}
               disabled={saving}
-              className="flex-1 rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3.5 text-base font-semibold text-white disabled:opacity-50"
+              className="flex-1 rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3 text-base font-semibold text-white disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save changes"}
             </button>
@@ -512,7 +540,7 @@ export default function CollectClient() {
             type="button"
             onClick={add}
             disabled={saving}
-            className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3.5 text-base font-semibold text-white disabled:opacity-50"
+            className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand,#E14328)] py-3 text-base font-semibold text-white disabled:opacity-50"
           >
             {saving ? "Adding…" : `Add ${selected?.label ?? "point"} here`}
           </button>
