@@ -60,7 +60,12 @@ export default function TodayContext({ goldenEvent }: { goldenEvent?: GoldenHour
       golden = `Golden hour now · best light until ${clock(hint.to)}`;
     } else {
       const mins = Math.max(1, Math.round((hint.from.getTime() - now.getTime()) / 60_000));
-      golden = `Golden hour ${clock(hint.from)} · in ${mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`}`;
+      // Only surface the upcoming cue when it's ACTIONABLE (within ~90 min) — a
+      // golden hour four hours out is masthead noise, not a "grab the camera"
+      // cue, and it duplicated the weather hero's sun info most of the day.
+      if (mins <= 90) {
+        golden = `Golden hour ${clock(hint.from)} · in ${mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`}`;
+      }
     }
   }
 
