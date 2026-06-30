@@ -68,7 +68,7 @@ export default function Scene09_CivicHub() {
                             <Search className="w-6 h-6 text-emerald-400" />
                             <input
                                 type="text"
-                                placeholder='Ask Frederick anything... "Where can I renew my license?" or "Road closures downtown?"'
+                                placeholder='Ask Radius anything... "Where can I renew my license?" or "Road closures downtown?"'
                                 className="flex-1 bg-transparent text-white text-lg placeholder-gray-500 outline-none"
                             />
                             <motion.button
