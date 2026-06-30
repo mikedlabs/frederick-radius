@@ -120,6 +120,14 @@ export const AMENITY_GROUPS: {
   // Catch-all for field-collected points that don't fit a fixed type
   // (the /collect tool's "Other" option, described in the note).
   { key: "other", label: "Other", glyph: "\u{1F4CD}", cats: ["other"] },
+  // Crowdsourced community reports (the /report layer): hazards, live
+  // conditions, tips, and notes. One toggle for the whole community layer.
+  {
+    key: "community",
+    label: "Community",
+    glyph: "\u{26A0}\u{FE0F}",
+    cats: ["report-hazard", "report-condition", "report-tip", "report-note"],
+  },
 ];
 
 export const EMPTY_FC = {

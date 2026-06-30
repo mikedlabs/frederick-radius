@@ -104,6 +104,41 @@ export function PlacePopup({ p }: { p: SelectedPlace }) {
 export function OsmPopup({ p }: { p: SelectedOsm }) {
   const cat = CATEGORY_BY_SLUG[p.category_slug];
 
+  // Community reports (the /report crowdsourced layer) — osm_id "report:…".
+  // Caution styling + the photo/note + honest "Community report" provenance,
+  // not the OSM warning.
+  if (p.osm_id?.startsWith("report:")) {
+    const REPORT_LABEL: Record<string, { label: string; color: string }> = {
+      "report-hazard": { label: "Hazard", color: "#C2410C" },
+      "report-condition": { label: "Condition", color: "#2F5470" },
+      "report-tip": { label: "Tip", color: "#B07A1E" },
+      "report-note": { label: "Local note", color: "#7A7975" },
+    };
+    const meta = REPORT_LABEL[p.category_slug] ?? { label: "Report", color: "#2F5470" };
+    return (
+      <div style={{ minWidth: 200, maxWidth: 240, padding: 4 }}>
+        {p.photo && (
+          // eslint-disable-next-line @next/next/no-img-element -- Mapbox popup is outside next/image's tree
+          <img src={p.photo} alt={p.name} style={{ width: "100%", height: 120, objectFit: "cover", borderRadius: 8, marginBottom: 6, display: "block" }} />
+        )}
+        <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: meta.color, marginBottom: 4 }}>
+          {meta.label}
+        </p>
+        <strong style={{ display: "block", fontSize: 15, color: "var(--app-ink, #16140E)", fontFamily: "var(--font-display), ui-serif, Georgia, serif" }}>
+          {p.name}
+        </strong>
+        {p.address && (
+          <p style={{ fontSize: 12, margin: "6px 0 4px", color: "var(--app-ink-2, #423E34)", lineHeight: 1.4 }}>
+            {p.address}
+          </p>
+        )}
+        <p style={{ marginTop: 6, fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: meta.color }}>
+          Community report
+        </p>
+      </div>
+    );
+  }
+
   // Field-collected amenities (the /collect tool) are NOT from OpenStreetMap —
   // they're marked on foot by a neighbor. Show the reference photo + note and
   // honest provenance instead of the OSM "unverified / may be stale" warning

@@ -11,6 +11,9 @@ import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFreder
 import { getMunicipalBoundaries, getCountyBoundary } from "@/lib/integrations/fcGis";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
 import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
+import { getCommunityReports } from "@/lib/loaders/communityReports";
+import { REPORT_CATEGORY_BY_KEY } from "@/lib/reports/categories";
+import type { OsmPlace } from "@/lib/integrations/overpass";
 import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
@@ -415,6 +418,7 @@ async function BrowseMapArea({
     countyBoundary,
     waterSites,
     fieldAmenities,
+    communityReports,
     allWeek,
   ] = await Promise.all([
     // Timeout-guarded (not just .catch'd): a slow upstream degrades to a
@@ -437,6 +441,9 @@ async function BrowseMapArea({
     // the field_amenities table; fail-soft to [] (no DB / error) so the
     // map degrades to the static + OSM amenity set, never a 503.
     withTimeout(getFieldAmenities(), 6000, []),
+    // Community reports (the /report crowdsourced layer). Fail-soft to [] (no
+    // DB / table not migrated / error) so the map degrades cleanly.
+    withTimeout(getCommunityReports(), 6000, []),
     // Upcoming events (curated seed + live feeds), deduped + sorted.
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
@@ -480,6 +487,25 @@ async function BrowseMapArea({
     [...allAmenities(), ...riverGaugeAmenities, ...fieldAmenities],
     OPEN_PLACES.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
   );
+
+  // Community reports ride the amenity layer as OsmPlace-shaped points under
+  // the "Community" tray group (category slug report-<category> → caution
+  // marker). Their photo + note flow to the report popup. The note becomes the
+  // popup body (address); the label is the subtype, else the category.
+  const reportsAsOsm: OsmPlace[] = communityReports.map((r) => {
+    const def = REPORT_CATEGORY_BY_KEY[r.category];
+    const sub = def?.subtypes.find((s) => s.key === r.subtype);
+    return {
+      osm_id: r.id, // "report:<uuid>"
+      name: (r.title?.trim() || sub?.label || def?.label || "Report"),
+      category_slug: `report-${r.category}`,
+      osm_tag: r.subtype ?? "",
+      address: r.note ?? "",
+      lng: r.lng,
+      lat: r.lat,
+      photo: r.photo,
+    };
+  });
 
   const intent =
     intentParam && intentParam in INTENT_BY_KEY
@@ -577,7 +603,7 @@ async function BrowseMapArea({
         <AppMapClient
           places={places}
           civic={civic}
-          extraAmenities={mapillaryTrash}
+          extraAmenities={[...mapillaryTrash, ...reportsAsOsm]}
           amenities={amenities}
           trailLines={trailLines}
           transitLines={transitLines}

@@ -603,6 +603,9 @@ export default function AppMap({
           website: p.website ?? "",
           opening_hours: p.opening_hours ?? "",
           cuisine: "",
+          // Carries a community-report's reference photo through to the popup
+          // (OSM amenities have none; the field reports the /report tool adds do).
+          photo: p.photo ?? "",
         },
         geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
       }));
