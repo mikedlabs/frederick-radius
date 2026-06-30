@@ -86,6 +86,8 @@ export const CATEGORIES: Category[] = [
   { slug: "trash", name: "Trash receptacles", parent: "amenities", icon: "Trash2", color: "#4A4A48", display_order: 103, blurb: "Public trash cans (we map them where OSM has them tagged)." },
   { slug: "recycling", name: "Recycling drop-offs", parent: "amenities", icon: "Recycle", color: "#1E6B3A", display_order: 104, blurb: "Glass, plastic, paper, and yard-waste drop-offs." },
   { slug: "dog-waste", name: "Dog waste stations", parent: "amenities", icon: "PawPrint", color: "#1E6B3A", display_order: 105, blurb: "Dog-bag dispensers and waste bins." },
+  { slug: "dog-water", name: "Dog water", parent: "amenities", icon: "PawPrint", color: "#20506A", display_order: 105.5, blurb: "Dog water bowls and fountains out in public." },
+  { slug: "outlet", name: "Power outlets", parent: "amenities", icon: "Plug", color: "#4A4A48", display_order: 105.7, blurb: "Public AC outlets you can charge at." },
   { slug: "wifi", name: "Public WiFi", parent: "amenities", icon: "Wifi", color: "#20506A", display_order: 106, blurb: "Free public internet: libraries, parks, and spots that publish open WiFi." },
   { slug: "bench", name: "Benches", parent: "amenities", icon: "Armchair", color: "#7A7975", display_order: 106.5, blurb: "Public seating along trails and in parks." },
   { slug: "picnic", name: "Picnic areas", parent: "amenities", icon: "Utensils", color: "#1E6B3A", display_order: 107, blurb: "Picnic tables, shelters, and grilling spots." },

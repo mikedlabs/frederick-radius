@@ -62,6 +62,18 @@ export const AMENITY_KIND_TO_CAT: Record<Amenity["kind"], string> = {
   playground: "playground",
   pool: "pool",
   river_gauge: "river-gauge",
+  // Field-collected kinds → existing/new marker slugs. trash, recycling,
+  // water, bench, dog-waste already have buckets + icons; dog-water and
+  // outlet are the two genuinely new marks (see categoryMarkers.ts).
+  // "other" falls through bucketOf to the generic pin.
+  trash: "trash",
+  recycling: "recycling",
+  water: "water",
+  bench: "bench",
+  dog_waste: "dog-waste",
+  dog_water: "dog-water",
+  outlet: "outlet",
+  other: "other",
 };
 
 /**
@@ -83,10 +95,14 @@ export const AMENITY_GROUPS: {
   { key: "restroom", label: "Restrooms", glyph: "\u{1F6BB}", cats: ["restroom"] },
   { key: "water", label: "Water", glyph: "\u{1F4A7}", cats: ["water"] },
   { key: "trash", label: "Trash", glyph: "\u{1F5D1}", cats: ["trash", "recycling"] },
-  // No dog-waste-station points collected yet — shown as coming soon.
-  { key: "dog", label: "Dog stations", glyph: "\u{1F43E}", cats: ["dog-waste"], comingSoon: true },
+  // Dog stations — bag dispensers (dog-waste) + dog water (dog-water).
+  // No longer "coming soon": the /collect field tool populates these.
+  { key: "dog", label: "Dog stations", glyph: "\u{1F43E}", cats: ["dog-waste", "dog-water"] },
   { key: "wifi", label: "Wifi", glyph: "\u{1F4F6}", cats: ["wifi"] },
   { key: "ev", label: "EV charging", glyph: "\u{26A1}", cats: ["ev-charging"] },
+  // Power outlets — outdoor/public AC outlets people can charge at.
+  // Populated by the /collect field tool.
+  { key: "outlet", label: "Outlets", glyph: "\u{1F50C}", cats: ["outlet"] },
   { key: "bike", label: "Bike", glyph: "\u{1F6B2}", cats: ["bike-parking", "bike-repair"] },
   { key: "seating", label: "Sit & picnic", glyph: "\u{1FA91}", cats: ["bench", "picnic"] },
   { key: "play", label: "Playgrounds", glyph: "\u{1F6DD}", cats: ["playground"] },
@@ -101,6 +117,9 @@ export const AMENITY_GROUPS: {
   // gauge pin to jump to /rivers for live readings + trend.
   { key: "river_gauge", label: "Gauges", glyph: "\u{1F30A}", cats: ["river-gauge"] },
   { key: "safety", label: "AED & shelter", glyph: "\u{2795}", cats: ["defibrillator", "shelter"] },
+  // Catch-all for field-collected points that don't fit a fixed type
+  // (the /collect tool's "Other" option, described in the note).
+  { key: "other", label: "Other", glyph: "\u{1F4CD}", cats: ["other"] },
 ];
 
 export const EMPTY_FC = {

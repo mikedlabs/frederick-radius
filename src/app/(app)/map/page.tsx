@@ -10,6 +10,7 @@ import { getFrederickTrailShapes } from "@/lib/integrations/fcTrails";
 import { getFrederickTransitRouteShapes } from "@/lib/integrations/transitFrederick";
 import { getMunicipalBoundaries, getCountyBoundary } from "@/lib/integrations/fcGis";
 import { allAmenities, dedupeAmenities } from "@/lib/loaders/amenities";
+import { getFieldAmenities } from "@/lib/loaders/fieldAmenities";
 import { allUpcoming, dedupeLiveAgainstCurated, isCivicEvent, type EventWithMeta } from "@/lib/loaders/events";
 import { getVisibleEvents } from "@/lib/events/visible";
 import { isGeoPrecise } from "@/lib/events/geo-confidence";
@@ -399,6 +400,7 @@ async function BrowseMapArea({
     municipalBoundaries,
     countyBoundary,
     waterSites,
+    fieldAmenities,
     allWeek,
   ] = await Promise.all([
     // Timeout-guarded (not just .catch'd): a slow upstream degrades to a
@@ -417,6 +419,10 @@ async function BrowseMapArea({
     // USGS river gauges — surfaced as a map layer (kind="river_gauge")
     // so the Rivers & creeks dataset isn't trapped on /rivers alone.
     withTimeout(getFrederickWaterSites(), 6000, []),
+    // Field-collected amenities (the /collect walkabout tool). Reads
+    // the field_amenities table; fail-soft to [] (no DB / error) so the
+    // map degrades to the static + OSM amenity set, never a 503.
+    withTimeout(getFieldAmenities(), 6000, []),
     // Upcoming events (curated seed + live feeds), deduped + sorted.
     // Shared with the radius branch via loadUpcomingEvents so the two
     // can never drift on what "upcoming" means.
@@ -457,7 +463,7 @@ async function BrowseMapArea({
   }));
 
   const amenities = dedupeAmenities(
-    [...allAmenities(), ...riverGaugeAmenities],
+    [...allAmenities(), ...riverGaugeAmenities, ...fieldAmenities],
     OPEN_PLACES.map((p) => ({ name: p.name, category: p.category, geom: p.geom })),
   );
 

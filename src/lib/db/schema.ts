@@ -512,6 +512,45 @@ export const business_updates = pgTable(
   }),
 );
 
+/**
+ * Field-collected civic amenities — the /collect walkabout tool. A
+ * collector walks downtown with a phone, drops a pin on a trash can /
+ * water fountain / bench / EV charger / outlet / dog station, picks the
+ * type from a fixed list, and it lands here. The /map amenity layer
+ * merges these in (getFieldAmenities → Amenity shape → same kind→slug→
+ * icon path as the static OSM amenities), so a collected point appears
+ * on the live map immediately under its matching toggle.
+ *
+ * No FK to a users table (the app's collect tool is passcode-gated, not
+ * account-bound); `collected_by` is a free-text label the collector can
+ * set. `status` defaults to 'approved' (instant-publish) but exists so a
+ * future moderation pass can hide a point without deleting it. Writes go
+ * through /api/collect using the server postgres role; RLS is enabled
+ * with no policies so the anon key can't touch the table directly.
+ */
+export const field_amenities = pgTable(
+  "field_amenities",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    name: text("name"),
+    detail: text("detail"),
+    note: text("note"),
+    lng: doublePrecision("lng").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    municipality: text("municipality"),
+    photo_url: text("photo_url"),
+    status: text("status").notNull().default("approved"),
+    source: text("source").notNull().default("field"),
+    collected_by: text("collected_by"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    statusIdx: index("field_amenities_status_idx").on(t.status),
+    lngLatIdx: index("field_amenities_lng_lat_idx").on(t.lng, t.lat),
+  }),
+);
+
 // Run once after migration:
 export const POSTGIS_NOTE = sql`-- pg_trgm + FTS indexes (run as raw SQL after migration):
 -- pg_trgm lives in the extensions schema (NOT public — Supabase advisory),

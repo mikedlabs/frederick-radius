@@ -158,7 +158,10 @@ export default function AmenitiesPage() {
           aria-label="Live amenity kinds"
         >
           {live.map((g) => {
-            const Icon = LIVE_ICONS[g.kind];
+            // `live` only ever holds the static display kinds (amenitiesByKind
+            // filters to AMENITY_KINDS), but g.kind is the wider AmenityKind
+            // union now that the field-collected kinds exist — fall back safely.
+            const Icon = LIVE_ICONS[g.kind as keyof typeof LIVE_ICONS] ?? Trees;
             return (
               <li key={g.kind}>
                 <Link
