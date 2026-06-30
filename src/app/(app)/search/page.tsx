@@ -5,6 +5,7 @@ import { search, type SearchHit } from "@/lib/search";
 import SearchInput from "@/components/search/SearchInput";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/search" },
   title: "Search",
   description: "Search Frederick County for places, events, towns, and categories.",
 };

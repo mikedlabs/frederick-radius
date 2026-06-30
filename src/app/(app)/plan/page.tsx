@@ -6,6 +6,7 @@ import PageBloom from "@/components/ui/PageBloom";
 import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/plan" },
   title: "Plan an evening",
   description:
     "Tell us how much time you've got and the vibe. We'll string together real Frederick County stops, nothing invented.",

@@ -98,6 +98,7 @@ import NowIntel from "@/components/today/NowIntel";
  */
 export const metadata: Metadata = {
   alternates: { canonical: "/today" },
+  title: "Today in Frederick County",
   description: "What's open, what's happening, and what's worth your time in Frederick County right now.",
   openGraph: {
     title: "Today in Frederick County",
