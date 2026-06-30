@@ -743,6 +743,7 @@ export default async function PulsePage({
           liveBuses
           highlightRoutes
           hideBadge
+          lockToService
         />
         {/* Live arrivals board — every bus's NEXT stop + countdown, no tapping.
             Polls the same vehicle feed as the map; self-hides when none. */}
