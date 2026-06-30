@@ -47,8 +47,8 @@ export default async function NowIntel({ now }: { now: Date }) {
     <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12.5px]" style={{ color: "var(--app-ink-2)" }}>
       {verdict && (
         // Tappable: the verdict reads "patio evening" / "a wet one", so the
-        // natural next tap is the full forecast. Links to /pulse#weather.
-        <Link href="/pulse#weather" className="inline-flex items-center gap-1">
+        // natural next tap is the full forecast. Links to /pulse?open=weather.
+        <Link href="/pulse?open=weather" className="inline-flex items-center gap-1">
           <Wx className="h-3.5 w-3.5 shrink-0" strokeWidth={2} aria-hidden style={{ color: wxColor }} />
           {verdict.line}
         </Link>

@@ -219,7 +219,7 @@ export default async function MunicipalityPage(
       {/* 2 — Town-scoped ask/search pill: the first action. Ported from the
           Places pill, scoped to this town. Opens the typed search. */}
       <Link
-        href="/search"
+        href={`/search?q=${encodeURIComponent(m.name)}`}
         aria-label={`Search ${m.name}`}
         className="tactile tactile-interactive group flex items-center gap-3 rounded-full py-3 pl-4 pr-2.5"
         style={{ background: "var(--app-bg-elevated-solid)", boxShadow: "var(--app-edge), var(--app-hi), var(--app-elev-2)" }}

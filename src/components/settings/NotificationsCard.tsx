@@ -33,7 +33,7 @@ export default function NotificationsCard() {
   const [support, setSupport] = useState<SupportState>("unknown");
   const [pubKey, setPubKey] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
-  const [topics, setTopics] = useState<Set<PushTopic>>(new Set(ALL_TOPICS));
+  const [topics, setTopics] = useState<Set<PushTopic>>(new Set());
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 

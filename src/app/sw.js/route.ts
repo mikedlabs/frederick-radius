@@ -66,7 +66,10 @@ self.addEventListener("install", (event) => {
   // the user with an update toast. The user (or closing all tabs)
   // triggers activation via the SKIP_WAITING message below.
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((c) => c.add(OFFLINE_URL)),
+    // Non-fatal: a transient non-200 on /offline during install must not
+    // abort the SW install (which would disable offline support). The runtime
+    // navigate handler re-fetches /offline on demand.
+    caches.open(STATIC_CACHE).then((c) => c.add(OFFLINE_URL)).catch(() => {}),
   );
 });
 
@@ -112,8 +115,13 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+          // Only cache a successful, same-origin (basic) navigation, never a
+          // 4xx/5xx/redirect, or we would replay an error page offline instead
+          // of the offline screen.
+          if (res.ok && res.type === "basic") {
+            const copy = res.clone();
+            caches.open(STATIC_CACHE).then((c) => c.put(request, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(async () => (await caches.match(request)) || (await caches.match(OFFLINE_URL))),
