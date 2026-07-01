@@ -380,87 +380,72 @@ export default async function EventPage({ params }: { params: Promise<{ slug: st
         nearbyParking={nearbyParking}
       />
 
-      <div className="grid grid-cols-3 gap-2">
-        {isLive ? (
-          <EventCalendarButton
-            event={{
-              slug: event.slug,
-              title: event.title,
-              starts_at: event.starts_at,
-              ends_at: event.ends_at,
-              description: event.description,
-              venue_name: event.venue_name,
-              address: event.address,
-              is_all_day: event.is_all_day,
-            }}
-          />
-        ) : (
-          <a
-            href={icsUrl}
-            download
-            className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          >
-            <Calendar className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-            Add to calendar
-          </a>
-        )}
-        <a
-          href={directionsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-          style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-        >
-          <Navigation className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-          Directions
-        </a>
-        {event.ticket_url ? (
-          <a
-            href={event.ticket_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          >
-            <Ticket className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-            Tickets
-          </a>
-        ) : event.rsvp_url ? (
-          <a
-            href={event.rsvp_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          >
-            <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-            RSVP
-          </a>
-        ) : event.venue_place_slug ? (
-          <Link
-            href={`/places/${event.venue_place_slug}`}
-            className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          >
-            <MapPin className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-            Venue page
-          </Link>
-        ) : event.source_url ? (
-          <a
-            href={event.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]"
-            style={{ borderColor: "var(--app-border)", color: "var(--app-ink)" }}
-          >
-            <ExternalLink className="h-5 w-5" strokeWidth={1.75} style={{ color: "var(--app-brand)" }} aria-hidden />
-            Official page
-          </a>
-        ) : (
-          <div />
-        )}
-      </div>
+      {(() => {
+        // One clear primary in the action row (the old layout had three
+        // equal-weight tiles = no primary). Priority for the accent fill:
+        // Tickets -> RSVP -> Venue -> Official; if the event has none of those,
+        // Directions is promoted so there's always exactly one lead action.
+        const thirdAction =
+          event.ticket_url ? { href: event.ticket_url, external: true, Icon: Ticket, label: "Tickets" } :
+          event.rsvp_url ? { href: event.rsvp_url, external: true, Icon: ExternalLink, label: "RSVP" } :
+          event.venue_place_slug ? { href: `/places/${event.venue_place_slug}`, external: false, Icon: MapPin, label: "Venue page" } :
+          event.source_url ? { href: event.source_url, external: true, Icon: ExternalLink, label: "Official page" } :
+          null;
+        const hasThird = thirdAction !== null;
+        const dirPrimary = !hasThird;
+
+        const quietCls = "flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] border bg-[var(--app-bg-elevated)] py-3 text-xs font-medium transition hover:bg-[var(--app-bg-sunken)]";
+        const quietStyle = { borderColor: "var(--app-border)", color: "var(--app-ink)" };
+        const primaryCls = "tactile-glow-brand flex flex-col items-center justify-center gap-1.5 rounded-[var(--app-radius-md)] py-3 text-xs font-semibold transition";
+        const primaryStyle = { background: "var(--app-brand-press)", color: "var(--app-on-brand)" };
+        const iconBrand = { color: "var(--app-brand)" };
+        const iconOnBrand = { color: "var(--app-on-brand)" };
+
+        return (
+          <div className={`grid ${hasThird ? "grid-cols-3" : "grid-cols-2"} gap-2`}>
+            {isLive ? (
+              <EventCalendarButton
+                event={{
+                  slug: event.slug,
+                  title: event.title,
+                  starts_at: event.starts_at,
+                  ends_at: event.ends_at,
+                  description: event.description,
+                  venue_name: event.venue_name,
+                  address: event.address,
+                  is_all_day: event.is_all_day,
+                }}
+              />
+            ) : (
+              <a href={icsUrl} download className={quietCls} style={quietStyle}>
+                <Calendar className="h-5 w-5" strokeWidth={1.75} style={iconBrand} aria-hidden />
+                Add to calendar
+              </a>
+            )}
+            <a
+              href={directionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={dirPrimary ? primaryCls : quietCls}
+              style={dirPrimary ? primaryStyle : quietStyle}
+            >
+              <Navigation className="h-5 w-5" strokeWidth={1.75} style={dirPrimary ? iconOnBrand : iconBrand} aria-hidden />
+              Directions
+            </a>
+            {thirdAction && (thirdAction.external ? (
+              <a href={thirdAction.href} target="_blank" rel="noopener noreferrer" className={primaryCls} style={primaryStyle}>
+                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
+                {thirdAction.label}
+              </a>
+            ) : (
+              <Link href={thirdAction.href} className={primaryCls} style={primaryStyle}>
+                <thirdAction.Icon className="h-5 w-5" strokeWidth={1.75} style={iconOnBrand} aria-hidden />
+                {thirdAction.label}
+              </Link>
+            ))}
+          </div>
+        );
+      })()}
 
       {event.info && (event.info.admission || event.info.drinks || event.info.food) && (
         <section className="space-y-2">

@@ -561,20 +561,27 @@ function ActionButton({
 function ClosureBanner({
   severity, title, body, placeName,
 }: { severity: "permanent" | "temporary"; title: string; body: string; placeName: string }) {
-  const bg = severity === "permanent" ? "var(--app-danger)" : "var(--app-warning)";
+  // Closed is never red (design system): demote the saturated toast slab to a
+  // calm tinted plate. Permanent rides the neutral closed-state grey; temporary
+  // keeps a soft amber. Title/body carry the message in ink, the accent only
+  // tints the icon + hairline — so a closure reads as information, not an alarm.
+  const permanent = severity === "permanent";
+  const bg = permanent ? "var(--state-closed-bg)" : "var(--app-warning-tint-14)";
+  const accent = permanent ? "var(--state-closed)" : "var(--app-accent-press)";
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 rounded-[var(--app-radius-lg)] p-4 text-white shadow-[var(--app-shadow-1)]"
-      style={{ background: bg }}
+      className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border p-4"
+      style={{ background: bg, borderColor: `color-mix(in srgb, ${accent} 30%, transparent)` }}
     >
-      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: accent }} />
       <div className="min-w-0 flex-1">
-        <p className="font-serif text-lg font-semibold leading-tight">{title}</p>
-        <p className="mt-1 text-[13px] leading-relaxed opacity-95">{body}</p>
+        <p className="font-serif text-lg font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{title}</p>
+        <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{body}</p>
         <a
           href={`mailto:hello@frederickradius.app?subject=Closure status for ${placeName}`}
           className="mt-2 inline-block text-[12px] font-semibold underline underline-offset-2"
+          style={{ color: "var(--app-ink-2)" }}
         >
           Send a correction
         </a>
