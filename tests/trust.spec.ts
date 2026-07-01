@@ -96,7 +96,9 @@ describe("TRUST_COLOR", () => {
   it("maps every level to a brand token", () => {
     expect(TRUST_COLOR.verified).toContain("--app-positive");
     expect(TRUST_COLOR.official).toContain("--app-cool");
-    expect(TRUST_COLOR.likely).toContain("--app-warning");
+    // "likely" (Live feed / Likely-open) is calm provenance, not caution —
+    // it rides the muted ink tone; amber is reserved for stale signals.
+    expect(TRUST_COLOR.likely).toContain("--app-ink-3");
     expect(TRUST_COLOR.unconfirmed).toContain("--app-ink-3");
   });
 });

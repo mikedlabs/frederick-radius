@@ -67,6 +67,14 @@ export type Place = {
   doordash_url?: string;
   ubereats_url?: string;
   grubhub_url?: string;
+  /**
+   * Normalized commerce links (Phase 1) — the future-proof successor to the
+   * flat *_url fields above. When present these are authoritative (curated /
+   * owner-provided); the legacy fields still resolve into the same model, so
+   * both coexist. See src/lib/commerce. Kept as a JSON array here (file-based
+   * phase) with clean types so it can become a relational table later.
+   */
+  commerce_links?: import("@/lib/commerce/types").CommerceLink[];
   /** ParkMobile zone code (the 5-digit number a user types in the app). */
   parkmobile_zone?: string;
   /** Cross-reference ids for enrichment + verification */

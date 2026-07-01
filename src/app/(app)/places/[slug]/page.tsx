@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Utensils, ShoppingBag, Car, Instagram, ExternalLink } from "lucide-react";
+import { Phone, Globe, MapPin, Navigation, Apple, AlertCircle, Car, Instagram, ExternalLink } from "lucide-react";
 import ShareButton from "@/components/place/ShareButton";
 import { PLACES } from "@/data/places";
 import { getPlaceBySlug } from "@/lib/loaders/places";
 import { googleMapsDirections, appleMapsDirections, actionsForPlace } from "@/lib/integrations/deeplinks";
+import { resolveCommerceLinks } from "@/lib/commerce/links";
 import OpenClosedDot from "@/components/place/OpenClosedDot";
 import HoursBlock from "@/components/place/HoursBlock";
 import GoogleHours from "@/components/place/GoogleHours";
@@ -32,6 +33,7 @@ import AerialBeat from "@/components/place/AerialBeat";
 import PlacePhotoGallery from "@/components/place/PlacePhotoGallery";
 import BeenHereToggle from "@/components/place/BeenHereToggle";
 import PlaceAmenityIcons from "@/components/place/PlaceAmenityIcons";
+import CommerceActions from "@/components/place/CommerceActions";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import { MUNICIPALITY_BY_SLUG } from "@/data/municipalities";
 import { getVisibleEvents } from "@/lib/events/visible";
@@ -158,10 +160,12 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
   const googleUrl = googleMapsDirections(place.geom.lat, place.geom.lng);
   const appleUrl = appleMapsDirections(place.geom.lat, place.geom.lng, place.name);
   const actions = actionsForPlace(place);
-  const reserveActions = actions.filter((a) => a.category === "reserve");
-  const orderActions = actions.filter((a) => a.category === "order");
   const parkActions = actions.filter((a) => a.category === "park");
   const socialActions = actions.filter((a) => a.category === "social");
+  // Commerce (menu / order / reserve / delivery / catering) is now one unified
+  // section driven by the normalized model, which folds in the legacy *_url
+  // fields — so it supersedes the old separate Reserve/Order rows.
+  const commerceLinks = resolveCommerceLinks(place);
   // Drop anything that has already ended before mapping. place.upcoming_events
   // is baked at data-build time, so without this a venue can show a past
   // event as "upcoming" once the build is a day or two old (the audit caught
@@ -395,21 +399,11 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         ) : null;
       })()}
 
-      {reserveActions.length > 0 && (
-        <IntegrationRow
-          icon={Utensils}
-          title="Reserve a table"
-          actions={reserveActions}
-        />
-      )}
-
-      {orderActions.length > 0 && (
-        <IntegrationRow
-          icon={ShoppingBag}
-          title="Order online"
-          actions={orderActions}
-        />
-      )}
+      <CommerceActions
+        links={commerceLinks}
+        placeSlug={place.slug}
+        placeName={place.name}
+      />
 
       {parkActions.length > 0 && (
         <IntegrationRow
@@ -439,7 +433,7 @@ export default async function PlacePage({ params }: { params: Promise<{ slug: st
         <h2 className="eyebrow">
           Location
         </h2>
-        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "#A03A22"} />
+        <PlaceMiniMap lng={place.geom.lng} lat={place.geom.lat} color={cat?.color ?? "var(--app-brand)"} />
         {/* "From above" — the nearest geotagged drone shot, when one
             genuinely covers this spot (downtown Frederick). Self-hides
             elsewhere so it never fakes an aerial of a place we don't have. */}
@@ -561,20 +555,27 @@ function ActionButton({
 function ClosureBanner({
   severity, title, body, placeName,
 }: { severity: "permanent" | "temporary"; title: string; body: string; placeName: string }) {
-  const bg = severity === "permanent" ? "var(--app-danger)" : "var(--app-warning)";
+  // Closed is never red (design system): demote the saturated toast slab to a
+  // calm tinted plate. Permanent rides the neutral closed-state grey; temporary
+  // keeps a soft amber. Title/body carry the message in ink, the accent only
+  // tints the icon + hairline — so a closure reads as information, not an alarm.
+  const permanent = severity === "permanent";
+  const bg = permanent ? "var(--state-closed-bg)" : "var(--app-warning-tint-14)";
+  const accent = permanent ? "var(--state-closed)" : "var(--app-accent-press)";
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 rounded-[var(--app-radius-lg)] p-4 text-white shadow-[var(--app-shadow-1)]"
-      style={{ background: bg }}
+      className="flex items-start gap-3 rounded-[var(--app-radius-lg)] border p-4"
+      style={{ background: bg, borderColor: `color-mix(in srgb, ${accent} 30%, transparent)` }}
     >
-      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" strokeWidth={1.75} aria-hidden style={{ color: accent }} />
       <div className="min-w-0 flex-1">
-        <p className="font-serif text-lg font-semibold leading-tight">{title}</p>
-        <p className="mt-1 text-[13px] leading-relaxed opacity-95">{body}</p>
+        <p className="font-serif text-lg font-semibold leading-tight" style={{ color: "var(--app-ink)" }}>{title}</p>
+        <p className="mt-1 text-[13px] leading-relaxed" style={{ color: "var(--app-ink-2)" }}>{body}</p>
         <a
           href={`mailto:hello@frederickradius.app?subject=Closure status for ${placeName}`}
           className="mt-2 inline-block text-[12px] font-semibold underline underline-offset-2"
+          style={{ color: "var(--app-ink-2)" }}
         >
           Send a correction
         </a>

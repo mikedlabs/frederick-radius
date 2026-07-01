@@ -9,7 +9,7 @@ const STYLE_URL = "mapbox://styles/mapbox/dark-v11";
 export default function PlaceMiniMapInner({
   lng,
   lat,
-  color = "#A03A22",
+  color = "var(--app-brand)",
   height = 176,
   zoom = 15,
 }: {
