@@ -33,6 +33,7 @@ import VisitorStayPrompt from "@/components/today/VisitorStayPrompt";
 import WorthALook from "@/components/today/WorthALook";
 import FromYourSaved from "@/components/today/FromYourSaved";
 import TasteNudge from "@/components/today/TasteNudge";
+import CuratedPicks from "@/components/today/CuratedPicks";
 import PartnerAppsRow from "@/components/today/PartnerAppsRow";
 // CreekHairline removed in the pleasant-layout pass — it was a
 // decorative divider between weather/discovery and action; the
@@ -300,6 +301,14 @@ export default async function HomePage() {
           }
         />
       </div>
+
+      {/* ── PLAN THE MOMENT — the editorial counterpart to the craving grid.
+          Where "I want ___ right now" answers a single need, this surfaces the
+          hand-picked collections (walkable date night, kid energy burners,
+          rainy day, hidden gems) a beta review found personas hunting for in the
+          category icons. Pure discoverability of content that already lives at
+          /collections; server-rendered, no client JS. */}
+      <CuratedPicks />
 
       {/* ── WHAT'S ON — every public event in the city or county TODAY. Moved
           ABOVE the moat (owner call): the day's events are the headline answer.
