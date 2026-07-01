@@ -58,6 +58,22 @@ describe("fcvfraMapRow — recurrence resolution + honesty skips", () => {
     expect(m).not.toBeNull();
     expect(new Date(m!.event.startsAtUtc).getTime()).toBeGreaterThanOrEqual(NOW.getTime());
   });
+
+  it("anchors a weekly series to the weekday NAMED in the title, not the range-start date", () => {
+    // Season range STARTS on a Thursday (07/02/2026) but the title says
+    // WEDNESDAY. The occurrence must land on a Wednesday (07/08), never the
+    // range-start's Thursday — the "weekday disagrees with the date" bug.
+    const row = {
+      id: "999",
+      name: "Test Fire Co WEDNESDAY BINGO",
+      rangeStart: new Date(Date.UTC(2026, 6, 2, 12)), // Thu Jul 2 2026
+      rangeEnd: new Date(Date.UTC(2026, 11, 30, 12)),
+    };
+    const m = fcvfraMapRow(row, new Date("2026-07-01T16:00:00Z")); // Wed Jul 1
+    expect(m).not.toBeNull();
+    expect(m!.event.startsAtUtc.slice(0, 10)).toBe("2026-07-08"); // first Wednesday on/after the range start
+    expect(new Date(m!.event.startsAtUtc).getUTCDay()).toBe(3); // Wednesday
+  });
 });
 
 describe("fcvfraMunicipality — gap-town mapping", () => {
