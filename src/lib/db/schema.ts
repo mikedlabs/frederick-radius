@@ -3,6 +3,7 @@ import {
   smallint, timestamp, index, uniqueIndex, doublePrecision,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import type { CommerceLink } from "@/lib/commerce/types";
 
 export const municipalities = pgTable(
   "municipalities",
@@ -83,6 +84,9 @@ export const places = pgTable(
     price_band: smallint("price_band"),
     amenities: jsonb("amenities").$type<string[]>(),
     accessibility: jsonb("accessibility"),
+    // Normalized commerce links (menu/order/reserve/delivery/catering). Future
+    // mirror of the file-based place `commerce_links`; not written at runtime yet.
+    commerce_links: jsonb("commerce_links").$type<CommerceLink[]>(),
     hero_image: text("hero_image"),
     is_verified: boolean("is_verified").default(false),
     verified_at: timestamp("verified_at", { withTimezone: true }),
@@ -310,6 +314,37 @@ export const saved_events = pgTable(
   (t) => ({
     endpointSlugUq: uniqueIndex("saved_events_endpoint_slug_uq").on(t.endpoint, t.event_slug),
     slugIdx: index("saved_events_slug_idx").on(t.event_slug),
+  }),
+);
+
+/**
+ * commerce_link_reports — lightweight queue for "this order/menu/reserve link
+ * is broken." Unauthenticated + fail-soft like the other public write paths;
+ * RLS deny-all (all access is via the BYPASSRLS server role). Deliberately NOT
+ * folded into community_reports, which is a MAP layer — a broken link is place
+ * metadata, not a map pin, and must never surface as one. An admin queue can
+ * read this later; Phase 1 just captures it.
+ */
+export const commerce_link_reports = pgTable(
+  "commerce_link_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    place_slug: text("place_slug").notNull(),
+    place_name: text("place_name"),
+    /** The offending link's id when known, else its raw URL. */
+    link_ref: text("link_ref"),
+    url: text("url"),
+    provider: text("provider"),
+    link_type: text("link_type"),
+    issue_type: text("issue_type").notNull().default("broken_link"),
+    note: text("note"),
+    status: text("status").notNull().default("open"),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+  },
+  (t) => ({
+    placeIdx: index("commerce_link_reports_place_idx").on(t.place_slug),
+    statusIdx: index("commerce_link_reports_status_idx").on(t.status),
   }),
 );
 

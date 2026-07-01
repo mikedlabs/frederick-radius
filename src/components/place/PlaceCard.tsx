@@ -5,6 +5,7 @@ import { PAPER_CREAM_BLUR } from "@/lib/blur-placeholder";
 import { CATEGORY_BY_SLUG } from "@/data/categories";
 import type { PlaceCardData } from "@/lib/loaders/places";
 import OpenClosedDot from "./OpenClosedDot";
+import CardCommerceAction from "./CardCommerceAction";
 import { formatDistance } from "@/lib/geo";
 import SaveButton from "@/components/saved/SaveButton";
 import { usePlaceSheet } from "./PlaceSheetProvider";
@@ -557,6 +558,7 @@ export default function PlaceCard({
             </div>
           )
         )}
+        {!compact && <CardCommerceAction place={place} />}
       </div>
       <div className="relative z-10 self-start">
         <SaveButton refType="place" refId={place.slug} label={`Save ${place.name}`} />
