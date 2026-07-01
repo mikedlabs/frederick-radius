@@ -29,11 +29,30 @@ function parseHHMM(s: string): number {
 }
 
 export type OpenStatus =
-  | { state: "open"; closesAt: string; closingSoon: boolean }
+  | { state: "open"; closesAt: string; closingSoon: boolean; allDay?: boolean }
   | { state: "closing-soon"; closesAt: string }
   | { state: "closed"; opensAt?: string; opensDay?: DayOfWeek }
   | { state: "unverified" }
   | { state: "unknown" };
+
+/**
+ * An all-day / "open 24 hours" window: midnight to midnight, however the source
+ * encodes it (00:00–24:00, or 00:00–00:00). Detected explicitly so it renders
+ * as "Open 24 hours" instead of the nonsense "12am–12pm" that a naive
+ * open–close format produced (the Dog Park bug). A normal window that merely
+ * closes at midnight (e.g. 17:00–00:00) is NOT all-day and is left alone.
+ */
+export function isAllDayWindow(w: HoursWindow): boolean {
+  return w.open === "00:00" && (w.close === "24:00" || w.close === "00:00");
+}
+
+/** One day's windows as a display string: "Open 24 hours", a joined list of
+ *  "9am–5pm" ranges, or "Closed" when there are none. */
+export function formatWindows(windows: HoursWindow[]): string {
+  if (windows.length === 0) return "Closed";
+  if (windows.some(isAllDayWindow)) return "Open 24 hours";
+  return windows.map((w) => `${formatTime(w.open)}–${formatTime(w.close)}`).join(", ");
+}
 
 /**
  * "Open right now" — the shared predicate behind every open-now count
@@ -62,6 +81,8 @@ export function getOpenStatus(
     let close = parseHHMM(w.close);
     if (close <= open) close += 24 * 60;
     if (minutes >= open && minutes < close) {
+      // An open-24-hours window never "closes soon" and reads as all-day.
+      if (isAllDayWindow(w)) return { state: "open", closesAt: w.close, closingSoon: false, allDay: true };
       const left = close - minutes;
       const closingSoon = left <= 60;
       if (closingSoon) return { state: "closing-soon", closesAt: w.close };
@@ -104,6 +125,9 @@ export function getOpenStatus(
 export function formatTime(hhmm: string): string {
   const [hStr, m] = hhmm.split(":");
   let h = parseInt(hStr, 10);
+  // "24:00" is midnight (end-of-day) — normalize to the 0-23 clock BEFORE the
+  // am/pm split, so it reads "12am", not the old "12pm" (the Dog Park bug).
+  if (h >= 24) h -= 24;
   const am = h < 12;
   if (h === 0) h = 12;
   else if (h > 12) h -= 12;
@@ -112,7 +136,7 @@ export function formatTime(hhmm: string): string {
 }
 
 export function formatHoursLine(status: OpenStatus): string {
-  if (status.state === "open") return `Open until ${formatTime(status.closesAt)}`;
+  if (status.state === "open") return status.allDay ? "Open 24 hours" : `Open until ${formatTime(status.closesAt)}`;
   if (status.state === "closing-soon") return `Closing soon · ${formatTime(status.closesAt)}`;
   if (status.state === "closed" && status.opensAt && status.opensDay) {
     return `Closed · Opens ${DAY_LABEL[status.opensDay]} ${formatTime(status.opensAt)}`;

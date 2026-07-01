@@ -155,13 +155,13 @@ export default function AppMapDeck({
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-[var(--z-sticky)] px-2.5 pt-2.5 sm:px-3 sm:pt-3">
       <div className="pointer-events-auto mx-auto flex w-full max-w-[680px] flex-col gap-2">
-        {/* The Visitor / Resident mode-switch pill used to sit here
-            on the map deck. Removed pre-launch — the map surface
-            doesn't actually change behavior between visitor and
-            resident voice, so the pill read as confusing UI noise.
-            Mode still lives on /now (AdaptiveGreeting + ModeLead +
-            PrimaryActionCard) where it genuinely shapes copy, and
-            in /settings as an explicit preference. */}
+        {/* The Visitor / Resident mode-switch pill used to sit here on the
+            map deck. The whole user-facing toggle was collapsed away
+            (2026-07-01, owner call): one unified experience, no self-
+            classification. Mode still exists but SILENT — useMode leans the
+            map's DEFAULT layer set by geolocation (in-county → resident set)
+            and quietly flavors a little /today copy (AdaptiveGreeting), with
+            no chooser anywhere. */}
         {/* Unified search deck: a single rounded-pill bar with the
             search input filling the row and two icon-only buttons
             tucked into the bar's right side. The previous three

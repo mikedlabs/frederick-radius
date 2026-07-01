@@ -31,6 +31,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/places`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: `${BASE}/amenities`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     { url: `${BASE}/contacts`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    // Mobile-vendor roster (roaming trucks live here, not in the places catalog).
+    { url: `${BASE}/food-trucks`, lastModified: now, changeFrequency: "weekly", priority: 0.6 },
     // Dropped: "/now" (308→/today), "/radius" (308→
     // /map?mode=radius) — never list a redirect. /pulse, /parks, /trails
     // are noindex; /my-radius is user-state; /submit, /welcome, /settings,
@@ -62,12 +64,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: "weekly" as const,
     priority: 0.85,
   }));
-  const cats = CATEGORIES.map((c) => ({
-    url: `${BASE}/category/${c.slug}`,
-    lastModified: now,
-    changeFrequency: "weekly" as const,
-    priority: 0.6,
-  }));
+  const cats = CATEGORIES
+    // /category/food-truck 308s to /food-trucks (roster) — never list a redirect.
+    .filter((c) => c.slug !== "food-truck")
+    .map((c) => ({
+      url: `${BASE}/category/${c.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.6,
+    }));
   // Editorial collections — each /collections/[slug] is self-canonical and
   // indexable, but only the /collections index was listed, so the individual
   // collection pages never entered the sitemap. (audit SEO finding)

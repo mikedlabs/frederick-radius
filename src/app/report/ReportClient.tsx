@@ -201,8 +201,8 @@ export default function ReportClient() {
         </svg>
       </div>
 
-      <div className="absolute left-3 top-3 rounded-full bg-[var(--app-ink)]/85 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-white shadow">
-        Report something
+      <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-[var(--app-ink)]/85 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-white shadow">
+        Mark a spot
       </div>
 
       {/* Control card */}
@@ -333,7 +333,7 @@ export default function ReportClient() {
           disabled={saving}
           className="w-full rounded-[var(--app-radius-md,12px)] bg-[var(--app-brand-press)] py-3 text-base font-semibold text-white disabled:opacity-50"
         >
-          {saving ? "Sending…" : `Report ${def?.label?.toLowerCase() ?? "it"}`}
+          {saving ? "Sending…" : `Mark ${def?.label?.toLowerCase() ?? "it"}`}
         </button>
       </div>
     </div>

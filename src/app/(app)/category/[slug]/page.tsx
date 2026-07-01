@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { CATEGORIES, CATEGORY_BY_SLUG } from "@/data/categories";
@@ -63,6 +63,11 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const c = CATEGORY_BY_SLUG[slug];
   if (!c) notFound();
+
+  // Food trucks roam, so they don't live in the fixed-location places catalog
+  // (a static pin would misstate where they are). Their home is the dedicated
+  // roster at /food-trucks; send the category, intent, and craving links there.
+  if (slug === "food-truck") redirect("/food-trucks");
 
   // C2: origin = home muni centroid > FREDERICK_CENTER.
   // The cookie is written by PreferencesPanel via setHomeMuni in

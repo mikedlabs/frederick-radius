@@ -18,6 +18,7 @@ import {
   CirclePlus,
   Store,
   FileText,
+  MapPin,
 } from "lucide-react";
 import BottomDrawer from "@/components/ui/BottomDrawer";
 
@@ -77,6 +78,7 @@ const DISCOVER: Item[] = [
 // only reachable from scattered contextual links. Their own labeled cluster so
 // "how do I add my event / place / business" has an obvious home.
 const CONTRIBUTE: Item[] = [
+  { href: "/report", label: "Mark a spot", description: "Flag a hazard, live condition, tip, or note on the map", icon: MapPin, color: "var(--app-brand)" },
   { href: "/submit/event", label: "Add an event", description: "Submit a public event for the calendar", icon: CalendarPlus, color: "var(--app-brand)" },
   { href: "/submit/place", label: "Add a place", description: "Suggest a place that's missing from the map", icon: CirclePlus, color: "var(--app-positive)" },
   { href: "/business/claim", label: "Claim your business", description: "Own a listing? Claim it to keep it accurate", icon: Store, color: "var(--app-brand-2)" },

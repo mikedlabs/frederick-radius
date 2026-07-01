@@ -177,6 +177,29 @@ function stripHours(offer: string): string {
   return out.length >= 4 ? out : offer.trim();
 }
 
+/**
+ * Strip TRAILING provenance / source notes from a deal string so they never
+ * render as user copy. Field Notes deals sometimes carry an inline sourcing
+ * aside ("... (stated on the official bar page)", "... (this is their stated
+ * Wednesday special)") or even a TRUNCATED one with an unclosed paren
+ * ("... (officially announced"). Those sit directly under the "verified" label
+ * and undercut it, so they come off at the boundary. Only end-anchored
+ * parentheticals are removed (a legit mid-phrase "(all IPAs)" is kept), both
+ * balanced and dangling-open, then orphaned trailing punctuation is tidied.
+ */
+export function stripProvenance(s: string): string {
+  let out = s.trim();
+  for (let i = 0; i < 4; i++) {
+    const next = out
+      .replace(/\s*\([^()]*\)\s*$/, "") // trailing balanced "(...)"
+      .replace(/\s*\([^()]*$/, "") // trailing UNCLOSED "(..." (truncated note)
+      .trim();
+    if (next === out) break;
+    out = next;
+  }
+  return out.replace(/[\s,;:–-]+$/g, "").trim();
+}
+
 const OK: Record<string, number> = { high: 2, medium: 1 };
 
 /**
@@ -194,9 +217,11 @@ export function todaysDeals(now: Date, limit = 6): TodaysDeal[] {
     for (const d of entry.deals) {
       const conf = (d.confidence ?? "").toLowerCase();
       if (!OK[conf] || !d.last_verified) continue;
-      const days = daysInText(d.text || "");
+      // Clean the source text of trailing provenance notes BEFORE any parsing,
+      // so a note that names a weekday can't pollute the day-gating either.
+      const raw = stripProvenance((d.text || "").trim());
+      const days = daysInText(raw);
       if (!days.has(dow)) continue; // no-day standing specials are not "today" news
-      const raw = (d.text || "").trim();
       // Narrow a multi-day string to today's clause, then keep it only if it
       // actually reads as an offer — so a row never shows another day's price or
       // a non-deal ("Live music Thursday") in a list titled "verified specials".
@@ -271,7 +296,7 @@ export function allDeals(): DealRow[] {
     for (const d of entry.deals) {
       const conf = (d.confidence ?? "").toLowerCase();
       if (!OK[conf] || !d.last_verified) continue;
-      const raw = (d.text || "").trim();
+      const raw = stripProvenance((d.text || "").trim());
       rows.push({
         slug,
         name: place.name,

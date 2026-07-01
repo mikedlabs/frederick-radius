@@ -49,10 +49,10 @@ import { FREDERICK_CENTER } from "@/lib/geo";
 import { isEventToday } from "@/lib/eventWhenLabel";
 import CravingStrip from "@/components/now/CravingStrip";
 import PoolsToday from "@/components/today/PoolsToday";
+import FoodTruckToday from "@/components/today/FoodTruckToday";
 import FreshnessGuard from "@/components/today/FreshnessGuard";
 import FirstVisitNote from "@/components/today/FirstVisitNote";
 import NowIntel from "@/components/today/NowIntel";
-import TodayLens from "@/components/today/TodayLens";
 
 /**
  * Now — the daily briefing.
@@ -263,14 +263,14 @@ export default async function HomePage() {
         <div className="fg-rule mt-3" aria-hidden />
       </header>
 
-      {/* ── LENS PICKER — the calm, always-visible Resident/Visitor chooser
-          that replaces the startup "are you visiting" popup (owner call).
-          Stating the active lens and letting the user switch it in place
-          makes the choice easy to make AND easy to find later, without an
-          interruption on arrival. (The old "on this page" jump-rail that
-          used to sit here was removed as redundant; section ids stay on
-          their divs so deep-link anchors like /today#whats-on still work.) */}
-      <TodayLens />
+      {/* ── LENS PICKER removed (2026-07-01, owner call) ───────────────────
+          The visible Resident/Visitor toggle asked strangers to classify
+          themselves before seeing any value, and most people never touch a
+          toggle. /today now serves ONE unified view for everyone. The mode
+          machinery stays alive but SILENT: useMode still leans the MAP's
+          default layer set by geolocation (in-county → resident set), with no
+          user-facing chooser. (Section ids stay on their divs so deep-link
+          anchors like /today#whats-on still work.) */}
 
       {/* ── ANSWER-FIRST LEAD removed (2026-06-17, owner call) ───────────
           The lead "answers" section only ever rendered the single "On
@@ -300,11 +300,6 @@ export default async function HomePage() {
           }
         />
       </div>
-
-      {/* Seasonal pools "open now" (summer only; self-hides out of season).
-          A resident-utility answer to "where can we swim right now," with
-          accurate City of Frederick pool hours. */}
-      <PoolsToday now={now} />
 
       {/* ── WHAT'S ON — every public event in the city or county TODAY. Moved
           ABOVE the moat (owner call): the day's events are the headline answer.
@@ -343,6 +338,12 @@ export default async function HomePage() {
           <OnNowBand now={now} eventsPromise={eventsPromise} />
         </Suspense>
       </div>
+
+      {/* Seasonal pools (summer only; self-hides out of season) — placed BELOW
+          the day's events and the happy-hour / on-now layer (owner call):
+          swimming is a resident utility, not the headline, so it follows the
+          draws instead of leading them. */}
+      <PoolsToday now={now} />
 
       {/* TASTE-AWARE: a single quiet shortcut derived from the user's OWN saved
           places (their dominant craving), linking into /nearby for it. Client +
@@ -492,8 +493,9 @@ export default async function HomePage() {
        *  reads Ask → best move → what's on → details, not a stacked
        *  dashboard with the answer buried in a column. */}
 
-      {/* Visitor "Stay" door — self-hides for Residents. Kept inline
-          (only shows for visitors, so it's not clutter for locals). */}
+      {/* "Where to stay" door — now shown to everyone (the Resident/Visitor
+          gate came out with the toggle). A local sending an out-of-town guest
+          the link wants this too, so it's a standing card, not mode-gated. */}
       <VisitorStayPrompt />
 
       {/* ── MORE FOR TODAY — everything secondary, COLLAPSED by default.
@@ -506,6 +508,7 @@ export default async function HomePage() {
         defaultOpen={false}
       >
         <div className="space-y-4 pt-1">
+          <FoodTruckToday />
           <PartnerAppsRow />
           <Suspense fallback={<Skeleton.Block height={250} round="var(--app-radius-lg)" />}>
             <WorthALook />

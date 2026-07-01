@@ -57,37 +57,60 @@ export type UnifiedEvents = {
   publicEvents: EventWithMeta[];
 };
 
+/**
+ * Resolve to `fallback` if `p` rejects OR doesn't settle within `ms`.
+ *
+ * The per-feed `.catch` handles an upstream that ERRORS, but NOT one that just
+ * HANGS (open connection, no response, no error) — which would leave this whole
+ * Promise.all pending forever and hang the awaiting Suspense boundary on /events
+ * and /today (the "infinite skeleton" launch bug). Racing every feed against a
+ * timer means the worst case is a missing source, never a dead board.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([Promise.resolve(p).catch(() => fallback), timeout]).finally(
+    () => clearTimeout(timer),
+  );
+}
+// A single slow/hanging events upstream can't stall the board past this.
+const FEED_MS = 8000;
+
 async function assembleRaw(now: Date): Promise<UnifiedEvents> {
   const curatedUpcoming = allUpcoming(now);
 
   const [{ events: liveEventsRaw }, tmMusic, tmSports, bitEvents, sgEvents, ebEvents, vfEvents, keysEvents, squarespaceRaw, ingestedSeries] = await Promise.all([
-    getLiveEvents(60).catch(() => ({
+    withTimeout(getLiveEvents(60), FEED_MS, {
       events: [] as Awaited<ReturnType<typeof getLiveEvents>>["events"],
-    })),
-    fetchTicketmasterMusic().catch(() => []),
-    fetchTicketmasterSports().catch(() => []),
-    fetchBandsintownForArtists(BANDSINTOWN_ARTISTS).catch(() => []),
+      sources_succeeded: [] as string[],
+      sources_failed: [] as string[],
+    }),
+    withTimeout(fetchTicketmasterMusic(), FEED_MS, []),
+    withTimeout(fetchTicketmasterSports(), FEED_MS, []),
+    withTimeout(fetchBandsintownForArtists(BANDSINTOWN_ARTISTS), FEED_MS, []),
     // SeatGeek area discovery (Phase 4 item 3): inert without
     // SEATGEEK_CLIENT_ID, fail-soft like the others.
-    fetchSeatGeek().catch(() => []),
+    withTimeout(fetchSeatGeek(), FEED_MS, []),
     // Eventbrite organizer registry (Phase 4 item 4): inert without
     // EVENTBRITE_TOKEN or an empty registry.
-    fetchEventbrite().catch(() => []),
+    withTimeout(fetchEventbrite(), FEED_MS, []),
     // Visit Frederick destination-marketing events RSS (keyless Simpleview
     // feed). Partner-confidence county listings; fail-soft to [].
-    fetchVisitFrederick().catch(() => []),
+    withTimeout(fetchVisitFrederick(), FEED_MS, []),
     // Frederick Keys home games from the keyless MLB Stats API. Dedupes against
     // Ticketmaster on the clean slug; fail-soft to [].
-    fetchFrederickKeys().catch(() => []),
+    withTimeout(fetchFrederickKeys(), FEED_MS, []),
     // Squarespace venue lineups (The Banyan, …): runtime-fetched from each
     // venue's `?format=json` events feed. Inert ([]) until a venue carries a
     // `squarespace` URL in live-music-venues.ts.
-    fetchSquarespaceVenueEvents(60).catch(() => []),
+    withTimeout(fetchSquarespaceVenueEvents(60), FEED_MS, []),
     // Cron-ingested PUBLIC draws (FCPL library + FCVFRA fire-company carnivals
     // /bingo) lifted into the rails so the gap-town events that have no other
     // feed read as real "what's on", not a tucked civic row. County CivicEngage
     // is excluded by the adapter (it already arrives via the live county iCal).
-    getIngestedSeries().catch(() => []),
+    withTimeout(getIngestedSeries(), FEED_MS, []),
   ]);
 
   // Live/county + music + sports feeds, curated duplicates dropped.

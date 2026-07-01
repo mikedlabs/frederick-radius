@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Hours } from "@/data/places";
-import { formatFullHours, formatTime, getOpenStatus, formatHoursLine } from "@/lib/hours";
+import { formatFullHours, formatWindows, getOpenStatus, formatHoursLine } from "@/lib/hours";
 import { placeHoursTrust } from "@/lib/trust";
 import TrustChip from "@/components/ui/TrustChip";
 import { ChevronDown, AlertCircle } from "lucide-react";
@@ -63,9 +63,7 @@ export default function HoursBlock({
             <li key={row.day} className="flex items-center justify-between py-1.5">
               <span style={{ color: "var(--app-ink-2)" }}>{row.label}</span>
               <span className="tabular-nums" style={{ color: "var(--app-ink)" }}>
-                {row.windows.length === 0
-                  ? "Closed"
-                  : row.windows.map((w) => `${formatTime(w.open)}–${formatTime(w.close)}`).join(", ")}
+                {formatWindows(row.windows)}
               </span>
             </li>
           ))}
