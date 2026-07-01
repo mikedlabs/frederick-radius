@@ -7,6 +7,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/saved-reminders",
+      "schedule": "*/10 * * * *"
+    },
+    {
       "path": "/api/ingest/all",
       "schedule": "0 9 * * *"
     },

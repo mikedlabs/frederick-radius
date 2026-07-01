@@ -7,6 +7,31 @@ import { Bookmark } from "lucide-react";
 import { haptic } from "@/lib/haptics";
 import { toast } from "sonner";
 
+/**
+ * critic-1: mirror an EVENT save into the device's server-side reminder
+ * registry (/api/saved), so the "one hour before something you saved" cron can
+ * reach this device. Only runs when the device already has a push subscription
+ * (getSubscription() non-null) — no consent, no record, and we never force a
+ * permission prompt. Best-effort + fire-and-forget: the localStorage save is
+ * the source of truth; a failed sync must never block or surface. Mirrors
+ * syncFollowPushTopic in useFollows.
+ */
+async function syncSavedEventReminder(slug: string, save: boolean): Promise<void> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return; // no push consent on this device → no reminder possible
+    await fetch("/api/saved", {
+      method: save ? "POST" : "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug, endpoint: sub.endpoint }),
+    });
+  } catch {
+    /* best-effort side channel; never surface or block the save */
+  }
+}
+
 export default function SaveButton({
   refType,
   refId,
@@ -72,6 +97,9 @@ export default function SaveButton({
         e.stopPropagation();
         haptic(isSaved ? "light" : "medium");
         toggle();
+        // Event saves also register a device-scoped reminder (critic-1).
+        // isSaved is the PRE-toggle state, so the new state is !isSaved.
+        if (refType === "event") void syncSavedEventReminder(refId, !isSaved);
         // Sonner toast — quiet, brand-aligned acknowledgement so the
         // user sees something happen even if the bookmark animation
         // is missed at a glance. Undo action mirrors the toggle so

@@ -78,6 +78,12 @@
       "sha256": "d1b6dde69c8ff87e59a1abea3eb15b950dd02a88bed1f6938ad86cbb0146c9cb",
       "applied_at": null,
       "note": "recorded by migration-audit --write; confirm applied on prod"
+    },
+    {
+      "file": "0013_saved_events.sql",
+      "sha256": "5836d57a5145c50c9ebf8a31fb3446167387a11146cd79fa171f95b32af13f49",
+      "applied_at": null,
+      "note": "recorded by migration-audit --write; confirm applied on prod"
     }
   ]
 }
