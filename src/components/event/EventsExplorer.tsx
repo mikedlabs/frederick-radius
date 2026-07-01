@@ -747,7 +747,7 @@ export default function EventsExplorer({
             className="font-serif text-[20px] font-semibold leading-tight tracking-tight"
             style={{ color: "var(--app-ink)" }}
           >
-            Nothing fits these filters.
+            Nothing fits these filters
           </h3>
           <p
             className="mx-auto mt-1 max-w-xs text-[13px] text-pretty"

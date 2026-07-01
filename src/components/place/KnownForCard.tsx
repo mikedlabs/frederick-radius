@@ -100,7 +100,7 @@ export default function KnownForCard({
               aria-hidden
               className="h-3 w-3"
               strokeWidth={2.5}
-              style={{ color: "var(--app-warm)" }}
+              style={{ color: "var(--app-accent-press)" }}
             />
             Customers loved
           </p>

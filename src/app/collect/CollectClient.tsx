@@ -434,7 +434,7 @@ export default function CollectClient() {
                 aria-pressed={active}
                 className={`flex min-h-[52px] w-[62px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md,12px)] border px-1 py-1.5 text-center transition-colors ${
                   active
-                    ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-2,rgba(225,67,40,0.12))]"
+                    ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]"
                     : "border-[var(--app-ink)]/12 bg-white/70"
                 }`}
               >

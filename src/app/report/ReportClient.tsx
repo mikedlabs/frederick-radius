@@ -240,7 +240,7 @@ export default function ReportClient() {
                 }}
                 aria-pressed={active}
                 className={`flex min-h-[50px] w-[76px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-[var(--app-radius-md,12px)] border px-1 py-1.5 text-center transition-colors ${
-                  active ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-2,rgba(225,67,40,0.12))]" : "border-[var(--app-ink)]/12 bg-white/70"
+                  active ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/12 bg-white/70"
                 }`}
               >
                 <span className="text-base leading-none" aria-hidden="true">{cat.glyph}</span>
@@ -262,7 +262,7 @@ export default function ReportClient() {
                   onClick={() => setSubtype(on ? null : s.key)}
                   aria-pressed={on}
                   className={`tap-44 inline-flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-[12px] font-medium ${
-                    on ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-2,rgba(225,67,40,0.12))]" : "border-[var(--app-ink)]/15 bg-white/70"
+                    on ? "border-[var(--app-brand,#E14328)] bg-[var(--app-brand-tint-14)]" : "border-[var(--app-ink)]/15 bg-white/70"
                   }`}
                 >
                   <span aria-hidden="true">{s.glyph}</span>
